@@ -1,6 +1,6 @@
 package org.sjf4j.annotation.mapper;
 
-/** Controls update behavior for OBNT object-like targets such as maps. */
+/** Controls update behavior for object-like targets such as maps. */
 public enum ObjectPolicy {
     /** Clear the existing target object-like container and put mapped source entries. */
     CLEAR_PUT,

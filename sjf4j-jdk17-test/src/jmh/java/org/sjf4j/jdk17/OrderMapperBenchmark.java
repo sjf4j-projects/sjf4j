@@ -135,7 +135,7 @@ public class OrderMapperBenchmark {
 
     @CompiledMapper
     public interface Sjf4jIgnoreMapper {
-        @MapperOptions(nulls = NullValuePolicy.IGNORE)
+        @MapperOptions(nulls = NullValuePolicy.IGNORE, using = {"productToProductDTO"})
         @Mapping(target = "customerName", source = "$.customer.name")
         @Mapping(target = "billingStreetAddress", source = "$.customer.billingAddress.street")
         @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")
@@ -144,7 +144,6 @@ public class OrderMapperBenchmark {
         @Mapping(target = "priority", source = "$.attributes.priority")
         @Mapping(target = "salesChannel", source = "$.metadata.salesChannel")
         @Mapping(target = "attributes", source = "attributes")
-        @Mapping(target = "products", nestedMapper = "productToProductDTO")
         OrderDTO map(Order source);
 
         ProductDTO productToProductDTO(Product product);
@@ -152,6 +151,7 @@ public class OrderMapperBenchmark {
 
     @CompiledMapper
     public interface Sjf4jSetMapper {
+        @MapperOptions(using = {"productToProductDTO"})
         @Mapping(target = "customerName", source = "$.customer.name")
         @Mapping(target = "billingStreetAddress", source = "$.customer.billingAddress.street")
         @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")
@@ -160,7 +160,6 @@ public class OrderMapperBenchmark {
         @Mapping(target = "priority", source = "$.attributes.priority")
         @Mapping(target = "salesChannel", source = "$.metadata.salesChannel")
         @Mapping(target = "attributes", source = "attributes")
-        @Mapping(target = "products", nestedMapper = "productToProductDTO")
         OrderDTO map(Order source);
 
         ProductDTO productToProductDTO(Product product);

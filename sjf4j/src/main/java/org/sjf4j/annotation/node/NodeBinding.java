@@ -1,9 +1,6 @@
 package org.sjf4j.annotation.node;
 
 
-import org.sjf4j.node.NamingStrategy;
-import org.sjf4j.node.PropertyStrategy;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;

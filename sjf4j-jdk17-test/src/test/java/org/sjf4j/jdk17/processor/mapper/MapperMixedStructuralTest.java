@@ -11,7 +11,6 @@ import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,7 +72,7 @@ public class MapperMixedStructuralTest {
         source.array = JsonArray.of("array-zero", "array-one");
         source.items = List.of(new Item("list-a"), new Item("list-b"));
         source.itemArray = new Item[] { new Item("array-a"), new Item("array-b") };
-        source.set = new LinkedHashSet<>(List.of("set-a", "set-b"));
+        source.set = List.of("set-a", "set-b");
         source.itemMap = new LinkedHashMap<>();
         source.itemMap.put("a", new Item("map-a"));
         source.itemMap.put("b", new Item("map-b"));
@@ -93,7 +92,7 @@ public class MapperMixedStructuralTest {
         public JsonArray array;
         public List<Item> items;
         public Item[] itemArray;
-        public Set<String> set;
+        public List<String> set;
         public Map<String, Item> itemMap;
         public Item child;
         public TypedJsonObject jojo;
@@ -142,10 +141,11 @@ public class MapperMixedStructuralTest {
         @Mapping(target = "arrayFirst", source = "$.array[0]")
         @Mapping(target = "firstItemName", source = "$.items[0].name")
         @Mapping(target = "secondArrayItemName", source = "$.itemArray[1].name")
+        @MapperOptions(using = {"toDto"})
         @Mapping(target = "set", source = "set")
-        @Mapping(target = "itemDtos", source = "items", nestedMapper = "toDto")
-        @Mapping(target = "itemDtoMap", source = "itemMap", nestedMapper = "toDto")
-        @Mapping(target = "childDto", source = "child", nestedMapper = "toDto")
+        @Mapping(target = "itemDtos", source = "items")
+        @Mapping(target = "itemDtoMap", source = "itemMap")
+        @Mapping(target = "childDto", source = "child")
         @Mapping(target = "jojoTypedName", source = "$.jojo.typedName")
         @Mapping(target = "jojoAlias", source = "$.jojo.alias")
         @Mapping(target = "jojoObject", source = "jojo")
@@ -156,9 +156,9 @@ public class MapperMixedStructuralTest {
         @Mapping(target = "$.arrayOut[0]", source = "$.array[0]")
         PathTarget toPathTarget(MixedSource source);
 
-        @MapperOptions(nulls = NullValuePolicy.IGNORE)
+        @MapperOptions(nulls = NullValuePolicy.IGNORE, using = {"toDto"})
         @Mapping(target = "metadataName", source = "$.metadata.name")
-        @Mapping(target = "childDto", source = "child", nestedMapper = "toDto")
+        @Mapping(target = "childDto", source = "child")
         void updateIgnoreNulls(DefaultsTarget target, MixedSource source);
 
         ItemDto toDto(Item item);

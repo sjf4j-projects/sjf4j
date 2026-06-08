@@ -5,6 +5,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.exception.JsonException;
 
 import static org.junit.jupiter.api.Assertions.*;

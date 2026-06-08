@@ -45,6 +45,26 @@ public class MapperNestedAutoTest {
     }
 
     @Test
+    public void importedMapperSupportsPropertyUsingAndAutoNestedMapping() {
+        ImportedMapper mapper = CompiledNodes.of(ImportedMapper.class);
+
+        Target explicit = mapper.explicit(new Source(new ChildSource("Ada")));
+        Target auto = mapper.auto(new Source(new ChildSource("Bob")));
+
+        assertEquals("import:Ada", explicit.child.name);
+        assertEquals("import:Bob", auto.child.name);
+    }
+
+    @Test
+    public void unqualifiedUsingPrefersLocalMapperOverImportedMapper() {
+        LocalPriorityMapper mapper = CompiledNodes.of(LocalPriorityMapper.class);
+
+        Target target = mapper.map(new Source(new ChildSource("Ada")));
+
+        assertEquals("local:Ada", target.child.name);
+    }
+
+    @Test
     public void autoMapsCollectionElementsAndMapValues() {
         AutoOnlyMapper mapper = CompiledNodes.of(AutoOnlyMapper.class);
 
@@ -164,6 +184,37 @@ public class MapperNestedAutoTest {
             if (source == null) return null;
             ChildTarget target = new ChildTarget();
             target.name = "user:" + source.name();
+            return target;
+        }
+    }
+
+    @CompiledMapper
+    public interface ImportedChildMapper {
+        default ChildTarget toDto(ChildSource source) {
+            if (source == null) return null;
+            ChildTarget target = new ChildTarget();
+            target.name = "import:" + source.name();
+            return target;
+        }
+    }
+
+    @CompiledMapper(importing = {ImportedChildMapper.class})
+    public interface ImportedMapper {
+        @org.sjf4j.annotation.mapper.MapperOptions(using = {"ImportedChildMapper::toDto"})
+        Target explicit(Source source);
+
+        Target auto(Source source);
+    }
+
+    @CompiledMapper(importing = {ImportedChildMapper.class})
+    public interface LocalPriorityMapper {
+        @org.sjf4j.annotation.mapper.MapperOptions(using = {"this::toDto"})
+        Target map(Source source);
+
+        default ChildTarget toDto(ChildSource source) {
+            if (source == null) return null;
+            ChildTarget target = new ChildTarget();
+            target.name = "local:" + source.name();
             return target;
         }
     }

@@ -19,6 +19,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -122,6 +125,67 @@ public class MapperProcessorTest {
     }
 
     @Test
+    public void generateImportedCompiledMapperMethods() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-imported-mapper-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("User.java"),
+                "package testcase; public class User { public String name; public User(String name) { this.name = name; } }\n");
+        write(src.resolve("UserDto.java"),
+                "package testcase; public class UserDto { public String name; public UserDto() {} }\n");
+        write(src.resolve("Source.java"),
+                "package testcase; public class Source { public User user; public Source(User user) { this.user = user; } }\n");
+        write(src.resolve("Target.java"),
+                "package testcase; public class Target { public UserDto user; public Target() {} }\n");
+        write(src.resolve("ImportedUserMapper.java"),
+                "package testcase; import org.sjf4j.annotation.mapper.*;\n" +
+                        "@CompiledMapper public interface ImportedUserMapper {\n" +
+                        "  default UserDto toDto(User user) { if (user == null) return null; UserDto dto = new UserDto(); dto.name = user.name.toUpperCase(); return dto; }\n" +
+                        "}\n");
+        write(src.resolve("UsingImportedMapper.java"),
+                "package testcase; import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "@CompiledMapper(importing={ImportedUserMapper.class}) public interface UsingImportedMapper {\n" +
+                        "  @MapperOptions(using={\"ImportedUserMapper::toDto\"}) Target explicit(Source source);\n" +
+                        "  Target auto(Source source);\n" +
+                        "  @MapperOptions(using={\"ImportedUserMapper::toDto\"}) List<UserDto> users(List<User> users);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("User.java").toFile(), src.resolve("UserDto.java").toFile(),
+                src.resolve("Source.java").toFile(), src.resolve("Target.java").toFile(),
+                src.resolve("ImportedUserMapper.java").toFile(), src.resolve("UsingImportedMapper.java").toFile()
+        ))).call();
+        assertTrue(ok);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Class<?> sourceClass = Class.forName("testcase.Source", true, loader);
+        Class<?> mapperClass = Class.forName("testcase.UsingImportedMapper_Impl", true, loader);
+        Object mapper = mapperClass.getConstructor().newInstance();
+        assertNotNull(mapperClass.getDeclaredField("m_importedUserMapper"));
+        Object source = sourceClass.getConstructor(userClass).newInstance(userClass.getConstructor(String.class).newInstance("ada"));
+
+        Object explicit = mapperClass.getMethod("explicit", sourceClass).invoke(mapper, source);
+        Object auto = mapperClass.getMethod("auto", sourceClass).invoke(mapper, source);
+        assertEquals("ADA", explicit.getClass().getField("user").get(explicit).getClass().getField("name").get(explicit.getClass().getField("user").get(explicit)));
+        assertEquals("ADA", auto.getClass().getField("user").get(auto).getClass().getField("name").get(auto.getClass().getField("user").get(auto)));
+
+        @SuppressWarnings("unchecked")
+        List<Object> users = (List<Object>) mapperClass.getMethod("users", List.class).invoke(mapper, List.of(userClass.getConstructor(String.class).newInstance("bob")));
+        assertEquals("BOB", users.get(0).getClass().getField("name").get(users.get(0)));
+    }
+
+    @Test
     public void rejectInvalidCompiledMapperMethods() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-mapper-bad-test");
         Path src = dir.resolve("src/testcase");
@@ -171,6 +235,42 @@ public class MapperProcessorTest {
     }
 
     @Test
+    public void rejectInvalidImportedMapperUsage() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-imported-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadImportedMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class User {} class UserDto { public UserDto() {} }\n" +
+                        "class Source { public User user; } class Target { public UserDto user; public Target() {} }\n" +
+                        "interface PlainMapper { default UserDto toDto(User user) { return new UserDto(); } }\n" +
+                        "@CompiledMapper interface ImportedA { default UserDto toDto(User user) { return new UserDto(); } }\n" +
+                        "@CompiledMapper interface ImportedB { default UserDto toDto(User user) { return new UserDto(); } }\n" +
+                        "@CompiledMapper(importing={PlainMapper.class}) interface BadImporting { Target map(Source source); }\n" +
+                        "@CompiledMapper(importing={ImportedA.class}) interface UnknownImported { @MapperOptions(using={\"ImportedB::toDto\"}) Target map(Source source); }\n" +
+                        "@CompiledMapper(importing={ImportedA.class}) interface ClassOnlyUsing { @MapperOptions(using={\"ImportedA\"}) Target map(Source source); }\n" +
+                        "@CompiledMapper(importing={ImportedA.class, ImportedB.class}) interface AmbiguousImported { Target map(Source source); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadImportedMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("Imported mapper 'testcase.PlainMapper' must be annotated with @CompiledMapper"), messages);
+        assertTrue(messages.contains("Cannot resolve imported mapper 'ImportedB'; it must be listed in @CompiledMapper.importing"), messages);
+        assertTrue(messages.contains("Cannot resolve converter 'ImportedA'"), messages);
+        assertTrue(messages.contains("Ambiguous imported element/value converter; specify @MapperOptions(using = ...) with mapper qualification"), messages);
+    }
+
+    @Test
     public void rejectInvalidCollectionMappings() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-mapper-collection-bad-test");
         Path src = dir.resolve("src/testcase");
@@ -185,15 +285,15 @@ public class MapperProcessorTest {
                         "class SetterOnly { public void setUsers(List<Dto> users) {} }\n" +
                         "@CompiledMapper interface BadCollectionMapper {\n" +
                         "  List<Dto> ambiguous(List<User> users);\n" +
-                        "  @Mapping(nestedMapper=\"Other::conv\") List<Dto> badNested(List<User> users);\n" +
-                        "  @Mapping(nestedMapper=\"this::one\") List<Dto> badNestedThis(List<User> users);\n" +
-                        "  @Mapping(nestedMapper=\"conv\") List<Dto> ambiguousNested(List<User> users);\n" +
+                        "  @MapperOptions(using={\"Other::conv\"}) List<Dto> badNested(List<User> users);\n" +
+                        "  @MapperOptions(using={\"this::missing\"}) List<Dto> badNestedThis(List<User> users);\n" +
+                        "  @MapperOptions(using={\"conv\"}) List<Dto> ambiguousNested(List<User> users);\n" +
                         "  Map<Integer, Dto> badKey(Map<String, User> users);\n" +
-                        "  List<Dto> raw(List users);\n" +
+                        "  List rawTarget(List<Dto> users);\n" +
                         "  Map<String, List<Dto>> badNestedKey(Map<Integer, List<User>> users);\n" +
                         "  Map<String, Map<String, Dto>> rawNested(Map<String, Map> users);\n" +
                         "  List<List<Dto>> nested(List<List<Integer>> users);\n" +
-                        "  @Mapping(target=\"users\", array=ArrayPolicy.ADD, nestedMapper=\"one\") void setterOnly(SetterOnly t, Source s);\n" +
+                        "  @MapperOptions(using={\"one\"}) @Mapping(target=\"users\", array=ArrayPolicy.ADD) void setterOnly(SetterOnly t, Source s);\n" +
                         "  default Dto one(User u) { return new Dto(); } default Dto two(User u) { return new Dto(); }\n" +
                         "  default Dto conv(User u) { return new Dto(); } default Dto conv(String s) { return new Dto(); }\n" +
                         "}\n");
@@ -210,13 +310,102 @@ public class MapperProcessorTest {
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("Ambiguous element/value converter"), messages);
         assertTrue(messages.contains("Ambiguous converter 'conv'; overloaded converter methods are not supported"), messages);
-        assertTrue(messages.contains("@Mapping.nestedMapper expects a mapper method name"), messages);
+        assertTrue(messages.contains("Cannot resolve imported mapper 'Other'; it must be listed in @CompiledMapper.importing") || messages.contains("Cannot resolve converter 'this::missing'"), messages);
         assertTrue(messages.contains("Map key type mismatch"), messages);
-        assertTrue(messages.contains("Raw or non-parameterized collection/map types are unsupported"), messages);
+        assertTrue(messages.contains("Raw or non-parameterized collection types are unsupported")
+                || messages.contains("Raw or non-parameterized collection/map types are unsupported"), messages);
         assertTrue(messages.contains("Cannot find element/value converter from java.lang.Integer to testcase.Dto"), messages);
         assertTrue(messages.contains("setter-only target has no readable collection/map"), messages);
         assertTrue(countOccurrences(messages, "Map key type mismatch") >= 2, messages);
-        assertTrue(countOccurrences(messages, "Ambiguous element/value converter; specify @Mapping.nestedMapper") >= 1, messages);
+        assertTrue(countOccurrences(messages, "Ambiguous element/value converter; specify @MapperOptions(using = ...) preference") >= 1, messages);
+    }
+
+    @Test
+    public void rejectUnsupportedStructuralMapperBoundaries() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-boundary-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadBoundaryMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.*; import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "class ScalarSource { public String text; public Boolean flag; public Number number; }\n" +
+                        "class ScalarTarget { public Integer text; public String flag; public String number; public ScalarTarget() {} }\n" +
+                        "class Source { public String name; public List<String> names; }\n" +
+                        "class Holder { public JsonArray names; public Holder() {} }\n" +
+                        "class MyJojo extends JsonObject { public long id; public MyJojo() {} }\n" +
+                        "class MyJajo extends JsonArray { public MyJajo() {} }\n" +
+                        "class NoNoArgsJajo extends JsonArray { public NoNoArgsJajo(String s) {} }\n" +
+                        "@CompiledMapper interface BadBoundaryMapper {\n" +
+                        "  ScalarTarget scalar(ScalarSource s);\n" +
+                        "  @Mapping(target=\"renamed\", source=\"name\") JsonObject customizedProjection(Source s);\n" +
+                        "  JsonObject badMap(Map<Integer, Object> s);\n" +
+                        "  MyJojo badJojo(Map<Integer, Object> s);\n" +
+                        "  Map<Integer, Object> badProjection(Source s);\n" +
+                        "  JsonArray pojoToJsonArray(Source s);\n" +
+                        "  Holder holder(Source s);\n" +
+                        "  MyJajo jajo(List<String> s);\n" +
+                        "  NoNoArgsJajo badNoArgsJajo(List<String> s);\n" +
+                        "  List<String> listFromCollection(Collection<String> s);\n" +
+                        "  JsonArray rawToJsonArray(List s);\n" +
+                        "  JsonArray rawCollectionToJsonArray(Collection s);\n" +
+                        "  List rawListTarget(List<String> s);\n" +
+                        "  MyJajo rawToJajo(List s);\n" +
+                        "  void updateJsonArray(JsonArray target, List<String> source);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadBoundaryMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("JsonObject/JsonArray projection and Java array create methods do not support @Mapping customizations"), messages);
+        assertTrue(messages.contains("JsonObject projection does not support Map key conversion; source key type must be java.lang.String"), messages);
+        assertTrue(messages.contains("JOJO create from Map does not support Map key conversion; source key type must be java.lang.String"), messages);
+        assertTrue(messages.contains("Root Map projection from POJO/JsonObject/Object requires target key type java.lang.String"), messages);
+        assertTrue(messages.contains("Root collection create source must be a List, Set, Java array, or JsonArray"), messages);
+        assertTrue(messages.contains("JsonArray and Java array update targets are unsupported"), messages);
+        assertTrue(messages.contains("JAJO target type must provide a public no-args constructor"), messages);
+        assertTrue(messages.contains("Raw or non-parameterized collection types are unsupported"), messages);
+        assertTrue(messages.contains("Cannot assign source expression to target property 'text'"), messages);
+    }
+
+    @Test
+    public void rejectUnsupportedCollectionArrayLikeSources() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-list-source-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadListSourceMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.*; import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "class MyJajo extends JsonArray { public MyJajo() {} }\n" +
+                        "@CompiledMapper interface BadListSourceMapper {\n" +
+                        "  List<String> listFromCollection(Collection<String> source);\n" +
+                        "  List rawTarget(List<String> source);\n" +
+                        "  JsonArray rawListJson(List source);\n" +
+                        "  String[] rawListArray(List source);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadListSourceMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("Root collection create source must be a List, Set, Java array, or JsonArray"), messages);
+        assertTrue(messages.contains("Raw or non-parameterized collection types are unsupported"), messages);
     }
 
     @Test
@@ -315,7 +504,7 @@ public class MapperProcessorTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("AmbiguousAutoMapper.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("Ambiguous element/value converter; specify @Mapping.nestedMapper"), messages);
+        assertTrue(messages.contains("Ambiguous element/value converter; specify @MapperOptions(using = ...) preference"), messages);
     }
 
     @Test
@@ -639,6 +828,230 @@ public class MapperProcessorTest {
         Object rawSource = rawSourceCtor.newInstance();
         Object valueTarget = mapperClass.getMethod("decode", rawSource.getClass()).invoke(mapper, rawSource);
         assertEquals("b", field(field(valueTarget, "id"), "value"));
+    }
+
+    @Test
+    public void strictScalarFallbackConvertsLeaves() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-scalar-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("ScalarMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import java.util.*;\n" +
+                        "enum Status { ACTIVE }\n" +
+                        "class Source {\n" +
+                        "  public Number age = Integer.valueOf(42);\n" +
+                        "  public Object score = Long.valueOf(7);\n" +
+                        "  public Character initial = Character.valueOf('A');\n" +
+                        "  public Status status = Status.ACTIVE;\n" +
+                        "  public Object statusName = \"ACTIVE\";\n" +
+                        "  public Map<String,Object> values = new LinkedHashMap<>();\n" +
+                        "  public Source() { values.put(\"count\", Long.valueOf(3)); values.put(\"state\", \"ACTIVE\"); }\n" +
+                        "}\n" +
+                        "class Target { public Long age; public Integer score; public String initial; public String status; public Status statusName; public Integer count; public Status state; public Target() {} }\n" +
+                        "@CompiledMapper interface ScalarMapper {\n" +
+                        "  @Mapping(target=\"count\", source=\"$.values.count\") @Mapping(target=\"state\", source=\"$.values.state\") Target map(Source s);\n" +
+                        "  List<Long> longs(List<Integer> in);\n" +
+                        "  Map<String,Integer> ints(Map<String,Object> in);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("ScalarMapper.java").toFile()))).call();
+        assertTrue(ok);
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.ScalarMapper_Impl", true, loader);
+        Object mapper = mapperClass.getConstructor().newInstance();
+        Constructor<?> sourceCtor = Class.forName("testcase.Source", true, loader).getConstructor();
+        sourceCtor.setAccessible(true);
+        Object source = sourceCtor.newInstance();
+
+        Object target = mapperClass.getMethod("map", source.getClass()).invoke(mapper, source);
+        assertEquals(42L, field(target, "age"));
+        assertEquals(7, field(target, "score"));
+        assertEquals("A", field(target, "initial"));
+        assertEquals("ACTIVE", field(target, "status"));
+        assertEquals("ACTIVE", String.valueOf(field(target, "statusName")));
+        assertEquals(3, field(target, "count"));
+        assertEquals("ACTIVE", String.valueOf(field(target, "state")));
+
+        assertEquals(Arrays.asList(1L, 2L), mapperClass.getMethod("longs", List.class).invoke(mapper, Arrays.asList(1, 2)));
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("x", Long.valueOf(9));
+        assertEquals(9, ((Map<?, ?>) mapperClass.getMethod("ints", Map.class).invoke(mapper, input)).get("x"));
+    }
+
+    @Test
+    public void mappingCreatorsAndMethodUsingPreferencesWork() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-creator-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("CreatorMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import java.util.*;\n" +
+                        "class Profile { public String name; public Profile(String name) { this.name = name; } }\n" +
+                        "class ProfileDto { public String name; public ProfileDto() {} }\n" +
+                        "class User { public String name; public User(String name) { this.name = name; } }\n" +
+                        "class UserDto { public String name; public UserDto() {} }\n" +
+                        "class Wrapper { public List<User> users; public Profile profile; public Wrapper(List<User> users, Profile profile) { this.users = users; this.profile = profile; } }\n" +
+                        "class WrapperDto { public List<UserDto> users; public ProfileDto profile; public WrapperDto() {} }\n" +
+                        "abstract class AnimalDto { public String name; }\n" +
+                        "class AnimalDtoImpl extends AnimalDto { public AnimalDtoImpl() {} }\n" +
+                        "abstract class DogDto extends AnimalDto {}\n" +
+                        "class DogDtoImpl extends DogDto { public DogDtoImpl() {} }\n" +
+                        "abstract class CreatorDto { public String name; }\n" +
+                        "class CreatorDtoImpl extends CreatorDto { public CreatorDtoImpl() {} }\n" +
+                        "abstract class ParentDto { public String name; }\n" +
+                        "class ParentDtoImpl extends ParentDto { public ParentDtoImpl() {} }\n" +
+                        "@MappingCreator(targetType=ParentDto.class, implementation=ParentDtoImpl.class) interface ParentFactory {}\n" +
+                        "@CompiledMapper\n" +
+                        "@MappingCreator(targetType=AnimalDto.class, implementation=AnimalDtoImpl.class)\n" +
+                        "@MappingCreator(targetType=DogDto.class, implementation=DogDtoImpl.class)\n" +
+                        "@MappingCreator(targetType=CreatorDto.class, creator=\"this::newCreator\")\n" +
+                        "interface CreatorMapper extends ParentFactory {\n" +
+                        "  @MapperOptions(using={\"skip\",\"profileToDto\"}) WrapperDto wrapper(Wrapper source);\n" +
+                        "  @MapperOptions(using={\"upper\"}) List<String> names(List<String> source);\n" +
+                        "  AnimalDto animal(User source);\n" +
+                        "  DogDto dog(User source);\n" +
+                        "  CreatorDto created(User source);\n" +
+                        "  ParentDto inherited(User source);\n" +
+                        "  default CreatorDtoImpl newCreator() { return new CreatorDtoImpl(); }\n" +
+                        "  default UserDto toDto(User source) { if (source == null) return null; UserDto dto = new UserDto(); dto.name = source.name.toUpperCase(); return dto; }\n" +
+                        "  default ProfileDto profileToDto(Profile source) { if (source == null) return null; ProfileDto dto = new ProfileDto(); dto.name = \"preferred:\" + source.name; return dto; }\n" +
+                        "  default String upper(String source) { return source == null ? null : source.toUpperCase(); }\n" +
+                        "  default Long skip(Integer value) { return value == null ? null : Long.valueOf(value.longValue()); }\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("CreatorMapper.java").toFile()))).call();
+        assertTrue(ok);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.CreatorMapper_Impl", true, loader);
+        Object mapper = mapperClass.getConstructor().newInstance();
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Class<?> profileClass = Class.forName("testcase.Profile", true, loader);
+        Class<?> wrapperClass = Class.forName("testcase.Wrapper", true, loader);
+
+        Constructor<?> userCtor = userClass.getDeclaredConstructor(String.class);
+        userCtor.setAccessible(true);
+        Constructor<?> profileCtor = profileClass.getDeclaredConstructor(String.class);
+        profileCtor.setAccessible(true);
+        Constructor<?> wrapperCtor = wrapperClass.getDeclaredConstructor(List.class, profileClass);
+        wrapperCtor.setAccessible(true);
+        Object wrapper = wrapperCtor.newInstance(
+                Arrays.asList(userCtor.newInstance("ada")),
+                profileCtor.newInstance("p1"));
+        Object wrapperDto = mapperClass.getMethod("wrapper", wrapperClass).invoke(mapper, wrapper);
+        assertEquals("ADA", field(((List<?>) field(wrapperDto, "users")).get(0), "name"));
+        assertEquals("preferred:p1", field(field(wrapperDto, "profile"), "name"));
+        assertEquals(Arrays.asList("ada"), mapperClass.getMethod("names", List.class).invoke(mapper, Arrays.asList("ada")));
+
+        Object user = userCtor.newInstance("max");
+        assertEquals("testcase.AnimalDtoImpl", mapperClass.getMethod("animal", userClass).invoke(mapper, user).getClass().getName());
+        assertEquals("testcase.DogDtoImpl", mapperClass.getMethod("dog", userClass).invoke(mapper, user).getClass().getName());
+        assertEquals("testcase.CreatorDtoImpl", mapperClass.getMethod("created", userClass).invoke(mapper, user).getClass().getName());
+        assertEquals("testcase.ParentDtoImpl", mapperClass.getMethod("inherited", userClass).invoke(mapper, user).getClass().getName());
+    }
+
+    @Test
+    public void mappingCreatorIsReadFromCompiledParentInterface() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-compiled-parent-creator-test");
+        Path parentSrc = dir.resolve("parent-src/testcase");
+        Path childSrc = dir.resolve("child-src/testcase");
+        Path parentOut = dir.resolve("parent-classes");
+        Path childOut = dir.resolve("child-classes");
+        Files.createDirectories(parentSrc);
+        Files.createDirectories(childSrc);
+        Files.createDirectories(parentOut);
+        Files.createDirectories(childOut);
+
+        write(parentSrc.resolve("ParentFactory.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "abstract class ParentDto { public String name; }\n" +
+                        "class ParentDtoImpl extends ParentDto { public ParentDtoImpl() {} }\n" +
+                        "@MappingCreator(targetType=ParentDto.class, implementation=ParentDtoImpl.class) public interface ParentFactory {}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager parentFiles = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        parentFiles.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(parentOut.toFile()));
+        Boolean parentOk = compiler.getTask(null, parentFiles, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path")
+        ), null, parentFiles.getJavaFileObjectsFromFiles(Arrays.asList(parentSrc.resolve("ParentFactory.java").toFile()))).call();
+        assertTrue(parentOk);
+
+        write(childSrc.resolve("ChildMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class User { public String name; public User(String name) { this.name = name; } }\n" +
+                        "@CompiledMapper public interface ChildMapper extends ParentFactory { ParentDto map(User source); }\n");
+        StandardJavaFileManager childFiles = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        childFiles.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(childOut.toFile()));
+        Boolean childOk = compiler.getTask(null, childFiles, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path") + File.pathSeparator + parentOut,
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, childFiles.getJavaFileObjectsFromFiles(Arrays.asList(childSrc.resolve("ChildMapper.java").toFile()))).call();
+        assertTrue(childOk);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{childOut.toUri().toURL(), parentOut.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.ChildMapper_Impl", true, loader);
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Object mapper = mapperClass.getConstructor().newInstance();
+        Constructor<?> userCtor = userClass.getDeclaredConstructor(String.class);
+        userCtor.setAccessible(true);
+        Object result = mapperClass.getMethod("map", userClass).invoke(mapper, userCtor.newInstance("compiled"));
+        assertEquals("testcase.ParentDtoImpl", result.getClass().getName());
+        java.lang.reflect.Field name = result.getClass().getSuperclass().getDeclaredField("name");
+        name.setAccessible(true);
+        assertEquals("compiled", name.get(result));
+    }
+
+    @Test
+    public void rejectAmbiguousMappingCreators() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-ambiguous-creator-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadCreatorMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class User { public String name; }\n" +
+                        "abstract class View { public String name; }\n" +
+                        "class ViewImplA extends View { public ViewImplA() {} }\n" +
+                        "class ViewImplB extends View { public ViewImplB() {} }\n" +
+                        "@CompiledMapper\n" +
+                        "@MappingCreator(targetType=View.class, implementation=ViewImplA.class)\n" +
+                        "@MappingCreator(targetType=View.class, implementation=ViewImplB.class)\n" +
+                        "interface BadCreatorMapper { View map(User source); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadCreatorMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("Ambiguous @MappingCreator for target type testcase.View"), messages);
     }
 
     @Test

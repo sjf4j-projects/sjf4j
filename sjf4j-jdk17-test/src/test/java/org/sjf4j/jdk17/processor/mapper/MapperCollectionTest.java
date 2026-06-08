@@ -24,7 +24,7 @@ public class MapperCollectionTest {
     @Test public void withSelectsConverterAndSetKeepsOrder() {
         CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         assertEquals(List.of(new UserDto("x!")), m.usersWith(List.of(new User("x"))));
-        Set<String> out = m.set(new LinkedHashSet<>(List.of("b", "a")));
+        Set<String> out = m.set(List.of("b", "a"));
         assertEquals(List.of("b", "a"), new ArrayList<>(out));
     }
 
@@ -90,6 +90,20 @@ public class MapperCollectionTest {
         Map<String, Map<String, User>> nestedMap = new LinkedHashMap<>();
         nestedMap.put("outer", Map.of("inner", new User("C")));
         assertEquals(new UserDto("C"), m.nestedMapUsers(nestedMap).get("outer").get("inner"));
+    }
+
+    @Test public void importedMapperSupportsExplicitUsingAndAutoContainers() {
+        ImportedCollectionMapper m = CompiledNodes.of(ImportedCollectionMapper.class);
+
+        assertEquals(List.of(new UserDto("A!")), m.users(List.of(new User("A"))));
+        assertEquals(List.of(new UserDto("B!")), m.explicitUsers(List.of(new User("B"))));
+
+        UserBox box = new UserBox();
+        box.users = List.of(new User("x"));
+        box.map = Map.of("k", new User("y"));
+        DtoBox dto = m.box(box);
+        assertEquals(List.of(new UserDto("x!")), dto.users);
+        assertEquals(new UserDto("y!"), dto.map.get("k"));
     }
 
     @Test public void beanCreateAndUpdateContainers() {
@@ -187,19 +201,19 @@ public class MapperCollectionTest {
     @Test public void putIfAbsentMapSkipsConverterForExistingValue() {
         PutIfAbsentMapper.calls[0] = 0;
         PutIfAbsentMapper m = CompiledNodes.of(PutIfAbsentMapper.class);
-        Map<String, String> target = new LinkedHashMap<>();
-        target.put("keep", "old");
+        Map<String, Long> target = new LinkedHashMap<>();
+        target.put("keep", 1L);
         target.put("fill", null);
-        Map<String, String> source = new LinkedHashMap<>();
-        source.put("keep", "boom");
-        source.put("fill", "filled");
-        source.put("add", "added");
+        Map<String, Integer> source = new LinkedHashMap<>();
+        source.put("keep", 13);
+        source.put("fill", 7);
+        source.put("add", 9);
 
         m.update(target, source);
 
-        assertEquals("old", target.get("keep"));
-        assertEquals("FILLED", target.get("fill"));
-        assertEquals("ADDED", target.get("add"));
+        assertEquals(1L, target.get("keep"));
+        assertEquals(7L, target.get("fill"));
+        assertEquals(9L, target.get("add"));
         assertEquals(2, PutIfAbsentMapper.calls[0]);
     }
 
@@ -293,7 +307,7 @@ public class MapperCollectionTest {
         source.bool = true;
         source.nil = null;
         source.array = Arrays.asList("a", null, "b");
-        source.set = new LinkedHashSet<>(Arrays.asList(2, 1));
+        source.set = Arrays.asList(2, 1);
         source.object = new LinkedHashMap<>();
         source.object.put("yes", true);
         source.object.put("none", null);
@@ -348,7 +362,7 @@ public class MapperCollectionTest {
         public Boolean bool;
         public Object nil;
         public List<String> array;
-        public Set<Integer> set;
+        public List<Integer> set;
         public Map<String, Boolean> object;
         public List<User> users;
         public Map<String, User> userMap;
@@ -371,14 +385,14 @@ public class MapperCollectionTest {
     @CompiledMapper
     public interface CollectionMapper {
         List<String> strings(List<String> in);
-        @Mapping(nestedMapper = "toDto") List<UserDto> users(List<User> in);
-        @Mapping(nestedMapper = "special") List<UserDto> usersWith(List<User> in);
-        Set<String> set(Set<String> in);
-        @Mapping(nestedMapper = "toDto") Map<String, UserDto> map(Map<String, User> in);
-        @Mapping(nestedMapper = "toDto") List<List<UserDto>> nestedUsers(List<List<User>> in);
-        @Mapping(nestedMapper = "toDto") Map<String, List<UserDto>> groupedUsers(Map<String, List<User>> in);
-        @Mapping(nestedMapper = "toDto") Map<String, Map<String, UserDto>> nestedMapUsers(Map<String, Map<String, User>> in);
-        @Mapping(nestedMapper = "toDto") List<Map<String, UserDto>> userMaps(List<Map<String, User>> in);
+        @MapperOptions(using = {"toDto"}) List<UserDto> users(List<User> in);
+        @MapperOptions(using = {"special"}) List<UserDto> usersWith(List<User> in);
+        Set<String> set(List<String> in);
+        @MapperOptions(using = {"toDto"}) Map<String, UserDto> map(Map<String, User> in);
+        @MapperOptions(using = {"toDto"}) List<List<UserDto>> nestedUsers(List<List<User>> in);
+        @MapperOptions(using = {"toDto"}) Map<String, List<UserDto>> groupedUsers(Map<String, List<User>> in);
+        @MapperOptions(using = {"toDto"}) Map<String, Map<String, UserDto>> nestedMapUsers(Map<String, Map<String, User>> in);
+        @MapperOptions(using = {"toDto"}) List<Map<String, UserDto>> userMaps(List<Map<String, User>> in);
         UserDto toDto(User u);
         default UserDto special(User u) { return u == null ? null : new UserDto(u.name + "!"); }
 
@@ -388,47 +402,43 @@ public class MapperCollectionTest {
         @MapperOptions(objects = ObjectPolicy.PUT) void appendMap(Map<String, String> target, Map<String, String> source);
         @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT) void putIfAbsentMap(Map<String, String> target, Map<String, String> source);
 
-        @Mapping(target = "users", nestedMapper = "toDto")
-        @Mapping(target = "map", nestedMapper = "toDto")
-        @Mapping(target = "nestedUsers", nestedMapper = "toDto")
-        @Mapping(target = "groupedUsers", nestedMapper = "toDto")
+        @MapperOptions(using = {"toDto"})
         DtoBox box(UserBox box);
-        @Mapping(target = "users", nestedMapper = "toDto")
+        @MapperOptions(using = {"toDto"})
         @Mapping(target = "map", ignore = true)
-        @Mapping(target = "nestedUsers", nestedMapper = "toDto")
-        @Mapping(target = "groupedUsers", nestedMapper = "toDto")
         void updateBox(DtoBox target, UserBox box);
-        @MapperOptions(nulls = NullValuePolicy.IGNORE) @Mapping(target = "users", nestedMapper = "toDto") @Mapping(target = "map", ignore = true) @Mapping(target = "nestedUsers", nestedMapper = "toDto") @Mapping(target = "groupedUsers", nestedMapper = "toDto") void ignoreNullBox(DtoBox target, UserBox box);
-        @Mapping(target = "users", nestedMapper = "toDto") @Mapping(target = "map", ignore = true) @Mapping(target = "nestedUsers", nestedMapper = "toDto") @Mapping(target = "groupedUsers", nestedMapper = "toDto") void setNullBox(DtoBox target, UserBox box);
-        @Mapping(target = "users", ignore = true) @Mapping(target = "map", nestedMapper = "toDto") @Mapping(target = "nestedUsers", ignore = true) @Mapping(target = "groupedUsers", ignore = true) void setNullMapBox(DtoBox target, UserBox box);
-        @Mapping(target = "users", array = ArrayPolicy.ADD, nestedMapper = "toDto")
+        @MapperOptions(nulls = NullValuePolicy.IGNORE, using = {"toDto"}) @Mapping(target = "map", ignore = true) void ignoreNullBox(DtoBox target, UserBox box);
+        @MapperOptions(using = {"toDto"}) @Mapping(target = "map", ignore = true) void setNullBox(DtoBox target, UserBox box);
+        @MapperOptions(using = {"toDto"}) @Mapping(target = "users", ignore = true) @Mapping(target = "nestedUsers", ignore = true) @Mapping(target = "groupedUsers", ignore = true) void setNullMapBox(DtoBox target, UserBox box);
+        @MapperOptions(using = {"toDto"})
+        @Mapping(target = "users", array = ArrayPolicy.ADD)
         @Mapping(target = "map", ignore = true)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void appendBox(DtoBox target, UserBox box);
+        @MapperOptions(using = {"toDto"})
         @Mapping(target = "users", ignore = true)
-        @Mapping(target = "map", nestedMapper = "toDto")
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void putBox(DtoBox target, UserBox box);
+        @MapperOptions(using = {"toDto"})
         @Mapping(target = "users", ignore = true)
-        @Mapping(target = "map", object = ObjectPolicy.CLEAR_PUT, nestedMapper = "toDto")
+        @Mapping(target = "map", object = ObjectPolicy.CLEAR_PUT)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void clearPutBox(DtoBox target, UserBox box);
+        @MapperOptions(using = {"toDto"})
         @Mapping(target = "users", ignore = true)
-        @Mapping(target = "map", object = ObjectPolicy.PUT_IF_ABSENT, nestedMapper = "toDto")
+        @Mapping(target = "map", object = ObjectPolicy.PUT_IF_ABSENT)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void putIfAbsentBox(DtoBox target, UserBox box);
 
-        @Mapping(target = "users", nestedMapper = "toDto")
-        @Mapping(target = "userMap", nestedMapper = "toDto")
+        @MapperOptions(using = {"toDto"})
         @Mapping(target = "child", sources = {"child"}, compute = "this::toChildDto")
         ObntTarget obnt(ObntSource source);
 
-        @Mapping(target = "users", nestedMapper = "toDto")
-        @Mapping(target = "userMap", nestedMapper = "toDto")
+        @MapperOptions(using = {"toDto"})
         @Mapping(target = "child", sources = {"child"}, compute = "this::toChildDto")
         void updateObnt(ObntTarget target, ObntSource source);
 
@@ -451,44 +461,52 @@ public class MapperCollectionTest {
     }
 
     @CompiledMapper
+    public interface ImportedUserMapper {
+        default UserDto toDto(User u) { return u == null ? null : new UserDto(u.name + "!"); }
+    }
+
+    @CompiledMapper(importing = {ImportedUserMapper.class})
+    public interface ImportedCollectionMapper {
+        List<UserDto> users(List<User> in);
+
+        @MapperOptions(using = {"ImportedUserMapper::toDto"})
+        List<UserDto> explicitUsers(List<User> in);
+
+        DtoBox box(UserBox box);
+    }
+
+    @CompiledMapper
     public interface PutIfAbsentMapper {
         int[] calls = new int[1];
 
-        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT)
-        @Mapping(nestedMapper = "convert")
-        void update(Map<String, String> target, Map<String, String> source);
+        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT, using = {"convert"})
+        void update(Map<String, Long> target, Map<String, Integer> source);
 
-        default String convert(String value) {
+        default Long convert(Integer value) {
             calls[0]++;
-            if ("boom".equals(value)) throw new IllegalStateException("converter should have been skipped");
-            return value == null ? null : value.toUpperCase(Locale.ROOT);
+            if (value != null && value.intValue() == 13) throw new IllegalStateException("converter should have been skipped");
+            return value == null ? null : Long.valueOf(value.longValue());
         }
     }
 
     @CompiledMapper
     public interface RecursiveUpdateMapper {
-        @MapperOptions(arrays = ArrayPolicy.CLEAR_ADD, objects = ObjectPolicy.PUT)
-        @Mapping(nestedMapper = "toDto")
+        @MapperOptions(arrays = ArrayPolicy.CLEAR_ADD, objects = ObjectPolicy.PUT, using = {"toDto"})
         void putClearAddLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
 
-        @MapperOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT)
-        @Mapping(nestedMapper = "toDto")
+        @MapperOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT, using = {"toDto"})
         void putAddLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
 
-        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT)
-        @Mapping(nestedMapper = "toDto")
+        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT, using = {"toDto"})
         void putIfAbsentLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
 
-        @MapperOptions(objects = ObjectPolicy.PUT)
-        @Mapping(nestedMapper = "toDto")
+        @MapperOptions(objects = ObjectPolicy.PUT, using = {"toDto"})
         void putMaps(Map<String, Map<String, UserDto>> target, Map<String, Map<String, User>> source);
 
-        @MapperOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT)
-        @Mapping(nestedMapper = "toDto")
+        @MapperOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT, using = {"toDto"})
         void putDeep(Map<String, Map<String, List<UserDto>>> target, Map<String, Map<String, List<User>>> source);
 
-        @MapperOptions(objects = ObjectPolicy.CLEAR_PUT)
-        @Mapping(nestedMapper = "toDto")
+        @MapperOptions(objects = ObjectPolicy.CLEAR_PUT, using = {"toDto"})
         void clearPutMaps(Map<String, Map<String, UserDto>> target, Map<String, Map<String, User>> source);
 
         UserDto toDto(User u);

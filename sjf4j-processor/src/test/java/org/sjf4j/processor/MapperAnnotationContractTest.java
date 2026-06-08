@@ -37,7 +37,7 @@ public class MapperAnnotationContractTest {
                         "@CompiledMapper interface BadContracts {\n" +
                         "  @Mapping(target=\"name\", source=\"other\", ignore=true) Target ignoreSource(Source s);\n" +
                         "  @Mapping(target=\"name\", compute=\"n -> n\", ignore=true) Target ignoreCompute(Source s);\n" +
-                        "  @Mapping(target=\"child\", nestedMapper=\"toDto\", ignore=true) Target ignoreNested(Source s);\n" +
+                        "  @Mapping(target=\"child\", source=\"child\", ignore=true) Target ignoreNested(Source s);\n" +
                         "  @Mapping(target=\"list\", array=ArrayPolicy.ADD, ignore=true) void ignoreArray(Target t, Source s);\n" +
                         "  @Mapping(target=\"map\", object=ObjectPolicy.CLEAR_PUT, ignore=true) void ignoreObject(Target t, Source s);\n" +
                         "  @Mapping(target=\"name\", sources={\"name\"}) Target sourcesWithoutCompute(Source s);\n" +
@@ -46,7 +46,7 @@ public class MapperAnnotationContractTest {
                         "  @Mapping(target=\"name\", sources={\"name\"}, compute=\"n -> { return n; }\") Target computeBlock(Source s);\n" +
                         "  @Mapping(target=\"name\", sources={\"name\"}, compute=\"n -> return n\") Target computeReturn(Source s);\n" +
                         "  @Mapping(target=\"name\", sources={\"name\"}, compute=\"n -> n;\") Target computeSemicolon(Source s);\n" +
-                        "  @Mapping(target=\"child\", source=\"child\", nestedMapper=\"this::toDto\") Target badNestedName(Source s);\n" +
+                        "  @MapperOptions(using={\"bad ref\"}) Target badUsing(Source s);\n" +
                         "  @Mapping(target=\"$.map.name\", source=\"name\") @Mapping(target=\"$.map.name\", source=\"other\") Target duplicatePath(Source s);\n" +
                         "  default ChildDto toDto(Child c) { return new ChildDto(); }\n" +
                         "}\n");
@@ -62,11 +62,11 @@ public class MapperAnnotationContractTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadContracts.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@Mapping.ignore cannot be combined with source, sources, compute, nestedMapper, array, or object"), messages);
+        assertTrue(messages.contains("@Mapping.ignore cannot be combined with source, sources, compute, array, or object"), messages);
         assertTrue(messages.contains("@Mapping.sources may be used only with @Mapping.compute"), messages);
         assertTrue(messages.contains("@Mapping.array and @Mapping.object are supported only on void update mapper methods"), messages);
         assertTrue(messages.contains("@Mapping.compute supports only expression bodies"), messages);
-        assertTrue(messages.contains("@Mapping.nestedMapper expects a mapper method name"), messages);
+        assertTrue(messages.contains("@MapperOptions.using expects 'method', 'this::method', 'ImportedMapper::method', or 'pkg.ImportedMapper::method'"), messages);
         assertTrue(messages.contains("Duplicate target path '$.map.name'"), messages);
     }
 

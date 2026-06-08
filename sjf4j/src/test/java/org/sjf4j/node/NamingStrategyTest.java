@@ -5,7 +5,9 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.path.JsonPath;
 

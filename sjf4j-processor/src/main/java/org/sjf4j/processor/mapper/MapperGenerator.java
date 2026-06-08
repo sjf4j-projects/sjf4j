@@ -1,6 +1,8 @@
 package org.sjf4j.processor.mapper;
 
+import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
+import org.sjf4j.annotation.mapper.MappingCreator;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.EnsureMapping;
@@ -19,8 +21,11 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.ArrayType;
@@ -54,7 +59,11 @@ public final class MapperGenerator {
      */
     public void generate(TypeElement iface) {
         GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
-        generation = new GenerationState(iface);
+        List<ImportedMapperRef> importedMappers = _importedMappers(iface, target);
+        if (importedMappers == null) return;
+        List<MappingCreatorRef> mappingCreators = _mappingCreators(iface, target);
+        if (mappingCreators == null) return;
+        generation = new GenerationState(iface, target, importedMappers, mappingCreators);
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;
 
@@ -72,6 +81,7 @@ public final class MapperGenerator {
      * Validates and emits one mapping method.
      */
     private void _genMap(TypeElement iface, ExecutableElement method, GeneratedClass target) {
+        generation.failed = false;
         if (method.getReturnType().getKind() == TypeKind.VOID) {
             _genUpdate(iface, method, target);
             return;
@@ -84,6 +94,26 @@ public final class MapperGenerator {
         MapperModel.ContainerType rootContainer = _container(method.getReturnType());
         if (rootContainer != null) {
             _genContainerCreate(iface, method, target, rootContainer);
+            return;
+        }
+        if (_isExactJsonObject(method.getReturnType())) {
+            _genJsonObjectProjection(iface, method, target);
+            return;
+        }
+        if (_isExactJsonArray(method.getReturnType())) {
+            _genJsonArrayProjection(method, target, method.getReturnType());
+            return;
+        }
+        if (method.getReturnType().getKind() == TypeKind.ARRAY) {
+            _genJavaArrayCreate(iface, method, target);
+            return;
+        }
+        if (_isJajoTarget(method.getReturnType())) {
+            _genJsonArrayProjection(method, target, method.getReturnType());
+            return;
+        }
+        if (_isJojoTarget(method.getReturnType())) {
+            _genJojoCreate(iface, method, target);
             return;
         }
 
@@ -110,6 +140,7 @@ public final class MapperGenerator {
         if (plan == null) return;
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET_TO_NULL : cfg.nulls();
+        if (!_validateUsingRefs(method, target, _methodUsingRefs(method))) return;
         if (plan.ctor != null && nulls == NullValuePolicy.IGNORE) {
             _error(method, target, "NullValuePolicy.IGNORE is supported only for mutable no-args create targets and update targets");
             return;
@@ -126,10 +157,6 @@ public final class MapperGenerator {
 
         for (Mapping m : anns) {
             if (!_validateMapping(method, target, m)) return;
-            if (_isRootNestedMapperMarker(m)) {
-                _error(method, target, "@Mapping.nestedMapper root marker is supported only on root collection/map methods");
-                return;
-            }
 
             String t = m.target();
             if (_isAutoMarker(m)) continue;
@@ -144,7 +171,6 @@ public final class MapperGenerator {
                 }
                 if (!_addPathWrite(method, target, pathWrites, t, MapperModel.PathWriteMode.STRICT)) return;
                 explicitTargets.add(t);
-                if (m.nestedMapper().length() != 0) nestedMappers.put(t, m.nestedMapper().trim());
                 continue;
             }
             if (m.ignore()) {
@@ -152,7 +178,6 @@ public final class MapperGenerator {
                 continue;
             }
             explicitTargets.add(t);
-            if (m.nestedMapper().length() != 0) nestedMappers.put(t, m.nestedMapper().trim());
         }
 
         if (!_collectExtraPathWrites(method, target, ifParentAnns, ensureAnns, pathWrites, nestedMappers, explicitTargets)) return;
@@ -178,7 +203,7 @@ public final class MapperGenerator {
                 e = _compute(iface, method, target, sources, multi, state, m);
             } else {
                 e = _readExprOrGrouped(method, target, sources, multi, state, m.source().length() == 0 ? t : m.source(), t,
-                        plan.writes.get(t).type, nestedMappers.get(t) == null ? "" : nestedMappers.get(t), nulls, plan.ctor == null);
+                        plan.writes.get(t).type, "", nulls, plan.ctor == null);
             }
             if (e == null) return;
             explicit.put(t, e);
@@ -204,7 +229,7 @@ public final class MapperGenerator {
             }
 
             TypeMirror need = plan.writes.get(name).type;
-            e = _maybeNestedExpr(iface, method, target, e, need, nestedMappers.get(name) == null ? "" : nestedMappers.get(name), name);
+            e = _maybeNestedExpr(iface, method, target, e, need, "", name);
             if (e == null) return;
             if (!_assignable(e.type, need)) {
                 _error(method, target, "Cannot assign source expression to target property '" + name + "': " + e.type + " is not assignable to " + need);
@@ -230,6 +255,7 @@ public final class MapperGenerator {
     }
 
     private void _genUpdate(TypeElement iface, ExecutableElement method, GeneratedClass target) {
+        generation.failed = false;
         List<? extends VariableElement> params = method.getParameters();
         if (params.size() < 2) {
             _error(method, target, "@CompiledMapper update method must have a target parameter and at least one source parameter");
@@ -239,6 +265,18 @@ public final class MapperGenerator {
         MapperModel.ContainerType rootContainer = _container(params.get(0).asType());
         if (rootContainer != null) {
             _genContainerUpdate(iface, method, target, rootContainer);
+            return;
+        }
+        if (_isExactJsonArray(params.get(0).asType()) || params.get(0).asType().getKind() == TypeKind.ARRAY) {
+            _error(method, target, "JsonArray and Java array update targets are unsupported");
+            return;
+        }
+        if (_arrayLike(params.get(0).asType()) != null) {
+            _error(method, target, "JAJO update targets are unsupported; update plain JsonArray outside CompiledMapper");
+            return;
+        }
+        if (_isJojoTarget(params.get(0).asType())) {
+            _error(method, target, "JOJO update targets are unsupported; update plain JsonObject outside CompiledMapper");
             return;
         }
 
@@ -281,12 +319,10 @@ public final class MapperGenerator {
         Set<String> explicitTargets = new HashSet<String>();
         Set<String> ignored = new HashSet<String>();
 
+        if (!_validateUsingRefs(method, target, _methodUsingRefs(method))) return;
+
         for (Mapping m : anns) {
             if (!_validateMapping(method, target, m)) return;
-            if (_isRootNestedMapperMarker(m)) {
-                _error(method, target, "@Mapping.nestedMapper root marker is supported only on root collection/map methods");
-                return;
-            }
 
             String t = m.target();
             if (_isAutoMarker(m)) continue;
@@ -302,7 +338,6 @@ public final class MapperGenerator {
                     }
                     if (!_addPathWrite(method, target, pathWrites, t, MapperModel.PathWriteMode.STRICT)) return;
                     explicitTargets.add(t);
-                    if (m.nestedMapper().length() != 0) nestedMappers.put(t, m.nestedMapper().trim());
                     continue;
                 }
                 _error(method, target, "Cannot map target property '" + t + "': target is not writable");
@@ -313,14 +348,13 @@ public final class MapperGenerator {
                 continue;
             }
             explicitTargets.add(t);
-            if (m.nestedMapper().length() != 0) nestedMappers.put(t, m.nestedMapper().trim());
             if (m.array() != ArrayPolicy.SET) arrayPolicies.put(t, m.array());
             if (m.object() != ObjectPolicy.PUT) objectPolicies.put(t, m.object());
         }
 
         if (!_collectExtraPathWrites(method, target, ifParentAnns, ensureAnns, pathWrites, nestedMappers, explicitTargets)) return;
 
-        MapperModel.Plan plan = new MapperModel.Plan(null, new ArrayList<String>(writes.keySet()), writes);
+        MapperModel.Plan plan = new MapperModel.Plan(null, params.get(0).asType(), null, new ArrayList<String>(writes.keySet()), writes);
         MethodState state = new MethodState(params.get(0).getSimpleName().toString(), sources,
                 _readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi));
 
@@ -356,14 +390,13 @@ public final class MapperGenerator {
             if (e == null) continue;
 
             TypeMirror need = plan.writes.get(name).type;
-            String nestedMapper = nestedMappers.get(name) == null ? "" : nestedMappers.get(name);
             ArrayPolicy arrayPolicy = arrayPolicies.get(name) == null ? defaultArrayPolicy : arrayPolicies.get(name);
             ObjectPolicy objectPolicy = objectPolicies.get(name) == null ? defaultObjectPolicy : objectPolicies.get(name);
-            boolean inPlace = _inPlaceContainer(method, target, e.type, need, arrayPolicy, objectPolicy, nestedMapper);
+            boolean inPlace = _inPlaceContainer(method, target, e.type, need, arrayPolicy, objectPolicy, "");
             if (inPlace) {
-                if (!_validateContainerMapping(iface, method, target, e.type, need, nestedMapper)) return;
+                if (!_validateContainerMapping(iface, method, target, e.type, need, "")) return;
             } else {
-                e = _maybeNestedExpr(iface, method, target, e, need, nestedMapper, name);
+                e = _maybeNestedExpr(iface, method, target, e, need, "", name);
                 if (e == null) return;
                 if (!_assignable(e.type, need)) {
                     _error(method, target, "Cannot assign source expression to target property '" + name + "': " + e.type + " is not assignable to " + need);
@@ -398,20 +431,233 @@ public final class MapperGenerator {
                 defaultArrayPolicy, defaultObjectPolicy, arrayPolicies, objectPolicies, targetReads, nestedMappers, iface, target));
     }
 
+    private void _genJsonObjectProjection(TypeElement iface, ExecutableElement method, GeneratedClass target) {
+        if (method.getParameters().size() != 1) {
+            _error(method, target, "JsonObject projection methods support exactly one source parameter");
+            return;
+        }
+        if (!_projectionAnnotationsSupported(method, target)) return;
+        VariableElement source = method.getParameters().get(0);
+        if (!_jsonObjectProjectionSource(source.asType())) {
+            _error(method, target, "JsonObject projection source must be a POJO, record, Map<String, ?>, or JsonObject");
+            return;
+        }
+        if (!_validateJsonObjectProjectionSource(method, target, source.asType())) return;
+        String helper = _ensureJsonObjectProjectionHelper(method, target, source.asType());
+        if (helper == null) return;
+        target.addMethod(out -> {
+            out.line("");
+            out.line("@Override");
+            out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+            out.indent();
+            out.line("return " + helper + "(" + source.getSimpleName() + ");");
+            out.dedent();
+            out.line("}");
+        });
+    }
+
+    private void _genJsonArrayProjection(ExecutableElement method, GeneratedClass target, TypeMirror to) {
+        if (method.getParameters().size() != 1) {
+            _error(method, target, "JsonArray projection methods support exactly one source parameter");
+            return;
+        }
+        if (!_projectionAnnotationsSupported(method, target)) return;
+        VariableElement source = method.getParameters().get(0);
+        if (!_jsonArrayProjectionSource(source.asType())) {
+            _error(method, target, "JsonArray projection source must be a Java array, List, Set, or JsonArray");
+            return;
+        }
+        if (!_validateJsonArrayProjectionSource(method, target, source.asType())) return;
+        if (_isJajoTarget(to) && !_hasPublicNoArgsConstructor(to)) {
+            _error(method, target, "JAJO target type must provide a public no-args constructor");
+            return;
+        }
+        String helper = _ensureJsonArrayProjectionHelper(target, source.asType(), to);
+        if (helper == null) return;
+        target.addMethod(out -> {
+            out.line("");
+            out.line("@Override");
+            out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+            out.indent();
+            out.line("return " + helper + "(" + source.getSimpleName() + ");");
+            out.dedent();
+            out.line("}");
+        });
+    }
+
+    private void _genJavaArrayCreate(TypeElement iface, ExecutableElement method, GeneratedClass target) {
+        if (method.getParameters().size() != 1) {
+            _error(method, target, "Java array create methods support exactly one source parameter");
+            return;
+        }
+        if (!_rootMethodMappingsSupported(method, target, "Java array create methods")) return;
+        VariableElement source = method.getParameters().get(0);
+        TypeMirror sourceType = source.asType();
+        TypeMirror targetType = method.getReturnType();
+        TypeMirror targetElement = ((ArrayType) targetType).getComponentType();
+        if (GeneratorUtil.isObject(ctx, sourceType)) {
+            MapperModel.Converter conv = _resolveConverter(iface, method, target, ctx.objectType, targetElement, "");
+            if (conv == null) return;
+            String helper = _ensureObjectListJavaArrayHelper(target, targetType, targetElement, conv);
+            target.addMethod(out -> {
+                out.line("");
+                out.line("@Override");
+                out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+                out.indent();
+                out.line("return " + helper + "(" + source.getSimpleName() + ");");
+                out.dedent();
+                out.line("}");
+            });
+            return;
+        }
+        MapperModel.ArrayLikeType arrayFrom = _arrayLike(sourceType);
+        MapperModel.ContainerType containerFrom = _listOrSetSource(sourceType);
+        if (containerFrom != null && containerFrom.map) containerFrom = null;
+        if (arrayFrom == null && containerFrom == null) {
+            _error(method, target, "Java array create source must be a Java array, List, Set, or JsonArray");
+            return;
+        }
+        if (containerFrom != null && containerFrom.value == null && !_isListOrSetDeclared(containerFrom.mirror)) {
+            _error(method, target, "Raw or non-parameterized collection/map types are unsupported");
+            return;
+        }
+        MapperModel.Converter conv;
+        if (arrayFrom != null) {
+            conv = _resolveConverter(iface, method, target, arrayFrom.value, targetElement, "");
+        } else {
+            conv = _resolveConverter(iface, method, target, _containerSourceValueType(containerFrom), targetElement, "");
+        }
+        if (conv == null) return;
+        String helper = _ensureJavaArrayHelper(target, sourceType, arrayFrom, containerFrom, conv, targetType, targetElement);
+        target.addMethod(out -> {
+            out.line("");
+            out.line("@Override");
+            out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+            out.indent();
+            out.line("return " + helper + "(" + source.getSimpleName() + ");");
+            out.dedent();
+            out.line("}");
+        });
+    }
+
+    private boolean _rootMethodMappingsSupported(ExecutableElement method, GeneratedClass target, String kind) {
+        if (!_validateUsingRefs(method, target, _methodUsingRefs(method))) return false;
+        for (Mapping m : method.getAnnotationsByType(Mapping.class)) {
+            if (!_validateMapping(method, target, m)) return false;
+            if (_isAutoMarker(m)) continue;
+            _error(method, target, "@Mapping requires a non-empty target");
+            return false;
+        }
+        if (method.getAnnotationsByType(MappingIfParentPresent.class).length != 0
+                || method.getAnnotationsByType(EnsureMapping.class).length != 0) {
+            _error(method, target, kind + " do not support target-path mappings");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean _projectionAnnotationsSupported(ExecutableElement method, GeneratedClass target) {
+        for (Mapping m : method.getAnnotationsByType(Mapping.class)) {
+            if (_isAutoMarker(m)) continue;
+            _error(method, target, "JsonObject/JsonArray projection and Java array create methods do not support @Mapping customizations");
+            return false;
+        }
+        if (method.getAnnotationsByType(MappingIfParentPresent.class).length != 0
+                || method.getAnnotationsByType(EnsureMapping.class).length != 0) {
+            _error(method, target, "JsonObject/JsonArray projection and Java array create methods do not support target-path mappings");
+            return false;
+        }
+        return true;
+    }
+
     private void _genContainerCreate(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.ContainerType to) {
         if (method.getParameters().size() != 1) {
             _error(method, target, "Root collection/map create methods support exactly one source parameter");
             return;
         }
         VariableElement source = method.getParameters().get(0);
-        MapperModel.ContainerType from = _container(source.asType());
-        if (from == null || from.map != to.map) {
-            _error(method, target, "Root collection/map create requires matching source and target container types");
+        if (!to.map && to.value == null) {
+            _error(method, target, "Raw or non-parameterized collection types are unsupported");
             return;
         }
-        String nestedMapper = _methodNestedMapper(method, target);
-        if (nestedMapper == null) return;
-        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        if (to.map && _rootMapProjectionSource(source.asType())) {
+            if (!_validateRootMapProjectionSource(method, target, source.asType(), to)) return;
+            if (!_rootMethodMappingsSupported(method, target, "Root collection/map methods")) return;
+            String helper = _ensureRootMapProjectionHelper(iface, method, target, source.asType(), to, "");
+            if (helper == null) return;
+            target.addMethod(out -> {
+                out.line("");
+                out.line("@Override");
+                out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+                out.indent();
+                out.line("return " + helper + "(" + source.getSimpleName() + ");");
+                out.dedent();
+                out.line("}");
+            });
+            return;
+        }
+        if (GeneratorUtil.isObject(ctx, source.asType())) {
+            if (to.map) {
+                _error(method, target, "Root collection/map create requires matching source and target container types");
+                return;
+            }
+            if (!_rootMethodMappingsSupported(method, target, "Root collection/map methods")) return;
+            MapperModel.Converter conv = _resolveConverter(iface, method, target, ctx.objectType, to.value, "");
+            if (conv == null) return;
+            String impl = _implType(method, target, to);
+            if (impl == null) return;
+            String helper = _ensureObjectListContainerHelper(target, to, conv, impl, method.getReturnType());
+            target.addMethod(out -> {
+                out.line("");
+                out.line("@Override");
+                out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+                out.indent();
+                out.line("return " + helper + "(" + source.getSimpleName() + ");");
+                out.dedent();
+                out.line("}");
+            });
+            return;
+        }
+        MapperModel.ContainerType from = _container(source.asType());
+        MapperModel.ArrayLikeType arrayFrom = _arrayLike(source.asType());
+        if (from != null && !from.map && from.value == null && !_isListOrSetDeclared(from.mirror)) {
+            _error(method, target, "Raw or non-parameterized collection types are unsupported");
+            return;
+        }
+        if (!to.map && from != null && !from.map && !_isListOrSetDeclared(from.mirror)) {
+            _error(method, target, "Root collection create source must be a List, Set, Java array, or JsonArray");
+            return;
+        }
+        if (from == null || from.map != to.map) {
+            if (to.map || arrayFrom == null) {
+                _error(method, target, "Root collection/map create requires matching source and target container types");
+                return;
+            }
+            if (!_rootMethodMappingsSupported(method, target, "Root collection/map methods")) return;
+            MapperModel.Converter conv = _arrayLikeElementConverter(iface, method, target, arrayFrom, to, "");
+            if (conv == null) return;
+            String impl = _implType(method, target, to);
+            if (impl == null) return;
+            target.addMethod(out -> {
+                NameAllocator names = new NameAllocator();
+                names.reserve(source.getSimpleName().toString());
+                String targetName = names.local("target");
+                out.line("");
+                out.line("@Override");
+                out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+                out.indent();
+                String s = source.getSimpleName().toString();
+                out.line("if (" + s + " == null) return null;");
+                out.line(_containerLocalType(impl, to, method.getReturnType()) + " " + targetName + " = " + _newContainer(impl, to, _arrayLikeSize(arrayFrom, s)) + ";");
+                _emitArrayLikeCopy(out, arrayFrom, conv, targetName, s, names);
+                out.line("return " + targetName + ";");
+                out.dedent();
+                out.line("}");
+            });
+            return;
+        }
+        if (!_rootMethodMappingsSupported(method, target, "Root collection/map methods")) return;
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, "");
         if (conv == null) return;
         String impl = _implType(method, target, to);
         if (impl == null) return;
@@ -440,14 +686,54 @@ public final class MapperGenerator {
             return;
         }
         VariableElement source = params.get(1);
-        MapperModel.ContainerType from = _container(source.asType());
-        if (from == null || from.map != to.map) {
-            _error(method, target, "Root collection/map update requires matching source and target container types");
+        if (!to.map && to.value == null) {
+            _error(method, target, "Raw or non-parameterized collection types are unsupported");
             return;
         }
-        String nestedMapper = _methodNestedMapper(method, target);
-        if (nestedMapper == null) return;
-        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        MapperModel.ContainerType from = _container(source.asType());
+        MapperModel.ArrayLikeType arrayFrom = _arrayLike(source.asType());
+        if (from != null && !from.map && from.value == null && !_isListOrSetDeclared(from.mirror)) {
+            _error(method, target, "Raw or non-parameterized collection types are unsupported");
+            return;
+        }
+        if (!to.map && from != null && !from.map && !_isListOrSetDeclared(from.mirror)) {
+            _error(method, target, "Root collection update source must be a List, Set, Java array, or JsonArray");
+            return;
+        }
+        if (from == null || from.map != to.map) {
+            if (to.map || arrayFrom == null) {
+                _error(method, target, "Root collection/map update requires matching source and target container types");
+                return;
+            }
+            if (!_rootMethodMappingsSupported(method, target, "Root collection/map update methods")) return;
+            MapperModel.Converter conv = _arrayLikeElementConverter(iface, method, target, arrayFrom, to, "");
+            if (conv == null) return;
+            MapperOptions cfg = method.getAnnotation(MapperOptions.class);
+            ArrayPolicy arrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
+            if (arrayPolicy == ArrayPolicy.SET) {
+                _error(method, target, "Root collection update does not support ArrayPolicy.SET; use CLEAR_ADD or ADD");
+                return;
+            }
+            target.addMethod(out -> {
+                NameAllocator names = new NameAllocator();
+                names.reserve(params.get(0).getSimpleName().toString());
+                names.reserve(source.getSimpleName().toString());
+                out.line("");
+                out.line("@Override");
+                out.line("public void " + method.getSimpleName() + "(" + params.get(0).asType() + " " + params.get(0).getSimpleName() + ", " + source.asType() + " " + source.getSimpleName() + ") {");
+                out.indent();
+                String t = params.get(0).getSimpleName().toString();
+                String s = source.getSimpleName().toString();
+                out.line("if (" + s + " == null) return;");
+                if (arrayPolicy == ArrayPolicy.CLEAR_ADD) out.line(t + ".clear();");
+                _emitArrayLikeCopy(out, arrayFrom, conv, t, s, names);
+                out.dedent();
+                out.line("}");
+            });
+            return;
+        }
+        if (!_rootMethodMappingsSupported(method, target, "Root collection/map update methods")) return;
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, "");
         if (conv == null) return;
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         ArrayPolicy arrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
@@ -468,7 +754,7 @@ public final class MapperGenerator {
             String s = source.getSimpleName().toString();
             out.line("if (" + s + " == null) return;");
             if (to.map) {
-                _emitContainerUpdate(out, iface, method, target, from, to, nestedMapper, t, s, arrayPolicy, objectPolicy, names);
+                _emitContainerUpdate(out, iface, method, target, from, to, "", t, s, arrayPolicy, objectPolicy, names);
             } else {
                 if (arrayPolicy == ArrayPolicy.CLEAR_ADD) out.line(t + ".clear();");
                 _emitContainerCopy(out, from, to, conv, t, s, names);
@@ -483,10 +769,54 @@ public final class MapperGenerator {
                 && m.source().length() == 0
                 && m.sources().length == 0
                 && m.compute().length() == 0
-                && m.nestedMapper().length() == 0
                 && m.array() == ArrayPolicy.SET
                 && m.object() == ObjectPolicy.PUT
                 && !m.ignore();
+    }
+
+    private String[] _methodUsingRefs(ExecutableElement method) {
+        MapperOptions options = method.getAnnotation(MapperOptions.class);
+        return options == null ? new String[0] : options.using();
+    }
+
+    private boolean _validateUsingRefs(ExecutableElement method, GeneratedClass target, String[] refs) {
+        for (int i = 0; i < refs.length; i++) {
+            String ref = refs[i] == null ? "" : refs[i].trim();
+            if (!_isValidMapperRef(ref, false)) {
+                _error(method, target, "@MapperOptions.using expects 'method', 'this::method', 'ImportedMapper::method', or 'pkg.ImportedMapper::method'");
+                return false;
+            }
+            if (ref.length() != 0 && !_usingRefExists(method, target, ref)) return false;
+        }
+        return true;
+    }
+
+    private boolean _usingRefExists(ExecutableElement method, GeneratedClass target, String ref) {
+        int split = ref.indexOf("::");
+        if (split < 0) {
+            if (_hasNamedLocalMethod(generation.iface, method, ref) || _hasNamedImportedMethod(method, target, ref)) return true;
+            _error(method, target, "Cannot resolve converter '" + ref + "'");
+            generation.failed = true;
+            return false;
+        }
+        String owner = ref.substring(0, split).trim();
+        String name = ref.substring(split + 2).trim();
+        if ("this".equals(owner)) {
+            NamedMethodMatch match = _namedMethod(generation.iface, method, target, name);
+            if (generation.failed) return false;
+            if (match != null) return true;
+            _error(method, target, "Cannot resolve converter 'this::" + name + "'");
+            generation.failed = true;
+            return false;
+        }
+        ImportedMapperRef imported = _importedMapperByName(method, target, owner);
+        if (imported == null) return false;
+        NamedMethodMatch match = _namedMethod(imported.type, method, target, name);
+        if (generation.failed) return false;
+        if (match != null) return true;
+        _error(method, target, "Cannot resolve converter '" + ref + "'");
+        generation.failed = true;
+        return false;
     }
 
     private boolean _validateMapping(ExecutableElement method, GeneratedClass target, Mapping m) {
@@ -495,16 +825,8 @@ public final class MapperGenerator {
             return false;
         }
         if (m.ignore() && (m.source().length() != 0 || m.compute().length() != 0 || m.sources().length != 0
-                || m.nestedMapper().length() != 0 || m.array() != ArrayPolicy.SET || m.object() != ObjectPolicy.PUT)) {
-            _error(method, target, "@Mapping.ignore cannot be combined with source, sources, compute, nestedMapper, array, or object");
-            return false;
-        }
-        if (m.nestedMapper().length() != 0 && (m.compute().length() != 0 || m.ignore())) {
-            _error(method, target, "@Mapping.nestedMapper cannot be combined with compute or ignore");
-            return false;
-        }
-        if (m.nestedMapper().length() != 0 && !_isSimpleIdentifier(m.nestedMapper().trim())) {
-            _error(method, target, "@Mapping.nestedMapper expects a mapper method name");
+                || m.array() != ArrayPolicy.SET || m.object() != ObjectPolicy.PUT)) {
+            _error(method, target, "@Mapping.ignore cannot be combined with source, sources, compute, array, or object");
             return false;
         }
         if (method.getReturnType().getKind() != TypeKind.VOID && (m.array() != ArrayPolicy.SET || m.object() != ObjectPolicy.PUT)) {
@@ -518,36 +840,29 @@ public final class MapperGenerator {
         return true;
     }
 
-    private boolean _isRootNestedMapperMarker(Mapping m) {
-        return m.nestedMapper().length() != 0
-                && m.target().length() == 0
-                && m.source().length() == 0
-                && m.sources().length == 0
-                && m.compute().length() == 0
-                && m.array() == ArrayPolicy.SET
-                && m.object() == ObjectPolicy.PUT
-                && !m.ignore();
+    private boolean _isValidMapperRef(String value, boolean legacyNestedMapper) {
+        if (value.length() == 0) return true;
+        if (legacyNestedMapper) return _isSimpleIdentifier(value);
+        int split = value.indexOf("::");
+        if (split < 0) return _isSimpleIdentifier(value);
+        if (value.indexOf("::", split + 2) >= 0) return false;
+        String left = value.substring(0, split).trim();
+        String right = value.substring(split + 2).trim();
+        if (!_isSimpleIdentifier(right)) return false;
+        return "this".equals(left) || _isJavaQualifiedName(left);
     }
 
-    private String _methodNestedMapper(ExecutableElement method, GeneratedClass target) {
-        Mapping[] anns = method.getAnnotationsByType(Mapping.class);
-        String nestedMapper = "";
-        int count = 0;
-        for (Mapping m : anns) {
-            if (!_validateMapping(method, target, m)) return null;
-            if (m.nestedMapper().length() == 0 && _isAutoMarker(m)) continue;
-            if (!_isRootNestedMapperMarker(m)) {
-                _error(method, target, "Root collection/map methods support only @Mapping(nestedMapper = \"methodName\") markers");
-                return null;
-            }
-            count++;
-            nestedMapper = m.nestedMapper().trim();
+    private boolean _isJavaQualifiedName(String value) {
+        if (value.length() == 0) return false;
+        int start = 0;
+        while (start < value.length()) {
+            int dot = value.indexOf('.', start);
+            String part = dot < 0 ? value.substring(start) : value.substring(start, dot);
+            if (!_isSimpleIdentifier(part)) return false;
+            if (dot < 0) return true;
+            start = dot + 1;
         }
-        if (count > 1) {
-            _error(method, target, "Root collection/map methods allow exactly one @Mapping.nestedMapper marker");
-            return null;
-        }
-        return nestedMapper;
+        return true;
     }
 
     private boolean _isSimpleIdentifier(String value) {
@@ -647,7 +962,7 @@ public final class MapperGenerator {
             for (MapperModel.Expr e : values.values()) {
                 _emitTemps(out, e);
             }
-            StringBuilder b = new StringBuilder("return new ").append(method.getReturnType()).append("(");
+            StringBuilder b = new StringBuilder("return new ").append(plan.type).append("(");
             for (int i = 0; i < plan.names.size(); i++) {
                 if (i != 0) b.append(", ");
                 b.append(values.get(plan.names.get(i)).code);
@@ -655,7 +970,7 @@ public final class MapperGenerator {
             out.line(b.append(");").toString());
         } else {
             String targetVar = state.targetRoot;
-            out.line(method.getReturnType() + " " + targetVar + " = new " + method.getReturnType() + "();");
+            out.line(plan.type + " " + targetVar + " = " + (plan.create == null ? "new " + plan.type + "()" : plan.create) + ";");
             for (String temp : state.readTemps) out.line(temp);
             _emitGroupedAssigns(out, state, plan, nulls, targetVar);
             for (String name : plan.names) {
@@ -835,7 +1150,7 @@ public final class MapperGenerator {
     }
 
     private MapperModel.MappingSpec _mappingSpec(ExecutableElement method, String target) {
-        for (Mapping m : method.getAnnotationsByType(Mapping.class)) if (m.target().equals(target)) return new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
+        for (Mapping m : method.getAnnotationsByType(Mapping.class)) if (m.target().equals(target)) return new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), "");
         for (MappingIfParentPresent m : method.getAnnotationsByType(MappingIfParentPresent.class)) if (m.target().equals(target)) return new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
         for (EnsureMapping m : method.getAnnotationsByType(EnsureMapping.class)) if (m.target().equals(target)) return new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
         return null;
@@ -1186,6 +1501,25 @@ public final class MapperGenerator {
      * constructor arguments.
      */
     private MapperModel.Plan _creation(ExecutableElement method, GeneratedClass target, TypeElement type, TypeMirror mirror, Map<String, MapperModel.Write> writes) {
+        MappingCreatorMatch creator = _creatorFor(method, target, mirror);
+        if (creator != null) {
+            if (creator.create != null) {
+                TypeElement creatorType = GeneratorUtil.asTypeElement(creator.type);
+                if (creatorType == null || creatorType.getKind().isInterface() || creatorType.getModifiers().contains(Modifier.ABSTRACT)) {
+                    _error(method, target, "@MappingCreator creator method must return a concrete mutable type");
+                    return null;
+                }
+                Map<String, MapperModel.Write> creatorWrites = _writes(creatorType, creator.type);
+                return new MapperModel.Plan(null, creator.type, creator.create, new ArrayList<String>(creatorWrites.keySet()), creatorWrites);
+            }
+            TypeElement implType = GeneratorUtil.asTypeElement(creator.type);
+            Map<String, MapperModel.Write> implWrites = _writes(implType, creator.type);
+            return _creationForType(method, target, implType, creator.type, implWrites);
+        }
+        return _creationForType(method, target, type, mirror, writes);
+    }
+
+    private MapperModel.Plan _creationForType(ExecutableElement method, GeneratedClass target, TypeElement type, TypeMirror mirror, Map<String, MapperModel.Write> writes) {
         if (_isRecord(type)) {
             List<ExecutableElement> ctors = _publicConstructors(type);
             ExecutableElement ctor = ctors.isEmpty() ? null : ctors.get(0);
@@ -1199,7 +1533,7 @@ public final class MapperGenerator {
         List<ExecutableElement> ctors = _publicConstructors(type);
         for (ExecutableElement c : ctors) {
             if (c.getParameters().isEmpty()) {
-                return new MapperModel.Plan(null, new ArrayList<String>(writes.keySet()), writes);
+                return new MapperModel.Plan(null, mirror, null, new ArrayList<String>(writes.keySet()), writes);
             }
         }
         if (ctors.size() != 1) {
@@ -1217,7 +1551,7 @@ public final class MapperGenerator {
             String n = p.getSimpleName().toString();
             w.put(_nodeName(p, n), new MapperModel.Write(null, n, ct.getParameterTypes().get(i)));
         }
-        return new MapperModel.Plan(ctor, new ArrayList<String>(w.keySet()), w);
+        return new MapperModel.Plan(ctor, owner, null, new ArrayList<String>(w.keySet()), w);
     }
 
     private List<ExecutableElement> _publicConstructors(TypeElement t) {
@@ -1228,6 +1562,149 @@ public final class MapperGenerator {
             }
         }
         return r;
+    }
+
+    private boolean _hasPublicNoArgsConstructor(TypeMirror type) {
+        TypeElement element = GeneratorUtil.asTypeElement(type);
+        if (element == null) return false;
+        for (ExecutableElement ctor : _publicConstructors(element)) {
+            if (ctor.getParameters().isEmpty()) return true;
+        }
+        return false;
+    }
+
+    private List<MappingCreatorRef> _mappingCreators(TypeElement iface, GeneratedClass target) {
+        List<MappingCreatorRef> refs = new ArrayList<MappingCreatorRef>();
+        boolean[] failed = new boolean[1];
+        _collectMappingCreators(iface, target, refs, new HashSet<String>(), failed);
+        return failed[0] ? null : refs;
+    }
+
+    private void _collectMappingCreators(TypeElement iface, GeneratedClass target, List<MappingCreatorRef> refs, Set<String> seen, boolean[] failed) {
+        String qn = iface.getQualifiedName().toString();
+        if (!seen.add(qn)) return;
+        for (AnnotationMirror mirror : iface.getAnnotationMirrors()) {
+            String anno = mirror.getAnnotationType().toString();
+            if (anno.equals(MappingCreator.class.getName())) {
+                _addMappingCreator(iface, target, refs, mirror, failed);
+            } else if (anno.equals("org.sjf4j.annotation.mapper.MappingCreators")) {
+                for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
+                    if (!e.getKey().getSimpleName().contentEquals("value")) continue;
+                    Object raw = e.getValue().getValue();
+                    if (!(raw instanceof List)) continue;
+                    for (Object item : (List<?>) raw) {
+                        Object value = ((AnnotationValue) item).getValue();
+                        if (value instanceof AnnotationMirror) _addMappingCreator(iface, target, refs, (AnnotationMirror) value, failed);
+                    }
+                }
+            }
+        }
+        for (TypeMirror parent : iface.getInterfaces()) {
+            TypeElement parentType = GeneratorUtil.asTypeElement(parent);
+            if (parentType != null) _collectMappingCreators(parentType, target, refs, seen, failed);
+        }
+    }
+
+    private void _addMappingCreator(TypeElement iface, GeneratedClass target, List<MappingCreatorRef> refs, AnnotationMirror mirror, boolean[] failed) {
+        TypeMirror targetType = null;
+        TypeMirror implementation = null;
+        String creator = "";
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
+            String name = e.getKey().getSimpleName().toString();
+            if ("targetType".equals(name)) targetType = (TypeMirror) e.getValue().getValue();
+            else if ("implementation".equals(name)) implementation = (TypeMirror) e.getValue().getValue();
+            else if ("creator".equals(name)) creator = String.valueOf(e.getValue().getValue()).trim();
+        }
+        if (targetType == null || targetType.getKind() != TypeKind.DECLARED) {
+            _error(iface, target, "@MappingCreator.targetType must be a declared type");
+            failed[0] = true;
+            return;
+        }
+        boolean hasImplementation = implementation != null && !"java.lang.Void".equals(_qualifiedName(implementation));
+        boolean hasCreator = creator.length() != 0;
+        if (hasImplementation == hasCreator) {
+            _error(iface, target, "@MappingCreator requires exactly one of implementation or creator");
+            failed[0] = true;
+            return;
+        }
+        if (hasImplementation) {
+            if (implementation.getKind() != TypeKind.DECLARED) {
+                _error(iface, target, "@MappingCreator.implementation must be a declared type");
+                failed[0] = true;
+                return;
+            }
+            if (!_assignable(implementation, targetType)) {
+                _error(iface, target, "@MappingCreator.implementation must be assignable to targetType");
+                failed[0] = true;
+                return;
+            }
+        }
+        refs.add(new MappingCreatorRef(targetType, hasImplementation ? implementation : null, hasCreator ? creator : null));
+    }
+
+    private MappingCreatorMatch _creatorFor(ExecutableElement method, GeneratedClass target, TypeMirror requestedType) {
+        MappingCreatorRef best = null;
+        for (MappingCreatorRef ref : generation.mappingCreators) {
+            if (!ctx.types.isAssignable(requestedType, ref.targetType)) continue;
+            if (best == null) {
+                best = ref;
+                continue;
+            }
+            boolean refMoreSpecific = ctx.types.isAssignable(ref.targetType, best.targetType);
+            boolean bestMoreSpecific = ctx.types.isAssignable(best.targetType, ref.targetType);
+            if (refMoreSpecific && !bestMoreSpecific) best = ref;
+            else if (!refMoreSpecific && !bestMoreSpecific) {
+                _error(method, target, "Ambiguous @MappingCreator for target type " + requestedType);
+                return null;
+            } else if (refMoreSpecific && bestMoreSpecific) {
+                _error(method, target, "Ambiguous @MappingCreator for target type " + requestedType);
+                return null;
+            }
+        }
+        if (best == null) return null;
+        if (best.implementation != null) return new MappingCreatorMatch(best.implementation, null);
+        return _creatorMethod(method, target, best, requestedType);
+    }
+
+    private MappingCreatorMatch _creatorMethod(ExecutableElement method, GeneratedClass target, MappingCreatorRef ref, TypeMirror requestedType) {
+        String creator = ref.creator;
+        if (!creator.startsWith("this::") || !_isSimpleIdentifier(creator.substring(6))) {
+            _error(method, target, "@MappingCreator.creator currently supports only this::method");
+            return null;
+        }
+        String name = creator.substring(6);
+        ExecutableElement found = null;
+        for (Element element : ctx.elements.getAllMembers(generation.iface)) {
+            if (element.getKind() != ElementKind.METHOD || !element.getSimpleName().contentEquals(name)) continue;
+            if (element.getEnclosingElement().toString().equals(Object.class.getName())) continue;
+            if (found != null) {
+                _error(method, target, "Ambiguous @MappingCreator creator method '" + name + "'");
+                return null;
+            }
+            found = (ExecutableElement) element;
+        }
+        if (found == null) {
+            _error(method, target, "Cannot resolve @MappingCreator creator method '" + creator + "'");
+            return null;
+        }
+        if (!found.getModifiers().contains(Modifier.DEFAULT) && !found.getModifiers().contains(Modifier.STATIC)) {
+            _error(method, target, "@MappingCreator creator method must be default or static");
+            return null;
+        }
+        if (!found.getParameters().isEmpty()) {
+            _error(method, target, "@MappingCreator creator method must not declare parameters");
+            return null;
+        }
+        TypeElement owner = (TypeElement) found.getEnclosingElement();
+        ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner.asType(), found);
+        if (!_assignable(mt.getReturnType(), ref.targetType)) {
+            _error(method, target, "@MappingCreator creator method return type must be assignable to " + requestedType);
+            return null;
+        }
+        String call = found.getModifiers().contains(Modifier.STATIC)
+                ? owner.getQualifiedName() + "." + name + "()"
+                : name + "()";
+        return new MappingCreatorMatch(mt.getReturnType(), call);
     }
 
     private String _nodeName(Element e, String fallback) {
@@ -1556,7 +2033,7 @@ public final class MapperGenerator {
     private MapperModel.Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources,
                           boolean multi, MethodState state, Mapping m) {
         return _compute(iface, method, target, sources, multi, state,
-                new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper()));
+                new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), ""));
     }
 
     private MapperModel.Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources,
@@ -1706,11 +2183,42 @@ public final class MapperGenerator {
         return null;
     }
 
+    private MapperModel.ContainerType _listOrSetSource(TypeMirror type) {
+        MapperModel.ContainerType container = _container(type);
+        if (container == null || container.map) return null;
+        return GeneratorUtil.isAssignableErasure(ctx, type, ctx.listType)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.setType) ? container : null;
+    }
+
+    private TypeMirror _containerSourceValueType(MapperModel.ContainerType container) {
+        return container != null && container.value != null ? container.value : ctx.objectType;
+    }
+
+    private boolean _isListOrSetDeclared(TypeMirror type) {
+        return _listOrSetSource(type) != null;
+    }
+
+    private MapperModel.ArrayLikeType _arrayLike(TypeMirror type) {
+        if (type == null) return null;
+        if (type.getKind() == TypeKind.ARRAY) {
+            return new MapperModel.ArrayLikeType(true, ((ArrayType) type).getComponentType(), type);
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)) {
+            return new MapperModel.ArrayLikeType(false, ctx.objectType, type);
+        }
+        return null;
+    }
+
     private boolean _inPlaceContainer(ExecutableElement method, GeneratedClass target, TypeMirror fromType, TypeMirror toType,
                                       ArrayPolicy arrayPolicy, ObjectPolicy objectPolicy, String nestedMapper) {
         MapperModel.ContainerType from = _container(fromType);
         MapperModel.ContainerType to = _container(toType);
-        if (from == null || to == null || from.map != to.map) return false;
+        if (to == null) return false;
+        if (from == null) {
+            MapperModel.ArrayLikeType arrayFrom = _arrayLike(fromType);
+            return arrayFrom != null && !to.map && arrayPolicy != null && arrayPolicy != ArrayPolicy.SET;
+        }
+        if (from.map != to.map) return false;
         if (to.map) return true;
         return arrayPolicy != null && arrayPolicy != ArrayPolicy.SET;
     }
@@ -1719,12 +2227,25 @@ public final class MapperGenerator {
                                               TypeMirror fromType, TypeMirror toType, String nestedMapper) {
         MapperModel.ContainerType from = _container(fromType);
         MapperModel.ContainerType to = _container(toType);
-        if (from == null || to == null || from.map != to.map) return false;
+        if (to == null) return false;
+        if (from == null) {
+            MapperModel.ArrayLikeType arrayFrom = _arrayLike(fromType);
+            return arrayFrom != null && !to.map && _arrayLikeElementConverter(iface, method, target, arrayFrom, to, nestedMapper) != null;
+        }
+        if (from.map != to.map) return false;
         return _containerConverter(iface, method, target, from, to, nestedMapper) != null;
     }
 
     private MapperModel.Converter _containerConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.ContainerType from, MapperModel.ContainerType to, String nestedMapper) {
-        if (from.value == null || to.value == null || (from.map && (from.key == null || to.key == null))) {
+        if (to.value == null || (from.map && (from.key == null || to.key == null))) {
+            _error(method, target, "Raw or non-parameterized collection/map types are unsupported");
+            return null;
+        }
+        if (!from.map && !_isListOrSetDeclared(from.mirror)) {
+            _error(method, target, "Collection source must be declared as java.util.List or java.util.Set for array-like mapping");
+            return null;
+        }
+        if (from.map && from.value == null) {
             _error(method, target, "Raw or non-parameterized collection/map types are unsupported");
             return null;
         }
@@ -1732,8 +2253,9 @@ public final class MapperGenerator {
             _error(method, target, "Map key type mismatch: " + from.key + " is not assignable to " + to.key);
             return null;
         }
-        if ((nestedMapper == null || nestedMapper.length() == 0) && _assignable(from.value, to.value)) return new MapperModel.Converter(null, to.value);
-        MapperModel.ContainerType nestedFrom = _container(from.value);
+        TypeMirror fromValue = _containerSourceValueType(from);
+        if ((nestedMapper == null || nestedMapper.length() == 0) && _assignable(fromValue, to.value)) return new MapperModel.Converter(null, to.value);
+        MapperModel.ContainerType nestedFrom = _container(fromValue);
         MapperModel.ContainerType nestedTo = _container(to.value);
         if (nestedFrom != null && nestedTo != null && nestedFrom.map == nestedTo.map) {
             MapperModel.Converter nestedConv = _containerConverter(iface, method, target, nestedFrom, nestedTo, nestedMapper);
@@ -1743,12 +2265,27 @@ public final class MapperGenerator {
             String helper = _ensureContainerHelper(target, nestedFrom, nestedTo, nestedConv, impl, to.value);
             return new MapperModel.Converter(helper, to.value);
         }
-        return _resolveConverter(iface, method, target, from.value, to.value, nestedMapper);
+        return _resolveConverter(iface, method, target, fromValue, to.value, nestedMapper);
     }
 
     private MapperModel.Expr _maybeNestedExpr(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.Expr e, TypeMirror need, String nestedMapper, String name) {
         MapperModel.ContainerType from = _container(e.type);
         MapperModel.ContainerType to = _container(need);
+        MapperModel.ArrayLikeType arrayFrom = _arrayLike(e.type);
+        if (arrayFrom != null && to != null && !to.map) {
+            MapperModel.Converter conv = _arrayLikeElementConverter(iface, method, target, arrayFrom, to, nestedMapper);
+            if (conv == null) return null;
+            String impl = _implType(method, target, to);
+            if (impl == null) return null;
+            String helper = _ensureArrayLikeHelper(target, arrayFrom, to, conv, impl, need);
+            MapperModel.Expr r = new MapperModel.Expr(helper + "(" + e.code + ")", need, e.path, e.nullableRoot, false);
+            r.temps.addAll(e.temps);
+            r.nullGuardSource = e.code;
+            r.nullGuardType = e.type;
+            r.nullGuardLocal = e.local;
+            r.nullGuardCodeTemplate = helper + "($source)";
+            return r;
+        }
         if (from == null || to == null || from.map != to.map) {
             boolean named = nestedMapper != null && nestedMapper.length() != 0;
             if (!named && _assignable(e.type, need)) return e;
@@ -1776,6 +2313,110 @@ public final class MapperGenerator {
         return e.nullGuardCodeTemplate.replace("$source", source);
     }
 
+    private String _ensureArrayLikeHelper(GeneratedClass target, MapperModel.ArrayLikeType from, MapperModel.ContainerType to,
+                                          MapperModel.Converter conv, String impl, TypeMirror resultType) {
+        String key = "arraylike:" + from.mirror + "->" + to.mirror + ":" + impl + ":" + (conv.method == null ? "" : conv.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = generation.helperName("ArrayLike");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            out.line("");
+            out.line("private " + resultType + " " + helper + "(" + from.mirror + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            out.line(_containerLocalType(impl, to, resultType) + " " + targetVar + " = " + _newContainer(impl, to, _arrayLikeSize(from, "source")) + ";");
+            _emitArrayLikeCopy(out, from, conv, targetVar, "source", names);
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
+    }
+
+    private String _arrayLikeSize(MapperModel.ArrayLikeType from, String source) {
+        return from.javaArray ? source + ".length" : source + ".size()";
+    }
+
+    private String _ensureObjectListContainerHelper(GeneratedClass target, MapperModel.ContainerType to,
+                                                    MapperModel.Converter conv, String impl, TypeMirror resultType) {
+        String key = "objectListContainer:" + to.mirror + ":" + impl + ":" + resultType + ":" + (conv.method == null ? "" : conv.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = generation.helperName("ObjectList");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            String value = names.prefixed("s", "value");
+            out.line("");
+            out.line("private " + resultType + " " + helper + "(Object source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            out.line("if (!(source instanceof java.util.List)) throw new org.sjf4j.exception.BindingException(\"cannot convert node from '\" + org.sjf4j.node.Types.name(source) + \"' to '" + GeneratorUtil.escape(resultType.toString()) + "'\");");
+            out.line("java.util.List list = (java.util.List) source;");
+            out.line(_containerLocalType(impl, to, resultType) + " " + targetVar + " = " + _newContainer(impl, to, "list.size()") + ";");
+            out.line("for (Object " + value + " : list) {");
+            out.indent();
+            out.line(targetVar + ".add(" + _convertValue(conv, value) + ");");
+            out.dedent();
+            out.line("}");
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
+    }
+
+    private String _ensureObjectListJavaArrayHelper(GeneratedClass target, TypeMirror resultType, TypeMirror elementType,
+                                                    MapperModel.Converter conv) {
+        String key = "objectListArray:" + resultType + ":" + (conv.method == null ? "" : conv.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = generation.helperName("ObjectListArray");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            String index = names.prefixed("s", "i");
+            out.line("");
+            out.line("private " + resultType + " " + helper + "(Object source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            out.line("if (!(source instanceof java.util.List)) throw new org.sjf4j.exception.BindingException(\"cannot convert node from '\" + org.sjf4j.node.Types.name(source) + \"' to '" + GeneratorUtil.escape(resultType.toString()) + "'\");");
+            out.line("java.util.List list = (java.util.List) source;");
+            out.line(resultType + " " + targetVar + " = new " + _arrayComponentTypeName(elementType) + "[list.size()];");
+            out.line("for (int " + index + " = 0; " + index + " < list.size(); " + index + "++) {");
+            out.indent();
+            out.line(targetVar + "[" + index + "] = " + _convertValue(conv, "list.get(" + index + ")") + ";");
+            out.dedent();
+            out.line("}");
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
+    }
+
+    private String _arrayLikeValue(MapperModel.ArrayLikeType from, String source, String index) {
+        return from.javaArray ? source + "[" + index + "]" : source + ".getNode(" + index + ")";
+    }
+
+    private void _emitArrayLikeCopy(SourceWriter out, MapperModel.ArrayLikeType from, MapperModel.Converter conv,
+                                    String target, String source, NameAllocator names) {
+        String index = names.prefixed("s", "i");
+        out.line("for (int " + index + " = 0; " + index + " < " + _arrayLikeSize(from, source) + "; " + index + "++) {");
+        out.indent();
+        out.line(target + ".add(" + _convertValue(conv, _arrayLikeValue(from, source, index)) + ");");
+        out.dedent();
+        out.line("}");
+    }
+
     private String _ensureContainerHelper(GeneratedClass target, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv,
                                           String impl, TypeMirror resultType) {
         String key = "container:" + from.mirror + "->" + to.mirror + ":" + impl + ":" + (conv.method == null ? "" : conv.method);
@@ -1801,7 +2442,7 @@ public final class MapperGenerator {
                 out.line("}");
         } else {
                 String value = names.prefixed("s", "value");
-                out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " " + value + " : source) {");
+                out.line("for (" + GeneratorUtil.localTypeName(ctx, _containerSourceValueType(from)) + " " + value + " : source) {");
                 out.indent();
                 out.line(targetVar + ".add(" + _convertValue(conv, value) + ");");
                 out.dedent();
@@ -1883,7 +2524,7 @@ public final class MapperGenerator {
             } else {
                 if (arrayPolicy == ArrayPolicy.CLEAR_ADD) out.line("target.clear();");
                 String value = names.prefixed("s", "value");
-                out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " " + value + " : source) {");
+                out.line("for (" + GeneratorUtil.localTypeName(ctx, _containerSourceValueType(from)) + " " + value + " : source) {");
                 out.indent();
                 out.line("target.add(" + _convertValue(conv, value) + ");");
                 out.dedent();
@@ -1901,52 +2542,390 @@ public final class MapperGenerator {
 
     private MapperModel.Converter _resolveConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String nestedMapper, boolean errorIfMissing) {
         if (nestedMapper != null && nestedMapper.length() != 0) {
-            String name = nestedMapper;
-            int named = 0;
-            ExecutableElement found = null;
-            for (Element e : iface.getEnclosedElements()) {
-                if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
-                if (e.getModifiers().contains(Modifier.PRIVATE)) continue;
-                named++;
-                found = (ExecutableElement) e;
-            }
-            if (named > 1) {
-                _error(method, target, "Ambiguous converter '" + name + "'; overloaded converter methods are not supported");
-                return null;
-            }
-            if (found == null) {
-                _error(method, target, "Cannot resolve converter '" + name + "'");
-                return null;
-            }
-            return _converterFromMethod(iface, method, target, found, from, to);
+            return _explicitConverter(iface, method, target, from, to, nestedMapper);
         }
 
-        ExecutableElement found = null;
-        for (Element e : iface.getEnclosedElements()) {
-            if (e.getKind() != ElementKind.METHOD) continue;
-            ExecutableElement h = (ExecutableElement) e;
-            if (h.getModifiers().contains(Modifier.PRIVATE)) continue;
-            if (h == method || h.getParameters().size() != 1 || h.getReturnType().getKind() == TypeKind.VOID) continue;
-            ExecutableType ht = (ExecutableType) ctx.types.asMemberOf((DeclaredType) iface.asType(), h);
-            if (_assignable(from, ht.getParameterTypes().get(0)) && _assignable(ht.getReturnType(), to)) {
-                if (found != null) {
-                    _error(method, target, "Ambiguous element/value converter; specify @Mapping.nestedMapper");
-                    return null;
-                }
-                found = h;
-            }
+        MapperModel.Converter preferred = _preferredConverter(iface, method, target, from, to);
+        if (preferred != null || generation.failed) return preferred;
+
+        MapperModel.Converter found = _autoLocalConverter(iface, method, target, from, to);
+        if (found == null && generation.failed) return null;
+        if (found == null) {
+            found = _autoImportedConverter(method, target, from, to);
+            if (found == null && generation.failed) return null;
         }
         if (found == null) {
             MapperModel.Converter fallback = _enumConverter(method, target, from, to);
             if (fallback != null) return fallback;
             fallback = _nodeValueConverter(method, target, from, to);
             if (fallback != null) return fallback;
+            fallback = _scalarConverter(method, target, from, to);
+            if (fallback != null) return fallback;
+            fallback = _arrayLikeConverter(iface, method, target, from, to, nestedMapper);
+            if (fallback != null) return fallback;
+            fallback = _jsonObjectProjectionConverter(method, target, from, to, nestedMapper);
+            if (fallback != null) return fallback;
+            fallback = _objectLikeConverter(iface, method, target, from, to, nestedMapper);
+            if (fallback != null) return fallback;
             fallback = _autoHelperConverter(iface, method, target, from, to);
             if (fallback != null) return fallback;
             if (errorIfMissing) _error(method, target, "Cannot find element/value converter from " + from + " to " + to);
             return null;
         }
-        return _converterFromMethod(iface, method, target, found, from, to);
+        return found;
+    }
+
+    private MapperModel.Converter _preferredConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                      TypeMirror from, TypeMirror to) {
+        String[] refs = _methodUsingRefs(method);
+        for (int i = 0; i < refs.length; i++) {
+            String ref = refs[i] == null ? "" : refs[i].trim();
+            if (ref.length() == 0) continue;
+            MapperModel.Converter conv = _preferredConverterRef(iface, method, target, from, to, ref);
+            if (conv != null || generation.failed) return conv;
+        }
+        return null;
+    }
+
+    private MapperModel.Converter _preferredConverterRef(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                         TypeMirror from, TypeMirror to, String ref) {
+        int split = ref.indexOf("::");
+        if (split < 0) return _preferredUnnamedConverter(iface, method, target, from, to, ref);
+        String owner = ref.substring(0, split).trim();
+        String name = ref.substring(split + 2).trim();
+        if ("this".equals(owner)) return _preferredLocalConverter(iface, method, target, from, to, name, "this::" + name);
+        ImportedMapperRef imported = _importedMapperByName(method, target, owner);
+        if (imported == null) return null;
+        return _preferredImportedConverter(method, target, from, to, imported, name, ref);
+    }
+
+    private MapperModel.Converter _preferredUnnamedConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                             TypeMirror from, TypeMirror to, String name) {
+        MapperModel.Converter local = _preferredLocalConverter(iface, method, target, from, to, name, name);
+        if (generation.failed) return null;
+        MapperModel.Converter imported = _preferredImportedConverter(method, target, from, to, name);
+        if (generation.failed) return null;
+        if (local != null && imported != null) {
+            _error(method, target, "Ambiguous preferred converter '" + name + "'");
+            generation.failed = true;
+            return null;
+        }
+        if (local != null) return local;
+        if (imported != null) return imported;
+        if (!_hasNamedLocalMethod(iface, method, name) && !_hasNamedImportedMethod(method, target, name)) {
+            _error(method, target, "Cannot resolve converter '" + name + "'");
+            generation.failed = true;
+        }
+        return null;
+    }
+
+    private MapperModel.Converter _preferredLocalConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                           TypeMirror from, TypeMirror to, String name, String ref) {
+        NamedMethodMatch match = _namedMethod(iface, method, target, name);
+        if (match == null) {
+            _error(method, target, "Cannot resolve converter '" + ref + "'");
+            generation.failed = true;
+            return null;
+        }
+        if (match.method == null) return null;
+        return _compatibleConverter(iface, iface.asType(), method, target, match.method, from, to, null);
+    }
+
+    private MapperModel.Converter _preferredImportedConverter(ExecutableElement method, GeneratedClass target,
+                                                              TypeMirror from, TypeMirror to, String name) {
+        MapperModel.Converter result = null;
+        boolean anyNamed = false;
+        for (ImportedMapperRef imported : generation.importedMappers) {
+            NamedMethodMatch match = _namedMethod(imported.type, method, target, name);
+            if (match == null) continue;
+            anyNamed = true;
+            if (match.method == null) return null;
+            MapperModel.Converter conv = _compatibleConverter(imported.type, imported.type.asType(), method, target, match.method, from, to, imported);
+            if (conv == null) continue;
+            if (result != null) {
+                _error(method, target, "Ambiguous preferred imported converter '" + name + "'");
+                generation.failed = true;
+                return null;
+            }
+            result = conv;
+        }
+        return anyNamed ? result : null;
+    }
+
+    private MapperModel.Converter _preferredImportedConverter(ExecutableElement method, GeneratedClass target,
+                                                              TypeMirror from, TypeMirror to, ImportedMapperRef imported,
+                                                              String name, String ref) {
+        NamedMethodMatch match = _namedMethod(imported.type, method, target, name);
+        if (match == null) {
+            _error(method, target, "Cannot resolve converter '" + ref + "'");
+            generation.failed = true;
+            return null;
+        }
+        if (match.method == null) return null;
+        return _compatibleConverter(imported.type, imported.type.asType(), method, target, match.method, from, to, imported);
+    }
+
+    private boolean _hasNamedLocalMethod(TypeElement iface, ExecutableElement method, String name) {
+        for (Element e : iface.getEnclosedElements()) {
+            if (e.getKind() == ElementKind.METHOD && e != method && e.getSimpleName().contentEquals(name) && !e.getModifiers().contains(Modifier.PRIVATE)) return true;
+        }
+        return false;
+    }
+
+    private boolean _hasNamedImportedMethod(ExecutableElement method, GeneratedClass target, String name) {
+        for (ImportedMapperRef imported : generation.importedMappers) {
+            if (_namedMethod(imported.type, method, target, name) != null) return true;
+        }
+        return false;
+    }
+
+    private MapperModel.Converter _explicitConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                     TypeMirror from, TypeMirror to, String ref) {
+        int split = ref.indexOf("::");
+        if (split < 0) {
+            MapperModel.Converter local = _namedLocalConverter(iface, method, target, from, to, ref, false);
+            if (local != null || generation.failed) return local;
+            return _namedImportedConverter(method, target, from, to, ref, false);
+        }
+        String owner = ref.substring(0, split).trim();
+        String name = ref.substring(split + 2).trim();
+        if ("this".equals(owner)) return _namedLocalConverter(iface, method, target, from, to, name, true);
+        ImportedMapperRef imported = _importedMapperByName(method, target, owner);
+        if (imported == null) return null;
+        return _namedImportedConverter(method, target, from, to, imported, name, true);
+    }
+
+    private MapperModel.Converter _namedLocalConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                       TypeMirror from, TypeMirror to, String name, boolean explicitOwner) {
+        ExecutableElement found = null;
+        for (Element e : iface.getEnclosedElements()) {
+            if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
+            if (e.getModifiers().contains(Modifier.PRIVATE) || e == method) continue;
+            if (found != null) {
+                _error(method, target, "Ambiguous converter '" + name + "'; overloaded converter methods are not supported");
+                generation.failed = true;
+                return null;
+            }
+            found = (ExecutableElement) e;
+        }
+        if (found == null) {
+            if (explicitOwner) {
+                _error(method, target, "Cannot resolve converter 'this::" + name + "'");
+                generation.failed = true;
+            }
+            return null;
+        }
+        MapperModel.Converter conv = _converterFromMethod(iface, method, target, found, from, to, null);
+        if (conv == null) generation.failed = true;
+        return conv;
+    }
+
+    private MapperModel.Converter _namedImportedConverter(ExecutableElement method, GeneratedClass target,
+                                                          TypeMirror from, TypeMirror to, String name, boolean explicitRef) {
+        MapperModel.Converter result = null;
+        int compatible = 0;
+        boolean anyNamed = false;
+        for (ImportedMapperRef imported : generation.importedMappers) {
+            NamedMethodMatch match = _namedMethod(imported.type, method, target, name);
+            if (match == null) continue;
+            anyNamed = true;
+            if (match.method == null) return null;
+            MapperModel.Converter conv = _converterFromMethod(imported.type, method, target, match.method, from, to, imported);
+            if (conv == null) continue;
+            compatible++;
+            if (compatible > 1) {
+                _error(method, target, "Ambiguous imported converter '" + name + "'; qualify it with @MapperOptions(using = ...)");
+                generation.failed = true;
+                return null;
+            }
+            result = conv;
+        }
+        if (result == null && explicitRef) {
+            _error(method, target, "Cannot resolve converter '" + name + "'");
+            generation.failed = true;
+        } else if (result == null && anyNamed) {
+            _error(method, target, "Cannot resolve converter '" + name + "'");
+            generation.failed = true;
+        }
+        return result;
+    }
+
+    private MapperModel.Converter _namedImportedConverter(ExecutableElement method, GeneratedClass target,
+                                                          TypeMirror from, TypeMirror to, ImportedMapperRef imported,
+                                                          String name, boolean explicitRef) {
+        NamedMethodMatch match = _namedMethod(imported.type, method, target, name);
+        if (match == null) {
+            if (explicitRef) {
+                _error(method, target, "Cannot resolve converter '" + imported.qualifiedName + "::" + name + "'");
+                generation.failed = true;
+            }
+            return null;
+        }
+        if (match.method == null) return null;
+        MapperModel.Converter conv = _converterFromMethod(imported.type, method, target, match.method, from, to, imported);
+        if (conv == null && explicitRef && !generation.failed) {
+            _error(method, target, "Cannot resolve converter '" + imported.qualifiedName + "::" + name + "'");
+            generation.failed = true;
+        } else if (conv == null) {
+            generation.failed = true;
+        }
+        return conv;
+    }
+
+    private MapperModel.Converter _autoLocalConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                      TypeMirror from, TypeMirror to) {
+        MapperModel.Converter found = null;
+        for (Element e : iface.getEnclosedElements()) {
+            if (e.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement h = (ExecutableElement) e;
+            if (h.getModifiers().contains(Modifier.PRIVATE) || h == method) continue;
+            MapperModel.Converter conv = _compatibleConverter(iface, iface.asType(), method, target, h, from, to, null);
+            if (conv == null) continue;
+            if (found != null) {
+                _error(method, target, "Ambiguous element/value converter; specify @MapperOptions(using = ...) preference");
+                generation.failed = true;
+                return null;
+            }
+            found = conv;
+        }
+        return found;
+    }
+
+    private MapperModel.Converter _autoImportedConverter(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        MapperModel.Converter found = null;
+        for (ImportedMapperRef imported : generation.importedMappers) {
+            for (Element e : imported.type.getEnclosedElements()) {
+                if (e.getKind() != ElementKind.METHOD) continue;
+                ExecutableElement h = (ExecutableElement) e;
+                if (h.getModifiers().contains(Modifier.PRIVATE)) continue;
+                MapperModel.Converter conv = _compatibleConverter(imported.type, imported.type.asType(), method, target, h, from, to, imported);
+                if (conv == null) continue;
+                if (found != null) {
+                    _error(method, target, "Ambiguous imported element/value converter; specify @MapperOptions(using = ...) with mapper qualification");
+                    generation.failed = true;
+                    return null;
+                }
+                found = conv;
+            }
+        }
+        return found;
+    }
+
+    private MapperModel.Converter _compatibleConverter(TypeElement owner, TypeMirror ownerType, ExecutableElement method, GeneratedClass target,
+                                                       ExecutableElement h, TypeMirror from, TypeMirror to, ImportedMapperRef imported) {
+        if (h.getParameters().size() != 1 || h.getReturnType().getKind() == TypeKind.VOID) return null;
+        ExecutableType ht = (ExecutableType) ctx.types.asMemberOf((DeclaredType) ownerType, h);
+        if (!_assignable(from, ht.getParameterTypes().get(0)) || !_assignable(ht.getReturnType(), to)) return null;
+        return _converter(owner, ht, h, imported);
+    }
+
+    private NamedMethodMatch _namedMethod(TypeElement owner, ExecutableElement method, GeneratedClass target, String name) {
+        ExecutableElement found = null;
+        for (Element e : owner.getEnclosedElements()) {
+            if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
+            if (e.getModifiers().contains(Modifier.PRIVATE)) continue;
+            if (found != null) {
+                _error(method, target, "Ambiguous converter '" + name + "'; overloaded converter methods are not supported");
+                generation.failed = true;
+                return new NamedMethodMatch(null);
+            }
+            found = (ExecutableElement) e;
+        }
+        if (found == null) return null;
+        return new NamedMethodMatch(found);
+    }
+
+    private ImportedMapperRef _importedMapperByName(ExecutableElement method, GeneratedClass target, String owner) {
+        ImportedMapperRef found = null;
+        for (ImportedMapperRef imported : generation.importedMappers) {
+            if (!imported.simpleName.equals(owner) && !imported.qualifiedName.equals(owner)) continue;
+            if (found != null && imported.simpleName.equals(owner)) {
+                _error(method, target, "Ambiguous imported mapper '" + owner + "'; use the qualified name in @MapperOptions(using = ...)");
+                generation.failed = true;
+                return null;
+            }
+            found = imported;
+        }
+        if (found == null) {
+            _error(method, target, "Cannot resolve imported mapper '" + owner + "'; it must be listed in @CompiledMapper.importing");
+            generation.failed = true;
+        }
+        return found;
+    }
+
+    private MapperModel.Converter _converter(TypeElement owner, ExecutableType ht, ExecutableElement h, ImportedMapperRef imported) {
+        String prefix;
+        if (h.getModifiers().contains(Modifier.STATIC)) {
+            prefix = owner.getQualifiedName() + ".";
+        } else if (imported != null) {
+            prefix = _ensureImportedMapperField(imported) + ".";
+        } else {
+            prefix = "";
+        }
+        return new MapperModel.Converter(prefix + h.getSimpleName(), ht.getReturnType());
+    }
+
+    private String _ensureImportedMapperField(ImportedMapperRef imported) {
+        String existing = generation.importedMapperFields.get(imported.qualifiedName);
+        if (existing != null) return existing;
+        String field = generation.importedMapperFieldNames.local("m_" + _lowerFirst(imported.simpleName));
+        generation.importedMapperFields.put(imported.qualifiedName, field);
+        String implType = _compiledMapperImplType(imported.type);
+        generation.target.addField(out -> out.line("private final " + imported.qualifiedName + " " + field + " = new " + implType + "();"));
+        return field;
+    }
+
+    private String _lowerFirst(String value) {
+        if (value == null || value.length() == 0) return "mapper";
+        return Character.toLowerCase(value.charAt(0)) + value.substring(1);
+    }
+
+    private List<ImportedMapperRef> _importedMappers(TypeElement iface, GeneratedClass target) {
+        ArrayList<ImportedMapperRef> imported = new ArrayList<ImportedMapperRef>();
+        Set<String> seen = new HashSet<String>();
+        for (AnnotationMirror mirror : iface.getAnnotationMirrors()) {
+            if (!mirror.getAnnotationType().toString().equals(CompiledMapper.class.getName())) continue;
+            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
+                if (!e.getKey().getSimpleName().contentEquals("importing")) continue;
+                Object raw = e.getValue().getValue();
+                if (!(raw instanceof List)) return imported;
+                for (Object value : (List<?>) raw) {
+                    AnnotationValue av = (AnnotationValue) value;
+                    Object tv = av.getValue();
+                    if (!(tv instanceof TypeMirror)) continue;
+                    TypeElement importedType = GeneratorUtil.asTypeElement((TypeMirror) tv);
+                    if (importedType == null || importedType.getKind() != ElementKind.INTERFACE) {
+                        _error(iface, target, "@CompiledMapper.importing supports only interfaces annotated with @CompiledMapper");
+                        return null;
+                    }
+                    if (!_hasCompiledMapper(importedType)) {
+                        _error(iface, target, "Imported mapper '" + importedType.getQualifiedName() + "' must be annotated with @CompiledMapper");
+                        return null;
+                    }
+                    String qn = importedType.getQualifiedName().toString();
+                    if (seen.add(qn)) imported.add(new ImportedMapperRef(importedType));
+                }
+                return imported;
+            }
+        }
+        return imported;
+    }
+
+    private boolean _hasCompiledMapper(TypeElement type) {
+        for (AnnotationMirror mirror : type.getAnnotationMirrors()) {
+            if (mirror.getAnnotationType().toString().equals(CompiledMapper.class.getName())) return true;
+        }
+        return false;
+    }
+
+    private String _compiledMapperImplType(TypeElement mapperType) {
+        PackageElement pkg = ctx.elements.getPackageOf(mapperType);
+        String packageName = pkg.isUnnamed() ? "" : pkg.getQualifiedName().toString();
+        String binaryName = ctx.elements.getBinaryName(mapperType).toString();
+        String packagePrefix = packageName.isEmpty() ? "" : packageName + ".";
+        String binarySimpleName = packageName.isEmpty() ? binaryName : binaryName.substring(packagePrefix.length());
+        String simpleName = binarySimpleName + GeneratorUtil.COMPILED_IMPL_POSTFIX;
+        return packageName.isEmpty() ? simpleName : packageName + "." + simpleName;
     }
 
     private MapperModel.Converter _enumConverter(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
@@ -2065,8 +3044,808 @@ public final class MapperGenerator {
         return name;
     }
 
+    private MapperModel.Converter _arrayLikeConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                      TypeMirror from, TypeMirror to, String nestedMapper) {
+        MapperModel.ArrayLikeType arrayFrom = _arrayLike(from);
+        MapperModel.ContainerType containerTo = _container(to);
+        if (arrayFrom == null || containerTo == null || containerTo.map) return null;
+        MapperModel.Converter conv = _arrayLikeElementConverter(iface, method, target, arrayFrom, containerTo, nestedMapper);
+        if (conv == null) return null;
+        String impl = _implType(method, target, containerTo);
+        if (impl == null) return null;
+        String helper = _ensureArrayLikeHelper(target, arrayFrom, containerTo, conv, impl, to);
+        return new MapperModel.Converter(helper, to);
+    }
+
+    private MapperModel.Converter _objectLikeConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                       TypeMirror from, TypeMirror to, String nestedMapper) {
+        if (nestedMapper != null && nestedMapper.length() != 0) return null;
+        if (!_objectLikeSource(from) || !_pojoTarget(to)) return null;
+        String helper = GeneratorUtil.isObject(ctx, from)
+                ? _ensureObjectDispatchHelper(iface, method, target, from, to)
+                : _ensureObjectLikeHelper(iface, method, target, from, to, _objectLikeKind(from));
+        return helper == null ? null : new MapperModel.Converter(helper, to);
+    }
+
+    private MapperModel.Converter _jsonObjectProjectionConverter(ExecutableElement method, GeneratedClass target,
+                                                                 TypeMirror from, TypeMirror to, String nestedMapper) {
+        if (nestedMapper != null && nestedMapper.length() != 0) return null;
+        if (!_isExactJsonObject(to) || !_jsonObjectProjectionSource(from)) return null;
+        if (!_validateJsonObjectProjectionSource(method, target, from)) return null;
+        String helper = _ensureJsonObjectProjectionHelper(method, target, from);
+        return helper == null ? null : new MapperModel.Converter(helper, to);
+    }
+
+    private boolean _isExactJsonObject(TypeMirror type) {
+        return type != null && ctx.types.isSameType(ctx.types.erasure(type), ctx.types.erasure(ctx.jsonObjectType));
+    }
+
+    private boolean _isExactJsonArray(TypeMirror type) {
+        return type != null && ctx.types.isSameType(ctx.types.erasure(type), ctx.types.erasure(ctx.jsonArrayType));
+    }
+
+    private boolean _isJojoTarget(TypeMirror type) {
+        return type != null && !_isExactJsonObject(type)
+                && GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
+    }
+
+    private boolean _isJajoTarget(TypeMirror type) {
+        return type != null && !_isExactJsonArray(type)
+                && GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType);
+    }
+
+    private boolean _jsonObjectProjectionSource(TypeMirror type) {
+        if (type == null || _isScalarLike(type) || _arrayLike(type) != null) return false;
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)) return true;
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) return true;
+        if (GeneratorUtil.isObject(ctx, type)) return true;
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)) return false;
+        if (_container(type) != null) return false;
+        TypeElement e = GeneratorUtil.asTypeElement(type);
+        return e != null && e.getKind() != ElementKind.ENUM;
+    }
+
+    private boolean _validateJsonObjectProjectionSource(ExecutableElement method, GeneratedClass target, TypeMirror from) {
+        if (GeneratorUtil.isObject(ctx, from)) return true;
+        if (!GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)) return true;
+        MapperModel.ContainerType container = _container(from);
+        if (container == null || container.key == null) return true;
+        TypeMirror stringType = ctx.elements.getTypeElement("java.lang.String").asType();
+        if (!_assignable(container.key, stringType) || !_assignable(stringType, container.key)) {
+            _error(method, target, "JsonObject projection does not support Map key conversion; source key type must be java.lang.String");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean _jsonArrayProjectionSource(TypeMirror type) {
+        return GeneratorUtil.isObject(ctx, type) || _arrayLike(type) != null || _listOrSetSource(type) != null;
+    }
+
+    private boolean _validateJsonArrayProjectionSource(ExecutableElement method, GeneratedClass target, TypeMirror from) {
+        return true;
+    }
+
+    private String _ensureJsonObjectProjectionHelper(ExecutableElement method, GeneratedClass target, TypeMirror from) {
+        String key = "jsonProjection:" + from;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String name = generation.helperName("JsonObject");
+        generation.helpers.put(key, name);
+        String mapHelper = GeneratorUtil.isObject(ctx, from) ? _ensureJsonObjectProjectionHelper(method, target, ctx.mapType) : null;
+        TypeElement sourceType = GeneratorUtil.asTypeElement(from);
+        Map<String, MapperModel.Read> reads = sourceType == null ? null : _reads(sourceType, from);
+        target.addHelper(out -> {
+            String paramType = GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType) ? "java.util.Map" : from.toString();
+            out.line("");
+            out.line("private org.sjf4j.JsonObject " + name + "(" + paramType + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            if (GeneratorUtil.isObject(ctx, from)) {
+                out.line("if (!(source instanceof java.util.Map)) throw new org.sjf4j.exception.BindingException(\"cannot convert node from '\" + org.sjf4j.node.Types.name(source) + \"' to 'org.sjf4j.JsonObject'\");");
+                out.line("return " + mapHelper + "((java.util.Map) source);");
+            } else {
+            out.line("org.sjf4j.JsonObject target = new org.sjf4j.JsonObject();");
+            if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType)) {
+                out.line("for (java.util.Map.Entry<String, Object> entry : source.entrySet()) {");
+                out.indent();
+                out.line("target.put(entry.getKey(), entry.getValue());");
+                out.dedent();
+                out.line("}");
+            } else if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)) {
+                out.line("for (Object entryObj : source.entrySet()) {");
+                out.indent();
+                out.line("java.util.Map.Entry<?, ?> entry = (java.util.Map.Entry<?, ?>) entryObj;");
+                out.line("target.put((String) entry.getKey(), entry.getValue());");
+                out.dedent();
+                out.line("}");
+            } else {
+                for (Map.Entry<String, MapperModel.Read> entry : reads.entrySet()) {
+                    MapperModel.Read r = entry.getValue();
+                    String access = r.method == null ? "source." + r.javaName : "source." + r.method.getSimpleName() + "()";
+                    out.line("target.put(\"" + GeneratorUtil.escape(entry.getKey()) + "\", " + access + ");");
+                }
+            }
+            out.line("return target;");
+            }
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private boolean _rootMapProjectionSource(TypeMirror type) {
+        if (type == null || _isScalarLike(type) || _arrayLike(type) != null) return false;
+        if (GeneratorUtil.isObject(ctx, type)) return true;
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)) return true;
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) return false;
+        if (_container(type) != null || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)) return false;
+        TypeElement e = GeneratorUtil.asTypeElement(type);
+        return e != null && e.getKind() != ElementKind.ENUM;
+    }
+
+    private boolean _validateRootMapProjectionSource(ExecutableElement method, GeneratedClass target, TypeMirror from, MapperModel.ContainerType to) {
+        TypeMirror stringType = ctx.elements.getTypeElement("java.lang.String").asType();
+        if (!_assignable(to.key, stringType) || !_assignable(stringType, to.key)) {
+            _error(method, target, "Root Map projection from POJO/JsonObject/Object requires target key type java.lang.String");
+            return false;
+        }
+        return true;
+    }
+
+    private String _ensureRootMapProjectionHelper(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                  TypeMirror from, MapperModel.ContainerType to, String nestedMapper) {
+        String key = "mapProjection:" + from + "->" + to.mirror + ":" + nestedMapper;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String mapHelper = GeneratorUtil.isObject(ctx, from) ? _ensureRootMapProjectionHelper(iface, method, target, ctx.mapType, to, nestedMapper) : null;
+        MapperModel.Converter valueConv;
+        Map<String, MapperModel.Read> reads = null;
+        if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)
+                || GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType)
+                || GeneratorUtil.isObject(ctx, from)) {
+            valueConv = _resolveConverter(iface, method, target, ctx.objectType, to.value, nestedMapper);
+        } else {
+            TypeElement sourceType = GeneratorUtil.asTypeElement(from);
+            reads = sourceType == null ? null : _reads(sourceType, from);
+            valueConv = null;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)
+                || GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType)
+                || GeneratorUtil.isObject(ctx, from)) {
+            if (valueConv == null) return null;
+        }
+        String name = generation.helperName("Map");
+        generation.helpers.put(key, name);
+        Map<String, MapperModel.Read> finalReads = reads;
+        MapperModel.Converter finalValueConv = valueConv;
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            String value = names.prefixed("s", "value");
+            String paramType = GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType) ? "java.util.Map" : from.toString();
+            out.line("");
+            out.line("private " + to.mirror + " " + name + "(" + paramType + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            if (GeneratorUtil.isObject(ctx, from)) {
+                out.line("if (!(source instanceof java.util.Map)) throw new org.sjf4j.exception.BindingException(\"cannot convert node from '\" + org.sjf4j.node.Types.name(source) + \"' to '" + GeneratorUtil.escape(to.mirror.toString()) + "'\");");
+                out.line("return " + mapHelper + "((java.util.Map) source);");
+            } else {
+                String impl = _implType(method, target, to);
+                out.line(_containerLocalType(impl, to, to.mirror) + " " + targetVar + " = " + _newContainer(impl, to,
+                        (GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType) || GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType))
+                                ? "source.size()" : String.valueOf(finalReads.size())) + ";");
+                if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)) {
+                    out.line("for (Object entryObj : source.entrySet()) {");
+                    out.indent();
+                    out.line("java.util.Map.Entry<?, ?> entry = (java.util.Map.Entry<?, ?>) entryObj;");
+                    out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(finalValueConv, "entry.getValue()") + ";");
+                    out.line(targetVar + ".put((String) entry.getKey(), " + value + ");");
+                    out.dedent();
+                    out.line("}");
+                } else if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType)) {
+                    out.line("for (java.util.Map.Entry<String, Object> entry : source.entrySet()) {");
+                    out.indent();
+                    out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(finalValueConv, "entry.getValue()") + ";");
+                    out.line(targetVar + ".put(entry.getKey(), " + value + ");");
+                    out.dedent();
+                    out.line("}");
+                } else {
+                    for (Map.Entry<String, MapperModel.Read> entry : finalReads.entrySet()) {
+                        MapperModel.Read r = entry.getValue();
+                        String access = r.method == null ? "source." + r.javaName : "source." + r.method.getSimpleName() + "()";
+                        MapperModel.Converter conv = _assignable(r.type, to.value) ? new MapperModel.Converter(null, to.value) : _resolveConverter(iface, method, target, r.type, to.value, nestedMapper);
+                        if (conv == null) return;
+                        out.line(targetVar + ".put(\"" + GeneratorUtil.escape(entry.getKey()) + "\", " + _convertValue(conv, access) + ");");
+                    }
+                }
+                out.line("return " + targetVar + ";");
+            }
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private void _genJojoCreate(TypeElement iface, ExecutableElement method, GeneratedClass target) {
+        if (method.getParameters().size() != 1) {
+            _error(method, target, "JOJO create methods support exactly one source parameter");
+            return;
+        }
+        VariableElement source = method.getParameters().get(0);
+        if (!_jojoCreateSource(source.asType())) {
+            _error(method, target, "JOJO create source must be a POJO, record, Map<String, ?>, JsonObject, or Object(runtime Map)");
+            return;
+        }
+        if (!_jojoCreateAnnotationsSupported(method, target)) return;
+        if (!_validateJojoCreateSource(method, target, source.asType(), method.getReturnType())) return;
+        String helper = _ensureJojoCreateHelper(iface, method, target, source.asType(), method.getReturnType());
+        if (helper == null) return;
+        target.addMethod(out -> {
+            out.line("");
+            out.line("@Override");
+            out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
+            out.indent();
+            out.line("return " + helper + "(" + source.getSimpleName() + ");");
+            out.dedent();
+            out.line("}");
+        });
+    }
+
+    private boolean _jojoCreateSource(TypeMirror type) {
+        if (type == null || _isScalarLike(type) || _arrayLike(type) != null) return false;
+        if (GeneratorUtil.isObject(ctx, type)) return true;
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)) return true;
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) return true;
+        if (_container(type) != null || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)) return false;
+        TypeElement e = GeneratorUtil.asTypeElement(type);
+        return e != null && e.getKind() != ElementKind.ENUM;
+    }
+
+    private boolean _jojoCreateAnnotationsSupported(ExecutableElement method, GeneratedClass target) {
+        for (Mapping m : method.getAnnotationsByType(Mapping.class)) {
+            if (_isAutoMarker(m)) continue;
+            _error(method, target, "JOJO create targets currently support only auto same-name property mapping");
+            return false;
+        }
+        if (method.getAnnotationsByType(MappingIfParentPresent.class).length != 0
+                || method.getAnnotationsByType(EnsureMapping.class).length != 0) {
+            _error(method, target, "JOJO create targets do not support target-path mappings");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean _validateJojoCreateSource(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        if (!GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)) return true;
+        MapperModel.ContainerType container = _container(from);
+        if (container == null || container.key == null) return true;
+        TypeMirror stringType = ctx.elements.getTypeElement("java.lang.String").asType();
+        if (!_assignable(container.key, stringType) || !_assignable(stringType, container.key)) {
+            _error(method, target, "JOJO create from Map does not support Map key conversion; source key type must be java.lang.String");
+            return false;
+        }
+        return true;
+    }
+
+    private String _ensureJojoCreateHelper(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        String key = "jojoCreate:" + from + "->" + to;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String mapHelper = GeneratorUtil.isObject(ctx, from) ? _ensureJojoCreateHelper(iface, method, target, ctx.mapType, to) : null;
+        TypeElement targetType = GeneratorUtil.asTypeElement(to);
+        Map<String, MapperModel.Write> writes = _writes(targetType, to);
+        MapperModel.Plan plan = _creation(method, target, targetType, to, writes);
+        if (plan == null) return null;
+        String name = generation.helperName("Jojo");
+        generation.helpers.put(key, name);
+        Map<String, MapperModel.Read> reads = null;
+        if (!_dynamicSource(from)) {
+            TypeElement sourceType = GeneratorUtil.asTypeElement(from);
+            reads = sourceType == null ? null : _reads(sourceType, from);
+        }
+        Map<String, MapperModel.Read> finalReads = reads;
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            String paramType = GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType) ? "java.util.Map" : from.toString();
+            out.line("");
+            out.line("private " + to + " " + name + "(" + paramType + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            if (GeneratorUtil.isObject(ctx, from)) {
+                out.line("if (!(source instanceof java.util.Map)) throw new org.sjf4j.exception.BindingException(\"cannot convert node from '\" + org.sjf4j.node.Types.name(source) + \"' to '" + GeneratorUtil.escape(to.toString()) + "'\");");
+                out.line("return " + mapHelper + "((java.util.Map) source);");
+                out.dedent();
+                out.line("}");
+                return;
+            }
+            Map<String, String> ctorValues = new LinkedHashMap<String, String>();
+            for (String prop : plan.names) {
+                TypeMirror need = plan.writes.get(prop).type;
+                String code;
+                if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)) {
+                    MapperModel.Converter conv = _assignable(GeneratorUtil.mapValueType(ctx, from), need)
+                            ? new MapperModel.Converter(null, need)
+                            : _resolveConverter(iface, method, target, GeneratorUtil.mapValueType(ctx, from), need, "");
+                    if (conv == null) return;
+                    code = _convertValue(conv, "source.get(\"" + GeneratorUtil.escape(prop) + "\")");
+                } else if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType)) {
+                    MapperModel.Converter conv = _resolveConverter(iface, method, target, ctx.objectType, need, "");
+                    if (conv == null) return;
+                    code = _convertValue(conv, "source.getNode(\"" + GeneratorUtil.escape(prop) + "\")");
+                } else {
+                    MapperModel.Read r = finalReads.get(prop);
+                    if (r == null) {
+                        _error(method, target, "Cannot map JOJO target property '" + prop + "': no same-name source property was found");
+                        return;
+                    }
+                    String access = r.method == null ? "source." + r.javaName : "source." + r.method.getSimpleName() + "()";
+                    MapperModel.Converter conv = _assignable(r.type, need) ? new MapperModel.Converter(null, need) : _resolveConverter(iface, method, target, r.type, need, "");
+                    if (conv == null) return;
+                    code = _convertValue(conv, access);
+                }
+                ctorValues.put(prop, code);
+            }
+            if (plan.ctor != null) {
+                StringBuilder b = new StringBuilder(plan.type.toString()).append(" ").append(targetVar).append(" = new ").append(plan.type.toString()).append("(");
+                for (int i = 0; i < plan.names.size(); i++) {
+                    if (i != 0) b.append(", ");
+                    b.append(ctorValues.get(plan.names.get(i)));
+                }
+                out.line(b.append(");").toString());
+            } else {
+                out.line(plan.type + " " + targetVar + " = " + (plan.create == null ? "new " + plan.type + "()" : plan.create) + ";");
+                for (String prop : plan.names) {
+                    MapperModel.Write w = plan.writes.get(prop);
+                    if (w.setter != null) out.line(targetVar + "." + w.setter.getSimpleName() + "(" + ctorValues.get(prop) + ");");
+                    else out.line(targetVar + "." + w.javaName + " = " + ctorValues.get(prop) + ";");
+                }
+            }
+            if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.mapType)) {
+                out.line("for (Object entryObj : source.entrySet()) {");
+                out.indent();
+                out.line("java.util.Map.Entry<?, ?> entry = (java.util.Map.Entry<?, ?>) entryObj;");
+                _emitJojoExtraPut(out, targetVar, plan.names, "(String) entry.getKey()", "entry.getValue()");
+                out.dedent();
+                out.line("}");
+            } else if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType)) {
+                out.line("for (java.util.Map.Entry<String, Object> entry : source.entrySet()) {");
+                out.indent();
+                _emitJojoExtraPut(out, targetVar, plan.names, "entry.getKey()", "entry.getValue()");
+                out.dedent();
+                out.line("}");
+            }
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private void _emitJojoExtraPut(SourceWriter out, String targetVar, List<String> names, String key, String value) {
+        if (names.isEmpty()) {
+            out.line(targetVar + ".put(" + key + ", " + value + ");");
+            return;
+        }
+        StringBuilder cond = new StringBuilder();
+        for (int i = 0; i < names.size(); i++) {
+            if (i != 0) cond.append(" && ");
+            cond.append("!\"").append(GeneratorUtil.escape(names.get(i))).append("\".equals(").append(key).append(")");
+        }
+        out.line("if (" + cond + ") " + targetVar + ".put(" + key + ", " + value + ");");
+    }
+
+    private String _ensureJsonArrayProjectionHelper(GeneratedClass target, TypeMirror from, TypeMirror to) {
+        String key = "jsonArrayProjection:" + from + "->" + to;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String name = generation.helperName("JsonArray");
+        generation.helpers.put(key, name);
+        MapperModel.ArrayLikeType array = _arrayLike(from);
+        MapperModel.ContainerType container = _container(from);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String value = names.prefixed("s", "value");
+            out.line("");
+            out.line("private " + to + " " + name + "(" + from + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            out.line(to + " target = " + (_isExactJsonArray(to) ? "new org.sjf4j.JsonArray()" : "new " + to + "()") + ";");
+            if (GeneratorUtil.isObject(ctx, from)) {
+                out.line("if (!(source instanceof java.util.List)) throw new org.sjf4j.exception.BindingException(\"cannot convert node from '\" + org.sjf4j.node.Types.name(source) + \"' to '" + GeneratorUtil.escape(to.toString()) + "'\");");
+                out.line("for (Object " + value + " : (java.util.List) source) {");
+                out.indent();
+                out.line("target.add(" + value + ");");
+                out.dedent();
+                out.line("}");
+            } else if (array != null) {
+                _emitArrayLikeCopy(out, array, new MapperModel.Converter(null, array.value), "target", "source", names);
+            } else {
+                String itemType = GeneratorUtil.localTypeName(ctx, _containerSourceValueType(container));
+                out.line("for (" + itemType + " " + value + " : source) {");
+                    out.indent();
+                out.line("target.add(" + value + ");");
+                out.dedent();
+                out.line("}");
+            }
+            out.line("return target;");
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private String _ensureJavaArrayHelper(GeneratedClass target, TypeMirror fromType, MapperModel.ArrayLikeType arrayFrom,
+                                          MapperModel.ContainerType containerFrom, MapperModel.Converter conv,
+                                          TypeMirror resultType, TypeMirror elementType) {
+        String key = "javaArray:" + fromType + "->" + resultType + ":" + (conv.method == null ? "" : conv.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String name = generation.helperName("Array");
+        generation.helpers.put(key, name);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            String index = names.prefixed("s", "i");
+            String value = names.prefixed("s", "value");
+            out.line("");
+            out.line("private " + resultType + " " + name + "(" + fromType + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            out.line(resultType + " " + targetVar + " = new " + _arrayComponentTypeName(elementType) + "[" + (arrayFrom != null ? _arrayLikeSize(arrayFrom, "source") : "source.size()") + "];");
+            if (arrayFrom != null) {
+                out.line("for (int " + index + " = 0; " + index + " < " + _arrayLikeSize(arrayFrom, "source") + "; " + index + "++) {");
+                out.indent();
+                out.line(targetVar + "[" + index + "] = " + _convertValue(conv, _arrayLikeValue(arrayFrom, "source", index)) + ";");
+                out.dedent();
+                out.line("}");
+            } else {
+                out.line("int " + index + " = 0;");
+                out.line("for (" + GeneratorUtil.localTypeName(ctx, _containerSourceValueType(containerFrom)) + " " + value + " : source) {");
+                out.indent();
+                out.line(targetVar + "[" + index + "++] = " + _convertValue(conv, value) + ";");
+                out.dedent();
+                out.line("}");
+            }
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private String _arrayComponentTypeName(TypeMirror type) {
+        return type.getKind().isPrimitive() ? type.toString() : GeneratorUtil.typeName(GeneratorUtil.concrete(ctx, type));
+    }
+
+    private boolean _objectLikeSource(TypeMirror type) {
+        return GeneratorUtil.isObject(ctx, type)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
+    }
+
+    private String _objectLikeKind(TypeMirror type) {
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)) return "json";
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) return "map";
+        return "object";
+    }
+
+    private boolean _pojoTarget(TypeMirror type) {
+        if (type == null || _isScalarLike(type) || _container(type) != null || _arrayLike(type) != null) return false;
+        if (GeneratorUtil.isObject(ctx, type)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)) return false;
+        TypeElement e = GeneratorUtil.asTypeElement(type);
+        return e != null && e.getKind() != ElementKind.ENUM;
+    }
+
+    private String _ensureObjectDispatchHelper(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        String key = "objectdispatch:" + from + "->" + to;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        if (generation.inProgress.contains(key)) {
+            _error(method, target, "Recursive automatic object mapper from " + from + " to " + to + " is unsupported; provide an explicit mapper");
+            return null;
+        }
+        generation.inProgress.add(key);
+        TypeElement targetType = GeneratorUtil.asTypeElement(to);
+        Map<String, MapperModel.Write> writes = _writes(targetType, to);
+        MapperModel.Plan plan = _creation(method, target, targetType, to, writes);
+        if (plan == null) {
+            generation.inProgress.remove(key);
+            return null;
+        }
+
+        Map<String, MapperModel.Expr> jsonValues = _objectLikeValues(iface, method, target, plan, ctx.jsonObjectType, "s", "json");
+        Map<String, MapperModel.Expr> mapValues = _objectLikeValues(iface, method, target, plan, ctx.objectType, "s", "map");
+        if (jsonValues == null || mapValues == null) {
+            generation.inProgress.remove(key);
+            return null;
+        }
+        generation.inProgress.remove(key);
+
+        String name = generation.helperName("Object");
+        generation.helpers.put(key, name);
+        target.addHelper(out -> {
+            out.line("");
+            out.line("private " + to + " " + name + "(" + from + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            out.line("if (" + GeneratorUtil.classLiteral(ctx, to) + ".isInstance(source)) return (" + GeneratorUtil.localTypeName(ctx, to) + ") source;");
+            out.line("if (source instanceof org.sjf4j.JsonObject) {");
+            out.indent();
+            out.line("org.sjf4j.JsonObject s = (org.sjf4j.JsonObject) source;");
+            _emitObjectLikeReturn(out, to, plan, jsonValues);
+            out.dedent();
+            out.line("}");
+            out.line("if (source instanceof java.util.Map) {");
+            out.indent();
+            out.line("java.util.Map s = (java.util.Map) source;");
+            _emitObjectLikeReturn(out, to, plan, mapValues);
+            out.dedent();
+            out.line("}");
+            out.line("throw new org.sjf4j.exception.BindingException(\"cannot convert node from '\" + org.sjf4j.node.Types.name(source) + \"' to '" + GeneratorUtil.escape(to.toString()) + "'\");");
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private String _ensureObjectLikeHelper(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String kind) {
+        String key = "objectlike:" + kind + ":" + from + "->" + to;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        if (generation.inProgress.contains(key)) {
+            _error(method, target, "Recursive automatic object mapper from " + from + " to " + to + " is unsupported; provide an explicit mapper");
+            return null;
+        }
+        generation.inProgress.add(key);
+        TypeElement targetType = GeneratorUtil.asTypeElement(to);
+        Map<String, MapperModel.Write> writes = _writes(targetType, to);
+        MapperModel.Plan plan = _creation(method, target, targetType, to, writes);
+        if (plan == null) {
+            generation.inProgress.remove(key);
+            return null;
+        }
+        Map<String, MapperModel.Expr> values = _objectLikeValues(iface, method, target, plan, from, "source", kind);
+        if (values == null) {
+            generation.inProgress.remove(key);
+            return null;
+        }
+        generation.inProgress.remove(key);
+
+        String name = generation.helperName("Object");
+        generation.helpers.put(key, name);
+        target.addHelper(out -> {
+            out.line("");
+            out.line("private " + to + " " + name + "(" + from + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            _emitObjectLikeReturn(out, to, plan, values);
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private Map<String, MapperModel.Expr> _objectLikeValues(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                            MapperModel.Plan plan, TypeMirror from, String source, String kind) {
+        Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
+        for (String name : plan.names) {
+            TypeMirror rawType = _objectLikeValueType(from, kind);
+            MapperModel.Expr e = new MapperModel.Expr(_objectLikeRead(source, name, kind), rawType);
+            e = _maybeNestedExpr(iface, method, target, e, plan.writes.get(name).type, "", name);
+            if (e == null) return null;
+            if (!_assignable(e.type, plan.writes.get(name).type)) {
+                _error(method, target, "Cannot auto-map object target property '" + name + "': " + e.type + " is not assignable to " + plan.writes.get(name).type);
+                return null;
+            }
+            values.put(name, e);
+        }
+        return values;
+    }
+
+    private TypeMirror _objectLikeValueType(TypeMirror from, String kind) {
+        if ("map".equals(kind)) {
+            MapperModel.ContainerType c = _container(from);
+            return c == null || c.value == null ? ctx.objectType : c.value;
+        }
+        return ctx.objectType;
+    }
+
+    private String _objectLikeRead(String source, String name, String kind) {
+        String key = GeneratorUtil.escape(name);
+        return "json".equals(kind) ? source + ".getNode(\"" + key + "\")" : source + ".get(\"" + key + "\")";
+    }
+
+    private void _emitObjectLikeReturn(SourceWriter out, TypeMirror to, MapperModel.Plan plan, Map<String, MapperModel.Expr> values) {
+        for (MapperModel.Expr e : values.values()) _emitTemps(out, e);
+        if (plan.ctor != null) {
+            StringBuilder b = new StringBuilder("return new ").append(plan.type).append("(");
+            for (int i = 0; i < plan.names.size(); i++) {
+                if (i != 0) b.append(", ");
+                b.append(values.get(plan.names.get(i)).code);
+            }
+            out.line(b.append(");").toString());
+            return;
+        }
+        out.line(plan.type + " target = " + (plan.create == null ? "new " + plan.type + "()" : plan.create) + ";");
+        for (String n : plan.names) {
+            MapperModel.Expr e = values.get(n);
+            MapperModel.Write w = plan.writes.get(n);
+            if (w.setter != null) out.line("target." + w.setter.getSimpleName() + "(" + e.code + ");");
+            else out.line("target." + w.javaName + " = " + e.code + ";");
+        }
+        out.line("return target;");
+    }
+
+    private MapperModel.Converter _arrayLikeElementConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                            MapperModel.ArrayLikeType from, MapperModel.ContainerType to, String nestedMapper) {
+        if (to.value == null) {
+            _error(method, target, "Raw or non-parameterized collection types are unsupported");
+            return null;
+        }
+        if ((nestedMapper == null || nestedMapper.length() == 0) && _assignable(from.value, to.value)) return new MapperModel.Converter(null, to.value);
+
+        MapperModel.ArrayLikeType nestedArrayFrom = _arrayLike(from.value);
+        MapperModel.ContainerType nestedContainerTo = _container(to.value);
+        if (nestedArrayFrom != null && nestedContainerTo != null && !nestedContainerTo.map) {
+            MapperModel.Converter nestedConv = _arrayLikeElementConverter(iface, method, target, nestedArrayFrom, nestedContainerTo, nestedMapper);
+            if (nestedConv == null) return null;
+            String impl = _implType(method, target, nestedContainerTo);
+            if (impl == null) return null;
+            String helper = _ensureArrayLikeHelper(target, nestedArrayFrom, nestedContainerTo, nestedConv, impl, to.value);
+            return new MapperModel.Converter(helper, to.value);
+        }
+
+        MapperModel.ContainerType nestedContainerFrom = _container(from.value);
+        if (nestedContainerFrom != null && nestedContainerTo != null && nestedContainerFrom.map == nestedContainerTo.map) {
+            MapperModel.Converter nestedConv = _containerConverter(iface, method, target, nestedContainerFrom, nestedContainerTo, nestedMapper);
+            if (nestedConv == null) return null;
+            String impl = _implType(method, target, nestedContainerTo);
+            if (impl == null) return null;
+            String helper = _ensureContainerHelper(target, nestedContainerFrom, nestedContainerTo, nestedConv, impl, to.value);
+            return new MapperModel.Converter(helper, to.value);
+        }
+
+        return _resolveConverter(iface, method, target, from.value, to.value, nestedMapper);
+    }
+
+    private MapperModel.Converter _scalarConverter(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        if (from == null || to == null || _assignable(from, to)) return null;
+        TypeMirror boxedTo = GeneratorUtil.boxed(ctx, to);
+        boolean sourceObject = GeneratorUtil.isObject(ctx, from);
+
+        if (_isNumberType(boxedTo)) {
+            if (sourceObject) {
+                String helper = _ensureScalarHelper(method, target, from, boxedTo, _nodesNumberMethod(boxedTo), null);
+                return helper == null ? null : new MapperModel.Converter(helper, boxedTo);
+            }
+            if (_isNumberType(from)) {
+                String helper = _ensureScalarHelper(method, target, from, boxedTo, "number", null);
+                return helper == null ? null : new MapperModel.Converter(helper, boxedTo);
+            }
+            return null;
+        }
+
+        if (_isStringType(boxedTo)) {
+            if (sourceObject || _isCharacterType(from) || _isEnumType(from)) {
+                String helper = _ensureScalarHelper(method, target, from, boxedTo, "toString", null);
+                return helper == null ? null : new MapperModel.Converter(helper, boxedTo);
+            }
+            return null;
+        }
+
+        if (_isCharacterType(boxedTo)) {
+            if (sourceObject || _isStringType(from) || _isCharacterType(from) || _isEnumType(from)) {
+                String helper = _ensureScalarHelper(method, target, from, boxedTo, "toChar", null);
+                return helper == null ? null : new MapperModel.Converter(helper, boxedTo);
+            }
+            return null;
+        }
+
+        if (_isBooleanType(boxedTo)) {
+            if (sourceObject) {
+                String helper = _ensureScalarHelper(method, target, from, boxedTo, "toBoolean", null);
+                return helper == null ? null : new MapperModel.Converter(helper, boxedTo);
+            }
+            return null;
+        }
+
+        if (_isEnumType(boxedTo)) {
+            if (sourceObject || _isStringType(from) || _isCharacterType(from) || _isEnumType(from)) {
+                String helper = _ensureScalarHelper(method, target, from, boxedTo, "toEnum", boxedTo);
+                return helper == null ? null : new MapperModel.Converter(helper, boxedTo);
+            }
+        }
+
+        return null;
+    }
+
+    private String _ensureScalarHelper(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror boxedTo,
+                                       String kind, TypeMirror enumType) {
+        if (kind == null) return null;
+        String key = "scalar:" + kind + ":" + from + "->" + boxedTo;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String name = generation.helperName("Scalar");
+        generation.helpers.put(key, name);
+        target.addHelper(out -> {
+            out.line("");
+            out.line("private " + GeneratorUtil.localTypeName(ctx, boxedTo) + " " + name + "(" + GeneratorUtil.localTypeName(ctx, from) + " source) {");
+            out.indent();
+            if (!from.getKind().isPrimitive()) out.line("if (source == null) return null;");
+            if ("number".equals(kind)) {
+                out.line("return org.sjf4j.node.Numbers.to(source, " + GeneratorUtil.classLiteral(ctx, boxedTo) + ");");
+            } else if ("toEnum".equals(kind)) {
+                out.line("return org.sjf4j.node.Nodes.toEnum(source, " + GeneratorUtil.classLiteral(ctx, enumType) + ");");
+            } else {
+                out.line("return org.sjf4j.node.Nodes." + kind + "(source);");
+            }
+            out.dedent();
+            out.line("}");
+        });
+        return name;
+    }
+
+    private String _nodesNumberMethod(TypeMirror type) {
+        String name = _qualifiedName(type);
+        if ("java.lang.Number".equals(name)) return "toNumber";
+        if ("java.lang.Long".equals(name)) return "toLong";
+        if ("java.lang.Integer".equals(name)) return "toInt";
+        if ("java.lang.Short".equals(name)) return "toShort";
+        if ("java.lang.Byte".equals(name)) return "toByte";
+        if ("java.lang.Double".equals(name)) return "toDouble";
+        if ("java.lang.Float".equals(name)) return "toFloat";
+        if ("java.math.BigInteger".equals(name)) return "toBigInteger";
+        if ("java.math.BigDecimal".equals(name)) return "toBigDecimal";
+        return null;
+    }
+
+    private boolean _isScalarLike(TypeMirror type) {
+        return _isNumberType(type) || _isStringType(type) || _isCharacterType(type) || _isBooleanType(type) || _isEnumType(type);
+    }
+
+    private boolean _isNumberType(TypeMirror type) {
+        if (type == null) return false;
+        TypeElement number = ctx.elements.getTypeElement("java.lang.Number");
+        return number != null && ctx.types.isAssignable(GeneratorUtil.boxed(ctx, type), number.asType());
+    }
+
+    private boolean _isStringType(TypeMirror type) {
+        return "java.lang.String".equals(_qualifiedName(type));
+    }
+
+    private boolean _isCharacterType(TypeMirror type) {
+        return "java.lang.Character".equals(_qualifiedName(type));
+    }
+
+    private boolean _isBooleanType(TypeMirror type) {
+        return "java.lang.Boolean".equals(_qualifiedName(type));
+    }
+
+    private boolean _isEnumType(TypeMirror type) {
+        TypeElement e = GeneratorUtil.asTypeElement(GeneratorUtil.boxed(ctx, type));
+        return e != null && e.getKind() == ElementKind.ENUM;
+    }
+
+    private String _qualifiedName(TypeMirror type) {
+        if (type == null) return "";
+        TypeElement e = GeneratorUtil.asTypeElement(GeneratorUtil.boxed(ctx, type));
+        return e == null ? "" : e.getQualifiedName().toString();
+    }
+
     private MapperModel.Converter _autoHelperConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
         if (_assignable(from, to)) return new MapperModel.Converter(null, to);
+        if (_isScalarLike(from) || _isScalarLike(to)) return null;
+        if (_container(from) != null || _container(to) != null || _arrayLike(from) != null || _arrayLike(to) != null) return null;
         TypeElement sourceType = GeneratorUtil.asTypeElement(from);
         TypeElement targetType = GeneratorUtil.asTypeElement(to);
         if (sourceType == null || targetType == null) return null;
@@ -2130,14 +3909,14 @@ public final class MapperGenerator {
         out.line("if (source == null) return null;");
         for (MapperModel.Expr e : values.values()) _emitTemps(out, e);
         if (plan.ctor != null) {
-            StringBuilder b = new StringBuilder("return new ").append(to).append("(");
+            StringBuilder b = new StringBuilder("return new ").append(plan.type).append("(");
             for (int i = 0; i < plan.names.size(); i++) {
                 if (i != 0) b.append(", ");
                 b.append(values.get(plan.names.get(i)).code);
             }
             out.line(b.append(");").toString());
         } else {
-            out.line(to + " " + targetVar + " = new " + to + "();");
+            out.line(plan.type + " " + targetVar + " = " + (plan.create == null ? "new " + plan.type + "()" : plan.create) + ";");
             for (String n : plan.names) {
                 MapperModel.Expr e = values.get(n);
                 MapperModel.Write w = plan.writes.get(n);
@@ -2150,18 +3929,20 @@ public final class MapperGenerator {
         out.line("}");
     }
 
-    private MapperModel.Converter _converterFromMethod(TypeElement iface, ExecutableElement method, GeneratedClass target, ExecutableElement h, TypeMirror from, TypeMirror to) {
+    private MapperModel.Converter _converterFromMethod(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                       ExecutableElement h, TypeMirror from, TypeMirror to, ImportedMapperRef imported) {
         if (h.getParameters().size() != 1 || h.getReturnType().getKind() == TypeKind.VOID) {
             _error(method, target, "Converter must have one parameter and a non-void return type");
             return null;
         }
         ExecutableType ht = (ExecutableType) ctx.types.asMemberOf((DeclaredType) iface.asType(), h);
         if (!_assignable(from, ht.getParameterTypes().get(0)) || !_assignable(ht.getReturnType(), to)) {
-            _error(method, target, "Converter type mismatch");
+            if (imported == null) {
+                _error(method, target, "Converter type mismatch");
+            }
             return null;
         }
-        String prefix = h.getModifiers().contains(Modifier.STATIC) ? iface.getQualifiedName() + "." : "";
-        return new MapperModel.Converter(prefix + h.getSimpleName(), ht.getReturnType());
+        return _converter(iface, ht, h, imported);
     }
 
     private String _implType(ExecutableElement method, GeneratedClass target, MapperModel.ContainerType to) {
@@ -2171,23 +3952,12 @@ public final class MapperGenerator {
                 if (c.getParameters().isEmpty() && c.getModifiers().contains(Modifier.PUBLIC)) return to.mirror.toString();
             }
         }
-        if (to.map) return _optionType(method, "mapType", "java.util.LinkedHashMap");
+        if (to.map) return "java.util.LinkedHashMap";
         TypeMirror set = ctx.elements.getTypeElement("java.util.Set").asType();
         if (ctx.types.isAssignable(ctx.types.erasure(to.mirror), ctx.types.erasure(set))) {
-            return _optionType(method, "setType", "java.util.LinkedHashSet");
+            return "java.util.LinkedHashSet";
         }
-        return _optionType(method, "listType", "java.util.ArrayList");
-    }
-
-    private String _optionType(ExecutableElement method, String name, String def) {
-        // Class-valued annotation members can throw in processors; mirror parsing keeps this local and dependency-free.
-        for (javax.lang.model.element.AnnotationMirror a : method.getAnnotationMirrors()) {
-            if (!a.getAnnotationType().toString().equals(MapperOptions.class.getName())) continue;
-            for (Map.Entry<? extends ExecutableElement, ? extends javax.lang.model.element.AnnotationValue> e : a.getElementValues().entrySet()) {
-                if (e.getKey().getSimpleName().contentEquals(name)) return e.getValue().getValue().toString();
-            }
-        }
-        return def;
+        return "java.util.ArrayList";
     }
 
     private String _newContainer(String impl, MapperModel.ContainerType to, String size) {
@@ -2250,7 +4020,7 @@ public final class MapperGenerator {
             out.line("}");
         } else {
             String value = names.prefixed("s", "value");
-            out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " " + value + " : " + source + ") {");
+            out.line("for (" + GeneratorUtil.localTypeName(ctx, _containerSourceValueType(from)) + " " + value + " : " + source + ") {");
             out.indent();
             out.line(target + ".add(" + _convertValue(conv, value) + ");");
             out.dedent();
@@ -2316,11 +4086,14 @@ public final class MapperGenerator {
                                   ArrayPolicy policy, NullValuePolicy nulls) {
         MapperModel.ContainerType from = _container(e.type);
         MapperModel.ContainerType to = _container(w.type);
-        if (from == null || to == null || from.map || to.map) {
+        MapperModel.ArrayLikeType arrayFrom = _arrayLike(e.type);
+        if ((from == null && arrayFrom == null) || to == null || (from != null && from.map) || to.map) {
             out.line("// unsupported array mapping; processor validation should have rejected this");
             return;
         }
-        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        MapperModel.Converter conv = from == null
+                ? _arrayLikeElementConverter(iface, method, target, arrayFrom, to, nestedMapper)
+                : _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return;
         String access = read == null ? targetName + "." + w.javaName : (read.method == null ? targetName + "." + read.javaName : targetName + "." + read.method.getSimpleName() + "()");
         String source = e.code;
@@ -2330,13 +4103,15 @@ public final class MapperGenerator {
         }
         out.line("if (" + source + " != null) {");
         out.indent();
+        String sourceSize = from == null ? _arrayLikeSize(arrayFrom, source) : source + ".size()";
         if (read != null && w.setter != null) {
-            out.line("if (" + access + " == null) " + targetName + "." + w.setter.getSimpleName() + "(" + _newContainer(_implType(method, target, to), to, source + ".size()") + ");");
+            out.line("if (" + access + " == null) " + targetName + "." + w.setter.getSimpleName() + "(" + _newContainer(_implType(method, target, to), to, sourceSize) + ");");
         } else if (read != null && read.method == null) {
-            out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, source + ".size()") + ";");
+            out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, sourceSize) + ";");
         }
         if (policy == ArrayPolicy.CLEAR_ADD) out.line(access + ".clear();");
-        _emitContainerCopy(out, from, to, conv, access, source, state.names);
+        if (from == null) _emitArrayLikeCopy(out, arrayFrom, conv, access, source, state.names);
+        else _emitContainerCopy(out, from, to, conv, access, source, state.names);
         out.dedent();
         if (nulls == NullValuePolicy.SET_TO_NULL) {
             out.line("} else {");
@@ -2464,13 +4239,66 @@ public final class MapperGenerator {
         }
     }
 
+    private static final class ImportedMapperRef {
+        final TypeElement type;
+        final String simpleName;
+        final String qualifiedName;
+
+        ImportedMapperRef(TypeElement type) {
+            this.type = type;
+            this.simpleName = type.getSimpleName().toString();
+            this.qualifiedName = type.getQualifiedName().toString();
+        }
+    }
+
+    private static final class NamedMethodMatch {
+        final ExecutableElement method;
+
+        NamedMethodMatch(ExecutableElement method) {
+            this.method = method;
+        }
+    }
+
+    private static final class MappingCreatorRef {
+        final TypeMirror targetType;
+        final TypeMirror implementation;
+        final String creator;
+
+        MappingCreatorRef(TypeMirror targetType, TypeMirror implementation, String creator) {
+            this.targetType = targetType;
+            this.implementation = implementation;
+            this.creator = creator;
+        }
+    }
+
+    private static final class MappingCreatorMatch {
+        final TypeMirror type;
+        final String create;
+
+        MappingCreatorMatch(TypeMirror type, String create) {
+            this.type = type;
+            this.create = create;
+        }
+    }
+
     private static final class GenerationState {
         int nextCodec;
+        boolean failed;
         final Map<String, String> helpers = new HashMap<String, String>();
+        final Map<String, String> importedMapperFields = new HashMap<String, String>();
+        final NameAllocator importedMapperFieldNames = new NameAllocator();
         final Set<String> inProgress = new HashSet<String>();
         final NameAllocator helperNames = new NameAllocator();
+        final List<ImportedMapperRef> importedMappers;
+        final List<MappingCreatorRef> mappingCreators;
+        final TypeElement iface;
+        final GeneratedClass target;
 
-        GenerationState(TypeElement iface) {
+        GenerationState(TypeElement iface, GeneratedClass target, List<ImportedMapperRef> importedMappers, List<MappingCreatorRef> mappingCreators) {
+            this.iface = iface;
+            this.importedMappers = importedMappers;
+            this.mappingCreators = mappingCreators;
+            this.target = target;
             for (Element e : iface.getEnclosedElements()) {
                 if (e.getKind() == ElementKind.METHOD) helperNames.reserve(e.getSimpleName().toString());
             }

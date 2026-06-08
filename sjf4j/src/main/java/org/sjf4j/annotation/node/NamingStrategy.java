@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.annotation.node;
 
 import org.sjf4j.util.Strings;
 

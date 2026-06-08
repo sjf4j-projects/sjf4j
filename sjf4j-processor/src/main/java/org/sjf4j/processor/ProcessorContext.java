@@ -14,6 +14,7 @@ import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Shared processing state and frequently used type mirrors for code generation.
@@ -30,6 +31,7 @@ public final class ProcessorContext {
 
     public final TypeMirror mapType;
     public final TypeMirror listType;
+    public final TypeMirror setType;
     public final TypeMirror jsonObjectType;
     public final TypeMirror jsonArrayType;
     public final TypeMirror objectType;
@@ -44,6 +46,7 @@ public final class ProcessorContext {
         this.filer = env.getFiler();
         this.mapType = elements.getTypeElement(Map.class.getName()).asType();
         this.listType = elements.getTypeElement(List.class.getName()).asType();
+        this.setType = elements.getTypeElement(Set.class.getName()).asType();
         this.objectType = elements.getTypeElement(Object.class.getName()).asType();
         this.jsonObjectType = elements.getTypeElement(JsonObject.class.getName()).asType();
         this.jsonArrayType = elements.getTypeElement(JsonArray.class.getName()).asType();

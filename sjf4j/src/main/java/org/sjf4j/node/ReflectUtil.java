@@ -2,8 +2,10 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
+import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;

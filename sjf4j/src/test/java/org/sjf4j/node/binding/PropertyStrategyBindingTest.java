@@ -7,7 +7,7 @@ import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.PropertyStrategy;
+import org.sjf4j.annotation.node.PropertyStrategy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

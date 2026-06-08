@@ -190,13 +190,19 @@ final class MapperModel {
     static final class Plan {
         /** Constructor to use, or {@code null} for no-args + setter/field assignment. */
         final ExecutableElement ctor;
+        /** Concrete type constructed or returned by a creator. */
+        final TypeMirror type;
+        /** Creation expression for mutable creator-based plans, or {@code null}. */
+        final String create;
         /** Ordered property names to assign. */
         final List<String> names;
         /** Writable properties indexed by name. */
         final Map<String, Write> writes;
 
-        Plan(ExecutableElement c, List<String> n, Map<String, Write> w) {
+        Plan(ExecutableElement c, TypeMirror t, String createExpr, List<String> n, Map<String, Write> w) {
             ctor = c;
+            type = t;
+            create = createExpr;
             names = n;
             writes = w;
         }
@@ -216,6 +222,22 @@ final class MapperModel {
         ContainerType(boolean m, TypeMirror k, TypeMirror v, TypeMirror type) {
             map = m;
             key = k;
+            value = v;
+            mirror = type;
+        }
+    }
+
+    /** Describes an array-like source that can feed collection targets. */
+    static final class ArrayLikeType {
+        /** True for Java arrays, false for JsonArray/JAJO sources. */
+        final boolean javaArray;
+        /** Element type for Java arrays, Object for JsonArray/JAJO. */
+        final TypeMirror value;
+        /** The full source type. */
+        final TypeMirror mirror;
+
+        ArrayLikeType(boolean a, TypeMirror v, TypeMirror type) {
+            javaArray = a;
             value = v;
             mirror = type;
         }
