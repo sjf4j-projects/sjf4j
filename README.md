@@ -2,16 +2,20 @@
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
-[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j-green)](https://javadoc.io/doc/org.sjf4j/sjf4j)
-[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--schema-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-schema)
-[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--bytecode-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-bytecode) 
-![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)  
+![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)
+![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)  
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
-![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
+![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2020-12.json)
+![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2019-09.json)
+![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft7.json)  
+[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j-green)](https://javadoc.io/doc/org.sjf4j/sjf4j)
+[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--schema-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-schema)
+[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--processor-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-processor)
+
 
 SJF4J is a lightweight JSON facade and structural processing layer for Java.  
-It sits above multiple JSON libraries — including [Jackson](https://github.com/FasterXML/jackson-databind),
+It sits above multiple JSON parsers — including [Jackson](https://github.com/FasterXML/jackson-databind),
 [Gson](https://github.com/google/gson), [Fastjson2](https://github.com/alibaba/fastjson2),
 and [JSON-P](https://github.com/jakartaee/jsonp-api) — while also supporting YAML
 (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml)) and Java Properties.
@@ -19,13 +23,13 @@ and [JSON-P](https://github.com/jakartaee/jsonp-api) — while also supporting Y
 SJF4J provides **consistent structural processing across backends, data formats, and native Java object graphs**, 
 built on established JSON standards and semantics.  
 It unifies [modeling](https://sjf4j.org/docs/modeling) (OBNT),
-[parsing](https://sjf4j.org/docs/parsing) (Codec), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
+[binding](https://sjf4j.org/docs/binding) (Multi-Format), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
 [patching](https://sjf4j.org/docs/patching) (JSON Patch), [validating](https://sjf4j.org/docs/validating) (JSON Schema), 
-and [`@CompiledMapper`](https://sjf4j.org/docs/mapping) (Transformation) under one API model.
+and [mapping](https://sjf4j.org/docs/mapping) (Object-to-object) under one API model.
 
 
 ## Install
-SJF4J requires **JDK 8+** and has no external dependencies beyond the data parsers you choose to add.
+SJF4J requires **JDK 8+**, with no external dependencies beyond the data parsers you choose to add.
 
 Gradle:
 ```groovy
@@ -127,7 +131,7 @@ SJF4J is built around a single structural model: the **Object-Based Node Tree (O
 
 The following example demonstrates a complete lifecycle for processing structured data:
 ```text
-Modeling  →  Parsing  →  Navigating  →  Patching  →  Validating  →  @CompiledMapper
+Modeling  →  Binding  →  Navigating  →  Patching  →  Validating  →  Mapping
 ```
 
 #### Modeling
@@ -151,7 +155,7 @@ Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 
 
-#### Parsing
+#### Binding
 
 Use `Sjf4j` to encode and decode structured data across multiple formats.
 ```java
@@ -179,7 +183,7 @@ student.getName();                  // Alice
 student.getInt("age");              // 18
 ```
 
-Learn more → [Parsing (Codec)](https://sjf4j.org/docs/parsing)
+Learn more → [Binding (Multi-Format)](https://sjf4j.org/docs/binding)
 
 #### Navigating
 
@@ -294,22 +298,26 @@ SJF4J delivers high performance with minimal overhead while providing a unified 
 Lambda-based accessor generation minimizes reflection overhead,
 delivering performance close to direct field or method invocation.
 
-**JSON Parsing Benchmark**  
+**JSON Binding Benchmark**  
 SJF4J operates on top of underlying JSON parsers while adding structural
 capabilities and flexible binding annotations.  
 In most cases, the additional overhead remains modest compared to native
 JSON libraries.
 
 **JSON Path Navigating Benchmark**  
-SJF4J shows strong performance in `compile` and `query` workloads, while also providing `mutation` operations.  
-Within SJF4J, `Map/List` achieves the highest speed, with `JOJO` generally closer to `Map/List` than plain `POJO`.
+`JsonPath` shows strong performance in `compile` and `query` workloads, while also providing `mutation` operations.   
+For performance-critical paths, `@CompiledPath` uses bytecode generation and can be tens of times faster than standard path evaluation.
 
 **JSON Schema Validating Benchmark**  
 SJF4J fully supports JSON Schema Draft `2020-12`/`2019-09`/`draft-07` and consistently ranks
 among the top-performing Java implementations in
 [Creek Service](https://www.creekservice.org/json-schema-validation-comparison/)
-and
-[Bowtie](https://bowtie.report/) benchmarks.
+and [Bowtie](https://bowtie.report/) benchmarks.
+
+**Object-to-object Mapping Benchmark**  
+`@CompiledMapper` uses compile-time code generation to deliver performance close to hand-written mapping code 
+while supporting JSON-style paths, computed fields, and heterogeneous object structures, 
+placing SJF4J among the fastest Java mapping implementations in [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark).
 
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
