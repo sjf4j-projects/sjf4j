@@ -35,6 +35,7 @@ import java.util.Properties;
  * Use {@link #global()} for the shared process-wide default instance, or {@link #builder()}
  * to create an isolated instance with custom facades and formatting behavior.
  */
+@SuppressWarnings("deprecation")
 public final class Sjf4j {
 
     private static final Sjf4j GLOBAL = new Builder().build();

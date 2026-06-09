@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Warmup(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 2)
+@Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class JsonPathBenchmark {

@@ -21,7 +21,7 @@ built on established JSON standards and semantics.
 It unifies [modeling](https://sjf4j.org/docs/modeling) (OBNT),
 [parsing](https://sjf4j.org/docs/parsing) (Codec), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
 [patching](https://sjf4j.org/docs/patching) (JSON Patch), [validating](https://sjf4j.org/docs/validating) (JSON Schema), 
-and [mapping](https://sjf4j.org/docs/mapping) (Transformation) under one API model.
+and [`@CompiledMapper`](https://sjf4j.org/docs/mapping) (Transformation) under one API model.
 
 
 ## Install
@@ -127,7 +127,7 @@ SJF4J is built around a single structural model: the **Object-Based Node Tree (O
 
 The following example demonstrates a complete lifecycle for processing structured data:
 ```text
-Modeling  →  Parsing  →  Navigating  →  Patching  →  Validating  →  Mapping
+Modeling  →  Parsing  →  Navigating  →  Patching  →  Validating  →  @CompiledMapper
 ```
 
 #### Modeling
@@ -268,20 +268,23 @@ Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 #### Mapping
 
 While `JsonPatch` focuses on in-place partial modification,
-`NodeMapper` produces a new structure from the source object graph.
+`@CompiledMapper` generates a direct mapper implementation at compile time.
 ```java
-NodeMapper<Student, StudentDto> mapper = NodeMapper
-    .builder(Student.class, StudentDto.class)
-    .copy("studentName", "name")
-    .ensureValue("$.info.school", "PKU")
-    .compute("/avgScore", root -> 
-            root.getScores().values().stream().mapToInt(i -> i).average().orElse(0))
-    .build();
+@CompiledMapper
+public interface StudentMapper {
+    @Mapping(target = "studentName", source = "name")
+    @EnsureMapping(target = "$.info.school", compute = "() -> \"PKU\"")
+    @Mapping(target = "/totalScore", sources = "scores",
+             compute = "scores -> scores.values().stream().mapToInt(i -> i).sum()")
+    StudentDto toDto(Student student);
+}
 
-StudentDto studentDto = mapper.map(student);
+StudentMapper mapper = CompiledNodes.of(StudentMapper.class);
+
+StudentDto studentDto = mapper.toDto(student);
 ```
 
-Learn more → [Mapping (Transformation)](https://sjf4j.org/docs/mapping)
+Learn more → [`Mapping` (Object-to-object)](https://sjf4j.org/docs/mapping)
 
 
 ## Benchmarks

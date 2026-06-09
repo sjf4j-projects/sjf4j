@@ -17,7 +17,7 @@
  * mapping, declared List/Set plus raw List/Set treated as
  * List&lt;Object&gt;/Set&lt;Object&gt;, JsonArray/JAJO/Java-array, and declared-Object
  * runtime-List sources to collection targets, object-like
- * Map/JsonObject sources to POJO or record targets, root Map<String,V>
+ * Map/JsonObject sources to POJO or record targets, root `Map<String,V>`
  * projections from POJO/JsonObject/JOJO sources with typed value conversion,
  * shallow plain JsonObject root projections, shallow plain JsonArray and JAJO
  * root create targets, JOJO root create targets with typed declared

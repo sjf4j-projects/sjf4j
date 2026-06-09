@@ -12,8 +12,6 @@ import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.facade.simple.SimpleNodeFacade;
-import org.sjf4j.mapper.NodeMapper;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
@@ -35,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
+@SuppressWarnings("deprecation")
 public class Sjf4jTest {
 
 
