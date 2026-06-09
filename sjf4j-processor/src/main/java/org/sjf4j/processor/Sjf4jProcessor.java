@@ -12,6 +12,7 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import java.util.Set;
 
@@ -98,9 +99,19 @@ public final class Sjf4jProcessor extends AbstractProcessor {
             for (Element element : roundEnv.getElementsAnnotatedWith(anno)) {
                 if ("org.sjf4j.annotation.mapper.MappingCreator".equals(annoName)
                         || "org.sjf4j.annotation.mapper.MappingCreators".equals(annoName)) {
-                    if (element.getKind() != ElementKind.INTERFACE) {
-                        context.error(element, "@" + anno.getSimpleName() + " can be applied only to interfaces");
+                    if (element.getKind() == ElementKind.INTERFACE) {
+                        continue;
                     }
+                    if (element.getKind() == ElementKind.METHOD) {
+                        Element owner = element.getEnclosingElement();
+                        if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledMapper.class) == null) {
+                            context.error(element, "@" + anno + " method must be declared in an @CompiledMapper interface");
+                        } else if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
+                            context.error(element, "@" + anno + " method must be declared on an abstract @CompiledMapper method");
+                        }
+                        continue;
+                    }
+                    context.error(element, "@" + anno.getSimpleName() + " can be applied only to interfaces or methods");
                     continue;
                 }
                 if (element.getKind() != ElementKind.METHOD) {

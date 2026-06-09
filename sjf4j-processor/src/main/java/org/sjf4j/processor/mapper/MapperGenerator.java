@@ -68,6 +68,15 @@ public final class MapperGenerator {
         generation = new GenerationState(iface, target, importedMappers, mappingCreators);
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            if (!method.getModifiers().contains(Modifier.ABSTRACT)) continue;
+            if (_methodMappingCreators(method, target) == null) {
+                generation = null;
+                return;
+            }
+        }
+        for (Element member : iface.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.METHOD) continue;
 
             ExecutableElement method = (ExecutableElement) member;
             Set<Modifier> mods = method.getModifiers();
@@ -1634,13 +1643,35 @@ public final class MapperGenerator {
         return failed[0] ? null : refs;
     }
 
+    private List<MappingCreatorRef> _methodMappingCreators(ExecutableElement method, GeneratedClass target) {
+        if (generation.methodMappingCreators.containsKey(method)) return generation.methodMappingCreators.get(method);
+        if (generation.failedMethodMappingCreators.contains(method)) return null;
+        List<MappingCreatorRef> refs = new ArrayList<MappingCreatorRef>();
+        boolean[] failed = new boolean[1];
+        _collectDeclaredMappingCreators(method, target, refs, failed);
+        if (failed[0]) {
+            generation.failedMethodMappingCreators.add(method);
+            return null;
+        }
+        generation.methodMappingCreators.put(method, refs);
+        return refs;
+    }
+
     private void _collectMappingCreators(TypeElement iface, GeneratedClass target, List<MappingCreatorRef> refs, Set<String> seen, boolean[] failed) {
         String qn = iface.getQualifiedName().toString();
         if (!seen.add(qn)) return;
-        for (AnnotationMirror mirror : iface.getAnnotationMirrors()) {
+        _collectDeclaredMappingCreators(iface, target, refs, failed);
+        for (TypeMirror parent : iface.getInterfaces()) {
+            TypeElement parentType = GeneratorUtil.asTypeElement(parent);
+            if (parentType != null) _collectMappingCreators(parentType, target, refs, seen, failed);
+        }
+    }
+
+    private void _collectDeclaredMappingCreators(Element owner, GeneratedClass target, List<MappingCreatorRef> refs, boolean[] failed) {
+        for (AnnotationMirror mirror : owner.getAnnotationMirrors()) {
             String anno = mirror.getAnnotationType().toString();
             if (anno.equals(MappingCreator.class.getName())) {
-                _addMappingCreator(iface, target, refs, mirror, failed);
+                _addMappingCreator(owner, target, refs, mirror, failed);
             } else if (anno.equals("org.sjf4j.annotation.mapper.MappingCreators")) {
                 for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
                     if (!e.getKey().getSimpleName().contentEquals("value")) continue;
@@ -1648,18 +1679,14 @@ public final class MapperGenerator {
                     if (!(raw instanceof List)) continue;
                     for (Object item : (List<?>) raw) {
                         Object value = ((AnnotationValue) item).getValue();
-                        if (value instanceof AnnotationMirror) _addMappingCreator(iface, target, refs, (AnnotationMirror) value, failed);
+                        if (value instanceof AnnotationMirror) _addMappingCreator(owner, target, refs, (AnnotationMirror) value, failed);
                     }
                 }
             }
         }
-        for (TypeMirror parent : iface.getInterfaces()) {
-            TypeElement parentType = GeneratorUtil.asTypeElement(parent);
-            if (parentType != null) _collectMappingCreators(parentType, target, refs, seen, failed);
-        }
     }
 
-    private void _addMappingCreator(TypeElement iface, GeneratedClass target, List<MappingCreatorRef> refs, AnnotationMirror mirror, boolean[] failed) {
+    private void _addMappingCreator(Element owner, GeneratedClass target, List<MappingCreatorRef> refs, AnnotationMirror mirror, boolean[] failed) {
         TypeMirror targetType = null;
         TypeMirror implementation = null;
         String creator = "";
@@ -1670,25 +1697,25 @@ public final class MapperGenerator {
             else if ("creator".equals(name)) creator = String.valueOf(e.getValue().getValue()).trim();
         }
         if (targetType == null || targetType.getKind() != TypeKind.DECLARED) {
-            _error(iface, target, "@MappingCreator.targetType must be a declared type");
+            _error(owner, target, "@MappingCreator.targetType must be a declared type");
             failed[0] = true;
             return;
         }
         boolean hasImplementation = implementation != null && !"java.lang.Void".equals(_qualifiedName(implementation));
         boolean hasCreator = creator.length() != 0;
         if (hasImplementation == hasCreator) {
-            _error(iface, target, "@MappingCreator requires exactly one of implementation or creator");
+            _error(owner, target, "@MappingCreator requires exactly one of implementation or creator");
             failed[0] = true;
             return;
         }
         if (hasImplementation) {
             if (implementation.getKind() != TypeKind.DECLARED) {
-                _error(iface, target, "@MappingCreator.implementation must be a declared type");
+                _error(owner, target, "@MappingCreator.implementation must be a declared type");
                 failed[0] = true;
                 return;
             }
             if (!_assignable(implementation, targetType)) {
-                _error(iface, target, "@MappingCreator.implementation must be assignable to targetType");
+                _error(owner, target, "@MappingCreator.implementation must be assignable to targetType");
                 failed[0] = true;
                 return;
             }
@@ -1697,9 +1724,28 @@ public final class MapperGenerator {
     }
 
     private MappingCreatorMatch _creatorFor(ExecutableElement method, GeneratedClass target, TypeMirror requestedType) {
+        List<MappingCreatorRef> methodRefs = _methodMappingCreators(method, target);
+        if (methodRefs == null) return null;
+        boolean[] matched = new boolean[1];
+        boolean[] failed = new boolean[1];
+        MappingCreatorRef best = _bestCreator(method, target, requestedType, methodRefs, matched, failed);
+        if (failed[0]) return null;
+        if (!matched[0]) {
+            best = _bestCreator(method, target, requestedType, generation.mappingCreators, matched, failed);
+            if (failed[0]) return null;
+        }
+        if (best == null) return null;
+        if (best.implementation != null) return new MappingCreatorMatch(best.implementation, null);
+        return _creatorMethod(method, target, best, requestedType);
+    }
+
+    private MappingCreatorRef _bestCreator(ExecutableElement method, GeneratedClass target, TypeMirror requestedType,
+                                           List<MappingCreatorRef> refs, boolean[] matched, boolean[] failed) {
+        matched[0] = false;
         MappingCreatorRef best = null;
-        for (MappingCreatorRef ref : generation.mappingCreators) {
+        for (MappingCreatorRef ref : refs) {
             if (!ctx.types.isAssignable(requestedType, ref.targetType)) continue;
+            matched[0] = true;
             if (best == null) {
                 best = ref;
                 continue;
@@ -1709,15 +1755,15 @@ public final class MapperGenerator {
             if (refMoreSpecific && !bestMoreSpecific) best = ref;
             else if (!refMoreSpecific && !bestMoreSpecific) {
                 _error(method, target, "Ambiguous @MappingCreator for target type " + requestedType);
+                failed[0] = true;
                 return null;
             } else if (refMoreSpecific && bestMoreSpecific) {
                 _error(method, target, "Ambiguous @MappingCreator for target type " + requestedType);
+                failed[0] = true;
                 return null;
             }
         }
-        if (best == null) return null;
-        if (best.implementation != null) return new MappingCreatorMatch(best.implementation, null);
-        return _creatorMethod(method, target, best, requestedType);
+        return best;
     }
 
     private MappingCreatorMatch _creatorMethod(ExecutableElement method, GeneratedClass target, MappingCreatorRef ref, TypeMirror requestedType) {
@@ -4656,6 +4702,8 @@ public final class MapperGenerator {
         final NameAllocator helperNames = new NameAllocator();
         final List<ImportedMapperRef> importedMappers;
         final List<MappingCreatorRef> mappingCreators;
+        final Map<ExecutableElement, List<MappingCreatorRef>> methodMappingCreators = new HashMap<ExecutableElement, List<MappingCreatorRef>>();
+        final Set<ExecutableElement> failedMethodMappingCreators = new HashSet<ExecutableElement>();
         final TypeElement iface;
         final GeneratedClass target;
 

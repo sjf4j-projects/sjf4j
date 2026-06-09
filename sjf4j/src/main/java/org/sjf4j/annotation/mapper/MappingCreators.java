@@ -9,11 +9,11 @@ import java.lang.annotation.Target;
  * Container annotation for repeated {@link MappingCreator} declarations.
  *
  * <p>Users normally write repeated {@code @MappingCreator} annotations directly
- * on a {@link CompiledMapper} interface. The Java compiler uses this annotation
- * as the repeatable container.</p>
+ * on a {@link CompiledMapper} interface or mapper method. The Java compiler
+ * uses this annotation as the repeatable container.</p>
  */
 @Retention(RetentionPolicy.CLASS)
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.METHOD})
 public @interface MappingCreators {
     /** Creator declarations for one mapper interface. */
     MappingCreator[] value();

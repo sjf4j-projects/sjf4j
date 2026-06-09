@@ -1103,6 +1103,90 @@ public class MapperProcessorTest {
     }
 
     @Test
+    public void methodLevelMappingCreatorsOverrideInterfaceCreators() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-method-creator-override-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("MethodCreatorOverrideMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class User { public String name; public User(String name) { this.name = name; } }\n" +
+                        "abstract class View { public String name; }\n" +
+                        "class GlobalView extends View { public GlobalView() {} }\n" +
+                        "class FirstView extends View { public FirstView() {} }\n" +
+                        "class SecondView extends View { public SecondView() {} }\n" +
+                        "@CompiledMapper\n" +
+                        "@MappingCreator(targetType=View.class, implementation=GlobalView.class)\n" +
+                        "interface MethodCreatorOverrideMapper {\n" +
+                        "  @MappingCreator(targetType=View.class, implementation=FirstView.class) View first(User source);\n" +
+                        "  @MappingCreator(targetType=View.class, implementation=SecondView.class) View second(User source);\n" +
+                        "  View fallback(User source);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("MethodCreatorOverrideMapper.java").toFile()))).call();
+        assertTrue(ok);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.MethodCreatorOverrideMapper_Impl", true, loader);
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Object mapper = mapperClass.getConstructor().newInstance();
+        Constructor<?> userCtor = userClass.getDeclaredConstructor(String.class);
+        userCtor.setAccessible(true);
+        Object user = userCtor.newInstance("max");
+        assertEquals("testcase.FirstView", mapperClass.getMethod("first", userClass).invoke(mapper, user).getClass().getName());
+        assertEquals("testcase.SecondView", mapperClass.getMethod("second", userClass).invoke(mapper, user).getClass().getName());
+        assertEquals("testcase.GlobalView", mapperClass.getMethod("fallback", userClass).invoke(mapper, user).getClass().getName());
+    }
+
+    @Test
+    public void methodLevelMappingCreatorFactoryWorks() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-method-creator-factory-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("MethodCreatorFactoryMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class User { public String name; public User(String name) { this.name = name; } }\n" +
+                        "abstract class View { public String name; }\n" +
+                        "class ViewImpl extends View { private String marker; public ViewImpl() { this.marker = \"factory\"; } }\n" +
+                        "@CompiledMapper\n" +
+                        "interface MethodCreatorFactoryMapper {\n" +
+                        "  @MappingCreator(targetType=View.class, creator=\"this::newView\") View map(User source);\n" +
+                        "  default ViewImpl newView() { return new ViewImpl(); }\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("MethodCreatorFactoryMapper.java").toFile()))).call();
+        assertTrue(ok);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.MethodCreatorFactoryMapper_Impl", true, loader);
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Object mapper = mapperClass.getConstructor().newInstance();
+        Constructor<?> userCtor = userClass.getDeclaredConstructor(String.class);
+        userCtor.setAccessible(true);
+        Object result = mapperClass.getMethod("map", userClass).invoke(mapper, userCtor.newInstance("max"));
+        assertEquals("testcase.ViewImpl", result.getClass().getName());
+        assertEquals("factory", field(result, "marker"));
+        assertEquals("max", field(result, "name"));
+    }
+
+    @Test
     public void rejectAmbiguousMappingCreators() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-ambiguous-creator-test");
         Path src = dir.resolve("src/testcase");
@@ -1178,6 +1262,7 @@ public class MapperProcessorTest {
                         "class Source {} class Target {} class TargetImpl extends Target { public TargetImpl() {} }\n" +
                         "@MappingCreator(targetType=Target.class, implementation=TargetImpl.class) class CreatorOnClass {}\n" +
                         "interface Plain {\n" +
+                        "  @MappingCreator(targetType=Target.class, implementation=TargetImpl.class) Target creator(Source s);\n" +
                         "  @MapperOptions void options(Source s);\n" +
                         "  @Mapping(target=\"name\") Target mapping(Source s);\n" +
                         "  @MappingIfParentPresent(target=\"$.name\") void ifParent(Target t, Source s);\n" +
@@ -1194,8 +1279,65 @@ public class MapperProcessorTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("MisplacedMapperAnnotations.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@MappingCreator can be applied only to interfaces"), messages);
-        assertTrue(countOccurrences(messages, "method must be declared in an @CompiledMapper interface") >= 4, messages);
+        assertTrue(messages.contains("@MappingCreator can be applied only to interfaces or methods"), messages);
+        assertTrue(countOccurrences(messages, "method must be declared in an @CompiledMapper interface") >= 5, messages);
+    }
+
+    @Test
+    public void rejectMappingCreatorOnNonGeneratedMapperMethod() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-non-generated-method-creator-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadMethodCreatorMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source {} class Target {} class TargetImpl extends Target { public TargetImpl() {} }\n" +
+                        "@CompiledMapper interface BadMethodCreatorMapper {\n" +
+                        "  Target map(Source source);\n" +
+                        "  @MappingCreator(targetType=Target.class, implementation=TargetImpl.class) default Target helper() { return new TargetImpl(); }\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadMethodCreatorMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("method must be declared on an abstract @CompiledMapper method"), messages);
+    }
+
+    @Test
+    public void rejectInvalidMethodLevelMappingCreatorEvenWhenUnused() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-unused-method-creator-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadUnusedMethodCreatorMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source {} class Target {} class TargetImpl extends Target { public TargetImpl() {} }\n" +
+                        "@CompiledMapper interface BadUnusedMethodCreatorMapper {\n" +
+                        "  @MappingCreator(targetType=Target.class) void update(Target target, Source source);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadUnusedMethodCreatorMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("@MappingCreator requires exactly one of implementation or creator"), messages);
     }
 
     @Test
@@ -1252,9 +1394,17 @@ public class MapperProcessorTest {
     }
 
     private static Object field(Object target, String name) throws Exception {
-        java.lang.reflect.Field f = target.getClass().getDeclaredField(name);
-        f.setAccessible(true);
-        return f.get(target);
+        Class<?> type = target.getClass();
+        while (type != null) {
+            try {
+                java.lang.reflect.Field f = type.getDeclaredField(name);
+                f.setAccessible(true);
+                return f.get(target);
+            } catch (NoSuchFieldException ignored) {
+                type = type.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(name);
     }
 
     private static String diagnosticsToString(DiagnosticCollector<JavaFileObject> diagnostics) {

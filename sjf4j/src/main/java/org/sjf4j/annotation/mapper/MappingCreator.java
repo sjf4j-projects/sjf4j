@@ -11,7 +11,10 @@ import java.lang.annotation.Target;
  *
  * <p>Use this annotation when the declared target type cannot or should not be
  * instantiated by the default rules. The common case is an interface or
- * abstract target:</p>
+ * abstract target. It may be declared on a {@link CompiledMapper} interface, or
+ * on an inherited factory/mixin interface, to apply to all generated mapping
+ * methods. It may also be declared on an individual mapper method to apply only
+ * to that method's generated mapping logic:</p>
  *
  * <pre>{@code
  * @CompiledMapper
@@ -30,8 +33,10 @@ import java.lang.annotation.Target;
  * <p>Creators are selected by assignability: a creator whose
  * {@link #targetType()} is a supertype of the requested target may match, and
  * the most specific matching target type wins. Equal or unrelated matches are
- * rejected as ambiguous. Creators declared on parent mapper interfaces are
- * inherited.</p>
+ * rejected as ambiguous. Method-level creators take precedence over
+ * interface-level creators: when one or more method-level creators match, only
+ * those method-level matches participate in selection. Creators declared on
+ * parent mapper interfaces are inherited.</p>
  *
  * <p>This annotation is retained in class files so a child mapper compiled in a
  * later module can inherit creators from an already compiled parent interface.
@@ -39,7 +44,7 @@ import java.lang.annotation.Target;
  * reflection.</p>
  */
 @Retention(RetentionPolicy.CLASS)
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Repeatable(MappingCreators.class)
 public @interface MappingCreator {
     /**

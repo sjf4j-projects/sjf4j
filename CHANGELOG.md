@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added method-level `@MappingCreator` support for `@CompiledMapper` methods, allowing per-method target implementation or factory selection that overrides matching interface-level creators.
 
 
 ## [1.3.1] - 2026.06.09

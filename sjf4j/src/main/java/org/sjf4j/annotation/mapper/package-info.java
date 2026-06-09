@@ -44,7 +44,9 @@
  * imported {@code @CompiledMapper} interfaces declared through {@link
  * org.sjf4j.annotation.mapper.CompiledMapper#importing()}, generated structural
  * object helpers, or built-in strict conversions. {@link
- * org.sjf4j.annotation.mapper.MappingCreator} customizes target instantiation
- * and is inherited from parent mapper interfaces across compilation units.</p>
+ * org.sjf4j.annotation.mapper.MappingCreator} customizes target instantiation;
+ * interface-level creators are inherited from parent mapper interfaces across
+ * compilation units, and method-level creators override matching interface-level
+ * creators for the declaring mapper method.</p>
  */
 package org.sjf4j.annotation.mapper;
