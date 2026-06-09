@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+
+## [1.3.1] - 2026.06.09
 ### Breaking Changes
 - Renamed the optional compiled-path accelerator artifact from `sjf4j-bytecode` to `sjf4j-asm`; generated runtime APIs now live under `org.sjf4j.compiled`, while the ASM provider remains under `org.sjf4j.asm`.
 - Renamed path/node write helpers to make parent-missing and replace-all semantics explicit, including `putIfPresent` -> `putIfParentPresentByPath`, `remove` -> `removeIfPresent`, `replace` -> `replaceAll`, and `access*` -> read-specific `getAccess*` / write-specific `putAccess*` variants across `Nodes`, `FacadeNodes`, and native facades.
