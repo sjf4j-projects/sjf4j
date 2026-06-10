@@ -14,7 +14,7 @@
 [![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--processor-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-processor)
 
 
-SJF4J is a lightweight JSON facade and structural processing layer for Java.  
+SJF4J is a lightweight JSON facade and high-performance structural processing layer for Java.  
 It sits above multiple JSON parsers — including [Jackson](https://github.com/FasterXML/jackson-databind),
 [Gson](https://github.com/google/gson), [Fastjson2](https://github.com/alibaba/fastjson2),
 and [JSON-P](https://github.com/jakartaee/jsonp-api) — while also supporting YAML

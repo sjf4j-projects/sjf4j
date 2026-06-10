@@ -321,6 +321,79 @@ public class MapperProcessorTest {
     }
 
     @Test
+    public void rejectSetterOnlyJojoSourceReads() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-jojo-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadJojoMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.JsonObject;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source { public SetterOnlyJojo jojo; }\n" +
+                        "class SetterOnlyJojo extends JsonObject { public void setName(String name) {} }\n" +
+                        "class Target { public String name; public Target() {} }\n" +
+                        "@CompiledMapper interface BadJojoMapper { @Mapping(target=\"name\", source=\"$.jojo.name\") Target map(Source source); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadJojoMapper.java").toFile()))).call();
+        assertFalse(ok);
+        assertTrue(diagnosticsToString(diagnostics).contains("Cannot read source property 'name' on testcase.SetterOnlyJojo"), diagnosticsToString(diagnostics));
+    }
+
+    @Test
+    public void jojoExplicitPropertyNamesWinBeforeRawAccessorsInMapperGeneratedCode() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-jojo-explicit-accessor-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(generated);
+        write(src.resolve("ExplicitJojoMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.JsonObject;\n" +
+                        "import org.sjf4j.annotation.node.NodeProperty;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Order extends JsonObject {\n" +
+                        "  @NodeProperty(\"external\") public String internal;\n" +
+                        "  public String getExternal() { return \"raw\"; }\n" +
+                        "  public void setExternal(String value) {}\n" +
+                        "}\n" +
+                        "class Source { public Order jojo; }\n" +
+                        "class ReadTarget { public String external; public ReadTarget() {} }\n" +
+                        "class WriteSource { public String external; }\n" +
+                        "class WriteTarget { public Order jojo = new Order(); public WriteTarget() {} }\n" +
+                        "@CompiledMapper interface ExplicitJojoMapper {\n" +
+                        "  @Mapping(target=\"external\", source=\"$.jojo.external\") ReadTarget read(Source source);\n" +
+                        "  @Mapping(target=\"$.jojo.external\", source=\"external\") WriteTarget write(WriteSource source);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("ExplicitJojoMapper.java").toFile()))).call();
+        assertTrue(ok, diagnosticsToString(diagnostics));
+        String source = new String(Files.readAllBytes(generated.resolve("testcase/ExplicitJojoMapper_Impl.java")), StandardCharsets.UTF_8);
+        assertTrue(source.contains("s_jojo.internal"), source);
+        assertTrue(source.contains("t_jojo.internal"), source);
+        assertTrue(!source.contains(".getExternal()"), source);
+        assertTrue(!source.contains(".setExternal("), source);
+    }
+
+    @Test
     public void rejectUnsupportedStructuralMapperBoundaries() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-mapper-boundary-bad-test");
         Path src = dir.resolve("src/testcase");

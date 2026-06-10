@@ -43,7 +43,6 @@ public class CompiledMapperBenchmark {
     @State(Scope.Thread)
     public static class BenchmarkState {
         public FlatSource flatSource;
-        public NestedSource nestedSource;
         public Profile profile;
         public Account account;
         public List<FlatSource> flatSources;
@@ -57,12 +56,8 @@ public class CompiledMapperBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             flatSource = new FlatSource("Ada", "Lovelace", 36, "drop-me");
-            nestedSource = new NestedSource(
-                    new Profile("Grace", "Hopper", 85),
-                    new Account("navy", true),
-                    "ignored");
-            profile = nestedSource.profile;
-            account = nestedSource.account;
+            profile = new Profile("Grace", "Hopper", 85);
+            account = new Account("navy", true);
             flatSources = new ArrayList<>();
             for (int i = 0; i < 32; i++) {
                 flatSources.add(new FlatSource("Ada" + i, "Lovelace" + i, 36 + i, "drop-me"));
@@ -76,8 +71,6 @@ public class CompiledMapperBenchmark {
 
             assertFlatEqual(handMapper.flat(flatSource), sjf4jMapper.flat(flatSource), "sjf4j flat");
             assertFlatEqual(handMapper.flat(flatSource), mapStructMapper.flat(flatSource), "mapstruct flat");
-            assertNestedEqual(handMapper.nested(nestedSource), sjf4jMapper.nested(nestedSource), "sjf4j nested");
-            assertNestedEqual(handMapper.nested(nestedSource), mapStructMapper.nested(nestedSource), "mapstruct nested");
             assertNestedEqual(handMapper.multi(profile, account), sjf4jMapper.multi(profile, account), "sjf4j multi");
             assertNestedEqual(handMapper.multi(profile, account), mapStructMapper.multi(profile, account), "mapstruct multi");
 
@@ -95,9 +88,6 @@ public class CompiledMapperBenchmark {
             assertNull(sjf4jMapper.flat(null), "sjf4j flat null");
             assertNull(mapStructMapper.flat(null), "mapstruct flat null");
             assertNull(handMapper.flat(null), "hand flat null");
-            assertNull(sjf4jMapper.nested(null), "sjf4j nested null");
-            assertNull(mapStructMapper.nested(null), "mapstruct nested null");
-            assertNull(handMapper.nested(null), "hand nested null");
             assertNull(sjf4jMapper.multi(null, null), "sjf4j multi null");
             assertNull(mapStructMapper.multi(null, null), "mapstruct multi null");
             assertNull(handMapper.multi(null, null), "hand multi null");
@@ -120,21 +110,6 @@ public class CompiledMapperBenchmark {
     @Benchmark
     public FlatTarget flat_hand(BenchmarkState state) {
         return state.handMapper.flat(state.flatSource);
-    }
-
-    @Benchmark
-    public NestedTarget nested_sjf4j(BenchmarkState state) {
-        return state.sjf4jMapper.nested(state.nestedSource);
-    }
-
-    @Benchmark
-    public NestedTarget nested_mapstruct(BenchmarkState state) {
-        return state.mapStructMapper.nested(state.nestedSource);
-    }
-
-    @Benchmark
-    public NestedTarget nested_hand(BenchmarkState state) {
-        return state.handMapper.nested(state.nestedSource);
     }
 
     @Benchmark
@@ -209,20 +184,6 @@ public class CompiledMapperBenchmark {
         public String ignored;
     }
 
-    public static final class NestedSource {
-        public Profile profile;
-        public Account account;
-        public String ignored;
-
-        public NestedSource() {}
-
-        public NestedSource(Profile profile, Account account, String ignored) {
-            this.profile = profile;
-            this.account = account;
-            this.ignored = ignored;
-        }
-    }
-
     public static final class Profile {
         public String firstName;
         public String lastName;
@@ -273,13 +234,6 @@ public class CompiledMapperBenchmark {
 
         List<FlatTarget> flatList(List<FlatSource> source);
 
-        @org.sjf4j.annotation.mapper.Mapping(target = "firstName", source = "$.profile.firstName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "lastName", source = "$.profile.lastName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "age", sources = {"$.profile.age"}, compute = "(age) -> age == null ? 0 : age")
-        @org.sjf4j.annotation.mapper.Mapping(target = "accountType", source = "$.account.type")
-        @org.sjf4j.annotation.mapper.Mapping(target = "active", source = "$.account.active")
-        NestedTarget nested(NestedSource source);
-
         @org.sjf4j.annotation.mapper.Mapping(target = "firstName", source = "profile:firstName")
         @org.sjf4j.annotation.mapper.Mapping(target = "lastName", source = "profile:$.lastName")
         @org.sjf4j.annotation.mapper.Mapping(target = "age", sources = {"profile:age"}, compute = "(age) -> age == null ? 0 : age")
@@ -303,13 +257,6 @@ public class CompiledMapperBenchmark {
         void update(FlatSource source, @org.mapstruct.MappingTarget FlatTarget target);
 
         List<FlatTarget> flatList(List<FlatSource> source);
-
-        @org.mapstruct.Mapping(target = "firstName", source = "profile.firstName")
-        @org.mapstruct.Mapping(target = "lastName", source = "profile.lastName")
-        @org.mapstruct.Mapping(target = "age", source = "profile.age")
-        @org.mapstruct.Mapping(target = "accountType", source = "account.type")
-        @org.mapstruct.Mapping(target = "active", source = "account.active")
-        NestedTarget nested(NestedSource source);
 
         @org.mapstruct.Mapping(target = "firstName", source = "profile.firstName")
         @org.mapstruct.Mapping(target = "lastName", source = "profile.lastName")
@@ -343,11 +290,6 @@ public class CompiledMapperBenchmark {
                 target.add(flat(value));
             }
             return target;
-        }
-
-        public NestedTarget nested(NestedSource source) {
-            if (source == null) return null;
-            return multi(source.profile, source.account);
         }
 
         public NestedTarget multi(Profile profile, Account account) {

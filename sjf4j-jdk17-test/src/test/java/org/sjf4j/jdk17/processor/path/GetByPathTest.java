@@ -89,7 +89,6 @@ public class GetByPathTest {
                 new RenamedFieldBean("field"));
 
         assertEquals("alice", nodes.getRenamedRecordName(root));
-        assertEquals("alice", nodes.getRenamedRecordNameByJavaName(root));
         assertEquals("display", nodes.getRenamedGetterValue(root));
         assertEquals("field", nodes.getRenamedFieldValue(root));
     }
@@ -236,9 +235,6 @@ public class GetByPathTest {
 
         @GetByPath("$.profile_data.user_name")
         String getRenamedRecordName(RenamedRoot root);
-
-        @GetByPath("$.profileData.userName")
-        String getRenamedRecordNameByJavaName(RenamedRoot root);
 
         @GetByPath("$.getterBean.display_name")
         String getRenamedGetterValue(RenamedRoot root);

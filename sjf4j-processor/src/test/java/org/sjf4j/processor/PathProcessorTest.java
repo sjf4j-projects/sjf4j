@@ -568,6 +568,239 @@ public class PathProcessorTest {
     }
 
     @Test
+    public void compiledPathUsesPojoPropertiesBeforeJsonObjectFallbackForJojo() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-path-jojo-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(generated);
+
+        write(src.resolve("Model.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.JsonObject;\n" +
+                        "import org.sjf4j.annotation.node.NodeProperty;\n" +
+                        "public final class Model {\n" +
+                        "  public static final class Order extends JsonObject {\n" +
+                        "    public String id;\n" +
+                        "    @NodeProperty(\"external\") public String internal;\n" +
+                        "    public Customer customer;\n" +
+                        "    private String code;\n" +
+                        "    private String hidden;\n" +
+                        "    public Order() {}\n" +
+                        "    public String getCode() { return code; }\n" +
+                        "    public void setCode(String code) { this.code = code; }\n" +
+                        "    public void setHidden(String hidden) { this.hidden = hidden; }\n" +
+                        "  }\n" +
+                        "  public static final class Customer extends JsonObject {\n" +
+                        "    public String name;\n" +
+                        "    public Customer() {}\n" +
+                        "  }\n" +
+                        "}\n");
+        write(src.resolve("JojoPathNodes.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
+                        "public interface JojoPathNodes {\n" +
+                        "  @GetByPath(\"$.id\") String getId(Model.Order root);\n" +
+                        "  @GetByPath(\"$.code\") String getCode(Model.Order root);\n" +
+                        "  @GetByPath(\"$.external\") String getExternal(Model.Order root);\n" +
+                        "  @GetByPath(\"$.internal\") Object getDynamicInternal(Model.Order root);\n" +
+                        "  @GetByPath(\"$.customer.name\") String getCustomerName(Model.Order root);\n" +
+                        "  @GetByPath(\"$.dynamic\") Object getDynamic(Model.Order root);\n" +
+                        "  @GetByPath(\"$.size\") Object getDynamicSize(Model.Order root);\n" +
+                        "  @PutByPath(\"$.id\") String putId(Model.Order root, String value);\n" +
+                        "  @PutByPath(\"$.code\") String putCode(Model.Order root, String value);\n" +
+                        "  @PutByPath(\"$.external\") String putExternal(Model.Order root, String value);\n" +
+                        "  @PutByPath(\"$.hidden\") Object putHidden(Model.Order root, String value);\n" +
+                        "  @PutByPath(\"$.internal\") Object putDynamicInternal(Model.Order root, Object value);\n" +
+                        "  @PutByPath(\"$.dynamic\") Object putDynamic(Model.Order root, Object value);\n" +
+                        "  @PutByPath(\"$.size\") Object putDynamicSize(Model.Order root, Object value);\n" +
+                        "  @EnsurePutByPath(\"$.customer.name\") String ensureCustomerName(Model.Order root, String value);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
+        Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Model.java").toFile(), src.resolve("JojoPathNodes.java").toFile()
+        ));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, units).call();
+        assertTrue(ok, diagnosticsToString(diagnostics));
+        String source = new String(Files.readAllBytes(generated.resolve("testcase/JojoPathNodes_Impl.java")), StandardCharsets.UTF_8);
+        assertTrue(source.contains("root.id"), source);
+        assertTrue(source.contains("root.internal"), source);
+        assertTrue(source.contains("root.getCode()"), source);
+        assertTrue(source.contains("root.setCode(value)"), source);
+        assertTrue(source.contains("root.setHidden(value)"), source);
+        assertTrue(source.contains("root.getNode(\"internal\")"), source);
+        assertTrue(source.contains("root.put(\"internal\", value)"), source);
+        assertTrue(source.contains("root.getNode(\"dynamic\")"), source);
+        assertTrue(source.contains("root.put(\"dynamic\", value)"), source);
+        assertTrue(source.contains("root.getNode(\"size\")"), source);
+        assertTrue(source.contains("root.put(\"size\", value)"), source);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> orderClass = Class.forName("testcase.Model$Order", true, loader);
+        Class<?> customerClass = Class.forName("testcase.Model$Customer", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.JojoPathNodes_Impl", true, loader);
+        Object order = orderClass.getConstructor().newInstance();
+        Object customer = customerClass.getConstructor().newInstance();
+        Object nodes = nodesClass.getConstructor().newInstance();
+        orderClass.getField("id").set(order, "old-id");
+        orderClass.getField("internal").set(order, "old-external");
+        orderClass.getMethod("setCode", String.class).invoke(order, "old-code");
+        customerClass.getField("name").set(customer, "old-name");
+        orderClass.getField("customer").set(order, customer);
+        orderClass.getMethod("put", String.class, Object.class).invoke(order, "dynamic", "old-dynamic");
+        orderClass.getMethod("put", String.class, Object.class).invoke(order, "internal", "old-internal");
+        orderClass.getMethod("put", String.class, Object.class).invoke(order, "size", "old-size");
+
+        assertEquals("old-id", nodesClass.getMethod("getId", orderClass).invoke(nodes, order));
+        assertEquals("old-code", nodesClass.getMethod("getCode", orderClass).invoke(nodes, order));
+        assertEquals("old-external", nodesClass.getMethod("getExternal", orderClass).invoke(nodes, order));
+        assertEquals("old-internal", nodesClass.getMethod("getDynamicInternal", orderClass).invoke(nodes, order));
+        assertEquals("old-name", nodesClass.getMethod("getCustomerName", orderClass).invoke(nodes, order));
+        assertEquals("old-dynamic", nodesClass.getMethod("getDynamic", orderClass).invoke(nodes, order));
+        assertEquals("old-size", nodesClass.getMethod("getDynamicSize", orderClass).invoke(nodes, order));
+        assertEquals("old-id", nodesClass.getMethod("putId", orderClass, String.class).invoke(nodes, order, "new-id"));
+        assertEquals("new-id", orderClass.getField("id").get(order));
+        assertEquals("old-code", nodesClass.getMethod("putCode", orderClass, String.class).invoke(nodes, order, "new-code"));
+        assertEquals("new-code", orderClass.getMethod("getCode").invoke(order));
+        assertEquals("old-external", nodesClass.getMethod("putExternal", orderClass, String.class).invoke(nodes, order, "new-external"));
+        assertEquals("new-external", orderClass.getField("internal").get(order));
+        assertNull(nodesClass.getMethod("putHidden", orderClass, String.class).invoke(nodes, order, "new-hidden"));
+        assertEquals("old-internal", nodesClass.getMethod("putDynamicInternal", orderClass, Object.class).invoke(nodes, order, "new-internal"));
+        assertEquals("new-internal", orderClass.getMethod("getNode", String.class).invoke(order, "internal"));
+        assertEquals("old-dynamic", nodesClass.getMethod("putDynamic", orderClass, Object.class).invoke(nodes, order, "new-dynamic"));
+        assertEquals("new-dynamic", orderClass.getMethod("getNode", String.class).invoke(order, "dynamic"));
+        assertEquals("old-size", nodesClass.getMethod("putDynamicSize", orderClass, Object.class).invoke(nodes, order, "new-size"));
+        assertEquals("new-size", orderClass.getMethod("getNode", String.class).invoke(order, "size"));
+
+        orderClass.getField("customer").set(order, null);
+        assertNull(nodesClass.getMethod("ensureCustomerName", orderClass, String.class).invoke(nodes, order, "ensured"));
+        Object ensuredCustomer = orderClass.getField("customer").get(order);
+        assertEquals("ensured", customerClass.getField("name").get(ensuredCustomer));
+    }
+
+    @Test
+    public void rejectCompiledPathReadOfSetterOnlyJojoProperty() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-path-jojo-setter-only-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("BadJojoPaths.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.JsonObject;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "class Order extends JsonObject { public void setHidden(String hidden) {} }\n" +
+                        "@CompiledPath interface BadJojoPaths {\n" +
+                        "  @GetByPath(\"$.hidden\") String hidden(Order root);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadJojoPaths.java").toFile()))).call();
+
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("Cannot resolve readable property 'hidden' on testcase.Order"), messages);
+    }
+
+    @Test
+    public void compiledPathJojoExplicitPropertyNamesWinBeforeRawNames() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-path-jojo-explicit-name-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(generated);
+
+        write(src.resolve("ExplicitJojoPaths.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.JsonObject;\n" +
+                        "import org.sjf4j.annotation.node.NodeProperty;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "class Order extends JsonObject { @NodeProperty(\"external\") public String internal; public String external; }\n" +
+                        "@CompiledPath interface ExplicitJojoPaths {\n" +
+                        "  @GetByPath(\"$.external\") String getExternal(Order root);\n" +
+                        "  @PutByPath(\"$.external\") String putExternal(Order root, String value);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("ExplicitJojoPaths.java").toFile()))).call();
+
+        assertTrue(ok, diagnosticsToString(diagnostics));
+        String source = new String(Files.readAllBytes(generated.resolve("testcase/ExplicitJojoPaths_Impl.java")), StandardCharsets.UTF_8);
+        assertTrue(source.contains("root.internal"), source);
+        assertTrue(!source.contains("root.external"), source);
+    }
+
+    @Test
+    public void compiledPathJojoExplicitFieldWinsBeforeRawAccessorNames() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-path-jojo-explicit-accessor-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(generated);
+
+        write(src.resolve("ExplicitAccessorJojoPaths.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.JsonObject;\n" +
+                        "import org.sjf4j.annotation.node.NodeProperty;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "class Order extends JsonObject {\n" +
+                        "  @NodeProperty(\"external\") public String internal;\n" +
+                        "  public String getExternal() { return \"raw\"; }\n" +
+                        "  public void setExternal(String value) {}\n" +
+                        "}\n" +
+                        "@CompiledPath interface ExplicitAccessorJojoPaths {\n" +
+                        "  @GetByPath(\"$.external\") String getExternal(Order root);\n" +
+                        "  @PutByPath(\"$.external\") String putExternal(Order root, String value);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("ExplicitAccessorJojoPaths.java").toFile()))).call();
+
+        assertTrue(ok, diagnosticsToString(diagnostics));
+        String source = new String(Files.readAllBytes(generated.resolve("testcase/ExplicitAccessorJojoPaths_Impl.java")), StandardCharsets.UTF_8);
+        assertTrue(source.contains("root.internal"), source);
+        assertTrue(!source.contains("root.getExternal()"), source);
+        assertTrue(!source.contains("root.setExternal(value)"), source);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void supportsConcreteGenericPathTypes() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-path-concrete-generic-test");
