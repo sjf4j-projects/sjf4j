@@ -143,11 +143,11 @@ public final class MapperGenerator {
             _genJavaArrayCreate(iface, method, target);
             return;
         }
-        if (_isJajoTarget(method.getReturnType())) {
+        if (GeneratorUtil.isJajoType(ctx, method.getReturnType())) {
             _genJsonArrayProjection(method, target, method.getReturnType());
             return;
         }
-        if (_isJojoTarget(method.getReturnType())) {
+        if (GeneratorUtil.isJojoType(ctx, method.getReturnType())) {
             _genJojoCreate(iface, method, target);
             return;
         }
@@ -323,7 +323,7 @@ public final class MapperGenerator {
             _error(method, target, "JAJO update targets are unsupported; update plain JsonArray outside CompiledMapper");
             return;
         }
-        if (_isJojoTarget(params.get(0).asType())) {
+        if (GeneratorUtil.isJojoType(ctx, params.get(0).asType())) {
             _error(method, target, "JOJO update targets are unsupported; update plain JsonObject outside CompiledMapper");
             return;
         }
@@ -337,7 +337,7 @@ public final class MapperGenerator {
             _error(method, target, "Root @OneOf update targets are unsupported");
             return;
         }
-        if (_isRecord(targetType)) {
+        if (GeneratorUtil.isRecord(targetType)) {
             _error(method, target, "Update target type must be mutable; records and constructor-only targets are unsupported");
             return;
         }
@@ -520,7 +520,7 @@ public final class MapperGenerator {
             return;
         }
         if (!_validateJsonArrayProjectionSource(method, target, source.asType())) return;
-        if (_isJajoTarget(to) && !_hasPublicNoArgsConstructor(to)) {
+        if (GeneratorUtil.isJajoType(ctx, to) && !_hasPublicNoArgsConstructor(to)) {
             _error(method, target, "JAJO target type must provide a public no-args constructor");
             return;
         }
@@ -948,7 +948,7 @@ public final class MapperGenerator {
 
     private boolean _hasAutoSource(List<MapperModel.SourceParam> sources, String name) {
         MapperModel.SourceParam first = sources.get(0);
-        return first.dynamic || first.reads.containsKey(name);
+        return first.dynamic || first.reads.containsKey(name) || GeneratorUtil.isJojoType(ctx, first.element.asType());
     }
 
     private void _count(Map<String, Integer> counts, String source) {
@@ -1252,7 +1252,17 @@ public final class MapperGenerator {
     }
 
     private TypeMirror _readNameType(ExecutableElement method, GeneratedClass target, TypeMirror parent, String name) {
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) return ctx.objectType;
+        if (GeneratorUtil.isObject(ctx, parent)) return ctx.objectType;
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            MapperModel.Read r = _jojoRead(parent, name);
+            if (r != null) return r.type;
+            if (_jojoWrite(parent, name) != null) {
+                _error(method, target, "Cannot resolve readable target path property '" + name + "' on " + parent);
+                return null;
+            }
+            return ctx.objectType;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) return ctx.objectType;
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) return GeneratorUtil.mapValueType(ctx, parent);
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) { _error(method, target, "Cannot resolve target path property '" + name + "' on " + parent); return null; }
@@ -1263,7 +1273,17 @@ public final class MapperGenerator {
     }
 
     private TypeMirror _writeNameType(ExecutableElement method, GeneratedClass target, TypeMirror parent, String name) {
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) return ctx.objectType;
+        if (GeneratorUtil.isObject(ctx, parent)) return ctx.objectType;
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            MapperModel.Write w = _jojoWrite(parent, name);
+            if (w != null) return w.type;
+            if (_jojoRead(parent, name) != null) {
+                _error(method, target, "Cannot resolve writable target path property '" + name + "' on " + parent);
+                return null;
+            }
+            return ctx.objectType;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) return ctx.objectType;
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) return GeneratorUtil.mapValueType(ctx, parent);
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) { _error(method, target, "Cannot resolve writable target path property '" + name + "' on " + parent); return null; }
@@ -1340,6 +1360,11 @@ public final class MapperGenerator {
 
     private void _emitReadName(SourceWriter out, TypeMirror parent, String var, String name, String next, TypeMirror type) {
         if (GeneratorUtil.isObject(ctx, parent)) out.line(_localTypeName(type, true) + " " + next + " = org.sjf4j.node.Nodes.getInObject(" + var + ", \"" + GeneratorUtil.escape(name) + "\");");
+        else if (GeneratorUtil.isJojoType(ctx, parent)) {
+            MapperModel.Read r = _jojoRead(parent, name);
+            if (r != null) out.line(_localTypeName(type, true) + " " + next + " = " + (r.method != null ? var + "." + r.method.getSimpleName() + "()" : var + "." + r.javaName) + ";");
+            else out.line(_localTypeName(type, true) + " " + next + " = " + var + ".getNode(\"" + GeneratorUtil.escape(name) + "\");");
+        }
         else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) out.line(_localTypeName(type, true) + " " + next + " = " + var + ".getNode(\"" + GeneratorUtil.escape(name) + "\");");
         else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) out.line(_localTypeName(type, true) + " " + next + " = (" + _localTypeName(type, true) + ") " + var + ".get(\"" + GeneratorUtil.escape(name) + "\");");
         else {
@@ -1383,6 +1408,11 @@ public final class MapperGenerator {
         if (tail instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) tail).name;
             if (GeneratorUtil.isObject(ctx, parent)) out.line("org.sjf4j.node.Nodes.putInObject(" + var + ", \"" + GeneratorUtil.escape(name) + "\", " + value + ");");
+            else if (GeneratorUtil.isJojoType(ctx, parent)) {
+                MapperModel.Write w = _jojoWrite(parent, name);
+                if (w != null) out.line(w.setter != null ? var + "." + w.setter.getSimpleName() + "(" + value + ");" : var + "." + w.javaName + " = " + value + ";");
+                else out.line(var + ".put(\"" + GeneratorUtil.escape(name) + "\", " + value + ");");
+            }
             else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) out.line(var + ".put(\"" + GeneratorUtil.escape(name) + "\", " + value + ");");
             else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) out.line(var + ".put(\"" + GeneratorUtil.escape(name) + "\", " + value + ");");
             else {
@@ -1490,6 +1520,7 @@ public final class MapperGenerator {
      * getters, public fields, and record accessors.
      */
     private Map<String, MapperModel.Read> _reads(TypeElement type, TypeMirror owner) {
+        if (GeneratorUtil.isJojoType(ctx, owner)) return _jojoReads(type, owner);
         Map<String, MapperModel.Read> r = new HashMap<String, MapperModel.Read>();
         for (Element member : ctx.elements.getAllMembers(type)) {
             Set<Modifier> m = member.getModifiers();
@@ -1509,17 +1540,9 @@ public final class MapperGenerator {
                 ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, e);
                 if (mt.getReturnType().getKind() == TypeKind.VOID) continue;
 
-                String n = e.getSimpleName().toString();
-                if (n.equals("getClass")) continue;
-                if (n.startsWith("get") && n.length() > 3) {
-                    String base = GeneratorUtil.decap(n.substring(3));
-                    r.put(_nodeName(e, base), new MapperModel.Read(e, base, mt.getReturnType()));
-                } else if (n.startsWith("is") && n.length() > 2) {
-                    String base = GeneratorUtil.decap(n.substring(2));
-                    r.put(_nodeName(e, base), new MapperModel.Read(e, base, mt.getReturnType()));
-                } else if (_isRecord(type)) {
-                    r.put(_nodeName(e, n), new MapperModel.Read(e, n, mt.getReturnType()));
-                }
+                String base = GeneratorUtil.readablePropertyBase(ctx, type, owner, e);
+                if (base == null && GeneratorUtil.explicitNodePropertyName(e) == null) continue;
+                r.put(GeneratorUtil.readablePropertyName(ctx, type, owner, e), new MapperModel.Read(e, base == null ? e.getSimpleName().toString() : base, mt.getReturnType()));
             }
         }
         return r;
@@ -1530,6 +1553,7 @@ public final class MapperGenerator {
      * fields so user validation or normalization in setters is preserved.
      */
     private Map<String, MapperModel.Write> _writes(TypeElement type, TypeMirror owner) {
+        if (GeneratorUtil.isJojoType(ctx, owner)) return _jojoWrites(type, owner);
         Map<String, MapperModel.Write> w = new LinkedHashMap<String, MapperModel.Write>();
         for (Element member : ctx.elements.getAllMembers(type)) {
             Set<Modifier> m = member.getModifiers();
@@ -1558,6 +1582,99 @@ public final class MapperGenerator {
         return w;
     }
 
+    private Map<String, MapperModel.Read> _jojoReads(TypeElement type, TypeMirror owner) {
+        Map<String, MapperModel.Read> reads = new LinkedHashMap<String, MapperModel.Read>();
+        for (int pass = 0; pass < 2; pass++) {
+            boolean explicitOnly = pass == 0;
+            for (Element member : ctx.elements.getAllMembers(type)) {
+                Set<Modifier> modifiers = member.getModifiers();
+                if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC) || GeneratorUtil.isJsonBaseMember(member)) continue;
+                if (member.getKind() != ElementKind.FIELD) continue;
+                String javaName = member.getSimpleName().toString();
+                String nodeName = _nodeName(member, javaName);
+                if ((GeneratorUtil.explicitNodePropertyName(member) != null) == explicitOnly) {
+                    if (explicitOnly || !reads.containsKey(nodeName)) reads.put(nodeName, new MapperModel.Read(null, javaName, ctx.types.asMemberOf((DeclaredType) owner, member)));
+                }
+            }
+            for (Element member : ctx.elements.getAllMembers(type)) {
+                Set<Modifier> modifiers = member.getModifiers();
+                if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC) || GeneratorUtil.isJsonBaseMember(member)) continue;
+                if (member.getKind() != ElementKind.METHOD) continue;
+                ExecutableElement e = (ExecutableElement) member;
+                if (!e.getParameters().isEmpty()) continue;
+                ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, e);
+                if (mt.getReturnType().getKind() == TypeKind.VOID) continue;
+                String javaName = GeneratorUtil.readablePropertyBase(ctx, type, owner, e);
+                if (javaName == null) continue;
+                String nodeName = _nodeName(e, javaName);
+                if ((GeneratorUtil.explicitNodePropertyName(e) != null) == explicitOnly) {
+                    if (explicitOnly || !reads.containsKey(nodeName)) reads.put(nodeName, new MapperModel.Read(e, javaName, mt.getReturnType()));
+                }
+            }
+        }
+        return reads;
+    }
+
+    private Map<String, MapperModel.Write> _jojoWrites(TypeElement type, TypeMirror owner) {
+        Map<String, MapperModel.Write> writes = new LinkedHashMap<String, MapperModel.Write>();
+        for (int pass = 0; pass < 2; pass++) {
+            boolean explicitOnly = pass == 0;
+            for (Element member : ctx.elements.getAllMembers(type)) {
+                Set<Modifier> modifiers = member.getModifiers();
+                if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC) || modifiers.contains(Modifier.FINAL) || GeneratorUtil.isJsonBaseMember(member)) continue;
+                if (member.getKind() != ElementKind.FIELD) continue;
+                String javaName = member.getSimpleName().toString();
+                String nodeName = _nodeName(member, javaName);
+                if ((GeneratorUtil.explicitNodePropertyName(member) != null) == explicitOnly) {
+                    if (!writes.containsKey(nodeName)) writes.put(nodeName, new MapperModel.Write(null, javaName, ctx.types.asMemberOf((DeclaredType) owner, member)));
+                }
+            }
+            for (Element member : ctx.elements.getAllMembers(type)) {
+                Set<Modifier> modifiers = member.getModifiers();
+                if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC) || GeneratorUtil.isJsonBaseMember(member)) continue;
+                if (member.getKind() != ElementKind.METHOD) continue;
+                ExecutableElement e = (ExecutableElement) member;
+                if (!e.getSimpleName().toString().startsWith("set") || e.getParameters().size() != 1) continue;
+                ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, e);
+                if (mt.getReturnType().getKind() != TypeKind.VOID) continue;
+                String javaName = GeneratorUtil.writablePropertyBase(e);
+                if (javaName == null) continue;
+                String nodeName = _nodeName(e, javaName);
+                if ((GeneratorUtil.explicitNodePropertyName(e) != null) == explicitOnly) {
+                    if (explicitOnly || !writes.containsKey(nodeName)) writes.put(nodeName, new MapperModel.Write(e, javaName, mt.getParameterTypes().get(0)));
+                }
+            }
+        }
+        return writes;
+    }
+
+    private MapperModel.Read _jojoRead(TypeMirror owner, String name) {
+        TypeElement type = GeneratorUtil.asTypeElement(owner);
+        if (type == null) return null;
+        ExecutableElement getter = GeneratorUtil.findJojoReadable(ctx, type, owner, name);
+        if (getter != null) {
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, getter);
+            String javaName = GeneratorUtil.readablePropertyBase(ctx, type, owner, getter);
+            return new MapperModel.Read(getter, javaName == null ? getter.getSimpleName().toString() : javaName, mt.getReturnType());
+        }
+        VariableElement field = GeneratorUtil.findJojoReadableField(ctx, type, name);
+        if (field != null) return new MapperModel.Read(null, field.getSimpleName().toString(), ctx.types.asMemberOf((DeclaredType) owner, field));
+        return null;
+    }
+
+    private MapperModel.Write _jojoWrite(TypeMirror owner, String name) {
+        TypeElement type = GeneratorUtil.asTypeElement(owner);
+        if (type == null) return null;
+        ExecutableElement setter = GeneratorUtil.findJojoWritable(ctx, type, owner, name);
+        if (setter != null) {
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, setter);
+            return new MapperModel.Write(setter, GeneratorUtil.decap(setter.getSimpleName().toString().substring(3)), mt.getParameterTypes().get(0));
+        }
+        VariableElement field = GeneratorUtil.findJojoWritableField(ctx, type, name);
+        if (field != null) return new MapperModel.Write(null, field.getSimpleName().toString(), ctx.types.asMemberOf((DeclaredType) owner, field));
+        return null;
+    }
+
     /**
      * Selects the target construction plan. No-args targets are assigned after
      * construction; records and unique public constructors are assigned through
@@ -1583,7 +1700,7 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Plan _creationForType(ExecutableElement method, GeneratedClass target, TypeElement type, TypeMirror mirror, Map<String, MapperModel.Write> writes) {
-        if (_isRecord(type)) {
+        if (GeneratorUtil.isRecord(type)) {
             List<ExecutableElement> ctors = _publicConstructors(type);
             ExecutableElement ctor = ctors.isEmpty() ? null : ctors.get(0);
             if (ctor == null) {
@@ -1814,7 +1931,7 @@ public final class MapperGenerator {
     private boolean _dynamicSource(TypeMirror type) {
         return GeneratorUtil.isObject(ctx, type)
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)
-                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
+                || _isExactJsonObject(type);
     }
 
     private MapperModel.Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources, boolean multi,
@@ -1970,8 +2087,16 @@ public final class MapperGenerator {
     }
 
     private MapperModel.GroupAccess _groupNameAccess(TypeMirror parentType, String parentVar, String name) {
-        if (_dynamicSource(parentType) || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.listType)
+        if (GeneratorUtil.isObject(ctx, parentType) || _isExactJsonObject(parentType)
+                || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.mapType)
+                || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.listType)
                 || parentType.getKind() == TypeKind.ARRAY) return null;
+        if (GeneratorUtil.isJojoType(ctx, parentType)) {
+            MapperModel.Read read = _jojoRead(parentType, name);
+            if (read == null) return null;
+            String code = read.method == null ? parentVar + "." + read.javaName : parentVar + "." + read.method.getSimpleName() + "()";
+            return new MapperModel.GroupAccess(code, read.type);
+        }
         TypeElement type = GeneratorUtil.asTypeElement(parentType);
         if (type == null) return null;
         MapperModel.Read read = _reads(type, parentType).get(name);
@@ -2104,11 +2229,15 @@ public final class MapperGenerator {
         }
 
         MapperModel.SourceParam first = sources.get(0);
-        if (!first.dynamic && !first.reads.containsKey(source) && !source.startsWith("$") && !source.startsWith("/")) {
+        if (!_canReadSimpleSource(first, source) && !source.startsWith("$") && !source.startsWith("/")) {
             _error(method, target, "Cannot resolve source '" + source + "' on first source parameter '" + first.name + "'");
             return null;
         }
         return new MapperModel.ResolvedSource(first, source, true);
+    }
+
+    private boolean _canReadSimpleSource(MapperModel.SourceParam source, String name) {
+        return source.dynamic || source.reads.containsKey(name) || GeneratorUtil.isJojoType(ctx, source.element.asType());
     }
 
     private MapperModel.SourceParam _sourceByName(List<MapperModel.SourceParam> sources, String name) {
@@ -3450,21 +3579,11 @@ public final class MapperGenerator {
     }
 
     private boolean _isExactJsonObject(TypeMirror type) {
-        return type != null && ctx.types.isSameType(ctx.types.erasure(type), ctx.types.erasure(ctx.jsonObjectType));
+        return GeneratorUtil.isSameErasure(ctx, type, ctx.jsonObjectType);
     }
 
     private boolean _isExactJsonArray(TypeMirror type) {
-        return type != null && ctx.types.isSameType(ctx.types.erasure(type), ctx.types.erasure(ctx.jsonArrayType));
-    }
-
-    private boolean _isJojoTarget(TypeMirror type) {
-        return type != null && !_isExactJsonObject(type)
-                && GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
-    }
-
-    private boolean _isJajoTarget(TypeMirror type) {
-        return type != null && !_isExactJsonArray(type)
-                && GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType);
+        return GeneratorUtil.isSameErasure(ctx, type, ctx.jsonArrayType);
     }
 
     private boolean _jsonObjectProjectionSource(TypeMirror type) {
@@ -3746,10 +3865,26 @@ public final class MapperGenerator {
                             : _resolveConverter(iface, method, target, GeneratorUtil.mapValueType(ctx, from), need, "");
                     if (conv == null) return;
                     code = _convertValue(conv, "source.get(\"" + GeneratorUtil.escape(prop) + "\")");
-                } else if (GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType)) {
+                } else if (_isExactJsonObject(from)) {
                     MapperModel.Converter conv = _resolveConverter(iface, method, target, ctx.objectType, need, "");
                     if (conv == null) return;
                     code = _convertValue(conv, "source.getNode(\"" + GeneratorUtil.escape(prop) + "\")");
+                } else if (GeneratorUtil.isJojoType(ctx, from)) {
+                    MapperModel.Read r = _jojoRead(from, prop);
+                    if (r != null) {
+                        String access = r.method == null ? "source." + r.javaName : "source." + r.method.getSimpleName() + "()";
+                        MapperModel.Converter conv = _assignable(r.type, need) ? new MapperModel.Converter(null, need) : _resolveConverter(iface, method, target, r.type, need, "");
+                        if (conv == null) return;
+                        code = _convertValue(conv, access);
+                    } else {
+                        if (_jojoWrite(from, prop) != null) {
+                            _error(method, target, "Cannot map JOJO target property '" + prop + "': no same-name source property was found");
+                            return;
+                        }
+                        MapperModel.Converter conv = _resolveConverter(iface, method, target, ctx.objectType, need, "");
+                        if (conv == null) return;
+                        code = _convertValue(conv, "source.getNode(\"" + GeneratorUtil.escape(prop) + "\")");
+                    }
                 } else {
                     MapperModel.Read r = finalReads.get(prop);
                     if (r == null) {
@@ -3900,11 +4035,11 @@ public final class MapperGenerator {
     private boolean _objectLikeSource(TypeMirror type) {
         return GeneratorUtil.isObject(ctx, type)
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)
-                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
+                || _isExactJsonObject(type);
     }
 
     private String _objectLikeKind(TypeMirror type) {
-        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)) return "json";
+        if (_isExactJsonObject(type)) return "json";
         if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) return "map";
         return "object";
     }
@@ -4541,10 +4676,6 @@ public final class MapperGenerator {
     private boolean _assignable(TypeMirror from, TypeMirror to) {
         if (from == null) return true;
         return GeneratorUtil.isAssignableBoxedGeneric(ctx, from, to);
-    }
-
-    private boolean _isRecord(TypeElement t) {
-        return "RECORD".equals(t.getKind().name());
     }
 
     private String _javaId(String s) {

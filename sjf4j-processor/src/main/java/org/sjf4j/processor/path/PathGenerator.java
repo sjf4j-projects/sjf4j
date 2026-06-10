@@ -401,13 +401,13 @@ public final class PathGenerator {
      * generic container element types can share the same checks.
      */
     private boolean _validateAssignable(Element element, GeneratedClass target, TypeMirror from, TypeMirror to, String label) {
-        if (_isAssignableBoxed(from, to)) return true;
+        if (GeneratorUtil.isAssignableBoxedGeneric(ctx, from, to)) return true;
         _error(element, target, label + " mismatch: cannot assign " + from + " to " + to);
         return false;
     }
 
     private boolean _validateGetReturnAssignable(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
-        if (_isAssignableBoxed(from, to)) return true;
+        if (GeneratorUtil.isAssignableBoxedGeneric(ctx, from, to)) return true;
         _error(method, target, "@GetByPath return type mismatch: cannot assign " + from + " to " + to);
         return false;
     }
@@ -531,9 +531,19 @@ public final class PathGenerator {
     }
 
     private TypeMirror _resolvePutNameValueType(TypeMirror parent, String name, Element context, GeneratedClass target) {
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
             return ctx.objectType;
         }
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            TypeMirror writable = _pojoWritableNameType(parent, name);
+            if (writable != null) return writable;
+            if (_pojoReadableNameType(parent, name) != null) {
+                _error(context, target, "Cannot resolve writable property '" + name + "' on " + parent);
+                return null;
+            }
+            return ctx.objectType;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) return ctx.objectType;
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
             return GeneratorUtil.mapValueType(ctx, parent);
         }
@@ -560,10 +570,17 @@ public final class PathGenerator {
      * traversal needs to create a missing child container.
      */
     private boolean _validateWritableNameIfPojo(TypeMirror parent, String name, Element context, GeneratedClass target) {
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
-                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
             return true;
         }
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            if (_pojoWritableNameType(parent, name) != null) return true;
+            if (_pojoReadableNameType(parent, name) == null) return true;
+            _error(context, target, "Cannot resolve writable property '" + name + "' on " + parent);
+            return false;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
+                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) return true;
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return true;
         ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
@@ -579,10 +596,17 @@ public final class PathGenerator {
      * put-if-absent checks.
      */
     private boolean _validateReadableNameIfPojo(TypeMirror parent, String name, Element context, GeneratedClass target) {
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
-                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
             return true;
         }
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            if (_pojoReadableNameType(parent, name) != null) return true;
+            if (_pojoWritableNameType(parent, name) == null) return true;
+            _error(context, target, "Cannot resolve readable property '" + name + "' on " + parent);
+            return false;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
+                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) return true;
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return true;
         if (GeneratorUtil.findReadable(ctx, type, parent, name) != null || GeneratorUtil.findReadableField(ctx, type, name) != null) return true;
@@ -636,9 +660,14 @@ public final class PathGenerator {
     }
 
     private TypeMirror _resolvePutNameOldType(TypeMirror parent, String name) {
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
             return ctx.objectType;
         }
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            TypeMirror readable = _pojoReadableNameType(parent, name);
+            return readable == null ? ctx.objectType : readable;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) return ctx.objectType;
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
             return GeneratorUtil.mapValueType(ctx, parent);
         }
@@ -757,7 +786,10 @@ public final class PathGenerator {
     }
 
     private TypeMirror _nameValueType(TypeMirror current, String name) {
-        if (GeneratorUtil.isObject(ctx, current) || GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonObjectType)) return ctx.objectType;
+        if (GeneratorUtil.isObject(ctx, current)) return ctx.objectType;
+        if (name != null && GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonObjectType)) {
+            return GeneratorUtil.resolveNameType(ctx, current, name);
+        }
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.mapType)) return GeneratorUtil.mapValueType(ctx, current);
         TypeElement type = GeneratorUtil.asTypeElement(current);
         if (type != null && name != null) {
@@ -818,6 +850,10 @@ public final class PathGenerator {
             _emitNullCheck(out, nextVar, ctx.objectType, checkValueNull ? nullReturn : null);
             return ctx.objectType;
         }
+        if (GeneratorUtil.isJojoType(ctx, current)) {
+            TypeMirror outputType = _emitPojoName(out, current, name, currentVar, nextVar, nullReturn, checkValueNull);
+            if (outputType != null) return outputType;
+        }
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonObjectType)) {
             out.line("Object " + nextVar + " = " + currentVar + ".getNode(\"" + GeneratorUtil.escape(name) + "\");");
             _emitNullCheck(out, nextVar, ctx.objectType, checkValueNull ? nullReturn : null);
@@ -832,11 +868,19 @@ public final class PathGenerator {
             return outputType;
         }
 
-        TypeElement type = GeneratorUtil.asTypeElement(current);
-        if (type == null) {
+        TypeMirror outputType = _emitPojoName(out, current, name, currentVar, nextVar, nullReturn, checkValueNull);
+        if (outputType == null) {
             throw new AssertionError("CompiledPath emitName cannot resolve type element for " + current);
         }
-        ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, current, name);
+        return outputType;
+    }
+
+    private TypeMirror _emitPojoName(SourceWriter out, TypeMirror current, String name, String currentVar, String nextVar,
+                                     String nullReturn, boolean checkValueNull) {
+        TypeElement type = GeneratorUtil.asTypeElement(current);
+        if (type == null) return null;
+        boolean jojo = GeneratorUtil.isJojoType(ctx, current);
+        ExecutableElement getter = jojo ? GeneratorUtil.findJojoReadable(ctx, type, current, name) : GeneratorUtil.findReadable(ctx, type, current, name);
         if (getter != null) {
             ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
             TypeMirror outputType = mt.getReturnType();
@@ -846,11 +890,8 @@ public final class PathGenerator {
             return outputType;
         }
 
-        VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
-        if (field == null) {
-            throw new AssertionError("CompiledPath emitName cannot resolve validated field '" +
-                    name + "' on " + current);
-        }
+        VariableElement field = jojo ? GeneratorUtil.findJojoReadableField(ctx, type, name) : GeneratorUtil.findReadableField(ctx, type, name);
+        if (field == null) return null;
         TypeMirror outputType = ctx.types.asMemberOf((DeclaredType) current, field);
         out.line(_readValueTypeName(outputType) + " " + nextVar + " = " + currentVar + "." + field.getSimpleName() + ";");
         _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
@@ -875,7 +916,7 @@ public final class PathGenerator {
         }
         if (current.getKind() == TypeKind.ARRAY) {
             TypeMirror outputType = ((ArrayType) current).getComponentType();
-            out.line("int " + indexVar + " = " + _indexExpr(index, currentVar + ".length") + ";");
+            out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, currentVar + ".length") + ";");
             out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + currentVar + ".length) " + nullReturn);
             out.line(_readValueTypeName(outputType) + " " + nextVar + " = " + currentVar + "[" + indexVar + "];");
             _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
@@ -883,7 +924,7 @@ public final class PathGenerator {
         }
         TypeMirror outputType = GeneratorUtil.listValueType(ctx, current);
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
-        out.line("int " + indexVar + " = " + _indexExpr(index, currentVar + ".size()") + ";");
+        out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, currentVar + ".size()") + ";");
         out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + currentVar + ".size()) " + nullReturn);
         out.line(declaredType + " " + nextVar + " = " + currentVar + ".get(" + indexVar + ");");
         _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
@@ -1137,10 +1178,15 @@ public final class PathGenerator {
     }
 
     private boolean _canWriteName(TypeMirror parent, String name) {
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
-                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
             return true;
         }
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            if (_pojoWritableNameType(parent, name) != null) return true;
+            return _pojoReadableNameType(parent, name) == null;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
+                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) return true;
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return true;
         ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
@@ -1367,15 +1413,15 @@ public final class PathGenerator {
             out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.node.Nodes.getInArray(" +
                     currentVar + ", " + index + ");");
         } else if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
-            out.line("int " + indexVar + " = " + _indexExpr(index, currentVar + ".size()") + ";");
+            out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, currentVar + ".size()") + ";");
             out.line(declaredType + " " + nextVar + " = " + indexVar + " < 0 || " + indexVar + " >= " +
                     currentVar + ".size() ? null : " + currentVar + ".getNode(" + indexVar + ");");
         } else if (current.getKind() == TypeKind.ARRAY) {
-            out.line("int " + indexVar + " = " + _indexExpr(index, currentVar + ".length") + ";");
+            out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, currentVar + ".length") + ";");
             out.line(declaredType + " " + nextVar + " = " + indexVar + " < 0 || " + indexVar + " >= " +
                     currentVar + ".length ? null : " + currentVar + "[" + indexVar + "];");
         } else {
-            out.line("int " + indexVar + " = " + _indexExpr(index, currentVar + ".size()") + ";");
+            out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, currentVar + ".size()") + ";");
             out.line(declaredType + " " + nextVar + " = " + indexVar + " < 0 || " + indexVar + " >= " +
                     currentVar + ".size() ? null : " + currentVar + ".get(" + indexVar + ");");
         }
@@ -1433,6 +1479,10 @@ public final class PathGenerator {
                     GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return ctx.objectType;
         }
+        if (GeneratorUtil.isJojoType(ctx, parent)) {
+            TypeMirror oldType = _emitPojoPutName(out, parent, name, parentVar, valueExpr, oldVar);
+            if (oldType != null) return oldType;
+        }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) {
             out.line("Object " + oldVar + " = " + parentVar + ".put(\"" + GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return ctx.objectType;
@@ -1443,13 +1493,22 @@ public final class PathGenerator {
                     GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return outputType;
         }
-        TypeElement type = GeneratorUtil.asTypeElement(parent);
-        if (type == null) {
+        TypeMirror oldType = _emitPojoPutName(out, parent, name, parentVar, valueExpr, oldVar);
+        if (oldType == null) {
             throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
         }
-        ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
-        ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, parent, name);
-        VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
+        return oldType;
+    }
+
+    private TypeMirror _emitPojoPutName(SourceWriter out, TypeMirror parent, String name, String parentVar, String valueExpr, String oldVar) {
+        TypeElement type = GeneratorUtil.asTypeElement(parent);
+        if (type == null) return null;
+        boolean jojo = GeneratorUtil.isJojoType(ctx, parent);
+        ExecutableElement setter = jojo ? GeneratorUtil.findJojoWritable(ctx, type, parent, name) : GeneratorUtil.findWritable(ctx, type, parent, name);
+        ExecutableElement getter = jojo ? GeneratorUtil.findJojoReadable(ctx, type, parent, name) : GeneratorUtil.findReadable(ctx, type, parent, name);
+        VariableElement field = jojo ? GeneratorUtil.findJojoReadableField(ctx, type, name) : GeneratorUtil.findReadableField(ctx, type, name);
+        VariableElement writableField = jojo ? GeneratorUtil.findJojoWritableField(ctx, type, name) : GeneratorUtil.findWritableField(ctx, type, name);
+        if (setter == null && writableField == null && getter == null && field == null) return null;
         TypeMirror oldType = null;
         if (getter != null) {
             oldType = ((ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, getter)).getReturnType();
@@ -1462,8 +1521,8 @@ public final class PathGenerator {
         if (setter != null) {
             out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
         } else {
-            if (field == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
-            out.line(parentVar + "." + field.getSimpleName() + " = " + valueExpr + ";");
+            if (writableField == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
+            out.line(parentVar + "." + writableField.getSimpleName() + " = " + valueExpr + ";");
         }
         return oldType == null ? ctx.objectType : oldType;
     }
@@ -1474,6 +1533,7 @@ public final class PathGenerator {
                     GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return;
         }
+        if (GeneratorUtil.isJojoType(ctx, parent) && _emitPojoPutNameNoOld(out, parent, name, parentVar, valueExpr)) return;
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) {
             out.line(parentVar + ".put(\"" + GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return;
@@ -1482,16 +1542,48 @@ public final class PathGenerator {
             out.line(parentVar + ".put(\"" + GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return;
         }
+        if (_emitPojoPutNameNoOld(out, parent, name, parentVar, valueExpr)) return;
+        throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
+    }
+
+    private boolean _emitPojoPutNameNoOld(SourceWriter out, TypeMirror parent, String name, String parentVar, String valueExpr) {
         TypeElement type = GeneratorUtil.asTypeElement(parent);
-        if (type == null) throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
-        ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
+        if (type == null) return false;
+        boolean jojo = GeneratorUtil.isJojoType(ctx, parent);
+        ExecutableElement setter = jojo ? GeneratorUtil.findJojoWritable(ctx, type, parent, name) : GeneratorUtil.findWritable(ctx, type, parent, name);
         if (setter != null) {
             out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
-            return;
+            return true;
         }
-        VariableElement field = GeneratorUtil.findWritableField(ctx, type, name);
-        if (field == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
+        VariableElement field = jojo ? GeneratorUtil.findJojoWritableField(ctx, type, name) : GeneratorUtil.findWritableField(ctx, type, name);
+        if (field == null) return false;
         out.line(parentVar + "." + field.getSimpleName() + " = " + valueExpr + ";");
+        return true;
+    }
+
+    private TypeMirror _pojoReadableNameType(TypeMirror parent, String name) {
+        TypeElement type = GeneratorUtil.asTypeElement(parent);
+        if (type == null) return null;
+        boolean jojo = GeneratorUtil.isJojoType(ctx, parent);
+        ExecutableElement getter = jojo ? GeneratorUtil.findJojoReadable(ctx, type, parent, name) : GeneratorUtil.findReadable(ctx, type, parent, name);
+        if (getter != null) {
+            return ((ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, getter)).getReturnType();
+        }
+        VariableElement field = jojo ? GeneratorUtil.findJojoReadableField(ctx, type, name) : GeneratorUtil.findReadableField(ctx, type, name);
+        return field == null ? null : ctx.types.asMemberOf((DeclaredType) parent, field);
+    }
+
+    private TypeMirror _pojoWritableNameType(TypeMirror parent, String name) {
+        TypeElement type = GeneratorUtil.asTypeElement(parent);
+        if (type == null) return null;
+        boolean jojo = GeneratorUtil.isJojoType(ctx, parent);
+        ExecutableElement setter = jojo ? GeneratorUtil.findJojoWritable(ctx, type, parent, name) : GeneratorUtil.findWritable(ctx, type, parent, name);
+        if (setter != null) {
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, setter);
+            return mt.getParameterTypes().get(0);
+        }
+        VariableElement field = jojo ? GeneratorUtil.findJojoWritableField(ctx, type, name) : GeneratorUtil.findWritableField(ctx, type, name);
+        return field == null ? null : ctx.types.asMemberOf((DeclaredType) parent, field);
     }
 
     /**
@@ -1505,7 +1597,7 @@ public final class PathGenerator {
             return ctx.objectType;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
-            out.line("int " + indexVar + " = " + _indexExpr(index, parentVar + ".size()") + ";");
+            out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, parentVar + ".size()") + ";");
             out.line("Object " + oldVar + ";");
             out.line("if (" + indexVar + " >= 0 && " + indexVar + " < " + parentVar + ".size()) " +
                     oldVar + " = " + parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
@@ -1517,7 +1609,7 @@ public final class PathGenerator {
         }
         if (parent.getKind() == TypeKind.ARRAY) {
             TypeMirror outputType = ((ArrayType) parent).getComponentType();
-            out.line("int " + indexVar + " = " + _indexExpr(index, parentVar + ".length") + ";");
+            out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, parentVar + ".length") + ";");
             out.line("if (" + indexVar + " == " + parentVar + ".length) throw new org.sjf4j.exception.JsonException(\"cannot append to a Java array\");");
             out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + parentVar + ".length) " +
                     "throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
@@ -1527,7 +1619,7 @@ public final class PathGenerator {
             return outputType;
         }
         TypeMirror outputType = GeneratorUtil.listValueType(ctx, parent);
-        out.line("int " + indexVar + " = " + _indexExpr(index, parentVar + ".size()") + ";");
+        out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, parentVar + ".size()") + ";");
         out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + ";");
         out.line("if (" + indexVar + " >= 0 && " + indexVar + " < " + parentVar + ".size()) " +
                 oldVar + " = " + parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
@@ -1701,12 +1793,6 @@ public final class PathGenerator {
                 " + \" in List of size \" + " + parentVar + ".size());");
     }
 
-    private static String _indexExpr(int index, String sizeExpr) {
-        if (index >= 0) return Integer.toString(index);
-        if (index == Integer.MIN_VALUE) return sizeExpr + " + " + index;
-        return sizeExpr + " - " + (-index);
-    }
-
     private void _emitPutReturn(SourceWriter out, ExecutableElement method, String oldVar, TypeMirror oldType) {
         TypeMirror returnType = method.getReturnType();
         if (returnType.getKind() == TypeKind.VOID) return;
@@ -1714,7 +1800,7 @@ public final class PathGenerator {
             out.line("return null;");
             return;
         }
-        if (_isAssignableBoxed(oldType, returnType)) {
+        if (GeneratorUtil.isAssignableBoxedGeneric(ctx, oldType, returnType)) {
             out.line("return " + oldVar + ";");
         }
     }
@@ -1728,10 +1814,6 @@ public final class PathGenerator {
                 GeneratorUtil.escape(method.getSimpleName().toString()) + " returns " +
                 GeneratorUtil.escape(GeneratorUtil.typeName(returnType)) + " for path " +
                 GeneratorUtil.escape(path.toExpr()) + "\");";
-    }
-
-    private boolean _isAssignableBoxed(TypeMirror from, TypeMirror to) {
-        return ctx.types.isAssignable(GeneratorUtil.boxed(ctx, from), GeneratorUtil.boxed(ctx, to));
     }
 
     private String _putMissingThrow(ExecutableElement method, JsonPath path) {

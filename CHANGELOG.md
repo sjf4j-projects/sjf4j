@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added method-level `@MappingCreator` support for `@CompiledMapper` methods, allowing per-method target implementation or factory selection that overrides matching interface-level creators.
 
+### Fixed
+- Fixed generated `@CompiledPath` and `@CompiledMapper` static property resolution for `JsonObject` subclasses so JOJO getter/field/setter properties are generated like POJO access, while unknown names still fall back to dynamic `JsonObject` access.
+- Fixed generated mapper/path property discovery to share record, bean getter/setter, renamed-property, and JOJO type checks without treating ordinary fluent methods as properties.
+
 
 ## [1.3.1] - 2026.06.09
 ### Breaking Changes

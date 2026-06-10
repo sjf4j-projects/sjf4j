@@ -8,9 +8,7 @@ import org.sjf4j.processor.NameAllocator;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
@@ -21,7 +19,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** Emits direct null-safe read access for mapper source paths. */
 public final class PathAccessEmitter {
@@ -214,7 +211,7 @@ public final class PathAccessEmitter {
         if (guard != null) {
             temps.add("if (" + guard + ") {");
         }
-        temps.add(indent + "int " + idx + " = " + _indexExpr(index, size) + ";");
+        temps.add(indent + "int " + idx + " = " + GeneratorUtil.indexExpr(index, size) + ";");
         temps.add(indent + "if (" + idx + " >= 0 && " + idx + " < " + size + ") " + nextVar + " = " + a.code.replace("#IDX#", idx) + ";");
         if (guard != null) {
             temps.add("}");
@@ -224,6 +221,21 @@ public final class PathAccessEmitter {
     private Access _nameAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, String name) {
         if (GeneratorUtil.isObject(ctx, current)) {
             return new Access("org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
+        }
+        if (GeneratorUtil.isJojoType(ctx, current)) {
+            TypeElement type = GeneratorUtil.asTypeElement(current);
+            ExecutableElement getter = GeneratorUtil.findJojoReadable(ctx, type, current, name);
+            if (getter != null) {
+                ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
+                return new Access(currentVar + "." + getter.getSimpleName() + "()", mt.getReturnType());
+            }
+            VariableElement field = GeneratorUtil.findJojoReadableField(ctx, type, name);
+            if (field != null) return new Access(currentVar + "." + field.getSimpleName(), ctx.types.asMemberOf((DeclaredType) current, field));
+            if (GeneratorUtil.findJojoWritable(ctx, type, current, name) != null || GeneratorUtil.findJojoWritableField(ctx, type, name) != null) {
+                _error(context, target, "Cannot read source property '" + name + "' on " + current);
+                return null;
+            }
+            return new Access(currentVar + ".getNode(\"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
         }
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonObjectType)) {
             return new Access(currentVar + ".getNode(\"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
@@ -238,12 +250,12 @@ public final class PathAccessEmitter {
             _error(context, target, "Cannot resolve source property '" + name + "' on " + current);
             return null;
         }
-        ExecutableElement getter = _findReadable(type, current, name);
+        ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, current, name);
         if (getter != null) {
             ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
             return new Access(currentVar + "." + getter.getSimpleName() + "()", mt.getReturnType());
         }
-        VariableElement field = _findReadableField(type, name);
+        VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
         if (field != null) return new Access(currentVar + "." + field.getSimpleName(), ctx.types.asMemberOf((DeclaredType) current, field));
 
         _error(context, target, "Cannot read source property '" + name + "' on " + current);
@@ -266,49 +278,6 @@ public final class PathAccessEmitter {
         }
         _error(context, target, "Cannot apply index [" + index + "] to " + current);
         return null;
-    }
-
-    private ExecutableElement _findReadable(TypeElement type, TypeMirror owner, String name) {
-        if (name.length() == 0) return null;
-        for (Element member : ctx.elements.getAllMembers(type)) {
-            Set<Modifier> m = member.getModifiers();
-            if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC) || member.getKind() != ElementKind.METHOD) continue;
-            ExecutableElement e = (ExecutableElement) member;
-            if (!e.getParameters().isEmpty()) continue;
-            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, e);
-            if (mt.getReturnType().getKind() == TypeKind.VOID) continue;
-            String n = e.getSimpleName().toString();
-            String base = null;
-            if (n.equals("getClass")) continue;
-            if (n.startsWith("get") && n.length() > 3) base = GeneratorUtil.decap(n.substring(3));
-            else if (n.startsWith("is") && n.length() > 2) base = GeneratorUtil.decap(n.substring(2));
-            else if (_isRecord(type)) base = n;
-            if (base != null && _nodeName(e, base).equals(name)) return e;
-        }
-        return null;
-    }
-
-    private VariableElement _findReadableField(TypeElement type, String name) {
-        for (Element member : ctx.elements.getAllMembers(type)) {
-            Set<Modifier> m = member.getModifiers();
-            if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC) || member.getKind() != ElementKind.FIELD) continue;
-            if (_nodeName(member, member.getSimpleName().toString()).equals(name)) return (VariableElement) member;
-        }
-        return null;
-    }
-
-    private String _nodeName(Element e, String fallback) {
-        return GeneratorUtil.nodePropertyName(e, fallback);
-    }
-
-    private boolean _isRecord(TypeElement t) {
-        return "RECORD".equals(t.getKind().name());
-    }
-
-    private static String _indexExpr(int index, String sizeExpr) {
-        if (index >= 0) return Integer.toString(index);
-        if (index == Integer.MIN_VALUE) return sizeExpr + " + " + index;
-        return sizeExpr + " - " + (-index);
     }
 
     private void _error(Element element, GeneratedClass target, String message) {
