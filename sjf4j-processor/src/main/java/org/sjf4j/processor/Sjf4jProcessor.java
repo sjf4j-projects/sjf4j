@@ -17,10 +17,19 @@ import javax.lang.model.element.TypeElement;
 import java.util.Set;
 
 /**
- * Annotation processor entry point for SJF4J compiled-node interfaces.
+ * Annotation processor entry point for SJF4J compiled path and mapper
+ * interfaces.
  *
- * <p>It validates the placement of compiled path annotations and delegates
- * source generation for each {@code @CompiledPath} interface.</p>
+ * <p>The entry point keeps round handling intentionally small: it validates that
+ * method-level annotations are attached to the proper owning interface, then
+ * delegates all operation-specific validation and source emission to
+ * {@link PathGenerator} or {@link MapperGenerator}.  This separation keeps
+ * cross-feature annotation rules centralized without mixing path and mapper code
+ * generation logic.</p>
+ *
+ * <p>The processor returns {@code false} from {@link #process(Set,
+ * RoundEnvironment)} so other processors can still observe SJF4J annotations in
+ * the same compilation.</p>
  */
 @SupportedAnnotationTypes({
         "org.sjf4j.annotation.path.CompiledPath",
@@ -69,8 +78,8 @@ public final class Sjf4jProcessor extends AbstractProcessor {
     }
 
     /**
-     * Validates compiled-path annotations and emits implementations for
-     * discovered {@code @CompiledPath} interfaces.
+     * Validates annotation placement and emits implementations for discovered
+     * {@code @CompiledPath} and {@code @CompiledMapper} interfaces.
      */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
@@ -92,6 +101,13 @@ public final class Sjf4jProcessor extends AbstractProcessor {
         return false;
     }
 
+    /**
+     * Rejects orphaned method annotations early, before feature generators try
+     * to interpret their values.  Creator annotations are the only mapper
+     * annotations accepted both on the mapper interface and on individual mapper
+     * methods; all other operation annotations must live on methods owned by the
+     * matching compiled interface kind.
+     */
     private void validateAnnotation(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (TypeElement anno : annotations) {
             String annoName = anno.getQualifiedName().toString();

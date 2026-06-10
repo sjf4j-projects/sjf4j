@@ -16,6 +16,12 @@ import javax.tools.JavaFileObject;
 
 /**
  * Minimal indentation-aware writer for generated Java source files.
+ *
+ * <p>Generators emit fully qualified type names freely.  The writer buffers
+ * lines until close, derives a deterministic import list, and rewrites only the
+ * code portions of each line to simple names when doing so is unambiguous.  It
+ * deliberately ignores strings and comments during this rewrite so generated
+ * literals and explanatory comments remain unchanged.</p>
  */
 public final class SourceWriter implements Closeable {
 
@@ -61,6 +67,13 @@ public final class SourceWriter implements Closeable {
         lines.add(b.toString());
     }
 
+    /**
+     * Computes simple-name imports that can be applied without ambiguity.
+     *
+     * <p>Existing simple type references are treated as reserved names, which
+     * prevents this writer from importing a different fully qualified type that
+     * would change the meaning of already-simple generated code.</p>
+     */
     private Map<String, String> imports() {
         Map<String, String> simpleToImport = new HashMap<>();
         Map<String, String> conflicts = new HashMap<>();
@@ -106,6 +119,10 @@ public final class SourceWriter implements Closeable {
         return result;
     }
 
+    /**
+     * Rewrites one buffered line from fully qualified names to imported/simple
+     * names while preserving comments and quoted literals verbatim.
+     */
     private String transform(String line, Map<String, String> imports) {
         StringBuilder out = new StringBuilder(line.length());
         int i = 0;
@@ -146,6 +163,11 @@ public final class SourceWriter implements Closeable {
         return b.toString();
     }
 
+    /**
+     * Returns the code-only prefix used for import discovery.  Characters inside
+     * quotes and block comments are replaced with spaces, and line comments end
+     * scanning for that line.
+     */
     private String codePrefix(String line) {
         StringBuilder out = new StringBuilder(line.length());
         int i = 0;
@@ -202,6 +224,12 @@ public final class SourceWriter implements Closeable {
         return end < 0 ? line.length() : end + 2;
     }
 
+    /**
+     * Splits a qualified reference into the top-level import name and the source
+     * name that should remain after import insertion.  Nested classes and static
+     * constants keep their suffix, for example {@code java.util.Map.Entry}
+     * becomes import {@code java.util.Map} plus use name {@code Map.Entry}.
+     */
     private ShortType shortType(String qualifiedName) {
         String[] parts = qualifiedName.split("\\.");
         int classAt = -1;
@@ -237,7 +265,8 @@ public final class SourceWriter implements Closeable {
     }
 
     /**
-     * Closes the underlying source writer.
+     * Inserts imports, writes all buffered lines, and closes the underlying
+     * source writer.
      */
     @Override
     public void close() throws IOException {

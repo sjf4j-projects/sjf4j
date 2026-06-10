@@ -23,8 +23,11 @@ import java.util.List;
 /**
  * Generates implementations for {@code @FindByPath} methods.
  *
- * <p>Supported multi-target paths are emitted as direct loops. Unsupported
- * paths fail at compile time.</p>
+ * <p>Supported multi-target paths are emitted as direct loops that append typed
+ * values to the returned {@code List}.  Root, wildcard, slice, filter, and one
+ * static union shape are recognized explicitly.  Descendant and filter-heavy
+ * cases can fall back to runtime {@link JsonPath#find(Object)} only when the
+ * annotation opts into that cost.</p>
  */
 public final class FindGenerator {
 

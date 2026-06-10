@@ -8,6 +8,11 @@ import java.util.Map;
 /**
  * Holds the generated parameter name mapping and local name allocator for one
  * CompiledPath method emission.
+ *
+ * <p>Path methods may contain dynamic path parameters whose Java source names
+ * differ from generated method parameter names after collision avoidance.  This
+ * scope provides a single lookup point for those names while sharing the same
+ * allocator for path temporaries emitted by the method.</p>
  */
 final class PathNameScope {
     final NameAllocator names;
@@ -18,6 +23,10 @@ final class PathNameScope {
         this.params = params;
     }
 
+    /**
+     * Returns the generated source name for a method parameter, falling back to
+     * the declared name when no remapping was necessary.
+     */
     String param(VariableElement element) {
         String name = params.get(element);
         return name == null ? element.getSimpleName().toString() : name;

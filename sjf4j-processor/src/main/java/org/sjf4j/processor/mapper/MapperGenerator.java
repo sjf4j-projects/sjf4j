@@ -44,7 +44,20 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Generates small direct implementations for {@code @CompiledMapper} interfaces. */
+/**
+ * Generates small direct implementations for {@code @CompiledMapper}
+ * interfaces.
+ *
+ * <p>Mapper generation is deliberately front-loaded: source properties, target
+ * construction plans, creator methods, nested mappers, conversions, and path
+ * writes are resolved while annotation processing has compiler type metadata.
+ * The emitted mapper method is then plain Java control flow and assignments,
+ * avoiding reflection and annotation scanning on mapper calls.</p>
+ *
+ * <p>The class is large because hot-path decisions are kept explicit.  Shared
+ * helper methods remove repetition where they do not obscure generated-code
+ * shape or add runtime layers.</p>
+ */
 public final class MapperGenerator {
     private final ProcessorContext ctx;
     private final PathAccessEmitter pathAccess;

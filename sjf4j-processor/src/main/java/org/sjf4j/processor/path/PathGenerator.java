@@ -34,11 +34,18 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Generates direct Java code for {@code @GetByPath} and {@code @PutByPath} methods.
+ * Generates direct Java code for {@code @CompiledPath} methods.
  *
  * <p>The generator resolves path segment types during annotation processing so
  * generated methods can use direct field/getter/setter, map, list, array, and
- * SJF4J container access without runtime path interpretation.</p>
+ * SJF4J container access without runtime path interpretation.  Each method is
+ * validated for arity, return type, path parameter use, and segment
+ * compatibility before any source member is added to the generated class.</p>
+ *
+ * <p>Put-style annotations share the same traversal machinery but differ in
+ * missing-parent behavior: strict put throws, parent-present put skips, and
+ * ensure put creates intermediate containers where the target type can be
+ * inferred safely.</p>
  */
 public final class PathGenerator {
 

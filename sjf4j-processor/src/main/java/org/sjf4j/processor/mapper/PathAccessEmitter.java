@@ -20,7 +20,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Emits direct null-safe read access for mapper source paths. */
+/**
+ * Emits direct, null-safe read access for mapper source paths.
+ *
+ * <p>The mapper generator uses this helper for both simple property reads and
+ * JSONPath/JSON Pointer style source paths.  It resolves each segment against
+ * the compile-time source type and returns source snippets plus any temporary
+ * declarations needed to preserve null-safe parent traversal.  Callers can share
+ * a cache so multiple mappings that read the same path prefix reuse the same
+ * generated local variable.</p>
+ */
 public final class PathAccessEmitter {
     private final ProcessorContext ctx;
 
@@ -28,31 +37,51 @@ public final class PathAccessEmitter {
         this.ctx = ctx;
     }
 
+    /**
+     * Reads a simple source property or absolute path from a non-null root.
+     */
     public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                             String source, String tempPrefix) {
         return _read(context, target, rootType, rootVar, source, tempPrefix, null, false, null, "");
     }
 
+    /**
+     * Reads from a non-null root while reusing cached path-prefix temporaries.
+     */
     public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                            String source, String tempPrefix, Map<String, CachedPath> cache, String cacheRoot) {
         return _read(context, target, rootType, rootVar, source, tempPrefix, null, false, cache, cacheRoot);
     }
 
+    /**
+     * Reads from a non-null root using a {@link NameAllocator} for readable and
+     * collision-free path temporary names.
+     */
     public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                            String source, NameAllocator names, Map<String, CachedPath> cache, String cacheRoot) {
         return _read(context, target, rootType, rootVar, source, null, names, false, cache, cacheRoot);
     }
 
+    /**
+     * Reads a simple source property or absolute path when the root itself may
+     * be null; generated code returns {@code null} instead of dereferencing it.
+     */
     public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                                        String source, String tempPrefix) {
         return _read(context, target, rootType, rootVar, source, tempPrefix, null, true, null, "");
     }
 
+    /**
+     * Reads from a nullable root while reusing cached path-prefix temporaries.
+     */
     public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                                        String source, String tempPrefix, Map<String, CachedPath> cache, String cacheRoot) {
         return _read(context, target, rootType, rootVar, source, tempPrefix, null, true, cache, cacheRoot);
     }
 
+    /**
+     * Reads from a nullable root using allocator-provided path temporary names.
+     */
     public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                                        String source, NameAllocator names, Map<String, CachedPath> cache, String cacheRoot) {
         return _read(context, target, rootType, rootVar, source, null, names, true, cache, cacheRoot);
@@ -294,11 +323,23 @@ public final class PathAccessEmitter {
         }
     }
 
+    /**
+     * Result of resolving a mapper source read.
+     *
+     * <p>{@link #temps} must be emitted before {@link #code} is used.  For a
+     * path read, {@link #leafExpr} may contain an inline expression for the final
+     * segment so callers can avoid an otherwise unnecessary leaf temporary.</p>
+     */
     public static final class ReadAccess {
+        /** Java expression or local variable that evaluates to the read value. */
         public final String code;
+        /** Compile-time type of {@link #code}. */
         public final TypeMirror type;
+        /** True when the source string was parsed as a path rather than a property name. */
         public final boolean path;
+        /** Temporary declarations/statements required before reading {@link #code}. */
         public final List<String> temps;
+        /** Optional null-safe inline expression for the final path segment. */
         public final String leafExpr;
 
         ReadAccess(String c, TypeMirror t, boolean p, List<String> s) {
@@ -318,8 +359,13 @@ public final class PathAccessEmitter {
         }
     }
 
+    /**
+     * Cached generated local for an already-read path prefix.
+     */
     public static final class CachedPath {
+        /** Local variable or expression containing the prefix value. */
         final String code;
+        /** Compile-time type of {@link #code}. */
         final TypeMirror type;
 
         CachedPath(String c, TypeMirror t) {

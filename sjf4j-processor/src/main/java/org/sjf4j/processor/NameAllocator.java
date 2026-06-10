@@ -3,7 +3,15 @@ package org.sjf4j.processor;
 import java.util.HashSet;
 import java.util.Set;
 
-/** Simple deterministic Java local/helper name allocator. */
+/**
+ * Simple deterministic Java local/helper name allocator for generated code.
+ *
+ * <p>The allocator is scoped to one generated method or helper group.  It
+ * reserves Java keywords up front, filters invalid identifier characters from
+ * caller-provided hints, and appends numeric suffixes only when needed.  This
+ * keeps generated source readable while avoiding accidental collisions with
+ * user parameter names or earlier temporary variables.</p>
+ */
 public final class NameAllocator {
     private final Set<String> used = new HashSet<String>();
 
@@ -19,14 +27,27 @@ public final class NameAllocator {
         for (String keyword : keywords) used.add(keyword);
     }
 
+    /**
+     * Marks a caller-supplied name as unavailable, usually a method parameter or
+     * an already emitted local variable.
+     */
     public void reserve(String name) {
         if (name != null && name.length() != 0) used.add(name);
     }
 
+    /**
+     * Allocates a local variable name from a preferred human-readable hint.
+     */
     public String local(String preferred) { return allocate(clean(preferred, "v")); }
 
+    /**
+     * Allocates a local variable name with a stable prefix and sanitized hint.
+     */
     public String prefixed(String prefix, String hint) { return allocate(prefix + "_" + clean(hint, "value")); }
 
+    /**
+     * Allocates a private helper method name used by generated mapper code.
+     */
     public String helper(String hint) { return allocate("_map" + upper(clean(hint, "Value"))); }
 
     private String allocate(String base) {
