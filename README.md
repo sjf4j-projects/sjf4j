@@ -2,16 +2,15 @@
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
-[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j-green)](https://javadoc.io/doc/org.sjf4j/sjf4j)
-[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--schema-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-schema)
-[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--processor-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-processor)  
+[![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
 ![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)
+![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)  
 ![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2020-12.json)
 ![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2019-09.json)
 ![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft7.json)    
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
-![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
+
 
 SJF4J is a lightweight JSON facade and **high-performance structural processing layer** for Java.
 
@@ -210,6 +209,8 @@ JsonPath.parse("/friends/0/scores/music").ensurePutByPath(student, 100);
 JOJOs additionally provide shortcut methods:
 ```java
 studentJojo.getIntByPath("$.scores.math");
+studentJojo.findByPath("$..friends[?@.scores.math >= 90].name", String.class);
+studentJojo.ensurePutByPath("/friends/0/scores/music", 100);
 ```
 
 For performance-critical workloads, `@CompiledPath` can generate direct access code at compile time 
@@ -343,10 +344,10 @@ Learn more → [`Mapping` (Object-to-object)](https://sjf4j.org/docs/mapping)
 ## Why Does This Work?
 
 SJF4J is built around a unified structural model called the **Object-Based Node Tree** ([OBNT](https://sjf4j.org/docs/modeling)).
-- All structured data in SJF4J are mapped into OBNT.
-- All nodes in OBNT are represented as native Java objects -- no dedicated AST.
-- All APIs operate directly on native Java objects.
-- All APIs follow -- or extend -- standard JSON semantics.
+- All structured data are mapped into OBNT.
+- All nodes in OBNT are native Java objects rather than a dedicated AST.
+- All APIs operate directly on those objects.
+- All APIs follow or extend standard JSON semantics.
 
 As a result, SJF4J can apply JSON-style operations directly to your existing Java object graph 
 without first converting it into a dedicated JSON tree.
