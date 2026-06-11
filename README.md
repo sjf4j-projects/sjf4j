@@ -70,7 +70,6 @@ and can also be configured explicitly when needed.
 
 - **In-Memory** 
   - Built-in support.
-  - Provides the same JSON-semantic APIs on in-memory object graphs via OBNT. 
   - Useful even without external data sources (e.g., DB result mapping, complex nested data processing).
 
 Common runtime dependencies (pick as needed):
@@ -255,7 +254,10 @@ Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
 
 #### Validating
 
-Validate Java object graphs with JSON Schema Draft 2020-12.
+SJF4J fully supports JSON Schema Draft `2020-12`, `2019-09`, and `draft-07`,
+and can validate Java object graphs directly without first converting them into a dedicated JSON tree.
+
+Example:
 ```java
 JsonSchema schema = JsonSchema.fromJson("""
 {
@@ -310,9 +312,8 @@ public class Student {
 }
 ```
 
-SJF4J fully supports JSON Schema Draft 2020-12, 2019-09, and draft-07, 
-and can validate Java object graphs directly without first converting them into a dedicated JSON tree.
-
+Need Java models from a schema?  
+You can also use the online [Schema-to-Java Generator](https://sjf4j.org/generator) to generate Java models directly from JSON Schema.
 
 Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 
@@ -339,7 +340,7 @@ StudentDto studentDto = mapper.toDto(student);
 
 `@CompiledMapper` supports direct field mapping, JSON-style paths, computed fields, and nested mappings.
 
-Learn more → [`Mapping` (Object-to-object)](https://sjf4j.org/docs/mapping)
+Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
 
 ## Why Does This Work?
 
