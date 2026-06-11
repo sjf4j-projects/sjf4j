@@ -161,9 +161,6 @@ public class StudentJojo extends JsonObject {
 }
 ```
 
-> **Note**: Standard POJOs are sufficient for most use cases. 
-> JOJOs add dynamic properties and convenience APIs on top of typed fields.
-
 Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 
@@ -307,7 +304,7 @@ You can also use `@ValidJsonSchema` for Bean Validation style integration.
   "required": ["name"]
 }
 """)
-public class Student extends JsonObject {
+public class Student {
     // ...
 }
 ```
