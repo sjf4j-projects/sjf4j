@@ -6,6 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -51,6 +52,15 @@ class FilterExprTest {
         assertFalse(FilterExpr.match(null, pattern));
         assertFalse(FilterExpr.match("han", "not-pattern"));
         assertFalse(FilterExpr.match(JsonObject.of("a", 1), pattern));
+    }
+
+    @Test
+    void testIn() {
+        assertTrue(FilterExpr.in("S", JsonArray.of("XS", "S", "M")));
+        assertTrue(FilterExpr.in(1, Arrays.asList(1L, 2L)));
+        assertTrue(FilterExpr.in(null, Collections.singletonList(null)));
+        assertFalse(FilterExpr.in(true, false));
+        assertFalse(FilterExpr.in("XL", JsonArray.of("XS", "S", "M")));
     }
 
     @Test
@@ -101,6 +111,24 @@ class FilterExprTest {
         FilterExpr.RegexExpr regexExpr = new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha"));
         assertSame(regexExpr.eval(root, root), regexExpr.eval(root, root));
         assertEquals("/ha/", regexExpr.toString());
+
+        FilterExpr.ArrayExpr arrayExpr = new FilterExpr.ArrayExpr(Arrays.asList(
+                new FilterExpr.LiteralExpr("han"),
+                new FilterExpr.LiteralExpr(12),
+                new FilterExpr.LiteralExpr(true),
+                new FilterExpr.LiteralExpr(null)
+        ));
+        assertEquals(Arrays.asList("han", 12, true, null), arrayExpr.eval(root, root));
+        assertEquals("[\"han\", 12, true, null]", arrayExpr.toString());
+
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(
+                new FilterExpr.LiteralExpr("han"),
+                new FilterExpr.ArrayExpr(Arrays.asList(new FilterExpr.LiteralExpr("ha"), new FilterExpr.LiteralExpr("han"))),
+                FilterExpr.Op.IN).eval(root, root));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(
+                new FilterExpr.LiteralExpr("han"),
+                new FilterExpr.ArrayExpr(Arrays.asList(new FilterExpr.LiteralExpr("ha"), new FilterExpr.LiteralExpr("ho"))),
+                FilterExpr.Op.NIN).eval(root, root));
     }
 
     @Test

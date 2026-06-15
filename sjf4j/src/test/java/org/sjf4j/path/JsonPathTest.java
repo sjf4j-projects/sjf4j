@@ -1027,6 +1027,31 @@ public class JsonPathTest {
                 .findByPath("$.store.book[?@.name == 'a\\'b'].title", String.class));
     }
 
+    @Test
+    public void testFilterInAndNin() {
+        JsonObject jo = JsonObject.fromJson("{\"items\":[{" +
+                "\"size\":\"S\",\"enabled\":true,\"value\":1},{" +
+                "\"size\":\"M\",\"enabled\":false,\"value\":2},{" +
+                "\"size\":\"XL\",\"enabled\":null,\"value\":3},{" +
+                "\"enabled\":true,\"value\":null}]} ");
+
+        assertEquals(Arrays.asList("S", "M"), jo.findByPath("$.items[?@.size in ['S',\"M\"]].size", String.class));
+        assertEquals(Collections.singletonList("XL"), jo.findByPath("$.items[?@.size nin ['S','M']].size", String.class));
+        assertEquals(Arrays.asList(1, 2), jo.findByPath("$.items[?@.value in [1, 2]].value", Integer.class));
+        assertEquals(Arrays.asList(true, false, true), jo.findByPath("$.items[?@.enabled in [true, false]].enabled", Boolean.class));
+        assertEquals(Arrays.asList(2, 3, null), jo.findByPath("$.items[?@.size nin ['S']].value", Integer.class));
+        assertEquals(Collections.singletonList((Integer) null), jo.findByPath("$.items[?@.value in [null]].value", Integer.class));
+        assertEquals(Collections.emptyList(), jo.findByPath("$.items[?@.size in []].value", Integer.class));
+        assertEquals(Arrays.asList(1, 2, 3, null), jo.findByPath("$.items[?@.size nin []].value", Integer.class));
+
+        JsonObject nativeRhs = JsonObject.of("items", Arrays.asList(
+                JsonObject.of("size", "S", "allowed", new String[]{"S", "M"}),
+                JsonObject.of("size", "XL", "allowed", new String[]{"S", "M"}),
+                JsonObject.of("size", "M", "allowed", Arrays.asList("M", "L"))
+        ));
+        assertEquals(Arrays.asList("S", "M"), nativeRhs.findByPath("$.items[?@.size in @.allowed].size", String.class));
+    }
+
 
     @Test
     public void testStringMatch() {

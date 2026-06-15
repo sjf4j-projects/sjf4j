@@ -356,6 +356,36 @@ public class PathSyntaxTest {
         assertEquals("@.members[?@.age > 30]", fe.toString());
     }
 
+    @Test
+    public void testFilterInAndNin() {
+        FilterExpr fe = PathSyntax.parseFilter("@.inner == 1");
+        assertEquals("(@.inner == 1.0)", fe.toString());
+
+        fe = PathSyntax.parseFilter("@.ninja == 'x'");
+        assertEquals("(@.ninja == \"x\")", fe.toString());
+
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x inx [1]"));
+
+        fe = PathSyntax.parseFilter("@.x in []");
+        assertEquals("(@.x in [])", fe.toString());
+
+        fe = PathSyntax.parseFilter("@.size in ['S', \"M\"]");
+        assertEquals("(@.size in [\"S\", \"M\"])", fe.toString());
+
+        fe = PathSyntax.parseFilter("@.size nin ['XL']");
+        assertEquals("(@.size nin [\"XL\"])", fe.toString());
+
+        fe = PathSyntax.parseFilter("@.flag in [true, false, null, 1]");
+        assertEquals("(@.flag in [true, false, null, 1.0])", fe.toString());
+
+        assertEquals("$.items[?(@.size in [\"S\", \"M\"])]",
+                JsonPath.parse("$.items[?(@.size in ['S','M'])]").toExpr());
+
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1,]"));
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1"));
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1 2]"));
+    }
+
 
 
     /// Private

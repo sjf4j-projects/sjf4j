@@ -733,8 +733,8 @@ public final class PathSyntax {
      * Parses a filter expression into an AST.
      * <p>
      * Supported operators include logical ({@code &&}, {@code ||}, {@code !}),
-     * comparison ({@code == != < <= > >= =~}), literals, path references,
-     * regex literals, and function calls.
+     * comparison ({@code == != < <= > >= =~ in nin}), literals, array literals,
+     * path references, regex literals, and function calls.
      */
     public static FilterExpr parseFilter(String s) {
         return _parseFilterRange(s, 0, s.length());
@@ -790,14 +790,23 @@ public final class PathSyntax {
         _skipWs(s, pos);
 
         FilterExpr.Op op = null;
-
-        if (_match(s, pos, "==")) op = FilterExpr.Op.EQ;
-        else if (_match(s, pos, "=~")) op = FilterExpr.Op.MATCH;
-        else if (_match(s, pos, "!=")) op = FilterExpr.Op.NE;
-        else if (_match(s, pos, ">=")) op = FilterExpr.Op.GE;
-        else if (_match(s, pos, "<=")) op = FilterExpr.Op.LE;
-        else if (_match(s, pos, ">"))  op = FilterExpr.Op.GT;
-        else if (_match(s, pos, "<"))  op = FilterExpr.Op.LT;
+        char c = _peekLast(s, pos);
+        if (c == '=') {
+            if (_match(s, pos, "==")) op = FilterExpr.Op.EQ;
+            else if (_match(s, pos, "=~")) op = FilterExpr.Op.MATCH;
+        } else if (c == '!') {
+            if (_match(s, pos, "!=")) op = FilterExpr.Op.NE;
+        } else if (c == '>') {
+            if (_match(s, pos, ">=")) op = FilterExpr.Op.GE;
+            else if (_match(s, pos, ">")) op = FilterExpr.Op.GT;
+        } else if (c == '<') {
+            if (_match(s, pos, "<=")) op = FilterExpr.Op.LE;
+            else if (_match(s, pos, "<")) op = FilterExpr.Op.LT;
+        } else if (c == 'i') {
+            if (_matchKeyword(s, pos, "in")) op = FilterExpr.Op.IN;
+        } else if (c == 'n') {
+            if (_matchKeyword(s, pos, "nin")) op = FilterExpr.Op.NIN;
+        }
 
         if (op != null) {
             FilterExpr right = _parseUnary(s, pos);
@@ -843,6 +852,11 @@ public final class PathSyntax {
             return new FilterExpr.LiteralExpr(_parseString(s, pos));
         }
 
+        // Array literal
+        if (c == '[') {
+            return _parseArrayLiteral(s, pos);
+        }
+
         // Number literal
         if (Character.isDigit(c) || c == '-') {
             return new FilterExpr.LiteralExpr(_parseNumber(s, pos));
@@ -877,6 +891,38 @@ public final class PathSyntax {
         }
 
         throw new JsonException("unexpected character '" + c + "' at position " + pos[0]);
+    }
+
+    private static FilterExpr.ArrayExpr _parseArrayLiteral(String s, int[] pos) {
+        pos[0]++;
+        _skipWs(s, pos);
+
+        List<FilterExpr> elements = new ArrayList<>();
+        if (pos[0] < s.length() && s.charAt(pos[0]) == ']') {
+            pos[0]++;
+            return new FilterExpr.ArrayExpr(elements);
+        }
+
+        while (true) {
+            elements.add(_parseOr(s, pos));
+            _skipWs(s, pos);
+
+            if (pos[0] >= s.length()) {
+                throw new JsonException("missing closing ']' at position " + pos[0]);
+            }
+
+            char c = s.charAt(pos[0]);
+            if (c == ',') {
+                pos[0]++;
+                _skipWs(s, pos);
+                continue;
+            }
+            if (c == ']') {
+                pos[0]++;
+                return new FilterExpr.ArrayExpr(elements);
+            }
+            throw new JsonException("expected ',' or ']' in array literal at position " + pos[0]);
+        }
     }
 
     /**

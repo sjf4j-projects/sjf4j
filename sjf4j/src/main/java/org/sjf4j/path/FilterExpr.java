@@ -169,6 +169,8 @@ public interface FilterExpr {
                 case LT: return lt(a, b);
                 case LE: return le(a, b);
                 case MATCH: return match(a, b);
+                case IN: return in(a, b);
+                case NIN: return !in(a, b);
             }
             return false;
         }
@@ -216,6 +218,51 @@ public interface FilterExpr {
         }
     }
 
+    /**
+     * Filter expression for an array literal.
+     */
+    class ArrayExpr implements FilterExpr {
+        final List<FilterExpr> elements;
+        private final List<Object> literalValues;
+
+        public ArrayExpr(List<FilterExpr> elements) {
+            this.elements = elements;
+            List<Object> values = new java.util.ArrayList<>(elements.size());
+            for (int i = 0, size = elements.size(); i < size; i++) {
+                FilterExpr element = elements.get(i);
+                if (!(element instanceof LiteralExpr)) {
+                    values = null;
+                    break;
+                }
+                values.add(element.eval(null, null));
+            }
+            this.literalValues = values == null ? null : java.util.Collections.unmodifiableList(values);
+        }
+
+        @Override
+        public Object eval(Object rootNode, Object currentNode) {
+            if (literalValues != null) return literalValues;
+            int size = elements.size();
+            java.util.ArrayList<Object> values = new java.util.ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                values.add(elements.get(i).eval(rootNode, currentNode));
+            }
+            return values;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append('[');
+            for (int i = 0, size = elements.size(); i < size; i++) {
+                if (i > 0) sb.append(',').append(' ');
+                sb.append(elements.get(i));
+            }
+            sb.append(']');
+            return sb.toString();
+        }
+    }
+
     class RegexExpr implements FilterExpr {
         private final String source;
         private final Pattern pattern;
@@ -253,7 +300,7 @@ public interface FilterExpr {
      */
     enum Op {
         EQ("=="), NE("!="), GT(">"), GE(">="),
-        LT("<"), LE("<="), AND("&&"), OR("||"), MATCH("=~");;
+        LT("<"), LE("<="), AND("&&"), OR("||"), MATCH("=~"), IN("in"), NIN("nin");
 
         private final String symbol;
         Op(String symbol) { this.symbol = symbol; }
@@ -347,6 +394,14 @@ public interface FilterExpr {
         }
 
         return false;
+    }
+
+    /**
+     * Returns true when array-like b contains a.
+     */
+    static boolean in(Object a, Object b) {
+        if (!JsonType.of(b).isArray()) return false;
+        return Nodes.anyMatchInArray(b, (i, v) -> eq(a, v));
     }
 
     /**
