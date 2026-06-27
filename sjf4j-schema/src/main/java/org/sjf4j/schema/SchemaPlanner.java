@@ -47,7 +47,8 @@ public final class SchemaPlanner {
 
         PlanningContext context = new PlanningContext(registry);
         SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
-        Map<String, Boolean> vocabulary =  _resolveVocabulary(schema, null, registry);
+        Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
+                idUri, PathSegment.Root.INSTANCE);
         plan = _buildPlan(schema, idUri, PathSegment.Root.INSTANCE,
                 new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
         context.registry.putPlan(idUri, plan);
@@ -560,7 +561,7 @@ public final class SchemaPlanner {
         } else {
             ObjectSchema os = (ObjectSchema) schema;
             SchemaDialect dialect = _resolveDialect(os, inheritedDialect);
-            Map<String, Boolean> vocabulary = _resolveVocabulary(os, inheritedVocabulary, context.registry);
+            Map<String, Boolean> vocabulary = _resolveVocabulary(os, inheritedVocabulary, context.registry, idUri, ps);
 
             String id = SchemaUtil.stripFragment(os.getId());
             String ref = os.getString("$ref");
@@ -588,24 +589,50 @@ public final class SchemaPlanner {
     private static void _bindDeferredRefs(PlanningContext context, URI idUri) {
         for (Evaluator.RefEvaluator refEvaluator : context.refEvaluators) {
             URI refUri = SchemaUtil.resolveUri(refEvaluator.schemaUri, URI.create(refEvaluator.ref));
-            SchemaPlan refPlan = context.registry.resolve(refUri);
+            String resource = SchemaUtil.stripFragment(refUri.toString());
+
+            // Resolve resource and fragment separately so diagnostics can tell
+            // callers whether they forgot to preload a remote schema or simply
+            // referenced a bad anchor / JSON Pointer inside an existing one.
+            SchemaPlan resourcePlan = context.registry.resolveResource(refUri);
+            if (resourcePlan == null) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve schema resource '" + resource + "' while resolving $ref '"
+                                + refEvaluator.ref + "' -> '" + refUri + "'; preload or register the referenced schema",
+                        refEvaluator.keywordPs, idUri));
+            }
+            String fragment = refUri.getFragment();
+            SchemaPlan refPlan = context.registry.resolveFragment(resourcePlan, fragment);
             if (refPlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve $ref '" + refEvaluator.ref + "' -> '" + refUri + "'",
+                        "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
+                                + "' while resolving $ref '" + refEvaluator.ref + "' -> '" + refUri + "'",
                         refEvaluator.keywordPs, idUri));
             }
             refEvaluator.plan = refPlan;
         }
         for (Evaluator.DynamicRefEvaluator dynamicRefEvaluator : context.dynamicRefEvaluators) {
             URI refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.schemaUri, URI.create(dynamicRefEvaluator.ref));
-            SchemaPlan refPlan = context.registry.resolve(refUri);
+            String resource = SchemaUtil.stripFragment(refUri.toString());
+
+            // Dynamic references use the same static target resolution first;
+            // runtime rebinding only happens after this initial plan is known.
+            SchemaPlan resourcePlan = context.registry.resolveResource(refUri);
+            if (resourcePlan == null) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve schema resource '" + resource + "' while resolving $dynamicRef '"
+                                + dynamicRefEvaluator.ref + "' -> '" + refUri + "'; preload or register the referenced schema",
+                        dynamicRefEvaluator.keywordPs, idUri));
+            }
+            String fragment = refUri.getFragment();
+            SchemaPlan refPlan = context.registry.resolveFragment(resourcePlan, fragment);
             if (refPlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve $dynamicRef '" + dynamicRefEvaluator.ref + "' -> '" + refUri + "'",
+                        "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
+                                + "' while resolving $dynamicRef '" + dynamicRefEvaluator.ref + "' -> '" + refUri + "'",
                         dynamicRefEvaluator.keywordPs, idUri));
             }
             dynamicRefEvaluator.initialPlan = refPlan;
-            String fragment = refUri.getFragment();
             dynamicRefEvaluator.dynamicAnchorName = fragment != null && fragment.startsWith("/")
                     ? null : refPlan.dynamicAnchor;
         }
@@ -618,8 +645,10 @@ public final class SchemaPlanner {
     }
 
     private static Map<String, Boolean> _resolveVocabulary(ObjectSchema schema,
-                                                           Map<String, Boolean> inheritedVocabulary,
-                                                           SchemaRegistry registry) {
+                                                            Map<String, Boolean> inheritedVocabulary,
+                                                            SchemaRegistry registry,
+                                                            URI resourceUri,
+                                                            PathSegment ps) {
         Map<String, Boolean> vocabulary = schema.getVocabulary();
         if (vocabulary != null) return vocabulary;
 
@@ -629,6 +658,14 @@ public final class SchemaPlanner {
             if (metaSchema != null) {
                 Map<String, Boolean> metaVocabulary = metaSchema.getVocabulary();
                 if (metaVocabulary != null) return metaVocabulary;
+            } else if (SchemaDialect.detect(schemaUri) == null) {
+                // A custom metaschema controls vocabulary activation. If it is
+                // unavailable, silently falling back to the inherited dialect can
+                // compile the wrong keyword set, so fail at schema compile time.
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve $schema '" + schemaUri
+                                + "' to determine dialect/vocabulary; preload or register the metaschema",
+                        new PathSegment.Name(ps, "$schema"), resourceUri));
             }
         }
         return inheritedVocabulary;

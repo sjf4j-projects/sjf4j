@@ -1,8 +1,0 @@
-{
-  "$id": "urn:sjf4j:test:convention",
-  "type": "object",
-  "required": ["code"],
-  "properties": {
-    "code": {"type": "string", "pattern": "^[A-Z]{2}\\d{2}$"}
-  }
-}

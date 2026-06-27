@@ -328,7 +328,7 @@ final class FormatUtil {
     }
 
     private static final class IcuIdnaBridge {
-        private final IDNA uts46 = IDNA.getUTS46Instance(0);
+        private final IDNA uts46 = IDNA.getUTS46Instance(IDNA.CHECK_CONTEXTJ | IDNA.NONTRANSITIONAL_TO_ASCII);
 
         private IcuIdnaBridge() {
         }

@@ -5,14 +5,24 @@ All notable changes to **SJF4J (Simple JSON Facade for Java)** will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 ## [Unreleased]
+### Breaking Changes
+- Changed `SchemaRegistry.index(...)` to return `void` instead of `SchemaRegistry`; use separate calls instead of chaining registry indexing.
+
 ### Added
 - Added method-level `@MappingCreator` support for `@CompiledMapper` methods, allowing per-method target implementation or factory selection that overrides matching interface-level creators.
 - Added JSONPath filter `in` / `nin` operators with array literal support for membership checks.
+- Added `SchemaRegistry.indexIfAbsent(...)` for idempotent remote/metaschema preload flows.
+
+### Changed
+- Changed schema compilation to fail fast when a custom `$schema` metaschema cannot be resolved, since unavailable metaschema vocabulary can otherwise compile the wrong keyword set.
+- Changed `sjf4j-schema` official JSON Schema conformance tests to download the upstream test suite into `build/` via Gradle and run it through `officialLatestTest`, keeping regular test resources free of copied official fixtures.
 
 ### Fixed
 - Fixed generated `@CompiledPath` and `@CompiledMapper` static property resolution for `JsonObject` subclasses so JOJO getter/field/setter properties are generated like POJO access, while unknown names still fall back to dynamic `JsonObject` access.
 - Fixed generated mapper/path property discovery to share record, bean getter/setter, renamed-property, and JOJO type checks without treating ordinary fluent methods as properties.
+- Improved schema `$ref` / `$dynamicRef` compile-time diagnostics to distinguish missing referenced schema resources from missing fragments inside an existing resource.
 
 
 ## [1.3.1] - 2026.06.09

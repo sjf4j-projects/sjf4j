@@ -1,3 +1,10 @@
+import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.api.tasks.testing.Test
+import java.io.BufferedInputStream
+import java.net.URI
+import java.util.zip.ZipInputStream
+
 plugins {
     id("java-library")
     id("jacoco")
@@ -48,9 +55,100 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    exclude("**/OfficialTest.class")
     jvmArgs(
         "-Xshare:off"
     )
+}
+
+/////////////////////
+/// Official JSON Schema Test Suite
+
+val officialSchemaSuiteDir = layout.buildDirectory.dir("official-json-schema-tests/suite")
+
+fun githubStream(url: String) = URI(url).toURL().openConnection().apply {
+    setRequestProperty("User-Agent", "sjf4j-gradle")
+    connectTimeout = 30_000
+    readTimeout = 120_000
+}.getInputStream()
+
+fun jsonSchemaTestSuiteSha(ref: String): String {
+    if (Regex("[0-9a-fA-F]{40}").matches(ref)) return ref.lowercase()
+    val api = "https://api.github.com/repos/json-schema-org/JSON-Schema-Test-Suite/commits/$ref"
+    val json = githubStream(api).bufferedReader(Charsets.UTF_8).use { it.readText() }
+    return Regex("\"sha\"\\s*:\\s*\"([0-9a-f]{40})\"")
+        .find(json)
+        ?.groupValues
+        ?.get(1)
+        ?: throw GradleException("Failed to resolve JSON-Schema-Test-Suite revision: $ref")
+}
+
+val downloadOfficialSchemaTests by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Downloads the latest official JSON Schema test suite into build/."
+    outputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val ref = providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get()
+        val sha = jsonSchemaTestSuiteSha(ref)
+        val outDir = officialSchemaSuiteDir.get().asFile
+        delete(outDir)
+        outDir.mkdirs()
+
+        val outRoot = outDir.canonicalFile.toPath()
+        val zipUrl = "https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/zip/$sha"
+        var copied = 0
+
+        ZipInputStream(BufferedInputStream(githubStream(zipUrl))).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                val name = entry.name.replace('\\', '/')
+                val rootEnd = name.indexOf('/')
+                if (rootEnd < 0) continue
+
+                val relative = name.substring(rootEnd + 1)
+                if (!relative.startsWith("tests/") && !relative.startsWith("remotes/")) continue
+
+                val target = outDir.resolve(relative)
+                val targetPath = target.canonicalFile.toPath()
+                if (!targetPath.startsWith(outRoot)) {
+                    throw GradleException("Unsafe path in JSON-Schema-Test-Suite zip: $name")
+                }
+
+                if (entry.isDirectory) {
+                    target.mkdirs()
+                } else {
+                    target.parentFile.mkdirs()
+                    target.outputStream().use { output -> zip.copyTo(output) }
+                    copied++
+                }
+                zip.closeEntry()
+            }
+        }
+
+        outDir.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
+            "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\n" +
+                    "ref: $ref\n" +
+                    "revision: $sha\n"
+        )
+        logger.lifecycle("Downloaded JSON-Schema-Test-Suite $sha ($copied files) to $outDir")
+    }
+}
+
+val officialLatestTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs OfficialTest against the latest JSON-Schema-Test-Suite from GitHub."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    include("**/OfficialTest.class")
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    jvmArgs("-Xshare:off")
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    dependsOn(downloadOfficialSchemaTests)
+    shouldRunAfter(tasks.test)
 }
 
 tasks.withType<Javadoc> {
@@ -98,4 +196,17 @@ mavenPublishing {
 tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
     .configureEach {
         dependsOn(tasks.matching { it.name == "plainJavadocJar" })
+    }
+
+tasks.withType<PublishToMavenRepository>().configureEach {
+    dependsOn(officialLatestTest)
+}
+
+tasks.withType<PublishToMavenLocal>().configureEach {
+    dependsOn(officialLatestTest)
+}
+
+tasks.matching { it.name == "publish" || it.name == "publishToMavenLocal" }
+    .configureEach {
+        dependsOn(officialLatestTest)
     }

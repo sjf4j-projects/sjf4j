@@ -30,7 +30,8 @@ class SchemaRegistryTest {
                 "}");
 
         SchemaRegistry registry = new SchemaRegistry();
-        registry.index(rootSchema).index(leafSchema);
+        registry.index(rootSchema);
+        registry.index(leafSchema);
 
         SchemaPlan plan = rootSchema.createPlan(registry);
         assertTrue(plan.validate("x").isValid());
@@ -51,6 +52,27 @@ class SchemaRegistryTest {
         assertTrue(registry.contains("file:///schemas/root.json"));
         assertTrue(registry.contains(URI.create("file:///schemas/defs/user.json")));
         assertTrue(registry.contains(URI.create("file:///schemas/root.json")));
+    }
+
+    @Test
+    void indexIfAbsent_skipsExistingRetrievalUriWithoutConflict() {
+        URI retrievalUri = URI.create("http://localhost:1234/schema.json");
+        ObjectSchema stringSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"http://localhost:1234/string-schema.json\"," +
+                "\"type\":\"string\"" +
+                "}");
+        ObjectSchema numberSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"http://localhost:1234/number-schema.json\"," +
+                "\"type\":\"number\"" +
+                "}");
+
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(retrievalUri, stringSchema);
+        registry.indexIfAbsent(retrievalUri, numberSchema);
+
+        assertTrue(registry.resolve(retrievalUri).validate("x").isValid());
+        assertFalse(registry.resolve(retrievalUri).validate(1).isValid());
+        assertFalse(registry.contains(URI.create("http://localhost:1234/number-schema.json")));
     }
 
     @Test
@@ -114,6 +136,55 @@ class SchemaRegistryTest {
                 () -> registry.resolve("https://example.com/user", "/properties/age"));
         assertTrue(ex.getMessage().contains("SCHEMA schema.resolve: cannot resolve schema fragment '#/properties/age'"));
         assertTrue(ex.getMessage().contains("schema=https://example.com/user"));
+    }
+
+    @Test
+    void createPlan_missingRefResource_reportsResourceAndKeyword() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"," +
+                "\"$ref\":\"http://localhost:1234/draft2020-12/detached-ref.json#/$defs/foo\"" +
+                "}");
+
+        SchemaException ex = assertThrows(SchemaException.class,
+                () -> schema.createPlan(new SchemaRegistry()));
+        assertTrue(ex.getMessage().contains("cannot resolve schema resource 'http://localhost:1234/draft2020-12/detached-ref.json'"));
+        assertTrue(ex.getMessage().contains("preload or register the referenced schema"));
+        assertTrue(ex.getMessage().contains("keyword=/$ref"));
+    }
+
+    @Test
+    void createPlan_missingRefFragment_reportsFragmentResourceAndKeyword() {
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(JsonSchema.fromJson("{" +
+                "\"$id\":\"http://localhost:1234/draft2020-12/detached-ref.json\"," +
+                "\"$defs\":{}" +
+                "}"));
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"," +
+                "\"$ref\":\"http://localhost:1234/draft2020-12/detached-ref.json#/$defs/foo\"" +
+                "}");
+
+        SchemaException ex = assertThrows(SchemaException.class,
+                () -> schema.createPlan(registry));
+        assertTrue(ex.getMessage().contains("cannot resolve schema fragment '#/$defs/foo'"));
+        assertTrue(ex.getMessage().contains("resource 'http://localhost:1234/draft2020-12/detached-ref.json'"));
+        assertTrue(ex.getMessage().contains("keyword=/$ref"));
+    }
+
+    @Test
+    void createPlan_missingCustomMetaschema_reportsSchemaKeyword() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"https://schema/using/no/validation\"," +
+                "\"$schema\":\"http://localhost:1234/draft2020-12/metaschema-no-validation.json\"," +
+                "\"properties\":{\"badProperty\":false}" +
+                "}");
+
+        SchemaException ex = assertThrows(SchemaException.class,
+                () -> schema.createPlan(new SchemaRegistry()));
+        assertTrue(ex.getMessage().contains("cannot resolve $schema 'http://localhost:1234/draft2020-12/metaschema-no-validation.json'"));
+        assertTrue(ex.getMessage().contains("preload or register the metaschema"));
+        assertTrue(ex.getMessage().contains("keyword=/$schema"));
+        assertTrue(ex.getMessage().contains("schema=https://schema/using/no/validation"));
     }
 
     @Test

@@ -575,9 +575,21 @@ public class SchemaValidationTest {
 
     @Test
     public void testFormatAssertionVocabularyForcesValidation() {
-        ObjectSchema metaSchema = SchemaUtil.loadSchemaFromLocalUri(
-                URI.create("classpath:///json-schemas/remotes/draft2020-12/format-assertion-true.json"));
-        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+        ObjectSchema metaSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"http://localhost:1234/draft2020-12/format-assertion-true.json\"," +
+                "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"," +
+                "\"$vocabulary\":{" +
+                "\"https://json-schema.org/draft/2020-12/vocab/core\":true," +
+                "\"https://json-schema.org/draft/2020-12/vocab/format-assertion\":true" +
+                "}," +
+                "\"$dynamicAnchor\":\"meta\"," +
+                "\"allOf\":[" +
+                "{\"$ref\":\"https://json-schema.org/draft/2020-12/meta/core\"}," +
+                "{\"$ref\":\"https://json-schema.org/draft/2020-12/meta/format-assertion\"}" +
+                "]" +
+                "}");
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{\"$schema\":\"http://localhost:1234/draft2020-12/format-assertion-true.json\",\"type\":\"string\",\"format\":\"email\"}");
         SchemaPlan plan = schema.createPlan(registry);
@@ -595,7 +607,8 @@ public class SchemaValidationTest {
                 "\"https://json-schema.org/draft/2020-12/vocab/validation\":false" +
                 "}" +
                 "}");
-        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://example.com/meta/no-validation\"," +
@@ -616,7 +629,8 @@ public class SchemaValidationTest {
                 "\"https://json-schema.org/draft/2020-12/vocab/core\":true" +
                 "}" +
                 "}");
-        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://example.com/meta/core-only\"," +
@@ -637,7 +651,8 @@ public class SchemaValidationTest {
                 "\"https://json-schema.org/draft/2020-12/vocab/format-assertion\":false" +
                 "}" +
                 "}");
-        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://example.com/meta/format-optional\"," +
@@ -660,7 +675,8 @@ public class SchemaValidationTest {
                 "\"https://json-schema.org/draft/2020-12/vocab/format-annotation\":true" +
                 "}" +
                 "}");
-        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://example.com/meta/format-annotation-only\"," +
@@ -677,7 +693,8 @@ public class SchemaValidationTest {
     public void testDraft2019FormatVocabularyActivatesFormatWithoutAssertion() {
         ObjectSchema metaSchema = SchemaUtil.loadSchemaFromLocalUri(
                 URI.create("classpath:///json-schemas/draft2019-09/schema.json"));
-        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"," +

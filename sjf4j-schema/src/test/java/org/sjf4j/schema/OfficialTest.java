@@ -7,7 +7,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 
 import java.net.URI;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,20 +18,22 @@ import java.util.Map;
 
 public final class OfficialTest {
 
+    private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
+
 
     public static void main(String[] args) throws Exception {
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
-//        loadRemotes(registry, locatePath("json-schemas/remotes"));
-//        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional/format"), true, false);
+//        loadRemotes(registry, locatePath("remotes"));
+//        runTestDir(registry, locatePath("tests/draft2020-12/optional/format"), true, false);
 
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-//        loadRemotes(registry, locatePath("json-schemas/remotes"));
-//        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional/format"), true, false);
+//        loadRemotes(registry, locatePath("remotes"));
+//        runTestDir(registry, locatePath("tests/draft2019-09/optional/format"), true, false);
 //        runTestFile(root.resolve("dynamicRef.json"), "", "");
 
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
-//        loadRemotes(registry, locatePath("json-schemas/remotes"));
-//        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional/format"), true, false);
+//        loadRemotes(registry, locatePath("remotes"));
+//        runTestDir(registry, locatePath("tests/draft7/optional/format"), true, false);
 //        runTestFile(root.resolve("vocabulary.json"), "", "");
 
     }
@@ -40,38 +41,41 @@ public final class OfficialTest {
     @Test
     public void testDraft7() throws Exception {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
-        loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft7"), false, true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), false, true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional/format"), true, true);
+        loadRemotes(registry, locatePath("remotes"));
+        runTestDir(registry, locatePath("tests/draft7"), false, true);
+        runTestDir(registry, locatePath("tests/draft7/optional"), false, true);
+        runTestDir(registry, locatePath("tests/draft7/optional/format"), true, true);
     }
 
     @Test
     public void testDraft2019_09() throws Exception {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-        loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09"), false, true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), false, true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional/format"), true, true);
+        loadRemotes(registry, locatePath("remotes"));
+        runTestDir(registry, locatePath("tests/draft2019-09"), false, true);
+        runTestDir(registry, locatePath("tests/draft2019-09/optional"), false, true);
+        runTestDir(registry, locatePath("tests/draft2019-09/optional/format"), true, true);
     }
 
     @Test
     public void testDraft2020_12() throws Exception {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
-        loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12"), false,true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional"), false, true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional/format"), true,true);
+        loadRemotes(registry, locatePath("remotes"));
+        runTestDir(registry, locatePath("tests/draft2020-12"), false,true);
+        runTestDir(registry, locatePath("tests/draft2020-12/optional"), false, true);
+        runTestDir(registry, locatePath("tests/draft2020-12/optional/format"), true,true);
     }
 
 
-    private static Path locatePath(String dir) throws Exception {
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        URL url = cl.getResource(dir);
-        if (url == null) {
-            throw new IllegalStateException("Not found " + dir + " in test resources");
+    private static Path locatePath(String dir) {
+        String root = System.getProperty(TEST_ROOT_PROPERTY);
+        if (root == null || root.isEmpty()) {
+            throw new IllegalStateException("Missing -D" + TEST_ROOT_PROPERTY + "=<JSON-Schema-Test-Suite root>");
         }
-        return Paths.get(url.toURI());
+        Path path = Paths.get(root).resolve(dir);
+        if (!Files.exists(path)) {
+            throw new IllegalStateException("Not found " + dir + " under " + root);
+        }
+        return path;
     }
 
     private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow) throws Exception {

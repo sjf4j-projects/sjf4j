@@ -23,6 +23,23 @@ public class ValidJsonSchemaTest {
             "\"additionalProperties\":false" +
             "}";
 
+    private static final String DOMAIN_SCHEMA = "{" +
+            "\"$id\":\"urn:sjf4j:test:domain\"," +
+            "\"$defs\":{" +
+            "\"Tag\":{\"$anchor\":\"Tag\",\"type\":\"string\",\"pattern\":\"^[a-z]+$\"}," +
+            "\"User\":{\"$anchor\":\"User\",\"type\":\"object\",\"required\":[\"name\",\"email\"]," +
+            "\"properties\":{\"name\":{\"type\":\"string\"},\"email\":{\"type\":\"string\",\"format\":\"email\"},\"tag\":{\"$ref\":\"#Tag\"}}," +
+            "\"additionalProperties\":true}" +
+            "}" +
+            "}";
+
+    private static final String CONVENTION_USER_SCHEMA = "{" +
+            "\"type\":\"object\"," +
+            "\"required\":[\"code\"]," +
+            "\"properties\":{\"code\":{\"type\":\"string\",\"pattern\":\"^[A-Z0-9]+$\"}}," +
+            "\"additionalProperties\":false" +
+            "}";
+
     @ValidJsonSchema(value = SIMPLE_USER_SCHEMA)
     public static class InlineUser {
         public int id;
@@ -47,7 +64,7 @@ public class ValidJsonSchemaTest {
         public String tag;
     }
 
-    @ValidJsonSchema(ref = "classpath:/json-schemas/user.json")
+    @ValidJsonSchema(ref = "classpath:/schema-validator/user.json")
     public static class ClasspathRefUser {
         public int id;
         public String name;
@@ -83,8 +100,9 @@ public class ValidJsonSchemaTest {
     }
 
     @Test
-    public void testResourceSchemaOnPojo() {
-        SchemaValidator validator = new SchemaValidator();
+    public void testResourceSchemaOnPojo(@TempDir Path tempDir) throws Exception {
+        Files.write(tempDir.resolve("user.json"), SIMPLE_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
+        SchemaValidator validator = new SchemaValidator("file:" + tempDir.toString(), null, true);
         ResourceUser ok = new ResourceUser();
         ok.id = 2;
         ok.name = "alice";
@@ -97,8 +115,9 @@ public class ValidJsonSchemaTest {
     }
 
     @Test
-    public void testConventionSchemaOnPojo() {
-        SchemaValidator validator = new SchemaValidator();
+    public void testConventionSchemaOnPojo(@TempDir Path tempDir) throws Exception {
+        Files.write(tempDir.resolve("ConventionUser.json"), CONVENTION_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
+        SchemaValidator validator = new SchemaValidator("file:" + tempDir.toString(), null, true);
         ConventionUser ok = new ConventionUser();
         ok.code = "AB12";
         assertTrue(validator.validate(ok).isValid());
@@ -109,8 +128,9 @@ public class ValidJsonSchemaTest {
     }
 
     @Test
-    public void testAnchoredSchemaOnClass() {
-        SchemaValidator validator = new SchemaValidator(null, null, true);
+    public void testAnchoredSchemaOnClass(@TempDir Path tempDir) throws Exception {
+        Files.write(tempDir.resolve("domain.json"), DOMAIN_SCHEMA.getBytes(StandardCharsets.UTF_8));
+        SchemaValidator validator = new SchemaValidator("file:" + tempDir.toString(), null, true);
         AnchoredUser ok = new AnchoredUser();
         ok.name = "han";
         ok.email = "han@example.com";
@@ -158,7 +178,7 @@ public class ValidJsonSchemaTest {
         assertTrue(validator.validate(ok).isValid());
     }
 
-    @ValidJsonSchema(ref = "classpath:/json-schemas/domain.json#/$defs/User")
+    @ValidJsonSchema(ref = "classpath:/schema-validator/domain.json#/$defs/User")
     public static class PointerRefUser {
         public String name;
         public String email;
