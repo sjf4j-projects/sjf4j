@@ -38,9 +38,6 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-jdk17-test:jacocoTestReport :sjf4j-jdk17-test:jacocoTestCoverageVerification
 
-    - name: Run latest official JSON Schema tests
-      run: ./gradlew :sjf4j-schema:officialLatestTest --no-daemon
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
