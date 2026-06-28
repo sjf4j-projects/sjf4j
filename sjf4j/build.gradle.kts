@@ -18,8 +18,8 @@ configurations {
 }
 
 dependencies {
-    compileOnly("tools.jackson.core:jackson-databind:3.1.1")
-    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    compileOnly("tools.jackson.core:jackson-databind:3.2.0")
+    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.22.0")
     compileOnly("com.google.code.gson:gson:2.13.1")
     compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
     compileOnly("jakarta.json:jakarta.json-api:2.1.3")
@@ -28,7 +28,7 @@ dependencies {
     compileOnly("com.ibm.icu:icu4j:77.1")
 
     // test
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.0")
     testImplementation("com.google.code.gson:gson:2.13.1")
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     testImplementation("jakarta.json:jakarta.json-api:2.1.3")
@@ -46,7 +46,7 @@ dependencies {
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
     jmhImplementation("com.jayway.jsonpath:json-path:2.10.0")
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.0")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
     jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")

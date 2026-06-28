@@ -22,7 +22,7 @@ dependencies {
 
     // test
     testImplementation(project.findProject(":sjf4j-schema")?.let { project(":sjf4j-schema") } ?: "org.sjf4j:sjf4j-schema:$version")
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.0")
     testImplementation("org.yaml:snakeyaml:2.5")
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
@@ -33,7 +33,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // JMH
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.0")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
