@@ -1,5 +1,6 @@
 package org.sjf4j.processor;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -24,7 +25,7 @@ public final class NameAllocator {
                 "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "true",
                 "try", "void", "volatile", "while"
         };
-        for (String keyword : keywords) used.add(keyword);
+        Collections.addAll(used, keywords);
     }
 
     /**
@@ -32,7 +33,7 @@ public final class NameAllocator {
      * an already emitted local variable.
      */
     public void reserve(String name) {
-        if (name != null && name.length() != 0) used.add(name);
+        if (name != null && !name.isEmpty()) used.add(name);
     }
 
     /**
@@ -72,7 +73,7 @@ public final class NameAllocator {
     }
 
     private String upper(String s) {
-        if (s.length() == 0) return "Value";
+        if (s.isEmpty()) return "Value";
         StringBuilder b = new StringBuilder(s.length());
         boolean up = true;
         for (int i = 0; i < s.length(); i++) {

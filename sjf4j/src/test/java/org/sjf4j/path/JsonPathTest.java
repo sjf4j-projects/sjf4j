@@ -74,6 +74,13 @@ public class JsonPathTest {
     }
 
     @Test
+    public void currentPathIsSingularForReadsButNotWrites() {
+        JsonPath current = JsonPath.parse("@.age");
+        assertTrue(current.isSingleGet());
+        assertFalse(current.isSinglePut());
+    }
+
+    @Test
     public void testJsonPointerParent() {
         JsonPointer p = JsonPointer.parse("/a/b/0/c");
         assertEquals("/a/b/0", p.parent().toString());
@@ -124,6 +131,30 @@ public class JsonPathTest {
         log.info("path1: {}", path1);
         assertEquals("a.b[0].c", path1.toString());
         assertEquals("$.a.b[0].c", path1.toExpr());
+    }
+
+    @Test
+    public void sumIsSjf4jExtension() {
+        assertEquals(10.0d, JsonPath.parse("$.data.sum()").eval(JsonObject.of("data", JsonArray.of(1, 2, 3, 4))));
+    }
+
+    @Test
+    public void descendantSliceAndUnionPreserveSelectorOrderAndDuplicates() {
+        assertEquals(Arrays.asList(JsonArray.of(4, 5, 6, 7), 3, 1, 7, 5),
+                JsonPath.parse("$..[3:0:-2]").find(JsonArray.of(JsonArray.of(0, 1, 2, 3), JsonArray.of(4, 5, 6, 7))));
+        assertEquals(Arrays.asList(JsonArray.of(10), JsonArray.of(10), 10, 10, 20, 20),
+                JsonPath.parse("$..[0,0]").find(JsonArray.of(JsonArray.of(10), JsonArray.of(20))));
+    }
+
+    @Test
+    public void unionSlicesPreserveMemberOrderAndAcceptWhitespace() {
+        JsonArray values = JsonArray.of(0, 1, 2, 3, 4);
+        assertEquals(Arrays.asList(0, 1, 3), JsonPath.parse("$[:2,3]").eval(values));
+        assertEquals(Arrays.asList(0, 2, 4, 0), JsonPath.parse("$[::2,0]").eval(values));
+        assertEquals(Arrays.asList(1, 0, 1, 2, 3, 4), JsonPath.parse("$[1,:]").eval(values));
+
+        JsonObject object = JsonObject.of("first", 1, "second", 2);
+        assertEquals(Arrays.asList(2, 1), JsonPath.parse("$[\n 'second'\t,\n 'first' \r\n]").eval(object));
     }
 
     @Test
@@ -998,7 +1029,7 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson(RFC9535_EXAMPLE1);
         Object rs1 = jo.evalByPath("$.a[?@.b == 'kilo'].b");
         log.info("rs1={}", rs1);
-        assertEquals("kilo", rs1);
+        assertEquals(Collections.singletonList("kilo"), rs1);
 
         Object rs3 = jo.evalByPath("$.a[?@>3.5].count()");
         log.info("rs3={}", rs3);
@@ -1010,7 +1041,7 @@ public class JsonPathTest {
 
         Object v1 = jo.evalByPath("$..*[?(@.b == 'kilo')].b");
         log.info("v1={}", v1);
-        assertEquals("kilo", v1);
+        assertEquals(Collections.singletonList("kilo"), v1);
     }
 
     @Test
@@ -1020,7 +1051,7 @@ public class JsonPathTest {
                 "\"title\":\"B\",\"published\":false},{" +
                 "\"title\":\"C\",\"isbn\":null,\"published\":true}]}}");
 
-        assertEquals(Arrays.asList("B", "C"), jo.findByPath("$.store.book[?@.isbn == null].title", String.class));
+        assertEquals(Collections.singletonList("C"), jo.findByPath("$.store.book[?@.isbn == null].title", String.class));
         assertEquals(Arrays.asList("A", "C"), jo.findByPath("$.store.book[?@.published == true].title", String.class));
         assertEquals(Collections.singletonList("B"), jo.findByPath("$.store.book[?@.published == false].title", String.class));
         assertEquals(Collections.singletonList("D"), JsonObject.fromJson("{\"store\":{\"book\":[{\"title\":\"D\",\"name\":\"a'b\"}]}}")
@@ -1039,10 +1070,10 @@ public class JsonPathTest {
         assertEquals(Collections.singletonList("XL"), jo.findByPath("$.items[?@.size nin ['S','M']].size", String.class));
         assertEquals(Arrays.asList(1, 2), jo.findByPath("$.items[?@.value in [1, 2]].value", Integer.class));
         assertEquals(Arrays.asList(true, false, true), jo.findByPath("$.items[?@.enabled in [true, false]].enabled", Boolean.class));
-        assertEquals(Arrays.asList(2, 3, null), jo.findByPath("$.items[?@.size nin ['S']].value", Integer.class));
+        assertEquals(Arrays.asList(2, 3), jo.findByPath("$.items[?@.size nin ['S']].value", Integer.class));
         assertEquals(Collections.singletonList((Integer) null), jo.findByPath("$.items[?@.value in [null]].value", Integer.class));
         assertEquals(Collections.emptyList(), jo.findByPath("$.items[?@.size in []].value", Integer.class));
-        assertEquals(Arrays.asList(1, 2, 3, null), jo.findByPath("$.items[?@.size nin []].value", Integer.class));
+        assertEquals(Arrays.asList(1, 2, 3), jo.findByPath("$.items[?@.size nin []].value", Integer.class));
 
         JsonObject nativeRhs = JsonObject.of("items", Arrays.asList(
                 JsonObject.of("size", "S", "allowed", new String[]{"S", "M"}),
@@ -1063,7 +1094,7 @@ public class JsonPathTest {
         assertEquals("Alice", jo1.get("name"));
 
         Object jo2 = JsonPath.parse("$[?(@.name =~ /^B/)]").eval(ja1);
-        assertNull(jo2);
+        assertEquals(Collections.emptyList(), jo2);
     }
 
     @Test

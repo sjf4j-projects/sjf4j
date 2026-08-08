@@ -75,7 +75,8 @@ public class JsonPathBenchmark {
                 "$.store.book[*].author",
                 "$..price",
                 "$.store.book[?(@.price > 10)].title",
-                "$.store.book[0,2].title"
+                "$.store.book[0,2].title",
+                "$.store.book[1:4].title"
         })
         public String expr;
     }
@@ -107,7 +108,8 @@ public class JsonPathBenchmark {
                 "$.store.book[*].author",
                 "$..price",
                 "$.store.book[?(@.price > 10)].title",
-                "$.store.book[0,2].title"
+                "$.store.book[0,2].title",
+                "$.store.book[1:4].title"
         })
         public String expr;
 
@@ -151,7 +153,8 @@ public class JsonPathBenchmark {
                 "$.store.book[*].author",
                 "$..price",
                 "$.store.book[?(@.price > 10)].title",
-                "$.store.book[0,2].title"
+                "$.store.book[0,2].title",
+                "$.store.book[1:4].title"
         })
         public String expr;
 
@@ -285,7 +288,7 @@ public class JsonPathBenchmark {
     }
 
     @Benchmark
-    public Object parse_sjf4j(CompileState state) {
+    public Object compile_sjf4j(CompileState state) {
         return JsonPath.parse(state.expr);
     }
 

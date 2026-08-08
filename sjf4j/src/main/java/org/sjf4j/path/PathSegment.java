@@ -173,13 +173,13 @@ public abstract class PathSegment {
      * Represents a slice token in a JSON path expression.
      */
     public static final class Slice extends PathSegment {
-        public final Integer start; // null allowed
-        public final Integer end;   // null allowed
-        public final Integer step;  // null allowed
+        public final Long start; // null allowed
+        public final Long end;   // null allowed
+        public final Long step;  // null allowed
         /**
          * Creates an array-slice segment.
          */
-        public Slice(PathSegment parent, Integer s, Integer e, Integer st) {
+        public Slice(PathSegment parent, Long s, Long e, Long st) {
             super(parent);
             start = s; end = e; step = st;
         }
@@ -189,19 +189,20 @@ public abstract class PathSegment {
          */
         @Override
         public boolean matchIndex(int idx, int size) {
-            if (start != null) {
-                int pstart = start < 0 ? size + start : start;
-                if (idx < pstart) return false;
+            long st = step == null ? 1 : step;
+            if (st == 0) return false;
+            long first = start == null ? (st < 0 ? size - 1L : 0L) : start;
+            long last = end == null ? (st < 0 ? -1L : size) : end;
+            if (start != null && first < 0) first += size;
+            if (end != null && last < 0) last += size;
+            if (st < 0) {
+                first = Math.min(Math.max(first, -1L), size - 1L);
+                last = Math.min(Math.max(last, -1L), size - 1L);
+                return idx <= first && idx > last && (first - idx) % -st == 0;
             }
-            if (end != null) {
-                int pend = end < 0 ? size + end : end;
-                if (idx >= pend) return false;
-            }
-            if (step != null) {
-                int mod = start == null ? 0 : start;
-                return (idx - mod) % step == 0;
-            }
-            return true;
+            first = Math.min(Math.max(first, 0L), size);
+            last = Math.min(Math.max(last, 0L), size);
+            return idx >= first && idx < last && (idx - first) % st == 0;
         }
 
         /**

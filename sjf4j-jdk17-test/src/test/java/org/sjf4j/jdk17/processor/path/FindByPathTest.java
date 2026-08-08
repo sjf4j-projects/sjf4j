@@ -68,6 +68,15 @@ public class FindByPathTest {
         @FindByPath("$.items[:-1].name")
         List<String> allButLastItemNames(Container root);
 
+        @FindByPath("$.items[::-1].name")
+        List<String> reverseItemNames(Container root);
+
+        @FindByPath("$.items[-9007199254740991:9007199254740991].name")
+        List<String> clampedLongBoundItemNames(Container root);
+
+        @FindByPath("$.items[-1,2:0:-1].name")
+        List<String> unionSliceItemNames(Container root);
+
         @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
         List<String> adultItemNames(Container root);
 
@@ -156,6 +165,9 @@ public class FindByPathTest {
         assertEquals(List.of("Alice", "Charlie"), nodes.everyOtherItemName(root));
         assertEquals(List.of("Bob", "Charlie"), nodes.lastTwoItemNames(root));
         assertEquals(List.of("Alice", "Bob"), nodes.allButLastItemNames(root));
+        assertEquals(List.of("Charlie", "Bob", "Alice"), nodes.reverseItemNames(root));
+        assertEquals(List.of("Alice", "Bob", "Charlie"), nodes.clampedLongBoundItemNames(root));
+        assertEquals(List.of("Charlie", "Charlie", "Bob"), nodes.unionSliceItemNames(root));
     }
 
     @Test

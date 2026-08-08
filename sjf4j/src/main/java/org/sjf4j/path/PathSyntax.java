@@ -17,6 +17,9 @@ import java.util.regex.Pattern;
  * {@link JsonPath} can focus on execution semantics.
  */
 public final class PathSyntax {
+    private static final long MAX_IJSON_INTEGER = 9007199254740991L;
+    private static final long MAX_IJSON_INTEGER_DIV_10 = MAX_IJSON_INTEGER / 10;
+    private static final int MAX_IJSON_INTEGER_MOD_10 = (int) (MAX_IJSON_INTEGER % 10);
 
     /**
      * Converts a segment chain to a rooted JSONPath expression.
@@ -320,7 +323,11 @@ public final class PathSyntax {
                                 expr.substring(contentStart + 1, contentEnd - 1)));
                     } else if (expr.charAt(contentStart) == '\'' || expr.charAt(contentStart) == '"') {
                         // Single quoted name ['name'] or ["name"]
-                        String name = _parseQuotedContent(expr, contentStart, contentEnd, null, "name");
+                        int[] quotedEnd = new int[1];
+                        String name = _parseQuotedContent(expr, contentStart, contentEnd, quotedEnd, "name");
+                        if (_skipWhitespace(expr, quotedEnd[0]) != contentEnd) {
+                            throw new JsonException("trailing characters after quoted name in path '" + expr + "'");
+                        }
                         segments.addLast(new PathSegment.Name(segments.peekLast(), name));
                     } else if (_containsChar(expr, contentStart, contentEnd, ':')) {
                         // Slice [start:end:step]
@@ -397,11 +404,11 @@ public final class PathSyntax {
             return -1;
         }
 
-        if (Character.isDigit(c)) {
+        if (c >= '0' && c <= '9') {
             int start = i;
             do {
                 i++;
-            } while (i < len && Character.isDigit(expr.charAt(i)));
+            } while (i < len && expr.charAt(i) >= '0' && expr.charAt(i) <= '9');
 
             int tokenEnd = _skipWhitespace(expr, i);
             if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
@@ -471,23 +478,12 @@ public final class PathSyntax {
     /**
      * Parses a slice part value or returns null when blank.
      */
-    private static Integer _parseSlicePart(String part) {
-        if (part == null || part.trim().isEmpty()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(part.trim());
-        } catch (NumberFormatException e) {
-            throw new JsonException("invalid slice part '" + part + "'");
-        }
-    }
-
-    private static Integer _parseSlicePart(String content, int start, int end) {
+    private static Long _parseSlicePart(String content, int start, int end) {
         start = _skipWhitespace(content, start);
         end = _trimTrailingWhitespace(content, start, end);
         if (start >= end) return null;
         try {
-            return _parseInt(content, start, end);
+            return _parseSliceLong(content, start, end);
         } catch (NumberFormatException e) {
             throw new JsonException("invalid slice part '" + content.substring(start, end) + "'");
         }
@@ -501,8 +497,7 @@ public final class PathSyntax {
         List<PathSegment> segments = new ArrayList<>();
         int i = start;
         while (i < end) {
-            // Skip spaces and commas
-            while (i < end && (content.charAt(i) == ' ' || content.charAt(i) == ',')) i++;
+            i = _skipWhitespace(content, i);
             if (i >= end) break;
 
             char firstChar = content.charAt(i);
@@ -512,10 +507,11 @@ public final class PathSyntax {
                 int[] quotedEnd = new int[1];
                 String name = _parseQuotedContent(content, i, end, quotedEnd, "union name");
                 segments.add(new PathSegment.Name(null, name));
-                i = quotedEnd[0];
-                // Find next comma or end
-                while (i < end && content.charAt(i) != ',') i++;
-            } else if (Character.isDigit(firstChar) || firstChar == '-') {
+                i = _skipWhitespace(content, quotedEnd[0]);
+                if (i < end && content.charAt(i) != ',') {
+                    throw new JsonException("trailing characters after quoted union name in content '" + content + "'");
+                }
+            } else if ((firstChar >= '0' && firstChar <= '9') || firstChar == '-' || firstChar == ':') {
                 // Could be numeric index or slice
                 int tokenStart = i;
                 boolean hasColon = false;
@@ -545,6 +541,16 @@ public final class PathSyntax {
                 throw new JsonException("invalid first character '" + firstChar + "' at position " + i +
                         " in content '" + content + "'");
             }
+
+            i = _skipWhitespace(content, i);
+            if (i >= end) break;
+            if (content.charAt(i) != ',') {
+                throw new JsonException("expected ',' after union member in content '" + content + "'");
+            }
+            i = _skipWhitespace(content, i + 1);
+            if (i >= end) {
+                throw new JsonException("missing union member after ',' in content '" + content + "'");
+            }
         }
         return segments.toArray(new PathSegment[0]);
     }
@@ -561,9 +567,9 @@ public final class PathSyntax {
             }
         }
 
-        Integer startIdx = _parseSlicePart(content, start, firstColon < 0 ? end : firstColon);
-        Integer endIdx = firstColon < 0 ? null : _parseSlicePart(content, firstColon + 1, secondColon < 0 ? end : secondColon);
-        Integer step = secondColon < 0 ? null : _parseSlicePart(content, secondColon + 1, end);
+        Long startIdx = _parseSlicePart(content, start, firstColon < 0 ? end : firstColon);
+        Long endIdx = firstColon < 0 ? null : _parseSlicePart(content, firstColon + 1, secondColon < 0 ? end : secondColon);
+        Long step = secondColon < 0 ? null : _parseSlicePart(content, secondColon + 1, end);
         if (step != null && step == 0) {
             throw new JsonException("slice step cannot be 0" + errorContext);
         }
@@ -606,12 +612,36 @@ public final class PathSyntax {
         int i = negative ? start + 1 : start;
         if (i >= end) throw new NumberFormatException("empty");
 
+        int limit = negative ? Integer.MIN_VALUE : -Integer.MAX_VALUE;
+        int multMin = limit / 10;
         int value = 0;
         while (i < end) {
             char ch = content.charAt(i++);
-            if (!Character.isDigit(ch)) throw new NumberFormatException("bad digit");
-            value = Math.multiplyExact(value, 10);
-            value = Math.addExact(value, ch - '0');
+            if (ch < '0' || ch > '9') throw new NumberFormatException("bad digit");
+            int digit = ch - '0';
+            if (value < multMin) throw new NumberFormatException("out of range");
+            value *= 10;
+            if (value < limit + digit) throw new NumberFormatException("out of range");
+            value -= digit;
+        }
+        return negative ? value : -value;
+    }
+
+    private static long _parseSliceLong(String content, int start, int end) {
+        boolean negative = content.charAt(start) == '-';
+        int i = negative ? start + 1 : start;
+        if (i >= end) throw new NumberFormatException("empty");
+
+        long value = 0;
+        while (i < end) {
+            char ch = content.charAt(i++);
+            if (ch < '0' || ch > '9') throw new NumberFormatException("bad digit");
+            int digit = ch - '0';
+            if (value > MAX_IJSON_INTEGER_DIV_10 ||
+                    (value == MAX_IJSON_INTEGER_DIV_10 && digit > MAX_IJSON_INTEGER_MOD_10)) {
+                throw new NumberFormatException("out of range");
+            }
+            value = value * 10 + digit;
         }
         return negative ? -value : value;
     }

@@ -7,6 +7,7 @@ import org.sjf4j.exception.JsonException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -228,6 +229,18 @@ public class PathSyntaxTest {
     }
 
     @Test
+    public void unionSlicesAllowOmittedStartsAndWhitespace() {
+        testParsePath("$[:2,3]", 2, PathSegment.Root.class, PathSegment.Union.class);
+        testParsePath("$[::2,0]", 2, PathSegment.Root.class, PathSegment.Union.class);
+        testParsePath("$[1,:]", 2, PathSegment.Root.class, PathSegment.Union.class);
+        testParsePath("$[\n :2\t,\n 'name' \r\n]", 2, PathSegment.Root.class, PathSegment.Union.class);
+
+        testParsePathFailure("$[,1]", "invalid first character");
+        testParsePathFailure("$[1,,2]", "invalid first character");
+        testParsePathFailure("$[1,]", "missing union member");
+    }
+
+    @Test
     public void testEscapedCharacters() {
         // Escaped quotes in names
         testParsePath("$['name\\'with\\'quotes']", 2, PathSegment.Root.class, PathSegment.Name.class);
@@ -269,6 +282,9 @@ public class PathSyntaxTest {
 
         // Invalid slice step
         testParsePathFailure("$[::0]", "slice step cannot be 0");
+        testParsePathFailure("$['two'.'some']", "trailing characters");
+        testParsePathFailure("$['a'.'b','c']", "trailing characters");
+        testParsePathFailure("$['a'x,'b']", "trailing characters");
 
         // Too many slice parts
         testParsePathFailure("$[1:2:3:4]", "invalid slice syntax");
@@ -296,6 +312,7 @@ public class PathSyntaxTest {
         // Object wildcard
         testParsePath("$..max()", 3, PathSegment.Root.class, PathSegment.Descendant.class, PathSegment.Function.class);
         testParsePath("$[*].length()", 3, PathSegment.Root.class, PathSegment.Wildcard.class, PathSegment.Function.class);
+        assertDoesNotThrow(() -> PathSyntax.parseFilter("@..value.count() > 1"));
     }
 
     @Test
@@ -354,6 +371,7 @@ public class PathSyntaxTest {
         fe = PathSyntax.parseFilter("@.members[?@.age > 30]");
         System.out.println("fe=" + fe);
         assertEquals("@.members[?@.age > 30]", fe.toString());
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.members[*].age > 30"));
     }
 
     @Test
@@ -384,6 +402,17 @@ public class PathSyntaxTest {
         assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1,]"));
         assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1"));
         assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1 2]"));
+    }
+
+    @Test
+    void testBracketIntegerRangeAndAsciiDigits() {
+        PathSegment[] segments = PathSyntax.parsePath("$[-2147483648]");
+        assertEquals(Integer.MIN_VALUE, ((PathSegment.Index) segments[1]).index);
+
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[2147483648]"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[-2147483649]"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[١]"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[١:]"));
     }
 
 

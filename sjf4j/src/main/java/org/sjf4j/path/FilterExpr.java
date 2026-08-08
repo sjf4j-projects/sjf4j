@@ -66,6 +66,8 @@ public interface FilterExpr {
      * Filter expression that evaluates a JSONPath.
      */
     class PathExpr implements FilterExpr {
+        static final Object NOTHING = new Object();
+
         private final JsonPath path;
 
         /**
@@ -84,7 +86,10 @@ public interface FilterExpr {
          */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
-            return path.rooted() ? path.eval(rootNode) : path.eval(currentNode);
+            Object container = path.rooted() ? rootNode : currentNode;
+            if (!path.singleGet) return path.eval(container);
+            Object value = path._findOne(container, 1, path.length());
+            return value == JsonPath.MISSING ? NOTHING : value;
         }
 
         /**
@@ -145,6 +150,11 @@ public interface FilterExpr {
             this.left = l;
             this.right = r;
             this.op = o;
+            PathExpr nonSingular = l instanceof PathExpr && !((PathExpr) l).path.singleGet ? (PathExpr) l :
+                    r instanceof PathExpr && !((PathExpr) r).path.singleGet ? (PathExpr) r : null;
+            if (o != Op.AND && o != Op.OR && nonSingular != null && !(nonSingular.path.tail() instanceof PathSegment.Function)) {
+                throw new JsonException("filter comparison requires a singular path, but path '" + nonSingular.path + "' is non-singular");
+            }
         }
 
         /**
@@ -161,6 +171,9 @@ public interface FilterExpr {
             }
 
             Object b = right.eval(rootNode, currentNode);
+            _requireScalarFunctionResult(left, a);
+            _requireScalarFunctionResult(right, b);
+            if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
             switch (op) {
                 case EQ: return eq(a, b);
                 case NE: return !eq(a, b);
@@ -173,6 +186,18 @@ public interface FilterExpr {
                 case NIN: return !in(a, b);
             }
             return false;
+        }
+
+        private static void _requireScalarFunctionResult(FilterExpr expr, Object value) {
+            if (expr instanceof PathExpr) {
+                PathExpr pathExpr = (PathExpr) expr;
+                if (!pathExpr.path.singleGet && pathExpr.path.tail() instanceof PathSegment.Function) {
+                    JsonType type = JsonType.of(value);
+                    if (type.isArray() || type.isObject()) {
+                        throw new JsonException("filter comparison path '" + pathExpr.path + "' function returned " + type + "; comparison requires scalar output");
+                    }
+                }
+            }
         }
 
         /**
@@ -311,6 +336,7 @@ public interface FilterExpr {
      * Returns true when two values are node-equivalent.
      */
     static boolean eq(Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
         return Nodes.equals(a, b);
     }
 
@@ -318,6 +344,7 @@ public interface FilterExpr {
      * Returns true when a is greater than b.
      */
     static boolean gt(Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
@@ -333,6 +360,7 @@ public interface FilterExpr {
      * Returns true when a is greater than or equal to b.
      */
     static boolean ge(Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
@@ -348,6 +376,7 @@ public interface FilterExpr {
      * Returns true when a is less than b.
      */
     static boolean lt(Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
@@ -363,6 +392,7 @@ public interface FilterExpr {
      * Returns true when a is less than or equal to b.
      */
     static boolean le(Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
@@ -378,6 +408,7 @@ public interface FilterExpr {
      * Returns true when value a matches regex b.
      */
     static boolean match(Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
         if (!(b instanceof Pattern)) return false;
         if (a == null) return false;
         Pattern p = (Pattern) b;
@@ -400,6 +431,7 @@ public interface FilterExpr {
      * Returns true when array-like b contains a.
      */
     static boolean in(Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
         if (!JsonType.of(b).isArray()) return false;
         return Nodes.anyMatchInArray(b, (i, v) -> eq(a, v));
     }
@@ -411,7 +443,7 @@ public interface FilterExpr {
      * and empty array. Objects are treated as truthy.</p>
      */
     static boolean truth(Object x) {
-        if (x == null) return false;
+        if (x == null || x == PathExpr.NOTHING) return false;
         JsonType xjt = JsonType.of(x);
         if (xjt.isBoolean()) return Boolean.TRUE.equals(Nodes.toBoolean(x));
         if (xjt.isNumber()) return Nodes.toDouble(x) != 0;

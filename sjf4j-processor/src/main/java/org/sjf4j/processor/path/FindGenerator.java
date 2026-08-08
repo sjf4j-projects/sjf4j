@@ -227,7 +227,7 @@ public final class FindGenerator {
         boolean indexUnion = true;
         boolean nameUnion = true;
         for (PathSegment token : union.union) {
-            if (!(token instanceof PathSegment.Index)) indexUnion = false;
+            if (!(token instanceof PathSegment.Index || token instanceof PathSegment.Slice)) indexUnion = false;
             if (!(token instanceof PathSegment.Name)) nameUnion = false;
         }
         if (!indexUnion && !nameUnion) return false;
@@ -241,9 +241,6 @@ public final class FindGenerator {
         TypeMirror tokenValueType;
         if (indexUnion) {
             if (!isList(prefixType) && prefixType.getKind() != TypeKind.ARRAY) return false;
-            for (PathSegment token : union.union) {
-                if (((PathSegment.Index) token).index < 0) return false;
-            }
             tokenValueType = prefixType.getKind() == TypeKind.ARRAY
                     ? ((ArrayType) prefixType).getComponentType()
                     : GeneratorUtil.listValueType(ctx, prefixType);
@@ -291,33 +288,51 @@ public final class FindGenerator {
             }
             if (byIndex) {
                 String itemTypeName = GeneratorUtil.localTypeName(ctx, valueType);
+                String limit = containerType.getKind() == TypeKind.ARRAY ? expr + ".length" : names.local("n");
+                if (containerType.getKind() != TypeKind.ARRAY) out.line("int " + limit + " = " + expr + ".size();");
                 for (PathSegment token : union.union) {
-                    int index = ((PathSegment.Index) token).index;
-                    String limit = containerType.getKind() == TypeKind.ARRAY ? expr + ".length" : expr + ".size()";
-                    out.line("if (" + index + " < " + limit + ") {");
-                    out.indent();
-                    out.line("do {");
-                    out.indent();
-                    if (containerType.getKind() == TypeKind.ARRAY) out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + index + "];");
-                    else out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + index + ");");
-                    emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "break", false);
-                    out.dedent();
-                    out.line("} while (false);");
-                    out.dedent();
-                    out.line("}");
+                    if (token instanceof PathSegment.Index) {
+                        int index = ((PathSegment.Index) token).index;
+                        String normalized = names.local("index");
+                        out.line("int " + normalized + " = " + index + ";");
+                        out.line("if (" + normalized + " < 0) " + normalized + " += " + limit + ";");
+                        out.line("if (" + normalized + " >= 0 && " + normalized + " < " + limit + ") {");
+                        out.indent();
+                        out.line("do {");
+                        out.indent();
+                        if (containerType.getKind() == TypeKind.ARRAY) out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + normalized + "];");
+                        else out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + normalized + ");");
+                        emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "break", false);
+                        out.dedent();
+                        out.line("} while (false);");
+                        out.dedent();
+                        out.line("}");
+                    } else {
+                        String index = emitSliceLoop(out, names, (PathSegment.Slice) token, limit);
+                        out.indent();
+                        if (containerType.getKind() == TypeKind.ARRAY) out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + index + "];");
+                        else out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + index + ");");
+                        emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "continue", false);
+                        out.dedent();
+                        out.line("}");
+                    }
                 }
             } else {
                 String itemTypeName = GeneratorUtil.localTypeName(ctx, valueType);
                 for (PathSegment token : union.union) {
                     String key = GeneratorUtil.escape(((PathSegment.Name) token).name);
-                    out.line("if (" + expr + ".containsKey(\"" + key + "\")) {");
+                    out.line("{");
+                    out.indent();
+                    out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(\"" + key + "\");");
+                    out.line("if (" + itemVar + " != null || " + expr + ".containsKey(\"" + key + "\")) {");
                     out.indent();
                     out.line("do {");
                     out.indent();
-                    out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(\"" + key + "\");");
                     emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "break", false);
                     out.dedent();
                     out.line("} while (false);");
+                    out.dedent();
+                    out.line("}");
                     out.dedent();
                     out.line("}");
                 }
@@ -350,21 +365,30 @@ public final class FindGenerator {
             String itemVar = names.local("item");
             String itemTypeName = GeneratorUtil.localTypeName(ctx, itemType);
             if (exprType.getKind() == TypeKind.ARRAY) {
-                String indexVar = names.local("i");
                 String sizeExpr = expr + ".length";
-                out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + sizeExpr + "; " + indexVar + "++) {");
+                String indexVar;
+                if (segment instanceof PathSegment.Slice) {
+                    indexVar = emitSliceLoop(out, names, (PathSegment.Slice) segment, sizeExpr);
+                } else {
+                    indexVar = names.local("i");
+                    out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + sizeExpr + "; " + indexVar + "++) {");
+                }
                 out.indent();
-                emitSliceCheck(out, segment, indexVar, sizeExpr);
                 out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + indexVar + "];");
             } else if (filterMap) {
                 out.line("for (" + itemTypeName + " " + itemVar + " : " + expr + ".values()) {");
                 out.indent();
             } else {
-                String indexVar = names.local("i");
                 String sizeVar = names.local("n");
-                out.line("for (int " + indexVar + " = 0, " + sizeVar + " = " + expr + ".size(); " + indexVar + " < " + sizeVar + "; " + indexVar + "++) {");
+                out.line("int " + sizeVar + " = " + expr + ".size();");
+                String indexVar;
+                if (segment instanceof PathSegment.Slice) {
+                    indexVar = emitSliceLoop(out, names, (PathSegment.Slice) segment, sizeVar);
+                } else {
+                    indexVar = names.local("i");
+                    out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + sizeVar + "; " + indexVar + "++) {");
+                }
                 out.indent();
-                emitSliceCheck(out, segment, indexVar, sizeVar);
                 out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + indexVar + ");");
             }
             emitFilterCheck(out, filterFields, index, rootExpr, itemVar);
@@ -406,21 +430,33 @@ public final class FindGenerator {
         if (field != null) out.line("if (!" + field + ".evalTruth(" + rootExpr + ", " + itemVar + ")) continue;");
     }
 
-    private void emitSliceCheck(SourceWriter out, PathSegment segment, String indexVar, String sizeExpr) {
-        if (!(segment instanceof PathSegment.Slice)) return;
-        PathSegment.Slice slice = (PathSegment.Slice) segment;
-        if (slice.start != null) {
-            String pstart = slice.start < 0 ? "(" + sizeExpr + " + " + slice.start + ")" : String.valueOf(slice.start);
-            out.line("if (" + indexVar + " < " + pstart + ") continue;");
+    private String emitSliceLoop(SourceWriter out, NameAllocator names, PathSegment.Slice slice, String sizeExpr) {
+        long step = slice.step == null ? 1L : slice.step;
+        String start = names.local("sliceStart");
+        String end = names.local("sliceEnd");
+        String position = names.local("slicePos");
+        String index = names.local("i");
+        if (step < 0) {
+            out.line("long " + start + " = " + (slice.start == null ? "(" + sizeExpr + " - 1L)" : slice.start + "L") + ";");
+            out.line("long " + end + " = " + (slice.end == null ? "-1L" : slice.end + "L") + ";");
+            if (slice.start != null && slice.start < 0) out.line(start + " += " + sizeExpr + ";");
+            if (slice.end != null && slice.end < 0) out.line(end + " += " + sizeExpr + ";");
+            out.line(start + " = Math.min(Math.max(" + start + ", -1L), " + sizeExpr + " - 1L);");
+            out.line(end + " = Math.min(Math.max(" + end + ", -1L), " + sizeExpr + " - 1L);");
+            out.line("for (long " + position + " = " + start + "; " + position + " > " + end + "; " + position + " += " + step + "L) {");
+        } else {
+            out.line("long " + start + " = " + (slice.start == null ? "0L" : slice.start + "L") + ";");
+            out.line("long " + end + " = " + (slice.end == null ? sizeExpr : slice.end + "L") + ";");
+            if (slice.start != null && slice.start < 0) out.line(start + " += " + sizeExpr + ";");
+            if (slice.end != null && slice.end < 0) out.line(end + " += " + sizeExpr + ";");
+            out.line(start + " = Math.min(Math.max(" + start + ", 0L), " + sizeExpr + ");");
+            out.line(end + " = Math.min(Math.max(" + end + ", 0L), " + sizeExpr + ");");
+            out.line("for (long " + position + " = " + start + "; " + position + " < " + end + "; " + position + " += " + step + "L) {");
         }
-        if (slice.end != null) {
-            String pend = slice.end < 0 ? "(" + sizeExpr + " + " + slice.end + ")" : String.valueOf(slice.end);
-            out.line("if (" + indexVar + " >= " + pend + ") continue;");
-        }
-        if (slice.step != null) {
-            int mod = slice.start == null ? 0 : slice.start;
-            out.line("if (((" + indexVar + " - " + mod + ") % " + slice.step + ") != 0) continue;");
-        }
+        out.indent();
+        out.line("int " + index + " = (int) " + position + ";");
+        out.dedent();
+        return index;
     }
 
     private void emitStaticSuffix(SourceWriter out, NameAllocator names, String outVar,

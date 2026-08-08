@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- `JsonPath.eval(...)` now returns a list for every non-function multi-match path, including zero or one match; unresolved single-value paths continue to return `null`.
+- Public `PathSegment.Slice` bounds and step fields, and its constructor parameters, now use `Long` instead of `Integer`.
+
+### Changed
+- JSONPath filters now distinguish a missing singular value from JSON `null`; singular `@` paths use direct single-node lookup. Non-singular paths are rejected as direct comparison operands, but terminal functions may reduce multi-match input to a scalar for comparison; non-scalar function results are rejected.
+- JSONPath slices now support I-JSON exact-range bounds, clamped bounds, and negative-step ordering; unions retain source order and duplicates, including during descendant traversal. Quoted bracket selectors and quoted union members now reject trailing non-whitespace content.
+
 
 ## [1.3.2] - 2026.06.28
 ### Breaking Changes

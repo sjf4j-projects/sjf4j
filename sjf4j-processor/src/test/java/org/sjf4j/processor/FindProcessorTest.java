@@ -589,7 +589,7 @@ public class FindProcessorTest {
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
                 "@CompiledPath\n" +
                 "public interface FindUnionIndex {\n" +
-                "  @FindByPath(\"$.items[2,0].name\")\n" +
+                "  @FindByPath(\"$.items[2,-1,:2,::2,0].name\")\n" +
                 "  List<String> names(Root root);\n" +
                 "}\n");
 
@@ -645,12 +645,12 @@ public class FindProcessorTest {
         Method names = nodesClass.getMethod("names", rootClass);
         @SuppressWarnings("unchecked")
         List<String> result = (List<String>) names.invoke(nodes, root);
-        assertEquals(Arrays.asList("gamma", "alpha"), result);
+        assertEquals(Arrays.asList("gamma", "gamma", "alpha", "beta", "alpha", "gamma", "alpha"), result);
 
         items.remove(2);
         @SuppressWarnings("unchecked")
         List<String> shortResult = (List<String>) names.invoke(nodes, root);
-        assertEquals(Arrays.asList("alpha"), shortResult);
+        assertEquals(Arrays.asList("beta", "alpha", "beta", "alpha", "alpha"), shortResult);
     }
 
     @Test
@@ -711,6 +711,10 @@ public class FindProcessorTest {
                 "Name union should use direct containsKey/get, not entrySet; source:\n" + source);
         assertFalse(source.contains("Map.Entry"),
                 "Name union should not emit Map.Entry; source:\n" + source);
+        assertTrue(source.contains(".get(\"version\")"),
+                "Name union should get values before checking for present nulls; source:\n" + source);
+        assertTrue(source.contains(" != null || "),
+                "Name union should only use containsKey as the present-null fallback; source:\n" + source);
 
         // ---- behavioral assertion ----
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());

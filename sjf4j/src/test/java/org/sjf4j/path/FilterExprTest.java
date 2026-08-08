@@ -21,6 +21,7 @@ class FilterExprTest {
     @Test
     void testTruthAndComparisons() {
         assertFalse(FilterExpr.truth(null));
+        assertFalse(FilterExpr.truth(FilterExpr.PathExpr.NOTHING));
         assertTrue(FilterExpr.truth(true));
         assertFalse(FilterExpr.truth(false));
         assertFalse(FilterExpr.truth(0));
@@ -41,6 +42,39 @@ class FilterExprTest {
         assertTrue(FilterExpr.eq(1, 1L));
         assertFalse(FilterExpr.ge("a", 1));
         assertFalse(FilterExpr.le(true, false));
+        assertFalse(FilterExpr.eq(FilterExpr.PathExpr.NOTHING, null));
+        assertFalse(FilterExpr.in(FilterExpr.PathExpr.NOTHING, Collections.emptyList()));
+    }
+
+    @Test
+    void singularCurrentPathPreservesMissingAndNull() {
+        JsonObject root = JsonObject.of("items", JsonArray.of(
+                JsonObject.of("age", 2), JsonObject.of(), JsonObject.of("age", null)));
+        FilterExpr.PathExpr age = new FilterExpr.PathExpr("@.age");
+
+        assertEquals(2, age.eval(root, ((JsonArray) root.get("items")).get(0)));
+        assertSame(FilterExpr.PathExpr.NOTHING, age.eval(root, ((JsonArray) root.get("items")).get(1)));
+        assertEquals(null, age.eval(root, ((JsonArray) root.get("items")).get(2)));
+        assertEquals(Collections.singletonList(JsonObject.of("age", null)),
+                JsonPath.parse("$.items[?(@.age == null)]").find(root));
+    }
+
+    @Test
+    void nonSingularPathsAreAllowedForExistenceButNotComparisons() {
+        JsonObject root = JsonObject.fromJson("{\"users\":[{\"age\":1},{\"age\":3}]}");
+        assertEquals(Collections.singletonList(root), JsonPath.parse("$[?@.users[?(@.age > 2)]]").find(JsonArray.of(root)));
+        JsonException error = assertThrows(JsonException.class,
+                () -> JsonPath.parse("$[?(@.users[*].age > 2)]"));
+        assertTrue(error.getMessage().contains("@.users[*].age"));
+    }
+
+    @Test
+    void nonSingularTailFunctionMustReturnScalarForComparison() {
+        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("arrayForComparison", (target, args) -> JsonArray.of(1)));
+        JsonException error = assertThrows(JsonException.class,
+                () -> JsonPath.parse("$[?(@..value.arrayForComparison() == 1)]").find(JsonArray.of(JsonObject.of("value", 1))));
+        assertTrue(error.getMessage().contains("@..value.arrayForComparison()"));
+        assertTrue(error.getMessage().contains("ARRAY"));
     }
 
     @Test

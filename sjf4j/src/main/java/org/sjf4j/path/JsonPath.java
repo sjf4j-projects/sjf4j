@@ -11,6 +11,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,7 +35,7 @@ import java.util.function.Function;
  */
 public class JsonPath {
 
-    private static final Object MISSING = new Object();
+    static final Object MISSING = new Object();
 
     /**
      * The raw path expression string.
@@ -84,7 +85,7 @@ public class JsonPath {
             if (ps instanceof PathSegment.Param) {
                 paramCount++;
             }
-            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index
+            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Current || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index
                     || ps instanceof PathSegment.Param)) {
                 isSingleGet = false;
                 if (i < len - 1) {
@@ -93,6 +94,9 @@ public class JsonPath {
                 if (!(ps instanceof PathSegment.Append)) {
                     isSinglePut = false;
                 }
+            }
+            if (ps instanceof PathSegment.Current) {
+                isSinglePut = false;
             }
         }
         this.singleGet = isSingleGet;
@@ -217,7 +221,7 @@ public class JsonPath {
      * Returns whether this path addresses at most one concrete location.
      * <p>
      * This is true only when all segments are limited to Root, Name, Index,
-     * and Append, with no wildcard, slice, filter, union, or recursive tokens.
+     * and Append, with no current, wildcard, slice, filter, union, or recursive tokens.
      */
     public boolean isSinglePut() {
         return singlePut;
@@ -687,7 +691,8 @@ public class JsonPath {
 
     /**
      * Evaluates the path and returns either a single value, a list of values,
-     * or a function result.
+     * or a function result. A multi-match path returns a list regardless of
+     * its match count; an unresolved single-value path returns {@code null}.
      * <p>
      * When the last segment is a function token, the function is invoked with
      * the matched value(s) as target plus parsed literal arguments.
@@ -707,15 +712,13 @@ public class JsonPath {
         }
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, segments.length, result, Function.identity(), new Nodes.Access());
-        if (result.isEmpty()) return null;
+        if (result.isEmpty()) return tk instanceof PathSegment.Function ? null : result;
 
         if (tk instanceof PathSegment.Function) {
             PathSegment.Function func = (PathSegment.Function) tk;
             return FunctionRegistry.invoke(func.name, result.size() == 1 ? result.get(0) : result, func.resolvedArgs);
-        } else {
-            if (result.size() == 1) return result.get(0);
-            else return result;
         }
+        return result;
     }
 
     /**
@@ -725,6 +728,10 @@ public class JsonPath {
         Object value = null;
         try {
             value = eval(container);
+            if (!singleGet && !(tail() instanceof PathSegment.Function) && value instanceof List && ((List<?>) value).size() == 1
+                    && !Collection.class.isAssignableFrom(clazz) && clazz != JsonArray.class && !clazz.isArray()) {
+                value = ((List<?>) value).get(0);
+            }
             return Nodes.to(value, clazz);
         } catch (Exception e) {
             throw new JsonException("cannot evaluate " + clazz.getName() + " from path '" + this + "': container=" +
@@ -739,6 +746,10 @@ public class JsonPath {
         Object value = null;
         try {
             value = eval(container);
+            if (!singleGet && !(tail() instanceof PathSegment.Function) && value instanceof List && ((List<?>) value).size() == 1
+                    && !Collection.class.isAssignableFrom(clazz) && clazz != JsonArray.class && !clazz.isArray()) {
+                value = ((List<?>) value).get(0);
+            }
             return Nodes.as(value, clazz);
         } catch (Exception e) {
             throw new JsonException("cannot coerce value at path '" + this + "' to " + clazz.getName() + ": container=" +
@@ -1068,7 +1079,7 @@ public class JsonPath {
      * {@link #find(Object)} use the sentinel to omit missing locations while
      * preserving present-null matches.
      */
-    private Object _findOne(Object container, int startIdx, int endExclusive) {
+    Object _findOne(Object container, int startIdx, int endExclusive) {
         Object node = container;
         Nodes.Access acc = new Nodes.Access();
         for (int i = startIdx; i < endExclusive; i++) {
@@ -1122,7 +1133,7 @@ public class JsonPath {
     /**
      * Walks the path and collects matches up to {@code endExclusive}.
      */
-    private <T> void _findAll(Object root, Object current, int startIdx, int endExclusive,
+    <T> void _findAll(Object root, Object current, int startIdx, int endExclusive,
                               List<T> result, Function<Object, T> converter, Nodes.Access acc) {
         Object node = current;
         for (int i = startIdx; i < endExclusive; i++) {
@@ -1167,21 +1178,28 @@ public class JsonPath {
                 PathSegment.Slice slicePt = (PathSegment.Slice) pt;
                 if (jt.isArray()) {
                     int size = Nodes.sizeInArray(node);
-                    Nodes.forEachArray(node, (j, v) -> {
-                        if (slicePt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter, acc);
-                    });
+                    _findSlice(root, node, slicePt, size, nextI, endExclusive, result, converter, acc);
                 }
             } else if (pt instanceof PathSegment.Union) {
                 PathSegment.Union unionPt = (PathSegment.Union) pt;
                 if (jt.isObject()) {
-                    Nodes.forEachObject(node, (k, v) -> {
-                        if (unionPt.matchKey(k)) _findAll(root, v, nextI, endExclusive, result, converter, acc);
-                    });
+                    for (PathSegment member : unionPt.union) {
+                        if (member instanceof PathSegment.Name) {
+                            Nodes.getAccessInObject(node, ((PathSegment.Name) member).name, acc);
+                            if (acc.present) _findAll(root, acc.node, nextI, endExclusive, result, converter, acc);
+                        }
+                    }
                 } else if (jt.isArray()) {
                     int size = Nodes.sizeInArray(node);
-                    Nodes.forEachArray(node, (j, v) -> {
-                        if (unionPt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter, acc);
-                    });
+                    for (PathSegment member : unionPt.union) {
+                        if (member instanceof PathSegment.Index) {
+                            int index = ((PathSegment.Index) member).index;
+                            if (index < 0) index += size;
+                            if (index >= 0 && index < size) _findAll(root, Nodes.getInArray(node, index), nextI, endExclusive, result, converter, acc);
+                        } else if (member instanceof PathSegment.Slice) {
+                            _findSlice(root, node, (PathSegment.Slice) member, size, nextI, endExclusive, result, converter, acc);
+                        }
+                    }
                 }
             } else if (pt instanceof PathSegment.Filter) {
                 PathSegment.Filter filterPt = (PathSegment.Filter) pt;
@@ -1213,11 +1231,46 @@ public class JsonPath {
     /**
      * Recursively scans descendants and matches the next token up to {@code endExclusive}.
      */
-    private <T> void _findMatch(Object root, Object current, int startIdx, int endExclusive,
-                                List<T> result, Function<Object, T> converter, Nodes.Access acc) {
+    <T> void _findMatch(Object root, Object current, int startIdx, int endExclusive,
+                                 List<T> result, Function<Object, T> converter, Nodes.Access acc) {
         if (current == null) return;
         PathSegment pt = segments[startIdx];
         JsonType jt = JsonType.of(current);
+        if (pt instanceof PathSegment.Slice && jt.isArray()) {
+            int size = Nodes.sizeInArray(current);
+            _findSlice(root, current, (PathSegment.Slice) pt, size, startIdx + 1, endExclusive, result, converter, acc);
+            Nodes.forEachArray(current, (j, v) -> _findMatch(root, v, startIdx, endExclusive, result, converter, acc));
+            return;
+        }
+        if (pt instanceof PathSegment.Union) {
+            PathSegment.Union union = (PathSegment.Union) pt;
+            if (jt.isObject()) {
+                for (PathSegment member : union.union) {
+                    if (member instanceof PathSegment.Name) {
+                        Nodes.getAccessInObject(current, ((PathSegment.Name) member).name, acc);
+                        if (acc.present) _findAll(root, acc.node, startIdx + 1, endExclusive, result, converter, acc);
+                    }
+                }
+                Nodes.forEachObject(current, (k, v) -> _findMatch(root, v, startIdx, endExclusive, result, converter, acc));
+                return;
+            }
+            if (jt.isArray()) {
+                int size = Nodes.sizeInArray(current);
+                for (PathSegment member : union.union) {
+                    if (member instanceof PathSegment.Index) {
+                        int index = ((PathSegment.Index) member).index;
+                        if (index < 0) index += size;
+                        if (index >= 0 && index < size) {
+                            _findAll(root, Nodes.getInArray(current, index), startIdx + 1, endExclusive, result, converter, acc);
+                        }
+                    } else if (member instanceof PathSegment.Slice) {
+                        _findSlice(root, current, (PathSegment.Slice) member, size, startIdx + 1, endExclusive, result, converter, acc);
+                    }
+                }
+                Nodes.forEachArray(current, (j, v) -> _findMatch(root, v, startIdx, endExclusive, result, converter, acc));
+                return;
+            }
+        }
         if (jt.isObject()) {
             Nodes.forEachObject(current, (k, v) -> {
                 if (pt.matchKey(k)) {
@@ -1241,6 +1294,28 @@ public class JsonPath {
                 }
                 _findMatch(root, v, startIdx, endExclusive, result, converter, acc);
             });
+        }
+    }
+
+    private <T> void _findSlice(Object root, Object array, PathSegment.Slice slice, int size, int nextIdx, int endExclusive,
+                                 List<T> result, Function<Object, T> converter, Nodes.Access acc) {
+        long step = slice.step == null ? 1 : slice.step;
+        long first = slice.start == null ? (step < 0 ? size - 1L : 0L) : slice.start;
+        long last = slice.end == null ? (step < 0 ? -1L : size) : slice.end;
+        if (slice.start != null && first < 0) first += size;
+        if (slice.end != null && last < 0) last += size;
+        if (step < 0) {
+            first = Math.min(Math.max(first, -1L), size - 1L);
+            last = Math.min(Math.max(last, -1L), size - 1L);
+            for (long j = first; j > last; j += step) {
+                _findAll(root, Nodes.getInArray(array, (int) j), nextIdx, endExclusive, result, converter, acc);
+            }
+        } else {
+            first = Math.min(Math.max(first, 0L), size);
+            last = Math.min(Math.max(last, 0L), size);
+            for (long j = first; j < last; j += step) {
+                _findAll(root, Nodes.getInArray(array, (int) j), nextIdx, endExclusive, result, converter, acc);
+            }
         }
     }
 
