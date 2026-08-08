@@ -415,6 +415,43 @@ public class PathSyntaxTest {
         assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[١:]"));
     }
 
+    @Test
+    void testCompactBracketSlices() {
+        assertSlice("$[1:4]", 1L, 4L, null);
+        assertSlice("$[:4]", null, 4L, null);
+        assertSlice("$[1:]", 1L, null, null);
+        assertSlice("$[:]", null, null, null);
+        assertSlice("$[::]", null, null, null);
+        assertSlice("$[::2]", null, null, 2L);
+        assertSlice("$[-4:-1:-1]", -4L, -1L, -1L);
+    }
+
+    @Test
+    void testCompactBracketSliceFallbackAndValidation() {
+        PathSegment.Slice compact = (PathSegment.Slice) PathSyntax.parsePath("$[1:4]")[1];
+        PathSegment.Slice whitespace = (PathSegment.Slice) PathSyntax.parsePath("$[ 1 : 4 ]")[1];
+        assertEquals(compact.start, whitespace.start);
+        assertEquals(compact.end, whitespace.end);
+        assertEquals(compact.step, whitespace.step);
+
+        assertInstanceOf(PathSegment.Union.class, PathSyntax.parsePath("$[1:4,2]")[1]);
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[1:4:0]"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[1:4:2:1]"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[1::foo]"));
+        assertInstanceOf(PathSegment.Name.class, PathSyntax.parsePath("$['1:4']")[1]);
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[?@.x:1]"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[9007199254740992:]"));
+        assertSlice("$[-9007199254740991:]", -9007199254740991L, null, null);
+    }
+
+    private void assertSlice(String path, Long start, Long end, Long step) {
+        PathSegment.Slice slice = (PathSegment.Slice) PathSyntax.parsePath(path)[1];
+        assertEquals(start, slice.start, path);
+        assertEquals(end, slice.end, path);
+        assertEquals(step, slice.step, path);
+        assertInstanceOf(PathSegment.Root.class, slice.parent);
+    }
+
 
 
     /// Private

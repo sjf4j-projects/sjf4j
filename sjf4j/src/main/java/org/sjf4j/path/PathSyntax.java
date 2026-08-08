@@ -390,6 +390,38 @@ public final class PathSyntax {
 
     private static int _tryParseSimpleBracketToken(String expr, int bracketIndex, Deque<PathSegment> segments) {
         int len = expr.length();
+
+        // Keep the common, compact slice form out of the bracket scanner. This deliberately
+        // accepts only ASCII digits and no whitespace; everything else uses the full parser.
+        int tokenStart = bracketIndex + 1;
+        if (tokenStart < len) {
+            char first = expr.charAt(tokenStart);
+            if (first >= '0' && first <= '9') {
+                int startEnd = tokenStart + 1;
+                while (startEnd < len && expr.charAt(startEnd) >= '0' && expr.charAt(startEnd) <= '9') startEnd++;
+                if (startEnd < len && expr.charAt(startEnd) == ':') {
+                    int next = _tryParseSimpleSlice(expr, tokenStart, startEnd, len, segments);
+                    if (next >= 0) return next;
+                } else {
+                    int tokenEnd = _skipWhitespace(expr, startEnd);
+                    if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
+                        try {
+                            segments.addLast(new PathSegment.Index(segments.peekLast(), _parseInt(expr, tokenStart, startEnd)));
+                            return tokenEnd + 1;
+                        } catch (NumberFormatException ignored) {
+                            return -1;
+                        }
+                    }
+                }
+            } else if (first == '-' || first == ':') {
+                int startEnd = _scanSimpleSlicePart(expr, tokenStart, len);
+                if (startEnd >= 0 && startEnd < len && expr.charAt(startEnd) == ':') {
+                    int next = _tryParseSimpleSlice(expr, tokenStart, startEnd, len, segments);
+                    if (next >= 0) return next;
+                }
+            }
+        }
+
         int i = _skipWhitespace(expr, bracketIndex + 1);
         if (i >= len) return -1;
 
@@ -404,23 +436,44 @@ public final class PathSyntax {
             return -1;
         }
 
-        if (c >= '0' && c <= '9') {
-            int start = i;
-            do {
-                i++;
-            } while (i < len && expr.charAt(i) >= '0' && expr.charAt(i) <= '9');
-
-            int tokenEnd = _skipWhitespace(expr, i);
-            if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
-                try {
-                    segments.addLast(new PathSegment.Index(segments.peekLast(), Integer.parseInt(expr.substring(start, i))));
-                    return tokenEnd + 1;
-                } catch (NumberFormatException ignored) {
-                    return -1;
-                }
-            }
-        }
         return -1;
+    }
+
+    private static int _tryParseSimpleSlice(String expr, int start, int startEnd, int len, Deque<PathSegment> segments) {
+        int endStart = startEnd + 1;
+        int endEnd = _scanSimpleSlicePart(expr, endStart, len);
+        if (endEnd < 0) return -1;
+        int stepStart = -1;
+        int stepEnd = -1;
+        int tokenEnd = endEnd;
+        if (tokenEnd < len && expr.charAt(tokenEnd) == ':') {
+            stepStart = tokenEnd + 1;
+            stepEnd = _scanSimpleSlicePart(expr, stepStart, len);
+            tokenEnd = stepEnd;
+        }
+        if (tokenEnd < 0 || tokenEnd >= len || expr.charAt(tokenEnd) != ']') return -1;
+
+        Long sliceStart = start == startEnd ? null : _parseSlicePart(expr, start, startEnd);
+        Long end = endStart == endEnd ? null : _parseSlicePart(expr, endStart, endEnd);
+        Long step = stepStart < 0 || stepStart == stepEnd ? null : _parseSlicePart(expr, stepStart, stepEnd);
+        if (step != null && step == 0) throw new JsonException("slice step cannot be 0 in path '" + expr + "'");
+        segments.addLast(new PathSegment.Slice(segments.peekLast(), sliceStart, end, step));
+        return tokenEnd + 1;
+    }
+
+    /** Returns the end of an empty or ASCII integer slice part, or -1 for a dangling sign. */
+    private static int _scanSimpleSlicePart(String expr, int start, int len) {
+        int i = start;
+        if (i < len && expr.charAt(i) == '-') {
+            i++;
+            if (i >= len || expr.charAt(i) < '0' || expr.charAt(i) > '9') return -1;
+        }
+        while (i < len) {
+            char c = expr.charAt(i);
+            if (c < '0' || c > '9') break;
+            i++;
+        }
+        return i;
     }
 
 
