@@ -22,7 +22,7 @@ dependencies {
     implementation(project(":sjf4j-asm"))
     implementation(project(":sjf4j-schema"))
 
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.0")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     implementation("tools.jackson.core:jackson-databind:3.2.0")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
@@ -43,7 +43,7 @@ dependencies {
     jmhAnnotationProcessor(project(":sjf4j-processor"))
     jmhImplementation("org.mapstruct:mapstruct:1.6.3")
     jmhAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.0")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     jmhImplementation("tools.jackson.core:jackson-databind:3.2.0")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
     jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
