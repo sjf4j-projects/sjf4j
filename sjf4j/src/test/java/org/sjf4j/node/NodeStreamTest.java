@@ -58,7 +58,7 @@ public class NodeStreamTest {
                 .toList();
 
         assertEquals(2, prices.size());
-        assertEquals(88, prices.get(1));
+        assertEquals(10, prices.get(1));
 
         int priceSum = JsonObject.fromJson(json1).stream()
                 .findByPath("$..price", Integer.class)

@@ -147,6 +147,43 @@ public class JsonPathTest {
     }
 
     @Test
+    public void descendantIndexesSelectCurrentArrayBeforeNestedArrays() {
+        JsonArray first = JsonArray.of(0, 1);
+        JsonArray second = JsonArray.of(2, 3);
+        JsonArray root = JsonArray.of(first, second);
+
+        assertEquals(Arrays.asList(first, 0, 2), JsonPath.parse("$..[0]").find(root));
+        assertEquals(Arrays.asList(second, 1, 3), JsonPath.parse("$..[-1]").find(root));
+    }
+
+    @Test
+    public void descendantIndexesIterateSets() {
+        Set<Object> values = new LinkedHashSet<>(Arrays.asList("first", "last"));
+
+        assertEquals(Arrays.asList("first"), JsonPath.parse("$..[0]").find(values));
+        assertEquals(Arrays.asList("last"), JsonPath.parse("$..[-1]").find(values));
+    }
+
+    @Test
+    public void descendantWildcardSelectsSiblingResultsBeforeDescendants() {
+        assertEquals(Arrays.asList(JsonArray.of(0), JsonArray.of(1), 0, 1),
+                JsonPath.parse("$..*").find(JsonArray.of(JsonArray.of(0), JsonArray.of(1))));
+        assertEquals(Arrays.asList(JsonObject.of("x", 0), JsonObject.of("y", 1), 0, 1),
+                JsonPath.parse("$..*").find(JsonObject.of("a", JsonObject.of("x", 0), "b", JsonObject.of("y", 1))));
+    }
+
+    @Test
+    public void descendantFilterSelectsCurrentChildrenBeforeDescendants() {
+        JsonObject firstSibling = JsonObject.of("id", 2, "child", JsonObject.of("id", 2));
+        JsonObject secondSibling = JsonObject.of("id", 2);
+        JsonObject nestedChild = firstSibling.getJsonObject("child");
+        JsonArray root = JsonArray.of(firstSibling, secondSibling);
+
+        assertEquals(Arrays.asList(firstSibling, secondSibling, nestedChild),
+                JsonPath.parse("$..[?@.id == 2]").find(root));
+    }
+
+    @Test
     public void unionSlicesPreserveMemberOrderAndAcceptWhitespace() {
         JsonArray values = JsonArray.of(0, 1, 2, 3, 4);
         assertEquals(Arrays.asList(0, 1, 3), JsonPath.parse("$[:2,3]").eval(values));

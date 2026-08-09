@@ -8,7 +8,6 @@ import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.YamlFacade;
-import org.sjf4j.mapper.NodeMapperBuilder;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.TypeReference;
 
@@ -35,7 +34,6 @@ import java.util.Properties;
  * Use {@link #global()} for the shared process-wide default instance, or {@link #builder()}
  * to create an isolated instance with custom facades and formatting behavior.
  */
-@SuppressWarnings("deprecation")
 public final class Sjf4j {
 
     private static final Sjf4j GLOBAL = new Builder().build();
@@ -432,8 +430,8 @@ public final class Sjf4j {
      * @deprecated Use {@link org.sjf4j.annotation.mapper.CompiledMapper} instead.
      */
     @Deprecated
-    public <S, T> NodeMapperBuilder<S, T> nodeMapperBuilder(Class<S> sourceClass, Class<T> targetClass) {
-        return new NodeMapperBuilder<>(sourceClass, targetClass, streamingContext);
+    public <S, T> org.sjf4j.mapper.NodeMapperBuilder<S, T> nodeMapperBuilder(Class<S> sourceClass, Class<T> targetClass) {
+        return new org.sjf4j.mapper.NodeMapperBuilder<>(sourceClass, targetClass, streamingContext);
     }
 
     /// Builder

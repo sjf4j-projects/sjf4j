@@ -1271,6 +1271,45 @@ public class JsonPath {
                 return;
             }
         }
+        if (pt instanceof PathSegment.Name && jt.isObject()) {
+            Nodes.getAccessInObject(current, ((PathSegment.Name) pt).name, acc);
+            if (acc.present) {
+                if (startIdx >= endExclusive) result.add(converter.apply(current));
+                else _findAll(root, acc.node, startIdx + 1, endExclusive, result, converter, acc);
+            }
+            Nodes.forEachObject(current, (k, v) -> _findMatch(root, v, startIdx, endExclusive, result, converter, acc));
+            return;
+        }
+        if (pt instanceof PathSegment.Index && jt.isArray() && !(current instanceof Set)) {
+            Nodes.getAccessInArray(current, ((PathSegment.Index) pt).index, acc);
+            if (acc.present) {
+                if (startIdx >= endExclusive) result.add(converter.apply(current));
+                else _findAll(root, acc.node, startIdx + 1, endExclusive, result, converter, acc);
+            }
+            Nodes.forEachArray(current, (j, v) -> _findMatch(root, v, startIdx, endExclusive, result, converter, acc));
+            return;
+        }
+        if (pt instanceof PathSegment.Filter) {
+            PathSegment.Filter filter = (PathSegment.Filter) pt;
+            if (jt.isObject()) {
+                Nodes.forEachObject(current, (k, v) -> {
+                    if (filter.filterExpr.evalTruth(root, v)) {
+                        _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
+                    }
+                });
+                Nodes.forEachObject(current, (k, v) -> _findMatch(root, v, startIdx, endExclusive, result, converter, acc));
+                return;
+            }
+            if (jt.isArray()) {
+                Nodes.forEachArray(current, (j, v) -> {
+                    if (filter.filterExpr.evalTruth(root, v)) {
+                        _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
+                    }
+                });
+                Nodes.forEachArray(current, (j, v) -> _findMatch(root, v, startIdx, endExclusive, result, converter, acc));
+                return;
+            }
+        }
         if (jt.isObject()) {
             Nodes.forEachObject(current, (k, v) -> {
                 if (pt.matchKey(k)) {
@@ -1280,6 +1319,8 @@ public class JsonPath {
                         _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
                     }
                 }
+            });
+            Nodes.forEachObject(current, (k, v) -> {
                 _findMatch(root, v, startIdx, endExclusive, result, converter, acc);
             });
         } else if (jt.isArray()) {
@@ -1292,6 +1333,8 @@ public class JsonPath {
                         _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
                     }
                 }
+            });
+            Nodes.forEachArray(current, (j, v) -> {
                 _findMatch(root, v, startIdx, endExclusive, result, converter, acc);
             });
         }

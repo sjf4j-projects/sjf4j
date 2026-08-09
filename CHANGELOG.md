@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Aligned Draft 2020-12 format validation for IDN hostnames and emails, URI templates, and relative JSON Pointers with the official JSON Schema suite.
 - Fixed JSONPath quoted bracket selectors rejecting whitespace between the closing quote and bracket.
+- Fixed JSONPath descendant name, index, wildcard, and filter selectors to retain RFC 9535 child-before-descendant ordering.
 
 
 ## [1.3.2] - 2026.06.28
