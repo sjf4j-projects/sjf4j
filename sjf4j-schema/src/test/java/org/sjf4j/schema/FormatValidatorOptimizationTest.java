@@ -83,12 +83,36 @@ class FormatValidatorOptimizationTest {
         assertTrue(FormatValidator._validateRelativeJsonPointer("0#"));
         assertTrue(FormatValidator._validateRelativeJsonPointer("1/foo"));
         assertTrue(FormatValidator._validateRelativeJsonPointer("12/a~1b/c~0d/0"));
-        assertTrue(FormatValidator._validateRelativeJsonPointer("١/foo"));
+        assertFalse(FormatValidator._validateRelativeJsonPointer("١/foo"));
         assertFalse(FormatValidator._validateRelativeJsonPointer(""));
         assertFalse(FormatValidator._validateRelativeJsonPointer("01#"));
         assertFalse(FormatValidator._validateRelativeJsonPointer("0##"));
         assertFalse(FormatValidator._validateRelativeJsonPointer("1a"));
         assertFalse(FormatValidator._validateRelativeJsonPointer("1/~2"));
-        assertFalse(FormatValidator._validateRelativeJsonPointer("2147483648#"));
+        assertTrue(FormatValidator._validateRelativeJsonPointer("2147483648#"));
+        assertTrue(FormatValidator._validateRelativeJsonPointer("999999999999999999999999999999999999999999999999#"));
+        assertFalse(FormatValidator._validateRelativeJsonPointer("01/foo"));
+    }
+
+    @Test
+    void validatesUriTemplateLiteralsByCodePoint() {
+        assertFalse(FormatValidator._validateUriTemplate("a|b"));
+        assertTrue(FormatValidator._validateUriTemplate("a😀b"));
+        assertTrue(FormatValidator._validateUriTemplate("a\ue000b"));
+        assertTrue(FormatValidator._validateUriTemplate("a\udb80\udc00b"));
+        assertTrue(FormatValidator._validateUriTemplate("a\udbc0\udc00b"));
+        assertFalse(FormatValidator._validateUriTemplate("a\u0085b"));
+        assertFalse(FormatValidator._validateUriTemplate("a\ud800b"));
+    }
+
+    @Test
+    void acceptsUriTemplateExtensionOperators() {
+        assertTrue(FormatValidator._validateUriTemplate("{=var}"));
+        assertTrue(FormatValidator._validateUriTemplate("{,var}"));
+        assertTrue(FormatValidator._validateUriTemplate("{!var}"));
+        assertTrue(FormatValidator._validateUriTemplate("{@var}"));
+        assertTrue(FormatValidator._validateUriTemplate("{|var}"));
+        assertTrue(FormatValidator._validateUriTemplate("{=a,b}"));
+        assertFalse(FormatValidator._validateUriTemplate("{,}"));
     }
 }

@@ -19,12 +19,19 @@ import java.util.Map;
 public final class OfficialTest {
 
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
+    private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
 
 
     public static void main(String[] args) throws Exception {
-//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
-//        loadRemotes(registry, locatePath("remotes"));
-//        runTestDir(registry, locatePath("tests/draft2020-12/optional/format"), true, false);
+        if (args.length > 1) {
+            throw new IllegalArgumentException("Usage: OfficialTest [<JSON-Schema-Test-Suite root>]");
+        }
+        Path root = locateTestRoot(args.length == 0 ? null : args[0]);
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
+        loadRemotes(registry, locatePath(root, "remotes"));
+        runTestDir(registry, locatePath(root, "tests/draft2020-12"), false,true);
+        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional"), false, true);
+        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional/format"), true, false);
 
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
 //        loadRemotes(registry, locatePath("remotes"));
@@ -67,15 +74,35 @@ public final class OfficialTest {
 
 
     private static Path locatePath(String dir) {
-        String root = System.getProperty(TEST_ROOT_PROPERTY);
-        if (root == null || root.isEmpty()) {
-            throw new IllegalStateException("Missing -D" + TEST_ROOT_PROPERTY + "=<JSON-Schema-Test-Suite root>");
-        }
-        Path path = Paths.get(root).resolve(dir);
+        return locatePath(locateTestRoot(null), dir);
+    }
+
+    private static Path locatePath(Path root, String dir) {
+        Path path = root.resolve(dir);
         if (!Files.exists(path)) {
             throw new IllegalStateException("Not found " + dir + " under " + root);
         }
         return path;
+    }
+
+    private static Path locateTestRoot(String argumentRoot) {
+        String root = System.getProperty(TEST_ROOT_PROPERTY);
+        if (root != null && !root.isEmpty()) {
+            return Paths.get(root);
+        }
+        if (argumentRoot != null) {
+            return Paths.get(argumentRoot);
+        }
+        Path moduleRoot = Paths.get("build", SUITE_DIRECTORY);
+        if (Files.isDirectory(moduleRoot)) {
+            return moduleRoot;
+        }
+        Path repositoryRoot = Paths.get("sjf4j-schema", "build", SUITE_DIRECTORY);
+        if (Files.isDirectory(repositoryRoot)) {
+            return repositoryRoot;
+        }
+        throw new IllegalStateException("Official JSON Schema test suite not found. Run ./gradlew :sjf4j-schema:downloadOfficialSchemaTests, " +
+                "or supply -D" + TEST_ROOT_PROPERTY + "=<suite-root> or a <suite-root> main argument.");
     }
 
     private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow) throws Exception {

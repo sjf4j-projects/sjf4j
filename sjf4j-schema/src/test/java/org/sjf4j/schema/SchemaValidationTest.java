@@ -799,6 +799,39 @@ public class SchemaValidationTest {
 
         SchemaPlan idnEmail = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-email\"}").createPlan();
         assertTrue(idnEmail.validate("실례@실례.테스트", true).isValid());
+        assertTrue(idnEmail.validate("\u0085@example.com", true).isValid());
+        assertFalse(idnEmail.validate("a\u0001@example.com", true).isValid());
+        assertFalse(idnEmail.validate("a b@example.com", true).isValid());
+        assertFalse(idnEmail.validate("\"a b\"@example.com", true).isValid());
+        assertFalse(idnEmail.validate("\"a@b\"@example.com", true).isValid());
+        assertFalse(idnEmail.validate(".a@example.com", true).isValid());
+        assertFalse(idnEmail.validate("a..b@example.com", true).isValid());
+
+        SchemaPlan relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}").createPlan();
+        assertTrue(relativeJsonPointer.validate("2147483648/a", true).isValid());
+        assertTrue(relativeJsonPointer.validate("999999999999999999999999999999999999999999999999/a", true).isValid());
+        assertFalse(relativeJsonPointer.validate("١/foo", true).isValid());
+        assertFalse(relativeJsonPointer.validate("01/a", true).isValid());
+
+        SchemaPlan uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}").createPlan();
+        assertTrue(uriTemplate.validate("a%41b{+a.b,%41:9999}{var*}", true).isValid());
+        assertFalse(uriTemplate.validate("a|b", true).isValid());
+        assertFalse(uriTemplate.validate("a'b", true).isValid());
+        assertTrue(uriTemplate.validate("a~b", true).isValid());
+        assertTrue(uriTemplate.validate("{=a,b}", true).isValid());
+        assertFalse(uriTemplate.validate("{,}", true).isValid());
+        assertTrue(uriTemplate.validate("a😀b", true).isValid());
+        assertFalse(uriTemplate.validate("a%4", true).isValid());
+        assertFalse(uriTemplate.validate("a\u0085b", true).isValid());
+        assertFalse(uriTemplate.validate("a\ud800b", true).isValid());
+        assertFalse(uriTemplate.validate("a b", true).isValid());
+        assertFalse(uriTemplate.validate("{a,,b}", true).isValid());
+        assertFalse(uriTemplate.validate("{a..b}", true).isValid());
+        assertFalse(uriTemplate.validate("{a:01}", true).isValid());
+        assertFalse(uriTemplate.validate("{a:10000}", true).isValid());
+        assertFalse(uriTemplate.validate("{a* :1}", true).isValid());
+        assertFalse(uriTemplate.validate("{,+a}", true).isValid());
+        assertFalse(uriTemplate.validate("foo}bar", true).isValid());
 
         SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").createPlan();
         assertTrue(iri.validate("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", true).isValid());
@@ -833,6 +866,14 @@ public class SchemaValidationTest {
         assertFalse(idnHostname.validate("\u0628\u0660\u06f0", true).isValid());
         assertFalse(idnHostname.validate("\u0915\u200d\u0937", true).isValid());
         assertTrue(idnHostname.validate("\u0628\u064a\u200c\u0628\u064a", true).isValid());
+        if (FormatUtil.isIcu4jAvailable()) {
+            assertFalse(idnHostname.validate("0a.\u05d0", true).isValid());
+            assertFalse(idnHostname.validate("a\u05d0", true).isValid());
+            assertFalse(idnHostname.validate("\u05d00\u0660", true).isValid());
+            assertFalse(idnHostname.validate("xn--7a", true).isValid());
+            assertFalse(idnHostname.validate("xn--0ca24w", true).isValid());
+            assertFalse(idnHostname.validate("xn---9uc", true).isValid());
+        }
     }
 
     @Test

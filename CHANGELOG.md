@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSONPath filters now distinguish a missing singular value from JSON `null`; singular `@` paths use direct single-node lookup. Non-singular paths are rejected as direct comparison operands, but terminal functions may reduce multi-match input to a scalar for comparison; non-scalar function results are rejected.
 - JSONPath slices now support I-JSON exact-range bounds, clamped bounds, and negative-step ordering; unions retain source order and duplicates, including during descendant traversal. Quoted bracket selectors and quoted union members now reject trailing non-whitespace content.
 
+### Fixed
+- Aligned Draft 2020-12 format validation for IDN hostnames and emails, URI templates, and relative JSON Pointers with the official JSON Schema suite.
+
 
 ## [1.3.2] - 2026.06.28
 ### Breaking Changes

@@ -64,7 +64,11 @@ final class FormatUtil {
         if (value == null || value.isEmpty()) return false;
         String normalized = allowUnicode ? normalizeIdnHostnameSeparators(value) : value;
         if (normalized.isEmpty() || normalized.length() > 253 || normalized.startsWith(".") || normalized.endsWith(".")) return false;
-        if (_isAsciiOnly(normalized)) return _validateAsciiHostname(normalized);
+        // Name conversion is required for Bidi rules that span labels. Label
+        // conversion below remains necessary for length and A-label checks.
+        boolean ascii = _isAsciiOnly(normalized);
+        if (allowUnicode && ICU != null && !ascii && ICU.toAsciiName(normalized) == null) return false;
+        if (ascii) return _validateAsciiHostname(normalized);
         String[] parts = normalized.split("\\.", -1);
         int asciiLength = 0;
         for (int i = 0; i < parts.length; i++) {
@@ -184,7 +188,8 @@ final class FormatUtil {
         if (ICU != null && _isAceLabel(label, start, end)) {
             String aceLabel = start == 0 && end == label.length() ? label : label.substring(start, end);
             String unicode = ICU.toUnicodeLabel(aceLabel);
-            if (unicode == null || unicode.equals(aceLabel) || !_validateUlabel(unicode)) return false;
+            if (unicode == null || unicode.equals(aceLabel) || !_validateUlabel(unicode)
+                    || !aceLabel.equalsIgnoreCase(ICU.toAsciiLabel(unicode))) return false;
         }
         return true;
     }
@@ -279,6 +284,8 @@ final class FormatUtil {
         int[] cps = label.codePoints().toArray();
         for (int i = 0; i < cps.length; i++) {
             int cp = cps[i];
+            // UTS 46 maps this to an A-label but it is DISALLOWED by IDNA2008.
+            if (cp == 0x00A1 || Character.isISOControl(cp) || Character.isWhitespace(cp)) return false;
             if (cp == 0x302E || cp == 0x302F || cp == 0x0640 || cp == 0x07FA) return false;
             if (cp == 0x00B7) {
                 if (i == 0 || i == cps.length - 1 || cps[i - 1] != 'l' || cps[i + 1] != 'l') return false;
@@ -328,7 +335,7 @@ final class FormatUtil {
     }
 
     private static final class IcuIdnaBridge {
-        private final IDNA uts46 = IDNA.getUTS46Instance(IDNA.CHECK_CONTEXTJ | IDNA.NONTRANSITIONAL_TO_ASCII);
+        private final IDNA uts46 = IDNA.getUTS46Instance(IDNA.CHECK_BIDI | IDNA.CHECK_CONTEXTJ | IDNA.NONTRANSITIONAL_TO_ASCII);
 
         private IcuIdnaBridge() {
         }

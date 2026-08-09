@@ -1,7 +1,5 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.PathSyntax;
-
 import java.net.IDN;
 import java.net.InetAddress;
 import java.util.regex.Pattern;
@@ -130,18 +128,24 @@ public interface FormatValidator {
     // uri-template
     static boolean _validateUriTemplate(String value) {
         if (value == null) return false;
-        boolean inExpression = false;
-        for (int i = 0; i < value.length(); i++) {
+        int len = value.length();
+        for (int i = 0; i < len;) {
             char ch = value.charAt(i);
             if (ch == '{') {
-                if (inExpression) return false;
-                inExpression = true;
-            } else if (ch == '}') {
-                if (!inExpression) return false;
-                inExpression = false;
+                i = _scanUriTemplateExpression(value, i + 1, len);
+                if (i < 0) return false;
+            } else {
+                if (ch == '%') {
+                    if (i + 2 >= len || !_isHexDigit(value.charAt(i + 1)) || !_isHexDigit(value.charAt(i + 2))) return false;
+                    i += 3;
+                } else {
+                    int cp = value.codePointAt(i);
+                    if (!_isUriTemplateLiteral(cp)) return false;
+                    i += Character.charCount(cp);
+                }
             }
         }
-        return !inExpression;
+        return true;
     }
 
     // iri-reference
@@ -153,45 +157,21 @@ public interface FormatValidator {
     static boolean _validateRelativeJsonPointer(String value) {
         if (value == null || value.isEmpty()) return false;
         char first = value.charAt(0);
-        if (first < '0' || first > '9') {
-            if (Character.isDigit(first)) return _validateRelativeJsonPointerSlow(value);
-            return false;
-        }
+        if (first < '0' || first > '9') return false;
         int len = value.length();
         int idx = 1;
-        int prefixValue = first - '0';
         while (idx < len) {
             char ch = value.charAt(idx);
             if (ch >= '0' && ch <= '9') {
                 if (first == '0') return false;
-                if (prefixValue > 214748364 || (prefixValue == 214748364 && ch > '7')) return false;
-                prefixValue = prefixValue * 10 + (ch - '0');
                 idx++;
                 continue;
             }
-            if (Character.isDigit(ch)) return _validateRelativeJsonPointerSlow(value);
             break;
         }
         if (idx == len) return true;
         if (value.charAt(idx) == '#') return idx == len - 1;
         return _validateJsonPointer(value, idx);
-    }
-
-    static boolean _validateRelativeJsonPointerSlow(String value) {
-        try {
-            int idx = 0;
-            while (idx < value.length() && Character.isDigit(value.charAt(idx))) idx++;
-            if (idx == 0) return false;
-            String prefix = value.substring(0, idx);
-            if (prefix.length() > 1 && prefix.charAt(0) == '0') return false;
-            Integer.parseInt(prefix);
-            if (idx == value.length()) return true;
-            if (value.charAt(idx) == '#') return idx == value.length() - 1;
-            PathSyntax.parsePointer(value.substring(idx));
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     static boolean _validateEmail(String value) {
@@ -223,13 +203,104 @@ public interface FormatValidator {
 
     static boolean _validateIdnEmailLocal(String local) {
         if (local.isEmpty()) return false;
-        if (local.charAt(0) == '"') return _isQuotedEmailLocal(local);
-        if (local.charAt(0) == '.' || local.charAt(local.length() - 1) == '.' || local.contains("..")) return false;
         for (int i = 0; i < local.length(); i++) {
             char ch = local.charAt(i);
-            if (ch == '@' || Character.isWhitespace(ch) || Character.isISOControl(ch)) return false;
+            // RFC 6531 admits non-ASCII UTF-8 code points, including U+0085.
+            if (ch == '@' || ch <= 0x1f || ch == 0x7f || Character.isWhitespace(ch)) return false;
         }
+        if (local.charAt(0) == '"') return _isQuotedEmailLocal(local);
+        if (local.charAt(0) == '.' || local.charAt(local.length() - 1) == '.' || local.contains("..")) return false;
         return true;
+    }
+
+    static int _scanUriTemplateExpression(String value, int start, int len) {
+        int i = start;
+        if (i < len && _isUriTemplateOperator(value.charAt(i))) i++;
+        boolean needsVarSpec = true;
+        while (i < len) {
+            char ch = value.charAt(i);
+            if (ch == '}') return needsVarSpec ? -1 : i + 1;
+            if (!needsVarSpec) {
+                if (ch != ',') return -1;
+                needsVarSpec = true;
+                i++;
+                continue;
+            }
+            i = _scanUriTemplateVarName(value, i, len);
+            if (i < 0) return -1;
+            if (i < len && value.charAt(i) == '*') {
+                i++;
+            } else if (i < len && value.charAt(i) == ':') {
+                int digits = ++i;
+                if (i >= len || value.charAt(i) == '0') return -1;
+                while (i < len && value.charAt(i) >= '0' && value.charAt(i) <= '9') {
+                    if (++i - digits > 4) return -1;
+                }
+            }
+            needsVarSpec = false;
+        }
+        return -1;
+    }
+
+    static int _scanUriTemplateVarName(String value, int start, int len) {
+        int i = start;
+        boolean component = false;
+        while (i < len) {
+            char ch = value.charAt(i);
+            if (_isUriTemplateVarChar(ch)) {
+                component = true;
+                i++;
+            } else if (ch == '%') {
+                if (i + 2 >= len || !_isHexDigit(value.charAt(i + 1)) || !_isHexDigit(value.charAt(i + 2))) return -1;
+                component = true;
+                i += 3;
+            } else if (ch == '.') {
+                if (!component) return -1;
+                component = false;
+                i++;
+            } else {
+                break;
+            }
+        }
+        return component ? i : -1;
+    }
+
+    static boolean _isUriTemplateLiteral(int cp) {
+        if (cp <= 0x7f) {
+            return cp == 0x21 || (cp >= 0x23 && cp <= 0x24) || cp == 0x26
+                    || (cp >= 0x28 && cp <= 0x3b) || cp == 0x3d
+                    || (cp >= 0x3f && cp <= 0x5b) || cp == 0x5d || cp == 0x5f
+                    || (cp >= 0x61 && cp <= 0x7a) || cp == 0x7e;
+        }
+        return (cp >= 0xA0 && cp <= 0xD7FF)
+                || (cp >= 0xF900 && cp <= 0xFDCF)
+                || (cp >= 0xFDF0 && cp <= 0xFFEF)
+                || (cp >= 0x10000 && cp <= 0x1FFFD)
+                || (cp >= 0x20000 && cp <= 0x2FFFD)
+                || (cp >= 0x30000 && cp <= 0x3FFFD)
+                || (cp >= 0x40000 && cp <= 0x4FFFD)
+                || (cp >= 0x50000 && cp <= 0x5FFFD)
+                || (cp >= 0x60000 && cp <= 0x6FFFD)
+                || (cp >= 0x70000 && cp <= 0x7FFFD)
+                || (cp >= 0x80000 && cp <= 0x8FFFD)
+                || (cp >= 0x90000 && cp <= 0x9FFFD)
+                || (cp >= 0xA0000 && cp <= 0xAFFFD)
+                || (cp >= 0xB0000 && cp <= 0xBFFFD)
+                || (cp >= 0xC0000 && cp <= 0xCFFFD)
+                || (cp >= 0xD0000 && cp <= 0xDFFFD)
+                || (cp >= 0xE000 && cp <= 0xF8FF)
+                || (cp >= 0xE1000 && cp <= 0xEFFFD)
+                || (cp >= 0xF0000 && cp <= 0xFFFFD)
+                || (cp >= 0x100000 && cp <= 0x10FFFD);
+    }
+
+    static boolean _isUriTemplateVarChar(char ch) {
+        return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
+    }
+
+    static boolean _isUriTemplateOperator(char ch) {
+        return ch == '+' || ch == '#' || ch == '.' || ch == '/' || ch == ';' || ch == '?' || ch == '&'
+                || ch == '=' || ch == ',' || ch == '!' || ch == '@' || ch == '|';
     }
 
     static boolean _validateEmailDomain(String domain, boolean allowUnicode) {
