@@ -325,7 +325,9 @@ public final class PathSyntax {
                         // Single quoted name ['name'] or ["name"]
                         int[] quotedEnd = new int[1];
                         String name = _parseQuotedContent(expr, contentStart, contentEnd, quotedEnd, "name");
-                        if (_skipWhitespace(expr, quotedEnd[0]) != contentEnd) {
+                        int trailing = quotedEnd[0];
+                        while (trailing < contentEnd && Character.isWhitespace(expr.charAt(trailing))) trailing++;
+                        if (trailing != contentEnd) {
                             throw new JsonException("trailing characters after quoted name in path '" + expr + "'");
                         }
                         segments.addLast(new PathSegment.Name(segments.peekLast(), name));

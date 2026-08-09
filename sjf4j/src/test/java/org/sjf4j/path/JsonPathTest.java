@@ -178,6 +178,15 @@ public class JsonPathTest {
     }
 
     @Test
+    public void quotedBracketNameAllowsSpacesAroundSelector() {
+        JsonObject document = JsonObject.fromJson("{\" a\":1,\"a\":2,\" a \":3,\"a \":4,\" 'a' \":5,\" 'a\":6,\"a' \":7,\" \\\"a\\\" \":8,\"\\\"a\\\"\":9}");
+        JsonPath path = JsonPath.parse("$[ 'a' ]");
+
+        assertEquals(2, path.getNode(document));
+        assertEquals(Collections.singletonList(2), path.find(document));
+    }
+
+    @Test
     public void testGetNode1() {
         String json1 = "{\n" +
                 "  \"book\": [\n" +

@@ -38,8 +38,8 @@ import java.util.concurrent.TimeUnit;
 public class JsonPathBenchmark {
 
     public static void main(String[] args) throws Exception {
-        org.openjdk.jmh.Main.main(new String[]{JsonPathBenchmark.class.getName()});
-//        org.openjdk.jmh.Main.main(new String[]{"JsonPathBenchmark.compile_"});
+//        org.openjdk.jmh.Main.main(new String[]{JsonPathBenchmark.class.getName()});
+        org.openjdk.jmh.Main.main(new String[]{"JsonPathBenchmark.compile_"});
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

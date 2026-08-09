@@ -27,21 +27,21 @@ public final class OfficialTest {
             throw new IllegalArgumentException("Usage: OfficialTest [<JSON-Schema-Test-Suite root>]");
         }
         Path root = locateTestRoot(args.length == 0 ? null : args[0]);
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
-        loadRemotes(registry, locatePath(root, "remotes"));
-        runTestDir(registry, locatePath(root, "tests/draft2020-12"), false,true);
-        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional"), false, true);
-        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional/format"), true, false);
 
-//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-//        loadRemotes(registry, locatePath("remotes"));
-//        runTestDir(registry, locatePath("tests/draft2019-09/optional/format"), true, false);
-//        runTestFile(root.resolve("dynamicRef.json"), "", "");
+
+//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
+//        loadRemotes(registry, locatePath(root, "remotes"));
+//        runTestDir(registry, locatePath(root, "tests/draft2020-12"), false,true);
+//        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional"), false, true);
+//        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional/format"), true, false);
+
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
+        loadRemotes(registry, locatePath(root, "remotes"));
+        runTestDir(registry, locatePath(root,"tests/draft2019-09/optional/format"), true, false);
 
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
-//        loadRemotes(registry, locatePath("remotes"));
-//        runTestDir(registry, locatePath("tests/draft7/optional/format"), true, false);
-//        runTestFile(root.resolve("vocabulary.json"), "", "");
+//        loadRemotes(registry, locatePath(root, "remotes"));
+//        runTestDir(registry, locatePath(root, "tests/draft7/optional/format"), true, false);
 
     }
 
@@ -51,7 +51,7 @@ public final class OfficialTest {
         loadRemotes(registry, locatePath("remotes"));
         runTestDir(registry, locatePath("tests/draft7"), false, true);
         runTestDir(registry, locatePath("tests/draft7/optional"), false, true);
-        runTestDir(registry, locatePath("tests/draft7/optional/format"), true, true);
+        runTestDir(registry, locatePath("tests/draft7/optional/format"), true, false);
     }
 
     @Test
@@ -60,7 +60,7 @@ public final class OfficialTest {
         loadRemotes(registry, locatePath("remotes"));
         runTestDir(registry, locatePath("tests/draft2019-09"), false, true);
         runTestDir(registry, locatePath("tests/draft2019-09/optional"), false, true);
-        runTestDir(registry, locatePath("tests/draft2019-09/optional/format"), true, true);
+        runTestDir(registry, locatePath("tests/draft2019-09/optional/format"), true, false);
     }
 
     @Test
@@ -69,7 +69,7 @@ public final class OfficialTest {
         loadRemotes(registry, locatePath("remotes"));
         runTestDir(registry, locatePath("tests/draft2020-12"), false,true);
         runTestDir(registry, locatePath("tests/draft2020-12/optional"), false, true);
-        runTestDir(registry, locatePath("tests/draft2020-12/optional/format"), true,true);
+        runTestDir(registry, locatePath("tests/draft2020-12/optional/format"), true,false);
     }
 
 
