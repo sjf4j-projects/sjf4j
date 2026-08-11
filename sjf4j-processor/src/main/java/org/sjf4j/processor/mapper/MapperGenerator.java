@@ -2,13 +2,12 @@ package org.sjf4j.processor.mapper;
 
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.MappingCreator;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
 import org.sjf4j.annotation.mapper.MapperOptions;
-import org.sjf4j.annotation.mapper.EnsureMapping;
-import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
+import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
+import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
@@ -76,14 +75,14 @@ public final class MapperGenerator {
         if (!_validateMapperInterface(iface, target)) return;
         List<ImportedMapperRef> importedMappers = _importedMappers(iface, target);
         if (importedMappers == null) return;
-        List<MappingCreatorRef> mappingCreators = _mappingCreators(iface, target);
-        if (mappingCreators == null) return;
-        generation = new GenerationState(iface, target, importedMappers, mappingCreators);
+        MappingCreators creators = new MappingCreators(ctx, iface, (element, message) -> _error(element, target, message));
+        if (!creators.valid()) return;
+        generation = new GenerationState(iface, target, importedMappers, creators);
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;
             ExecutableElement method = (ExecutableElement) member;
             if (!method.getModifiers().contains(Modifier.ABSTRACT)) continue;
-            if (_methodMappingCreators(method, target) == null) {
+            if (!creators.validateMethod(method)) {
                 generation = null;
                 return;
             }
@@ -171,7 +170,7 @@ public final class MapperGenerator {
             return;
         }
 
-        List<MapperModel.SourceParam> sources = new ArrayList<MapperModel.SourceParam>();
+        List<MapperModel.SourceParam> sources = new ArrayList<>();
         for (VariableElement source : method.getParameters()) {
             TypeElement sourceType = GeneratorUtil.asTypeElement(source.asType());
             if (sourceType == null) {
@@ -179,7 +178,7 @@ public final class MapperGenerator {
                 return;
             }
             boolean dynamic = _dynamicSource(source.asType());
-            sources.add(new MapperModel.SourceParam(source, dynamic ? Collections.<String, MapperModel.Read>emptyMap() : _reads(sourceType, source.asType()), dynamic));
+            sources.add(new MapperModel.SourceParam(source, dynamic ? Collections.emptyMap() : _reads(sourceType, source.asType()), dynamic));
         }
         boolean multi = sources.size() > 1;
         if (!_validateUsingRefs(method, target, _methodUsingRefs(method))) return;
@@ -210,11 +209,11 @@ public final class MapperGenerator {
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         MappingIfParentPresent[] ifParentAnns = method.getAnnotationsByType(MappingIfParentPresent.class);
         EnsureMapping[] ensureAnns = method.getAnnotationsByType(EnsureMapping.class);
-        Map<String, MapperModel.Expr> explicit = new HashMap<String, MapperModel.Expr>();
-        Map<String, String> nestedMappers = new HashMap<String, String>();
-        List<MapperModel.TargetPathWrite> pathWrites = new ArrayList<MapperModel.TargetPathWrite>();
-        Set<String> explicitTargets = new HashSet<String>();
-        Set<String> ignored = new HashSet<String>();
+        Map<String, MapperModel.Expr> explicit = new HashMap<>();
+        Map<String, String> nestedMappers = new HashMap<>();
+        List<MapperModel.TargetPathWrite> pathWrites = new ArrayList<>();
+        Set<String> explicitTargets = new HashSet<>();
+        Set<String> ignored = new HashSet<>();
 
         for (Mapping m : anns) {
             if (!_validateMapping(method, target, m)) return;
@@ -276,7 +275,7 @@ public final class MapperGenerator {
         // Every writable/constructor target property must be assigned, either
         // explicitly or by same-name auto mapping.  Abstract methods with no
         // @Mapping annotations therefore still generate useful mappers.
-        Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
+        Map<String, MapperModel.Expr> values = new LinkedHashMap<>();
         for (String name : plan.names) {
             if (ignored.contains(name)) continue;
 
@@ -355,7 +354,7 @@ public final class MapperGenerator {
             return;
         }
 
-        List<MapperModel.SourceParam> sources = new ArrayList<MapperModel.SourceParam>();
+        List<MapperModel.SourceParam> sources = new ArrayList<>();
         for (int i = 1; i < params.size(); i++) {
             VariableElement source = params.get(i);
             TypeElement sourceType = GeneratorUtil.asTypeElement(source.asType());
@@ -364,7 +363,7 @@ public final class MapperGenerator {
                 return;
             }
             boolean dynamic = _dynamicSource(source.asType());
-            sources.add(new MapperModel.SourceParam(source, dynamic ? Collections.<String, MapperModel.Read>emptyMap() : _reads(sourceType, source.asType()), dynamic));
+            sources.add(new MapperModel.SourceParam(source, dynamic ? Collections.emptyMap() : _reads(sourceType, source.asType()), dynamic));
         }
         boolean multi = sources.size() > 1;
         Map<String, MapperModel.Write> writes = _writes(targetType, params.get(0).asType());
@@ -376,13 +375,13 @@ public final class MapperGenerator {
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         MappingIfParentPresent[] ifParentAnns = method.getAnnotationsByType(MappingIfParentPresent.class);
         EnsureMapping[] ensureAnns = method.getAnnotationsByType(EnsureMapping.class);
-        Map<String, MapperModel.Expr> explicit = new HashMap<String, MapperModel.Expr>();
-        Map<String, String> nestedMappers = new HashMap<String, String>();
-        Map<String, ArrayPolicy> arrayPolicies = new HashMap<String, ArrayPolicy>();
-        Map<String, ObjectPolicy> objectPolicies = new HashMap<String, ObjectPolicy>();
-        List<MapperModel.TargetPathWrite> pathWrites = new ArrayList<MapperModel.TargetPathWrite>();
-        Set<String> explicitTargets = new HashSet<String>();
-        Set<String> ignored = new HashSet<String>();
+        Map<String, MapperModel.Expr> explicit = new HashMap<>();
+        Map<String, String> nestedMappers = new HashMap<>();
+        Map<String, ArrayPolicy> arrayPolicies = new HashMap<>();
+        Map<String, ObjectPolicy> objectPolicies = new HashMap<>();
+        List<MapperModel.TargetPathWrite> pathWrites = new ArrayList<>();
+        Set<String> explicitTargets = new HashSet<>();
+        Set<String> ignored = new HashSet<>();
 
         if (!_validateUsingRefs(method, target, _methodUsingRefs(method))) return;
 
@@ -444,7 +443,7 @@ public final class MapperGenerator {
         ObjectPolicy defaultObjectPolicy = cfg == null ? ObjectPolicy.PUT : cfg.objects();
         Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, params.get(0).asType(), true, nulls);
         if (pathValues == null) return;
-        Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
+        Map<String, MapperModel.Expr> values = new LinkedHashMap<>();
         for (String name : plan.names) {
             if (ignored.contains(name)) continue;
 
@@ -940,7 +939,7 @@ public final class MapperGenerator {
 
     private Map<String, Integer> _readCounts(TypeElement iface, Mapping[] anns, MapperModel.Plan plan, Set<String> ignored,
                                              Set<String> explicitTargets, List<MapperModel.SourceParam> sources, boolean multi) {
-        Map<String, Integer> counts = new HashMap<String, Integer>();
+        Map<String, Integer> counts = new HashMap<>();
         for (Mapping m : anns) {
             if (_isAutoMarker(m) || m.ignore() || m.target().length() == 0) continue;
 
@@ -965,8 +964,7 @@ public final class MapperGenerator {
     }
 
     private void _count(Map<String, Integer> counts, String source) {
-        Integer n = counts.get(source);
-        counts.put(source, n == null ? 1 : n + 1);
+        counts.compute(source, (k, n) -> n == null ? 1 : n + 1);
     }
 
     private Map<String, Integer> _groupParentCounts(Mapping[] anns) {
@@ -1446,7 +1444,7 @@ public final class MapperGenerator {
                              boolean multi, MethodState state, MapperModel.Plan plan, Map<String, MapperModel.Expr> values, Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues, NullValuePolicy nulls,
                              ArrayPolicy defaultArrayPolicy, ObjectPolicy defaultObjectPolicy,
                              Map<String, ArrayPolicy> arrayPolicies, Map<String, ObjectPolicy> objectPolicies, Map<String, MapperModel.Read> targetReads,
-                              Map<String, String> nestedMappers, TypeElement iface, GeneratedClass genTarget) {
+                             Map<String, String> nestedMappers, TypeElement iface, GeneratedClass genTarget) {
         out.line("");
         out.line("@Override");
         StringBuilder sig = new StringBuilder();
@@ -1534,7 +1532,7 @@ public final class MapperGenerator {
      */
     private Map<String, MapperModel.Read> _reads(TypeElement type, TypeMirror owner) {
         if (GeneratorUtil.isJojoType(ctx, owner)) return _jojoReads(type, owner);
-        Map<String, MapperModel.Read> r = new HashMap<String, MapperModel.Read>();
+        Map<String, MapperModel.Read> r = new HashMap<>();
         for (Element member : ctx.elements.getAllMembers(type)) {
             Set<Modifier> m = member.getModifiers();
             if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC)) continue;
@@ -1567,7 +1565,7 @@ public final class MapperGenerator {
      */
     private Map<String, MapperModel.Write> _writes(TypeElement type, TypeMirror owner) {
         if (GeneratorUtil.isJojoType(ctx, owner)) return _jojoWrites(type, owner);
-        Map<String, MapperModel.Write> w = new LinkedHashMap<String, MapperModel.Write>();
+        Map<String, MapperModel.Write> w = new LinkedHashMap<>();
         for (Element member : ctx.elements.getAllMembers(type)) {
             Set<Modifier> m = member.getModifiers();
             if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC)) continue;
@@ -1596,7 +1594,7 @@ public final class MapperGenerator {
     }
 
     private Map<String, MapperModel.Read> _jojoReads(TypeElement type, TypeMirror owner) {
-        Map<String, MapperModel.Read> reads = new LinkedHashMap<String, MapperModel.Read>();
+        Map<String, MapperModel.Read> reads = new LinkedHashMap<>();
         for (int pass = 0; pass < 2; pass++) {
             boolean explicitOnly = pass == 0;
             for (Element member : ctx.elements.getAllMembers(type)) {
@@ -1606,7 +1604,8 @@ public final class MapperGenerator {
                 String javaName = member.getSimpleName().toString();
                 String nodeName = _nodeName(member, javaName);
                 if ((GeneratorUtil.explicitNodePropertyName(member) != null) == explicitOnly) {
-                    if (explicitOnly || !reads.containsKey(nodeName)) reads.put(nodeName, new MapperModel.Read(null, javaName, ctx.types.asMemberOf((DeclaredType) owner, member)));
+                    if (explicitOnly || !reads.containsKey(nodeName))
+                        reads.put(nodeName, new MapperModel.Read(null, javaName, ctx.types.asMemberOf((DeclaredType) owner, member)));
                 }
             }
             for (Element member : ctx.elements.getAllMembers(type)) {
@@ -1694,7 +1693,7 @@ public final class MapperGenerator {
      * constructor arguments.
      */
     private MapperModel.Plan _creation(ExecutableElement method, GeneratedClass target, TypeElement type, TypeMirror mirror, Map<String, MapperModel.Write> writes) {
-        MappingCreatorMatch creator = _creatorFor(method, target, mirror);
+        MappingCreators.Match creator = generation.creators.forMethod(method, mirror);
         if (creator != null) {
             if (creator.create != null) {
                 TypeElement creatorType = GeneratorUtil.asTypeElement(creator.type);
@@ -1737,7 +1736,7 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Plan _ctorPlan(ExecutableElement ctor, TypeMirror owner) {
-        Map<String, MapperModel.Write> w = new LinkedHashMap<String, MapperModel.Write>();
+        Map<String, MapperModel.Write> w = new LinkedHashMap<>();
         ExecutableType ct = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, ctor);
         for (int i = 0; i < ctor.getParameters().size(); i++) {
             VariableElement p = ctor.getParameters().get(i);
@@ -1748,7 +1747,7 @@ public final class MapperGenerator {
     }
 
     private List<ExecutableElement> _publicConstructors(TypeElement t) {
-        List<ExecutableElement> r = new ArrayList<ExecutableElement>();
+        List<ExecutableElement> r = new ArrayList<>();
         for (Element e : t.getEnclosedElements()) {
             if (e.getKind() == ElementKind.CONSTRUCTOR && e.getModifiers().contains(Modifier.PUBLIC)) {
                 r.add((ExecutableElement) e);
@@ -1766,177 +1765,6 @@ public final class MapperGenerator {
         return false;
     }
 
-    private List<MappingCreatorRef> _mappingCreators(TypeElement iface, GeneratedClass target) {
-        List<MappingCreatorRef> refs = new ArrayList<MappingCreatorRef>();
-        boolean[] failed = new boolean[1];
-        _collectMappingCreators(iface, target, refs, new HashSet<String>(), failed);
-        return failed[0] ? null : refs;
-    }
-
-    private List<MappingCreatorRef> _methodMappingCreators(ExecutableElement method, GeneratedClass target) {
-        if (generation.methodMappingCreators.containsKey(method)) return generation.methodMappingCreators.get(method);
-        if (generation.failedMethodMappingCreators.contains(method)) return null;
-        List<MappingCreatorRef> refs = new ArrayList<MappingCreatorRef>();
-        boolean[] failed = new boolean[1];
-        _collectDeclaredMappingCreators(method, target, refs, failed);
-        if (failed[0]) {
-            generation.failedMethodMappingCreators.add(method);
-            return null;
-        }
-        generation.methodMappingCreators.put(method, refs);
-        return refs;
-    }
-
-    private void _collectMappingCreators(TypeElement iface, GeneratedClass target, List<MappingCreatorRef> refs, Set<String> seen, boolean[] failed) {
-        String qn = iface.getQualifiedName().toString();
-        if (!seen.add(qn)) return;
-        _collectDeclaredMappingCreators(iface, target, refs, failed);
-        for (TypeMirror parent : iface.getInterfaces()) {
-            TypeElement parentType = GeneratorUtil.asTypeElement(parent);
-            if (parentType != null) _collectMappingCreators(parentType, target, refs, seen, failed);
-        }
-    }
-
-    private void _collectDeclaredMappingCreators(Element owner, GeneratedClass target, List<MappingCreatorRef> refs, boolean[] failed) {
-        for (AnnotationMirror mirror : owner.getAnnotationMirrors()) {
-            String anno = mirror.getAnnotationType().toString();
-            if (anno.equals(MappingCreator.class.getName())) {
-                _addMappingCreator(owner, target, refs, mirror, failed);
-            } else if (anno.equals("org.sjf4j.annotation.mapper.MappingCreators")) {
-                for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
-                    if (!e.getKey().getSimpleName().contentEquals("value")) continue;
-                    Object raw = e.getValue().getValue();
-                    if (!(raw instanceof List)) continue;
-                    for (Object item : (List<?>) raw) {
-                        Object value = ((AnnotationValue) item).getValue();
-                        if (value instanceof AnnotationMirror) _addMappingCreator(owner, target, refs, (AnnotationMirror) value, failed);
-                    }
-                }
-            }
-        }
-    }
-
-    private void _addMappingCreator(Element owner, GeneratedClass target, List<MappingCreatorRef> refs, AnnotationMirror mirror, boolean[] failed) {
-        TypeMirror targetType = null;
-        TypeMirror implementation = null;
-        String creator = "";
-        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
-            String name = e.getKey().getSimpleName().toString();
-            if ("targetType".equals(name)) targetType = (TypeMirror) e.getValue().getValue();
-            else if ("implementation".equals(name)) implementation = (TypeMirror) e.getValue().getValue();
-            else if ("creator".equals(name)) creator = String.valueOf(e.getValue().getValue()).trim();
-        }
-        if (targetType == null || targetType.getKind() != TypeKind.DECLARED) {
-            _error(owner, target, "@MappingCreator.targetType must be a declared type");
-            failed[0] = true;
-            return;
-        }
-        boolean hasImplementation = implementation != null && !"java.lang.Void".equals(_qualifiedName(implementation));
-        boolean hasCreator = creator.length() != 0;
-        if (hasImplementation == hasCreator) {
-            _error(owner, target, "@MappingCreator requires exactly one of implementation or creator");
-            failed[0] = true;
-            return;
-        }
-        if (hasImplementation) {
-            if (implementation.getKind() != TypeKind.DECLARED) {
-                _error(owner, target, "@MappingCreator.implementation must be a declared type");
-                failed[0] = true;
-                return;
-            }
-            if (!_assignable(implementation, targetType)) {
-                _error(owner, target, "@MappingCreator.implementation must be assignable to targetType");
-                failed[0] = true;
-                return;
-            }
-        }
-        refs.add(new MappingCreatorRef(targetType, hasImplementation ? implementation : null, hasCreator ? creator : null));
-    }
-
-    private MappingCreatorMatch _creatorFor(ExecutableElement method, GeneratedClass target, TypeMirror requestedType) {
-        List<MappingCreatorRef> methodRefs = _methodMappingCreators(method, target);
-        if (methodRefs == null) return null;
-        boolean[] matched = new boolean[1];
-        boolean[] failed = new boolean[1];
-        MappingCreatorRef best = _bestCreator(method, target, requestedType, methodRefs, matched, failed);
-        if (failed[0]) return null;
-        if (!matched[0]) {
-            best = _bestCreator(method, target, requestedType, generation.mappingCreators, matched, failed);
-            if (failed[0]) return null;
-        }
-        if (best == null) return null;
-        if (best.implementation != null) return new MappingCreatorMatch(best.implementation, null);
-        return _creatorMethod(method, target, best, requestedType);
-    }
-
-    private MappingCreatorRef _bestCreator(ExecutableElement method, GeneratedClass target, TypeMirror requestedType,
-                                           List<MappingCreatorRef> refs, boolean[] matched, boolean[] failed) {
-        matched[0] = false;
-        MappingCreatorRef best = null;
-        for (MappingCreatorRef ref : refs) {
-            if (!ctx.types.isAssignable(requestedType, ref.targetType)) continue;
-            matched[0] = true;
-            if (best == null) {
-                best = ref;
-                continue;
-            }
-            boolean refMoreSpecific = ctx.types.isAssignable(ref.targetType, best.targetType);
-            boolean bestMoreSpecific = ctx.types.isAssignable(best.targetType, ref.targetType);
-            if (refMoreSpecific && !bestMoreSpecific) best = ref;
-            else if (!refMoreSpecific && !bestMoreSpecific) {
-                _error(method, target, "Ambiguous @MappingCreator for target type " + requestedType);
-                failed[0] = true;
-                return null;
-            } else if (refMoreSpecific && bestMoreSpecific) {
-                _error(method, target, "Ambiguous @MappingCreator for target type " + requestedType);
-                failed[0] = true;
-                return null;
-            }
-        }
-        return best;
-    }
-
-    private MappingCreatorMatch _creatorMethod(ExecutableElement method, GeneratedClass target, MappingCreatorRef ref, TypeMirror requestedType) {
-        String creator = ref.creator;
-        if (!creator.startsWith("this::") || !_isSimpleIdentifier(creator.substring(6))) {
-            _error(method, target, "@MappingCreator.creator currently supports only this::method");
-            return null;
-        }
-        String name = creator.substring(6);
-        ExecutableElement found = null;
-        for (Element element : ctx.elements.getAllMembers(generation.iface)) {
-            if (element.getKind() != ElementKind.METHOD || !element.getSimpleName().contentEquals(name)) continue;
-            if (element.getEnclosingElement().toString().equals(Object.class.getName())) continue;
-            if (found != null) {
-                _error(method, target, "Ambiguous @MappingCreator creator method '" + name + "'");
-                return null;
-            }
-            found = (ExecutableElement) element;
-        }
-        if (found == null) {
-            _error(method, target, "Cannot resolve @MappingCreator creator method '" + creator + "'");
-            return null;
-        }
-        if (!found.getModifiers().contains(Modifier.DEFAULT) && !found.getModifiers().contains(Modifier.STATIC)) {
-            _error(method, target, "@MappingCreator creator method must be default or static");
-            return null;
-        }
-        if (!found.getParameters().isEmpty()) {
-            _error(method, target, "@MappingCreator creator method must not declare parameters");
-            return null;
-        }
-        TypeElement owner = (TypeElement) found.getEnclosingElement();
-        ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner.asType(), found);
-        if (!_assignable(mt.getReturnType(), ref.targetType)) {
-            _error(method, target, "@MappingCreator creator method return type must be assignable to " + requestedType);
-            return null;
-        }
-        String call = found.getModifiers().contains(Modifier.STATIC)
-                ? owner.getQualifiedName() + "." + name + "()"
-                : name + "()";
-        return new MappingCreatorMatch(mt.getReturnType(), call);
-    }
-
     private String _nodeName(Element e, String fallback) {
         return GeneratorUtil.nodePropertyName(e, fallback);
     }
@@ -1948,8 +1776,8 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources, boolean multi,
-                                    MethodState state, String path, String targetName, TypeMirror targetType, String nestedMapper,
-                                    NullValuePolicy nulls, boolean allowGrouped) {
+                                                MethodState state, String path, String targetName, TypeMirror targetType, String nestedMapper,
+                                                NullValuePolicy nulls, boolean allowGrouped) {
         if (allowGrouped) {
             MapperModel.Expr grouped = _tryGroupedReadExpr(sources, multi, state, path, targetName, targetType, nestedMapper);
             if (grouped != null) return grouped;
@@ -4501,22 +4329,8 @@ public final class MapperGenerator {
         return fallback.toString();
     }
 
-    private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source) {
-        NameAllocator names = new NameAllocator();
-        names.reserve(target);
-        names.reserve(source);
-        _emitContainerCopy(out, from, to, conv, target, source, ObjectPolicy.PUT, names);
-    }
-
     private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source, NameAllocator names) {
         _emitContainerCopy(out, from, to, conv, target, source, ObjectPolicy.PUT, names);
-    }
-
-    private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source, ObjectPolicy objectPolicy) {
-        NameAllocator names = new NameAllocator();
-        names.reserve(target);
-        names.reserve(source);
-        _emitContainerCopy(out, from, to, conv, target, source, objectPolicy, names);
     }
 
     private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source, ObjectPolicy objectPolicy, NameAllocator names) {
@@ -4603,8 +4417,8 @@ public final class MapperGenerator {
     }
 
     private void _emitArrayField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                  MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper,
-                                  ArrayPolicy policy, NullValuePolicy nulls) {
+                                 MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper,
+                                 ArrayPolicy policy, NullValuePolicy nulls) {
         MapperModel.ContainerType from = _container(e.type);
         MapperModel.ContainerType to = _container(w.type);
         MapperModel.ArrayLikeType arrayFrom = _arrayLike(e.type);
@@ -4646,8 +4460,8 @@ public final class MapperGenerator {
     }
 
     private void _emitObjectField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                    MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper,
-                                    ArrayPolicy arrayPolicy, ObjectPolicy policy, NullValuePolicy nulls) {
+                                  MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper,
+                                  ArrayPolicy arrayPolicy, ObjectPolicy policy, NullValuePolicy nulls) {
         MapperModel.ContainerType from = _container(e.type);
         MapperModel.ContainerType to = _container(w.type);
         if (from == null || to == null || !from.map || !to.map) {
@@ -4728,14 +4542,14 @@ public final class MapperGenerator {
         final Map<String, Integer> groupParentCounts;
         final NameAllocator names;
         final String targetRoot;
-        final List<String> readTemps = new ArrayList<String>();
-        final Map<String, MapperModel.CachedRead> cache = new HashMap<String, MapperModel.CachedRead>();
-        final Map<String, PathAccessEmitter.CachedPath> pathCache = new HashMap<String, PathAccessEmitter.CachedPath>();
-        final Set<String> groupTargets = new HashSet<String>();
+        final List<String> readTemps = new ArrayList<>();
+        final Map<String, MapperModel.CachedRead> cache = new HashMap<>();
+        final Map<String, PathAccessEmitter.CachedPath> pathCache = new HashMap<>();
+        final Set<String> groupTargets = new HashSet<>();
         MapperModel.GroupNode groupRoot;
 
         MethodState(List<MapperModel.SourceParam> sources, Map<String, Integer> counts) {
-            this(null, sources, counts, Collections.<String, Integer>emptyMap());
+            this(null, sources, counts, Collections.emptyMap());
         }
 
         MethodState(List<MapperModel.SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
@@ -4743,7 +4557,7 @@ public final class MapperGenerator {
         }
 
         MethodState(String targetParam, List<MapperModel.SourceParam> sources, Map<String, Integer> counts) {
-            this(targetParam, sources, counts, Collections.<String, Integer>emptyMap());
+            this(targetParam, sources, counts, Collections.emptyMap());
         }
 
         MethodState(String targetParam, List<MapperModel.SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
@@ -4773,28 +4587,6 @@ public final class MapperGenerator {
 
         NamedMethodMatch(ExecutableElement method) {
             this.method = method;
-        }
-    }
-
-    private static final class MappingCreatorRef {
-        final TypeMirror targetType;
-        final TypeMirror implementation;
-        final String creator;
-
-        MappingCreatorRef(TypeMirror targetType, TypeMirror implementation, String creator) {
-            this.targetType = targetType;
-            this.implementation = implementation;
-            this.creator = creator;
-        }
-    }
-
-    private static final class MappingCreatorMatch {
-        final TypeMirror type;
-        final String create;
-
-        MappingCreatorMatch(TypeMirror type, String create) {
-            this.type = type;
-            this.create = create;
         }
     }
 
@@ -4839,22 +4631,20 @@ public final class MapperGenerator {
     private static final class GenerationState {
         int nextCodec;
         boolean failed;
-        final Map<String, String> helpers = new HashMap<String, String>();
-        final Map<String, String> importedMapperFields = new HashMap<String, String>();
+        final Map<String, String> helpers = new HashMap<>();
+        final Map<String, String> importedMapperFields = new HashMap<>();
         final NameAllocator importedMapperFieldNames = new NameAllocator();
-        final Set<String> inProgress = new HashSet<String>();
+        final Set<String> inProgress = new HashSet<>();
         final NameAllocator helperNames = new NameAllocator();
         final List<ImportedMapperRef> importedMappers;
-        final List<MappingCreatorRef> mappingCreators;
-        final Map<ExecutableElement, List<MappingCreatorRef>> methodMappingCreators = new HashMap<ExecutableElement, List<MappingCreatorRef>>();
-        final Set<ExecutableElement> failedMethodMappingCreators = new HashSet<ExecutableElement>();
+        final MappingCreators creators;
         final TypeElement iface;
         final GeneratedClass target;
 
-        GenerationState(TypeElement iface, GeneratedClass target, List<ImportedMapperRef> importedMappers, List<MappingCreatorRef> mappingCreators) {
+        GenerationState(TypeElement iface, GeneratedClass target, List<ImportedMapperRef> importedMappers, MappingCreators creators) {
             this.iface = iface;
             this.importedMappers = importedMappers;
-            this.mappingCreators = mappingCreators;
+            this.creators = creators;
             this.target = target;
             for (Element e : iface.getEnclosedElements()) {
                 if (e.getKind() == ElementKind.METHOD) helperNames.reserve(e.getSimpleName().toString());

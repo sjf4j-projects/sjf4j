@@ -1,5 +1,8 @@
 package org.sjf4j.processor;
 
+import org.sjf4j.annotation.mapper.ArrayPolicy;
+import org.sjf4j.annotation.mapper.ObjectPolicy;
+
 import org.junit.jupiter.api.Test;
 
 import javax.tools.Diagnostic;

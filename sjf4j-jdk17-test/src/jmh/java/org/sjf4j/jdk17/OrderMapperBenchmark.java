@@ -16,8 +16,8 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.MapperOptions;
-import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
+import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.ArrayList;

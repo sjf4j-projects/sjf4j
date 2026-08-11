@@ -8,7 +8,7 @@ public final class CompiledNodes {
 
     private static final String IMPL_SUFFIX = "_Impl";
     private static final String COMPILED_ANNOTATIONS =
-            "@CompiledPath or @CompiledMapper";
+            "@CompiledPath or @CompiledMapper (or @CompiledJdbcMapper)";
 
     private static final ClassValue<Object> NODES_CACHE = new ClassValue<Object>() {
         @Override

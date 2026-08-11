@@ -1,11 +1,11 @@
 package org.sjf4j.jdk17.processor.mapper;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
+import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
 import org.sjf4j.compiled.CompiledNodes;
 
@@ -385,48 +385,91 @@ public class MapperCollectionTest {
     @CompiledMapper
     public interface CollectionMapper {
         List<String> strings(List<String> in);
-        @MapperOptions(using = {"toDto"}) List<UserDto> users(List<User> in);
-        @MapperOptions(using = {"special"}) List<UserDto> usersWith(List<User> in);
+
+        @MapperOptions(using = {"toDto"})
+        List<UserDto> users(List<User> in);
+
+        @MapperOptions(using = {"special"})
+        List<UserDto> usersWith(List<User> in);
+
         Set<String> set(List<String> in);
-        @MapperOptions(using = {"toDto"}) Map<String, UserDto> map(Map<String, User> in);
-        @MapperOptions(using = {"toDto"}) List<List<UserDto>> nestedUsers(List<List<User>> in);
-        @MapperOptions(using = {"toDto"}) Map<String, List<UserDto>> groupedUsers(Map<String, List<User>> in);
-        @MapperOptions(using = {"toDto"}) Map<String, Map<String, UserDto>> nestedMapUsers(Map<String, Map<String, User>> in);
-        @MapperOptions(using = {"toDto"}) List<Map<String, UserDto>> userMaps(List<Map<String, User>> in);
+
+        @MapperOptions(using = {"toDto"})
+        Map<String, UserDto> map(Map<String, User> in);
+
+        @MapperOptions(using = {"toDto"})
+        List<List<UserDto>> nestedUsers(List<List<User>> in);
+
+        @MapperOptions(using = {"toDto"})
+        Map<String, List<UserDto>> groupedUsers(Map<String, List<User>> in);
+
+        @MapperOptions(using = {"toDto"})
+        Map<String, Map<String, UserDto>> nestedMapUsers(Map<String, Map<String, User>> in);
+
+        @MapperOptions(using = {"toDto"})
+        List<Map<String, UserDto>> userMaps(List<Map<String, User>> in);
+
         UserDto toDto(User u);
-        default UserDto special(User u) { return u == null ? null : new UserDto(u.name + "!"); }
+
+        default UserDto special(User u) {
+            return u == null ? null : new UserDto(u.name + "!");
+        }
 
         void replace(List<String> target, List<String> source);
-        @MapperOptions(arrays = ArrayPolicy.ADD) void append(List<String> target, List<String> source);
-        @MapperOptions(objects = ObjectPolicy.CLEAR_PUT) void replaceMap(Map<String, String> target, Map<String, String> source);
-        @MapperOptions(objects = ObjectPolicy.PUT) void appendMap(Map<String, String> target, Map<String, String> source);
-        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT) void putIfAbsentMap(Map<String, String> target, Map<String, String> source);
+
+        @MapperOptions(arrays = ArrayPolicy.ADD)
+        void append(List<String> target, List<String> source);
+
+        @MapperOptions(objects = ObjectPolicy.CLEAR_PUT)
+        void replaceMap(Map<String, String> target, Map<String, String> source);
+
+        @MapperOptions(objects = ObjectPolicy.PUT)
+        void appendMap(Map<String, String> target, Map<String, String> source);
+
+        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT)
+        void putIfAbsentMap(Map<String, String> target, Map<String, String> source);
 
         @MapperOptions(using = {"toDto"})
         DtoBox box(UserBox box);
+
         @MapperOptions(using = {"toDto"})
         @Mapping(target = "map", ignore = true)
         void updateBox(DtoBox target, UserBox box);
-        @MapperOptions(nulls = NullValuePolicy.IGNORE, using = {"toDto"}) @Mapping(target = "map", ignore = true) void ignoreNullBox(DtoBox target, UserBox box);
-        @MapperOptions(using = {"toDto"}) @Mapping(target = "map", ignore = true) void setNullBox(DtoBox target, UserBox box);
-        @MapperOptions(using = {"toDto"}) @Mapping(target = "users", ignore = true) @Mapping(target = "nestedUsers", ignore = true) @Mapping(target = "groupedUsers", ignore = true) void setNullMapBox(DtoBox target, UserBox box);
+
+        @MapperOptions(nulls = NullValuePolicy.IGNORE, using = {"toDto"})
+        @Mapping(target = "map", ignore = true)
+        void ignoreNullBox(DtoBox target, UserBox box);
+
+        @MapperOptions(using = {"toDto"})
+        @Mapping(target = "map", ignore = true)
+        void setNullBox(DtoBox target, UserBox box);
+
+        @MapperOptions(using = {"toDto"})
+        @Mapping(target = "users", ignore = true)
+        @Mapping(target = "nestedUsers", ignore = true)
+        @Mapping(target = "groupedUsers", ignore = true)
+        void setNullMapBox(DtoBox target, UserBox box);
+
         @MapperOptions(using = {"toDto"})
         @Mapping(target = "users", array = ArrayPolicy.ADD)
         @Mapping(target = "map", ignore = true)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void appendBox(DtoBox target, UserBox box);
+
         @MapperOptions(using = {"toDto"})
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void putBox(DtoBox target, UserBox box);
+
         @MapperOptions(using = {"toDto"})
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "map", object = ObjectPolicy.CLEAR_PUT)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void clearPutBox(DtoBox target, UserBox box);
+
         @MapperOptions(using = {"toDto"})
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "map", object = ObjectPolicy.PUT_IF_ABSENT)
@@ -442,7 +485,9 @@ public class MapperCollectionTest {
         @Mapping(target = "child", sources = {"child"}, compute = "this::toChildDto")
         void updateObnt(ObntTarget target, ObntSource source);
 
-        default ChildDto toChildDto(Child child) { return child == null ? null : new ChildDto(child.name); }
+        default ChildDto toChildDto(Child child) {
+            return child == null ? null : new ChildDto(child.name);
+        }
     }
 
     @CompiledMapper
@@ -462,7 +507,9 @@ public class MapperCollectionTest {
 
     @CompiledMapper
     public interface ImportedUserMapper {
-        default UserDto toDto(User u) { return u == null ? null : new UserDto(u.name + "!"); }
+        default UserDto toDto(User u) {
+            return u == null ? null : new UserDto(u.name + "!");
+        }
     }
 
     @CompiledMapper(importing = {ImportedUserMapper.class})

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added compile-time `@CompiledJdbcMapper` generation for direct `ResultSet` mapping to single targets, `List` results, and `Map<String, Object>` rows. POJO mappings use column labels by default and support `@Mapping` column-label aliases, JDBC temporal conversions, explicit SQL-`NULL` handling.
+- Added JMH-only H2, Spring, and MyBatis comparison benchmarks for compiled JDBC mapping; these external benchmark dependencies are not production runtime features.
+
 ### Breaking Changes
 - `JsonPath.eval(...)` now returns a list for every non-function multi-match path, including zero or one match; unresolved single-value paths continue to return `null`.
 - Public `PathSegment.Slice` bounds and step fields, and its constructor parameters, now use `Long` instead of `Integer`.

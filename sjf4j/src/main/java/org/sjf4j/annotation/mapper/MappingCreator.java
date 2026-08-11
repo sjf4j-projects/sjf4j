@@ -7,11 +7,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares how a {@link CompiledMapper} creates a target type.
+ * Declares how a {@link CompiledMapper} or {@link CompiledJdbcMapper} creates a target type.
  *
  * <p>Use this annotation when the declared target type cannot or should not be
  * instantiated by the default rules. The common case is an interface or
- * abstract target. It may be declared on a {@link CompiledMapper} interface, or
+ * abstract target. It may be declared on a {@link CompiledMapper} or {@link CompiledJdbcMapper} interface, or
  * on an inherited factory/mixin interface, to apply to all generated mapping
  * methods. It may also be declared on an individual mapper method to apply only
  * to that method's generated mapping logic:</p>
@@ -28,7 +28,8 @@ import java.lang.annotation.Target;
  * An implementation creator maps the requested target as the implementation
  * type and returns it as the declared type. A method creator calls a no-args
  * factory method on the mapper and then writes mapped properties to the returned
- * mutable object.</p>
+ * mutable object. JDBC factory results are populated directly, so initialized
+ * nested parents can be used by JDBC target paths.</p>
  *
  * <p>Creators are selected by assignability: a creator whose
  * {@link #targetType()} is a supertype of the requested target may match, and

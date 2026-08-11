@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Configures one {@link CompiledMapper} method.
+ * Configures one {@link CompiledMapper} or {@link CompiledJdbcMapper} method.
  *
  * <p>Options are source-retained because they affect only generation of the
  * method currently being compiled. They are not inherited across already
@@ -16,14 +16,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)
 public @interface MapperOptions {
-    /**
-     * Null handling for mutable create targets and update targets.
-     *
-     * <p>{@link NullValuePolicy#IGNORE} skips null source values when assigning
-     * mutable properties. Constructor and record create targets cannot use
-     * {@code IGNORE} because constructor arguments must be supplied.</p>
-     */
-    NullValuePolicy nulls() default NullValuePolicy.SET_TO_NULL;
 
     /**
      * Preferred converter methods for automatic conversion points in this method.
@@ -40,9 +32,23 @@ public @interface MapperOptions {
      */
     String[] using() default {};
 
+
+    /**
+     * Null handling for mutable create targets and update targets.
+     *
+     * <p>{@link NullValuePolicy#IGNORE} skips null source values when assigning
+     * mutable properties. Constructor and record create targets cannot use
+     * {@code IGNORE} because constructor arguments must be supplied.</p>
+     */
+    NullValuePolicy nulls() default NullValuePolicy.SET_TO_NULL;
+
     /** Default array-like update behavior for target properties and nested containers. */
     ArrayPolicy arrays() default ArrayPolicy.CLEAR_ADD;
 
     /** Default object-like update behavior for target properties and nested containers. */
     ObjectPolicy objects() default ObjectPolicy.PUT;
+
+    /** Result-cardinality behavior for a single-target JDBC mapper method. */
+    JdbcResultPolicy jdbcResult() default JdbcResultPolicy.FAIL_ON_MULTIPLE;
+
 }

@@ -22,7 +22,7 @@ dependencies {
     implementation(project(":sjf4j-asm"))
     implementation(project(":sjf4j-schema"))
 
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     implementation("tools.jackson.core:jackson-databind:3.2.0")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
@@ -39,6 +39,10 @@ dependencies {
 
     // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
+    jmhImplementation("com.h2database:h2:2.3.232")
+    // Benchmark-only comparisons; neither library is part of a production artifact.
+    jmhImplementation("org.springframework:spring-jdbc:6.2.8")
+    jmhImplementation("org.mybatis:mybatis:3.5.19")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
     jmhAnnotationProcessor(project(":sjf4j-processor"))
     jmhImplementation("org.mapstruct:mapstruct:1.6.3")
