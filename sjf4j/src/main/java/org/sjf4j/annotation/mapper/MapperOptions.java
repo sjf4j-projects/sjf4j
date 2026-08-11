@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Configures one {@link CompiledMapper} or {@link CompiledJdbcMapper} method.
+ * Configures one {@link CompiledMapper} method.
  *
  * <p>Options are source-retained because they affect only generation of the
  * method currently being compiled. They are not inherited across already
@@ -47,8 +47,5 @@ public @interface MapperOptions {
 
     /** Default object-like update behavior for target properties and nested containers. */
     ObjectPolicy objects() default ObjectPolicy.PUT;
-
-    /** Result-cardinality behavior for a single-target JDBC mapper method. */
-    JdbcResultPolicy jdbcResult() default JdbcResultPolicy.FAIL_ON_MULTIPLE;
 
 }

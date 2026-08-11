@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added compile-time `@CompiledJdbcMapper` generation for direct `ResultSet` mapping to single targets, `List` results, and `Map<String, Object>` rows. POJO mappings use column labels by default and support `@Mapping` column-label aliases, JDBC temporal conversions, explicit SQL-`NULL` handling.
+- Added compile-time `@CompiledJdbcMapper` generation under `org.sjf4j.annotation.mapper.jdbc` for direct `ResultSet` mapping to single targets, `List` results, and `Map<String, Object>` rows. POJO mappings use result columns by default and support `@Mapping` result column aliases, JDBC temporal conversions, explicit SQL-`NULL` handling.
+- Added JDBC-specific `@JdbcMapperOptions` and its result, column-projection, and duplicate-column policies under `org.sjf4j.annotation.mapper.jdbc`.
+- Added framework-neutral current-row JDBC mapper methods with the signature `T method(ResultSet, int)`. They map the already-positioned row without advancing or checking the cursor.
 - Added JMH-only H2, Spring, and MyBatis comparison benchmarks for compiled JDBC mapping; these external benchmark dependencies are not production runtime features.
 
 ### Breaking Changes
+- JDBC mapper options moved from `@MapperOptions` to `@JdbcMapperOptions`. Replace `jdbcResult = JdbcResultPolicy.FIRST` with `singleResult = SingleResultPolicy.FIRST`; use `columnProjection` and `duplicateColumn` with `ColumnProjectionPolicy` and `DuplicateColumnPolicy` from `org.sjf4j.annotation.mapper.jdbc`. The former `JdbcResultPolicy` and JDBC members of `@MapperOptions` were removed.
+- `Map<String, Object>` JDBC results now reject duplicate result columns by default. Set `duplicateColumn = DuplicateColumnPolicy.LAST_WINS` to retain the former last-value-wins behavior.
+- Removed Spring `RowMapper` and `ResultSetExtractor`-specific generated contracts. `@CompiledJdbcMapper` is now framework-neutral; use a directly declared `T method(ResultSet, int)` current-row method where needed.
 - `JsonPath.eval(...)` now returns a list for every non-function multi-match path, including zero or one match; unresolved single-value paths continue to return `null`.
 - Public `PathSegment.Slice` bounds and step fields, and its constructor parameters, now use `Long` instead of `Integer`.
 

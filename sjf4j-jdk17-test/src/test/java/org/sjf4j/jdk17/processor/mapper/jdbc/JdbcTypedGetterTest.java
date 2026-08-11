@@ -1,7 +1,7 @@
 package org.sjf4j.jdk17.processor.mapper.jdbc;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.BindingException;
@@ -120,7 +120,7 @@ class JdbcTypedGetterTest {
     }
 
     private static ResultSet typedPrimitiveResult(List<String> getters, String nullColumn, boolean indexed) {
-        String[] labels = {"text", "longValue", "shortValue", "byteValue", "doubleValue", "floatValue", "booleanValue"};
+        String[] columns = {"text", "longValue", "shortValue", "byteValue", "doubleValue", "floatValue", "booleanValue"};
         Object[] values = {"Ada", 7L, (short) 3, (byte) 2, 1.5d, 2.5f, true};
         int[] row = {-1};
         Object[] last = {null};
@@ -130,7 +130,7 @@ class JdbcTypedGetterTest {
                         return ++row[0] == 0;
                     }
                     if (method.getName().equals("findColumn")) {
-                        return List.of(labels).indexOf(arguments[0]) + 1;
+                        return List.of(columns).indexOf(arguments[0]) + 1;
                     }
                     if (method.getName().equals("getObject")) {
                         throw new AssertionError("typed value read through getObject");
@@ -144,9 +144,9 @@ class JdbcTypedGetterTest {
 
                     int column = arguments[0] instanceof Integer
                             ? (Integer) arguments[0]
-                            : List.of(labels).indexOf(arguments[0]) + 1;
+                            : List.of(columns).indexOf(arguments[0]) + 1;
                     getters.add(method.getName() + (arguments[0] instanceof Integer ? "#" : ""));
-                    last[0] = labels[column - 1].equals(nullColumn) ? null : values[column - 1];
+                    last[0] = columns[column - 1].equals(nullColumn) ? null : values[column - 1];
                     if (method.getName().equals("getString") || last[0] != null) {
                         return last[0];
                     }

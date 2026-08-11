@@ -3,7 +3,6 @@ package org.sjf4j.processor;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
-import org.sjf4j.annotation.mapper.JdbcResultPolicy;
 
 import org.junit.jupiter.api.Test;
 
@@ -82,7 +81,7 @@ public class MapperProcessorTest {
         assertTrue(generatedSource.contains("user_Row(ResultSet rs)"));
         assertTrue(generatedSource.contains("users_Row(ResultSet rs, int column0, int column1, int column2)"));
         assertTrue(generatedSource.contains("row_Row(ResultSet rs)"));
-        assertTrue(generatedSource.contains("rows_Row(ResultSet rs, String[] labels)"));
+        assertTrue(generatedSource.contains("rows_Row(ResultSet rs, String[] columns)"));
         assertTrue(generatedSource.contains("String value0 = rs.getString(column0);"));
         assertTrue(generatedSource.contains("rs.getInt(column1);"));
         assertTrue(generatedSource.contains("if (rs.wasNull()) primitiveNull(\"age\", \"int\");"));
@@ -176,7 +175,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperRejectsInvalidContractsAndMappings() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
                 + "interface Parent { String inherited(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface Inherited extends Parent { }"
                 + "@CompiledJdbcMapper interface Generic<T> { String x(ResultSet rs); }"
@@ -186,7 +185,14 @@ public class MapperProcessorTest {
                 + "@CompiledJdbcMapper interface BadCompute { class P { public String value; public P(){} } @Mapping(target=\"value\",compute=\"this::convert\") P map(ResultSet rs); default String convert(Object value) { return \"x\"; } }"
                 + "@CompiledMapper @CompiledJdbcMapper interface Both { String x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface Unsupported { @MapperOptions(using=\"convert\") String x(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface ListPolicy { @MapperOptions(jdbcResult=JdbcResultPolicy.FIRST) java.util.List<String> x(ResultSet rs); }";
+                + "@CompiledJdbcMapper interface ListPolicy { @JdbcMapperOptions(singleResult=SingleResultPolicy.FIRST) java.util.List<String> x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface PresentRecord { record P(String value) {} @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface PresentConstructor { class P { P(String value) {} } @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface MapColumns { @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) java.util.Map<String,Object> x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface PojoDuplicates { class P { public String value; } @JdbcMapperOptions(duplicateColumn=DuplicateColumnPolicy.LAST_WINS) P x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface CurrentRowList { java.util.List<String> x(ResultSet rs, int rowNum); }"
+                + "interface RowParent { String mapRow(ResultSet rs, int rowNum); }"
+                + "@CompiledJdbcMapper interface UnrelatedMapRow extends RowParent { }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         assertFalse(compileJdbc(source, diagnostics).booleanValue());
         String text = diagnosticsToString(diagnostics);
@@ -197,13 +203,18 @@ public class MapperProcessorTest {
         assertTrue(text.contains("supports compute only as this::helper with exactly one sources entry"), text);
         assertTrue(text.contains("both @CompiledMapper and @CompiledJdbcMapper"));
         assertEquals(text.indexOf("both @CompiledMapper and @CompiledJdbcMapper"), text.lastIndexOf("both @CompiledMapper and @CompiledJdbcMapper"));
-        assertTrue(text.contains("supports only @MapperOptions.jdbcResult"));
-        assertTrue(text.contains("jdbcResult is supported only on non-List"));
+        assertTrue(text.contains("@MapperOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
+        assertTrue(text.contains("singleResult is supported only on non-List"));
+        assertTrue(text.contains("columnProjection=PRESENT_ONLY requires a mutable POJO target"), text);
+        assertTrue(text.contains("columnProjection is supported only on POJO"), text);
+        assertTrue(text.contains("duplicateColumn is supported only on Map<String,Object>"), text);
+        assertTrue(text.contains("current-row methods do not support List results"), text);
+        assertTrue(text.contains("Inherited abstract mapper methods are not supported"), text);
     }
 
     @Test
     public void jdbcMapperRejectsNestedSourcePaths() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} }"
                 + "@Mapping(target=\"value\",source=\"$.payload.name\") P map(ResultSet rs); }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
@@ -213,7 +224,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperAcceptsFlatJsonPathAndPointerSourceAliases() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} }"
                 + "@Mapping(target=\"value\",source=\"$.full_name\") P path(ResultSet rs);"
                 + "@Mapping(target=\"value\",source=\"/full_name\") P pointer(ResultSet rs); }";
@@ -223,7 +234,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperRejectsDuplicateEquivalentTargets() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface RepeatedPath { class P { public N profile = new N(); public P(){} } class N { public String name; }"
                 + "@Mapping(target=\"$.profile.name\",source=\"one\") @Mapping(target=\"$.profile.name\",source=\"two\") P map(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface MixedRoot { class P { public String name; public P(){} }"
@@ -240,25 +251,25 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperGeneratedSourceSupportsRelease8() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; @CompiledJdbcMapper interface Eight { class P { public String value; public P(){} } P map(ResultSet result); }";
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper; @CompiledJdbcMapper interface Eight { class P { public String value; public P(){} } P map(ResultSet result); }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         assertTrue(compileJdbc(source, diagnostics, "--release", "8").booleanValue(), diagnosticsToString(diagnostics));
     }
 
     @Test
     public void jdbcMapperEmitsOnlyUsedConversionHelpers() throws Exception {
-        String stringOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String stringOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} } P map(ResultSet input); }");
         assertTrue(stringOnly.contains("map(ResultSet rs)"), stringOnly);
         assertFalse(stringOnly.contains("primitiveNull("), stringOnly);
         assertFalse(stringOnly.contains("temporalType("), stringOnly);
 
-        String primitiveOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String primitiveOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public int value; public P(){} } P map(ResultSet input); }");
         assertTrue(primitiveOnly.contains("primitiveNull("), primitiveOnly);
         assertFalse(primitiveOnly.contains("temporalType("), primitiveOnly);
 
-        String temporalOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import java.time.*; import org.sjf4j.annotation.mapper.*;"
+        String temporalOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import java.time.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public Instant value; public P(){} } P map(ResultSet input); }");
         assertFalse(temporalOnly.contains("primitiveNull("), temporalOnly);
         assertTrue(temporalOnly.contains("temporalType("), temporalOnly);
@@ -266,7 +277,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperUsesTypedGettersForPrimitiveScalars() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input {"
                 + " class P { public String text; public int i; public long l; public short s; public byte b;"
                 + " public double d; public float f; public boolean z; public char c; public P(){} }"
@@ -285,8 +296,40 @@ public class MapperProcessorTest {
     }
 
     @Test
+    public void jdbcPresentOnlyListResolvesMetadataOnce() throws Exception {
+        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
+                + "@CompiledJdbcMapper interface Input { class P { public String value = \"default\"; public String other; public P(){} }"
+                + " @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<P> map(ResultSet rs); }";
+        String generated = jdbcGeneratedSource(source);
+        assertEquals(1, countOccurrences(generated, "rs.getMetaData()"), generated);
+        assertEquals(1, countOccurrences(generated, "for (int jdbcIndex = 1, jdbcCount = meta.getColumnCount()"), generated);
+    }
+
+    @Test
+    public void jdbcCurrentRowMethodCompilesWithoutCursorAdvancement() throws Exception {
+        String generated = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+                + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} } P anyName(ResultSet rs, int rowNum) throws SQLException; }");
+        assertTrue(generated.contains("anyName(ResultSet rs, int rowNum)"), generated);
+        assertFalse(generated.contains("anyName(ResultSet rs, int rowNum) throws"), generated);
+        int start = generated.indexOf("anyName(ResultSet rs, int rowNum)");
+        int end = generated.indexOf("\n    }", start);
+        assertFalse(generated.substring(start, end).contains("rs.next()"), generated);
+    }
+
+    @Test
+    public void jdbcMapHelperNamesDoNotCollideWithDefaultMethods() throws Exception {
+        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+                + "@CompiledJdbcMapper interface Input { Map<String,Object> map(ResultSet rs);"
+                + " default String[] jdbcColumns() { return null; }"
+                + " default void jdbcDuplicateColumns() {} }";
+        String generated = jdbcGeneratedSource(source);
+        assertTrue(generated.contains("jdbcColumns2("), generated);
+        assertTrue(generated.contains("jdbcDuplicateColumns2("), generated);
+    }
+
+    @Test
     public void jdbcMapperAcceptsMappingCreatorsOnInterfacesAndMethods() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "class P { public P(){} }"
                 + "@MappingCreator(targetType=P.class,implementation=P.class) @CompiledJdbcMapper interface InterfaceCreator { P map(ResultSet rs); }"
                 + "@MappingCreators({@MappingCreator(targetType=P.class,implementation=P.class)}) @CompiledJdbcMapper interface InterfaceCreators { P map(ResultSet rs); }"
@@ -297,20 +340,20 @@ public class MapperProcessorTest {
     }
 
     @Test
-    public void mapperOptionsAreRejectedOnDefaultJdbcMethods() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*;"
+    public void genericMapperOptionsAreRejectedOnJdbcMethods() throws Exception {
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "class P { public String value; public P(){} }"
                 + "@CompiledMapper interface Json { @MapperOptions P map(P value); }"
                 + "@CompiledJdbcMapper interface Jdbc { @MapperOptions default P helper(ResultSet rs) { return null; } }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         assertFalse(compileJdbc(source, diagnostics).booleanValue());
         String text = diagnosticsToString(diagnostics);
-        assertTrue(text.contains("@MapperOptions is valid only on abstract methods in an @CompiledJdbcMapper interface"), text);
+        assertTrue(text.contains("@MapperOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
     }
 
     @Test
     public void jdbcMapperHelperNamesDoNotCollideWithInterfaceMembers() throws Exception {
-        String source = "package testcase; import java.sql.*; import java.time.*; import java.util.*; import org.sjf4j.annotation.mapper.*;"
+        String source = "package testcase; import java.sql.*; import java.time.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Collision {"
                 + " class P { public int count; public Instant created; public P(){} }"
                 + " P map(ResultSet rs); Map<String,Object> mapRow(ResultSet rs);"
@@ -361,6 +404,7 @@ public class MapperProcessorTest {
                 "import java.time.*;",
                 "import java.util.*;",
                 "import org.sjf4j.annotation.mapper.*;",
+                "import org.sjf4j.annotation.mapper.jdbc.*;",
                 "",
                 "@CompiledJdbcMapper public interface JdbcMapper {",
                 "  class User { public String name; public int age; public Instant created; public User() {} }",
@@ -371,19 +415,19 @@ public class MapperProcessorTest {
                 "  User user(ResultSet rs);",
                 "  User named(ResultSet result);",
                 "  @Mapping(target = \"created\", ignore = true) User ignored(ResultSet rs);",
-                "  @MapperOptions(jdbcResult = JdbcResultPolicy.FIRST) User first(ResultSet rs);",
+                "  @JdbcMapperOptions(singleResult = SingleResultPolicy.FIRST) User first(ResultSet rs);",
                 "  List<User> users(ResultSet rs);",
                 "  Map<String, Object> row(ResultSet rs);",
                 "  List<Map<String, Object>> rows(ResultSet rs);",
                 "  List<User> pojoColumn(ResultSet jdbcColumn0);",
                 "  List<User> pojoMeta(ResultSet jdbcMeta);",
                 "  List<User> pojoCount(ResultSet jdbcCount);",
-                "  List<User> pojoLabels(ResultSet jdbcLabels);",
+                "  List<User> pojoColumns(ResultSet jdbcColumns);",
                 "  List<User> pojoIndex(ResultSet jdbcIndex);",
                 "  List<Map<String, Object>> mapColumn(ResultSet jdbcColumn0);",
                 "  List<Map<String, Object>> mapMeta(ResultSet jdbcMeta);",
                 "  List<Map<String, Object>> mapCount(ResultSet jdbcCount);",
-                "  List<Map<String, Object>> mapLabels(ResultSet jdbcLabels);",
+                "  List<Map<String, Object>> mapColumns(ResultSet jdbcColumns);",
                 "  List<Map<String, Object>> mapIndex(ResultSet jdbcIndex);",
                 "  Numeric numeric(ResultSet rs);",
                 "  @Mapping(target = \"value\", source = \"full_name\") Name renamed(ResultSet rs);",
@@ -450,17 +494,17 @@ public class MapperProcessorTest {
         return source.toString();
     }
 
-    private static ResultSet result(String[] labels, Object[]... rows) {
+    private static ResultSet result(String[] columns, Object[]... rows) {
         return (ResultSet) Proxy.newProxyInstance(MapperProcessorTest.class.getClassLoader(), new Class[]{ResultSet.class}, new java.lang.reflect.InvocationHandler() {
             int index = -1;
             Object last;
             public Object invoke(Object p, java.lang.reflect.Method m, Object[] a) throws Throwable {
                 if (m.getName().equals("next")) return ++index < rows.length;
-                if (m.getName().equals("getObject") || m.getName().equals("getString")) { int column = a[0] instanceof Integer ? (Integer)a[0] : Arrays.asList(labels).indexOf(a[0]) + 1; return last = rows[index][column - 1]; }
-                if (m.getName().equals("getInt")) { int column = a[0] instanceof Integer ? (Integer)a[0] : Arrays.asList(labels).indexOf(a[0]) + 1; last = rows[index][column - 1]; return last == null ? 0 : ((Number)last).intValue(); }
+                if (m.getName().equals("getObject") || m.getName().equals("getString")) { int column = a[0] instanceof Integer ? (Integer)a[0] : Arrays.asList(columns).indexOf(a[0]) + 1; return last = rows[index][column - 1]; }
+                if (m.getName().equals("getInt")) { int column = a[0] instanceof Integer ? (Integer)a[0] : Arrays.asList(columns).indexOf(a[0]) + 1; last = rows[index][column - 1]; return last == null ? 0 : ((Number)last).intValue(); }
                 if (m.getName().equals("wasNull")) return last == null;
-                if (m.getName().equals("findColumn")) return Arrays.asList(labels).indexOf(a[0]) + 1;
-                if (m.getName().equals("getMetaData")) return Proxy.newProxyInstance(MapperProcessorTest.class.getClassLoader(), new Class[]{java.sql.ResultSetMetaData.class}, (x, n, b) -> n.getName().equals("getColumnCount") ? labels.length : n.getName().equals("getColumnLabel") ? labels[(Integer)b[0] - 1] : null);
+                if (m.getName().equals("findColumn")) return Arrays.asList(columns).indexOf(a[0]) + 1;
+                if (m.getName().equals("getMetaData")) return Proxy.newProxyInstance(MapperProcessorTest.class.getClassLoader(), new Class[]{java.sql.ResultSetMetaData.class}, (x, n, b) -> n.getName().equals("getColumnCount") ? columns.length : n.getName().equals("getColumnLabel") ? columns[(Integer)b[0] - 1] : null);
                 if (m.getName().equals("toString")) return "fake result set";
                 return null;
             }

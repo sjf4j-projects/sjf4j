@@ -1,7 +1,7 @@
 package org.sjf4j.jdk17.processor.mapper.jdbc;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.JsonException;

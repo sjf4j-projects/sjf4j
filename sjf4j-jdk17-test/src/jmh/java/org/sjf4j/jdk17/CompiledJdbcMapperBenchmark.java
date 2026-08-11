@@ -13,7 +13,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.annotation.mapper.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.node.Nodes;
 import org.apache.ibatis.executor.resultset.DefaultResultSetHandler;
@@ -181,7 +181,7 @@ public class CompiledJdbcMapperBenchmark {
     }
 
     @Benchmark
-    public List<User> users_handwritten_labels(BenchmarkState state) throws SQLException {
+    public List<User> users_handwritten_columns(BenchmarkState state) throws SQLException {
         ArrayList<User> users = new ArrayList<User>();
         while (state.resultSet.next()) {
             User user = new User();
@@ -207,7 +207,7 @@ public class CompiledJdbcMapperBenchmark {
         return users;
     }
 
-    /** Fair indexed baseline: resolve the current result set's labels once, then use indexes. */
+    /** Fair indexed baseline: resolve the current result set's columns once, then use indexes. */
     @Benchmark
     public List<User> users_handwritten_resolved_indexes(BenchmarkState state) throws SQLException {
         ArrayList<User> users = new ArrayList<User>();
@@ -231,7 +231,7 @@ public class CompiledJdbcMapperBenchmark {
     }
 
     @Benchmark
-    public List<Map<String, Object>> maps_handwritten_labels(BenchmarkState state) throws SQLException {
+    public List<Map<String, Object>> maps_handwritten_columns(BenchmarkState state) throws SQLException {
         ArrayList<Map<String, Object>> maps = new ArrayList<Map<String, Object>>();
         while (state.resultSet.next()) {
             ResultSetMetaData metadata = state.resultSet.getMetaData();
@@ -245,18 +245,18 @@ public class CompiledJdbcMapperBenchmark {
     }
 
     @Benchmark
-    public List<Map<String, Object>> maps_handwritten_cached_labels(BenchmarkState state) throws SQLException {
+    public List<Map<String, Object>> maps_handwritten_cached_columns(BenchmarkState state) throws SQLException {
         ResultSetMetaData metadata = state.resultSet.getMetaData();
         int columnCount = metadata.getColumnCount();
-        String[] labels = new String[columnCount];
+        String[] columns = new String[columnCount];
         for (int i = 0; i < columnCount; i++) {
-            labels[i] = metadata.getColumnLabel(i + 1);
+            columns[i] = metadata.getColumnLabel(i + 1);
         }
         ArrayList<Map<String, Object>> maps = new ArrayList<Map<String, Object>>();
         while (state.resultSet.next()) {
             Map<String, Object> map = new LinkedHashMap<String, Object>();
             for (int i = 0; i < columnCount; i++) {
-                map.put(labels[i], state.resultSet.getObject(i + 1));
+                map.put(columns[i], state.resultSet.getObject(i + 1));
             }
             maps.add(map);
         }

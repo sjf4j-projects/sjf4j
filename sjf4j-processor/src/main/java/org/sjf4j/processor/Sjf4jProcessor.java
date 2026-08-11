@@ -2,8 +2,9 @@ package org.sjf4j.processor;
 
 import org.sjf4j.annotation.path.CompiledPath;
 import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
 import org.sjf4j.processor.path.PathGenerator;
 import org.sjf4j.processor.mapper.MapperGenerator;
 import org.sjf4j.processor.mapper.JdbcMapperGenerator;
@@ -44,10 +45,11 @@ import java.util.Set;
         "org.sjf4j.annotation.path.FindByPath",
 
         "org.sjf4j.annotation.mapper.CompiledMapper",
-        "org.sjf4j.annotation.mapper.CompiledJdbcMapper",
+         "org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper",
         "org.sjf4j.annotation.mapper.Mapping",
         "org.sjf4j.annotation.mapper.Mappings",
         "org.sjf4j.annotation.mapper.MapperOptions",
+        "org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions",
         "org.sjf4j.annotation.mapper.MappingCreator",
         "org.sjf4j.annotation.mapper.MappingCreators",
         "org.sjf4j.annotation.mapper.MappingIfParentPresent",
@@ -155,9 +157,16 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                     if (annoName.startsWith("org.sjf4j.annotation.mapper.")) {
                         if (MapperOptions.class.getName().equals(annoName)
                                 && owner.getKind() == ElementKind.INTERFACE
+                                && owner.getAnnotation(CompiledJdbcMapper.class) != null) {
+                            context.error(element, "@MapperOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions");
+                        } else if (JdbcMapperOptions.class.getName().equals(annoName)
+                                && (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledJdbcMapper.class) == null)) {
+                            context.error(element, "@JdbcMapperOptions is valid only on methods in an @CompiledJdbcMapper interface");
+                        } else if (JdbcMapperOptions.class.getName().equals(annoName)
+                                && owner.getKind() == ElementKind.INTERFACE
                                 && owner.getAnnotation(CompiledJdbcMapper.class) != null
                                 && !element.getModifiers().contains(Modifier.ABSTRACT)) {
-                            context.error(element, "@MapperOptions is valid only on abstract methods in an @CompiledJdbcMapper interface");
+                            context.error(element, "@JdbcMapperOptions is valid only on abstract methods in an @CompiledJdbcMapper interface");
                         } else if (owner.getKind() != ElementKind.INTERFACE || (owner.getAnnotation(CompiledMapper.class) == null && owner.getAnnotation(CompiledJdbcMapper.class) == null)) {
                             context.error(element, "@" + anno + " method must be declared in an @CompiledMapper interface");
                         }

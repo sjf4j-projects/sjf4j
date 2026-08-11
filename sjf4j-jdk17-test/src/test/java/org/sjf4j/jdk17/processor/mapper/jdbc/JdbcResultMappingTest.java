@@ -1,9 +1,10 @@
 package org.sjf4j.jdk17.processor.mapper.jdbc;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.CompiledJdbcMapper;
-import org.sjf4j.annotation.mapper.JdbcResultPolicy;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapper.jdbc.DuplicateColumnPolicy;
+import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
+import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.BindingException;
@@ -52,10 +53,10 @@ class JdbcResultMappingTest {
         assertEquals(Map.of("b", 4, "a", 3), rows.get(1));
         assertEquals(List.of("b", "a"), new ArrayList<>(rows.get(0).keySet()));
 
-        Map<String, Object> duplicateLabels = mapper.row(result(new String[]{"a", "a", "b"},
+        Map<String, Object> duplicateColumnMap = mapper.row(result(new String[]{"a", "a", "b"},
                 new Object[]{1, 2, 3}));
-        assertEquals(Map.of("a", 2, "b", 3), duplicateLabels);
-        assertEquals(List.of("a", "b"), new ArrayList<>(duplicateLabels.keySet()));
+        assertEquals(Map.of("a", 2, "b", 3), duplicateColumnMap);
+        assertEquals(List.of("a", "b"), new ArrayList<>(duplicateColumnMap.keySet()));
 
         int[] findColumns = {0};
         assertEquals(2, mapper.users(indexedResult(new String[]{"name", "age", "created"}, findColumns,
@@ -104,9 +105,10 @@ class JdbcResultMappingTest {
 
         List<Map<String, Object>> rows(ResultSet rs);
 
+        @JdbcMapperOptions(duplicateColumn = DuplicateColumnPolicy.LAST_WINS)
         Map<String, Object> row(ResultSet rs);
 
-        @MapperOptions(jdbcResult = JdbcResultPolicy.FIRST)
+        @JdbcMapperOptions(singleResult = SingleResultPolicy.FIRST)
         User first(ResultSet rs);
     }
 

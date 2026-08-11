@@ -1,10 +1,11 @@
 package org.sjf4j.processor.mapper;
 
-import org.sjf4j.annotation.mapper.MapperOptions;
-import org.sjf4j.annotation.mapper.NullValuePolicy;
+import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
+import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
+import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
+import org.sjf4j.annotation.mapper.jdbc.DuplicateColumnPolicy;
 import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
-import org.sjf4j.annotation.mapper.JdbcResultPolicy;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
@@ -41,6 +42,9 @@ public final class JdbcMapperGenerator {
     private NameAllocator helperNames;
     private String primitiveNullHelper;
     private String temporalTypeHelper;
+    private String jdbcColumnsHelper;
+    private String jdbcDuplicateColumnsHelper;
+    private boolean jdbcColumnHelpersEmitted;
     private MappingCreators creators;
 
     public JdbcMapperGenerator(ProcessorContext ctx) {
@@ -50,6 +54,9 @@ public final class JdbcMapperGenerator {
     public void generate(TypeElement iface) {
         primitiveNullHelper = null;
         temporalTypeHelper = null;
+        jdbcColumnsHelper = null;
+        jdbcDuplicateColumnsHelper = null;
+        jdbcColumnHelpersEmitted = false;
         if (!validateInterface(iface)) return;
         creators = new MappingCreators(ctx, iface, this::error);
         if (!creators.valid()) return;
@@ -77,7 +84,7 @@ public final class JdbcMapperGenerator {
                 error(method, "@CompiledJdbcMapper does not support overloaded mapper method names");
                 return;
             }
-            if (!generateMethod(iface, method, out)) return;
+            if (!generateMethod(iface, method, method.getReturnType(), out)) return;
         }
         out.emit();
     }
@@ -100,26 +107,27 @@ public final class JdbcMapperGenerator {
             if (member.getKind() != ElementKind.METHOD) continue;
             if (!member.getModifiers().contains(Modifier.ABSTRACT)) continue;
             if (member.getEnclosingElement().equals(iface)) continue;
-
             error(member, "Inherited abstract mapper methods are not supported; declare methods directly");
             return false;
         }
         return true;
     }
 
-    private boolean generateMethod(TypeElement iface, ExecutableElement method, GeneratedClass out) {
+    private boolean generateMethod(TypeElement iface, ExecutableElement method, TypeMirror returnType, GeneratedClass out) {
         if (!jdbcAnnotationsOnly(method)) return false;
         if (method.getReturnType().getKind() == TypeKind.VOID) {
             error(method, "@CompiledJdbcMapper does not support update methods");
             return false;
         }
-        if (method.getParameters().size() != 1
-                || !is(method.getParameters().get(0).asType(), "java.sql.ResultSet")) {
-            error(method, "@CompiledJdbcMapper methods must have exactly one java.sql.ResultSet parameter");
+        boolean currentRow = method.getParameters().size() == 2;
+        if ((method.getParameters().size() != 1 && !currentRow)
+                || !is(method.getParameters().get(0).asType(), "java.sql.ResultSet")
+                || (currentRow && method.getParameters().get(1).asType().getKind() != TypeKind.INT)) {
+            error(method, "@CompiledJdbcMapper methods must have ResultSet or ResultSet, int parameters");
             return false;
         }
 
-        TypeMirror row = method.getReturnType();
+        TypeMirror row = returnType;
         boolean list = false;
         if (isDeclared(row, "java.util.List")) {
             List<? extends TypeMirror> arguments = ((DeclaredType) row).getTypeArguments();
@@ -130,22 +138,32 @@ public final class JdbcMapperGenerator {
             list = true;
             row = arguments.get(0);
         }
+        if (currentRow && list) {
+            error(method, "@CompiledJdbcMapper current-row methods do not support List results");
+            return false;
+        }
 
-        MapperOptions options = method.getAnnotation(MapperOptions.class);
+        JdbcMapperOptions options = method.getAnnotation(JdbcMapperOptions.class);
         if (options != null) {
-            if (options.using().length != 0 || options.nulls() != NullValuePolicy.SET_TO_NULL
-                    || options.arrays() != ArrayPolicy.CLEAR_ADD
-                    || options.objects() != ObjectPolicy.PUT) {
-                error(method, "@CompiledJdbcMapper supports only @MapperOptions.jdbcResult");
+            if (list && options.singleResult() != SingleResultPolicy.FAIL_ON_MULTIPLE) {
+                error(method, "@JdbcMapperOptions.singleResult is supported only on non-List @CompiledJdbcMapper methods");
                 return false;
             }
-            if (list && options.jdbcResult() != JdbcResultPolicy.FAIL_ON_MULTIPLE) {
-                error(method, "@MapperOptions.jdbcResult is supported only on non-List @CompiledJdbcMapper methods");
+            if (currentRow && options.singleResult() != SingleResultPolicy.FAIL_ON_MULTIPLE) {
+                error(method, "@JdbcMapperOptions.singleResult does not apply to current-row methods");
                 return false;
             }
         }
 
         boolean map = isMap(row);
+        if (options != null && map && options.columnProjection() != ColumnProjectionPolicy.REQUIRE_ALL) {
+            error(method, "@JdbcMapperOptions.columnProjection is supported only on POJO @CompiledJdbcMapper results");
+            return false;
+        }
+        if (options != null && !map && options.duplicateColumn() != DuplicateColumnPolicy.FAIL) {
+            error(method, "@JdbcMapperOptions.duplicateColumn is supported only on Map<String,Object> @CompiledJdbcMapper results");
+            return false;
+        }
         if (map) {
             for (Mapping mapping : method.getAnnotationsByType(Mapping.class)) {
                 if (!autoMarker(mapping)) {
@@ -157,19 +175,27 @@ public final class JdbcMapperGenerator {
 
         MappingCreators.Match creator = map ? null : creators.forMethod(method, row);
         if (!map && !creators.valid()) return false;
-        RowPlan plan = map ? null : plan(iface, method, creator == null ? row : creator.type, creator);
+        ColumnProjectionPolicy columnPolicy = options == null ? ColumnProjectionPolicy.REQUIRE_ALL : options.columnProjection();
+        RowPlan plan = map ? null : plan(iface, method, creator == null ? row : creator.type, creator, columnPolicy == ColumnProjectionPolicy.PRESENT_ONLY);
         if (!map && plan == null) return false;
+        if (!map && columnPolicy == ColumnProjectionPolicy.PRESENT_ONLY && plan.constructor) {
+            error(method, "@JdbcMapperOptions.columnProjection=PRESENT_ONLY requires a mutable POJO target");
+            return false;
+        }
 
         final TypeMirror finalRow = row;
         final RowPlan finalPlan = plan;
         final boolean finalList = list;
-        final JdbcResultPolicy policy = options == null
-                ? JdbcResultPolicy.FAIL_ON_MULTIPLE
-                : options.jdbcResult();
+        final SingleResultPolicy policy = options == null
+                ? SingleResultPolicy.FAIL_ON_MULTIPLE
+                : options.singleResult();
+        final DuplicateColumnPolicy duplicatePolicy = options == null ? DuplicateColumnPolicy.FAIL : options.duplicateColumn();
         final String rowHelper = helperNames.local(method.getSimpleName() + "_Row");
-        out.addMethod(writer -> emitMethod(writer, method, finalRow, finalPlan, map, finalList, policy, rowHelper));
+        if (map) ensureJdbcColumnHelpers();
+        out.addMethod(writer -> emitMethod(writer, method, returnType, finalRow, finalPlan, map, finalList, policy, duplicatePolicy,
+                currentRow, rowHelper));
         if (map) {
-            out.addHelper(writer -> emitMapRow(writer, rowHelper, finalList));
+            out.addHelper(writer -> emitMapRow(writer, rowHelper, finalList || currentRow, duplicatePolicy));
         } else {
             // GeneratedClass emits these helpers once at class level, after all mapper methods.
             if (usesPrimitive(plan) && primitiveNullHelper == null) {
@@ -180,7 +206,7 @@ public final class JdbcMapperGenerator {
                 temporalTypeHelper = helperNames.local("temporalType");
                 out.addHelper(this::emitTemporalTypeHelper);
             }
-            out.addHelper(writer -> emitRow(writer, finalRow, finalPlan, rowHelper, finalList));
+            out.addHelper(writer -> emitRow(writer, finalRow, finalPlan, rowHelper, finalList || finalPlan.presentOnly));
         }
         return true;
     }
@@ -191,7 +217,8 @@ public final class JdbcMapperGenerator {
             String name = element.getQualifiedName().toString();
             if (name.equals("org.sjf4j.annotation.mapper.Mapping")
                     || name.equals("org.sjf4j.annotation.mapper.Mappings")
-                    || name.equals(MapperOptions.class.getName())
+                    || name.equals("org.sjf4j.annotation.mapper.MapperOptions")
+                    || name.equals(JdbcMapperOptions.class.getName())
                     || name.equals("org.sjf4j.annotation.mapper.MappingCreator")
                     || name.equals("org.sjf4j.annotation.mapper.MappingCreators")) {
                 continue;
@@ -207,22 +234,43 @@ public final class JdbcMapperGenerator {
 
     /**
      * Emits cursor-consuming entry-point code. Generated methods do not close caller-owned JDBC
-     * resources and translate driver {@code SQLException}s to {@code BindingException}.
+     * resources. Driver {@code SQLException}s are translated to {@code BindingException}.
      */
-    private void emitMethod(SourceWriter writer, ExecutableElement method, TypeMirror row, RowPlan plan,
-                            boolean map, boolean list, JdbcResultPolicy policy, String rowHelper) {
+    private void emitMethod(SourceWriter writer, ExecutableElement method, TypeMirror returnType, TypeMirror row, RowPlan plan,
+                               boolean map, boolean list, SingleResultPolicy policy,
+                                DuplicateColumnPolicy duplicatePolicy, boolean currentRow,
+                             String rowHelper) {
         NameAllocator locals = new NameAllocator();
         locals.reserve("rs");
         String rows = locals.local("rows");
         String value = locals.local("value");
         writer.line("");
         writer.line("@Override");
-        writer.line("public " + method.getReturnType() + " " + method.getSimpleName()
-                + "(java.sql.ResultSet rs) {");
+        writer.line("public " + returnType + " " + method.getSimpleName()
+                + "(java.sql.ResultSet rs" + (currentRow ? ", int rowNum" : "") + ") {");
         writer.indent();
         writer.line("if (rs == null) return null;");
-        writer.line("try {");
-        writer.indent();
+        if (currentRow) {
+            writer.line("try {"); writer.indent();
+            if (map) {
+                writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
+                writer.line("String[] columns = " + jdbcColumnsHelper + "(meta, " + (duplicatePolicy == DuplicateColumnPolicy.FAIL) + ");");
+                writer.line("return " + rowHelper + "(rs, columns);");
+            } else if (plan.presentOnly) {
+                writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
+                emitPresentIndexes(writer, plan);
+                writer.line("return " + indexedCall(rowHelper, plan) + ";");
+            } else writer.line("return " + rowHelper + "(rs);");
+            writer.dedent();
+            writer.line("} catch (java.sql.SQLException e) {");
+            writer.indent();
+            writer.line("throw new org.sjf4j.exception.BindingException(\"Failed to map JDBC result set\", e);");
+            writer.dedent();
+            writer.line("}");
+            writer.dedent(); writer.line("}"); return;
+        }
+        boolean wrapSQLException = true;
+        writer.line("try {"); writer.indent();
         if (list) {
             writer.line("java.util.List<" + row + "> " + rows
                     + " = new java.util.ArrayList<" + row + ">();");
@@ -230,30 +278,34 @@ public final class JdbcMapperGenerator {
             if (map) {
                 String meta = locals.local("meta");
                 String count = locals.local("count");
-                String labels = locals.local("labels");
+                String columns = locals.local("columns");
                 String index = locals.local("index");
                 writer.line("java.sql.ResultSetMetaData " + meta + " = rs.getMetaData();");
                 writer.line("int " + count + " = " + meta + ".getColumnCount();");
-                writer.line("String[] " + labels + " = new String[" + count + "];");
+                writer.line("String[] " + columns + " = new String[" + count + "];");
                 writer.line("for (int " + index + " = 0; " + index + " < " + count + "; " + index + "++) {");
                 writer.indent();
-                writer.line(labels + "[" + index + "] = " + meta + ".getColumnLabel(" + index + " + 1);");
+                writer.line(columns + "[" + index + "] = " + meta + ".getColumnLabel(" + index + " + 1);");
                 writer.dedent();
                 writer.line("}");
+                if (duplicatePolicy == DuplicateColumnPolicy.FAIL) writer.line(jdbcDuplicateColumnsHelper + "(" + columns + ");");
                 writer.line("do {");
                 writer.indent();
-                writer.line(rows + ".add(" + rowHelper + "(rs, " + labels + "));");
+                writer.line(rows + ".add(" + rowHelper + "(rs, " + columns + "));");
                 writer.dedent();
                 writer.line("} while (rs.next());");
             } else {
-                // Resolve labels once per list result set; row helpers then use driver-resolved indexes.
+                // Resolve columns once per list result set; row helpers then use driver-resolved indexes.
                 List<String> columns = new ArrayList<String>(plan.properties.size());
-                for (int index = 0; index < plan.properties.size(); index++) {
+                if (plan.presentOnly) {
+                    writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
+                    emitPresentIndexes(writer, plan);
+                    for (int index = 0; index < plan.properties.size(); index++) columns.add("column" + index);
+                } else for (int index = 0; index < plan.properties.size(); index++) {
                     Property property = plan.properties.get(index);
                     String column = locals.local("column" + index);
                     columns.add(column);
-                    writer.line("int " + column + " = rs.findColumn(\""
-                            + GeneratorUtil.escape(property.label) + "\");");
+                    writer.line("int " + column + " = rs.findColumn(\"" + GeneratorUtil.escape(property.column) + "\");");
                 }
                 writer.line("do {");
                 writer.indent();
@@ -270,8 +322,14 @@ public final class JdbcMapperGenerator {
         } else {
             // A single result consumes its first row and, for the default policy, its second-row check.
             writer.line("if (!rs.next()) return null;");
-            writer.line(row + " " + value + " = " + rowHelper + "(rs);");
-            if (policy == JdbcResultPolicy.FAIL_ON_MULTIPLE) {
+            if (map) {
+                writer.line(row + " " + value + " = " + rowHelper + "(rs);");
+            } else if (plan.presentOnly) {
+                writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
+                emitPresentIndexes(writer, plan);
+                writer.line(row + " " + value + " = " + indexedCall(rowHelper, plan) + ";");
+            } else writer.line(row + " " + value + " = " + rowHelper + "(rs);");
+            if (policy == SingleResultPolicy.FAIL_ON_MULTIPLE) {
                 writer.line("if (rs.next()) {");
                 writer.indent();
                 writer.line("throw new org.sjf4j.exception.BindingException("
@@ -281,38 +339,92 @@ public final class JdbcMapperGenerator {
             }
             writer.line("return " + value + ";");
         }
-        writer.dedent();
-        writer.line("} catch (java.sql.SQLException e) {");
-        writer.indent();
-        writer.line("throw new org.sjf4j.exception.BindingException("
-                + "\"Failed to map JDBC result set\", e);");
-        writer.dedent();
-        writer.line("}");
+        if (wrapSQLException) {
+            writer.dedent();
+            writer.line("} catch (java.sql.SQLException e) {");
+            writer.indent();
+            writer.line("throw new org.sjf4j.exception.BindingException("
+                    + "\"Failed to map JDBC result set\", e);");
+            writer.dedent();
+            writer.line("}");
+        }
         writer.dedent();
         writer.line("}");
     }
 
-    private void emitMapRow(SourceWriter writer, String rowHelper, boolean indexed) {
+    private void emitMapRow(SourceWriter writer, String rowHelper, boolean indexed, DuplicateColumnPolicy duplicatePolicy) {
         writer.line("");
         writer.line("private java.util.Map<String, Object> " + rowHelper
-                + "(java.sql.ResultSet rs" + (indexed ? ", String[] labels" : "")
+                + "(java.sql.ResultSet rs" + (indexed ? ", String[] columns" : "")
                 + ") throws java.sql.SQLException {");
         writer.indent();
-        // List<Map> callers pass labels cached from metadata once; single maps obtain them for their row.
+        // List<Map> callers pass columns cached from metadata once; single maps obtain them for their row.
         if (!indexed) writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
+        if (!indexed && duplicatePolicy == DuplicateColumnPolicy.FAIL) writer.line("String[] columns = " + jdbcColumnsHelper + "(meta, true);");
         writer.line("java.util.Map<String, Object> value = new java.util.LinkedHashMap<String, Object>();");
         writer.line(indexed
-                ? "for (int index = 0; index < labels.length; index++) {"
+                ? "for (int index = 0; index < columns.length; index++) {"
                 : "for (int index = 1, count = meta.getColumnCount(); index <= count; index++) {");
         writer.indent();
         writer.line(indexed
-                ? "value.put(labels[index], rs.getObject(index + 1));"
+                ? "value.put(columns[index], rs.getObject(index + 1));"
                 : "value.put(meta.getColumnLabel(index), rs.getObject(index));");
         writer.dedent();
         writer.line("}");
         writer.line("return value;");
         writer.dedent();
         writer.line("}");
+        if (jdbcColumnHelpersEmitted) return;
+        jdbcColumnHelpersEmitted = true;
+        writer.line("");
+        writer.line("private static String[] " + jdbcColumnsHelper + "(java.sql.ResultSetMetaData meta, boolean failDuplicates) throws java.sql.SQLException {");
+        writer.indent();
+        writer.line("int count = meta.getColumnCount();");
+        writer.line("String[] columns = new String[count];");
+        writer.line("for (int index = 0; index < count; index++) {");
+        writer.indent();
+        writer.line("columns[index] = meta.getColumnLabel(index + 1);");
+        writer.dedent();
+        writer.line("}");
+        writer.line("if (failDuplicates) " + jdbcDuplicateColumnsHelper + "(columns);");
+        writer.line("return columns;");
+        writer.dedent();
+        writer.line("}");
+        writer.line("private static void " + jdbcDuplicateColumnsHelper + "(String[] columns) {");
+        writer.indent();
+        writer.line("java.util.HashSet<String> seen = new java.util.HashSet<String>();");
+        writer.line("for (String column : columns) {");
+        writer.indent();
+        writer.line("if (!seen.add(column)) {");
+        writer.indent();
+        writer.line("throw new org.sjf4j.exception.BindingException(\"Duplicate JDBC column '\" + column + \"' for Map<String,Object>; use @JdbcMapperOptions(duplicateColumn=LAST_WINS) to allow it\");");
+        writer.dedent();
+        writer.line("}");
+        writer.dedent();
+        writer.line("}");
+        writer.dedent();
+        writer.line("}");
+    }
+
+    private void emitPresentIndexes(SourceWriter writer, RowPlan plan) {
+        for (int index = 0; index < plan.properties.size(); index++) {
+            writer.line("int column" + index + " = -1;");
+        }
+        writer.line("for (int jdbcIndex = 1, jdbcCount = meta.getColumnCount(); jdbcIndex <= jdbcCount; jdbcIndex++) {");
+        writer.indent();
+        writer.line("String jdbcColumn = meta.getColumnLabel(jdbcIndex);");
+        for (int index = 0; index < plan.properties.size(); index++) {
+            writer.line("if (column" + index + " == -1 && jdbcColumn.equalsIgnoreCase(\""
+                    + GeneratorUtil.escape(plan.properties.get(index).column) + "\")) column" + index + " = jdbcIndex;");
+        }
+        writer.dedent();
+        writer.line("}");
+    }
+
+    private String indexedCall(String rowHelper, RowPlan plan) {
+        StringBuilder value = new StringBuilder(rowHelper).append("(rs");
+        for (int index = 0; index < plan.properties.size(); index++) value.append(", column").append(index);
+        return value.append(')').toString();
     }
 
     private void emitRow(SourceWriter writer, TypeMirror type, RowPlan plan, String rowHelper,
@@ -322,26 +434,38 @@ public final class JdbcMapperGenerator {
                 + "(java.sql.ResultSet rs" + indexParameters(plan, indexed)
                 + ") throws java.sql.SQLException {");
         writer.indent();
+        if (plan.presentOnly) writer.line(plan.targetType + " target = " + (plan.create == null ? "new " + plan.targetType + "()" : plan.create) + ";");
         for (int index = 0; index < plan.properties.size(); index++) {
             Property property = plan.properties.get(index);
-            String column = indexed ? "column" + index : "\"" + GeneratorUtil.escape(property.label) + "\"";
+            String column = indexed ? "column" + index : "\"" + GeneratorUtil.escape(property.column) + "\"";
+            if (plan.presentOnly) {
+                writer.line("if (" + column + " != -1) {"); writer.indent();
+            }
             String getter = property.helper == null ? jdbcGetter(property.type) : null;
             if (getter != null) {
                 writer.line(typeName(property.type, true) + " value" + index + " = rs." + getter
                         + "(" + column + ");");
                 if (property.type.getKind().isPrimitive()) {
                     writer.line("if (rs.wasNull()) " + primitiveNullHelper + "(\""
-                            + GeneratorUtil.escape(property.label) + "\", \"" + property.type + "\");");
+                            + GeneratorUtil.escape(property.column) + "\", \"" + property.type + "\");");
+                }
+                if (plan.presentOnly) {
+                    emitAssignment(writer, property, index);
+                    writer.dedent(); writer.line("}");
                 }
                 continue;
             }
             String raw = "raw" + index;
             writer.line("Object " + raw + " = rs.getObject(" + column + ");");
             String value = property.helper == null
-                    ? convert(raw, property.type, property.label)
+                    ? convert(raw, property.type, property.column)
                     : (property.helper.statik ? property.helper.owner + "." : "this.")
                     + property.helper.name + "(" + raw + ")";
             writer.line(typeName(property.type, true) + " value" + index + " = " + value + ";");
+            if (plan.presentOnly) {
+                emitAssignment(writer, property, index);
+                writer.dedent(); writer.line("}");
+            }
         }
         if (plan.constructor) {
             StringBuilder call = new StringBuilder("return new ").append(plan.targetType).append('(');
@@ -353,19 +477,11 @@ public final class JdbcMapperGenerator {
             }
             writer.line(call.append(");").toString());
         } else {
-            writer.line(plan.targetType + " target = " + (plan.create == null ? "new " + plan.targetType + "()" : plan.create) + ";");
+            if (!plan.presentOnly) writer.line(plan.targetType + " target = " + (plan.create == null ? "new " + plan.targetType + "()" : plan.create) + ";");
             for (int index = 0; index < plan.properties.size(); index++) {
                 Property property = plan.properties.get(index);
-                String target = "target";
-                for (Access parent : property.parents) {
-                    target += "." + parent.javaName + (parent.getter == null ? "" : "()");
-                    writer.line("if (" + target + " == null) throw new org.sjf4j.exception.JsonException(\"Missing target path parent: "
-                            + GeneratorUtil.escape(property.path) + "\");");
-                }
-                String assignment = property.setter == null
-                        ? target + "." + property.javaName + " = value" + index + ";"
-                        : target + "." + property.setter.getSimpleName() + "(value" + index + ");";
-                writer.line(assignment);
+                if (plan.presentOnly) continue;
+                emitAssignment(writer, property, index);
             }
             writer.line("return target;");
         }
@@ -373,7 +489,18 @@ public final class JdbcMapperGenerator {
         writer.line("}");
     }
 
-    private RowPlan plan(TypeElement iface, ExecutableElement method, TypeMirror type, MappingCreators.Match creator) {
+    private void emitAssignment(SourceWriter writer, Property property, int index) {
+        String target = "target";
+        for (Access parent : property.parents) {
+            target += "." + parent.javaName + (parent.getter == null ? "" : "()");
+            writer.line("if (" + target + " == null) throw new org.sjf4j.exception.JsonException(\"Missing target path parent: "
+                    + GeneratorUtil.escape(property.path) + "\");");
+        }
+        writer.line(property.setter == null ? target + "." + property.javaName + " = value" + index + ";"
+                : target + "." + property.setter.getSimpleName() + "(value" + index + ");");
+    }
+
+    private RowPlan plan(TypeElement iface, ExecutableElement method, TypeMirror type, MappingCreators.Match creator, boolean presentOnly) {
         TypeElement element = GeneratorUtil.asTypeElement(type);
         if (element == null || element.getKind() == ElementKind.INTERFACE
                 || element.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -501,17 +628,17 @@ public final class JdbcMapperGenerator {
                 }
                 continue;
             }
-            String label = property.name;
+            String column = property.name;
             Helper helper = null;
             if (mapping != null) {
                 if (mapping.compute().length() != 0) {
                     helper = helper(iface, method, mapping, property.type);
                     if (helper == null) return null;
-                    label = jdbcSource(method, mapping.sources()[0]);
-                    if (label == null) return null;
+                    column = jdbcSource(method, mapping.sources()[0]);
+                    if (column == null) return null;
                 } else if (mapping.source().length() != 0) {
-                    label = jdbcSource(method, mapping.source());
-                    if (label == null) return null;
+                    column = jdbcSource(method, mapping.source());
+                    if (column == null) return null;
                 }
             }
             if (helper == null && !supported(property.type)) {
@@ -521,14 +648,14 @@ public final class JdbcMapperGenerator {
                 return null;
             }
             properties.add(new Property(property.name, property.javaName, property.type,
-                    property.setter, label, helper));
+                    property.setter, column, helper));
         }
         properties.addAll(pathProperties);
         if (creator != null && creator.create != null && properties.isEmpty()) {
             error(method, "@MappingCreator creator method must return a concrete mutable type");
             return null;
         }
-        return new RowPlan(constructorTarget, properties, type, creator == null ? null : creator.create);
+        return new RowPlan(constructorTarget, properties, type, creator == null ? null : creator.create, presentOnly);
     }
 
     private String rootPathName(String target) {
@@ -590,16 +717,16 @@ public final class JdbcMapperGenerator {
                     error(method, "Cannot resolve writable target path property '" + name + "' on " + current);
                     return null;
                 }
-                String label = mapping.compute().length() != 0 ? jdbcSource(method, mapping.sources()[0])
+                String column = mapping.compute().length() != 0 ? jdbcSource(method, mapping.sources()[0])
                         : (mapping.source().length() == 0 ? name : jdbcSource(method, mapping.source()));
-                if (label == null) return null;
+                if (column == null) return null;
                 Helper helper = mapping.compute().length() == 0 ? null : helper(iface, method, mapping, write.type);
                 if (mapping.compute().length() != 0 && helper == null) return null;
                 if (helper == null && !supported(write.type)) {
                     error(method, "Unsupported JDBC target property '" + mapping.target() + "' of type " + write.type);
                     return null;
                 }
-                return new Property(mapping.target(), write.javaName, write.type, write.setter, label, helper, parents, mapping.target());
+                return new Property(mapping.target(), write.javaName, write.type, write.setter, column, helper, parents, mapping.target());
             }
             Access read = readableProperty(current, name);
             if (read == null) {
@@ -712,15 +839,15 @@ public final class JdbcMapperGenerator {
         return null;
     }
 
-    private String convert(String raw, TypeMirror type, String label) {
+    private String convert(String raw, TypeMirror type, String column) {
         String name = type.toString();
         String nullPrimitive = "(" + raw + " == null ? " + primitiveNullHelper + "(\""
-                + GeneratorUtil.escape(label) + "\", \"" + name + "\") : ";
+                + GeneratorUtil.escape(column) + "\", \"" + name + "\") : ";
         if (type.getKind().isPrimitive()) return nullPrimitive + scalar(raw, name) + ")";
-        if (name.equals("java.time.Instant")) return temporal(raw, "java.time.Instant", "java.sql.Timestamp", "toInstant", label);
-        if (name.equals("java.time.LocalDateTime")) return temporal(raw, "java.time.LocalDateTime", "java.sql.Timestamp", "toLocalDateTime", label);
-        if (name.equals("java.time.LocalDate")) return temporal(raw, "java.time.LocalDate", "java.sql.Date", "toLocalDate", label);
-        if (name.equals("java.time.LocalTime")) return temporal(raw, "java.time.LocalTime", "java.sql.Time", "toLocalTime", label);
+        if (name.equals("java.time.Instant")) return temporal(raw, "java.time.Instant", "java.sql.Timestamp", "toInstant", column);
+        if (name.equals("java.time.LocalDateTime")) return temporal(raw, "java.time.LocalDateTime", "java.sql.Timestamp", "toLocalDateTime", column);
+        if (name.equals("java.time.LocalDate")) return temporal(raw, "java.time.LocalDate", "java.sql.Date", "toLocalDate", column);
+        if (name.equals("java.time.LocalTime")) return temporal(raw, "java.time.LocalTime", "java.sql.Time", "toLocalTime", column);
         if (name.equals("java.lang.String")) return "(" + raw + " == null ? null : org.sjf4j.node.Nodes.toString(" + raw + "))";
         if (name.equals("java.lang.Integer") || name.equals("java.lang.Long")
                 || name.equals("java.lang.Short") || name.equals("java.lang.Byte")
@@ -764,11 +891,11 @@ public final class JdbcMapperGenerator {
         }
     }
 
-    private String temporal(String raw, String target, String jdbc, String conversion, String label) {
+    private String temporal(String raw, String target, String jdbc, String conversion, String column) {
         return "(" + raw + " == null ? null : (" + raw + " instanceof " + target + " ? ("
                 + target + ") " + raw + " : (" + raw + " instanceof " + jdbc + " ? (("
                 + jdbc + ") " + raw + ")." + conversion + "() : " + temporalTypeHelper + "(\""
-                + GeneratorUtil.escape(label) + "\", \"" + target + "\", " + raw + "))))";
+                + GeneratorUtil.escape(column) + "\", \"" + target + "\", " + raw + "))))";
     }
 
     private void emitPrimitiveNullHelper(SourceWriter writer) {
@@ -799,7 +926,10 @@ public final class JdbcMapperGenerator {
                 || name.equals("java.math.BigInteger") || name.equals("java.lang.Boolean")
                 || name.equals("java.lang.Character") || name.equals("java.time.Instant")
                 || name.equals("java.time.LocalDateTime") || name.equals("java.time.LocalDate")
-                || name.equals("java.time.LocalTime")) {
+                || name.equals("java.time.LocalTime") || name.equals("java.util.UUID")
+                || name.equals("byte[]") || name.equals("java.sql.Date")
+                || name.equals("java.sql.Time") || name.equals("java.sql.Timestamp")
+                || name.equals("java.time.OffsetDateTime")) {
             return true;
         }
         TypeElement element = GeneratorUtil.asTypeElement(type);
@@ -839,6 +969,12 @@ public final class JdbcMapperGenerator {
                 && arguments.get(1).toString().equals("java.lang.Object");
     }
 
+    private void ensureJdbcColumnHelpers() {
+        if (jdbcColumnsHelper != null) return;
+        jdbcColumnsHelper = helperNames.local("jdbcColumns");
+        jdbcDuplicateColumnsHelper = helperNames.local("jdbcDuplicateColumns");
+    }
+
     private boolean isDeclared(TypeMirror type, String name) {
         TypeElement element = ctx.elements.getTypeElement(name);
         return element != null && ctx.types.isSameType(ctx.types.erasure(type),
@@ -864,12 +1000,14 @@ public final class JdbcMapperGenerator {
         final List<Property> properties;
         final TypeMirror targetType;
         final String create;
+        final boolean presentOnly;
 
-        RowPlan(boolean constructor, List<Property> properties, TypeMirror targetType, String create) {
+        RowPlan(boolean constructor, List<Property> properties, TypeMirror targetType, String create, boolean presentOnly) {
             this.constructor = constructor;
             this.properties = properties;
             this.targetType = targetType;
             this.create = create;
+            this.presentOnly = presentOnly;
         }
     }
 
@@ -888,7 +1026,7 @@ public final class JdbcMapperGenerator {
     private static final class Property {
         final String name;
         final String javaName;
-        final String label;
+        final String column;
         final TypeMirror type;
         final ExecutableElement setter;
         final Helper helper;
@@ -900,24 +1038,24 @@ public final class JdbcMapperGenerator {
         }
 
         Property(String name, String javaName, TypeMirror type, ExecutableElement setter,
-                 String label, Helper helper) {
+                  String column, Helper helper) {
             this.name = name;
             this.javaName = javaName;
             this.type = type;
             this.setter = setter;
-            this.label = label;
+            this.column = column;
             this.helper = helper;
             this.parents = java.util.Collections.emptyList();
             this.path = name;
         }
 
         Property(String name, String javaName, TypeMirror type, ExecutableElement setter,
-                 String label, Helper helper, List<Access> parents, String path) {
+                  String column, Helper helper, List<Access> parents, String path) {
             this.name = name;
             this.javaName = javaName;
             this.type = type;
             this.setter = setter;
-            this.label = label;
+            this.column = column;
             this.helper = helper;
             this.parents = parents;
             this.path = path;

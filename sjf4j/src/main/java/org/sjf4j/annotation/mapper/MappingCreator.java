@@ -1,5 +1,7 @@
 package org.sjf4j.annotation.mapper;
 
+import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;

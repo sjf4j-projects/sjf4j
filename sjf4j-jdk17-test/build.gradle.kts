@@ -35,13 +35,13 @@ dependencies {
     testImplementation("ch.qos.logback:logback-classic:1.5.34")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("com.h2database:h2:2.3.232")
+    testImplementation("org.springframework:spring-jdbc:6.2.8")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
-    jmhImplementation("com.h2database:h2:2.3.232")
     // Benchmark-only comparisons; neither library is part of a production artifact.
-    jmhImplementation("org.springframework:spring-jdbc:6.2.8")
     jmhImplementation("org.mybatis:mybatis:3.5.19")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
     jmhAnnotationProcessor(project(":sjf4j-processor"))
