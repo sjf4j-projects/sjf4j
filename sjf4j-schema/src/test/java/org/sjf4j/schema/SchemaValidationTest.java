@@ -882,6 +882,29 @@ public class SchemaValidationTest {
     }
 
     @Test
+    public void testStrictFormatContractsForInternetIdentifiers() {
+        SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
+        assertTrue(email.validate("user+tag@example.com", true).isValid());
+        assertFalse(email.validate("user@example..com", true).isValid());
+
+        SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").createPlan();
+        assertTrue(dateTime.validate("2024-02-29T12:30:00Z", true).isValid());
+        assertFalse(dateTime.validate("2023-02-29T12:30:00Z", true).isValid());
+
+        SchemaPlan uri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri\"}").createPlan();
+        assertTrue(uri.validate("https://example.com/a%20path?query=value#fragment", true).isValid());
+        assertFalse(uri.validate("https://example.com/a space", true).isValid());
+
+        SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").createPlan();
+        assertTrue(iri.validate("https://例え.テスト/検索", true).isValid());
+        assertFalse(iri.validate("https://例え.テスト/has space", true).isValid());
+
+        SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").createPlan();
+        assertTrue(idnHostname.validate("例え.テスト", true).isValid());
+        assertFalse(idnHostname.validate("例え..テスト", true).isValid());
+    }
+
+    @Test
     public void testNullSubschemaRejected() {
         JsonSchema schema = JsonSchema.fromJson("{\"items\":null}");
         assertThrows(SchemaException.class, () -> schema.createPlan());

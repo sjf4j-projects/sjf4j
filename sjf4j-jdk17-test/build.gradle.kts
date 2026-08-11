@@ -42,6 +42,8 @@ dependencies {
     // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     // Benchmark-only comparisons; neither library is part of a production artifact.
+    jmhImplementation("com.h2database:h2:2.3.232")
+    jmhImplementation("org.springframework:spring-jdbc:6.2.8")
     jmhImplementation("org.mybatis:mybatis:3.5.19")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
     jmhAnnotationProcessor(project(":sjf4j-processor"))

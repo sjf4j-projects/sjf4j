@@ -215,6 +215,18 @@ class Jackson3NodesTest {
         assertEquals(2, FacadeNodes.toNumber(FacadeNodes.getInArray(arrayNode, 1)).intValue());
 
         Nodes.Access access = new Nodes.Access();
+        FacadeNodes.getAccessInObject(objectNode, "name", access);
+        assertNotNull(access.node);
+        assertTrue(access.present);
+        FacadeNodes.getAccessInObject(objectNode, "missing", access);
+        assertNull(access.node);
+        assertFalse(access.present);
+        FacadeNodes.getAccessInArray(arrayNode, -1, access);
+        assertNotNull(access.node);
+        assertTrue(access.present);
+        FacadeNodes.getAccessInArray(arrayNode, 3, access);
+        assertNull(access.node);
+        assertFalse(access.present);
         FacadeNodes.putAccessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
         assertTrue(access.puttable);
@@ -260,5 +272,8 @@ class Jackson3NodesTest {
         assertEquals("mid", arrayNode.get(3).asString());
         assertEquals("jack", FacadeNodes.asString(FacadeNodes.removeInObject(objectNode, "name")));
         assertEquals(true, FacadeNodes.toBoolean(FacadeNodes.removeInArray(arrayNode, -1)));
+
+        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInObject("x", "name", new Nodes.Access()));
+        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInArray("x", 0, new Nodes.Access()));
     }
 }

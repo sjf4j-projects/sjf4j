@@ -110,6 +110,18 @@ class FacadeNodesTest {
         assertEquals(2, FacadeNodes.toNumber(FacadeNodes.getInArray(arrayNode, 1)).intValue());
 
         Nodes.Access access = new Nodes.Access();
+        FacadeNodes.getAccessInObject(objectNode, "name", access);
+        assertNotNull(access.node);
+        assertTrue(access.present);
+        FacadeNodes.getAccessInObject(objectNode, "missing", access);
+        assertNull(access.node);
+        assertFalse(access.present);
+        FacadeNodes.getAccessInArray(arrayNode, -1, access);
+        assertNotNull(access.node);
+        assertTrue(access.present);
+        FacadeNodes.getAccessInArray(arrayNode, 3, access);
+        assertNull(access.node);
+        assertFalse(access.present);
         FacadeNodes.putAccessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
         assertTrue(access.puttable);
@@ -194,6 +206,18 @@ class FacadeNodesTest {
         assertEquals(2, FacadeNodes.toNumber(FacadeNodes.getInArray(arrayNode, 1)).intValue());
 
         Nodes.Access access = new Nodes.Access();
+        FacadeNodes.getAccessInObject(objectNode, "name", access);
+        assertNotNull(access.node);
+        assertTrue(access.present);
+        FacadeNodes.getAccessInObject(objectNode, "missing", access);
+        assertNull(access.node);
+        assertFalse(access.present);
+        FacadeNodes.getAccessInArray(arrayNode, -1, access);
+        assertNotNull(access.node);
+        assertTrue(access.present);
+        FacadeNodes.getAccessInArray(arrayNode, 3, access);
+        assertNull(access.node);
+        assertFalse(access.present);
         FacadeNodes.putAccessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
         assertFalse(access.puttable);
@@ -264,6 +288,8 @@ class FacadeNodesTest {
         assertThrows(JsonException.class, () -> FacadeNodes.containsInObject("x", "k"));
         assertThrows(JsonException.class, () -> FacadeNodes.getInObject("x", "k"));
         assertThrows(JsonException.class, () -> FacadeNodes.getInArray("x", 0));
+        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInObject("x", "k", new Nodes.Access()));
+        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInArray("x", 0, new Nodes.Access()));
         assertThrows(JsonException.class, () -> FacadeNodes.putAccessInObject("x", null, "k", new Nodes.Access()));
         assertThrows(JsonException.class, () -> FacadeNodes.putAccessInArray("x", null, 0, new Nodes.Access()));
         assertThrows(JsonException.class, () -> FacadeNodes.putInObject("x", "k", "v"));

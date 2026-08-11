@@ -408,6 +408,28 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testJsonPatchWriteShapesAndFailures() {
+        JsonObject document = JsonObject.of("object", JsonObject.of("key", "old"),
+                "array", JsonArray.of("a", "c"));
+
+        JsonPath.parse("/object/key").add(document, null);
+        assertTrue(document.getJsonObject("object").containsKey("key"));
+        assertNull(document.getJsonObject("object").getNode("key"));
+
+        JsonPath.parse("/array/1").add(document, "b");
+        JsonPath.parse("/array/-").add(document, "d");
+        assertEquals(Arrays.asList("a", "b", "c", "d"), JsonPath.parse("$.array[*]").find(document));
+
+        assertEquals("b", JsonPath.parse("/array/1").replace(document, "B"));
+        assertEquals("B", JsonPath.parse("/array/1").removeIfPresent(document));
+        assertEquals(Arrays.asList("a", "c", "d"), JsonPath.parse("$.array[*]").find(document));
+
+        assertThrows(JsonException.class, () -> JsonPath.parse("/missing/key").add(document, 1));
+        assertThrows(JsonException.class, () -> JsonPath.parse("/array/9").replace(document, "x"));
+        assertThrows(JsonException.class, () -> JsonPath.parse("$.array[*]").add(document, "x"));
+    }
+
+    @Test
     public void testPutPojoReturnsNull() {
         Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
 

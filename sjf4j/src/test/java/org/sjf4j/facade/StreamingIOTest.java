@@ -23,18 +23,23 @@ import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -62,6 +67,10 @@ public class StreamingIOTest {
         JACKSON2,
         GSON,
         FASTJSON2
+    }
+
+    private enum ScalarEnum {
+        FIRST
     }
 
     private void useJackson2(StreamingContext.StreamingMode mode) {
@@ -817,6 +826,79 @@ public class StreamingIOTest {
 
         assertThrows(JsonException.class, () -> sjf4j.fromJson("{\"a\":1}", SortedMap.class));
         assertThrows(JsonException.class, () -> sjf4j.fromJson("[2,1,3]", SortedSet.class));
+    }
+
+    private void assertSharedStreamingScalarContract() {
+        assertNull(sjf4j.fromJson("null", String.class));
+        assertEquals(Optional.empty(), sjf4j.fromJson("null", new TypeReference<Optional<String>>() {}));
+        assertTrue(sjf4j.fromJson("true", Boolean.class));
+
+        assertEquals(1, sjf4j.fromJson("1", Integer.class));
+        assertEquals(2L, sjf4j.fromJson("2", Long.class));
+        assertEquals(3.5F, sjf4j.fromJson("3.5", Float.class));
+        assertEquals(4.5D, sjf4j.fromJson("4.5", Double.class));
+        assertEquals((short) 5, sjf4j.fromJson("5", Short.class));
+        assertEquals((byte) 6, sjf4j.fromJson("6", Byte.class));
+        assertEquals(new BigInteger("7"), sjf4j.fromJson("7", BigInteger.class));
+        assertEquals(new BigDecimal("8.25"), sjf4j.fromJson("8.25", BigDecimal.class));
+        assertInstanceOf(Number.class, sjf4j.fromJson("9", Number.class));
+
+        assertNull(sjf4j.fromJson("\"\"", Character.class));
+        assertEquals('x', sjf4j.fromJson("\"x\"", Character.class));
+        assertEquals(ScalarEnum.FIRST, sjf4j.fromJson("\"FIRST\"", ScalarEnum.class));
+        assertThrows(JsonException.class, () -> sjf4j.fromJson("true", String.class));
+
+        assertEquals("null", sjf4j.toJsonString(null));
+        assertEquals("true", sjf4j.toJsonString(true));
+        assertEquals("1", sjf4j.toJsonString(1));
+        assertEquals("2", sjf4j.toJsonString(2L));
+        assertEquals("3.5", sjf4j.toJsonString(3.5F));
+        assertEquals("4.5", sjf4j.toJsonString(4.5D));
+        assertEquals("5", sjf4j.toJsonString((short) 5));
+        assertEquals("6", sjf4j.toJsonString((byte) 6));
+        assertEquals("7", sjf4j.toJsonString(new BigInteger("7")));
+        assertEquals("8.25", sjf4j.toJsonString(new BigDecimal("8.25")));
+        assertEquals("\"x\"", sjf4j.toJsonString('x'));
+        assertEquals("\"FIRST\"", sjf4j.toJsonString(ScalarEnum.FIRST));
+    }
+
+    private void assertSharedStreamingContainerContract(boolean includeNulls) {
+        Map<String, Integer> map = sjf4j.fromJson("{\"one\":1,\"two\":2}",
+                new TypeReference<Map<String, Integer>>() {});
+        assertEquals(linkedMapOf("one", 1, "two", 2), map);
+        assertEquals(Arrays.asList(1, 2), sjf4j.fromJson("[1,2]", new TypeReference<List<Integer>>() {}));
+        assertEquals(new LinkedHashSet<>(Arrays.asList(1, 2)),
+                sjf4j.fromJson("[1,2,1]", new TypeReference<Set<Integer>>() {}));
+        assertArrayEquals(new int[]{1, 2}, sjf4j.fromJson("[1,2]", int[].class));
+
+        Object rawObject = sjf4j.fromJson("{\"name\":\"han\",\"items\":[1,true]}", Object.class);
+        assertInstanceOf(Map.class, rawObject);
+        assertEquals("han", ((Map<?, ?>) rawObject).get("name"));
+        assertEquals(Arrays.asList(1, true), ((Map<?, ?>) rawObject).get("items"));
+        Object rawArray = sjf4j.fromJson("[\"x\",{\"n\":2}]", Object.class);
+        assertEquals("x", ((List<?>) rawArray).get(0));
+        assertEquals(2, ((Map<?, ?>) ((List<?>) rawArray).get(1)).get("n"));
+
+        Map<String, Object> nullable = linkedMapOf("keep", 1, "drop", null);
+        assertEquals(includeNulls ? "{\"keep\":1,\"drop\":null}" : "{\"keep\":1}",
+                sjf4j.toJsonString(nullable));
+        assertEquals("[1,2]", sjf4j.toJsonString(Arrays.asList(1, 2)));
+        assertEquals("[1,2]", sjf4j.toJsonString(new LinkedHashSet<>(Arrays.asList(1, 2))));
+        assertEquals("[1,2]", sjf4j.toJsonString(new int[]{1, 2}));
+    }
+
+    @Test
+    void testSharedStreamingScalarContractForJackson2AndFastjson2() {
+        runOnBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertSharedStreamingScalarContract,
+                Backend.JACKSON2, Backend.FASTJSON2);
+    }
+
+    @Test
+    void testSharedStreamingContainerContractForJackson2AndFastjson2() {
+        runOnBackends(StreamingContext.StreamingMode.SHARED_IO, true,
+                () -> assertSharedStreamingContainerContract(true), Backend.JACKSON2, Backend.FASTJSON2);
+        runOnBackends(StreamingContext.StreamingMode.SHARED_IO, false,
+                () -> assertSharedStreamingContainerContract(false), Backend.JACKSON2, Backend.FASTJSON2);
     }
 
     @Test
