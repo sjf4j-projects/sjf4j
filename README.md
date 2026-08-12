@@ -3,29 +3,30 @@
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
 [![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
-![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fsupported_versions.json)
-![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)  
+![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fsupported_versions.json)  
 ![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2020-12.json)
 ![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2019-09.json)
 ![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft7.json)    
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
+![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
 
-SJF4J is a lightweight JSON facade and **high-performance structural processing layer** for Java.
+SJF4J is a lightweight JSON facade for Java, 
+evolving into **a high-performance structural processing layer built around JSON standards and semantics**.
+   
+SJF4J integrates with JSON parsers including [Jackson](https://github.com/FasterXML/jackson-databind),
+[Gson](https://github.com/google/gson), 
+[Fastjson2](https://github.com/alibaba/fastjson2), 
+and [JSON-P](https://github.com/jakartaee/jsonp-api), 
+while also supporting YAML (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml)) and Java Properties.
 
-It sits above multiple JSON parsers — including [Jackson](https://github.com/FasterXML/jackson-databind),
-[Gson](https://github.com/google/gson), [Fastjson2](https://github.com/alibaba/fastjson2),
-and [JSON-P](https://github.com/jakartaee/jsonp-api) — while also supporting YAML
-(via [SnakeYAML](https://github.com/snakeyaml/snakeyaml)) and Java Properties.
-
-It provides a consistent programming model across parsers, data formats, and native Java object graphs, 
-built on JSON-related standards and semantics.
-
-It unifies [modeling](https://sjf4j.org/docs/modeling) (OBNT),
-[binding](https://sjf4j.org/docs/binding) (Multi-Format), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
-[patching](https://sjf4j.org/docs/patching) (JSON Patch), [validating](https://sjf4j.org/docs/validating) (JSON Schema), 
-and [mapping](https://sjf4j.org/docs/mapping) (Object-to-object) under one API model.
+SJF4J unifies JSON-based capabilities such as [Modeling](https://sjf4j.org/docs/modeling) (OBNT),
+[Binding](https://sjf4j.org/docs/binding) (Multi-Format), 
+[Navigating](https://sjf4j.org/docs/navigating) (JSON Path),
+[Patching](https://sjf4j.org/docs/patching) (JSON Patch),
+[Validating](https://sjf4j.org/docs/validating) (JSON Schema), 
+and [Mapping](https://sjf4j.org/docs/mapping) (Object-to-object) into a single programming model.
 
 
 ## Install
@@ -33,7 +34,7 @@ SJF4J requires **JDK 8+**, with no external dependencies beyond the data parsers
 
 Gradle:
 ```groovy
-implementation("org.sjf4j:sjf4j:{version}")
+implementation("org.sjf4j:sjf4j:{sjf4j-version}")
 ```
 
 Maven:
@@ -41,36 +42,36 @@ Maven:
 <dependency>
     <groupId>org.sjf4j</groupId>
     <artifactId>sjf4j</artifactId>
-    <version>{version}</version>
+    <version>{sjf4j-version}</version>
 </dependency>
 ```
 
 <details>
-<summary><strong>Optional Runtime Dependencies</strong></summary>
+<summary><strong>Optional: Configure JSON/YAML parsers</strong></summary>
 
-Parsers are enabled automatically when their corresponding libraries are present,
-and can also be configured explicitly when needed.
+SJF4J automatically detects available parser implementations at runtime.  
+Backends can also be configured explicitly when needed.
 
 - **JSON**
-  - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or others).  
-  - By default, SJF4J automatically detects and uses the first available implementation in that order.
-  - If none are detected, it falls back to a built-in simple JSON parser (functional but slower).
-  - Or configure the backend explicitly, for example:
+  - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P`.  
+  - By default, SJF4J detects and uses the first available implementation in that order.
+  - If none are available, SJF4J falls back to a built-in simple JSON parser (functional but slower).
+  - Or configure a backend explicitly:
     ```java
     Sjf4j.builder().jsonFacadeProvider(Jackson2JsonFacade.provider()).build();
     ```
 
 - **YAML**
-  - Include `SnakeYAML` (the YAML 1.1 backend).
-  - YAML support requires SnakeYAML at runtime; unlike JSON, there is no built-in YAML parser fallback.
+  - Include `SnakeYAML` for YAML support.
+  - YAML requires SnakeYAML at runtime; unlike JSON, there is no built-in fallback.
 
 - **Java Properties**
   - Built-in support.
-  - Conversion is inherently limited by its flat key-value structure.
+  - Conversion is limited by the flat key-value structure.
 
-- **In-Memory** 
+- **Native Java objects** 
   - Built-in support.
-  - Useful even without external data sources (e.g., DB result mapping, complex nested data processing).
+  - Allows processing POJOs, Maps, Lists, and other JSON-like object graphs without serialization.
 
 Common runtime dependencies (pick as needed):
 
@@ -96,8 +97,76 @@ implementation("org.yaml:snakeyaml:{snakeyaml-version}")
 ```
 </details>
 
+---
+
+<details>
+<summary><strong>Optional: Enable annotation processor support</strong></summary>
+
+For frequently executed JSON-path access or object mapping, SJF4J provides
+compile-time code generation support through `sjf4j-processor`.
+
+The processor generates direct implementations for annotated
+`@CompiledPath`, `@CompiledMapper`, and `@CompiledJdbcMapper` interfaces,
+reducing runtime overhead by avoiding reflection, metadata lookup, and
+interpreted path/mapping execution.
+
+The processor is required only at compile time; applications only need the
+regular `sjf4j` runtime dependency.
+
+Gradle:
+```groovy
+annotationProcessor("org.sjf4j:sjf4j-processor:{sjf4j-version}")
+```
+
+Maven (`maven-compiler-plugin`):
+```xml
+<annotationProcessorPaths>
+    <path>
+        <groupId>org.sjf4j</groupId>
+        <artifactId>sjf4j-processor</artifactId>
+        <version>{sjf4j-version}</version>
+    </path>
+</annotationProcessorPaths>
+```
+</details>
+
 
 ## Quickstart
+
+SJF4J lets you work with structured data using JSON semantics, 
+whether the data is represented as JSON text or ordinary Java objects.
+
+### 1. Parse and work with JSON
+
+Start with `JsonObject` when working directly with JSON data:
+```java
+JsonObject jo = JsonObject.fromJson("""
+{
+  "name": "Alice",
+  "age": 18,
+  "scores": {
+    "math": 59,
+    "art": 95
+  }
+}
+""");
+```
+
+`JsonObject` gives you typed value access together with JSON Path based navigation and mutation.
+```java
+String name = jo.getString("name");
+int math = jo.getIntByPath("$.scores.math");
+
+jo.putByPath("$.scores.math", 90);
+
+System.out.println(jo.toJson());
+```
+
+
+### 2. Bind to Java objects
+
+### 3. Navigate Java objects
+
 
 ### 1-minute example
 
@@ -398,7 +467,11 @@ Contributions of all kinds are welcome — including code, documentation, bug re
 examples, benchmarks, ideas, and feedback.    
 To get started, please [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
 
-JSON is one of the most widely used structured data formats today, 
-backed by a mature ecosystem of standards, specifications, and RFCs.
 
-> *Does Java need a JSON-oriented programming model?*
+---
+JSON is a widely adopted data model with a rich ecosystem of standards and specifications.
+
+As Java evolves toward built-in JSON support — [JEP 540: Simple JSON API (Incubator)](https://openjdk.org/jeps/540) —  
+the next question is not just how to parse JSON, but how to apply JSON standards and semantics in application development.
+
+SJF4J focuses on this next layer: a JSON-oriented programming model for JSON documents and Java object graphs.
