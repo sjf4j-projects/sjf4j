@@ -43,8 +43,6 @@ class FunctionRegistryBuiltinTest {
         assertNull(FunctionRegistry.invoke("first", JsonArray.of(), NO_ARGS));
         assertEquals("b", FunctionRegistry.invoke("last", JsonArray.of("a", "b"), NO_ARGS));
         assertNull(FunctionRegistry.invoke("last", JsonArray.of(), NO_ARGS));
-        assertEquals("b", FunctionRegistry.invoke("index", JsonArray.of("a", "b"), new Object[]{1}));
-        assertNull(FunctionRegistry.invoke("index", JsonObject.of("a", 1), new Object[]{0}));
         assertTrue((Boolean) FunctionRegistry.invoke("match", "alice@example.com", new Object[]{"alice@example.com"}));
         assertFalse((Boolean) FunctionRegistry.invoke("match", 123, new Object[]{"alice@example.com"}));
         assertTrue((Boolean) FunctionRegistry.invoke("search", "alice@example.com", new Object[]{"example"}));
@@ -71,8 +69,6 @@ class FunctionRegistryBuiltinTest {
         assertThrows(JsonException.class, () -> FunctionRegistry.invoke("search", "abc", NO_ARGS));
         assertThrows(JsonException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{null}));
         assertThrows(JsonException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{JsonObject.of("p", 1)}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("index", JsonArray.of("a"), new Object[]{"x"}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("index", JsonArray.of("a"), NO_ARGS));
         assertThrows(JsonException.class, () -> new FunctionRegistry.FunctionDescriptor("", (target, args) -> null));
         assertThrows(NullPointerException.class, () -> new FunctionRegistry.FunctionDescriptor(null, (target, args) -> null));
         assertThrows(NullPointerException.class, () -> new FunctionRegistry.FunctionDescriptor("x", null));

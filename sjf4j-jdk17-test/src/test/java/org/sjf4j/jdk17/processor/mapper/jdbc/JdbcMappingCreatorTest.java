@@ -15,7 +15,7 @@ import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcMappingCreatorTest {
     @Test
     void selectsImplementationsAndFactoriesForRows() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
 
         assertEquals("Ada", ((ViewImpl) mapper.view(result(new String[]{"name"}, new Object[]{"Ada"}))).name);
         assertEquals("Grace", ((FactoryView) mapper.factory(result(new String[]{"name"}, new Object[]{"Grace"}))).name);

@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 public class MapperMixedStructuralTest {
     @Test
     public void createReadsMixedStructuralSourcesAndNestedMaps() {
-        MixedMapper mapper = CompiledNodes.of(MixedMapper.class);
+        MixedMapper mapper = CompiledNodes.instanceOf(MixedMapper.class);
         MixedSource source = fullSource();
 
         MixedTarget target = mapper.toTarget(source);
@@ -43,7 +43,7 @@ public class MapperMixedStructuralTest {
 
     @Test
     public void createWritesTargetPathsIntoInitializedJsonContainers() {
-        MixedMapper mapper = CompiledNodes.of(MixedMapper.class);
+        MixedMapper mapper = CompiledNodes.instanceOf(MixedMapper.class);
 
         PathTarget target = mapper.toPathTarget(fullSource());
 
@@ -54,7 +54,7 @@ public class MapperMixedStructuralTest {
 
     @Test
     public void ignoreNullsPreservesDefaultsForMissingStructuralSources() {
-        MixedMapper mapper = CompiledNodes.of(MixedMapper.class);
+        MixedMapper mapper = CompiledNodes.instanceOf(MixedMapper.class);
         MixedSource source = new MixedSource();
         DefaultsTarget target = new DefaultsTarget();
 

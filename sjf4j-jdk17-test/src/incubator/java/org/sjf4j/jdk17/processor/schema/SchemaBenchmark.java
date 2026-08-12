@@ -159,7 +159,7 @@ public class SchemaBenchmark {
                     3,
                     "SAVE10",
                     Boolean.FALSE);
-            compiledValidator = CompiledNodes.of(OrderValidator.class);
+            compiledValidator = CompiledNodes.instanceOf(OrderValidator.class);
             schemaPlan = JsonSchema.fromJson(ORDER_SCHEMA_JSON).createPlan();
             schemaValidator = new SchemaValidator();
 

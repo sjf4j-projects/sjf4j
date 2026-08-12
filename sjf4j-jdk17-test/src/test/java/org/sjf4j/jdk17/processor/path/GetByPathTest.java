@@ -20,7 +20,7 @@ public class GetByPathTest {
 
     @Test
     public void getsDeepRecordListMapAndJsonPaths() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.instanceOf(GetNodes.class);
         Account account = account();
 
         assertEquals("last@example.com", nodes.getLastMemberEmail(account));
@@ -31,7 +31,7 @@ public class GetByPathTest {
 
     @Test
     public void missingReferencePathReturnsNull() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.instanceOf(GetNodes.class);
 
         assertNull(nodes.getLastMemberEmail(null));
         assertNull(nodes.getLastMemberEmail(new Account(null)));
@@ -44,7 +44,7 @@ public class GetByPathTest {
 
     @Test
     public void primitiveMissingPathThrowsJsonException() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.instanceOf(GetNodes.class);
 
         assertEquals(7, nodes.getMemberScore(account()));
         assertThrows(JsonException.class, () -> nodes.getMemberScore(null));
@@ -53,7 +53,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsPublicFieldBooleanGetterAndTypedContainers() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.instanceOf(GetNodes.class);
 
         assertEquals("field-value", nodes.getPublicField(new FieldBean("field-value")));
         assertEquals(Boolean.TRUE, nodes.isActive(new FlagBean(true)));
@@ -63,7 +63,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsDynamicGetPathParameters() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.instanceOf(GetNodes.class);
         Directory directory = new Directory(
                 List.of(new Person("first", 1), new Person("last", 2)),
                 Map.of("hz", new City("Hangzhou", "Binjiang")),
@@ -82,7 +82,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsNodePropertyNamesOnPojoGetPath() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.instanceOf(GetNodes.class);
         RenamedRoot root = new RenamedRoot(
                 new RenamedProfile("alice"),
                 new RenamedGetterBean("display"),
@@ -95,7 +95,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsThirdPartyPropertyNamesOnPojoGetPath() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.instanceOf(GetNodes.class);
         ThirdPartyRoot root = new ThirdPartyRoot(
                 new ThirdPartyProfile("alice"),
                 new ThirdPartyGetterBean("display"),

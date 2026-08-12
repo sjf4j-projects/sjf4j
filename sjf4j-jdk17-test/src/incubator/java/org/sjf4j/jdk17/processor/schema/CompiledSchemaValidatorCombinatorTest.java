@@ -13,7 +13,7 @@ public class CompiledSchemaValidatorCombinatorTest {
 
     @Test
     public void validatesAnyOfNotAndConditionalInFastPath() {
-        Validator validator = CompiledNodes.of(Validator.class);
+        Validator validator = CompiledNodes.instanceOf(Validator.class);
 
         assertTrue(validator.isValid(new Rule(5, "A", "adult")));
         assertTrue(validator.isValid(new Rule(15, "B", "teen")));

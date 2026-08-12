@@ -65,7 +65,7 @@ public class CompiledMapperBenchmark {
             sjf4jUpdateTarget = new FlatTarget();
             mapStructUpdateTarget = new FlatTarget();
             handUpdateTarget = new FlatTarget();
-            sjf4jMapper = CompiledNodes.of(Sjf4jMapper.class);
+            sjf4jMapper = CompiledNodes.instanceOf(Sjf4jMapper.class);
             mapStructMapper = Mappers.getMapper(MapStructMapper.class);
             handMapper = new HandMapper();
 

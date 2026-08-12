@@ -325,23 +325,6 @@ public class FunctionRegistry {
             return null;
         }));
 
-        // index
-        FunctionRegistry.register(new FunctionDescriptor("index", (target, args) -> {
-            if (args.length != 1)
-                throw new JsonException("index(): expected exactly 1 argument, but got " + args.length);
-            Object node = target;
-            if (!JsonType.of(args[0]).isNumber()) {
-                throw new JsonException("index(): expected the second argument to be a number, but was " + Types.name(args[0]));
-            }
-            int idx = Nodes.toInt(args[0]);
-
-            switch (JsonType.of(node)) {
-                case ARRAY:
-                    return Nodes.getInArray(node, idx);
-            }
-            return null;
-        }));
-
     }
 
 }

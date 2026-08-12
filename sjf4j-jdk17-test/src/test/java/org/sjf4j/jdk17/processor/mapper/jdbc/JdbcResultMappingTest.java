@@ -29,7 +29,7 @@ import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcResultMappingTest {
     @Test
     void mapsBasicValuesRowsAndMetadata() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
         Instant created = Instant.parse("2020-01-01T00:00:00Z");
 
         User user = mapper.user(result(new String[]{"full_name", "age", "created"},
@@ -73,7 +73,7 @@ class JdbcResultMappingTest {
 
     @Test
     void appliesCardinalityPoliciesAndWrapsSqlExceptions() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
 
         BindingException multiple = assertThrows(BindingException.class, () -> mapper.user(
                 result(new String[]{"full_name", "age", "created"},

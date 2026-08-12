@@ -132,7 +132,7 @@ public class CompiledFindBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             pojo = Sjf4j.global().fromJson(BOOKSTORE_JSON, Bookstore.class);
-            compiled = CompiledNodes.of(FindNodes.class);
+            compiled = CompiledNodes.instanceOf(FindNodes.class);
             authorsPath = JsonPath.parse("$.store.book[*].author");
             expensiveTitlesPath = JsonPath.parse("$.store.book[?(@.price > 10)].title");
             unionTitlesPath = JsonPath.parse("$.store.book[0,2].title");

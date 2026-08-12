@@ -15,7 +15,7 @@ public class CompiledSchemaValidatorRefFastPathTest {
 
     @Test
     public void validatesLocalRefsInOneOfFastPath() {
-        Validator validator = CompiledNodes.of(Validator.class);
+        Validator validator = CompiledNodes.instanceOf(Validator.class);
 
         assertTrue(validator.isValid(new Envelope(List.of(new Entry("A", "ok"), new Entry("B", 2)))));
         assertFalse(validator.isValid(new Envelope(List.of(new Entry("C", "ok")))));

@@ -19,7 +19,7 @@ import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.currentRowRe
 class JdbcCurrentRowTest {
     @Test
     void mapsAlreadyPositionedRowWithoutAdvancingCursor() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
         int[] nextCalls = {0};
 
         User user = mapper.anyName(currentRowResult(new String[]{"name", "age"}, nextCalls, "Ada", 36), 42);
@@ -34,7 +34,7 @@ class JdbcCurrentRowTest {
 
     @Test
     void wrapsCurrentRowSqlExceptions() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
 
         assertInstanceOf(java.sql.SQLException.class,
                 assertThrows(BindingException.class, () -> mapper.anyName(brokenCurrentRowResult("getString"), 0)).getCause());
@@ -44,7 +44,7 @@ class JdbcCurrentRowTest {
 
     @Test
     void mapsPresentColumnsWithoutAdvancingCurrentRow() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
         int[] nextCalls = {0};
 
         Present present = mapper.present(currentRowResult(new String[]{"name"}, nextCalls, "Ada"), 0);

@@ -80,8 +80,8 @@ public class OrderMapperBenchmark {
                     attributes("priority", "bronze", "coupon", "BASIC", "region", "apac"),
                     metadata("store", "exp-c"));
 
-            sjf4jIgnoreMapper = CompiledNodes.of(Sjf4jIgnoreMapper.class);
-            sjf4jSetMapper = CompiledNodes.of(Sjf4jSetMapper.class);
+            sjf4jIgnoreMapper = CompiledNodes.instanceOf(Sjf4jIgnoreMapper.class);
+            sjf4jSetMapper = CompiledNodes.instanceOf(Sjf4jSetMapper.class);
             mapStructMapper = Mappers.getMapper(MapStructMapper.class);
             handMapper = new HandMapper();
 

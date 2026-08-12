@@ -21,7 +21,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @Test
     public void targetPathAppliesNamedNestedMapperToBeanListAndMapValues() {
-        NestedPathMapper mapper = CompiledNodes.of(NestedPathMapper.class);
+        NestedPathMapper mapper = CompiledNodes.instanceOf(NestedPathMapper.class);
         Source source = new Source(new Child("Ada"));
 
         Target target = mapper.create(source);
@@ -32,7 +32,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @Test
     public void targetPathNestedMapperWorksWithIfParentPresentAndEnsure() {
-        NestedPathMapper mapper = CompiledNodes.of(NestedPathMapper.class);
+        NestedPathMapper mapper = CompiledNodes.instanceOf(NestedPathMapper.class);
         Source source = new Source(new Child("Grace"));
 
         OptionalTarget optional = new OptionalTarget();

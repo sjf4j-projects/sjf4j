@@ -22,7 +22,7 @@ public class MapperTargetPathContainerTest {
 
     @Test
     public void strictTargetPathWritesContainersAndNodes() {
-        ContainerMapper mapper = CompiledNodes.of(ContainerMapper.class);
+        ContainerMapper mapper = CompiledNodes.instanceOf(ContainerMapper.class);
 
         ContainerTarget created = mapper.strictCreate(new Source("Ada"));
         assertEquals("Ada", created.map.get("name"));
@@ -42,7 +42,7 @@ public class MapperTargetPathContainerTest {
 
     @Test
     public void ifParentPresentSkipsMissingContainerParents() {
-        ContainerMapper mapper = CompiledNodes.of(ContainerMapper.class);
+        ContainerMapper mapper = CompiledNodes.instanceOf(ContainerMapper.class);
         OptionalParents target = new OptionalParents();
 
         mapper.ifParentPresentMap(target, new Source("Ada"));
@@ -65,7 +65,7 @@ public class MapperTargetPathContainerTest {
 
     @Test
     public void ensureMappingCreatesContainerParents() {
-        ContainerMapper mapper = CompiledNodes.of(ContainerMapper.class);
+        ContainerMapper mapper = CompiledNodes.instanceOf(ContainerMapper.class);
 
         OptionalParents created = mapper.ensureCreate(new Source("Ada"));
         assertEquals("Ada", created.map.get("name"));

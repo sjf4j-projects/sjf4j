@@ -19,7 +19,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsJsonObjectToRecordWithNestedPojo() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
 
         JsonObject customer = new JsonObject();
         customer.put("name", "Ada");
@@ -42,7 +42,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsMapToRecordWithNestedPojo() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         Map<String, Object> customer = new LinkedHashMap<>();
         customer.put("name", "Grace");
         customer.put("age", Integer.valueOf(37));
@@ -64,7 +64,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsObjectRootWhenRuntimeSourceIsObjectLike() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         Map<String, Object> customer = Map.of("name", "Katherine", "age", Long.valueOf(38));
         Map<String, Object> source = Map.of(
                 "id", Integer.valueOf(300),
@@ -82,7 +82,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsJsonObjectToMutableBean() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         JsonObject source = new JsonObject();
         source.put("id", Long.valueOf(400));
         source.put("status", "ACTIVE");
@@ -99,7 +99,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsRecordToJsonObjectShallowly() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         CustomerDto customer = new CustomerDto("Ada", 36);
         ProjectionSource source = new ProjectionSource(500L, Status.ACTIVE, customer, null);
 
@@ -113,7 +113,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsBeanToJsonObjectUsingNodeNames() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         ProjectionBean source = new ProjectionBean();
         source.firstName = "Ada";
         source.setLastName("Lovelace");
@@ -126,7 +126,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsPojoToMapShallowlyUsingNodeNames() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         ProjectionBean source = new ProjectionBean();
         CustomerDto nested = new CustomerDto("Ada", 36);
         source.firstName = "Ada";
@@ -142,7 +142,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsPojoPropertyToJsonObjectTargetProperty() {
-        HolderMapper mapper = CompiledNodes.of(HolderMapper.class);
+        HolderMapper mapper = CompiledNodes.instanceOf(HolderMapper.class);
         ProjectionSource source = new ProjectionSource(600L, Status.ACTIVE, new CustomerDto("Grace", 37), "note");
 
         ProjectionHolder holder = mapper.holder(new ProjectionWrapper(source));
@@ -153,7 +153,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsMapToJsonObjectShallowly() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         JsonObject nested = JsonObject.of("city", "London");
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Long.valueOf(700));
@@ -168,7 +168,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsJsonObjectToJsonObjectShallowly() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         JsonObject nested = JsonObject.of("name", "Ada");
         JsonObject source = JsonObject.of("id", Long.valueOf(800), "nested", nested);
 
@@ -181,7 +181,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsJsonObjectToTypedMap() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         JsonObject source = JsonObject.of("a", Long.valueOf(1), "b", Integer.valueOf(2));
 
         Map<String, Integer> target = mapper.projectJsonObjectInts(source);
@@ -192,7 +192,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsObjectRuntimeMapToJsonObjectOnly() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         JsonObject nested = JsonObject.of("city", "London");
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Long.valueOf(900));
@@ -207,7 +207,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsObjectRuntimeMapToTypedMapOnly() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("x", Long.valueOf(9));
 
@@ -219,7 +219,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsMapToJojoWithNoArgsAndDynamicExtras() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         CustomerDto nested = new CustomerDto("Grace", 37);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Integer.valueOf(11));
@@ -235,7 +235,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsMapToCtorJojoWithDynamicExtras() {
-        ObjectMapper mapper = CompiledNodes.of(ObjectMapper.class);
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Integer.valueOf(12));
         source.put("unknown", "v");

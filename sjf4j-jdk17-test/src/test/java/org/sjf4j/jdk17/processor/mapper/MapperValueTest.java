@@ -18,7 +18,7 @@ public class MapperValueTest {
 
     @Test
     public void convertsNumberFamily() {
-        ScalarMapper mapper = CompiledNodes.of(ScalarMapper.class);
+        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
 
         NumericTarget target = mapper.numbers(new NumericSource());
 
@@ -45,7 +45,7 @@ public class MapperValueTest {
 
     @Test
     public void convertsStringCharacterEnumBooleanFamily() {
-        ScalarMapper mapper = CompiledNodes.of(ScalarMapper.class);
+        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
 
         TextTarget target = mapper.text(new TextSource());
 
@@ -64,7 +64,7 @@ public class MapperValueTest {
 
     @Test
     public void mapsApplicationPayloadWithStrictScalarLeaves() {
-        ScalarMapper mapper = CompiledNodes.of(ScalarMapper.class);
+        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
 
         ApplicationDto dto = mapper.application(new ApplicationPayload(
                 Map.of(
@@ -85,7 +85,7 @@ public class MapperValueTest {
 
     @Test
     public void recursivelyConvertsCollectionAndMapScalarLeaves() {
-        ScalarMapper mapper = CompiledNodes.of(ScalarMapper.class);
+        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
 
         assertEquals(List.of(1L, 2L), mapper.longs(List.of(1, 2)));
         assertEquals(List.of(List.of(1L), List.of(2L, 3L)),
@@ -106,7 +106,7 @@ public class MapperValueTest {
 
     @Test
     public void updatesCollectionAndMapScalarLeavesInPlace() {
-        ScalarMapper mapper = CompiledNodes.of(ScalarMapper.class);
+        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
 
         List<Long> longs = new ArrayList<>(List.of(99L));
         mapper.updateLongs(longs, List.of(1, 2));

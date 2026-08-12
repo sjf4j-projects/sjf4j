@@ -24,7 +24,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void createsMissingMapListAndPojoParents() {
-        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureDefaultMap(root, "map-value"));
@@ -43,7 +43,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void preservesConcreteContainerTypesWhenCreatingParents() {
-        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureHashMap(root, "hash-value"));
@@ -57,7 +57,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void createsJsonObjectAndJsonArrayParents() {
-        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureJsonObject(root, "json-object"));
@@ -69,7 +69,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void supportsDynamicKeysIndexesAndMiddleAppend() {
-        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureDynamic(root, "region", 0, "dynamic-value"));
@@ -83,14 +83,14 @@ public class EnsurePutByPathTest {
 
     @Test
     public void nullRootThrowsNullPointerException() {
-        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.ensureDefaultMap(null, "x"));
     }
 
     @Test
     public void traversesExistingRecordComponentAndFailsAtRuntimeWhenMissing() {
-        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
 
         Map<String, Object> map = new HashMap<>();
         assertNull(nodes.ensureRecordMap(new RecordRoot(map), "record-value"));
@@ -101,7 +101,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void testMapChild() {
-        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
 
         RecordRoot root = new RecordRoot(new HashMap<>());
         assertNull(nodes.ensureRecordMapChild(root, 5566L));

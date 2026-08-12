@@ -94,7 +94,7 @@ public class FindByPathTest {
 
     @Test
     public void wildcardReturnsAllItemNames() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         List<String> names = nodes.itemNames(root);
@@ -103,7 +103,7 @@ public class FindByPathTest {
 
     @Test
     public void unionReturnsValuesForSpecifiedKeysInOrder() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         List<Object> fields = nodes.metadataFields(root);
@@ -115,7 +115,7 @@ public class FindByPathTest {
 
     @Test
     public void indexUnionReturnsPathOrder() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("Charlie", "Alice"), nodes.itemNamesByIndexUnion(root));
@@ -123,7 +123,7 @@ public class FindByPathTest {
 
     @Test
     public void nestedWildcardReturnsValuesInNestedOrder() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of(root.items().get(0), root.items().get(1), root.items().get(2)), nodes.allChildren(root));
@@ -132,7 +132,7 @@ public class FindByPathTest {
 
     @Test
     public void rawObjectReturnReturnsItems() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         List<Object> items = nodes.allItems(root);
@@ -149,7 +149,7 @@ public class FindByPathTest {
 
     @Test
     public void wildcardWithObjectReturnReturnsAllItemNames() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         List<Object> names = nodes.itemNamesAsObject(root);
@@ -158,7 +158,7 @@ public class FindByPathTest {
 
     @Test
     public void sliceReturnsMatchingValuesInArrayOrder() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("Alice", "Bob"), nodes.firstTwoItemNames(root));
@@ -172,7 +172,7 @@ public class FindByPathTest {
 
     @Test
     public void filterReturnsMatchingValuesInArrayOrder() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("Bob", "Charlie"), nodes.adultItemNames(root));
@@ -187,7 +187,7 @@ public class FindByPathTest {
 
     @Test
     public void descendantFallbackReturnsMatchingValuesInOrder() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("one", "Alice", "Bob", "empty", "two", "Charlie"),
@@ -196,7 +196,7 @@ public class FindByPathTest {
 
     @Test
     public void emptyResultsReturnEmptyList() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
         Container empty = new Container(List.of(), List.of(), Map.of());
 
         List<String> names = nodes.itemNames(empty);
@@ -211,7 +211,7 @@ public class FindByPathTest {
 
     @Test
     public void nullRootThrowsNullPointerExceptionForFind() {
-        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        FindNodes nodes = CompiledNodes.instanceOf(FindNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.itemNames(null));
     }

@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added JMH-only H2, Spring, and MyBatis comparison benchmarks for compiled JDBC mapping; these external benchmark dependencies are not production runtime features.
 
 ### Breaking Changes
+- Renamed `CompiledNodes.of(Class<T>)` to `CompiledNodes.instanceOf(Class<T>)`.
+- Removed the redundant built-in JSONPath `index(n)` function; use `[n]` instead.
 - JDBC mapper options moved from `@MapperOptions` to `@JdbcMapperOptions`. Replace `jdbcResult = JdbcResultPolicy.FIRST` with `singleResult = SingleResultPolicy.FIRST`; use `columnProjection` and `duplicateColumn` with `ColumnProjectionPolicy` and `DuplicateColumnPolicy` from `org.sjf4j.annotation.mapper.jdbc`. The former `JdbcResultPolicy` and JDBC members of `@MapperOptions` were removed.
 - `Map<String, Object>` JDBC results now reject duplicate result columns by default. Set `duplicateColumn = DuplicateColumnPolicy.LAST_WINS` to retain the former last-value-wins behavior.
 - Removed Spring `RowMapper` and `ResultSetExtractor`-specific generated contracts. `@CompiledJdbcMapper` is now framework-neutral; use a directly declared `T method(ResultSet, int)` current-row method where needed.

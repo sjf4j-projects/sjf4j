@@ -20,7 +20,7 @@ public final class CompiledNodes {
     private CompiledNodes() {}
 
     @SuppressWarnings("unchecked")
-    public static <T> T of(Class<T> type) {
+    public static <T> T instanceOf(Class<T> type) {
         if (type == null) {
             throw new JsonException("CompiledNodes.of requires a non-null interface type");
         }

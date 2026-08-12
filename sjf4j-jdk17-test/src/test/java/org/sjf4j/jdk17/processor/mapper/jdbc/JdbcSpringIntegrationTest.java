@@ -21,7 +21,7 @@ class JdbcSpringIntegrationTest {
         jdbcTemplate.update("insert into users (name, age) values (?, ?)", "Ada", 36);
         jdbcTemplate.update("insert into users (name, age) values (?, ?)", "Grace", 40);
 
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
         List<User> users = jdbcTemplate.query("select name, age from users order by age", mapper::mapRow);
 
         assertEquals(List.of(new User("Ada", 36), new User("Grace", 40)), users);

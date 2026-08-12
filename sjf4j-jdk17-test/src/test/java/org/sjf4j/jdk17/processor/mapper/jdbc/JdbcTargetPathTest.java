@@ -15,7 +15,7 @@ import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcTargetPathTest {
     @Test
     void mapsNestedTargetPathsWithoutAllocatingParents() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
 
         assertEquals("Ada", mapper.nested(result(new String[]{"full_name"},
                 new Object[]{"Ada"})).getProfile().getName());
@@ -29,7 +29,7 @@ class JdbcTargetPathTest {
 
     @Test
     void mapsSingleNameTargetPathAsAColumnAlias() {
-        Mapper mapper = CompiledNodes.of(Mapper.class);
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
 
         assertEquals("Ada", mapper.rootPath(result(new String[]{"full_name"}, new Object[]{"Ada"})).name);
         assertEquals("Grace", mapper.rootPointer(result(new String[]{"full_name"}, new Object[]{"Grace"})).name);

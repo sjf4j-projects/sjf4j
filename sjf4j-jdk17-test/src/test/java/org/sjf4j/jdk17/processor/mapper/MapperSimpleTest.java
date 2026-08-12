@@ -18,7 +18,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToNoArgsBeanWithRenameIgnoreAndInlineCompute() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         UserDto dto = mapper.toDto(person);
@@ -32,7 +32,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToRecordAndConstructorTargets() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         NameRecord record = mapper.toRecord(person);
@@ -46,7 +46,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsWithLocalHelperCompute() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         UserDto dto = mapper.withHelper(new Person("Ada", "Lovelace", 36));
 
@@ -55,7 +55,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsSameNamePropertiesWithoutMappingAnnotations() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         SameDto dto = mapper.sameNames(new Person("Ada", "Lovelace", 36));
 
@@ -66,7 +66,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJsonPathAndJsonPointerSources() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
         JsonObject object = new JsonObject();
         object.put("name", "JsonObjectName");
 
@@ -95,7 +95,7 @@ public class MapperSimpleTest {
 
     @Test
     public void treatsDottedMapKeyAsPlainPropertyName() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         NameOnly dto = mapper.dottedKey(Map.of("profile.name", "literal-key"));
 
@@ -104,7 +104,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsNullablePathSourceToReferenceTarget() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         AgeDto dto = mapper.age(new AgeSource(new AgeBox(42)));
 
@@ -113,7 +113,7 @@ public class MapperSimpleTest {
 
     @Test
     public void createMapperSetsNullPathValuesByDefault() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         ReferenceDefaultsDto dto = mapper.setNulls(new DefaultsSource(null, null, null));
 
@@ -124,7 +124,7 @@ public class MapperSimpleTest {
 
     @Test
     public void groupedSetPathSourcesAssignNullsForMissingParents() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         GroupedDefaultsDto dto = mapper.groupedSet(new GroupedSource(null));
         assertNull(dto.first);
@@ -137,7 +137,7 @@ public class MapperSimpleTest {
 
     @Test
     public void groupedIgnorePathSourcesSkipMissingParentsAndNullLeaves() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         GroupedDefaultsDto missingParent = mapper.groupedIgnore(new GroupedSource(null));
         assertEquals("default-first", missingParent.first);
@@ -150,7 +150,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParameters() {
-        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -175,7 +175,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToRecordTarget() {
-        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -194,7 +194,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToConstructorTarget() {
-        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         MultiCtor ctor = mapper.toCtor(null, address);
@@ -207,7 +207,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsPrimitiveConstructorValueOnlyThroughExplicitCompute() {
-        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         assertEquals(7, mapper.toAgeRecord(new Score(7), address).age());
@@ -217,7 +217,7 @@ public class MapperSimpleTest {
 
     @Test
     public void thirdPartyPropertyNamesDriveRecordTargetAutoMapping() {
-        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
         ThirdPartyRecord record = mapper.thirdPartyNames(Map.of(
                 "first_name", "Ada",

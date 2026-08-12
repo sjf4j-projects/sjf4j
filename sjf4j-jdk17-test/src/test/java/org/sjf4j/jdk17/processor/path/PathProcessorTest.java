@@ -15,7 +15,7 @@ public class PathProcessorTest {
 
     @Test
     public void registryCreatesInterface() {
-        BasicNodes nodes = CompiledNodes.of(BasicNodes.class);
+        BasicNodes nodes = CompiledNodes.instanceOf(BasicNodes.class);
 
         assertEquals("Hangzhou", nodes.getCityName(new User(new City("Hangzhou"))));
         assertNull(nodes.getCityName(new User(null)));
@@ -24,14 +24,14 @@ public class PathProcessorTest {
 
     @Test
     public void registryRejectsInvalidTargets() {
-        JsonException nullType = assertThrows(JsonException.class, () -> CompiledNodes.of(null));
+        JsonException nullType = assertThrows(JsonException.class, () -> CompiledNodes.instanceOf(null));
         assertTrue(nullType.getMessage().contains("non-null interface type"), nullType.getMessage());
 
-        JsonException notInterface = assertThrows(JsonException.class, () -> CompiledNodes.of(NotInterface.class));
+        JsonException notInterface = assertThrows(JsonException.class, () -> CompiledNodes.instanceOf(NotInterface.class));
         assertTrue(notInterface.getMessage().contains("requires an interface type"), notInterface.getMessage());
         assertTrue(notInterface.getMessage().contains(NotInterface.class.getName()), notInterface.getMessage());
 
-        JsonException notCompiled = assertThrows(JsonException.class, () -> CompiledNodes.of(NotCompiled.class));
+        JsonException notCompiled = assertThrows(JsonException.class, () -> CompiledNodes.instanceOf(NotCompiled.class));
         assertTrue(notCompiled.getMessage().contains("Cannot find generated SJF4J implementation"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains("@CompiledPath or @CompiledMapper"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains(NotCompiled.class.getName() + "_Impl"), notCompiled.getMessage());
