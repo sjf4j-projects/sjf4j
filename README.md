@@ -437,7 +437,6 @@ StudentDto studentDto = mapper.toDto(student);
 
 For JDBC results, `@CompiledJdbcMapper` generates mappers
 that bind `ResultSet` data directly into POJOs or maps at compile time.
-(This also requires the `sjf4j-processor` annotation processor; see the setup instructions above.)
 ```java
 @CompiledJdbcMapper
 interface UserJdbcMapper {
@@ -445,8 +444,6 @@ interface UserJdbcMapper {
     User user(ResultSet resultSet);
 }
 ```
-
-`@CompiledMapper` supports direct property mapping, JSON-style paths, computed values, and nested mappings.
 
 Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
 

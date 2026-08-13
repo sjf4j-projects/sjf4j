@@ -176,18 +176,18 @@ public class CompiledJdbcMapperBenchmark {
     }
 
     @Benchmark
-    public List<User> users_sjf4j_indexed(BenchmarkState state) throws SQLException {
+    public List<User> users_sjf4j(BenchmarkState state) throws SQLException {
         return state.mapper.users(state.resultSet);
     }
 
     @Benchmark
-    public List<User> users_handwritten_columns(BenchmarkState state) throws SQLException {
+    public List<User> users_handwritten_by_label(BenchmarkState state) throws SQLException {
         ArrayList<User> users = new ArrayList<User>();
         while (state.resultSet.next()) {
             User user = new User();
-            user.setId(Nodes.toInt(state.resultSet.getObject("id")));
-            user.setName(Nodes.toString(state.resultSet.getObject("name")));
-            user.setBalance(Nodes.toBigDecimal(state.resultSet.getObject("balance")));
+            user.setId(state.resultSet.getInt("id"));
+            user.setName(state.resultSet.getString("name"));
+            user.setBalance(state.resultSet.getBigDecimal("balance"));
             users.add(user);
         }
         return users;
@@ -195,72 +195,16 @@ public class CompiledJdbcMapperBenchmark {
 
     /** Ideal lower bound: indexes are hard-coded from the known query projection. */
     @Benchmark
-    public List<User> users_handwritten_indexes_ideal_lower_bound(BenchmarkState state) throws SQLException {
+    public List<User> users_handwritten_by_index(BenchmarkState state) throws SQLException {
         ArrayList<User> users = new ArrayList<User>();
         while (state.resultSet.next()) {
             User user = new User();
-            user.setId(Nodes.toInt(state.resultSet.getObject(1)));
-            user.setName(Nodes.toString(state.resultSet.getObject(2)));
-            user.setBalance(Nodes.toBigDecimal(state.resultSet.getObject(3)));
+            user.setId(state.resultSet.getInt(1));
+            user.setName(state.resultSet.getString(2));
+            user.setBalance(state.resultSet.getBigDecimal(3));
             users.add(user);
         }
         return users;
-    }
-
-    /** Fair indexed baseline: resolve the current result set's columns once, then use indexes. */
-    @Benchmark
-    public List<User> users_handwritten_resolved_indexes(BenchmarkState state) throws SQLException {
-        ArrayList<User> users = new ArrayList<User>();
-        if (!state.resultSet.next()) return users;
-        int id = state.resultSet.findColumn("id");
-        int name = state.resultSet.findColumn("name");
-        int balance = state.resultSet.findColumn("balance");
-        do {
-            User user = new User();
-            user.setId(Nodes.toInt(state.resultSet.getObject(id)));
-            user.setName(Nodes.toString(state.resultSet.getObject(name)));
-            user.setBalance(Nodes.toBigDecimal(state.resultSet.getObject(balance)));
-            users.add(user);
-        } while (state.resultSet.next());
-        return users;
-    }
-
-    @Benchmark
-    public List<Map<String, Object>> maps_sjf4j_cached_metadata(BenchmarkState state) throws SQLException {
-        return state.mapper.maps(state.resultSet);
-    }
-
-    @Benchmark
-    public List<Map<String, Object>> maps_handwritten_columns(BenchmarkState state) throws SQLException {
-        ArrayList<Map<String, Object>> maps = new ArrayList<Map<String, Object>>();
-        while (state.resultSet.next()) {
-            ResultSetMetaData metadata = state.resultSet.getMetaData();
-            Map<String, Object> map = new LinkedHashMap<String, Object>();
-            for (int i = 1, count = metadata.getColumnCount(); i <= count; i++) {
-                map.put(metadata.getColumnLabel(i), state.resultSet.getObject(i));
-            }
-            maps.add(map);
-        }
-        return maps;
-    }
-
-    @Benchmark
-    public List<Map<String, Object>> maps_handwritten_cached_columns(BenchmarkState state) throws SQLException {
-        ResultSetMetaData metadata = state.resultSet.getMetaData();
-        int columnCount = metadata.getColumnCount();
-        String[] columns = new String[columnCount];
-        for (int i = 0; i < columnCount; i++) {
-            columns[i] = metadata.getColumnLabel(i + 1);
-        }
-        ArrayList<Map<String, Object>> maps = new ArrayList<Map<String, Object>>();
-        while (state.resultSet.next()) {
-            Map<String, Object> map = new LinkedHashMap<String, Object>();
-            for (int i = 0; i < columnCount; i++) {
-                map.put(columns[i], state.resultSet.getObject(i + 1));
-            }
-            maps.add(map);
-        }
-        return maps;
     }
 
     /**
@@ -297,6 +241,27 @@ public class CompiledJdbcMapperBenchmark {
         List<User> users = (List<User>) (List<?>) state.mybatisExplicitHandler.handleResultSets(state.select);
         return users;
     }
+
+    @Benchmark
+    public List<Map<String, Object>> maps_handwritten(BenchmarkState state) throws SQLException {
+        ArrayList<Map<String, Object>> maps = new ArrayList<Map<String, Object>>();
+        ResultSetMetaData metadata = state.resultSet.getMetaData();
+        int columnCount = metadata.getColumnCount();
+        while (state.resultSet.next()) {
+            Map<String, Object> map = new LinkedHashMap<String, Object>();
+            for (int i = 1; i <= columnCount; i++) {
+                map.put(metadata.getColumnLabel(i), state.resultSet.getObject(i));
+            }
+            maps.add(map);
+        }
+        return maps;
+    }
+
+    @Benchmark
+    public List<Map<String, Object>> maps_sjf4j(BenchmarkState state) throws SQLException {
+        return state.mapper.maps(state.resultSet);
+    }
+
 
     @CompiledJdbcMapper
     public interface JdbcMapper {
