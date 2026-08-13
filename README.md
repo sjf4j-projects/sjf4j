@@ -47,7 +47,7 @@ Maven:
 ```
 
 <details>
-<summary><strong>Optional: Configure JSON/YAML parsers</strong></summary>
+<summary><strong>Optional: Configure JSON / YAML parsers</strong></summary>
 
 SJF4J automatically detects available parser implementations at runtime.  
 Backends can also be configured explicitly when needed.
@@ -58,7 +58,7 @@ Backends can also be configured explicitly when needed.
   - If none are available, SJF4J falls back to a built-in simple JSON parser (functional but slower).
   - Or configure a backend explicitly:
     ```java
-    Sjf4j.builder().jsonFacadeProvider(Jackson2JsonFacade.provider()).build();
+    Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(Jackson2JsonFacade.provider()).build();
     ```
 
 - **YAML**
@@ -100,19 +100,35 @@ implementation("org.yaml:snakeyaml:{snakeyaml-version}")
 ---
 
 <details>
-<summary><strong>Optional: Enable annotation processor support</strong></summary>
+<summary><strong>Optional: Add feature modules and annotation processing</strong></summary>
 
-For frequently executed JSON-path access or object mapping, SJF4J provides
-compile-time code generation support through `sjf4j-processor`.
+**JSON Schema validation**
 
-The processor generates direct implementations for annotated
-`@CompiledPath`, `@CompiledMapper`, and `@CompiledJdbcMapper` interfaces,
-reducing runtime overhead by avoiding reflection, metadata lookup, and
-interpreted path/mapping execution.
+JSON Schema validation is provided by the separate `sjf4j-schema` module.
 
-The processor is required only at compile time; applications only need the
-regular `sjf4j` runtime dependency.
+Gradle:
+```groovy
+implementation("org.sjf4j:sjf4j-schema:{sjf4j-version}")
+```
 
+Maven:
+```xml
+<dependency>
+    <groupId>org.sjf4j</groupId>
+    <artifactId>sjf4j-schema</artifactId>
+    <version>{sjf4j-version}</version>
+</dependency>
+```
+
+**Annotation processing**
+
+For frequently executed JSON Path access and object mapping, SJF4J provides
+compile-time code generation through `sjf4j-processor`.  
+It generates direct implementations for `@CompiledPath`, `@CompiledMapper`,
+and `@CompiledJdbcMapper` interfaces, avoiding reflection, metadata lookup,
+and interpreted path or mapping execution at runtime.
+
+`sjf4j-processor` is needed only during compilation.  
 Gradle:
 ```groovy
 annotationProcessor("org.sjf4j:sjf4j-processor:{sjf4j-version}")
@@ -136,7 +152,7 @@ Maven (`maven-compiler-plugin`):
 SJF4J lets you work with structured data using JSON semantics, 
 whether the data is represented as JSON text or ordinary Java objects.
 
-### 1. Parse and work with JSON
+### 1. Parse and access JSON data
 
 Start with `JsonObject` when working directly with JSON data:
 ```java
@@ -158,131 +174,152 @@ String name = jo.getString("name");
 int math = jo.getIntByPath("$.scores.math");
 
 jo.putByPath("$.scores.math", 90);
-
 System.out.println(jo.toJson());
 ```
-
 
 ### 2. Bind to Java objects
 
-### 3. Navigate Java objects
-
-
-### 1-minute example
-
-Start with `JsonObject` when you want to parse JSON, access values directly,
-and use JSON-semantic navigation and mutation APIs immediately.
-
-```java
-JsonObject jo = JsonObject.fromJson(
-        "{" +
-        "\"name\":\"Alice\"," +
-        "\"age\":18," +
-        "\"scores\":{\"math\":59}" +
-        "}");
-
-String name = jo.getString("name");
-int age = jo.getInt("age");
-int math = jo.getIntByPath("$.scores.math");
-
-jo.putByPath("$.scores.art", 95);
-
-System.out.println(jo.toJson());
-```
-
-`JsonObject` is one of SJF4J's JSON object representations. Others include:
-- `Map`
-- Standard Java POJOs
-- JOJOs (`JsonObject`-based objects)
-
-
-### 5-minute walkthrough
-
-The following example demonstrates a complete lifecycle for processing structured data:
-```text
-Modeling  →  Binding  →  Navigating  →  Patching  →  Validating  →  Mapping
-```
-
-
-#### Modeling
-
-A standard POJO works out of the box:
+SJF4J can also bind JSON directly to ordinary Java objects.
 ```java
 public class Student { 
     private String name; 
+    private int age; 
     private Map<String, Integer> scores; 
-    private List<Student> friends; 
+    private List<Student> friends;
     
     // getters and setters 
 }
 ```
 
-Or, you can also extend `JsonObject` to create a JOJO, which supports additional dynamic properties while retaining typed fields.
-```java
-public class StudentJojo extends JsonObject {
-    private String name;
-    private Map<String, Integer> scores;
-    private List<Student> friends;
-    
-    // Getters and setters
-}
-```
-
-Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
-
-
-#### Binding
-
-Use `Sjf4j` to bind JSON into Java objects.
-
 ```java
 String json = """
 {
-    "name": "Alice",
-    "scores": {"math": 59, "art": 95},
-    "friends": [
-        {"name": "Bill", "active": true, "scores": {"math": 83}},
-        {"name": "Cindy", "friends": [{"name": "David", "scores": {"math": 95}}]}
-    ],
-    "age": 18
+  "name": "Alice",
+  "age": 18,
+  "scores": {
+    "math": 59,
+    "art": 95
+  }
 }
 """;
-
-Student student = new Sjf4j().fromJson(json, Student.class);
+Sjf4j sjf4j = new Sjf4j();
+Student student = sjf4j.fromJson(json, Student.class);
 ```
 
-Once bound, SJF4J works directly on the Java object graph:
+The result is a regular Java object and can be used normally:
 ```java
-student.getName();                  // Alice
-
-student.getInt("age");              // 18
+student.getName();                  // "Alice" 
+student.getScores().get("math");    // 59
 ```
+
+### 3. Work with Java object graphs
+
+The same object can be queried and modified with JSON Path:
+```java
+JsonPath path = JsonPath.parse("$.scores.math");
+path.getInt(student);               // 59
+path.put(student, 60);              // 59 -> 60
+```
+
+JSON Path also works across nested objects and collections:
+```java
+JsonPath.parse("$.scores[?@ >= 90].count()").eval(student, Integer.class); 
+// 1
+```
+
+No intermediate JSON tree is required — SJF4J operates directly on Java object graphs, 
+not only for navigation but also for patching, validating, mapping, and more.
+
+
+## Capabilities
+
+SJF4J provides a unified programming model across the main stages of structured-data processing:
+```text
+Modeling  →  Binding  →  Navigating  →  Patching  →  Validating  →  Mapping
+```
+
+### Modeling
+
+SJF4J is built around a unified structural model called the **Object-Based Node Tree (OBNT)**.
+
+- All structured data in SJF4J are represented as OBNT nodes.
+- All nodes in OBNT are native Java objects rather than a dedicated AST.
+- All APIs operate directly on those objects.
+- All APIs follow, or extend, standard JSON semantics.
+
+
+```mermaid
+graph BT
+  node(("Object-Based <br/> Node Tree"))
+  node --> object(("JSON Object <br/> { }"))
+  node --> array(("JSON Array <br/> [ ]"))
+  node --> value(("JSON Value <br/> ..."))
+```
+
+As a result, JSON-oriented operations can be applied directly to existing
+Java object graphs without first converting them into an intermediate JSON tree.
+
+---
+
+A regular POJO provides a typed, closed object model, 
+while a **JOJO (JSON-Oriented Java Object)** extends it with dynamic properties:
+```java
+public class StudentJojo extends JsonObject { 
+    private String name; 
+    private Map<String, Integer> scores;
+    private List<Student> friends;
+    
+    // getters and setters 
+}
+```
+Use POJO for well-defined, closed domain models.   
+Use JOJO when typed fields need to coexist with undeclared properties, 
+such as API payloads, configuration objects, integration models, or SQL result bindings.
+  
+Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
+
+
+### Binding
+
+SJF4J provides a unified binding model across JSON, YAML, Java Properties, and in-memory Java objects.
+
+```java
+Sjf4j sjf4j = new Sjf4j();
+
+User user = sjf4j.fromJson(json, User.class);
+String yaml = sjf4j.toYamlString(user);
+
+Map<String, Object> map = sjf4j.fromNode(user, new TypeReference<Map<String, Object>>() {});
+```
+
+The same binding model works with raw nodes, POJOs, JOJOs, deep generic types, 
+and custom value types, allowing data to move directly between external formats and Java object graphs.
 
 Learn more → [Binding (Multi-Format)](https://sjf4j.org/docs/binding)
 
-#### Navigating
+### Navigating
 
-Navigate and mutate object graphs using JSON Path (RFC 9535) or JSON Pointer (RFC 6901).
+Query, navigate, and mutate Java object graphs using JSON Path (RFC 9535) and JSON Pointer (RFC 6901).
+
 ```java
-JsonPath.parse("$.scores.math").getIntByPath(student);
+JsonPath.parse("$.scores.math").getInt(student);
 // 59
 
-JsonPath.parse("$..friends[?@.scores.math >= 90].name").findByPath(student, String.class);      
+JsonPath.parse("$..friends[?@.scores.math >= 90].name").find(student, String.class);      
 // ["David"]
 
-JsonPath.parse("/friends/0/scores/music").ensurePutByPath(student, 100);
+JsonPath.parse("/friends/0/scores/music").ensurePut(student, 100);
 // Bill's scores becomes: {"math": 83, "music": 100}
 ```
 
 JOJOs additionally provide shortcut methods:
 ```java
 studentJojo.getIntByPath("$.scores.math");
-studentJojo.findByPath("$..friends[?@.scores.math >= 90].name", String.class);
-studentJojo.ensurePutByPath("/friends/0/scores/music", 100);
 ```
 
-For performance-critical workloads, `@CompiledPath` can generate direct access code at compile time 
-and deliver near hand-written navigation performance.  
+For performance-critical paths, `@CompiledPath` generates direct access code at compile time,
+approaching hand-written access performance:
+This requires the `sjf4j-processor` annotation processor; see the setup instructions above.
 ```java
 @CompiledPath
 interface StudentPath {
@@ -292,11 +329,17 @@ interface StudentPath {
 }
 ```
 
+```java
+StudentPath path = CompiledNodes.instanceOf(StudentPath.class);
+path.getScoresMath(student);
+```
+
 Learn more → [Navigating (JSON Path)](https://sjf4j.org/docs/navigating)
 
-#### Patching
+### Patching
 
-Apply standard-compliant structural updates using JSON Patch (RFC 6902).
+Apply standard structural updates directly to Java object graphs using JSON Patch (RFC 6902).
+
 ```java
 JsonPatch patch = JsonPatch.fromJson("""
 [
@@ -304,12 +347,12 @@ JsonPatch patch = JsonPatch.fromJson("""
     { "op": "add",     "path": "/scores/physics", "value": 91 }
 ]
 """);
-
-patch.apply(student);
 ```
 
-Changes are applied directly to the object graph:
+The patch is applied in place:
 ```java
+patch.apply(student);
+
 student.getName();                              
 // "Alice Zhang"
 
@@ -317,25 +360,22 @@ student.getScores().get("physics");
 // 91
 ```
 
-SJF4J also supports JSON Merge Patch (RFC 7386) and Indexed Merge Patch, a convenient extension for partial array updates.
+SJF4J also supports JSON Merge Patch (RFC 7386) and Indexed Merge Patch for partial array updates.
 
 Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
 
-#### Validating
+### Validating
 
-SJF4J fully supports JSON Schema Draft `2020-12`, `2019-09`, and `draft-07`,
-and can validate Java object graphs directly without first converting them into a dedicated JSON tree.
+Validate Java object graphs directly with JSON Schema, 
+without converting them into an intermediate JSON tree.  
+SJF4J supports JSON Schema `draft-2020-12`, `draft-2019-09`, and `draft-07`.
 
-Example:
 ```java
 JsonSchema schema = JsonSchema.fromJson("""
 {
   "type": "object",
   "properties": {
-    "name": {
-      "type": "string",
-      "minLength": 1
-    },
+    "name": { "type": "string", "minLength": 1 },
     "scores": {
       "type": "object",
       "additionalProperties": {
@@ -349,30 +389,14 @@ JsonSchema schema = JsonSchema.fromJson("""
 """);
 
 SchemaPlan plan = schema.createPlan();
-
 ValidationResult result = plan.validate(student);
-
-boolean valid = result.isValid();
 ```
 
-You can also use `@ValidJsonSchema` for Bean Validation style integration.
+For Bean Validation integration, annotate a model with `@ValidJsonSchema`:
 ```java
 @ValidJsonSchema("""
 {
   "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "minLength": 1
-    },
-    "scores": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "integer",
-        "minimum": 0
-      }
-    }
-  },
   "required": ["name"]
 }
 """)
@@ -381,97 +405,100 @@ public class Student {
 }
 ```
 
-Need Java models from a schema?  
-You can also use the online [Schema-to-Java Generator](https://sjf4j.org/generator) to generate Java models directly from JSON Schema.
+JSON Schema can also be used in the opposite direction through the online
+[Schema-to-Java Generator](https://sjf4j.org/generator).
 
 Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 
-#### Mapping
 
-Generate object mappers at compile time using `@CompiledMapper`.
+### Mapping
+
+Generate object mappers at compile time using `@CompiledMapper`.  
+(This requires the `sjf4j-processor` annotation processor; see the setup instructions above.)
 ```java
 @CompiledMapper
 public interface StudentMapper {
     
     @Mapping(target = "studentName", source = "name")
-    @Mapping(target = "totalScore", sources = "scores",
-            compute = "scores -> scores.values().stream().mapToInt(i -> i).sum()")
+    @Mapping(
+            target = "totalScore", 
+            sources = "scores",
+            compute = "scores -> scores.values().stream().mapToInt(i -> i).sum()"
+    )
     StudentDto toDto(Student student);
 }
 ```
 
-Use it:
+Use the generated mapper:
 ```java
-StudentMapper mapper = CompiledNodes.of(StudentMapper.class);
-
+StudentMapper mapper = CompiledNodes.instanceOf(StudentMapper.class);
 StudentDto studentDto = mapper.toDto(student);
 ```
 
-`@CompiledMapper` supports direct field mapping, JSON-style paths, computed fields, and nested mappings.
+For JDBC results, `@CompiledJdbcMapper` generates mappers
+that bind `ResultSet` data directly into POJOs or maps at compile time.
+(This also requires the `sjf4j-processor` annotation processor; see the setup instructions above.)
+```java
+@CompiledJdbcMapper
+interface UserJdbcMapper {
+    @Mapping(target = "name", source = "full_name")
+    User user(ResultSet resultSet);
+}
+```
 
-And `@CompiledJdbcMapper` brings mapping to `java.sql.ResultSet`,
-compiling cursor-consuming results or an already-positioned current row (`ResultSet, int`) directly into POJOs or maps.
+`@CompiledMapper` supports direct property mapping, JSON-style paths, computed values, and nested mappings.
 
 Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
-
-## Why Does This Work?
-
-SJF4J is built around a unified structural model called the **Object-Based Node Tree** ([OBNT](https://sjf4j.org/docs/modeling)).
-- All structured data are mapped into OBNT.
-- All nodes in OBNT are native Java objects rather than a dedicated AST.
-- All APIs operate directly on those objects.
-- All APIs follow or extend standard JSON semantics.
-
-As a result, SJF4J can apply JSON-semantic operations directly to your existing Java object graph 
-without first converting it into a dedicated JSON tree.
-
-Learn more → [Architecture](https://sjf4j.org/docs/architecture)
 
 
 ## Benchmarks
 
-SJF4J combines a unified JSON-semantic programming model with top-tier performance across a wide range of workloads, 
-as demonstrated by JMH benchmarks and independent third-party evaluations.
+SJF4J is designed for high performance across the full structural-processing stack,
+from object access and binding to navigation, validation, and compile-time mapping.  
+Its performance is measured through JMH benchmarks and independent third-party evaluations.
 
 **Reflection Access Benchmark**  
-Lambda-based accessor generation minimizes reflection overhead,
-delivering performance close to direct field or method invocation.
+Generated lambda accessors reduce reflective access overhead to near direct field or method invocation.
 
 **JSON Binding Benchmark**  
-SJF4J operates on top of underlying JSON parsers while adding structural
-capabilities and flexible binding annotations.  
-In most cases, the additional overhead remains modest compared to native
-JSON libraries.
+SJF4J adds unified structural semantics and flexible binding on top of existing JSON parsers
+while remaining close to native backend performance in typical workloads.
 
 **JSON Path Navigating Benchmark**  
-`JsonPath` provides high-performance querying and mutation operations.  
-For performance-critical paths, `@CompiledPath` generates direct access code 
-and can be tens of times faster than interpreted path evaluation.
+`JsonPath` provides high-performance interpreted querying and mutation.  
+For hot paths, `@CompiledPath` generates direct Java access code and can outperform interpreted navigation by tens of times.
 
 **JSON Schema Validating Benchmark**  
-SJF4J fully supports JSON Schema Draft `2020-12`, `2019-09`, and `draft-07`.  
-It consistently ranks among the top-performing Java implementations in
+SJF4J supports JSON Schema Draft `2020-12`, `2019-09`, and `draft-07`
+and ranks #1 among JVM JSON Schema validators in independent
 [Creek Service](https://www.creekservice.org/json-schema-validation-comparison/)
-and [Bowtie](https://bowtie.report/) benchmarks.
+and [Bowtie](https://bowtie.report/) evaluations.
 
 **Object-to-object Mapping Benchmark**  
-`@CompiledMapper` delivers performance close to hand-written mapping code 
-and ranks among the fastest Java mapping frameworks in the [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark).
+`@CompiledMapper` generates direct mapping code with performance close to hand-written implementations.  
+In the independent [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark),
+SJF4J ranks #1 among tested mapping frameworks.
 
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
+
+
+## Why SJF4J?
+
+Java already has excellent JSON parsers, and SJF4J is designed to build on them rather than replace them.
+
+JSON is not only a data format, but also a data model with a rich ecosystem of standards and specifications.  
+SJF4J focuses on the layer beyond parsing: a JSON-oriented programming model for applying JSON standards and semantics.
+
+SJF4J gives you:
+- **Backend independence** — use Jackson, Gson, Fastjson2, JSON-P, or other supported providers.
+- **One programming model** — bind, navigate, patch, validate, and map through the same structural model.
+- **Standards-based semantics** — reuse JSON Path, JSON Pointer, JSON Patch, JSON Merge Patch, and JSON Schema across different Java representations.
+- **A path to static performance** — compile frequently used navigation and mapping operations into direct Java access code.
 
 
 ## Contributing
 
 Contributions of all kinds are welcome — including code, documentation, bug reports,
 examples, benchmarks, ideas, and feedback.    
-To get started, please [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
 
-
----
-JSON is a widely adopted data model with a rich ecosystem of standards and specifications.
-
-As Java evolves toward built-in JSON support — [JEP 540: Simple JSON API (Incubator)](https://openjdk.org/jeps/540) —  
-the next question is not just how to parse JSON, but how to apply JSON standards and semantics in application development.
-
-SJF4J focuses on this next layer: a JSON-oriented programming model for JSON documents and Java object graphs.
+If you'd like to contribute or discuss an idea, [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
