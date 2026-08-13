@@ -3,6 +3,10 @@ package org.sjf4j.jdk17.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapper.CompiledMapper;
+import org.sjf4j.annotation.mapper.Mapping;
+import org.sjf4j.annotation.mapper.MappingIfParentPresent;
+import org.sjf4j.annotation.mapper.EnsureMapping;
+import org.sjf4j.annotation.mapper.MappingCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.BindingException;
@@ -191,6 +195,20 @@ public class MapperObjectTest {
     }
 
     @Test
+    public void copiesDynamicJojoEntriesFromEachNonNullMultiSource() {
+        JojoMapper mapper = CompiledNodes.instanceOf(JojoMapper.class);
+
+        assertEquals("second", mapper.createDynamicMulti(null, Map.of("second", "second")).getNode("second"));
+        assertEquals("first", mapper.createDynamicMulti(Map.of("first", "first"), null).getNode("first"));
+
+        DynamicOnly target = new DynamicOnly();
+        mapper.updateDynamicMulti(target, null, Map.of("second", "second"));
+        mapper.updateDynamicMulti(target, Map.of("first", "first"), null);
+        assertEquals("second", target.getNode("second"));
+        assertEquals("first", target.getNode("first"));
+    }
+
+    @Test
     public void projectsObjectRuntimeMapToJsonObjectOnly() {
         ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
         JsonObject nested = JsonObject.of("city", "London");
@@ -246,6 +264,116 @@ public class MapperObjectTest {
         assertEquals("v", target.getNode("unknown"));
     }
 
+    @Test
+    public void mappingCreatorJojoImplementationReceivesUnconsumedExtras() {
+        ObjectMapper mapper = CompiledNodes.instanceOf(ObjectMapper.class);
+
+        CreatorView view = mapper.creatorJojo(Map.of("name", "Ada", "extra", "value"));
+
+        CreatorJojo jojo = (CreatorJojo) view;
+        assertEquals("Ada", jojo.name);
+        assertEquals("value", jojo.getNode("extra"));
+    }
+
+    @Test
+    public void mapsAndUpdatesJojoDeclaredPropertiesPathsAndUnconsumedExtras() {
+        JojoMapper mapper = CompiledNodes.instanceOf(JojoMapper.class);
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("full_name", "Ada");
+        source.put("ignored", "not-an-extra");
+        source.put("dynamic", "path-value");
+        source.put("extra", Long.valueOf(1));
+
+        RichJojo created = mapper.create(source);
+        assertEquals("Ada", created.name);
+        assertEquals("path-value", created.child.getNode("dynamic"));
+        assertEquals(1L, created.getNode("extra"));
+        assertEquals(null, created.getNode("full_name"));
+        assertEquals(null, created.getNode("ignored"));
+        assertEquals(null, created.getNode("dynamic"));
+
+        created.put("retained", "yes");
+        mapper.update(created, Map.of("full_name", "Grace", "extra", Long.valueOf(2), "added", "new"));
+        assertEquals("Grace", created.name);
+        assertEquals(2L, created.getNode("extra"));
+        assertEquals("new", created.getNode("added"));
+        assertEquals("yes", created.getNode("retained"));
+        assertEquals(null, created.getNode("full_name"));
+    }
+
+    @Test
+    public void mapsJsonObjectJojoAndRuntimeMapSourcesToJojo() {
+        JojoMapper mapper = CompiledNodes.instanceOf(JojoMapper.class);
+
+        RichJojo json = mapper.createJson(JsonObject.of("full_name", "Ada", "extra", 1));
+        ChildJojo sourceJojo = new ChildJojo();
+        sourceJojo.put("full_name", "Grace");
+        sourceJojo.put("extra", 2);
+        RichJojo jojo = mapper.createJojo(sourceJojo);
+        RichJojo object = mapper.createObject(Map.of("full_name", "Katherine", "extra", 3));
+
+        assertEquals("Ada", json.name);
+        assertEquals(1, json.getNode("extra"));
+        assertEquals("Grace", jojo.name);
+        assertEquals(2, jojo.getNode("extra"));
+        assertEquals("Katherine", object.name);
+        assertEquals(3, object.getNode("extra"));
+    }
+
+    @Test
+    public void jojoExtrasExcludeDeclaredKeysAndConsumeAllMappingSources() {
+        JojoMapper mapper = CompiledNodes.instanceOf(JojoMapper.class);
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("full_name", "Ada");
+        source.put("name", "must-not-overwrite");
+        source.put("ignored", "no");
+        source.put("dynamic", "path");
+        source.put("ensured", "ensure");
+        source.put("computed", "compute");
+        source.put("extra", "yes");
+
+        RichJojo target = mapper.consume(source);
+        assertEquals("Ada", target.name);
+        assertEquals("path", target.child.getNode("dynamic"));
+        assertEquals("ensure", target.child.getNode("ensured"));
+        assertEquals("compute", target.child.getNode("computed"));
+        assertEquals("yes", target.getNode("extra"));
+        assertEquals(false, target._dynamicMap().containsKey("name"));
+        assertEquals(null, target.getNode("full_name"));
+        assertEquals(null, target.getNode("ignored"));
+        assertEquals(null, target.getNode("dynamic"));
+        assertEquals(null, target.getNode("ensured"));
+        assertEquals(null, target.getNode("computed"));
+    }
+
+    @Test
+    public void ignoredRenamedMappingConsumesItsSourceExtra() {
+        JojoMapper mapper = CompiledNodes.instanceOf(JojoMapper.class);
+
+        RichJojo target = mapper.ignoreRenamed(Map.of("full_name", "Ada", "extra", "yes"));
+
+        assertEquals(null, target.name);
+        assertEquals(null, target.getNode("full_name"));
+        assertEquals("yes", target.getNode("extra"));
+    }
+
+    @Test
+    public void jojoSourceCopiesOnlyDynamicBackingEntriesAndSupportsDynamicOnlyUpdate() {
+        JojoMapper mapper = CompiledNodes.instanceOf(JojoMapper.class);
+        SourceJojo source = new SourceJojo();
+        source.typed = "typed";
+        source.put("extra", "dynamic");
+        RichJojo created = mapper.copyDynamic(source);
+        assertEquals("dynamic", created.getNode("extra"));
+        assertEquals(null, created.getNode("typed"));
+
+        DynamicOnly target = new DynamicOnly();
+        target.put("retained", "yes");
+        mapper.dynamicUpdate(target, Map.of("added", "new"));
+        assertEquals("yes", target.getNode("retained"));
+        assertEquals("new", target.getNode("added"));
+    }
+
     public enum Status { ACTIVE }
 
     public record OrderDto(Long id, Status status, CustomerDto customer, AddressDto address) {}
@@ -296,6 +424,25 @@ public class MapperObjectTest {
         public Long id() { return id; }
     }
 
+    public interface CreatorView {}
+
+    public static final class CreatorJojo extends JsonObject implements CreatorView {
+        public String name;
+
+        public CreatorJojo() {}
+    }
+
+    public static final class RichJojo extends JsonObject {
+        public String name;
+        public ChildJojo child = new ChildJojo();
+    }
+
+    public static final class ChildJojo extends JsonObject {}
+
+    public static final class SourceJojo extends JsonObject { public String typed; }
+
+    public static final class DynamicOnly extends JsonObject {}
+
     @CompiledMapper
     public interface ObjectMapper {
         OrderDto order(JsonObject source);
@@ -325,10 +472,57 @@ public class MapperObjectTest {
         ProjectionJojo jojo(Map<String, Object> source);
 
         CtorJojo ctorJojo(Map<String, Object> source);
+
+        @MappingCreator(targetType = CreatorView.class, implementation = CreatorJojo.class)
+        @Mapping(target = "name")
+        CreatorView creatorJojo(Map<String, Object> source);
     }
 
     @CompiledMapper
     public interface HolderMapper {
         ProjectionHolder holder(ProjectionWrapper source);
+    }
+
+    @CompiledMapper
+    public interface JojoMapper {
+        @Mapping(target = "name", source = "full_name")
+        @Mapping(target = "ignored", ignore = true)
+        @Mapping(target = "child", ignore = true)
+        @Mapping(target = "$.child.dynamic", source = "dynamic")
+        RichJojo create(Map<String, Object> source);
+
+        @Mapping(target = "name", source = "full_name")
+        @Mapping(target = "child", ignore = true)
+        void update(RichJojo target, Map<String, Object> source);
+
+        @Mapping(target = "name", source = "full_name")
+        @Mapping(target = "child", ignore = true)
+        RichJojo createJson(JsonObject source);
+
+        @Mapping(target = "name", source = "full_name")
+        @Mapping(target = "child", ignore = true)
+        RichJojo createJojo(ChildJojo source);
+
+        @Mapping(target = "name", source = "full_name")
+        @Mapping(target = "child", ignore = true)
+        RichJojo createObject(Object source);
+
+        @Mapping(target = "name", source = "full_name")
+        @Mapping(target = "ignored", ignore = true)
+        @MappingIfParentPresent(target = "$.child.dynamic", source = "dynamic")
+        @EnsureMapping(target = "$.child.ensured", source = "ensured")
+        @Mapping(target = "$.child.computed", sources = "computed", compute = "(computed) -> computed")
+        RichJojo consume(Map<String, Object> source);
+
+        @Mapping(target = "name", source = "full_name", ignore = true)
+        RichJojo ignoreRenamed(Map<String, Object> source);
+
+        RichJojo copyDynamic(SourceJojo source);
+
+        void dynamicUpdate(DynamicOnly target, Map<String, Object> source);
+
+        DynamicOnly createDynamicMulti(Map<String, Object> first, Map<String, Object> second);
+
+        void updateDynamicMulti(DynamicOnly target, Map<String, Object> first, Map<String, Object> second);
     }
 }

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added compile-time `@CompiledJdbcMapper` generation under `org.sjf4j.annotation.mapper.jdbc` for direct `ResultSet` mapping to single targets, `List` results, and `Map<String, Object>` rows. POJO mappings use result columns by default and support `@Mapping` result column aliases, JDBC temporal conversions, explicit SQL-`NULL` handling.
 - Added JDBC-specific `@JdbcMapperOptions` and its result and column-projection policies under `org.sjf4j.annotation.mapper.jdbc`.
 - Added framework-neutral current-row JDBC mapper methods with the signature `T method(ResultSet, int)`. They map the already-positioned row without advancing or checking the cursor.
+- Added `@CompiledJdbcMapper` JOJO result support: declared properties use JDBC typed mappings and unconsumed columns are retained as raw dynamic entries.
 - Added JMH-only H2, Spring, and MyBatis comparison benchmarks for compiled JDBC mapping; these external benchmark dependencies are not production runtime features.
 
 ### Breaking Changes

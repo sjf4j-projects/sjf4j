@@ -181,7 +181,6 @@ public class MapperProcessorTest {
                 + "@CompiledJdbcMapper interface Generic<T> { String x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface MethodGeneric { <T> String x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface Bad { class P { public String ok; public final String required; public P(String required){this.required=required;} } @Mapping(target=\"missing\",source=\"x\") P unknown(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface BadCombination { class P { public String ok; public P(){} } @Mapping(target=\"ok\",ignore=true,source=\"x\") P combination(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface BadCompute { class P { public String value; public P(){} } @Mapping(target=\"value\",compute=\"this::convert\") P map(ResultSet rs); default String convert(Object value) { return \"x\"; } }"
                 + "@CompiledMapper @CompiledJdbcMapper interface Both { String x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface Unsupported { @MapperOptions(using=\"convert\") String x(ResultSet rs); }"
@@ -198,14 +197,13 @@ public class MapperProcessorTest {
         assertTrue(text.contains("Inherited abstract mapper methods"));
         assertTrue(text.contains("must not declare type parameters"));
         assertTrue(text.contains("target is not writable"));
-        assertTrue(text.contains("@Mapping.ignore cannot"));
         assertTrue(text.contains("supports compute only as this::helper with exactly one sources entry"), text);
         assertTrue(text.contains("both @CompiledMapper and @CompiledJdbcMapper"));
         assertEquals(text.indexOf("both @CompiledMapper and @CompiledJdbcMapper"), text.lastIndexOf("both @CompiledMapper and @CompiledJdbcMapper"));
         assertTrue(text.contains("@MapperOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
         assertTrue(text.contains("singleResult is supported only on non-List"));
         assertTrue(text.contains("columnProjection=PRESENT_ONLY requires a mutable POJO target"), text);
-        assertTrue(text.contains("columnProjection is supported only on POJO"), text);
+        assertTrue(text.contains("columnProjection is supported only on POJO or JOJO"), text);
         assertTrue(text.contains("current-row methods do not support List results"), text);
         assertTrue(text.contains("Inherited abstract mapper methods are not supported"), text);
     }
@@ -301,6 +299,28 @@ public class MapperProcessorTest {
         String generated = jdbcGeneratedSource(source);
         assertEquals(1, countOccurrences(generated, "rs.getMetaData()"), generated);
         assertEquals(1, countOccurrences(generated, "for (int jdbcIndex = 1, jdbcCount = meta.getColumnCount()"), generated);
+    }
+
+    @Test
+    public void jdbcJojoPrecomputesColumnsOutsideTheRowHelper() throws Exception {
+        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
+                + "@CompiledJdbcMapper interface Input { class J extends JsonObject { public String value; public J(){} }"
+                + " @Mapping(target=\"value\",source=\"alias\") @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<J> map(ResultSet rs); }";
+        String generated = jdbcGeneratedSource(source);
+        int helper = generated.indexOf("map_Row(ResultSet rs, int[] propertyColumns, String[] dynamicColumns)");
+        assertTrue(helper >= 0, generated);
+        String helperSource = generated.substring(helper);
+        assertFalse(helperSource.contains("equalsIgnoreCase"), helperSource);
+        assertTrue(generated.contains("jdbcColumn.equalsIgnoreCase(\"alias\")"), generated);
+    }
+
+    @Test
+    public void mapperRejectsNonStringMapKeysForJojoDynamicPropagation() throws Exception {
+        String source = "package testcase; import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapper.CompiledMapper;"
+                + "@CompiledMapper interface Input { class J extends JsonObject { public J(){} } J map(Map<Integer,Object> source); }";
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        assertFalse(compileJdbc(source, diagnostics).booleanValue());
+        assertTrue(diagnosticsToString(diagnostics).contains("JOJO dynamic propagation requires Map<String, ?> source keys"));
     }
 
     @Test
@@ -924,7 +944,7 @@ public class MapperProcessorTest {
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("JsonObject/JsonArray projection and Java array create methods do not support @Mapping customizations"), messages);
         assertTrue(messages.contains("JsonObject projection does not support Map key conversion; source key type must be java.lang.String"), messages);
-        assertTrue(messages.contains("JOJO create from Map does not support Map key conversion; source key type must be java.lang.String"), messages);
+        assertTrue(messages.contains("JOJO dynamic propagation requires Map<String, ?> source keys"), messages);
         assertTrue(messages.contains("Root Map projection from POJO/JsonObject/Object requires target key type java.lang.String"), messages);
         assertTrue(messages.contains("Root collection create source must be a List, Set, Java array, or JsonArray"), messages);
         assertTrue(messages.contains("JsonArray and Java array update targets are unsupported"), messages);

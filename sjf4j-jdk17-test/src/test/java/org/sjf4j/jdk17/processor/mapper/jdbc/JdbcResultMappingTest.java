@@ -2,11 +2,13 @@ package org.sjf4j.jdk17.processor.mapper.jdbc;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
 import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
 import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.JsonObject;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -92,6 +94,57 @@ class JdbcResultMappingTest {
                 assertThrows(BindingException.class, () -> mapper.users(brokenFindColumnResult())).getCause());
     }
 
+    @Test
+    void mapsJojoPropertiesAndPreservesUnconsumedColumnsDynamically() {
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+
+        Jojo one = mapper.jojo(result(new String[]{"full_name", "age", "extra", "extra"},
+                new Object[]{"Ada", 36, "first", "last"}));
+        assertEquals("Ada", one.name);
+        assertEquals(36, one.age);
+        assertEquals("last", one.getNode("extra"));
+        assertEquals(null, one.getNode("full_name"));
+
+        List<Jojo> list = mapper.jojos(result(new String[]{"full_name", "age", "extra"},
+                new Object[]{"Ada", 36, "one"}, new Object[]{"Grace", 40, "two"}));
+        assertEquals(2, list.size());
+        assertEquals("two", list.get(1).getNode("extra"));
+
+        int[] nextCalls = {0};
+        Jojo current = mapper.currentJojo(currentRowResult(new String[]{"full_name", "age", "extra"}, nextCalls,
+                "Katherine", 41, "current"), 7);
+        assertEquals("Katherine", current.name);
+        assertEquals("current", current.getNode("extra"));
+        assertEquals(0, nextCalls[0]);
+    }
+
+    @Test
+    void mapsOnlyPresentJojoPropertiesAndKeepsOtherColumnsDynamic() {
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+
+        Jojo jojo = mapper.presentJojo(result(new String[]{"FULL_NAME", "extra", "full_name"},
+                new Object[]{"Ada", "first", "Grace"}));
+
+        assertEquals("Ada", jojo.name);
+        assertEquals(7, jojo.age);
+        assertEquals("first", jojo.getNode("extra"));
+        assertEquals(null, jojo.getNode("FULL_NAME"));
+        assertEquals(null, jojo.getNode("full_name"));
+    }
+
+    @Test
+    void ignoredRenamedMappingConsumesItsJdbcColumn() {
+        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+
+        Jojo jojo = mapper.ignoredJojo(result(new String[]{"full_name", "age", "extra"},
+                new Object[]{"Ada", 36, "yes"}));
+
+        assertEquals(null, jojo.name);
+        assertEquals(36, jojo.age);
+        assertEquals(null, jojo.getNode("full_name"));
+        assertEquals("yes", jojo.getNode("extra"));
+    }
+
     @CompiledJdbcMapper
     interface Mapper {
         @Mapping(target = "name", source = "full_name")
@@ -115,6 +168,22 @@ class JdbcResultMappingTest {
 
         @JdbcMapperOptions(singleResult = SingleResultPolicy.FIRST)
         User first(ResultSet rs);
+
+        @Mapping(target = "name", source = "full_name")
+        Jojo jojo(ResultSet rs);
+
+        @Mapping(target = "name", source = "full_name")
+        List<Jojo> jojos(ResultSet rs);
+
+        @Mapping(target = "name", source = "full_name")
+        Jojo currentJojo(ResultSet rs, int rowNum);
+
+        @Mapping(target = "name", source = "full_name")
+        @JdbcMapperOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
+        Jojo presentJojo(ResultSet rs);
+
+        @Mapping(target = "name", source = "full_name", ignore = true)
+        Jojo ignoredJojo(ResultSet rs);
     }
 
     public static final class User {
@@ -130,5 +199,13 @@ class JdbcResultMappingTest {
     }
 
     public record UserRecord(String name, int age) {
+    }
+
+    public static final class Jojo extends JsonObject {
+        public String name;
+        public int age = 7;
+
+        public Jojo() {
+        }
     }
 }

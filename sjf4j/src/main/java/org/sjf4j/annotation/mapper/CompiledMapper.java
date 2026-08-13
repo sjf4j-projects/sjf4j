@@ -77,14 +77,15 @@ import java.lang.annotation.Target;
  * sources. Elements are copied as-is with no scalar conversion, preferred
  * mapper use, or deep materialization.</p>
 
- * <p>JOJO root create targets are supported as typed declared properties plus
- * shallow dynamic extras. Declared JOJO properties are initialized using the
- * same no-args/record/unique-constructor creation rules as POJO targets. For
- * {@code Map<String, ?>}, {@code JsonObject}/JOJO, and runtime-{@code Map}
- * {@code Object} sources, first-level source entries that do not match a
- * declared JOJO property are copied into the target via dynamic
- * {@code JsonObject.put(key, value)}. JOJO update methods are still not
- * generated.</p>
+ * <p>JOJO targets support the same declared-property mappings, computations,
+ * ignores, and target-path writes as mutable POJO targets. Object-like sources
+ * ({@code Map<String, ?>}, {@code JsonObject}/JOJO, and declared-{@code Object}
+ * runtime {@code Map}) also copy their unconsumed first-level entries as shallow
+ * dynamic extras. Declared JOJO properties take precedence over dynamic keys;
+ * entries used by automatic, renamed, ignored, or computed mappings are not
+ * copied as extras. JOJO updates use {@link ObjectPolicy#PUT} by default, so
+ * source extras update/add target entries while target entries absent from the
+ * source remain intact.</p>
  *
  * <p>Java array and collection root create targets allocate fresh typed
  * containers and apply the same typed element conversion rules used by

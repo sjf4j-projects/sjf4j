@@ -26,8 +26,8 @@ import java.lang.annotation.Target;
  * position the result set on a row, and generated code neither advances the cursor nor checks another row.
  * The {@code int} row number is ignored during mapping and current-row methods do not support {@code List} results.</p>
  *
- * <p>{@link JdbcMapperOptions#columnProjection()} defaults to requiring every POJO column; {@code PRESENT_ONLY}
- * leaves absent mutable properties at their initialized value. For map results, duplicate result
+ * <p>{@link JdbcMapperOptions#columnProjection()} defaults to requiring every POJO or JOJO declared property;
+ * {@code PRESENT_ONLY} leaves absent mutable properties at their initialized value. For map results, duplicate result
  * columns overwrite the earlier value with the last value.</p>
  *
  * <p>POJO properties use matching result columns by default; {@link Mapping#source()} supplies a
@@ -35,8 +35,10 @@ import java.lang.annotation.Target;
  * and {@code /profile/name} are also supported for mutable POJOs when every intermediate parent already
  * exists; they are not allocated. JDBC mapper SQL exceptions are wrapped in {@code BindingException}.
  * Version 1 supports
- * direct flat mapping to POJOs, records, single-constructor targets, creator-selected implementations, and
- * {@code Map<String, Object>}; it does not support updates, nested JDBC source paths, nested mapping, or arbitrary
+ * direct flat mapping to POJOs, JOJOs, records, single-constructor targets, creator-selected implementations, and
+ * {@code Map<String, Object>}. JOJO declared properties map as POJO properties; unconsumed result columns are retained
+ * as raw JDBC values in its dynamic map (including last-column-wins duplicate labels), while columns consumed by aliases
+ * are not copied dynamically. It does not support updates, nested JDBC source paths, nested mapping, or arbitrary
  * collection targets.</p>
  */
 @Retention(RetentionPolicy.CLASS)

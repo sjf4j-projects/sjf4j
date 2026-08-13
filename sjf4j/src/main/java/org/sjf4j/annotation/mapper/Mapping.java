@@ -72,7 +72,8 @@ public @interface Mapping {
      *
      * <p>When omitted, the target name is used as the source name. For computed
      * mappings use {@link #sources()} instead; {@code source} is for direct
-     * source reads. Cannot be combined with {@link #ignore()}.</p>
+     * source reads. With {@link #ignore()}, it identifies the source entry
+     * consumed by the ignored mapping.</p>
      */
     String source() default "";
 

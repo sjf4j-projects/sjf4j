@@ -65,7 +65,7 @@ public class MapperAnnotationContractTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadContracts.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@Mapping.ignore cannot be combined with source, sources, compute, array, or object"), messages);
+        assertTrue(messages.contains("@Mapping.ignore cannot be combined with sources, compute, array, or object"), messages);
         assertTrue(messages.contains("@Mapping.sources may be used only with @Mapping.compute"), messages);
         assertTrue(messages.contains("@Mapping.array and @Mapping.object are supported only on void update mapper methods"), messages);
         assertTrue(messages.contains("@Mapping.compute supports only expression bodies"), messages);

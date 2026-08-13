@@ -159,10 +159,6 @@ public final class MapperGenerator {
             _genJsonArrayProjection(method, target, method.getReturnType());
             return;
         }
-        if (GeneratorUtil.isJojoType(ctx, method.getReturnType())) {
-            _genJojoCreate(iface, method, target);
-            return;
-        }
 
         TypeElement targetType = GeneratorUtil.asTypeElement(method.getReturnType());
         if (targetType == null) {
@@ -199,6 +195,8 @@ public final class MapperGenerator {
         Map<String, MapperModel.Write> writes = _writes(targetType, method.getReturnType());
         MapperModel.Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
         if (plan == null) return;
+        boolean jojo = GeneratorUtil.isJojoType(ctx, plan.type);
+        if (jojo && !_validateJojoDynamicSources(method, target, sources)) return;
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET_TO_NULL : cfg.nulls();
         if (plan.ctor != null && nulls == NullValuePolicy.IGNORE) {
@@ -269,7 +267,7 @@ public final class MapperGenerator {
             explicit.put(t, e);
         }
 
-        Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, method.getReturnType(), false, nulls);
+        Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, plan.type, false, nulls);
         if (pathValues == null) return;
 
         // Every writable/constructor target property must be assigned, either
@@ -311,7 +309,8 @@ public final class MapperGenerator {
             return;
         }
 
-        target.addMethod(out -> _emit(out, method, sources, multi, state, plan, values, pathValues, nulls));
+        target.addMethod(out -> _emit(out, method, sources, multi, state, plan, values, pathValues, nulls,
+                jojo, _jojoConsumedKeys(method, plan, sources, multi)));
     }
 
     private void _genUpdate(TypeElement iface, ExecutableElement method, GeneratedClass target) {
@@ -333,10 +332,6 @@ public final class MapperGenerator {
         }
         if (_arrayLike(params.get(0).asType()) != null) {
             _error(method, target, "JAJO update targets are unsupported; update plain JsonArray outside CompiledMapper");
-            return;
-        }
-        if (GeneratorUtil.isJojoType(ctx, params.get(0).asType())) {
-            _error(method, target, "JOJO update targets are unsupported; update plain JsonObject outside CompiledMapper");
             return;
         }
 
@@ -367,10 +362,12 @@ public final class MapperGenerator {
         }
         boolean multi = sources.size() > 1;
         Map<String, MapperModel.Write> writes = _writes(targetType, params.get(0).asType());
-        if (writes.isEmpty()) {
+        boolean jojo = GeneratorUtil.isJojoType(ctx, params.get(0).asType());
+        if (writes.isEmpty() && !(jojo && _hasJojoDynamicSource(sources))) {
             _error(method, target, "Update target type must expose writable public setters or non-final fields");
             return;
         }
+        if (jojo && !_validateJojoDynamicSources(method, target, sources)) return;
 
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         MappingIfParentPresent[] ifParentAnns = method.getAnnotationsByType(MappingIfParentPresent.class);
@@ -492,7 +489,8 @@ public final class MapperGenerator {
             }
         }
         target.addMethod(out -> _emitUpdate(out, method, params.get(0), sources, multi, state, plan, values, pathValues, nulls,
-                defaultArrayPolicy, defaultObjectPolicy, arrayPolicies, objectPolicies, targetReads, nestedMappers, iface, target));
+                defaultArrayPolicy, defaultObjectPolicy, arrayPolicies, objectPolicies, targetReads, nestedMappers, iface, target,
+                GeneratorUtil.isJojoType(ctx, params.get(0).asType()), _jojoConsumedKeys(method, plan, sources, multi)));
     }
 
     private void _genJsonObjectProjection(TypeElement iface, ExecutableElement method, GeneratedClass target) {
@@ -888,9 +886,9 @@ public final class MapperGenerator {
             _error(method, target, "@Mapping.sources may be used only with @Mapping.compute");
             return false;
         }
-        if (m.ignore() && (m.source().length() != 0 || m.compute().length() != 0 || m.sources().length != 0
+        if (m.ignore() && (m.compute().length() != 0 || m.sources().length != 0
                 || m.array() != ArrayPolicy.SET || m.object() != ObjectPolicy.PUT)) {
-            _error(method, target, "@Mapping.ignore cannot be combined with source, sources, compute, array, or object");
+            _error(method, target, "@Mapping.ignore cannot be combined with sources, compute, array, or object");
             return false;
         }
         if (method.getReturnType().getKind() != TypeKind.VOID && (m.array() != ArrayPolicy.SET || m.object() != ObjectPolicy.PUT)) {
@@ -997,7 +995,8 @@ public final class MapperGenerator {
     }
 
     private void _emit(SourceWriter out, ExecutableElement method, List<MapperModel.SourceParam> sources, boolean multi, MethodState state,
-                       MapperModel.Plan plan, Map<String, MapperModel.Expr> values, Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues, NullValuePolicy nulls) {
+                       MapperModel.Plan plan, Map<String, MapperModel.Expr> values, Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues, NullValuePolicy nulls,
+                       boolean jojo, Map<String, Set<String>> consumed) {
         out.line("");
         out.line("@Override");
         StringBuilder sig = new StringBuilder();
@@ -1025,12 +1024,16 @@ public final class MapperGenerator {
             for (MapperModel.Expr e : values.values()) {
                 _emitTemps(out, e);
             }
-            StringBuilder b = new StringBuilder("return new ").append(plan.type).append("(");
+            StringBuilder b = new StringBuilder(jojo ? plan.type + " " + state.targetRoot + " = new " : "return new ").append(plan.type).append("(");
             for (int i = 0; i < plan.names.size(); i++) {
                 if (i != 0) b.append(", ");
                 b.append(values.get(plan.names.get(i)).code);
             }
             out.line(b.append(");").toString());
+            if (jojo) {
+                _emitJojoExtras(out, state.targetRoot, sources, consumed);
+                out.line("return " + state.targetRoot + ";");
+            }
         } else {
             String targetVar = state.targetRoot;
             out.line(plan.type + " " + targetVar + " = " + (plan.create == null ? "new " + plan.type + "()" : plan.create) + ";");
@@ -1046,8 +1049,9 @@ public final class MapperGenerator {
             }
             for (Map.Entry<MapperModel.TargetPathWrite, MapperModel.Expr> entry : pathValues.entrySet()) {
                 _emitTemps(out, entry.getValue());
-                _emitTargetPath(out, method, state, targetVar, method.getReturnType(), entry.getKey(), entry.getValue(), nulls);
+                _emitTargetPath(out, method, state, targetVar, plan.type, entry.getKey(), entry.getValue(), nulls);
             }
+            if (jojo) _emitJojoExtras(out, targetVar, sources, consumed);
             out.line("return " + targetVar + ";");
         }
         out.dedent();
@@ -1092,6 +1096,193 @@ public final class MapperGenerator {
         return w.setter != null
                 ? target + "." + w.setter.getSimpleName() + "(" + value + ");"
                 : target + "." + w.javaName + " = " + value + ";";
+    }
+
+    /**
+     * Dynamic JOJO entries are a structural complement to declared mappings.
+     * Keep this compile-time: the generated loop only has to compare entry keys.
+     */
+    private Map<String, Set<String>> _jojoConsumedKeys(ExecutableElement method, MapperModel.Plan plan,
+                                                        List<MapperModel.SourceParam> sources, boolean multi) {
+        Map<String, Set<String>> result = new HashMap<String, Set<String>>();
+        for (MapperModel.SourceParam source : sources) result.put(source.name, new HashSet<String>());
+        // Dynamic writes use JsonObject.put(), which would otherwise overwrite a
+        // declared target property after its typed assignment.
+        Set<String> declaredTargetNames = new HashSet<String>(plan.names);
+        TypeElement targetType = GeneratorUtil.asTypeElement(plan.type);
+        if (targetType != null && GeneratorUtil.isJojoType(ctx, plan.type)) {
+            declaredTargetNames.addAll(_jojoReads(targetType, plan.type).keySet());
+            declaredTargetNames.addAll(_jojoWrites(targetType, plan.type).keySet());
+        }
+        for (MapperModel.SourceParam source : sources) result.get(source.name).addAll(declaredTargetNames);
+        Set<String> ignored = new HashSet<String>();
+        Set<String> explicit = new HashSet<String>();
+        for (Mapping m : method.getAnnotationsByType(Mapping.class)) {
+            if (_isAutoMarker(m) || m.target().length() == 0) continue;
+            if (m.ignore()) {
+                ignored.add(m.target());
+                _jojoConsume(result, sources, multi, m.source().length() == 0 ? m.target() : m.source());
+            } else if (!_isTargetPath(m.target())) {
+                explicit.add(m.target());
+                if (m.compute().length() != 0) {
+                    for (String path : _computeSourcePaths(generation.iface, m)) _jojoConsume(result, sources, multi, path);
+                } else {
+                    _jojoConsume(result, sources, multi, m.source().length() == 0 ? m.target() : m.source());
+                }
+            } else if (m.compute().length() != 0) {
+                for (String path : _computeSourcePaths(generation.iface, m)) _jojoConsume(result, sources, multi, path);
+            } else {
+                _jojoConsume(result, sources, multi, m.source().length() == 0 ? _tailNameForPath(m.target()) : m.source());
+            }
+        }
+        for (String name : plan.names) {
+            if (!ignored.contains(name) && !explicit.contains(name) && _hasAutoSource(sources, name)) {
+                result.get(sources.get(0).name).add(name);
+            }
+        }
+        for (MappingIfParentPresent m : method.getAnnotationsByType(MappingIfParentPresent.class)) {
+            _jojoConsumeMapping(result, sources, multi, m.target(), m.source(), m.sources(), m.compute());
+        }
+        for (EnsureMapping m : method.getAnnotationsByType(EnsureMapping.class)) {
+            _jojoConsumeMapping(result, sources, multi, m.target(), m.source(), m.sources(), m.compute());
+        }
+        return result;
+    }
+
+    private void _jojoConsumeMapping(Map<String, Set<String>> consumed, List<MapperModel.SourceParam> sources, boolean multi,
+                                     String target, String source, String[] computeSources, String compute) {
+        if (compute.length() != 0) {
+            for (String path : computeSources) _jojoConsume(consumed, sources, multi, path);
+        } else {
+            _jojoConsume(consumed, sources, multi, source.length() == 0 ? _tailNameForPath(target) : source);
+        }
+    }
+
+    private String _tailNameForPath(String path) {
+        try {
+            PathSegment[] segments = JsonPath.parse(path).segments();
+            PathSegment tail = segments[segments.length - 1];
+            return tail instanceof PathSegment.Name ? ((PathSegment.Name) tail).name : path;
+        } catch (RuntimeException ignored) {
+            return path;
+        }
+    }
+
+    private void _jojoConsume(Map<String, Set<String>> consumed, List<MapperModel.SourceParam> sources, boolean multi, String path) {
+        MapperModel.SourceParam source = sources.get(0);
+        String key = path;
+        if (multi) {
+            int colon = path.indexOf(':');
+            if (colon > 0) {
+                MapperModel.SourceParam named = _sourceByName(sources, path.substring(0, colon));
+                if (named == null) return;
+                source = named;
+                key = path.substring(colon + 1);
+            }
+        }
+        if (key.startsWith("$") || key.startsWith("/")) {
+            try {
+                PathSegment[] segments = JsonPath.parse(key).segments();
+                if (segments.length > 1 && segments[1] instanceof PathSegment.Name) {
+                    consumed.get(source.name).add(((PathSegment.Name) segments[1]).name);
+                }
+            } catch (RuntimeException ignored) {
+                // The normal source resolver reports invalid paths.
+            }
+            return;
+        }
+        if (key.indexOf(':') < 0 && key.length() != 0) consumed.get(source.name).add(key);
+    }
+
+    private void _emitJojoExtras(SourceWriter out, String target, List<MapperModel.SourceParam> sources,
+                                 Map<String, Set<String>> consumed) {
+        for (MapperModel.SourceParam source : sources) {
+            if (!source.dynamic && !GeneratorUtil.isJojoType(ctx, source.element.asType())) continue;
+            Set<String> keys = consumed.get(source.name);
+            String condition = _jojoExtraCondition("entry.getKey()", keys);
+            TypeMirror type = source.element.asType();
+            if (GeneratorUtil.isObject(ctx, type)) {
+                out.line("if (" + source.name + " instanceof java.util.Map) {");
+                out.indent();
+                out.line("for (Object entryObj : ((java.util.Map) " + source.name + ").entrySet()) {");
+                out.indent();
+                out.line("java.util.Map.Entry<?, ?> entry = (java.util.Map.Entry<?, ?>) entryObj;");
+                out.line("if (entry.getKey() instanceof String && " + condition + ") " + target + ".put((String) entry.getKey(), entry.getValue());");
+                out.dedent();
+                out.line("}");
+                out.dedent();
+                out.line("}");
+            } else if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) {
+                out.line("if (" + source.name + " != null) {");
+                out.indent();
+                out.line("for (Object entryObj : " + source.name + ".entrySet()) {");
+                out.indent();
+                out.line("java.util.Map.Entry<?, ?> entry = (java.util.Map.Entry<?, ?>) entryObj;");
+                out.line("if (" + condition + ") " + target + ".put((String) entry.getKey(), entry.getValue());");
+                out.dedent();
+                out.line("}");
+                out.dedent();
+                out.line("}");
+            } else {
+                out.line("if (" + source.name + " != null) {");
+                out.indent();
+                out.line("java.util.Map<String, Object> dynamic = ((org.sjf4j.JsonObject) " + source.name + ")._dynamicMap();");
+                out.line("if (dynamic != null) {");
+                out.indent();
+                out.line("for (java.util.Map.Entry<String, Object> entry : dynamic.entrySet()) {");
+                out.indent();
+                out.line("if (" + condition + ") " + target + ".put(entry.getKey(), entry.getValue());");
+                out.dedent();
+                out.line("}");
+                out.dedent();
+                out.line("}");
+                out.dedent();
+                out.line("}");
+            }
+        }
+    }
+
+    private boolean _hasJojoDynamicSource(List<MapperModel.SourceParam> sources) {
+        for (MapperModel.SourceParam source : sources) {
+            if (source.dynamic || GeneratorUtil.isJojoType(ctx, source.element.asType())) return true;
+        }
+        return false;
+    }
+
+    private boolean _validateJojoDynamicSources(ExecutableElement method, GeneratedClass target,
+                                                List<MapperModel.SourceParam> sources) {
+        for (MapperModel.SourceParam source : sources) {
+            TypeMirror type = source.element.asType();
+            if (!GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) continue;
+            TypeMirror key = _mapKeyType(type);
+            if (key == null || !ctx.types.isSameType(ctx.types.erasure(key), ctx.types.erasure(ctx.elements.getTypeElement(String.class.getName()).asType()))) {
+                _error(method, target, "JOJO dynamic propagation requires Map<String, ?> source keys");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private TypeMirror _mapKeyType(TypeMirror type) {
+        if (type.getKind() == TypeKind.DECLARED && GeneratorUtil.isSameErasure(ctx, type, ctx.mapType)) {
+            List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
+            return args.size() == 2 ? GeneratorUtil.concrete(ctx, args.get(0)) : null;
+        }
+        for (TypeMirror parent : ctx.types.directSupertypes(type)) {
+            TypeMirror key = _mapKeyType(parent);
+            if (key != null) return key;
+        }
+        return null;
+    }
+
+    private String _jojoExtraCondition(String key, Set<String> consumed) {
+        if (consumed == null || consumed.isEmpty()) return "true";
+        StringBuilder b = new StringBuilder();
+        for (String name : consumed) {
+            if (b.length() != 0) b.append(" && ");
+            b.append("!\"").append(GeneratorUtil.escape(name)).append("\".equals(").append(key).append(")");
+        }
+        return b.toString();
     }
 
     private void _emitTemps(SourceWriter out, MapperModel.Expr e) {
@@ -1444,7 +1635,8 @@ public final class MapperGenerator {
                              boolean multi, MethodState state, MapperModel.Plan plan, Map<String, MapperModel.Expr> values, Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues, NullValuePolicy nulls,
                              ArrayPolicy defaultArrayPolicy, ObjectPolicy defaultObjectPolicy,
                              Map<String, ArrayPolicy> arrayPolicies, Map<String, ObjectPolicy> objectPolicies, Map<String, MapperModel.Read> targetReads,
-                             Map<String, String> nestedMappers, TypeElement iface, GeneratedClass genTarget) {
+                              Map<String, String> nestedMappers, TypeElement iface, GeneratedClass genTarget,
+                              boolean jojo, Map<String, Set<String>> consumed) {
         out.line("");
         out.line("@Override");
         StringBuilder sig = new StringBuilder();
@@ -1522,6 +1714,7 @@ public final class MapperGenerator {
         for (Map.Entry<MapperModel.TargetPathWrite, MapperModel.Expr> entry : pathValues.entrySet()) {
             _emitTargetPath(out, method, state, targetName, targetParam.asType(), entry.getKey(), entry.getValue(), nulls);
         }
+        if (jojo) _emitJojoExtras(out, targetName, sources, consumed);
         out.dedent();
         out.line("}");
     }
@@ -1772,7 +1965,7 @@ public final class MapperGenerator {
     private boolean _dynamicSource(TypeMirror type) {
         return GeneratorUtil.isObject(ctx, type)
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)
-                || _isExactJsonObject(type);
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
     }
 
     private MapperModel.Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources, boolean multi,

@@ -150,7 +150,7 @@ public final class JdbcMapperGenerator {
 
         boolean map = isMap(row);
         if (options != null && map && options.columnProjection() != ColumnProjectionPolicy.REQUIRE_ALL) {
-            error(method, "@JdbcMapperOptions.columnProjection is supported only on POJO @CompiledJdbcMapper results");
+            error(method, "@JdbcMapperOptions.columnProjection is supported only on POJO or JOJO @CompiledJdbcMapper results");
             return false;
         }
         if (map) {
@@ -193,7 +193,10 @@ public final class JdbcMapperGenerator {
                 temporalTypeHelper = helperNames.local("temporalType");
                 out.addHelper(this::emitTemporalTypeHelper);
             }
-            out.addHelper(writer -> emitRow(writer, finalRow, finalPlan, rowHelper, finalList || finalPlan.presentOnly));
+            out.addHelper(writer -> {
+                if (finalPlan.jojo) emitJojoRow(writer, finalRow, finalPlan, rowHelper);
+                else emitRow(writer, finalRow, finalPlan, rowHelper, finalList || finalPlan.presentOnly);
+            });
         }
         return true;
     }
@@ -243,6 +246,10 @@ public final class JdbcMapperGenerator {
                 writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
                 emitJdbcColumns(writer, "meta", "columns");
                 writer.line("return " + rowHelper + "(rs, columns);");
+            } else if (plan.jojo) {
+                writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
+                emitJojoColumns(writer, "meta", plan);
+                writer.line("return " + jojoCall(rowHelper) + ";");
             } else if (plan.presentOnly) {
                 writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
                 emitPresentIndexes(writer, plan);
@@ -272,6 +279,15 @@ public final class JdbcMapperGenerator {
                 writer.line("do {");
                 writer.indent();
                 writer.line(rows + ".add(" + rowHelper + "(rs, " + columns + "));");
+                writer.dedent();
+                writer.line("} while (rs.next());");
+            } else if (plan.jojo) {
+                String meta = locals.local("meta");
+                writer.line("java.sql.ResultSetMetaData " + meta + " = rs.getMetaData();");
+                emitJojoColumns(writer, meta, plan);
+                writer.line("do {");
+                writer.indent();
+                writer.line(rows + ".add(" + jojoCall(rowHelper) + ");");
                 writer.dedent();
                 writer.line("} while (rs.next());");
             } else {
@@ -304,6 +320,10 @@ public final class JdbcMapperGenerator {
             writer.line("if (!rs.next()) return null;");
             if (map) {
                 writer.line(row + " " + value + " = " + rowHelper + "(rs);");
+            } else if (plan.jojo) {
+                writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
+                emitJojoColumns(writer, "meta", plan);
+                writer.line(row + " " + value + " = " + jojoCall(rowHelper) + ";");
             } else if (plan.presentOnly) {
                 writer.line("java.sql.ResultSetMetaData meta = rs.getMetaData();");
                 emitPresentIndexes(writer, plan);
@@ -390,6 +410,44 @@ public final class JdbcMapperGenerator {
         return value.append(')').toString();
     }
 
+    /** Resolves JOJO property and dynamic columns once per result set. */
+    private void emitJojoColumns(SourceWriter writer, String meta, RowPlan plan) {
+        writer.line("int[] propertyColumns = new int[" + plan.properties.size() + "];");
+        writer.line("java.util.Arrays.fill(propertyColumns, -1);");
+        writer.line("int jdbcCount = " + meta + ".getColumnCount();");
+        writer.line("String[] dynamicColumns = new String[jdbcCount];");
+        writer.line("for (int jdbcIndex = 1; jdbcIndex <= jdbcCount; jdbcIndex++) {");
+        writer.indent();
+        writer.line("String jdbcColumn = " + meta + ".getColumnLabel(jdbcIndex);");
+        writer.line("boolean consumed = false;");
+        for (int index = 0; index < plan.properties.size(); index++) {
+            Property property = plan.properties.get(index);
+            writer.line("if (jdbcColumn.equalsIgnoreCase(\"" + GeneratorUtil.escape(property.column) + "\")) {");
+            writer.indent();
+            writer.line("consumed = true;");
+            writer.line("if (propertyColumns[" + index + "] == -1) propertyColumns[" + index + "] = jdbcIndex;");
+            writer.dedent();
+            writer.line("}");
+        }
+        for (String column : plan.consumedColumns) {
+            writer.line("if (jdbcColumn.equalsIgnoreCase(\"" + GeneratorUtil.escape(column) + "\")) consumed = true;");
+        }
+        writer.line("if (!consumed) dynamicColumns[jdbcIndex - 1] = jdbcColumn;");
+        writer.dedent();
+        writer.line("}");
+        if (!plan.presentOnly) {
+            for (int index = 0; index < plan.properties.size(); index++) {
+                Property property = plan.properties.get(index);
+                writer.line("if (propertyColumns[" + index + "] == -1) throw new java.sql.SQLException(\"Column not found: "
+                        + GeneratorUtil.escape(property.column) + "\");");
+            }
+        }
+    }
+
+    private String jojoCall(String rowHelper) {
+        return rowHelper + "(rs, propertyColumns, dynamicColumns)";
+    }
+
     private void emitRow(SourceWriter writer, TypeMirror type, RowPlan plan, String rowHelper,
                          boolean indexed) {
         writer.line("");
@@ -452,6 +510,51 @@ public final class JdbcMapperGenerator {
         writer.line("}");
     }
 
+    private void emitJojoRow(SourceWriter writer, TypeMirror type, RowPlan plan, String rowHelper) {
+        writer.line("");
+        writer.line("private " + type + " " + rowHelper
+                + "(java.sql.ResultSet rs, int[] propertyColumns, String[] dynamicColumns) throws java.sql.SQLException {");
+        writer.indent();
+        writer.line(plan.targetType + " target = " + (plan.create == null ? "new " + plan.targetType + "()" : plan.create) + ";");
+        for (int index = 0; index < plan.properties.size(); index++) {
+            Property property = plan.properties.get(index);
+            String column = "propertyColumns[" + index + "]";
+            if (plan.presentOnly) {
+                writer.line("if (" + column + " != -1) {");
+                writer.indent();
+            }
+            String getter = property.helper == null ? jdbcGetter(property.type) : null;
+            if (getter != null) {
+                writer.line(typeName(property.type, true) + " value" + index + " = rs." + getter + "(" + column + ");");
+                if (property.type.getKind().isPrimitive()) writer.line("if (rs.wasNull()) " + primitiveNullHelper
+                        + "(\"" + GeneratorUtil.escape(property.column) + "\", \"" + property.type + "\");");
+            } else {
+                String raw = "raw" + index;
+                writer.line("Object " + raw + " = rs.getObject(" + column + ");");
+                String converted = property.helper == null ? convert(raw, property.type, property.column)
+                        : (property.helper.statik ? property.helper.owner + "." : "this.")
+                        + property.helper.name + "(" + raw + ")";
+                writer.line(typeName(property.type, true) + " value" + index + " = " + converted + ";");
+            }
+            emitAssignment(writer, property, index);
+            if (plan.presentOnly) {
+                writer.dedent();
+                writer.line("}");
+            }
+        }
+        writer.line("java.util.Map<String, Object> dynamic = ((org.sjf4j.JsonObject) target)._dynamicMap();");
+        writer.line("for (int index = 0; index < dynamicColumns.length; index++) {");
+        writer.indent();
+        writer.line("String column = dynamicColumns[index];");
+        writer.line("if (column != null) {"); writer.indent();
+        writer.line("if (dynamic == null) { dynamic = new java.util.LinkedHashMap<String, Object>(); ((org.sjf4j.JsonObject) target)._dynamicMap(dynamic); }");
+        writer.line("dynamic.put(column, rs.getObject(index + 1));");
+        writer.dedent(); writer.line("}");
+        writer.dedent(); writer.line("}");
+        writer.line("return target;");
+        writer.dedent(); writer.line("}");
+    }
+
     private void emitAssignment(SourceWriter writer, Property property, int index) {
         String target = "target";
         for (Access parent : property.parents) {
@@ -480,6 +583,7 @@ public final class JdbcMapperGenerator {
                 constructors.add((ExecutableElement) member);
             }
         }
+        boolean jojo = GeneratorUtil.isJojoType(ctx, type);
         boolean record = GeneratorUtil.isRecord(element);
         ExecutableElement noArguments = null;
         for (ExecutableElement constructor : constructors) {
@@ -487,7 +591,11 @@ public final class JdbcMapperGenerator {
                 noArguments = constructor;
             }
         }
-        boolean constructorTarget = (creator == null || creator.create == null) && (record || noArguments == null);
+        boolean constructorTarget = !jojo && (creator == null || creator.create == null) && (record || noArguments == null);
+        if (jojo && noArguments == null && (creator == null || creator.create == null)) {
+            error(method, "JOJO JDBC target type must have a public no-args constructor or a @MappingCreator factory");
+            return null;
+        }
         if (constructorTarget && constructors.size() != 1) {
             error(method, "JDBC target type must have a public no-args constructor, be a record, or have exactly one public constructor");
             return null;
@@ -508,6 +616,7 @@ public final class JdbcMapperGenerator {
                         || member.getModifiers().contains(Modifier.STATIC)) {
                     continue;
                 }
+                if (jojo && GeneratorUtil.isJsonBaseMember(member)) continue;
                 if (member.getKind() == ElementKind.FIELD
                         && !member.getModifiers().contains(Modifier.FINAL)) {
                     String name = member.getSimpleName().toString();
@@ -581,6 +690,7 @@ public final class JdbcMapperGenerator {
         }
 
         List<Property> properties = new ArrayList<Property>();
+        Set<String> consumedColumns = new HashSet<String>();
         for (Property property : values.values()) {
             if (pathRoots.contains(property.name) && !mappings.containsKey(property.name)) continue;
             Mapping mapping = mappings.get(property.name);
@@ -589,6 +699,9 @@ public final class JdbcMapperGenerator {
                     error(method, "Constructor and record target properties cannot be ignored");
                     return null;
                 }
+                String consumedColumn = mapping.source().length() == 0 ? property.name : jdbcSource(method, mapping.source());
+                if (consumedColumn == null) return null;
+                consumedColumns.add(consumedColumn);
                 continue;
             }
             String column = property.name;
@@ -618,7 +731,7 @@ public final class JdbcMapperGenerator {
             error(method, "@MappingCreator creator method must return a concrete mutable type");
             return null;
         }
-        return new RowPlan(constructorTarget, properties, type, creator == null ? null : creator.create, presentOnly);
+        return new RowPlan(constructorTarget, properties, type, creator == null ? null : creator.create, presentOnly, jojo, consumedColumns);
     }
 
     private String rootPathName(String target) {
@@ -741,10 +854,10 @@ public final class JdbcMapperGenerator {
             error(method, "@Mapping.sources may be used only with @Mapping.compute");
             return false;
         }
-        if (mapping.ignore() && (mapping.source().length() != 0 || mapping.compute().length() != 0
+        if (mapping.ignore() && (mapping.compute().length() != 0
                 || mapping.sources().length != 0 || mapping.array() != ArrayPolicy.SET
                 || mapping.object() != ObjectPolicy.PUT)) {
-            error(method, "@Mapping.ignore cannot be combined with source, sources, compute, array, or object");
+            error(method, "@Mapping.ignore cannot be combined with sources, compute, array, or object");
             return false;
         }
         if (mapping.array() != ArrayPolicy.SET || mapping.object() != ObjectPolicy.PUT) {
@@ -958,13 +1071,18 @@ public final class JdbcMapperGenerator {
         final TypeMirror targetType;
         final String create;
         final boolean presentOnly;
+        final boolean jojo;
+        final Set<String> consumedColumns;
 
-        RowPlan(boolean constructor, List<Property> properties, TypeMirror targetType, String create, boolean presentOnly) {
+        RowPlan(boolean constructor, List<Property> properties, TypeMirror targetType, String create, boolean presentOnly, boolean jojo,
+                Set<String> consumedColumns) {
             this.constructor = constructor;
             this.properties = properties;
             this.targetType = targetType;
             this.create = create;
             this.presentOnly = presentOnly;
+            this.jojo = jojo;
+            this.consumedColumns = consumedColumns;
         }
     }
 
