@@ -27,8 +27,8 @@ import java.lang.annotation.Target;
  * The {@code int} row number is ignored during mapping and current-row methods do not support {@code List} results.</p>
  *
  * <p>{@link JdbcMapperOptions#columnProjection()} defaults to requiring every POJO column; {@code PRESENT_ONLY}
- * leaves absent mutable properties at their initialized value. Map results reject duplicate metadata
- * columns by default; {@link JdbcMapperOptions#duplicateColumn()} may select last-wins behavior.</p>
+ * leaves absent mutable properties at their initialized value. For map results, duplicate result
+ * columns overwrite the earlier value with the last value.</p>
  *
  * <p>POJO properties use matching result columns by default; {@link Mapping#source()} supplies a
  * result column alias. JSONPath/JSON Pointer property-name target paths such as {@code $.profile.name}

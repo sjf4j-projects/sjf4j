@@ -20,6 +20,4 @@ public @interface JdbcMapperOptions {
     /** Column requirement policy for JDBC POJO methods. */
     ColumnProjectionPolicy columnProjection() default ColumnProjectionPolicy.REQUIRE_ALL;
 
-    /** Duplicate-column policy for {@code Map<String,Object>} JDBC results. */
-    DuplicateColumnPolicy duplicateColumn() default DuplicateColumnPolicy.FAIL;
 }

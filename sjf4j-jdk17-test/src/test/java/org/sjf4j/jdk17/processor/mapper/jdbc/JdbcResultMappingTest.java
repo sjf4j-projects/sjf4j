@@ -2,7 +2,6 @@ package org.sjf4j.jdk17.processor.mapper.jdbc;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
-import org.sjf4j.annotation.mapper.jdbc.DuplicateColumnPolicy;
 import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
 import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
 import org.sjf4j.annotation.mapper.Mapping;
@@ -23,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.brokenFindColumnResult;
 import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.brokenResult;
 import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.cachedMetadataResult;
+import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.currentRowResult;
 import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.indexedResult;
 import static org.sjf4j.jdk17.processor.mapper.jdbc.JdbcTestSupport.result;
 
@@ -57,6 +57,10 @@ class JdbcResultMappingTest {
                 new Object[]{1, 2, 3}));
         assertEquals(Map.of("a", 2, "b", 3), duplicateColumnMap);
         assertEquals(List.of("a", "b"), new ArrayList<>(duplicateColumnMap.keySet()));
+        assertEquals(Map.of("a", 2), mapper.rows(result(new String[]{"a", "a"},
+                new Object[]{1, 2})).get(0));
+        assertEquals(Map.of("a", 2, "b", 3), mapper.currentRow(currentRowResult(
+                new String[]{"a", "a", "b"}, new int[]{0}, 1, 2, 3), 0));
 
         int[] findColumns = {0};
         assertEquals(2, mapper.users(indexedResult(new String[]{"name", "age", "created"}, findColumns,
@@ -105,8 +109,9 @@ class JdbcResultMappingTest {
 
         List<Map<String, Object>> rows(ResultSet rs);
 
-        @JdbcMapperOptions(duplicateColumn = DuplicateColumnPolicy.LAST_WINS)
         Map<String, Object> row(ResultSet rs);
+
+        Map<String, Object> currentRow(ResultSet rs, int rowNum);
 
         @JdbcMapperOptions(singleResult = SingleResultPolicy.FIRST)
         User first(ResultSet rs);

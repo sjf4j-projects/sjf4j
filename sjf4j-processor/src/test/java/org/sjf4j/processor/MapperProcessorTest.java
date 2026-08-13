@@ -189,7 +189,6 @@ public class MapperProcessorTest {
                 + "@CompiledJdbcMapper interface PresentRecord { record P(String value) {} @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface PresentConstructor { class P { P(String value) {} } @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface MapColumns { @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) java.util.Map<String,Object> x(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface PojoDuplicates { class P { public String value; } @JdbcMapperOptions(duplicateColumn=DuplicateColumnPolicy.LAST_WINS) P x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface CurrentRowList { java.util.List<String> x(ResultSet rs, int rowNum); }"
                 + "interface RowParent { String mapRow(ResultSet rs, int rowNum); }"
                 + "@CompiledJdbcMapper interface UnrelatedMapRow extends RowParent { }";
@@ -207,7 +206,6 @@ public class MapperProcessorTest {
         assertTrue(text.contains("singleResult is supported only on non-List"));
         assertTrue(text.contains("columnProjection=PRESENT_ONLY requires a mutable POJO target"), text);
         assertTrue(text.contains("columnProjection is supported only on POJO"), text);
-        assertTrue(text.contains("duplicateColumn is supported only on Map<String,Object>"), text);
         assertTrue(text.contains("current-row methods do not support List results"), text);
         assertTrue(text.contains("Inherited abstract mapper methods are not supported"), text);
     }
@@ -317,14 +315,12 @@ public class MapperProcessorTest {
     }
 
     @Test
-    public void jdbcMapHelperNamesDoNotCollideWithDefaultMethods() throws Exception {
+    public void jdbcMapColumnsDoNotRequireGeneratedHelpers() throws Exception {
         String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { Map<String,Object> map(ResultSet rs);"
-                + " default String[] jdbcColumns() { return null; }"
-                + " default void jdbcDuplicateColumns() {} }";
+                + " default String[] jdbcColumns() { return null; } }";
         String generated = jdbcGeneratedSource(source);
-        assertTrue(generated.contains("jdbcColumns2("), generated);
-        assertTrue(generated.contains("jdbcDuplicateColumns2("), generated);
+        assertFalse(generated.contains("jdbcDuplicateColumns"), generated);
     }
 
     @Test

@@ -7,8 +7,9 @@
  * {@link org.sjf4j.annotation.mapper.Mapping} supplies column aliases.</p>
  *
  * <p>{@link org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions} configures
- * single-result handling, column projection, and duplicate-column handling.
- * JDBC mappers read columns directly without an intermediate JSON node; they do
- * not support nested JDBC source paths or arbitrary collection targets.</p>
+ * single-result handling and column projection. Map rows preserve column-label
+ * order and use last-column-wins behavior for duplicate labels. JDBC mappers
+ * read columns directly without an intermediate JSON node; they do not support
+ * nested JDBC source paths or arbitrary collection targets.</p>
  */
 package org.sjf4j.annotation.mapper.jdbc;
