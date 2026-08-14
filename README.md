@@ -450,9 +450,7 @@ Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
 
 ## Benchmarks
 
-SJF4J is designed for high performance across the full structural-processing stack,
-from object access and binding to navigation, validation, and compile-time mapping.
-
+SJF4J is designed for high performance across the full structural-processing stack.  
 Its performance is measured through JMH benchmarks and independent third-party evaluations.
 
 **Reflection Access Benchmark**  
@@ -463,24 +461,21 @@ SJF4J adds unified structural semantics and flexible binding on top of existing 
 while remaining close to native backend performance in typical workloads.
 
 **JSON Path Navigating Benchmark**  
-`JsonPath` provides high-performance interpreted querying and mutation.  
-For hot paths, `@CompiledPath` generates direct Java access code and can outperform interpreted navigation by tens of times.  
-Its behavior is also evaluated for specification compatibility in the [JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/).
+`JsonPath` provides interpreted querying and mutation, while `@CompiledPath` generates direct Java access code for hot paths.   
+Its specification compatibility is evaluated by the [JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/).
 
 **JSON Schema Validating Benchmark**  
 SJF4J supports JSON Schema Draft `2020-12`, `2019-09`, and `draft-07`
-and ranks #1 among JVM JSON Schema validators in independent
-[Creek Service](https://www.creekservice.org/json-schema-validation-comparison/)
-and [Bowtie](https://bowtie.report/) evaluations.
+and is evaluated by JVM-focused [Creek Service](https://www.creekservice.org/json-schema-validation-comparison/)
+and cross-language [Bowtie](https://bowtie.report/).
 
 **Object-to-object Mapping Benchmark**  
 `@CompiledMapper` generates direct mapping code with performance close to hand-written implementations.  
-In the independent [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark),
-SJF4J ranks #1 among tested mapping frameworks.
+See the independent [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) for a comparison with other Java object mapping frameworks.
 
 **JDBC ResultSet Mapping Benchmark**  
-`@CompiledJdbcMapper` generates direct `ResultSet` mappers with performance close to hand-written code.  
-In the measured workload, it is about 15× faster than Spring's `BeanPropertyRowMapper` and MyBatis result mapping.
+`@CompiledJdbcMapper` generates direct `ResultSet` mappers with performance close to hand-written code,
+and much faster than Spring's `BeanPropertyRowMapper` and MyBatis result mapping.
 
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
@@ -488,9 +483,6 @@ Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 ## Why SJF4J?
 
 Java already has excellent JSON parsers, and SJF4J is designed to build on them rather than replace them.
-
-As JSON is not only a data format, but also a data model with a rich ecosystem of standards and specifications.  
-SJF4J focuses on the layer beyond parsing: a JSON-oriented programming model for applying JSON standards and semantics.
 
 SJF4J gives you:
 - **Backend independence** — use Jackson, Gson, Fastjson2, JSON-P, or other supported providers.
