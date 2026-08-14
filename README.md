@@ -149,9 +149,6 @@ Maven (`maven-compiler-plugin`):
 
 ## Quickstart
 
-SJF4J lets you work with structured data using JSON semantics, 
-whether the data is represented as JSON text or ordinary Java objects.
-
 ### 1. Parse and access JSON data
 
 Start with `JsonObject` when working directly with JSON data:
@@ -221,15 +218,7 @@ path.getInt(student);               // 59
 path.put(student, 60);              // 59 -> 60
 ```
 
-JSON Path also works across nested objects and collections:
-```java
-JsonPath.parse("$.scores[?@ >= 90].count()").eval(student, Integer.class); 
-// 1
-```
-
-No intermediate JSON tree is required — SJF4J operates directly on Java object graphs, 
-not only for navigation but also for patching, validating, mapping, and more.
-
+The same object graph can also be patched, validated, and mapped with JSON semantics.
 
 ## Capabilities
 
@@ -272,8 +261,9 @@ public class StudentJojo extends JsonObject {
     // getters and setters 
 }
 ```
-Use POJO for well-defined, closed domain models.   
-Use JOJO when typed fields need to coexist with undeclared properties, 
+
+- Use POJO for well-defined, closed domain models.   
+- Use JOJO when typed fields need to coexist with undeclared properties, 
 such as API payloads, configuration objects, integration models, or SQL result bindings.
   
 Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
@@ -364,11 +354,12 @@ SJF4J also supports JSON Merge Patch (RFC 7386) and Indexed Merge Patch for part
 
 Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
 
+
 ### Validating
 
 Validate Java object graphs directly with JSON Schema, 
 without converting them into an intermediate JSON tree.  
-SJF4J supports JSON Schema `draft-2020-12`, `draft-2019-09`, and `draft-07`.
+SJF4J supports JSON Schema Draft `2020-12`, `2019-09`, and `draft-07`.
 
 ```java
 JsonSchema schema = JsonSchema.fromJson("""
@@ -414,7 +405,7 @@ Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 ### Mapping
 
 Generate object mappers at compile time using `@CompiledMapper`.  
-(This requires the `sjf4j-processor` annotation processor; see the setup instructions above.)
+(This requires the `sjf4j-processor` annotation processor)
 ```java
 @CompiledMapper
 public interface StudentMapper {
