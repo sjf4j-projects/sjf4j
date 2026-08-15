@@ -28,7 +28,7 @@ import java.util.function.Predicate;
  * JSON object container in SJF4J's OBNT model.
  *
  * <p>{@link JsonObject} can be used directly as a mutable JSON object node, or
- * subclassed to define a JOJO (JSON Object Java Object). A JOJO combines
+ * subclassed to define a JOJO (JSON-Object Java Object). A JOJO combines
  * discovered Java properties with dynamic JSON properties in the same object, so a
  * model can keep typed domain properties without losing extra object members from
  * input JSON.

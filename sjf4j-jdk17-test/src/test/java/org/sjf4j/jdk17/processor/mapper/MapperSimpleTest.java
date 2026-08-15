@@ -7,9 +7,13 @@ import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.JsonObject;
 import org.sjf4j.compiled.CompiledNodes;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -227,6 +231,104 @@ public class MapperSimpleTest {
         assertEquals("Lovelace", record.lastName());
     }
 
+    @Test
+    public void mapsJacksonJsonNodeToRecordIncludingNestedRecord() {
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        ObjectNode address = JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1");
+        JsonNode source = JsonNodeFactory.instance.objectNode()
+                .put("name", "Ada").put("age", 36).put("active", true).set("address", address);
+
+        JacksonNodeDto dto = mapper.fromJackson(source);
+
+        assertEquals("Ada", dto.name());
+        assertEquals(36, dto.age());
+        assertEquals(true, dto.active());
+        assertEquals("London", dto.address().city());
+        assertEquals("NW1", dto.address().zip());
+    }
+
+    @Test
+    public void mapsJacksonArrayNodesToJavaArraysAndCollections() {
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        JsonNode numbers = JsonNodeFactory.instance.arrayNode().add(1).add(2);
+
+        assertEquals(List.of(1, 2), List.of(mapper.jacksonArray(numbers)));
+        assertEquals(List.of(1, 2), mapper.jacksonList(numbers));
+        assertEquals(Set.of(1, 2), mapper.jacksonSet(numbers));
+
+        JsonNode source = JsonNodeFactory.instance.objectNode().set("addresses",
+                JsonNodeFactory.instance.arrayNode().add(JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1")));
+        assertEquals("London", mapper.jacksonNestedArray(source).addresses().get(0).city());
+    }
+
+    @Test
+    public void mapsFacadeIndexedPathAndCachedPojoChildReads() {
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        JsonNode item = JsonNodeFactory.instance.objectNode().put("name", "Ada");
+        assertEquals("Ada", mapper.jacksonFirst(JsonNodeFactory.instance.arrayNode().add(item)).name());
+        assertEquals("Ada", mapper.jacksonLast(JsonNodeFactory.instance.arrayNode().add(item)).name());
+        assertNull(mapper.jacksonOutOfRange(JsonNodeFactory.instance.arrayNode().add(item)).name());
+
+        JsonNode address = JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1");
+        JacksonTwiceDto twice = mapper.jacksonTwice(JsonNodeFactory.instance.objectNode().set("address", address));
+        assertEquals("London", twice.home().city());
+        assertEquals("London", twice.work().city());
+    }
+
+    @Test
+    public void mapsFacadeNullNodesAsJavaNull() {
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        ObjectNode source = JsonNodeFactory.instance.objectNode();
+        source.putNull("name");
+        source.putNull("age");
+        source.set("address", JsonNodeFactory.instance.nullNode());
+        source.set("numbers", JsonNodeFactory.instance.nullNode());
+        source.set("array", JsonNodeFactory.instance.arrayNode().addNull().add(2));
+
+        JacksonNullDto dto = mapper.jacksonNulls(source);
+
+        assertNull(dto.name());
+        assertNull(dto.age());
+        assertNull(dto.address());
+        assertNull(dto.numbers());
+        assertNull(dto.array()[0]);
+        assertEquals(2, dto.array()[1]);
+
+        JacksonIgnoreDto ignored = mapper.jacksonIgnoreNulls(source);
+        assertEquals("default", ignored.name);
+        assertEquals(7, ignored.age);
+        assertEquals(List.of(1), ignored.numbers);
+    }
+
+    @Test
+    public void mapsJacksonObjectNodeToTypedMap() {
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+
+        assertEquals(Map.of("one", 1, "two", 2), mapper.jacksonMap(
+                JsonNodeFactory.instance.objectNode().put("one", 1).put("two", 2)));
+        assertEquals("London", mapper.jacksonAddressMap(JsonNodeFactory.instance.objectNode().set("home",
+                JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1"))).get("home").city());
+    }
+
+    @Test
+    public void mapsJacksonNestedObjectNodeToTypedMapProperty() {
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        JsonNode source = JsonNodeFactory.instance.objectNode().set("addresses",
+                JsonNodeFactory.instance.objectNode().set("home",
+                        JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1")));
+
+        assertEquals("London", mapper.jacksonAddressBook(source).addresses().get("home").city());
+    }
+
+    @Test
+    public void mapsFacadeChildWithExplicitJacksonNodeConverter() {
+        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        JsonNode source = JsonNodeFactory.instance.objectNode().set("address",
+                JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1"));
+
+        assertEquals("London", mapper.jacksonExplicitAddress(source).address().city());
+    }
+
     public record Person(String first, String last, int age) {}
 
     public record NameRecord(String first, String surname) {}
@@ -267,6 +369,17 @@ public class MapperSimpleTest {
 
     public record ThirdPartyRecord(@com.fasterxml.jackson.annotation.JsonProperty("first_name") String firstName,
                                    @com.alibaba.fastjson2.annotation.JSONField(name = "last_name") String lastName) {}
+    public record JacksonNodeDto(String name, Integer age, Boolean active, Address address) {}
+    public record JacksonArrayDto(List<Address> addresses) {}
+    public record JacksonTwiceDto(Address home, Address work) {}
+    public record JacksonAddressBook(Map<String, Address> addresses) {}
+    public record JacksonExplicitAddressDto(Address address) {}
+    public record JacksonNullDto(String name, Integer age, Address address, List<Integer> numbers, Integer[] array) {}
+    public static final class JacksonIgnoreDto {
+        public String name = "default";
+        public Integer age = 7;
+        public List<Integer> numbers = List.of(1);
+    }
     public static final class AgeDto {
         public Integer age;
 
@@ -396,6 +509,48 @@ public class MapperSimpleTest {
         GroupedDefaultsDto groupedIgnore(GroupedSource source);
 
         ThirdPartyRecord thirdPartyNames(Map<String, String> source);
+
+        JacksonNodeDto fromJackson(JsonNode source);
+
+        Integer[] jacksonArray(JsonNode source);
+
+        List<Integer> jacksonList(JsonNode source);
+
+        Set<Integer> jacksonSet(JsonNode source);
+
+        JacksonArrayDto jacksonNestedArray(JsonNode source);
+
+        @Mapping(target = "name", source = "$[0].name")
+        NameOnly jacksonFirst(JsonNode source);
+
+        @Mapping(target = "name", source = "$[-1].name")
+        NameOnly jacksonLast(JsonNode source);
+
+        @Mapping(target = "name", source = "$[3].name")
+        NameOnly jacksonOutOfRange(JsonNode source);
+
+        @Mapping(target = "home", source = "address")
+        @Mapping(target = "work", source = "address")
+        JacksonTwiceDto jacksonTwice(JsonNode source);
+
+        JacksonNullDto jacksonNulls(JsonNode source);
+
+        @MapperOptions(nulls = NullValuePolicy.IGNORE)
+        JacksonIgnoreDto jacksonIgnoreNulls(JsonNode source);
+
+        Map<String, Integer> jacksonMap(JsonNode source);
+
+        Map<String, Address> jacksonAddressMap(JsonNode source);
+
+        JacksonAddressBook jacksonAddressBook(JsonNode source);
+
+        @MapperOptions(using = {"mapJacksonAddress"})
+        @Mapping(target = "address", source = "address")
+        JacksonExplicitAddressDto jacksonExplicitAddress(JsonNode source);
+
+        default Address mapJacksonAddress(JsonNode source) {
+            return new Address(source.get("city").asText(), source.get("zip").asText());
+        }
 
         default String join(String first, String last) {
             return first + "/" + last;

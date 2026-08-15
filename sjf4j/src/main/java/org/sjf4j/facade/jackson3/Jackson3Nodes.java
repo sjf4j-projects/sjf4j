@@ -30,6 +30,8 @@ import java.util.function.BiPredicate;
  * Jackson3 JsonNode adapter used by {@link org.sjf4j.facade.FacadeNodes}.
  */
 public final class Jackson3Nodes {
+    /** Fully qualified name of the Jackson 3 root node type. */
+    public static final String ROOT_NODE_TYPE_NAME = "tools.jackson.databind.JsonNode";
 
     private Jackson3Nodes() {}
 

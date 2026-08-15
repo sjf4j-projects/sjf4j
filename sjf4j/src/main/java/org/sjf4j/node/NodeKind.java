@@ -78,6 +78,7 @@ public enum NodeKind {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.kindOf(node);
         }
+
         return NodeKind.UNKNOWN;
     }
 

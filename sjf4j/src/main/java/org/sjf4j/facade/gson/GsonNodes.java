@@ -27,6 +27,8 @@ import java.util.function.BiPredicate;
  * Gson JsonElement adapter used by {@link org.sjf4j.facade.FacadeNodes}.
  */
 public final class GsonNodes {
+    /** Fully qualified name of the Gson root node type. */
+    public static final String ROOT_NODE_TYPE_NAME = "com.google.gson.JsonElement";
 
     private GsonNodes() {}
 

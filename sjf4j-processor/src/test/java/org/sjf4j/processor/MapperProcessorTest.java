@@ -783,7 +783,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadCollectionMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "import org.sjf4j.annotation.mapper.*; import java.util.*; import com.fasterxml.jackson.databind.JsonNode;\n" +
                         "class User {} class Dto {}\n" +
                         "class Source { public List<User> users; }\n" +
                         "class SetterOnly { public void setUsers(List<Dto> users) {} }\n" +
@@ -796,6 +796,8 @@ public class MapperProcessorTest {
                         "  List rawTarget(List<Dto> users);\n" +
                         "  Map<String, List<Dto>> badNestedKey(Map<Integer, List<User>> users);\n" +
                         "  Map<String, Map<String, Dto>> rawNested(Map<String, Map> users);\n" +
+                        "  JsonNode facadeTarget(JsonNode source);\n" +
+                        "  Map rawFacadeMap(JsonNode source);\n" +
                         "  List<List<Dto>> nested(List<List<Integer>> users);\n" +
                         "  @MapperOptions(using={\"one\"}) @Mapping(target=\"users\", array=ArrayPolicy.ADD) void setterOnly(SetterOnly t, Source s);\n" +
                         "  default Dto one(User u) { return new Dto(); } default Dto two(User u) { return new Dto(); }\n" +
@@ -818,10 +820,36 @@ public class MapperProcessorTest {
         assertTrue(messages.contains("Map key type mismatch"), messages);
         assertTrue(messages.contains("Raw or non-parameterized collection types are unsupported")
                 || messages.contains("Raw or non-parameterized collection/map types are unsupported"), messages);
+        assertTrue(messages.contains("Facade JSON node types are not supported as @CompiledMapper targets"), messages);
         assertTrue(messages.contains("Cannot find element/value converter from java.lang.Integer to testcase.Dto"), messages);
         assertTrue(messages.contains("setter-only target has no readable collection/map"), messages);
         assertTrue(countOccurrences(messages, "Map key type mismatch") >= 2, messages);
         assertTrue(countOccurrences(messages, "Ambiguous element/value converter; specify @MapperOptions(using = ...) preference") >= 1, messages);
+    }
+
+    @Test
+    public void rejectsFacadeNullForPrimitiveTarget() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-facade-primitive-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadFacadePrimitiveMapper.java"),
+                "package testcase;\n" +
+                        "import com.fasterxml.jackson.databind.JsonNode; import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Dto { public int value; public int[] values; }\n" +
+                        "@CompiledMapper interface BadFacadePrimitiveMapper { Dto map(JsonNode source); int[] array(JsonNode source); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadFacadePrimitiveMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        assertTrue(diagnosticsToString(diagnostics).contains("Facade JSON null may be assigned to primitive target type"), diagnosticsToString(diagnostics));
     }
 
     @Test

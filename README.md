@@ -251,7 +251,7 @@ Java object graphs without first converting them into an intermediate JSON tree.
 ---
 
 A regular POJO provides a typed, closed object model, 
-while a **JOJO (JSON-Oriented Java Object)** extends it with dynamic properties:
+while a **JOJO (JSON-Object Java Object)** extends it with dynamic properties:
 ```java
 public class StudentJojo extends JsonObject { 
     private String name; 

@@ -32,9 +32,11 @@ import java.util.Map;
  */
 public final class PathAccessEmitter {
     private final ProcessorContext ctx;
+    private final FacadeNodeTypes facadeNodes;
 
     public PathAccessEmitter(ProcessorContext ctx) {
         this.ctx = ctx;
+        this.facadeNodes = new FacadeNodeTypes(ctx);
     }
 
     /**
@@ -226,7 +228,18 @@ public final class PathAccessEmitter {
         String type = GeneratorUtil.localTypeName(ctx, a.type);
         temps.add(type + " " + nextVar + " = null;");
         String guard = checkParent && !parentType.getKind().isPrimitive() ? parentVar + " != null" : null;
-        if (GeneratorUtil.isObject(ctx, parentType) || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.jsonArrayType)) {
+        if (facadeNodes.isFacadeNode(parentType)) {
+            String size = "org.sjf4j.node.Nodes.sizeInArray(" + parentVar + ")";
+            String idx = nextVar + "i";
+            String indent = guard == null ? "" : "  ";
+            if (guard != null) temps.add("if (" + guard + ") {");
+            temps.add(indent + "int " + idx + " = " + GeneratorUtil.indexExpr(index, size) + ";");
+            temps.add(indent + "if (" + idx + " >= 0 && " + idx + " < " + size + ") " + nextVar + " = " + a.code.replace("#IDX#", idx) + ";");
+            if (guard != null) temps.add("}");
+            return;
+        }
+        if (GeneratorUtil.isObject(ctx, parentType)
+                || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.jsonArrayType)) {
             if (guard == null) {
                 temps.add(nextVar + " = " + a.code + ";");
             } else {
@@ -249,6 +262,9 @@ public final class PathAccessEmitter {
 
     private Access _nameAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, String name) {
         if (GeneratorUtil.isObject(ctx, current)) {
+            return new Access("org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
+        }
+        if (facadeNodes.isFacadeNode(current)) {
             return new Access("org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
         }
         if (GeneratorUtil.isJojoType(ctx, current)) {
@@ -294,6 +310,9 @@ public final class PathAccessEmitter {
     private Access _indexAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, int index) {
         if (GeneratorUtil.isObject(ctx, current)) {
             return new Access("org.sjf4j.node.Nodes.getInArray(" + currentVar + ", " + index + ")", ctx.objectType);
+        }
+        if (facadeNodes.isFacadeNode(current)) {
+            return new Access("org.sjf4j.node.Nodes.getInArray(" + currentVar + ", #IDX#)", ctx.objectType);
         }
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
             return new Access(currentVar + ".getNode(" + index + ")", ctx.objectType);

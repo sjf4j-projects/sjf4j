@@ -31,21 +31,21 @@ public class FacadeNodes {
     static {
         boolean jackson3NodesPresent = false;
         try {
-            Class.forName("tools.jackson.databind.JsonNode");
+            Class.forName(Jackson3Nodes.ROOT_NODE_TYPE_NAME);
             jackson3NodesPresent = true;
         } catch (Throwable ignored) {}
         JACKSON3_NODES_PRESENT = jackson3NodesPresent;
 
         boolean jackson2NodesPresent = false;
         try {
-            Class.forName("com.fasterxml.jackson.databind.JsonNode");
+            Class.forName(Jackson2Nodes.ROOT_NODE_TYPE_NAME);
             jackson2NodesPresent = true;
         } catch (Throwable ignored) {}
         JACKSON2_NODES_PRESENT = jackson2NodesPresent;
 
         boolean gsonNodesPresent = false;
         try {
-            Class.forName("com.google.gson.JsonElement");
+            Class.forName(GsonNodes.ROOT_NODE_TYPE_NAME);
             gsonNodesPresent = true;
         } catch (Throwable ignored) {}
         GSON_NODES_PRESENT = gsonNodesPresent;

@@ -60,11 +60,13 @@ import java.util.regex.Pattern;
 public final class MapperGenerator {
     private final ProcessorContext ctx;
     private final PathAccessEmitter pathAccess;
+    private final FacadeNodeTypes facadeNodes;
     private GenerationState generation;
 
     public MapperGenerator(ProcessorContext ctx) {
         this.ctx = ctx;
         this.pathAccess = new PathAccessEmitter(ctx);
+        this.facadeNodes = new FacadeNodeTypes(ctx);
     }
 
     /**
@@ -163,6 +165,10 @@ public final class MapperGenerator {
         TypeElement targetType = GeneratorUtil.asTypeElement(method.getReturnType());
         if (targetType == null) {
             _error(method, target, "@CompiledMapper supports only declared source and target types");
+            return;
+        }
+        if (facadeNodes.isFacadeNode(method.getReturnType())) {
+            _error(method, target, "Facade JSON node types are not supported as @CompiledMapper targets");
             return;
         }
 
@@ -572,6 +578,16 @@ public final class MapperGenerator {
             });
             return;
         }
+        if (facadeNodes.isFacadeNode(sourceType)) {
+            if (!_rootMethodMappingsSupported(method, target, "Java array create methods")) return;
+            MapperModel.Converter conv = _facadeArrayConverter(iface, method, target, sourceType, targetType, "");
+            if (conv == null) {
+                _error(method, target, "Java array create source must be an array facade node");
+                return;
+            }
+            target.addMethod(out -> _emitRootConverter(out, method, new MapperModel.SourceParam(source, Collections.emptyMap(), true), conv));
+            return;
+        }
         MapperModel.ArrayLikeType arrayFrom = _arrayLike(sourceType);
         MapperModel.ContainerType containerFrom = _listOrSetSource(sourceType);
         if (containerFrom != null && containerFrom.map) containerFrom = null;
@@ -642,6 +658,19 @@ public final class MapperGenerator {
             _error(method, target, "Raw or non-parameterized collection types are unsupported");
             return;
         }
+        if (to.map && (to.value == null || to.key == null)) {
+            _error(method, target, "Raw or non-parameterized collection/map types are unsupported");
+            return;
+        }
+        if (to.map && facadeNodes.isFacadeNode(source.asType())) {
+            if (!_validateRootMapProjectionSource(method, target, source.asType(), to)) return;
+            if (!_rootMethodMappingsSupported(method, target, "Root collection/map methods")) return;
+            String helper = _ensureFacadeMapProjectionHelper(iface, method, target, source.asType(), to, "");
+            if (helper == null) return;
+            target.addMethod(out -> _emitRootConverter(out, method,
+                    new MapperModel.SourceParam(source, Collections.emptyMap(), true), new MapperModel.Converter(helper, to.mirror)));
+            return;
+        }
         if (to.map && _rootMapProjectionSource(source.asType())) {
             if (!_validateRootMapProjectionSource(method, target, source.asType(), to)) return;
             if (!_rootMethodMappingsSupported(method, target, "Root collection/map methods")) return;
@@ -678,6 +707,20 @@ public final class MapperGenerator {
                 out.dedent();
                 out.line("}");
             });
+            return;
+        }
+        if (facadeNodes.isFacadeNode(source.asType())) {
+            if (to.map) {
+                _error(method, target, "Root collection/map create requires matching source and target container types");
+                return;
+            }
+            if (!_rootMethodMappingsSupported(method, target, "Root collection/map methods")) return;
+            MapperModel.Converter conv = _facadeArrayConverter(iface, method, target, source.asType(), method.getReturnType(), "");
+            if (conv == null) {
+                _error(method, target, "Root collection create source must be an array facade node");
+                return;
+            }
+            target.addMethod(out -> _emitRootConverter(out, method, new MapperModel.SourceParam(source, Collections.emptyMap(), true), conv));
             return;
         }
         MapperModel.ContainerType from = _container(source.asType());
@@ -1965,7 +2008,8 @@ public final class MapperGenerator {
     private boolean _dynamicSource(TypeMirror type) {
         return GeneratorUtil.isObject(ctx, type)
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)
-                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)
+                || facadeNodes.isFacadeNode(type);
     }
 
     private MapperModel.Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources, boolean multi,
@@ -2211,7 +2255,12 @@ public final class MapperGenerator {
 
         String key = resolved.param.name + ":" + resolved.path + ":" + resolved.nullableRoot;
         MapperModel.CachedRead cached = state.cache.get(key);
-        if (cached != null) return new MapperModel.Expr(cached.code, cached.type, cached.path, cached.nullableRoot, true);
+        if (cached != null) {
+            MapperModel.Expr e = new MapperModel.Expr(cached.code, cached.type, cached.path, cached.nullableRoot, true);
+            e.facadeNode = cached.facadeNode;
+            e.facadeType = cached.facadeType;
+            return e;
+        }
 
         PathAccessEmitter.ReadAccess r = resolved.nullableRoot
                 ? pathAccess.readNullableRoot(method, target, resolved.param.element.asType(), resolved.param.name,
@@ -2220,6 +2269,8 @@ public final class MapperGenerator {
                 resolved.path, state.names, state.pathCache, _pathCacheRoot(resolved));
         if (r == null) return null;
         MapperModel.Expr e = new MapperModel.Expr(r.code, r.type, r.path, resolved.nullableRoot, false);
+        e.facadeNode = facadeNodes.isFacadeNode(resolved.param.element.asType());
+        e.facadeType = e.facadeNode ? resolved.param.element.asType() : null;
         if (r.path) {
             if (r.leafExpr != null && _readCount(state, path) <= 1) {
                 // inline leaf expression, suppress the leaf temp declaration
@@ -2231,13 +2282,13 @@ public final class MapperGenerator {
                 state.readTemps.addAll(r.temps);
                 e.local = true;
             }
-            state.cache.put(key, new MapperModel.CachedRead(r.code, r.type, true, resolved.nullableRoot));
+                state.cache.put(key, new MapperModel.CachedRead(r.code, r.type, true, resolved.nullableRoot, e.facadeNode, e.facadeType));
         } else if (_readCount(state, path) > 1) {
             String temp = preferredTemp == null ? state.names.prefixed("s", targetName) : preferredTemp;
             state.readTemps.add(_localTypeName(r.type, resolved.nullableRoot) + " " + temp + " = " + r.code + ";");
             e.code = temp;
             e.local = true;
-            state.cache.put(key, new MapperModel.CachedRead(temp, r.type, false, resolved.nullableRoot));
+            state.cache.put(key, new MapperModel.CachedRead(temp, r.type, false, resolved.nullableRoot, e.facadeNode, e.facadeType));
         } else {
             e.temps.addAll(r.temps);
         }
@@ -2532,6 +2583,15 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Expr _maybeNestedExpr(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.Expr e, TypeMirror need, String nestedMapper, String name) {
+        if (e.facadeNode) {
+            MapperModel.Converter conv = _facadeValueConverter(iface, method, target, e.facadeType, need, nestedMapper);
+            if (conv == null) return null;
+            String value = generation.helperName("facadeValue");
+            MapperModel.Expr r = new MapperModel.Expr(_facadeConvertValue(conv, value), conv.type, e.path, e.nullableRoot, true);
+            r.temps.addAll(e.temps);
+            r.temps.add("Object " + value + " = " + e.code + ";");
+            return r;
+        }
         MapperModel.ContainerType from = _container(e.type);
         MapperModel.ContainerType to = _container(need);
         MapperModel.ArrayLikeType arrayFrom = _arrayLike(e.type);
@@ -2593,6 +2653,118 @@ public final class MapperGenerator {
             out.line("if (source == null) return null;");
             out.line(_containerLocalType(impl, to, resultType) + " " + targetVar + " = " + _newContainer(impl, to, _arrayLikeSize(from, "source")) + ";");
             _emitArrayLikeCopy(out, from, conv, targetVar, "source", names);
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
+    }
+
+    private MapperModel.Converter _facadeValueConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                          TypeMirror from, TypeMirror to, String nestedMapper) {
+        if (to.getKind().isPrimitive()) {
+            _error(method, target, "Facade JSON null may be assigned to primitive target type " + to + "; use a boxed type");
+            return null;
+        }
+        MapperModel.ContainerType container = _container(to);
+        if (container != null && container.map) {
+            if (container.value == null || container.key == null) {
+                _error(method, target, "Raw or non-parameterized collection/map types are unsupported");
+                return null;
+            }
+            if (!_validateRootMapProjectionSource(method, target, ctx.objectType, container)) return null;
+            String helper = _ensureFacadeMapProjectionHelper(iface, method, target, from, container, nestedMapper);
+            return helper == null ? null : new MapperModel.Converter(helper, to);
+        }
+        if (_pojoTarget(to) && (nestedMapper == null || nestedMapper.length() == 0)) {
+            return _facadeObjectLikeConverter(iface, method, target, from, to);
+        }
+        MapperModel.Converter array = _facadeArrayConverter(iface, method, target, from, to, nestedMapper);
+        if (array != null) return array;
+        // Prefer the declared facade type so a named converter can accept its
+        // native node class.  Ordinary facade conversions still fall back to
+        // Object and therefore retain the facade-neutral Nodes scalar path.
+        MapperModel.Converter conv = _resolveConverter(iface, method, target, from, to, nestedMapper, false);
+        if (conv == null) conv = _resolveConverter(iface, method, target, ctx.objectType, to, nestedMapper);
+        return conv == null ? null : new MapperModel.Converter(conv.method, conv.type, from);
+    }
+
+    /** Converts a runtime-validated facade array through the facade-neutral Nodes API. */
+    private MapperModel.Converter _facadeArrayConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                         TypeMirror from, TypeMirror to, String nestedMapper) {
+        MapperModel.ContainerType container = _container(to);
+        if (container != null) {
+            if (container.map || container.value == null) return null;
+            MapperModel.Converter value = _facadeValueConverter(iface, method, target, from, container.value, nestedMapper);
+            if (value == null) return null;
+            String impl = _implType(method, target, container);
+            if (impl == null) return null;
+            return new MapperModel.Converter(_ensureFacadeArrayContainerHelper(target, container, value, impl, to), to);
+        }
+        if (to.getKind() == TypeKind.ARRAY) {
+            TypeMirror valueType = ((ArrayType) to).getComponentType();
+            MapperModel.Converter value = _facadeValueConverter(iface, method, target, from, valueType, nestedMapper);
+            if (value == null) return null;
+            return new MapperModel.Converter(_ensureFacadeArrayJavaArrayHelper(target, to, valueType, value), to);
+        }
+        return null;
+    }
+
+    private String _ensureFacadeArrayContainerHelper(GeneratedClass target, MapperModel.ContainerType to,
+                                                     MapperModel.Converter value, String impl, TypeMirror resultType) {
+        String key = "facadeArray:" + resultType + ":" + impl + ":" + (value.method == null ? "" : value.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = generation.helperName("FacadeArray");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            String index = names.prefixed("s", "i");
+            out.line("");
+            out.line("private " + resultType + " " + helper + "(Object source) {");
+            out.indent();
+            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
+            out.line("int size = org.sjf4j.node.Nodes.sizeInArray(source);");
+            out.line(_containerLocalType(impl, to, resultType) + " " + targetVar + " = " + _newContainer(impl, to, "size") + ";");
+            out.line("for (int " + index + " = 0; " + index + " < size; " + index + "++) {");
+            out.indent();
+            out.line("Object node = org.sjf4j.node.Nodes.getInArray(source, " + index + ");");
+            out.line(targetVar + ".add(" + _facadeConvertValue(value, "node") + ");");
+            out.dedent();
+            out.line("}");
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
+    }
+
+    private String _ensureFacadeArrayJavaArrayHelper(GeneratedClass target, TypeMirror resultType, TypeMirror valueType,
+                                                      MapperModel.Converter value) {
+        String key = "facadeArray:" + resultType + ":" + (value.method == null ? "" : value.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = generation.helperName("FacadeArray");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            String index = names.prefixed("s", "i");
+            out.line("");
+            out.line("private " + resultType + " " + helper + "(Object source) {");
+            out.indent();
+            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
+            out.line("int size = org.sjf4j.node.Nodes.sizeInArray(source);");
+            out.line(resultType + " " + targetVar + " = new " + _arrayComponentTypeName(valueType) + "[size];");
+            out.line("for (int " + index + " = 0; " + index + " < size; " + index + "++) {");
+            out.indent();
+            out.line("Object node = org.sjf4j.node.Nodes.getInArray(source, " + index + ");");
+            out.line(targetVar + "[" + index + "] = " + _facadeConvertValue(value, "node") + ";");
+            out.dedent();
+            out.line("}");
             out.line("return " + targetVar + ";");
             out.dedent();
             out.line("}");
@@ -2804,6 +2976,10 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Converter _resolveConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String nestedMapper, boolean errorIfMissing) {
+        if (facadeNodes.isFacadeNode(to)) {
+            _error(method, target, "Facade JSON node types are not supported as @CompiledMapper targets");
+            return null;
+        }
         if (nestedMapper != null && nestedMapper.length() != 0) {
             return _explicitConverter(iface, method, target, from, to, nestedMapper);
         }
@@ -3594,13 +3770,60 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Converter _objectLikeConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                                       TypeMirror from, TypeMirror to, String nestedMapper) {
+                                                        TypeMirror from, TypeMirror to, String nestedMapper) {
         if (nestedMapper != null && nestedMapper.length() != 0) return null;
         if (!_objectLikeSource(from) || !_pojoTarget(to)) return null;
         String helper = GeneratorUtil.isObject(ctx, from)
                 ? _ensureObjectDispatchHelper(iface, method, target, from, to)
                 : _ensureObjectLikeHelper(iface, method, target, from, to, _objectLikeKind(from));
         return helper == null ? null : new MapperModel.Converter(helper, to);
+    }
+
+    /** Generates a facade-neutral object reader; child access always goes through Nodes. */
+    private MapperModel.Converter _facadeObjectLikeConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                              TypeMirror from, TypeMirror to) {
+        String key = "facadenode:" + to;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return new MapperModel.Converter(existing, to);
+        if (generation.inProgress.contains(key)) {
+            _error(method, target, "Recursive automatic facade-node mapper to " + to + " is unsupported; provide an explicit mapper");
+            return null;
+        }
+        generation.inProgress.add(key);
+        TypeElement targetType = GeneratorUtil.asTypeElement(to);
+        Map<String, MapperModel.Write> writes = _writes(targetType, to);
+        MapperModel.Plan plan = _creation(method, target, targetType, to, writes);
+        if (plan == null) {
+            generation.inProgress.remove(key);
+            return null;
+        }
+        Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
+        for (String name : plan.names) {
+            MapperModel.Expr value = new MapperModel.Expr("org.sjf4j.node.Nodes.getInObject(source, \""
+                    + GeneratorUtil.escape(name) + "\")", ctx.objectType);
+            value.facadeNode = true;
+            value.facadeType = from;
+            value = _maybeNestedExpr(iface, method, target, value, plan.writes.get(name).type, "", name);
+            if (value == null || !_assignable(value.type, plan.writes.get(name).type)) {
+                if (value != null) _error(method, target, "Cannot auto-map facade-node target property '" + name + "'");
+                generation.inProgress.remove(key);
+                return null;
+            }
+            values.put(name, value);
+        }
+        generation.inProgress.remove(key);
+        String helper = generation.helperName("FacadeNode");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            out.line("");
+            out.line("private " + to + " " + helper + "(Object source) {");
+            out.indent();
+            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
+            _emitObjectLikeReturn(out, to, plan, values);
+            out.dedent();
+            out.line("}");
+        });
+        return new MapperModel.Converter(helper, to);
     }
 
     private MapperModel.Converter _jsonObjectProjectionConverter(ExecutableElement method, GeneratedClass target,
@@ -3717,6 +3940,36 @@ public final class MapperGenerator {
             return false;
         }
         return true;
+    }
+
+    private String _ensureFacadeMapProjectionHelper(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                     TypeMirror from, MapperModel.ContainerType to, String nestedMapper) {
+        MapperModel.Converter value = _facadeValueConverter(iface, method, target, from, to.value, nestedMapper);
+        if (value == null) return null;
+        String impl = _implType(method, target, to);
+        if (impl == null) return null;
+        String key = "facadeMap:" + to.mirror + ":" + impl + ":" + (value.method == null ? "" : value.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = generation.helperName("FacadeMap");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
+            out.line("");
+            out.line("private " + to.mirror + " " + helper + "(Object source) {");
+            out.indent();
+            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
+            out.line(_containerLocalType(impl, to, to.mirror) + " " + targetVar + " = " + _newContainer(impl, to,
+                    "org.sjf4j.node.Nodes.sizeInObject(source)") + ";");
+            out.line("org.sjf4j.node.Nodes.forEachObject(source, (key, node) -> " + targetVar + ".put(key, "
+                    + _facadeConvertValue(value, "node") + "));");
+            out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
     }
 
     private String _ensureRootMapProjectionHelper(TypeElement iface, ExecutableElement method, GeneratedClass target,
@@ -4083,7 +4336,8 @@ public final class MapperGenerator {
         if (GeneratorUtil.isObject(ctx, type)
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)
-                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)) return false;
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)
+                || facadeNodes.isFacadeNode(type)) return false;
         TypeElement e = GeneratorUtil.asTypeElement(type);
         return e != null && e.getKind() != ElementKind.ENUM;
     }
@@ -4607,6 +4861,11 @@ public final class MapperGenerator {
 
     private String _convertValue(MapperModel.Converter conv, String value) {
         return conv.method == null ? value : conv.method + "(" + value + ")";
+    }
+
+    private String _facadeConvertValue(MapperModel.Converter conv, String value) {
+        String typed = conv.facadeType == null ? value : "(" + conv.facadeType + ") " + value;
+        return "(org.sjf4j.node.NodeKind.of(" + value + ").isNull() ? null : " + _convertValue(conv, typed) + ")";
     }
 
     private void _emitArrayField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,

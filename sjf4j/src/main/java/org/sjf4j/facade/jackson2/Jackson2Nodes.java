@@ -31,7 +31,8 @@ import java.util.function.BiPredicate;
  * Jackson2 JsonNode adapter used by {@link org.sjf4j.facade.FacadeNodes}.
  */
 public final class Jackson2Nodes {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    /** Fully qualified name of the Jackson 2 root node type. */
+    public static final String ROOT_NODE_TYPE_NAME = "com.fasterxml.jackson.databind.JsonNode";
 
     private Jackson2Nodes() {}
 
