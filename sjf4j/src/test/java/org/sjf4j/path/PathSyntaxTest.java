@@ -91,6 +91,12 @@ public class PathSyntaxTest {
         segments = PathSyntax.parsePointer("/1234567890");
         assertEquals(2, segments.length);
         assertEquals(1234567890, ((PathSegment.Index) segments[1]).index);
+
+        // Valid numeric tokens outside the int range remain object names.
+        segments = PathSyntax.parsePointer("/2147483648/999999999999999999999999");
+        assertEquals("2147483648", ((PathSegment.Name) segments[1]).name);
+        assertEquals("999999999999999999999999", ((PathSegment.Name) segments[2]).name);
+        assertEquals("/2147483648/999999999999999999999999", PathSyntax.toPointerExpr(segments));
     }
 
     @Test
@@ -244,6 +250,8 @@ public class PathSyntaxTest {
     public void testEscapedCharacters() {
         // Escaped quotes in names
         testParsePath("$['name\\'with\\'quotes']", 2, PathSegment.Root.class, PathSegment.Name.class);
+        assertEquals("name'with'quotes", ((PathSegment.Name) PathSyntax.parsePath("$['name\\'with\\'quotes']")[1]).name);
+        assertEquals("line\\n", ((PathSegment.Name) PathSyntax.parsePath("$['line\\n']")[1]).name);
 
         // Names with special characters
         testParsePath("$['a[b]c']", 2, PathSegment.Root.class, PathSegment.Name.class);

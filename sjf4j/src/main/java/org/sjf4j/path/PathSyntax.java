@@ -101,23 +101,9 @@ public final class PathSyntax {
                 name = seg;
             }
 
-            // detect RFC 6902 array index: "0" or non-zero digit followed by digits
-            boolean isNumber = name.length() == 1 && name.charAt(0) == '0';
-            if (!isNumber && name.length() > 0) {
-                char c = name.charAt(0);
-                isNumber = c >= '1' && c <= '9';
-                for (int i = 1, len2 = name.length(); isNumber && i < len2; i++) {
-                    c = name.charAt(i);
-                    isNumber = c >= '0' && c <= '9';
-                }
-            }
-
-            if (isNumber) {
-                try {
-                    segments.addLast(new PathSegment.Index(segments.peekLast(), Integer.parseInt(name), seg));
-                } catch (NumberFormatException e) {
-                    segments.addLast(new PathSegment.Name(segments.peekLast(), name));
-                }
+            int index = _parsePointerIndex(name);
+            if (index >= 0) {
+                segments.addLast(new PathSegment.Index(segments.peekLast(), index, seg));
             } else if (name.equals("-")) {
                 segments.addLast(new PathSegment.Append(segments.peekLast()));
             } else {
@@ -478,6 +464,25 @@ public final class PathSyntax {
         return i;
     }
 
+    /** Returns the index value, or -1 when the token is not a usable pointer index. */
+    private static int _parsePointerIndex(String token) {
+        int len = token.length();
+        if (len == 0) return -1;
+        char first = token.charAt(0);
+        if (first == '0') return len == 1 ? 0 : -1;
+        if (first < '1' || first > '9') return -1;
+
+        int value = first - '0';
+        for (int i = 1; i < len; i++) {
+            char ch = token.charAt(i);
+            if (ch < '0' || ch > '9') return -1;
+            int digit = ch - '0';
+            if (value > 214748364 || (value == 214748364 && digit > 7)) return -1;
+            value = value * 10 + digit;
+        }
+        return value;
+    }
+
 
     /// private
 
@@ -579,7 +584,6 @@ public final class PathSyntax {
 
                 int tokenContentStart = _skipWhitespace(content, tokenStart);
                 int tokenContentEnd = _trimTrailingWhitespace(content, tokenContentStart, i);
-                String part = content.substring(tokenContentStart, tokenContentEnd);
                 if (hasColon) {
                     // Slice
                     segments.add(_parseSlice(null, content, tokenContentStart, tokenContentEnd, " in union"));
@@ -589,7 +593,7 @@ public final class PathSyntax {
                         int idx = _parseInt(content, tokenContentStart, tokenContentEnd);
                         segments.add(new PathSegment.Index(null, idx));
                     } catch (NumberFormatException e) {
-                        throw new JsonException("invalid index '" + part + "' in union");
+                        throw new JsonException("invalid index '" + content.substring(tokenContentStart, tokenContentEnd) + "' in union");
                     }
                 }
             } else {
@@ -633,8 +637,9 @@ public final class PathSyntax {
 
     private static String _parseQuotedContent(String content, int start, int limit, int[] end, String errorContext) {
         char quote = content.charAt(start);
-        StringBuilder sb = new StringBuilder(Math.max(0, limit - start - 2));
         int i = start + 1;
+        int copyStart = i;
+        StringBuilder sb = null;
 
         while (i < limit) {
             char ch = content.charAt(i);
@@ -644,16 +649,18 @@ public final class PathSyntax {
                 }
                 char next = content.charAt(i + 1);
                 if (next == quote || next == '\\') {
+                    if (sb == null) sb = new StringBuilder(Math.max(0, limit - start - 2));
+                    sb.append(content, copyStart, i);
                     sb.append(next);
+                    copyStart = i + 2;
                 } else {
-                    sb.append('\\').append(next);
                 }
                 i += 2;
             } else if (ch == quote) {
                 if (end != null) end[0] = i + 1;
-                return sb.toString();
+                if (sb == null) return content.substring(start + 1, i);
+                return sb.append(content, copyStart, i).toString();
             } else {
-                sb.append(ch);
                 i++;
             }
         }

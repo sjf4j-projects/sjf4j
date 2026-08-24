@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
+
 ### Added
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 
