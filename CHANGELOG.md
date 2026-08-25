@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 
+### Changed
+- Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
+
 
 
 ## [1.3.3] - 2026.08.13

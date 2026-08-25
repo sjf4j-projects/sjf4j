@@ -50,6 +50,7 @@ public class PathSyntaxTest {
         assertEquals(0, ((PathSegment.Index) segments[2]).index);
         assertInstanceOf(PathSegment.Index.class, segments[4]);
         assertEquals(12, ((PathSegment.Index) segments[4]).index);
+        assertEquals("/users/0/posts/12", PathSyntax.toPointerExpr(segments));
     }
 
     @Test
@@ -91,6 +92,7 @@ public class PathSyntaxTest {
         segments = PathSyntax.parsePointer("/1234567890");
         assertEquals(2, segments.length);
         assertEquals(1234567890, ((PathSegment.Index) segments[1]).index);
+        assertEquals("/1234567890", PathSyntax.toPointerExpr(segments));
 
         // Valid numeric tokens outside the int range remain object names.
         segments = PathSyntax.parsePointer("/2147483648/999999999999999999999999");
@@ -160,6 +162,7 @@ public class PathSyntaxTest {
 
         // Unquoted field names in brackets
         testParsePathFailure("$[name]", "name");
+        testParsePathFailure("$['name'x]", "trailing characters after quoted name");
 
         // Mixed dot and bracket
         testParsePath("$.user['name']", 3, PathSegment.Root.class, PathSegment.Name.class, PathSegment.Name.class);

@@ -3,9 +3,7 @@ package org.sjf4j.path;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Numbers;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -66,54 +64,55 @@ public final class PathSyntax {
         if (!expr.isEmpty() && !expr.startsWith("/"))
             throw new JsonException("invalid JSON Pointer expression '" + expr + "': must start with '/'");
 
-        Deque<PathSegment> segments = new ArrayDeque<>();
-        segments.addLast(PathSegment.Root.INSTANCE);
-        if (expr.isEmpty()) return segments.toArray(new PathSegment[0]);
+        PathSegment lastSegment = PathSegment.Root.INSTANCE;
+        if (expr.isEmpty()) return linearize(lastSegment);
 
         int len = expr.length();
         int start = 1; // skip leading '/'
         while (start <= len) {
             int end = expr.indexOf('/', start);
             if (end == -1) end = len;
-            String seg = expr.substring(start, end);
-            String name;
+            if (end == start + 1 && expr.charAt(start) == '-') {
+                lastSegment = new PathSegment.Append(lastSegment);
+            } else {
+                String seg = expr.substring(start, end);
+                String name;
 
-            // decode ~0/~1 and reject invalid escapes
-            if (seg.indexOf('~') >= 0) {
-                StringBuilder sb = new StringBuilder(seg.length());
-                for (int i = 0, len2 = seg.length(); i < len2; i++) {
-                    char c = seg.charAt(i);
-                    if (c == '~') {
-                        if (i + 1 >= seg.length()) {
+                // Decode ~0/~1 and reject invalid escapes.
+                if (seg.indexOf('~') >= 0) {
+                    StringBuilder sb = new StringBuilder(seg.length());
+                    for (int i = 0, len2 = seg.length(); i < len2; i++) {
+                        char c = seg.charAt(i);
+                        if (c == '~') {
+                            if (i + 1 >= seg.length()) {
+                                throw new JsonException("invalid JSON Pointer expression '" + expr +
+                                        "': invalid escape '~' in token '" + seg + "'");
+                            }
+                            char next = seg.charAt(i + 1);
+                            if (next == '0') { sb.append('~'); i++; continue; }
+                            if (next == '1') { sb.append('/'); i++; continue; }
                             throw new JsonException("invalid JSON Pointer expression '" + expr +
-                                    "': invalid escape '~' in token '" + seg + "'");
+                                    "': invalid escape '~" + next + "' in token '" + seg + "'");
                         }
-                        char next = seg.charAt(i + 1);
-                        if (next == '0') { sb.append('~'); i++; continue; }
-                        if (next == '1') { sb.append('/'); i++; continue; }
-                        throw new JsonException("invalid JSON Pointer expression '" + expr +
-                                "': invalid escape '~" + next + "' in token '" + seg + "'");
+                        sb.append(c);
                     }
-                    sb.append(c);
+                    name = sb.toString();
+                } else {
+                    name = seg;
                 }
-                name = sb.toString();
-            } else {
-                name = seg;
-            }
 
-            int index = _parsePointerIndex(name);
-            if (index >= 0) {
-                segments.addLast(new PathSegment.Index(segments.peekLast(), index, seg));
-            } else if (name.equals("-")) {
-                segments.addLast(new PathSegment.Append(segments.peekLast()));
-            } else {
-                segments.addLast(new PathSegment.Name(segments.peekLast(), name));
+                int index = _parsePointerIndex(name);
+                if (index >= 0) {
+                    lastSegment = new PathSegment.Index(lastSegment, index, seg);
+                } else {
+                    lastSegment = new PathSegment.Name(lastSegment, name);
+                }
             }
 
             start = end + 1;
         }
 
-        return segments.toArray(new PathSegment[0]);
+        return linearize(lastSegment);
     }
 
     /**
@@ -162,7 +161,6 @@ public final class PathSyntax {
                 throw new JsonException("unsupported path segment type '" + token.getClass().getName() + "'");
             }
         }
-
         return sb.toString();
     }
 
@@ -200,27 +198,26 @@ public final class PathSyntax {
      */
     public static PathSegment[] parsePath(String expr) {
         if (expr == null || expr.isEmpty()) throw new JsonException("expression must not be empty");
-        Deque<PathSegment> segments = new ArrayDeque<>();
+        PathSegment lastSegment;
         int i = 0;
 
         if (expr.charAt(i) == '$') {
-            segments.addLast(PathSegment.Root.INSTANCE);
+            lastSegment = PathSegment.Root.INSTANCE;
             i++;
         } else if (expr.charAt(i) == '@') {
-            segments.addLast(PathSegment.Current.INSTANCE);
+            lastSegment = PathSegment.Current.INSTANCE;
             i++;
         } else {
             // throw new JsonException("Must start with '$' or '@' in path '" + expr + "'");
             // Can start with empty
-            segments.addLast(PathSegment.Root.INSTANCE);
+            lastSegment = PathSegment.Root.INSTANCE;
         }
-
         while (i < expr.length()) {
             char c = expr.charAt(i);
 
             // Descendant ..
             if (c == '.' && i + 1 < expr.length() && expr.charAt(i + 1) == '.') {
-                segments.addLast(new PathSegment.Descendant(segments.peekLast()));
+                lastSegment = new PathSegment.Descendant(lastSegment);
                 if (i + 2 == expr.length()) {
                     throw new JsonException("descendant '..' cannot appear at the end");
                 } else if (expr.charAt(i + 2) == '[') {
@@ -232,10 +229,64 @@ public final class PathSyntax {
             }
 
             if (c == '[') {
-                int next = _tryParseSimpleBracketToken(expr, i, segments);
-                if (next >= 0) {
-                    i = next;
-                    continue;
+                // Keep the common, compact index and slice forms out of the bracket scanner.
+                // This deliberately accepts only ASCII digits and no whitespace for slices.
+                int len = expr.length();
+                int tokenStart = i + 1;
+                if (tokenStart < len) {
+                    char first = expr.charAt(tokenStart);
+                    int startEnd = -1;
+                    if (first >= '0' && first <= '9') {
+                        startEnd = tokenStart + 1;
+                        while (startEnd < len && expr.charAt(startEnd) >= '0' && expr.charAt(startEnd) <= '9') startEnd++;
+                    } else if (first == '-' || first == ':') {
+                        startEnd = _scanSimpleSlicePart(expr, tokenStart, len);
+                    }
+
+                    if (startEnd >= 0 && startEnd < len && expr.charAt(startEnd) == ':') {
+                        int endStart = startEnd + 1;
+                        int endEnd = _scanSimpleSlicePart(expr, endStart, len);
+                        int stepStart = -1;
+                        int stepEnd = -1;
+                        int tokenEnd = endEnd;
+                        if (tokenEnd >= 0 && tokenEnd < len && expr.charAt(tokenEnd) == ':') {
+                            stepStart = tokenEnd + 1;
+                            stepEnd = _scanSimpleSlicePart(expr, stepStart, len);
+                            tokenEnd = stepEnd;
+                        }
+                        if (tokenEnd >= 0 && tokenEnd < len && expr.charAt(tokenEnd) == ']') {
+                            Long sliceStart = tokenStart == startEnd ? null : _parseSlicePart(expr, tokenStart, startEnd);
+                            Long end = endStart == endEnd ? null : _parseSlicePart(expr, endStart, endEnd);
+                            Long step = stepStart < 0 || stepStart == stepEnd ? null : _parseSlicePart(expr, stepStart, stepEnd);
+                            if (step != null && step == 0)
+                                throw new JsonException("slice step cannot be 0 in path '" + expr + "'");
+                            lastSegment = new PathSegment.Slice(lastSegment, sliceStart, end, step);
+                            i = tokenEnd + 1;
+                            continue;
+                        }
+                    } else if (first >= '0' && first <= '9') {
+                        int tokenEnd = _skipWhitespace(expr, startEnd);
+                        if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
+                            try {
+                                int index = _parseInt(expr, tokenStart, startEnd);
+                                lastSegment = new PathSegment.Index(lastSegment, index);
+                                i = tokenEnd + 1;
+                                continue;
+                            } catch (NumberFormatException ignored) {
+                                // Use the general parser to produce its normal error message.
+                            }
+                        }
+                    }
+                }
+
+                int simpleStart = _skipWhitespace(expr, i + 1);
+                if (simpleStart < len && expr.charAt(simpleStart) == '*') {
+                    int tokenEnd = _skipWhitespace(expr, simpleStart + 1);
+                    if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
+                        lastSegment = new PathSegment.Wildcard(lastSegment);
+                        i = tokenEnd + 1;
+                        continue;
+                    }
                 }
 
                 i++;
@@ -245,6 +296,7 @@ public final class PathSyntax {
                 // Scan and check
                 int start = i;
                 boolean hasComma = false;
+                int unionMemberCount = 1;
                 int depth = 0;
                 while (i < expr.length()) {
                     char ch = expr.charAt(i);
@@ -261,6 +313,7 @@ public final class PathSyntax {
                         i++; // skip closing quote
                     } else if (ch == ',') {
                         hasComma = true;
+                        if (depth == 0) unionMemberCount++;
                         i++;
                     } else if (ch == '[') {
                         depth++;
@@ -292,21 +345,21 @@ public final class PathSyntax {
                     // Filter
                     int filterStart = _skipWhitespace(expr, contentStart + 1);
                     FilterExpr filterExpr = _parseFilterRange(expr, filterStart, contentEnd);
-                    segments.addLast(new PathSegment.Filter(segments.peekLast(), filterExpr));
+                    lastSegment = new PathSegment.Filter(lastSegment, filterExpr);
                 } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
-                    PathSegment[] unionTokens = _parseUnionTokens(expr, contentStart, contentEnd);
-                    segments.addLast(new PathSegment.Union(segments.peekLast(), unionTokens));
+                    PathSegment[] unionTokens = _parseUnionTokens(expr, contentStart, contentEnd, unionMemberCount);
+                    lastSegment = new PathSegment.Union(lastSegment, unionTokens);
                 } else {
                     if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '*') {
                         // [*]
-                        segments.addLast(new PathSegment.Wildcard(segments.peekLast()));
+                        lastSegment = new PathSegment.Wildcard(lastSegment);
                     } else if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '+') {
                         // [+]
-                        segments.addLast(new PathSegment.Append(segments.peekLast()));
+                        lastSegment = new PathSegment.Append(lastSegment);
                     } else if (_isParamName(expr, contentStart, contentEnd)) {
-                        segments.addLast(new PathSegment.Param(segments.peekLast(),
-                                expr.substring(contentStart + 1, contentEnd - 1)));
+                        lastSegment = new PathSegment.Param(lastSegment,
+                                expr.substring(contentStart + 1, contentEnd - 1));
                     } else if (expr.charAt(contentStart) == '\'' || expr.charAt(contentStart) == '"') {
                         // Single quoted name ['name'] or ["name"]
                         int[] quotedEnd = new int[1];
@@ -316,16 +369,16 @@ public final class PathSyntax {
                         if (trailing != contentEnd) {
                             throw new JsonException("trailing characters after quoted name in path '" + expr + "'");
                         }
-                        segments.addLast(new PathSegment.Name(segments.peekLast(), name));
+                        lastSegment = new PathSegment.Name(lastSegment, name);
                     } else if (_containsChar(expr, contentStart, contentEnd, ':')) {
                         // Slice [start:end:step]
-                        segments.addLast(_parseSlice(segments.peekLast(), expr, contentStart, contentEnd,
-                                " in path '" + expr + "'"));
+                        lastSegment = _parseSlice(lastSegment, expr, contentStart, contentEnd,
+                                " in path '" + expr + "'");
                     } else {
                         try {
                             // Try to parse as numeric index
                             int idx = _parseInt(expr, contentStart, contentEnd);
-                            segments.addLast(new PathSegment.Index(segments.peekLast(), idx));
+                            lastSegment = new PathSegment.Index(lastSegment, idx);
                         } catch (NumberFormatException e) {
                             String content = expr.substring(contentStart, contentEnd);
                             throw new JsonException("invalid name or index '" + content + "' in path '" + expr + "'");
@@ -341,7 +394,7 @@ public final class PathSyntax {
 
                 // Wildcard
                 if (expr.charAt(i) == '*') {
-                    segments.addLast(new PathSegment.Wildcard(segments.peekLast()));
+                    lastSegment = new PathSegment.Wildcard(lastSegment);
                     i++;
                     continue;
                 }
@@ -359,94 +412,21 @@ public final class PathSyntax {
                     }
                     String funcName = expr.substring(start, i);
                     String args = expr.substring(i + 1, end); // inside (...)
-                    segments.addLast(new PathSegment.Function(segments.peekLast(), funcName, _parseFunctionArgs(args)));
+                    lastSegment = new PathSegment.Function(lastSegment, funcName, _parseFunctionArgs(args));
                     i = end + 1;
                     continue;
                 }
 
                 // Name
                 String name = expr.substring(start, i);
-                segments.addLast(new PathSegment.Name(segments.peekLast(), name));
+                lastSegment = new PathSegment.Name(lastSegment, name);
             }
             else {
                 throw new JsonException("unexpected character '" + c + "' in path '" + expr + "' at position " + i);
             }
         }
 
-        return segments.toArray(new PathSegment[0]);
-    }
-
-    private static int _tryParseSimpleBracketToken(String expr, int bracketIndex, Deque<PathSegment> segments) {
-        int len = expr.length();
-
-        // Keep the common, compact slice form out of the bracket scanner. This deliberately
-        // accepts only ASCII digits and no whitespace; everything else uses the full parser.
-        int tokenStart = bracketIndex + 1;
-        if (tokenStart < len) {
-            char first = expr.charAt(tokenStart);
-            if (first >= '0' && first <= '9') {
-                int startEnd = tokenStart + 1;
-                while (startEnd < len && expr.charAt(startEnd) >= '0' && expr.charAt(startEnd) <= '9') startEnd++;
-                if (startEnd < len && expr.charAt(startEnd) == ':') {
-                    int next = _tryParseSimpleSlice(expr, tokenStart, startEnd, len, segments);
-                    if (next >= 0) return next;
-                } else {
-                    int tokenEnd = _skipWhitespace(expr, startEnd);
-                    if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
-                        try {
-                            segments.addLast(new PathSegment.Index(segments.peekLast(), _parseInt(expr, tokenStart, startEnd)));
-                            return tokenEnd + 1;
-                        } catch (NumberFormatException ignored) {
-                            return -1;
-                        }
-                    }
-                }
-            } else if (first == '-' || first == ':') {
-                int startEnd = _scanSimpleSlicePart(expr, tokenStart, len);
-                if (startEnd >= 0 && startEnd < len && expr.charAt(startEnd) == ':') {
-                    int next = _tryParseSimpleSlice(expr, tokenStart, startEnd, len, segments);
-                    if (next >= 0) return next;
-                }
-            }
-        }
-
-        int i = _skipWhitespace(expr, bracketIndex + 1);
-        if (i >= len) return -1;
-
-        char c = expr.charAt(i);
-
-        if (c == '*') {
-            int tokenEnd = _skipWhitespace(expr, i + 1);
-            if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
-                segments.addLast(new PathSegment.Wildcard(segments.peekLast()));
-                return tokenEnd + 1;
-            }
-            return -1;
-        }
-
-        return -1;
-    }
-
-    private static int _tryParseSimpleSlice(String expr, int start, int startEnd, int len, Deque<PathSegment> segments) {
-        int endStart = startEnd + 1;
-        int endEnd = _scanSimpleSlicePart(expr, endStart, len);
-        if (endEnd < 0) return -1;
-        int stepStart = -1;
-        int stepEnd = -1;
-        int tokenEnd = endEnd;
-        if (tokenEnd < len && expr.charAt(tokenEnd) == ':') {
-            stepStart = tokenEnd + 1;
-            stepEnd = _scanSimpleSlicePart(expr, stepStart, len);
-            tokenEnd = stepEnd;
-        }
-        if (tokenEnd < 0 || tokenEnd >= len || expr.charAt(tokenEnd) != ']') return -1;
-
-        Long sliceStart = start == startEnd ? null : _parseSlicePart(expr, start, startEnd);
-        Long end = endStart == endEnd ? null : _parseSlicePart(expr, endStart, endEnd);
-        Long step = stepStart < 0 || stepStart == stepEnd ? null : _parseSlicePart(expr, stepStart, stepEnd);
-        if (step != null && step == 0) throw new JsonException("slice step cannot be 0 in path '" + expr + "'");
-        segments.addLast(new PathSegment.Slice(segments.peekLast(), sliceStart, end, step));
-        return tokenEnd + 1;
+        return linearize(lastSegment);
     }
 
     /** Returns the end of an empty or ASCII integer slice part, or -1 for a dangling sign. */
@@ -553,8 +533,9 @@ public final class PathSyntax {
     /**
      * Parses union elements into segment tokens.
      */
-    private static PathSegment[] _parseUnionTokens(String content, int start, int end) {
-        List<PathSegment> segments = new ArrayList<>();
+    private static PathSegment[] _parseUnionTokens(String content, int start, int end, int memberCount) {
+        PathSegment[] segments = new PathSegment[memberCount];
+        int segmentCount = 0;
         int i = start;
         while (i < end) {
             i = _skipWhitespace(content, i);
@@ -566,7 +547,7 @@ public final class PathSyntax {
                 // Quoted name
                 int[] quotedEnd = new int[1];
                 String name = _parseQuotedContent(content, i, end, quotedEnd, "union name");
-                segments.add(new PathSegment.Name(null, name));
+                segments[segmentCount++] = new PathSegment.Name(null, name);
                 i = _skipWhitespace(content, quotedEnd[0]);
                 if (i < end && content.charAt(i) != ',') {
                     throw new JsonException("trailing characters after quoted union name in content '" + content + "'");
@@ -586,12 +567,12 @@ public final class PathSyntax {
                 int tokenContentEnd = _trimTrailingWhitespace(content, tokenContentStart, i);
                 if (hasColon) {
                     // Slice
-                    segments.add(_parseSlice(null, content, tokenContentStart, tokenContentEnd, " in union"));
+                    segments[segmentCount++] = _parseSlice(null, content, tokenContentStart, tokenContentEnd, " in union");
                 } else {
                     // Numeric index
                     try {
                         int idx = _parseInt(content, tokenContentStart, tokenContentEnd);
-                        segments.add(new PathSegment.Index(null, idx));
+                        segments[segmentCount++] = new PathSegment.Index(null, idx);
                     } catch (NumberFormatException e) {
                         throw new JsonException("invalid index '" + content.substring(tokenContentStart, tokenContentEnd) + "' in union");
                     }
@@ -611,11 +592,14 @@ public final class PathSyntax {
                 throw new JsonException("missing union member after ',' in content '" + content + "'");
             }
         }
-        return segments.toArray(new PathSegment[0]);
+        if (segmentCount != memberCount) {
+            throw new JsonException("invalid union member count in content '" + content + "'");
+        }
+        return segments;
     }
 
     private static PathSegment.Slice _parseSlice(PathSegment parent, String content,
-                                                int start, int end, String errorContext) {
+                                                 int start, int end, String errorContext) {
         int firstColon = -1;
         int secondColon = -1;
         for (int i = start; i < end; i++) {
