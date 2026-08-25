@@ -10,6 +10,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
 
 import java.io.StringReader;
@@ -28,6 +29,40 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @Slf4j
 class JsonObjectTest {
+
+    static class ImplicitSuperJojo extends JsonObject {
+        public String name;
+    }
+
+    static class PrecomputedMetadataJojo extends JsonObject {
+        static final NodeRegistry.PojoInfo PI = NodeRegistry.registerPojoOrElseThrow(PrecomputedMetadataJojo.class);
+
+        public String name;
+
+        PrecomputedMetadataJojo() {
+            super(PI);
+        }
+    }
+
+    @Test
+    void implicitSuperDiscoversJojoProperties() {
+        ImplicitSuperJojo jojo = new ImplicitSuperJojo();
+
+        jojo.put("name", "implicit");
+
+        assertEquals("implicit", jojo.name);
+        assertEquals("implicit", jojo.getString("name"));
+    }
+
+    @Test
+    void precomputedMetadataProvidesJojoProperties() {
+        PrecomputedMetadataJojo jojo = new PrecomputedMetadataJojo();
+
+        jojo.put("name", "precomputed");
+
+        assertEquals("precomputed", jojo.name);
+        assertEquals("precomputed", jojo.getString("name"));
+    }
 
     @TestFactory
     public Stream<DynamicTest> testWithJsonLib() {

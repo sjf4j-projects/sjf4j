@@ -47,16 +47,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores property metadata for POJO mapping.
      */
-    protected final transient NodeRegistry.PojoInfo pi =
-            this.getClass() == JsonObject.class
-            ? null
-            : NodeRegistry.registerPojoOrElseThrow(this.getClass());
+    protected final transient NodeRegistry.PojoInfo pi;
 
     /**
      * Creates an empty JsonObject instance.
      */
     public JsonObject() {
         super();
+        this.pi = this.getClass() == JsonObject.class
+                ? null
+                : NodeRegistry.registerPojoOrElseThrow(this.getClass());
+    }
+
+    /**
+     * Creates a JOJO with precomputed property metadata.
+     */
+    protected JsonObject(NodeRegistry.PojoInfo pi) {
+        super();
+        this.pi = pi;
     }
 
     /**
