@@ -4,6 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.ValueCodecInfo;
 import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayDeque;
@@ -115,7 +116,7 @@ public final class InstancedNode {
         boolean encoded = false;
         NodeKind nodeKind = NodeKind.of(node);
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
-            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerTypeInfo(node.getClass()).valueCodecInfo;
+            ValueCodecInfo vci = NodeRegistry.registerTypeInfo(node.getClass()).valueCodecInfo;
             if (vci != null) {
                 node = vci.valueToRaw(node);
                 encoded = true;

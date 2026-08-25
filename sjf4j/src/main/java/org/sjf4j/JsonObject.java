@@ -4,6 +4,8 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PropertyInfo;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -34,7 +36,7 @@ import java.util.function.Predicate;
  * input JSON.
  *
  * <p>Dynamic fields are stored in {@code dynamicMap}; discovered properties are mapped
- * via {@link NodeRegistry.PropertyInfo}. Accessors use {@link Nodes} conversion
+ * via {@link PropertyInfo}. Accessors use {@link Nodes} conversion
  * semantics for strict/lenient reads.
  */
 public class JsonObject extends JsonContainer {
@@ -47,7 +49,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores property metadata for POJO mapping.
      */
-    protected final transient NodeRegistry.PojoInfo pi;
+    protected final transient ObjectInfo pi;
 
     /**
      * Creates an empty JsonObject instance.
@@ -62,7 +64,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Creates a JOJO with precomputed property metadata.
      */
-    protected JsonObject(NodeRegistry.PojoInfo pi) {
+    protected JsonObject(ObjectInfo pi) {
         super();
         this.pi = pi;
     }
@@ -127,7 +129,7 @@ public class JsonObject extends JsonContainer {
     public int hashCode() {
         int hash = dynamicMap == null ? 0 : dynamicMap.hashCode();
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
                 hash += Objects.hashCode(entry.getKey()) ^
                         Objects.hashCode(entry.getValue().invokeGetter(this));
             }
@@ -242,7 +244,7 @@ public class JsonObject extends JsonContainer {
                 @SuppressWarnings("NullableProblems")
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
-                    final Iterator<Map.Entry<String, NodeRegistry.PropertyInfo>> propertyIterator =
+                    final Iterator<Map.Entry<String, PropertyInfo>> propertyIterator =
                             pi.readableProperties.entrySet().iterator();
                     return new Iterator<Map.Entry<String, Object>>() {
                         @Override
@@ -252,7 +254,7 @@ public class JsonObject extends JsonContainer {
 
                         @Override
                         public Map.Entry<String, Object> next() {
-                            Map.Entry<String, NodeRegistry.PropertyInfo> entry = propertyIterator.next();
+                            Map.Entry<String, PropertyInfo> entry = propertyIterator.next();
                             Object value = entry.getValue().invokeGetter(JsonObject.this);
                             return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
                         }
@@ -270,7 +272,7 @@ public class JsonObject extends JsonContainer {
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
                     return new Iterator<Map.Entry<String, Object>>() {
-                        private final Iterator<Map.Entry<String, NodeRegistry.PropertyInfo>> propertyIterator =
+                        private final Iterator<Map.Entry<String, PropertyInfo>> propertyIterator =
                                 pi.readableProperties.entrySet().iterator();
                         private final Iterator<Map.Entry<String, Object>> dynamicIterator =
                                 dynamicMap.entrySet().iterator();
@@ -284,7 +286,7 @@ public class JsonObject extends JsonContainer {
                         @Override
                         public Map.Entry<String, Object> next() {
                             if (propertyIterator.hasNext()) {
-                                Map.Entry<String, NodeRegistry.PropertyInfo> entry = propertyIterator.next();
+                                Map.Entry<String, PropertyInfo> entry = propertyIterator.next();
                                 Object value = entry.getValue().invokeGetter(JsonObject.this);
                                 return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
                             }
@@ -307,7 +309,7 @@ public class JsonObject extends JsonContainer {
     public void forEach(BiConsumer<String, Object> visitor) {
         Objects.requireNonNull(visitor, "visitor");
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
                 visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
@@ -324,7 +326,7 @@ public class JsonObject extends JsonContainer {
     public boolean anyMatch(BiPredicate<String, Object> predicate) {
         Objects.requireNonNull(predicate, "predicate");
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
                 if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
                     return true;
                 }
@@ -348,8 +350,8 @@ public class JsonObject extends JsonContainer {
         Objects.requireNonNull(mapper, "mapper");
         boolean changed = false;
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
-                NodeRegistry.PropertyInfo fi = entry.getValue();
+            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
+                PropertyInfo fi = entry.getValue();
                 if (!fi.hasSetter()) {
                     continue;
                 }
@@ -380,7 +382,7 @@ public class JsonObject extends JsonContainer {
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
                 merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
@@ -480,7 +482,7 @@ public class JsonObject extends JsonContainer {
     public Object getNode(String key) {
         if (key == null) return null;
         if (pi != null) {
-            NodeRegistry.PropertyInfo fi = pi.readableProperties.get(key);
+            PropertyInfo fi = pi.readableProperties.get(key);
             if (fi != null) {
                 return fi.invokeGetter(this);
             }
@@ -784,7 +786,7 @@ public class JsonObject extends JsonContainer {
     public Object put(String key, Object object) {
         Objects.requireNonNull(key, "key");
         if (pi != null) {
-            NodeRegistry.PropertyInfo fi = pi.properties.get(key);
+            PropertyInfo fi = pi.properties.get(key);
             if (fi != null) {
                 fi.invokeSetter(this, object);
                 return null;

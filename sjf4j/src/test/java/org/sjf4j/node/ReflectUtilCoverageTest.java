@@ -256,7 +256,7 @@ class ReflectUtilCoverageTest {
 
     @Test
     void testAnalyzeNodeValueSuccessAndValidationFailures() {
-        NodeRegistry.ValueCodecInfo codecInfo = ReflectUtil.analyzeNodeValue(ValidValue.class);
+        ValueCodecInfo codecInfo = ReflectUtil.analyzeNodeValue(ValidValue.class);
         assertNotNull(codecInfo);
         assertEquals(String.class, codecInfo.rawClazz);
         assertEquals("x", codecInfo.valueToRaw(new ValidValue("x")));
@@ -275,7 +275,7 @@ class ReflectUtilCoverageTest {
 
     @Test
     void testAnalyzeOneOfAndNamingValidation() {
-        NodeRegistry.OneOfInfo disc = ReflectUtil.analyzeOneOf(DiscOneOf.class, DiscOneOf.class.getAnnotation(OneOf.class));
+        OneOfInfo disc = ReflectUtil.analyzeOneOf(DiscOneOf.class, DiscOneOf.class.getAnnotation(OneOf.class));
         assertTrue(disc.hasDiscriminator);
         assertEquals(DiscA.class, disc.resolveByWhen("a"));
 
@@ -340,7 +340,7 @@ class ReflectUtilCoverageTest {
         assertNotNull(noArgsCtor.get());
         assertNull(ReflectUtil.createLambdaConstructor(lookup, LambdaCtorPojo.class, null));
 
-        NodeRegistry.CreatorInfo creatorInfo = ReflectUtil.analyzeCreator(LambdaCtorPojo.class, lookup);
+        CreatorInfo creatorInfo = ReflectUtil.analyzeCreator(LambdaCtorPojo.class, lookup);
         NodeRegistry.Func1 creator = ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, NodeRegistry.Func1.class, 1);
         assertNotNull(creator);
         LambdaCtorPojo created = (LambdaCtorPojo) creator.apply("han");
@@ -356,7 +356,7 @@ class ReflectUtilCoverageTest {
     void testAnalyzeCreatorStaticMethodBranches() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-        NodeRegistry.CreatorInfo staticCreator = ReflectUtil.analyzeCreator(StaticCreatorPojo.class, lookup);
+        CreatorInfo staticCreator = ReflectUtil.analyzeCreator(StaticCreatorPojo.class, lookup);
         StaticCreatorPojo pojo = (StaticCreatorPojo) staticCreator.newPojoWithArgs(new Object[]{"han"});
         assertEquals("han", pojo.name);
 

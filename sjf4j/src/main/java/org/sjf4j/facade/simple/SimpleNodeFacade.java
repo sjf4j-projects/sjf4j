@@ -8,12 +8,18 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.OneOfInfo;
+import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.ValueCodec;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
+import org.sjf4j.node.ValueCodecInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
 
@@ -94,7 +100,7 @@ public class SimpleNodeFacade implements NodeFacade {
      */
     @SuppressWarnings("unchecked")
     private Object _readNode(Object node, Type type, Class<?> rawClazz,
-                             NodeRegistry.OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
+                             OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
             if (node == null) {
                 if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
@@ -125,14 +131,14 @@ public class SimpleNodeFacade implements NodeFacade {
                 return deepCopy ? _deepNode(node, type, ps) : node;
             }
 
-            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             anyOfInfo = ti.oneOfInfo;
             if (anyOfInfo != null) {
                 return _readOneOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -185,7 +191,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 return _readString(((Enum<?>) node).name(), rawClazz, ps);
             }
 
-            NodeRegistry.PojoInfo oldPi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo; // source pi
+            ObjectInfo oldPi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo; // source pi
             if (oldPi != null) {
                 return _readFromPojo(node, oldPi, rawClazz, type, deepCopy, ps);
             }
@@ -221,7 +227,7 @@ public class SimpleNodeFacade implements NodeFacade {
     }
 
     private Object _readOneOf(Object node, Class<?> rawClazz,
-                              NodeRegistry.OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
+                              OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         Class<?> targetClazz;
 
         if (anyOfInfo.hasDiscriminator) {
@@ -318,8 +324,8 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof JsonObject) {
                 JsonObject srcJo = (JsonObject) node;
-                NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(nodeClazz);
-                NodeRegistry.CreatorInfo ci = pojoInfo.creatorInfo;
+                ObjectInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(nodeClazz);
+                CreatorInfo ci = pojoInfo.creatorInfo;
                 NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
 
                 for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
@@ -333,7 +339,7 @@ public class SimpleNodeFacade implements NodeFacade {
                         continue;
                     }
 
-                    NodeRegistry.PropertyInfo fi = pojoInfo.aliasProperties != null
+                    PropertyInfo fi = pojoInfo.aliasProperties != null
                             ? pojoInfo.aliasProperties.get(key)
                             : pojoInfo.properties.get(key);
                     if (fi != null) {
@@ -385,14 +391,14 @@ public class SimpleNodeFacade implements NodeFacade {
                 return newSet;
             }
 
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(nodeClazz).pojoInfo;
+            ObjectInfo pi = NodeRegistry.registerTypeInfo(nodeClazz).pojoInfo;
             if (pi != null) {
-                NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+                CreatorInfo ci = pi.creatorInfo;
                 NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.readablePropertyCount);
 
-                for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
-                    NodeRegistry.PropertyInfo fi = entry.getValue();
+                    PropertyInfo fi = entry.getValue();
 
                     int argIdx = ci.getArgIndexOrAlias(key);
                     if (argIdx >= 0) {
@@ -490,7 +496,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             for (Map.Entry<String, Object> entry : source.entries()) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object vv = _readNode(entry.getValue(), vt, vc, va, deepCopy, cps);
@@ -509,7 +515,7 @@ public class SimpleNodeFacade implements NodeFacade {
             return jo;
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(rawClazz).pojoInfo;
+        ObjectInfo pi = NodeRegistry.registerTypeInfo(rawClazz).pojoInfo;
         if (pi != null && !pi.isJajo) {
             return _readPojoFromObjectEntries(source.entries(), type, rawClazz, pi, deepCopy, ps);
         }
@@ -519,15 +525,15 @@ public class SimpleNodeFacade implements NodeFacade {
     private Object _readPojoFromObjectEntries(Iterable<Map.Entry<String, Object>> entries,
                                               Type type,
                                               Class<?> rawClazz,
-                                              NodeRegistry.PojoInfo pi,
+                                              ObjectInfo pi,
                                               boolean deepCopy,
                                               PathSegment ps) {
-        NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+        CreatorInfo ci = pi.creatorInfo;
         Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
         Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
         int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
         int pendingSize = 0;
-        NodeRegistry.PropertyInfo[] pendingFields = null;
+        PropertyInfo[] pendingFields = null;
         Object[] pendingValues = null;
         Map<String, Object> dynamicMap = null;
 
@@ -551,8 +557,8 @@ public class SimpleNodeFacade implements NodeFacade {
                 PathSegment cps = new PathSegment.Name(ps, key);
                 Class<?> argRaw = Types.rawBox(argType);
 
-                NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
-                NodeRegistry.ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
+                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
                     argVci = ti.getValueCodecInfo(valueFormat);
@@ -573,7 +579,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 continue;
             }
 
-            NodeRegistry.PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 PathSegment cps = new PathSegment.Name(ps, key);
                 Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
@@ -591,7 +597,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 } else {
                     if (pendingFields == null) {
                         int cap = pi.propertyCount;
-                        pendingFields = new NodeRegistry.PropertyInfo[cap];
+                        pendingFields = new PropertyInfo[cap];
                         pendingValues = new Object[cap];
                     }
                     pendingFields[pendingSize] = fi;
@@ -693,7 +699,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (List.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             List<Object> list = NodeRegistry.newListContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -714,7 +720,7 @@ public class SimpleNodeFacade implements NodeFacade {
             return ja;
         }
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -727,7 +733,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz.isArray()) {
             Class<?> vt = rawClazz.getComponentType();
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             Object array = Array.newInstance(vt, source.size());
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -740,7 +746,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             Set<Object> set = NodeRegistry.newSetContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -754,14 +760,14 @@ public class SimpleNodeFacade implements NodeFacade {
     }
 
     // POJO -> Map/JsonObject/JOJO/POJO
-    private Object _readFromPojo(Object node, NodeRegistry.PojoInfo oldPi, Class<?> rawClazz,
+    private Object _readFromPojo(Object node, ObjectInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
             Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, key);
@@ -773,7 +779,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, key);
@@ -783,10 +789,10 @@ public class SimpleNodeFacade implements NodeFacade {
             return jo;
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(rawClazz).pojoInfo;
+        ObjectInfo pi = NodeRegistry.registerTypeInfo(rawClazz).pojoInfo;
         if (pi != null && !pi.isJajo) {
             Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.readablePropertyCount);
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
                 sourceValues.put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
             return _readPojoFromObjectEntries(sourceValues.entrySet(), type, rawClazz, pi, deepCopy, ps);
@@ -852,9 +858,9 @@ public class SimpleNodeFacade implements NodeFacade {
                 JsonObject jo = (JsonObject) node;
                 Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
                 if (rawClazz != JsonObject.class) {
-                    NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+                    ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
-                        for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                        for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
                             String key = entry.getKey();
                             PathSegment cps = new PathSegment.Name(ps, key);
                             Object vv = _writeNode(entry.getValue().invokeGetter(node), cps);
@@ -912,21 +918,21 @@ public class SimpleNodeFacade implements NodeFacade {
                 return ((Enum<?>) node).name();
             }
 
-            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }
             }
 
-            NodeRegistry.PojoInfo pi = ti.pojoInfo;
+            ObjectInfo pi = ti.pojoInfo;
             if (pi != null) {
                 Map<String, Object> newMap = new LinkedHashMap<>(pi.readablePropertyCount);
-                for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
-                    NodeRegistry.PropertyInfo fi = entry.getValue();
+                    PropertyInfo fi = entry.getValue();
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
                     Object vv = _writeFieldValue(v, entry.getValue(), cps);
@@ -945,7 +951,7 @@ public class SimpleNodeFacade implements NodeFacade {
         }
     }
 
-    private Object _writeFieldValue(Object value, NodeRegistry.PropertyInfo fi, PathSegment ps) {
+    private Object _writeFieldValue(Object value, PropertyInfo fi, PathSegment ps) {
         if (value == null) return null;
         if (fi.resolvedValueCodec != null) {
             return fi.resolvedValueCodec.valueToRaw(value);

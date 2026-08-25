@@ -80,7 +80,7 @@ public final class ReflectUtil {
     }
 
 
-    public static NodeRegistry.ContainerInfo analyzeContainer(Class<?> clazz) {
+    public static ContainerInfo analyzeContainer(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
             return null;
         }
@@ -102,13 +102,13 @@ public final class ReflectUtil {
             try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
             MethodHandle noArgsCtor = lookup.unreflectConstructor(ctor);
             Supplier<?> noArgsLambdaCtor = createLambdaConstructor(lookup, clazz, noArgsCtor);
-            return new NodeRegistry.ContainerInfo(clazz, kind, noArgsCtor, noArgsLambdaCtor);
+            return new ContainerInfo(clazz, kind, noArgsCtor, noArgsLambdaCtor);
         } catch (NoSuchMethodException | IllegalAccessException e) {
             return null;
         }
     }
 
-    public static NodeRegistry.OneOfInfo resolveOneOfInfo(Class<?> clazz) {
+    public static OneOfInfo resolveOneOfInfo(Class<?> clazz) {
         if (clazz == null || clazz == Object.class) {
             return null;
         }
@@ -116,7 +116,7 @@ public final class ReflectUtil {
         return ann == null ? null : analyzeOneOf(clazz, ann);
     }
 
-    public static NodeRegistry.PojoInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
+    public static ObjectInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
         if (!isPojoCandidate(clazz)) {
             if (orElseThrow) throw new JsonException("class " + clazz.getName() + " cannot be a POJO candidate");
             else return null;
@@ -125,7 +125,7 @@ public final class ReflectUtil {
         MethodHandles.Lookup lookup = _resolveLookup(clazz);
 
         // Creator constructor (for final fields / record-style)
-        NodeRegistry.CreatorInfo creatorInfo;
+        CreatorInfo creatorInfo;
         try {
             creatorInfo = analyzeCreator(clazz, lookup);
         } catch (Exception e) {
@@ -169,7 +169,7 @@ public final class ReflectUtil {
             curClazz = curClazz.getSuperclass();
         } while (isPojoCandidate(curClazz));
 
-        Map<String, NodeRegistry.PropertyInfo> properties = new LinkedHashMap<>();
+        Map<String, PropertyInfo> properties = new LinkedHashMap<>();
         for (PropertyFamily family : families.values()) {
             hasExplicitBinding |= family.explicitName != null || family.fieldExplicitName != null;
             MethodHandle getterHandle = null;
@@ -241,11 +241,11 @@ public final class ReflectUtil {
 
             Function<Object, Object> getterLambda = getterHandle == null ? null : createLambdaGetter(lookup, getterHandle);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null : createLambdaSetter(lookup, setterHandle);
-            NodeRegistry.ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
-            NodeRegistry.PropertyInfo pi = new NodeRegistry.PropertyInfo(finalName, type, publicField,
+            ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
+            PropertyInfo pi = new PropertyInfo(finalName, type, publicField,
                     family.getterMethod, getterHandle, getterLambda, family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(raw), family.codecName, resolvedCodec);
-            NodeRegistry.PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
+            PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new JsonException("multiple property families resolve to JSON property '" + pi.name +
                         "' in " + clazz.getName());
@@ -261,11 +261,11 @@ public final class ReflectUtil {
             }
         }
 
-        Map<String, NodeRegistry.PropertyInfo> aliasProperties = null;
+        Map<String, PropertyInfo> aliasProperties = null;
         if (aliasMap != null ) {
             aliasProperties = new HashMap<>(properties);
             for (Map.Entry<String, String> alias : aliasMap.entrySet()) {
-                NodeRegistry.PropertyInfo fi = properties.get(alias.getValue());
+                PropertyInfo fi = properties.get(alias.getValue());
                 if (fi != null) aliasProperties.put(alias.getKey(), fi);
             }
         }
@@ -273,7 +273,7 @@ public final class ReflectUtil {
             hasNonPublicFields = true;
         }
 
-        return new NodeRegistry.PojoInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
+        return new ObjectInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
                 readDynamic, writeDynamic, properties, aliasProperties,
                 hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap);
     }
@@ -521,7 +521,7 @@ public final class ReflectUtil {
         String codecName;
         String codecPattern;
         List<String> aliases;
-        NodeRegistry.OneOfInfo oneOfInfo;
+        OneOfInfo oneOfInfo;
 
         PropertyFamily(String implicitName) { this.implicitName = implicitName; }
         void addExplicitName(String name, Class<?> owner) {
@@ -611,14 +611,14 @@ public final class ReflectUtil {
         return vp.isEmpty() ? null : vp;
     }
 
-    static NodeRegistry.ValueCodecInfo _resolveCodec(Class<?> rawType, String codecName, String codecPattern) {
+    static ValueCodecInfo _resolveCodec(Class<?> rawType, String codecName, String codecPattern) {
         if (codecPattern != null && !codecPattern.isEmpty()) {
             // codecPattern takes precedence: get the base codec and parameterize it
-            NodeRegistry.ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(rawType, "");
+            ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(rawType, "");
             if (base.valueCodec instanceof PatternedValueCodec) {
                 PatternedValueCodec<?, ?> pc = (PatternedValueCodec<?, ?>) base.valueCodec;
                 ValueCodec<?, ?> parameterized = pc.withPattern(codecPattern);
-                return new NodeRegistry.ValueCodecInfo(codecPattern, parameterized.valueClass(),
+                return new ValueCodecInfo(codecPattern, parameterized.valueClass(),
                         parameterized.rawClass(), parameterized, null, null, null);
             }
             throw new JsonException("type '" + rawType.getName() + "' does not support codecPattern;" +
@@ -664,8 +664,8 @@ public final class ReflectUtil {
     }
 
 
-    public static NodeRegistry.CreatorInfo analyzeCreator(Class<?> clazz,
-                                                          MethodHandles.Lookup lookup) {
+    public static CreatorInfo analyzeCreator(Class<?> clazz,
+                                             MethodHandles.Lookup lookup) {
         Executable creator = null;
         MethodHandle creatorHandle = null;
         NodeRegistry.Func1 creatorLambda1 = null;
@@ -680,7 +680,7 @@ public final class ReflectUtil {
         MethodHandle noArgsCtor = null;
         Supplier<?> noArgsLambdaCtor = null;
         String[] argValueFormats = null;
-        NodeRegistry.ValueCodecInfo[] argValueCodecs = null;
+        ValueCodecInfo[] argValueCodecs = null;
 
         // 1. Find defined creator
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
@@ -730,7 +730,7 @@ public final class ReflectUtil {
         }
 
         // 2. Find Record
-        NodeRegistry.RecordInfo recordInfo = analyzeRecord(clazz, lookup);
+        RecordInfo recordInfo = analyzeRecord(clazz, lookup);
         if (recordInfo != null && (creator == null || creator == recordInfo.compCtor)) {
             if (creator == null) creator = recordInfo.compCtor;
             if (creatorHandle == null) creatorHandle = recordInfo.compCtorHandle;
@@ -770,7 +770,7 @@ public final class ReflectUtil {
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
             argValueFormats = new String[params.length];
-            argValueCodecs = new NodeRegistry.ValueCodecInfo[params.length];
+            argValueCodecs = new ValueCodecInfo[params.length];
             for (int i = 0; i < params.length; i++) {
                 String name = getExplicitName(params[i]);
                 if (name == null) {
@@ -823,7 +823,7 @@ public final class ReflectUtil {
             creatorHandle = null;
         }
 
-        return new NodeRegistry.CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,
+        return new CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,
                 creator, creatorHandle,
                 creatorLambda1, creatorLambda2, creatorLambda3, creatorLambda4, creatorLambda5,
                 argNames, argTypes, argValueFormats, argValueCodecs, argIndexes, aliasMap);
@@ -831,7 +831,7 @@ public final class ReflectUtil {
 
     /// NodeValue
 
-    public static NodeRegistry.ValueCodecInfo analyzeNodeValue(Class<?> clazz) {
+    public static ValueCodecInfo analyzeNodeValue(Class<?> clazz) {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
         MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
@@ -952,7 +952,7 @@ public final class ReflectUtil {
                         ", but found " + copyReturnClazz.getName());
         }
 
-        return new NodeRegistry.ValueCodecInfo("", clazz, valueToRawReturnBox, null,
+        return new ValueCodecInfo("", clazz, valueToRawReturnBox, null,
                 valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 
@@ -1113,7 +1113,7 @@ public final class ReflectUtil {
         }
     }
 
-    public static NodeRegistry.RecordInfo analyzeRecord(Class<?> clazz, MethodHandles.Lookup lookup) {
+    public static RecordInfo analyzeRecord(Class<?> clazz, MethodHandles.Lookup lookup) {
         if (METHOD_GET_RECORD_COMPONENTS == null || METHOD_RECORD_COMPONENT_GET_TYPE == null) return null;
         try {
             Object[] comps = (Object[]) METHOD_GET_RECORD_COMPONENTS.invoke(clazz);
@@ -1131,7 +1131,7 @@ public final class ReflectUtil {
             Constructor<?> compCtor = clazz.getDeclaredConstructor(compClasses);
             try { compCtor.setAccessible(true); } catch (RuntimeException ignored) {}
             MethodHandle compCtorHandle = lookup.unreflectConstructor(compCtor);
-            return new NodeRegistry.RecordInfo(clazz, compCtor, compCtorHandle,
+            return new RecordInfo(clazz, compCtor, compCtorHandle,
                     comps.length, compNames, compClasses, compTypes);
         } catch (IllegalAccessException | InvocationTargetException e) {
             return null;
@@ -1296,7 +1296,7 @@ public final class ReflectUtil {
 
     /// OneOf
 
-    public static NodeRegistry.OneOfInfo analyzeOneOf(Class<?> clazz, OneOf ann) {
+    public static OneOfInfo analyzeOneOf(Class<?> clazz, OneOf ann) {
         OneOf.Mapping[] mappings = ann.value();
         if (mappings == null || mappings.length == 0) {
             throw new JsonException("empty mappings in @" + OneOf.class.getName() + " of class " + clazz.getName());
@@ -1325,7 +1325,7 @@ public final class ReflectUtil {
                 }
             }
         }
-        return new NodeRegistry.OneOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
+        return new OneOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
     }
 
 

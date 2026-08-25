@@ -16,8 +16,12 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
+import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -55,7 +59,7 @@ public interface Fastjson2Module {
             if (rawClazz == JsonArray.class) {
                 return new JsonArrayReader<>(null);
             }
-            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (JsonObject.class.isAssignableFrom(rawClazz)) {
                 return new JsonObjectReader<>(type, ti.pojoInfo, streamingContext);
             }
@@ -67,7 +71,7 @@ public interface Fastjson2Module {
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueReader<>(vci);
                 }
@@ -149,12 +153,12 @@ public interface Fastjson2Module {
 
     class JsonObjectReader<T extends JsonObject> implements ObjectReader<T> {
         private final Type type;
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public JsonObjectReader(Type type, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public JsonObjectReader(Type type, ObjectInfo pi, StreamingContext streamingContext) {
             this.type = type;
             this.pi = pi;
             this.streamingContext = streamingContext;
@@ -189,11 +193,11 @@ public interface Fastjson2Module {
 
 
     class JsonArrayReader<T extends JsonArray> implements ObjectReader<T> {
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public JsonArrayReader(NodeRegistry.PojoInfo pi) {
+        public JsonArrayReader(ObjectInfo pi) {
             this.pi = pi;
         }
 
@@ -215,11 +219,11 @@ public interface Fastjson2Module {
     }
 
     class NodeValueReader<T> implements ObjectReader<T> {
-        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        private final ValueCodecInfo valueCodecInfo;
         /**
          * Creates reader backed by ValueCodec metadata.
          */
-        public NodeValueReader(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+        public NodeValueReader(ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 
@@ -235,12 +239,12 @@ public interface Fastjson2Module {
     }
 
     class OneOfReader<T> implements ObjectReader<T> {
-        private final NodeRegistry.OneOfInfo oneOfInfo;
+        private final OneOfInfo oneOfInfo;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public OneOfReader(NodeRegistry.OneOfInfo oneOfInfo, StreamingContext streamingContext) {
+        public OneOfReader(OneOfInfo oneOfInfo, StreamingContext streamingContext) {
             this.oneOfInfo = oneOfInfo;
             this.streamingContext = streamingContext;
         }
@@ -262,12 +266,12 @@ public interface Fastjson2Module {
 
     class PojoReader<T> implements ObjectReader<T> {
         private final Type type;
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public PojoReader(Type type, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public PojoReader(Type type, ObjectInfo pi, StreamingContext streamingContext) {
             this.type = type;
             this.pi = pi;
             this.streamingContext = streamingContext;
@@ -314,13 +318,13 @@ public interface Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(objectClass)) {
                 return new JsonArrayWriter();
             }
-            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
+            TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
             if (JsonObject.class.isAssignableFrom(objectClass)) {
                 return new JsonObjectWriter(ti.pojoInfo, streamingContext);
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(objectClass);
-                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueWriter<>(vci);
                 }
@@ -348,10 +352,10 @@ public interface Fastjson2Module {
     }
 
     class JsonObjectWriter implements ObjectWriter<JsonObject> {
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         private final StreamingContext streamingContext;
 
-        public JsonObjectWriter(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public JsonObjectWriter(ObjectInfo pi, StreamingContext streamingContext) {
             this.pi = pi;
             this.streamingContext = streamingContext;
         }
@@ -398,11 +402,11 @@ public interface Fastjson2Module {
     }
 
     class NodeValueWriter<T> implements ObjectWriter<T> {
-        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        private final ValueCodecInfo valueCodecInfo;
         /**
          * Creates writer backed by ValueCodec metadata.
          */
-        public NodeValueWriter(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+        public NodeValueWriter(ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 
@@ -417,10 +421,10 @@ public interface Fastjson2Module {
     }
 
     class PojoWriter implements ObjectWriter<Object> {
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         private final StreamingContext streamingContext;
 
-        public PojoWriter(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public PojoWriter(ObjectInfo pi, StreamingContext streamingContext) {
             this.pi = pi;
             this.streamingContext = streamingContext;
         }

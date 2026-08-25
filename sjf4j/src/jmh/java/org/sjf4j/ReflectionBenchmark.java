@@ -14,6 +14,8 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PropertyInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
@@ -107,11 +109,11 @@ public class ReflectionBenchmark {
     }
 
     // Cache PojoInfo/PropertyInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
-    private final static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
+    private final static ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
     private final static MethodHandle ctorMethodHandle = pi.creatorInfo.noArgsCtorHandle;
     private final static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
 
-    private final static NodeRegistry.PropertyInfo propertyInfo = pi.properties.get("name");
+    private final static PropertyInfo propertyInfo = pi.properties.get("name");
     private final static MethodHandle getterMethodHandle = propertyInfo.getterHandle;
     private final static Function<Object, Object> getterLambda = propertyInfo.getterLambda;
     private final static MethodHandle setterMethodHandle = propertyInfo.setterHandle;

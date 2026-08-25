@@ -1,26 +1,12 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonType;
-import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.path.JsonPath;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -28,44 +14,42 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 
 /**
- * Central metadata registry for SJF4J's OBNT type system.
+ * Central registry for SJF4J type metadata.
  * <p>
  * {@code NodeRegistry} analyzes Java classes once and caches the structural
- * metadata later used by reads, writes, conversion, copying, and traversal.
- * For jar users, this is where SJF4J decides whether a class behaves as a
- * POJO, JOJO, JAJO, {@code @NodeValue}, or {@code @OneOf} type.
+ * {@link TypeInfo} later used by reads, writes, conversion, copying, and
+ * traversal. It classifies a class as a value codec, {@code @OneOf} type,
+ * supported container, or object binding.
  *
  * <p>Most application code does not need to call this class directly, but its
  * metadata model defines the runtime binding semantics used across
  * {@link Nodes}, {@link org.sjf4j.Sjf4j}, and facade integrations.
  */
 public final class NodeRegistry {
-    // All in TypeInfo
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
 
 
     /**
-     * Registers or returns cached metadata for a class.
+     * Returns cached metadata for a class, registering it when necessary.
      * <p>
      * This is the main entry point for runtime classification of user types.
+     * The returned {@link TypeInfo} may be {@linkplain TypeInfo#isNone() none}
+     * when the class has no SJF4J-managed metadata.
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz) {
         return registerTypeInfo(clazz, false);
     }
 
     /**
-     * Registers type metadata and optionally enforces POJO availability.
+     * Returns type metadata and optionally requires an object binding.
      * <p>
      * Resolution order is: cache hit, {@code @NodeValue}/registered codec,
-     * {@code @OneOf}, POJO analysis, then NONE marker.
+     * {@code @OneOf}, container analysis, object analysis, then the none marker.
      *
-     * @param mustPojo when true, non-POJO results are rejected
+     * @param mustPojo when true, results without object binding are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
         if (_fastNoneInfo(clazz)) return TypeInfo.NONE;
@@ -105,7 +89,7 @@ public final class NodeRegistry {
             return ti;
         }
 
-        PojoInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
+        ObjectInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
         if (pi != null) {
             ti = new TypeInfo(clazz, null, null, null, null, pi);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -236,9 +220,9 @@ public final class NodeRegistry {
     /// POJO
 
     /**
-     * Registers POJO metadata or throws if class is not a POJO.
+     * Returns object binding metadata or throws when the class cannot be bound as an object.
      */
-    public static PojoInfo registerPojoOrElseThrow(Class<?> clazz) {
+    public static ObjectInfo registerPojoOrElseThrow(Class<?> clazz) {
         return registerTypeInfo(clazz, true).pojoInfo;
     }
 
@@ -288,198 +272,6 @@ public final class NodeRegistry {
         return (Set<T>) ci.newContainer();
     }
 
-    /// Info
-
-    // TypeInfo
-    public static class TypeInfo {
-        public final Class<?> clazz;
-        public final ValueCodecInfo valueCodecInfo;
-        public final ValueCodecInfo[] namedValueCodecs;
-        public final OneOfInfo oneOfInfo;
-        public final ContainerInfo containerInfo;
-        public final PojoInfo pojoInfo;
-
-        private static final ValueCodecInfo[] EMPTY_VALUE_CODECS = new ValueCodecInfo[0];
-        private static final TypeInfo NONE = new TypeInfo(Object.class, null, EMPTY_VALUE_CODECS, null, null, null);
-
-        /**
-         * Creates immutable type metadata holder.
-         */
-        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, ValueCodecInfo[] namedValueCodecs,
-                        OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo) {
-            this.clazz = clazz;
-            this.valueCodecInfo = valueCodecInfo;
-            this.namedValueCodecs = namedValueCodecs == null ? EMPTY_VALUE_CODECS : namedValueCodecs;
-            this.oneOfInfo = oneOfInfo;
-            this.containerInfo = containerInfo;
-            this.pojoInfo = pojoInfo;
-        }
-
-        public boolean isNone() {
-            return this == NONE;
-        }
-
-        /**
-         * Returns true when POJO reads must stay on the framework-owned path.
-         * Native backend modules may only bypass SJF4J when this is false.
-         */
-        public boolean requiresPojoReader() {
-            return pojoInfo != null && pojoInfo.requiresPojoReader;
-        }
-
-        /**
-         * Returns true when POJO writes must stay on the framework-owned path.
-         * Native backend modules may only bypass SJF4J when this is false.
-         */
-        public boolean requiresPojoWriter() {
-            return pojoInfo != null && pojoInfo.requiresPojoWriter;
-        }
-
-        public boolean hasValueCodecs() {
-            return valueCodecInfo != null || namedValueCodecs.length > 0;
-        }
-
-        public ValueCodecInfo getValueCodecInfo(String valueFormat) {
-            if (valueFormat == null || valueFormat.isEmpty()) return valueCodecInfo;
-            for (ValueCodecInfo vci : namedValueCodecs) {
-                if (vci.codecName.equals(valueFormat)) {
-                    return vci;
-                }
-            }
-            return null;
-        }
-
-    }
-
-    // Map / List / Set
-    public static final class ContainerInfo {
-        public final Class<?> clazz;
-        public final NodeKind kind;
-        public final MethodHandle noArgsCtorHandle;
-        public final Supplier<?> noArgsCtorLambda;
-
-        public ContainerInfo(Class<?> clazz, NodeKind kind,
-                             MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda) {
-            if (kind != NodeKind.OBJECT_MAP && kind != NodeKind.ARRAY_LIST && kind != NodeKind.ARRAY_SET) {
-                throw new JsonException("invalid container kind '" + kind + "' for " + clazz.getName());
-            }
-            this.clazz = clazz;
-            this.kind = kind;
-            this.noArgsCtorHandle = noArgsCtorHandle;
-            this.noArgsCtorLambda = noArgsCtorLambda;
-        }
-
-        public Object newContainer() {
-            if (noArgsCtorLambda != null) {
-                return noArgsCtorLambda.get();
-            }
-            if (noArgsCtorHandle != null) {
-                try {
-                    return noArgsCtorHandle.invoke();
-                } catch (Throwable e) {
-                    throw new BindingException("failed to create container instance of " + clazz.getName(), e);
-                }
-            }
-            throw new BindingException("failed to create container instance of " + clazz.getName());
-        }
-    }
-
-    // PojoInfo
-    public static class PojoInfo {
-        public final Class<?> clazz;
-        public final CreatorInfo creatorInfo;
-        public final NamingStrategy namingStrategy;
-        public final PropertyStrategy propertyStrategy;
-        public final boolean readDynamic;
-        public final boolean writeDynamic;
-        public final Map<String, PropertyInfo> properties;
-        public final int propertyCount;
-        public final Map<String, PropertyInfo> readableProperties;
-        public final int readablePropertyCount;
-        public final Map<String, PropertyInfo> aliasProperties;
-        public final boolean isJojo;
-        public final boolean isJajo;
-        public final boolean hasParentScopeOneOf;
-        public final boolean hasExplicitBinding;
-        public final boolean hasCreatorBinding;
-        public final boolean hasNonPublicFields;
-        public final boolean hasNonPublicReaderGap;
-        public final boolean hasNonPublicWriterGap;
-        public final boolean hasPropertyCodecNameBinding;
-        public final boolean requiresPojoReader;
-        public final boolean requiresPojoWriter;
-
-        /**
-         * Creates immutable POJO metadata holder.
-         */
-        public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
-                        NamingStrategy namingStrategy,
-                        PropertyStrategy propertyStrategy,
-                        boolean readDynamic,
-                        boolean writeDynamic,
-                        Map<String, PropertyInfo> properties,
-                        Map<String, PropertyInfo> aliasProperties,
-                        boolean hasExplicitBinding,
-                        boolean hasNonPublicFields,
-                        boolean hasNonPublicReaderGap,
-                        boolean hasNonPublicWriterGap) {
-            this.clazz = clazz;
-            this.creatorInfo = creatorInfo;
-            this.namingStrategy = namingStrategy;
-            this.propertyStrategy = propertyStrategy;
-            this.readDynamic = readDynamic;
-            this.writeDynamic = writeDynamic;
-            this.properties = properties;
-            this.propertyCount = properties.size();
-            Map<String, PropertyInfo> readableProperties = null;
-            for (Map.Entry<String, PropertyInfo> entry : properties.entrySet()) {
-                if (!entry.getValue().hasGetter()) {
-                    continue;
-                }
-                if (readableProperties == null) {
-                    readableProperties = new LinkedHashMap<>();
-                }
-                readableProperties.put(entry.getKey(), entry.getValue());
-            }
-            this.readableProperties = readableProperties == null ? Collections.emptyMap() : readableProperties;
-            this.readablePropertyCount = this.readableProperties.size();
-            this.aliasProperties = aliasProperties;
-            this.isJojo = JsonObject.class.isAssignableFrom(clazz);
-            this.isJajo = JsonArray.class.isAssignableFrom(clazz);
-            boolean hasParentScopeOneOf = false;
-            for (PropertyInfo fi : properties.values()) {
-                OneOfInfo aoi = fi.oneOfInfo;
-                if (aoi != null && aoi.scope == OneOf.Scope.PARENT) {
-                    hasParentScopeOneOf = true;
-                    break;
-                }
-            }
-            this.hasParentScopeOneOf = hasParentScopeOneOf;
-            this.hasExplicitBinding = hasExplicitBinding;
-            this.hasCreatorBinding = creatorInfo != null && creatorInfo.argsCreator != null;
-            this.hasNonPublicFields = hasNonPublicFields;
-            this.hasNonPublicReaderGap = hasNonPublicReaderGap;
-            this.hasNonPublicWriterGap = hasNonPublicWriterGap;
-            boolean hasPropertyCodecNameBinding = false;
-            for (PropertyInfo fi : properties.values()) {
-                if (fi.resolvedValueCodec != null) {
-                    hasPropertyCodecNameBinding = true;
-                    break;
-                }
-            }
-            this.hasPropertyCodecNameBinding = hasPropertyCodecNameBinding;
-            boolean hasTypeOwnedBinding = namingStrategy != null || propertyStrategy != PropertyStrategy.BEAN_FIELD;
-            boolean hasCustomDynamicReader = this.isJojo && !readDynamic;
-            boolean hasCustomDynamicWriter = this.isJojo && !writeDynamic;
-            this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeOneOf
-                    || hasExplicitBinding || this.hasCreatorBinding
-                    || (creatorInfo != null && creatorInfo.hasCodecNameBinding)
-                    || hasNonPublicFields || hasNonPublicReaderGap || hasCustomDynamicReader || hasPropertyCodecNameBinding;
-            this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicFields || hasNonPublicWriterGap
-                    || hasCustomDynamicWriter || hasPropertyCodecNameBinding;
-        }
-
-    }
 
     public static class PojoCreationSession {
         private final CreatorInfo creatorInfo;
@@ -609,7 +401,6 @@ public final class NodeRegistry {
 
     }
 
-    // CreatorInfo
     @FunctionalInterface
     public interface Func1 {
         Object apply(Object a1);
@@ -635,498 +426,6 @@ public final class NodeRegistry {
         Object apply(Object a1, Object a2, Object a3, Object a4, Object a5);
     }
 
-    public static class CreatorInfo {
-        public final Class<?> clazz;
-        public final MethodHandle noArgsCtorHandle;
-        public final Supplier<?> noArgsCtorLambda;
-        public final Executable argsCreator;
-        public final MethodHandle argsCreatorHandle;
-        public final Func1 argsCreatorLambda1;
-        public final Func2 argsCreatorLambda2;
-        public final Func3 argsCreatorLambda3;
-        public final Func4 argsCreatorLambda4;
-        public final Func5 argsCreatorLambda5;
-        public final String[] argNames;
-        public final Type[] argTypes;
-        public final String[] argCodecNames;
-        public final ValueCodecInfo[] argValueCodecs;
-        public final Map<String, Integer> argIndexes;
-        public final Map<String, String> aliasMap;
-        public final boolean hasCodecNameBinding;
-        /**
-         * Creates immutable creator metadata holder.
-         */
-        public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
-                           Executable argsCreator, MethodHandle argsCreatorHandle,
-                           Func1 argsCreatorLambda1, Func2 argsCreatorLambda2,
-                           Func3 argsCreatorLambda3, Func4 argsCreatorLambda4, Func5 argsCreatorLambda5,
-                           String[] argNames, Type[] argTypes,
-                           String[] argCodecNames, ValueCodecInfo[] argValueCodecs,
-                           Map<String, Integer> argIndexes,
-                           Map<String, String> aliasMap) {
-            this.clazz = clazz;
-            this.noArgsCtorHandle = noArgsCtorHandle;
-            this.noArgsCtorLambda = noArgsCtorLambda;
-            this.argsCreator = argsCreator;
-            this.argsCreatorHandle = argsCreatorHandle;
-            this.argsCreatorLambda1 = argsCreatorLambda1;
-            this.argsCreatorLambda2 = argsCreatorLambda2;
-            this.argsCreatorLambda3 = argsCreatorLambda3;
-            this.argsCreatorLambda4 = argsCreatorLambda4;
-            this.argsCreatorLambda5 = argsCreatorLambda5;
-            this.argNames = argNames;
-            this.argTypes = argTypes;
-            this.argCodecNames = argCodecNames;
-            this.argValueCodecs = argValueCodecs;
-            this.argIndexes = argIndexes;
-            this.aliasMap = aliasMap;
-            boolean hasCodecNameBinding = false;
-            if (argValueCodecs != null) {
-                for (ValueCodecInfo vci : argValueCodecs) {
-                    if (vci != null) {
-                        hasCodecNameBinding = true;
-                        break;
-                    }
-                }
-            }
-            this.hasCodecNameBinding = hasCodecNameBinding;
-        }
-
-        /**
-         * Returns argument index by name, or -1.
-         */
-        public int getArgIndex(String name) {
-            if (argIndexes != null) {
-                Integer idx = argIndexes.get(name);
-                if (idx != null) return idx;
-            }
-            return -1;
-        }
-
-        public int getArgIndexOrAlias(String name) {
-            int idx = getArgIndex(name);
-            if (idx >= 0) return idx;
-            if (aliasMap != null) {
-                String origin = aliasMap.get(name);
-                if (origin != null) {
-                    return getArgIndex(origin);
-                }
-            }
-            return -1;
-        }
-
-        public boolean hasNoArgsCreator() {
-            return noArgsCtorLambda != null || noArgsCtorHandle != null;
-        }
-
-        /**
-         * Creates a POJO using no-args constructor path.
-         */
-        public Object newPojoNoArgs() {
-            if (noArgsCtorLambda != null) {
-                return noArgsCtorLambda.get();
-            } else if (noArgsCtorHandle != null) {
-                try {
-                    return noArgsCtorHandle.invoke();
-                } catch (Throwable e) {
-                    throw new BindingException("failed to invoke constructor of " + clazz, e);
-                }
-            }
-            throw new BindingException("failed to create instance of " + clazz + ": Not found no-args constructor");
-        }
-
-
-        /**
-         * Creates a POJO using argument creator path.
-         */
-        public Object newPojoWithArgs(Object[] args) {
-            Objects.requireNonNull(args, "args");
-            if (argsCreatorHandle == null) {
-                throw new BindingException("failed to create instance of " + clazz + ": No creator constructor");
-            }
-            try {
-                for (int i = 0; i < args.length; i++) {
-                    if (args[i] == null) {
-                        Class<?> argClazz = Types.rawClazz(argTypes[i]);
-                        args[i] = _missingValueOfClass(argClazz);
-                    }
-                }
-
-                if (args.length == 1 && argsCreatorLambda1 != null) {
-                    return argsCreatorLambda1.apply(args[0]);
-                }
-                if (args.length == 2 && argsCreatorLambda2 != null) {
-                    return argsCreatorLambda2.apply(args[0], args[1]);
-                }
-                if (args.length == 3 && argsCreatorLambda3 != null) {
-                    return argsCreatorLambda3.apply(args[0], args[1], args[2]);
-                }
-                if (args.length == 4 && argsCreatorLambda4 != null) {
-                    return argsCreatorLambda4.apply(args[0], args[1], args[2], args[3]);
-                }
-                if (args.length == 5 && argsCreatorLambda5 != null) {
-                    return argsCreatorLambda5.apply(args[0], args[1], args[2], args[3], args[4]);
-                }
-
-                return argsCreatorHandle.invokeWithArguments(args);
-            } catch (Throwable e) {
-                throw new BindingException("failed to invoke creator constructor of " + clazz, e);
-            }
-        }
-
-        /**
-         * Creates a POJO preferring no-args constructor, then args creator.
-         */
-        public Object forceNewPojo() {
-            if (noArgsCtorHandle != null) return newPojoNoArgs();
-            Object[] args = new Object[argNames.length];
-            return newPojoWithArgs(args);
-        }
-
-        /**
-         * Returns default missing value for primitive classes.
-         */
-        private static Object _missingValueOfClass(Class<?> clazz) {
-            if (clazz == null) return null;
-            if (!clazz.isPrimitive()) return null;
-            if (clazz == boolean.class) return false;
-            if (clazz == byte.class) return (byte) 0;
-            if (clazz == short.class) return (short) 0;
-            if (clazz == int.class) return 0;
-            if (clazz == long.class) return 0L;
-            if (clazz == float.class) return 0f;
-            if (clazz == double.class) return 0d;
-            if (clazz == char.class) return '\0';
-            return null;
-        }
-    }
-
-    // RecordInfo
-    public static class RecordInfo {
-        public final Class<?> clazz;
-        public final Constructor<?> compCtor;
-        public final MethodHandle compCtorHandle;
-        public final int compCount;
-        public final String[] compNames;
-        public final Class<?>[] compClasses;
-        public final Type[] compTypes;
-        /**
-         * Creates immutable record metadata holder.
-         */
-        public RecordInfo(Class<?> clazz, Constructor<?> compCtor, MethodHandle compCtorHandle,
-                          int compCount, String[] compNames, Class<?>[] compClasses, Type[] compTypes) {
-            this.clazz = clazz;
-            this.compCtor = compCtor;
-            this.compCtorHandle = compCtorHandle;
-            this.compCount = compCount;
-            this.compNames = compNames;
-            this.compClasses = compClasses;
-            this.compTypes = compTypes;
-        }
-    }
-
-    // PropertyInfo
-    public static class PropertyInfo {
-        public enum ContainerKind {
-            NONE,
-            LIST,
-            SET,
-            MAP,
-            ARRAY
-        }
-
-        public final String name;
-        public final Type type;
-        public final Class<?> boxed;
-        public final Field publicField;
-
-        public final ContainerKind containerKind;
-        public final Type argType;
-        public final Class<?> argClazz;
-        public final Class<?> argBoxed;
-        public final OneOfInfo argOneOfInfo;
-
-        public final Method publicGetter;
-        public final MethodHandle getterHandle;
-        public final Function<Object, Object> getterLambda;
-
-        public final Method publicSetter;
-        public final MethodHandle setterHandle;
-        public final BiConsumer<Object, Object> setterLambda;
-
-        public final OneOfInfo oneOfInfo;
-        public final String codecName;
-        public final ValueCodecInfo resolvedValueCodec;
-
-        /**
-         * Creates immutable property metadata holder.
-         */
-        public PropertyInfo(String name, Type type, Field publicField,
-                            Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
-                            Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                            OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec) {
-            this.name = name;
-            this.type = type;
-            this.boxed = Types.rawBox(type);
-            this.publicField = publicField;
-
-            ContainerKind kind = ContainerKind.NONE;
-            Type argType = null;
-            Class<?> argClazz = null;
-            if (List.class.isAssignableFrom(this.boxed)) {
-                kind = ContainerKind.LIST;
-                argType = Types.resolveTypeArgument(type, List.class, 0);
-                argClazz = Types.rawBox(argType);
-            } else if (Set.class.isAssignableFrom(this.boxed)) {
-                kind = ContainerKind.SET;
-                argType = Types.resolveTypeArgument(type, Set.class, 0);
-                argClazz = Types.rawBox(argType);
-            } else if (Map.class.isAssignableFrom(this.boxed)) {
-                kind = ContainerKind.MAP;
-                argType = Types.resolveTypeArgument(type, Map.class, 1);
-                argClazz = Types.rawBox(argType);
-            } else if (this.boxed.isArray()) {
-                kind = ContainerKind.ARRAY;
-                argType = this.boxed.getComponentType();
-                argClazz = Types.box((Class<?>) argType);
-            }
-            this.containerKind = kind;
-            this.argType = argType;
-            this.argClazz = argClazz;
-            this.argBoxed = Types.rawBox(argClazz);
-            this.argOneOfInfo = argBoxed == null ? null : ReflectUtil.resolveOneOfInfo(argBoxed);
-
-            this.publicGetter = publicGetter;
-            this.getterHandle = getterHandle;
-            this.getterLambda = getterLambda;
-
-            this.publicSetter = publicSetter;
-            this.setterHandle = setterHandle;
-            this.setterLambda = setterLambda;
-
-            this.oneOfInfo = oneOfInfo;
-            this.codecName = codecName;
-            this.resolvedValueCodec = resolvedValueCodec;
-        }
-
-        /**
-         * Returns true when a getter is available.
-         */
-        public boolean hasGetter() {
-            return getterHandle != null || getterLambda != null;
-        }
-        /**
-         * Returns true when a setter is available.
-         */
-        public boolean hasSetter() {
-            return setterHandle != null || setterLambda != null;
-        }
-
-
-        /**
-         * Invokes property getter.
-         */
-        public Object invokeGetter(Object receiver) {
-            Objects.requireNonNull(receiver, "receiver");
-            if (getterLambda != null) {
-                return getterLambda.apply(receiver);
-            }
-            if (getterHandle == null) {
-                throw new BindingException("no getter available for property '" + name + "' of " + type);
-            }
-            try {
-                return getterHandle.invoke(receiver);
-            } catch (Throwable e) {
-                throw new BindingException("failed to invoke getter for property '" + name + "' of " + type, e);
-            }
-        }
-
-        /**
-         * Invokes setter when present and reports success.
-         */
-        public boolean invokeSetterIfPresent(Object receiver, Object value) {
-            if (setterHandle == null && setterLambda == null) return false;
-            invokeSetter(receiver, value);
-            return true;
-        }
-
-        /**
-         * Invokes property setter.
-         */
-        public void invokeSetter(Object receiver, Object value) {
-            Objects.requireNonNull(receiver, "receiver");
-            try {
-                if (setterLambda != null) {
-                    setterLambda.accept(receiver, value);
-                    return;
-                }
-                if (setterHandle == null)
-                    throw new BindingException("no setter available for property '" + name + "' of " + type);
-                setterHandle.invoke(receiver, value);
-            } catch (Throwable e) {
-                throw new BindingException("failed to invoke setter for property '" + name + "' of type '" + type +
-                        "' with value '" + Types.name(value) + "' (node type: " + Types.name(receiver)+ ")", e);
-            }
-        }
-
-    }
-
-    // ValueCodecInfo
-
-    public static class ValueCodecInfo {
-        public final String codecName;
-        public final Class<?> valueClazz;
-        public final Class<?> rawClazz;
-        public final ValueCodec<Object, Object> valueCodec;
-        public final MethodHandle valueToRawHandle;
-        public final MethodHandle rawToValueHandle;
-        public final MethodHandle valueCopyHandle;
-        /**
-         * Creates immutable value-codec metadata holder.
-         */
-        @SuppressWarnings("unchecked")
-        public ValueCodecInfo(String codecName, Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
-                              MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
-            this.codecName = codecName == null ? "" : codecName;
-            this.valueClazz = valueClazz;
-            this.rawClazz = rawClazz;
-            this.valueCodec = (ValueCodec<Object, Object>) valueCodec;
-            this.valueToRawHandle = valueToRawHandle;
-            this.rawToValueHandle = rawToValueHandle;
-            this.valueCopyHandle = valueCopyHandle;
-        }
-
-        public boolean isDefault() {
-            return codecName.isEmpty();
-        }
-
-        /**
-         * Encodes value to raw representation.
-         */
-        public Object valueToRaw(Object value) {
-            if (valueCodec != null) {
-                try {
-                    return valueCodec.valueToRaw(value);
-                } catch (Exception e) {
-                    throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
-                            " using ValueCodec " + valueCodec.getClass().getName(), e);
-                }
-            } else if (valueToRawHandle != null) {
-                try {
-                    return valueToRawHandle.invoke(value);
-                } catch (Throwable e) {
-                    throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
-                            " using annotated method " + valueToRawHandle, e);
-                }
-            }
-            throw new BindingException("no value binding found for type " + valueClazz.getName() +
-                    ": missing @" + NodeValue.class.getName() + " annotation and no ValueCodec registered");
-        }
-
-        /**
-         * Decodes raw value to value representation.
-         */
-        public Object rawToValue(Object raw) {
-            if (raw != null && !rawClazz.isInstance(raw))
-                throw new BindingException("cannot rawToValue() from raw type " + raw.getClass().getName() +
-                        " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
-            if (valueCodec != null) {
-                try {
-                    return valueCodec.rawToValue(raw);
-                } catch (Exception e) {
-                    throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
-                            " using ValueCodec " + valueCodec.getClass().getName(), e);
-                }
-            } else if (rawToValueHandle != null) {
-                try {
-                    return rawToValueHandle.invoke(raw);
-                } catch (Throwable e) {
-                    throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
-                            " using annotated method " + rawToValueHandle, e);
-                }
-            }
-            throw new BindingException("no value binding found for type " + valueClazz.getName() +
-                    ": missing @" + NodeValue.class.getName()+ " annotation and no ValueCodec registered");
-        }
-
-        /**
-         * Copies value using codec-defined semantics.
-         */
-        public Object valueCopy(Object value) {
-            if (valueCodec != null) {
-                try {
-                    return valueCodec.valueCopy(value);
-                } catch (Exception e) {
-                    throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
-                            " using ValueCodec " + valueCodec.getClass().getName(), e);
-                }
-            } else if (valueCopyHandle != null) {
-                try {
-                    return valueCopyHandle.invoke(value);
-                } catch (Throwable e) {
-                    throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
-                            " using annotated method " + valueCopyHandle, e);
-                }
-            }
-            throw new BindingException("no value binding found for type " + valueClazz.getName() +
-                    ": missing @" + NodeValue.class.getName() + " annotation and no ValueCodec registered");
-        }
-
-    }
-
-    // OneOfInfo
-
-    public static class OneOfInfo {
-        public final Class<?> clazz;
-        public final OneOf.Mapping[] mappings;
-        public final String key;
-        public final String path;
-        public final OneOf.Scope scope;
-        public final OneOf.OnNoMatch onNoMatch;
-        public final boolean hasDiscriminator;
-        public final EnumMap<JsonType, Class<?>> byJsonType;
-        public final Map<String, Class<?>> byWhen;
-        public final JsonPath compiledPath;
-
-        public OneOfInfo(Class<?> clazz, OneOf.Mapping[] mappings, String key,
-                         String path, OneOf.Scope scope, OneOf.OnNoMatch onNoMatch) {
-            this.clazz = clazz;
-            this.mappings = mappings;
-            this.key = key;
-            this.path = path;
-            this.scope = scope;
-            this.onNoMatch = onNoMatch;
-            this.compiledPath = path.isEmpty() ? null : JsonPath.parse(path);
-            this.hasDiscriminator = !key.isEmpty() || !path.isEmpty();
-            if (hasDiscriminator) {
-                this.byJsonType = null;
-                this.byWhen = new HashMap<>();
-                for (OneOf.Mapping mapping : mappings) {
-                    for (String when : mapping.when()) {
-                        byWhen.put(when, mapping.value());
-                    }
-                }
-            } else {
-                this.byWhen = null;
-                this.byJsonType = new EnumMap<>(JsonType.class);
-                for (OneOf.Mapping mapping : mappings) {
-                    byJsonType.put(JsonType.rawOf(mapping.value()), mapping.value());
-                }
-            }
-        }
-
-        public Class<?> resolveByJsonType(JsonType jsonType) {
-            if (byJsonType == null || jsonType == null) return null;
-            return byJsonType.get(jsonType);
-        }
-
-        public Class<?> resolveByWhen(Object when) {
-            if (byWhen == null || when == null) return null;
-            return byWhen.get(String.valueOf(when));
-        }
-
-
-    }
 
 
 }

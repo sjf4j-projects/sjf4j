@@ -5,7 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.node.RecordInfo;
 import org.sjf4j.node.ReflectUtil;
 
 import java.lang.invoke.MethodHandle;
@@ -103,7 +104,7 @@ class ReflectUtilTest {
         Assumptions.assumeTrue(!ReflectUtil.IS_JDK8, "Record test requires JDK >= 16 at runtime");
 
         MethodHandles.Lookup lookup = MethodHandles.lookup();
-        NodeRegistry.RecordInfo ri = ReflectUtil.analyzeRecord(Person.class, lookup);
+        RecordInfo ri = ReflectUtil.analyzeRecord(Person.class, lookup);
         assertNotNull(ri);
 
         assertEquals(2, ri.compCount);
@@ -125,7 +126,7 @@ class ReflectUtilTest {
     void analyzeCreator_prefersAnnotatedCreatorCtor() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         assertThrows(JsonException.class, () -> {
-            NodeRegistry.CreatorInfo ci = ReflectUtil.analyzeCreator(ExplicitCreatorPojo.class, lookup);
+            CreatorInfo ci = ReflectUtil.analyzeCreator(ExplicitCreatorPojo.class, lookup);
         });
     }
 
@@ -143,7 +144,7 @@ class ReflectUtilTest {
     @Test
     void analyzeCreator_usesNoArgsCtorWhenNoCreatorFound() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
-        NodeRegistry.CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
+        CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
 
         assertNull(ci.argsCreator);
         assertNull(ci.argsCreatorHandle);

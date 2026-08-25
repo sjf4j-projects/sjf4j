@@ -99,7 +99,7 @@ class ReflectUtilTest {
     void analyzeCreator_prefersAnnotatedCreatorCtor() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         assertThrows(JsonException.class, () -> {
-            NodeRegistry.CreatorInfo ci = ReflectUtil.analyzeCreator(ExplicitCreatorPojo.class, lookup);
+            CreatorInfo ci = ReflectUtil.analyzeCreator(ExplicitCreatorPojo.class, lookup);
         });
     }
 
@@ -117,7 +117,7 @@ class ReflectUtilTest {
     @Test
     void analyzeCreator_usesNoArgsCtorWhenNoCreatorFound() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
-        NodeRegistry.CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
+        CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
 
         assertNull(ci.argsCreator);
         assertNull(ci.argsCreatorHandle);

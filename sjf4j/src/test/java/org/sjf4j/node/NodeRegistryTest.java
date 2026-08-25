@@ -70,7 +70,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testRegisterPojo1() {
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
+        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
         assertEquals(4, pi.propertyCount);
@@ -84,7 +84,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testInheritedFieldSameKeyChildWins() {
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
+        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
         assertNotNull(pi.properties.get("key"));
         assertEquals(int.class, pi.properties.get("key").type);
 
@@ -110,8 +110,8 @@ public class NodeRegistryTest {
     @Test
     public void testInvoke1() {
         Person p1 = new Person();
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
-        NodeRegistry.PropertyInfo fi = pi.properties.get("name");
+        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
+        PropertyInfo fi = pi.properties.get("name");
 
         fi.invokeSetter(p1, "hahaha");
         String name1 = (String) fi.invokeGetter(p1);
@@ -239,7 +239,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerTypeInfo(BigDay.class).valueCodecInfo;
+        ValueCodecInfo vci = NodeRegistry.registerTypeInfo(BigDay.class).valueCodecInfo;
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -261,7 +261,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue2() {
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<CodecDay, String>() {
+        ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<CodecDay, String>() {
             @Override
             public String valueToRaw(CodecDay node) {
                 return node.localDate.toString();

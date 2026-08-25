@@ -14,7 +14,11 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.OneOfInfo;
+import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
+import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -48,14 +52,14 @@ public interface GsonModule {
                 return (TypeAdapter<T>) new JsonArrayAdapter(gson, rawClazz);
             }
 
-            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.oneOfInfo != null) {
                 return new OneOfAdapter<>(ti.oneOfInfo, streamingContext);
             }
 
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueAdapter<>(gson, vci);
                 }
@@ -107,7 +111,7 @@ public interface GsonModule {
 
     class JsonArrayAdapter<T extends JsonArray> extends TypeAdapter<T> {
         private final Gson gson;
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
 
         /**
          * Creates adapter for JsonArray or subclass.
@@ -151,14 +155,14 @@ public interface GsonModule {
 
 
     class OneOfAdapter<T> extends TypeAdapter<T> {
-        private final NodeRegistry.OneOfInfo oneOfInfo;
+        private final OneOfInfo oneOfInfo;
         private final StreamingContext streamingContext;
 
-        public OneOfAdapter(NodeRegistry.OneOfInfo oneOfInfo) {
+        public OneOfAdapter(OneOfInfo oneOfInfo) {
             this(oneOfInfo, StreamingContext.EMPTY);
         }
 
-        public OneOfAdapter(NodeRegistry.OneOfInfo oneOfInfo, StreamingContext streamingContext) {
+        public OneOfAdapter(OneOfInfo oneOfInfo, StreamingContext streamingContext) {
             this.oneOfInfo = oneOfInfo;
             this.streamingContext = streamingContext == null ? StreamingContext.EMPTY : streamingContext;
         }
@@ -181,10 +185,10 @@ public interface GsonModule {
 
     class PojoAdapter<T> extends TypeAdapter<T> {
         private final Type ownerType;
-        private final NodeRegistry.PojoInfo pojoInfo;
+        private final ObjectInfo pojoInfo;
         private final StreamingContext streamingContext;
 
-        public PojoAdapter(Type ownerType, NodeRegistry.PojoInfo pojoInfo, StreamingContext streamingContext) {
+        public PojoAdapter(Type ownerType, ObjectInfo pojoInfo, StreamingContext streamingContext) {
             this.ownerType = ownerType;
             this.pojoInfo = pojoInfo;
             this.streamingContext = streamingContext == null ? StreamingContext.EMPTY : streamingContext;
@@ -211,12 +215,12 @@ public interface GsonModule {
 
     class NodeValueAdapter<T> extends TypeAdapter<T> {
         private final Gson gson;
-        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        private final ValueCodecInfo valueCodecInfo;
 
         /**
          * Creates adapter backed by ValueCodec metadata.
          */
-        public NodeValueAdapter(Gson gson, NodeRegistry.ValueCodecInfo valueCodecInfo) {
+        public NodeValueAdapter(Gson gson, ValueCodecInfo valueCodecInfo) {
             this.gson = gson;
             this.valueCodecInfo = valueCodecInfo;
         }

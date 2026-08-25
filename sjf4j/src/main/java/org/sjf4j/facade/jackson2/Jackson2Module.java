@@ -26,8 +26,12 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
+import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
 import java.lang.reflect.Executable;
@@ -54,9 +58,9 @@ public interface Jackson2Module {
         public TwoSimpleModule(StreamingContext streamingContext) {
             this.streamingContext = streamingContext;
 
-            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(Instant.class);
+            TypeInfo ti = NodeRegistry.registerTypeInfo(Instant.class);
             String valueFormat = streamingContext.defaultValueFormat(Instant.class);
-            NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+            ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
             addDeserializer(Instant.class, new NodeValueDeserializer<>(vci));
 
             setDeserializerModifier(new BeanDeserializerModifier() {
@@ -74,7 +78,7 @@ public interface Jackson2Module {
                         return new JsonArrayDeserializer<>(null);
                     }
 
-                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (JsonObject.class.isAssignableFrom(clazz)) {
                         return new JsonObjectDeserializer<>(type, ti.pojoInfo, streamingContext);
                     }
@@ -86,7 +90,7 @@ public interface Jackson2Module {
                     }
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueDeserializer<>(vci);
                         }
@@ -110,10 +114,10 @@ public interface Jackson2Module {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
-                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueSerializer<>(vci);
                         }
@@ -146,10 +150,10 @@ public interface Jackson2Module {
 
     class JsonObjectDeserializer<T extends JsonObject> extends JsonDeserializer<T> {
         private final Type type;
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         private final StreamingContext streamingContext;
 
-        public JsonObjectDeserializer(JavaType type, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public JsonObjectDeserializer(JavaType type, ObjectInfo pi, StreamingContext streamingContext) {
             this.type = TwoSimpleModule.toType(type);
             this.pi = pi;
             this.streamingContext = streamingContext;
@@ -188,11 +192,11 @@ public interface Jackson2Module {
     }
 
     class JsonArrayDeserializer<T extends JsonArray> extends JsonDeserializer<T> {
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         /**
          * Creates deserializer for JsonArray or subclass.
          */
-        public JsonArrayDeserializer(NodeRegistry.PojoInfo pi) {
+        public JsonArrayDeserializer(ObjectInfo pi) {
             this.pi = pi;
         }
 
@@ -221,11 +225,11 @@ public interface Jackson2Module {
     }
 
     class NodeValueDeserializer<T> extends JsonDeserializer<T> {
-        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        private final ValueCodecInfo valueCodecInfo;
         /**
          * Creates deserializer backed by ValueCodec metadata.
          */
-        public NodeValueDeserializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+        public NodeValueDeserializer(ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 
@@ -241,12 +245,12 @@ public interface Jackson2Module {
     }
 
     class OneOfDeserializer<T> extends JsonDeserializer<T> {
-        private final NodeRegistry.OneOfInfo oneOfInfo;
+        private final OneOfInfo oneOfInfo;
         private final StreamingContext streamingContext;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public OneOfDeserializer(NodeRegistry.OneOfInfo oneOfInfo, StreamingContext streamingContext) {
+        public OneOfDeserializer(OneOfInfo oneOfInfo, StreamingContext streamingContext) {
             this.oneOfInfo = oneOfInfo;
             this.streamingContext = streamingContext;
         }
@@ -263,12 +267,12 @@ public interface Jackson2Module {
 
     class PojoDeserializer<T> extends JsonDeserializer<T> {
         private final Type type;
-        private final NodeRegistry.PojoInfo pi;
+        private final ObjectInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public PojoDeserializer(JavaType javaType, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public PojoDeserializer(JavaType javaType, ObjectInfo pi, StreamingContext streamingContext) {
             this.type = TwoSimpleModule.toType(javaType);
             this.pi = pi;
             this.streamingContext = streamingContext;
@@ -324,11 +328,11 @@ public interface Jackson2Module {
     }
 
     class NodeValueSerializer<T> extends JsonSerializer<T> {
-        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        private final ValueCodecInfo valueCodecInfo;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public NodeValueSerializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+        public NodeValueSerializer(ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 

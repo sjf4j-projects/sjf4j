@@ -6,6 +6,7 @@ import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.PropertyStrategy;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.Types;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,13 +80,13 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void booleanIsGetterBeatsGetGetter() {
-        NodeRegistry.PropertyInfo pi = NodeRegistry.registerPojoOrElseThrow(BooleanAccessorPojo.class).properties.get("active");
+        PropertyInfo pi = NodeRegistry.registerPojoOrElseThrow(BooleanAccessorPojo.class).properties.get("active");
         assertTrue((Boolean) pi.invokeGetter(new BooleanAccessorPojo()));
     }
 
     @Test
     void subclassGetterBeatsParentGetter() {
-        NodeRegistry.PropertyInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildGetterPojo.class).properties.get("name");
+        PropertyInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildGetterPojo.class).properties.get("name");
         assertEquals("child", pi.invokeGetter(new ChildGetterPojo()));
     }
 
@@ -105,7 +106,7 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void parentIgnoreDoesNotHideChildOverrideGetter() {
-        NodeRegistry.PropertyInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildVisibleGetterPojo.class).properties.get("name");
+        PropertyInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildVisibleGetterPojo.class).properties.get("name");
         assertEquals("child", pi.invokeGetter(new ChildVisibleGetterPojo()));
     }
 

@@ -12,6 +12,7 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.node.ObjectInfo;
 
 import java.io.StringReader;
 import java.math.BigInteger;
@@ -35,7 +36,7 @@ class JsonObjectTest {
     }
 
     static class PrecomputedMetadataJojo extends JsonObject {
-        static final NodeRegistry.PojoInfo PI = NodeRegistry.registerPojoOrElseThrow(PrecomputedMetadataJojo.class);
+        static final ObjectInfo PI = NodeRegistry.registerPojoOrElseThrow(PrecomputedMetadataJojo.class);
 
         public String name;
 

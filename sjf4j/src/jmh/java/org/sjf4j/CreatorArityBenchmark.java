@@ -13,6 +13,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.NodeRegistry;
 
 import java.util.concurrent.TimeUnit;
@@ -88,7 +89,7 @@ public class CreatorArityBenchmark {
     }
 
     public abstract static class BaseState {
-        NodeRegistry.CreatorInfo ci;
+        CreatorInfo ci;
         Object[] args;
 
         protected abstract Class<?> modelClass();
@@ -137,7 +138,7 @@ public class CreatorArityBenchmark {
         @Override protected Object[] initArgs() { return new Object[]{"a1", 2, 3L, true, 5.0d, "a6"}; }
     }
 
-    private static Object invokeMethodHandle(NodeRegistry.CreatorInfo ci, Object[] args) {
+    private static Object invokeMethodHandle(CreatorInfo ci, Object[] args) {
         try {
             return ci.argsCreatorHandle.invokeWithArguments(args);
         } catch (Throwable e) {
@@ -145,7 +146,7 @@ public class CreatorArityBenchmark {
         }
     }
 
-    private static Object invokeLambdaDirect(NodeRegistry.CreatorInfo ci, Object[] args) {
+    private static Object invokeLambdaDirect(CreatorInfo ci, Object[] args) {
         switch (args.length) {
             case 1:
                 if (ci.argsCreatorLambda1 == null) throw new IllegalStateException("Missing argsCreatorLambda1");
