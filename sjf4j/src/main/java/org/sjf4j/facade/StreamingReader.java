@@ -68,6 +68,39 @@ public interface StreamingReader extends Closeable {
     Token peekToken() throws IOException;
 
     /**
+     * Consumes a null value when it is the current token.
+     *
+     * @return {@code true} when a null token was consumed; {@code false} otherwise
+     */
+    default boolean nextIfNull() throws IOException {
+        if (peekToken() != Token.NULL) return false;
+        nextNull();
+        return true;
+    }
+
+    /**
+     * Consumes an object end token when it is the current token.
+     *
+     * @return {@code true} when an object end token was consumed; {@code false} otherwise
+     */
+    default boolean nextIfObjectEnd() throws IOException {
+        if (peekToken() != Token.END_OBJECT) return false;
+        endObject();
+        return true;
+    }
+
+    /**
+     * Consumes an array end token when it is the current token.
+     *
+     * @return {@code true} when an array end token was consumed; {@code false} otherwise
+     */
+    default boolean nextIfArrayEnd() throws IOException {
+        if (peekToken() != Token.END_ARRAY) return false;
+        endArray();
+        return true;
+    }
+
+    /**
      * Returns an isolated reader for the current JSON value when the backend can buffer it.
      */
     default StreamingReader forkValue() throws IOException {
@@ -98,6 +131,55 @@ public interface StreamingReader extends Closeable {
 
     Boolean nextBoolean() throws IOException;
     void nextNull() throws IOException;
+
+    /**
+     * Reads and consumes current value as a {@code long}; conversion, error and cursor behavior follows underlying reader.
+     */
+    default long nextLongValue() throws IOException {
+        return nextLong();
+    }
+
+    /**
+     * Reads and consumes current value as an {@code int}; conversion, error and cursor behavior follows underlying reader.
+     */
+    default int nextIntValue() throws IOException {
+        return nextInt();
+    }
+
+    /**
+     * Reads and consumes current value as a {@code short}; conversion, error and cursor behavior follows underlying reader.
+     */
+    default short nextShortValue() throws IOException {
+        return nextShort();
+    }
+
+    /**
+     * Reads and consumes current value as a {@code byte}; conversion, error and cursor behavior follows underlying reader.
+     */
+    default byte nextByteValue() throws IOException {
+        return nextByte();
+    }
+
+    /**
+     * Reads and consumes current value as a {@code double}; conversion, error and cursor behavior follows underlying reader.
+     */
+    default double nextDoubleValue() throws IOException {
+        return nextDouble();
+    }
+
+    /**
+     * Reads and consumes current value as a {@code float}; conversion, error and cursor behavior follows underlying reader.
+     */
+    default float nextFloatValue() throws IOException {
+        return nextFloat();
+    }
+
+    /**
+     * Reads and consumes current value as a {@code boolean}; conversion, error and cursor behavior follows underlying reader.
+     */
+    default boolean nextBooleanValue() throws IOException {
+        return nextBoolean();
+    }
 
     void skipNext() throws IOException;
 

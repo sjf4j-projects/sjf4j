@@ -36,7 +36,6 @@ public class SimpleJsonReader implements StreamingReader {
         this.reader = input;
     }
 
-
     /**
      * Peeks next token from current reader state.
      */
@@ -46,7 +45,7 @@ public class SimpleJsonReader implements StreamingReader {
 
         _skipSeparators();
         int c = _peek();
-        if (c == -1) return bufferedToken = Token.UNKNOWN;
+        if (c == -1) return bufferedToken = Token.EOF;
         switch (c) {
             case '{': return bufferedToken = Token.START_OBJECT;
             case '}': return bufferedToken = Token.END_OBJECT;
@@ -248,6 +247,28 @@ public class SimpleJsonReader implements StreamingReader {
             activePath = null;
         }
     }
+
+    @Override
+    public boolean nextIfNull() throws IOException {
+        if (peekToken() != Token.NULL) return false;
+        nextNull();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() throws IOException {
+        if (peekToken() != Token.END_OBJECT) return false;
+        endObject();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() throws IOException {
+        if (peekToken() != Token.END_ARRAY) return false;
+        endArray();
+        return true;
+    }
+
 
     /**
      * Skips next scalar or nested value.

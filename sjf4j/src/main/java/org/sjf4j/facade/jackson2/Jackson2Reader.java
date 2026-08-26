@@ -31,6 +31,7 @@ public class Jackson2Reader implements StreamingReader {
     public Token peekToken() throws IOException {
         JsonToken tk = parser.currentToken();
         if (tk == null) tk = parser.nextToken();
+        if (tk == null) return Token.EOF;
         switch (tk) {
             case START_OBJECT:
                 return Token.START_OBJECT;
@@ -215,6 +216,76 @@ public class Jackson2Reader implements StreamingReader {
         parser.nextToken();
     }
 
+    @Override
+    public boolean nextIfNull() throws IOException {
+        if (peekToken() != Token.NULL) return false;
+        parser.nextToken();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() throws IOException {
+        if (peekToken() != Token.END_OBJECT) return false;
+        parser.nextToken();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() throws IOException {
+        if (peekToken() != Token.END_ARRAY) return false;
+        parser.nextToken();
+        return true;
+    }
+
+    @Override
+    public long nextLongValue() throws IOException {
+        long value = parser.getLongValue();
+        parser.nextToken();
+        return value;
+    }
+
+    @Override
+    public int nextIntValue() throws IOException {
+        int value = parser.getIntValue();
+        parser.nextToken();
+        return value;
+    }
+
+    @Override
+    public short nextShortValue() throws IOException {
+        short value = parser.getShortValue();
+        parser.nextToken();
+        return value;
+    }
+
+    @Override
+    public byte nextByteValue() throws IOException {
+        byte value = parser.getByteValue();
+        parser.nextToken();
+        return value;
+    }
+
+    @Override
+    public double nextDoubleValue() throws IOException {
+        double value = parser.getDoubleValue();
+        parser.nextToken();
+        return value;
+    }
+
+    @Override
+    public float nextFloatValue() throws IOException {
+        float value = parser.getFloatValue();
+        parser.nextToken();
+        return value;
+    }
+
+    @Override
+    public boolean nextBooleanValue() throws IOException {
+        boolean value = parser.getBooleanValue();
+        parser.nextToken();
+        return value;
+    }
+
     /**
      * Closes underlying parser.
      */
@@ -236,6 +307,5 @@ public class Jackson2Reader implements StreamingReader {
             parser.nextToken();
         }
     }
-
 
 }

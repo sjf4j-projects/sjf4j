@@ -229,6 +229,79 @@ public class JsonpReader implements StreamingReader {
         _advance();
     }
 
+    @Override
+    public boolean nextIfNull() {
+        if (current != JsonParser.Event.VALUE_NULL) return false;
+        _advance();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() {
+        if (current != JsonParser.Event.END_OBJECT) return false;
+        _advance();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() {
+        if (current != JsonParser.Event.END_ARRAY) return false;
+        _advance();
+        return true;
+    }
+
+    @Override
+    public long nextLongValue() throws IOException {
+        long value = parser.getLong();
+        _advance();
+        return value;
+    }
+
+    @Override
+    public int nextIntValue() throws IOException {
+        int value = parser.getInt();
+        _advance();
+        return value;
+    }
+
+    @Override
+    public short nextShortValue() throws IOException {
+        short value = Numbers.toShort(parser.getInt());
+        _advance();
+        return value;
+    }
+
+    @Override
+    public byte nextByteValue() throws IOException {
+        byte value = Numbers.toByte(parser.getInt());
+        _advance();
+        return value;
+    }
+
+    @Override
+    public double nextDoubleValue() throws IOException {
+        double value = Numbers.toDouble(parser.getBigDecimal());
+        _advance();
+        return value;
+    }
+
+    @Override
+    public float nextFloatValue() throws IOException {
+        float value = Numbers.toFloat(parser.getBigDecimal());
+        _advance();
+        return value;
+    }
+
+    @Override
+    public boolean nextBooleanValue() throws IOException {
+        if (current != JsonParser.Event.VALUE_TRUE && current != JsonParser.Event.VALUE_FALSE) {
+            throw new BindingException("expected boolean, but was " + current);
+        }
+        boolean value = current == JsonParser.Event.VALUE_TRUE;
+        _advance();
+        return value;
+    }
+
     /**
      * Closes underlying parser.
      */

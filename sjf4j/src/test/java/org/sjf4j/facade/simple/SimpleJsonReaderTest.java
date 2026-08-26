@@ -34,6 +34,17 @@ class SimpleJsonReaderTest {
             assertEquals(StreamingReader.Token.NULL, reader.peekToken());
             reader.nextNull();
             reader.endObject();
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+        }
+    }
+
+    @Test
+    void testPeekTokenAtEmptyInputAndUnknownCharacter() throws Exception {
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(""))) {
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+        }
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("x"))) {
             assertEquals(StreamingReader.Token.UNKNOWN, reader.peekToken());
         }
     }

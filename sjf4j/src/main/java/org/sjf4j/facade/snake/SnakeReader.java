@@ -53,8 +53,6 @@ public class SnakeReader implements StreamingReader {
         if (!(parser.getEvent() instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
         if (!(parser.getEvent() instanceof StreamEndEvent)) throw new IllegalStateException("Malformed YAML");
     }
-
-
     /**
      * Peeks the next token from current YAML event.
      */
@@ -253,6 +251,28 @@ public class SnakeReader implements StreamingReader {
         }
         throw new BindingException("expected null, but was '" + value + "'");
     }
+
+    @Override
+    public boolean nextIfNull() {
+        if (peekToken() != Token.NULL) return false;
+        parser.getEvent();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() {
+        if (peekToken() != Token.END_OBJECT) return false;
+        parser.getEvent();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() {
+        if (peekToken() != Token.END_ARRAY) return false;
+        parser.getEvent();
+        return true;
+    }
+
 
     /**
      * Closes this reader.

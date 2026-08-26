@@ -189,6 +189,62 @@ public class GsonReader implements StreamingReader {
         reader.nextNull();
     }
 
+    @Override
+    public boolean nextIfNull() throws IOException {
+        if (reader.peek() != JsonToken.NULL) return false;
+        reader.nextNull();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() throws IOException {
+        if (reader.peek() != JsonToken.END_OBJECT) return false;
+        reader.endObject();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() throws IOException {
+        if (reader.peek() != JsonToken.END_ARRAY) return false;
+        reader.endArray();
+        return true;
+    }
+
+    @Override
+    public long nextLongValue() throws IOException {
+        return reader.nextLong();
+    }
+
+    @Override
+    public int nextIntValue() throws IOException {
+        return reader.nextInt();
+    }
+
+    @Override
+    public short nextShortValue() throws IOException {
+        return Short.parseShort(reader.nextString());
+    }
+
+    @Override
+    public byte nextByteValue() throws IOException {
+        return Byte.parseByte(reader.nextString());
+    }
+
+    @Override
+    public double nextDoubleValue() throws IOException {
+        return reader.nextDouble();
+    }
+
+    @Override
+    public float nextFloatValue() throws IOException {
+        return Float.parseFloat(reader.nextString());
+    }
+
+    @Override
+    public boolean nextBooleanValue() throws IOException {
+        return reader.nextBoolean();
+    }
+
     /**
      * Closes underlying reader.
      */

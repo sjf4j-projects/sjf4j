@@ -233,6 +233,69 @@ public class Fastjson2Reader implements StreamingReader {
         reader.readNull();
     }
 
+    @Override
+    public boolean nextIfNull() throws IOException {
+        if (!reader.nextIfNull()) return false;
+        peeked = null;
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() throws IOException {
+        if (!reader.nextIfObjectEnd()) return false;
+        peeked = null;
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() throws IOException {
+        if (!reader.nextIfArrayEnd()) return false;
+        peeked = null;
+        return true;
+    }
+
+    @Override
+    public long nextLongValue() throws IOException {
+        peeked = null;
+        return reader.readInt64Value();
+    }
+
+    @Override
+    public int nextIntValue() throws IOException {
+        peeked = null;
+        return reader.readInt32Value();
+    }
+
+    @Override
+    public short nextShortValue() throws IOException {
+        peeked = null;
+        return reader.readInt16Value();
+    }
+
+    @Override
+    public byte nextByteValue() throws IOException {
+        peeked = null;
+        return reader.readInt8Value();
+    }
+
+    @Override
+    public double nextDoubleValue() throws IOException {
+        peeked = null;
+        return reader.readDoubleValue();
+    }
+
+    @Override
+    public float nextFloatValue() throws IOException {
+        peeked = null;
+        return reader.readFloatValue();
+    }
+
+    @Override
+    public boolean nextBooleanValue() throws IOException {
+        peeked = null;
+        return reader.readBoolValue();
+    }
+
     /**
      * Closes underlying Fastjson2 reader.
      */
