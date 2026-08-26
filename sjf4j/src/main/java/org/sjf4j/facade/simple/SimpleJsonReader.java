@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * Minimal JSON reader for the built-in facade.
  */
-public class SimpleJsonReader implements StreamingReader {
+public final class SimpleJsonReader implements StreamingReader {
 
     @FunctionalInterface
     private interface NumberParser<T> {

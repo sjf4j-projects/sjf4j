@@ -13,7 +13,7 @@ import java.util.TreeSet;
 /**
  * Properties facade based on JSONPath expansion.
  */
-public class SimplePropertiesFacade implements PropertiesFacade {
+public final class SimplePropertiesFacade implements PropertiesFacade {
 
     public static FacadeProvider<PropertiesFacade> provider() {
         return context -> new SimplePropertiesFacade();

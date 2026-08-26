@@ -20,7 +20,7 @@ import java.util.Objects;
 /**
  * Fastjson2-based JSON facade with selectable streaming modes.
  */
-public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
+public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
     private final JSONReader.Context readerContext;
     private final JSONWriter.Context writerContext;
     private final StreamingContext streamingContext;

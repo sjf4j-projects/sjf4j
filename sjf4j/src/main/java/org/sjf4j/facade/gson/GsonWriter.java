@@ -8,7 +8,7 @@ import java.io.IOException;
 /**
  * Streaming writer backed by Gson's {@link JsonWriter}.
  */
-public class GsonWriter implements StreamingWriter {
+public final class GsonWriter implements StreamingWriter {
 
     private final JsonWriter writer;
 

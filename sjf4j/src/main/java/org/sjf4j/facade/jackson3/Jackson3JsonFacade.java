@@ -23,7 +23,7 @@ import java.util.Objects;
 /**
  * Jackson3-based JSON facade with selectable streaming modes.
  */
-public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Writer> {
+public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Writer> {
     private final JsonMapper jsonMapper;
     private final StreamingContext streamingContext;
 

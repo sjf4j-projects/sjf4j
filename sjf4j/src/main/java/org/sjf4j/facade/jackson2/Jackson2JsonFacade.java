@@ -27,7 +27,7 @@ import java.util.Objects;
 /**
  * Jackson2-based JSON facade with selectable streaming modes.
  */
-public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Writer> {
+public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Writer> {
     private final ObjectMapper objectMapper;
     private final StreamingContext streamingContext;
 

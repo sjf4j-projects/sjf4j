@@ -12,7 +12,7 @@ import java.util.Objects;
 /**
  * Streaming reader backed by Jackson2's {@link JsonParser}.
  */
-public class Jackson2Reader implements StreamingReader {
+public final class Jackson2Reader implements StreamingReader {
 
     private final JsonParser parser;
 

@@ -14,7 +14,7 @@ import java.io.Writer;
 import java.util.Objects;
 
 
-public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
+public final class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     private final JsonProvider jsonProvider;
     private final StreamingContext streamingContext;
 

@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /** Streaming writer backed by JSON-P {@link JsonGenerator}. */
-public class JsonpWriter implements StreamingWriter {
+public final class JsonpWriter implements StreamingWriter {
 
     private final JsonGenerator gen;
 

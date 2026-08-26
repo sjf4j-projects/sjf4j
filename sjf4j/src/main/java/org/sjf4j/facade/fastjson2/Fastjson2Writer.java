@@ -12,7 +12,7 @@ import java.math.BigInteger;
 /**
  * Streaming writer backed by Fastjson2's {@link JSONWriter}.
  */
-public class Fastjson2Writer implements StreamingWriter {
+public final class Fastjson2Writer implements StreamingWriter {
 
     private final JSONWriter writer;
 

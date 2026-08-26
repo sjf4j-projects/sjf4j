@@ -11,7 +11,7 @@ import java.io.Writer;
 /**
  * Built-in lightweight JSON facade.
  */
-public class SimpleJsonFacade implements JsonFacade<SimpleJsonReader, SimpleJsonWriter> {
+public final class SimpleJsonFacade implements JsonFacade<SimpleJsonReader, SimpleJsonWriter> {
     private final StreamingContext streamingContext;
 
     public SimpleJsonFacade() {

@@ -14,7 +14,7 @@ import java.io.Writer;
 /**
  * Placeholder YAML facade used when SnakeYAML is not available.
  */
-public class SimpleYamlFacade implements YamlFacade<StreamingReader, StreamingWriter> {
+public final class SimpleYamlFacade implements YamlFacade<StreamingReader, StreamingWriter> {
     private final StreamingContext streamingContext;
 
     public SimpleYamlFacade() {

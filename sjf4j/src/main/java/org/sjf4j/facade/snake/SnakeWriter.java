@@ -20,7 +20,7 @@ import java.util.Objects;
 /**
  * Streaming writer backed by SnakeYAML emitter events.
  */
-public class SnakeWriter implements StreamingWriter {
+public final class SnakeWriter implements StreamingWriter {
 
     private final Emitter emitter;
 

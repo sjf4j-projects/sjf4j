@@ -16,7 +16,7 @@ import java.util.Objects;
 /**
  * Gson-based JSON facade with selectable streaming modes.
  */
-public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
+public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     private final Gson gson;
     private final StreamingContext streamingContext;
 

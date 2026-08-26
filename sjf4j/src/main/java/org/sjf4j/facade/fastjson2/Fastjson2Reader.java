@@ -12,7 +12,7 @@ import java.util.Objects;
 /**
  * Streaming reader backed by Fastjson2's {@link JSONReader}.
  */
-public class Fastjson2Reader implements StreamingReader {
+public final class Fastjson2Reader implements StreamingReader {
 
     private final JSONReader reader;
 

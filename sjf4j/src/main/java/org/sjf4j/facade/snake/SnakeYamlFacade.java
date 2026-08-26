@@ -17,7 +17,7 @@ import java.io.Writer;
 /**
  * SnakeYAML-based YAML facade.
  */
-public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
+public final class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
     private final LoaderOptions loaderOptions;
     private final DumperOptions dumperOptions;
     private final StreamingContext streamingContext;

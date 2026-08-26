@@ -13,7 +13,7 @@ import java.util.Objects;
 /**
  * Streaming reader backed by Gson's {@link JsonReader}.
  */
-public class GsonReader implements StreamingReader {
+public final class GsonReader implements StreamingReader {
 
     private final JsonReader reader;
 

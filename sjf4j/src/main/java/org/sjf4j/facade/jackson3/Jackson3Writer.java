@@ -10,7 +10,7 @@ import java.math.BigInteger;
 /**
  * Streaming writer backed by Jackson3 JsonGenerator.
  */
-public class Jackson3Writer implements StreamingWriter {
+public final class Jackson3Writer implements StreamingWriter {
 
     private final JsonGenerator gen;
 

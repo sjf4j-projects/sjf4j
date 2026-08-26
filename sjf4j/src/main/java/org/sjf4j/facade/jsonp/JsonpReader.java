@@ -11,7 +11,7 @@ import java.math.BigInteger;
 import java.util.Objects;
 
 
-public class JsonpReader implements StreamingReader {
+public final class JsonpReader implements StreamingReader {
 
     private final JsonParser parser;
     private JsonParser.Event current;

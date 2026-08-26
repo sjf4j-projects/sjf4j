@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Minimal JSON writer for the built-in facade.
  */
-public class SimpleJsonWriter implements StreamingWriter {
+public final class SimpleJsonWriter implements StreamingWriter {
 
     private final Writer writer;
 

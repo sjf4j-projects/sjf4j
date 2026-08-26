@@ -24,7 +24,7 @@ import java.util.Locale;
 /**
  * Streaming reader backed by SnakeYAML's parser events.
  */
-public class SnakeReader implements StreamingReader {
+public final class SnakeReader implements StreamingReader {
 
     private final Parser parser;
 //    private Object cachedValue;

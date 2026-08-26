@@ -13,7 +13,7 @@ import java.util.Objects;
 /**
  * Streaming reader backed by Jackson3 JsonParser.
  */
-public class Jackson3Reader implements StreamingReader {
+public final class Jackson3Reader implements StreamingReader {
 
     private final JsonParser parser;
 

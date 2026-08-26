@@ -40,7 +40,7 @@ import java.util.Set;
  * <p>This implementation supports optional exact {@link NodeConverter}
  * registrations that override default binding for matching source/target pairs.
  */
-public class SimpleNodeFacade implements NodeFacade {
+public final class SimpleNodeFacade implements NodeFacade {
     private final NodeConverterSlot[] converters;
     private final StreamingContext streamingContext;
 
