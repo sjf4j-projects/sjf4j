@@ -111,20 +111,18 @@ public final class StreamingIO {
     private static Map<String, Object> _readRawObject(StreamingReader reader) throws IOException {
         Map<String, Object> map = new LinkedHashMap<>();
         reader.startObject();
-        while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
+        while (!reader.nextIfObjectEnd()) {
             map.put(reader.nextName(), _readRawNode(reader));
         }
-        reader.endObject();
         return map;
     }
 
     private static List<Object> _readRawArray(StreamingReader reader) throws IOException {
         List<Object> list = new ArrayList<>();
         reader.startArray();
-        while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+        while (!reader.nextIfArrayEnd()) {
             list.add(_readRawNode(reader));
         }
-        reader.endArray();
         return list;
     }
 
@@ -257,7 +255,7 @@ public final class StreamingIO {
             Object pojo = ci.newPojoNoArgs();
             Map<String, Object> dynamicMap = null;
             reader.startObject();
-            while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
+            while (!reader.nextIfObjectEnd()) {
                 String key = reader.nextName();
                 PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
@@ -272,7 +270,6 @@ public final class StreamingIO {
                     reader.skipNext();
                 }
             }
-            reader.endObject();
             if (pi.isJojo) {
                 ((JsonObject) pojo)._dynamicMap(dynamicMap);
             }
@@ -286,7 +283,7 @@ public final class StreamingIO {
         Object parentOneOfValue = UNSET;
 
         reader.startObject();
-        while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
+        while (!reader.nextIfObjectEnd()) {
             String key = reader.nextName();
 
             int argIdx = ci.getArgIndexOrAlias(key);
@@ -358,7 +355,6 @@ public final class StreamingIO {
                 reader.skipNext();
             }
         }
-        reader.endObject();
 
         Object pojo = session.finish();
         applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw,
@@ -404,11 +400,10 @@ public final class StreamingIO {
             Class<?> elemRaw = Types.box(elemType);
             TypeInfo elemTi = NodeRegistry.registerTypeInfo(elemRaw);
             reader.startArray();
-            while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+            while (!reader.nextIfArrayEnd()) {
                 Object value = _readNode(reader, elemType, elemRaw, elemTi, context);
                 ja.add(value);
             }
-            reader.endArray();
             return ja;
         }
 
@@ -511,20 +506,18 @@ public final class StreamingIO {
                                                  TypeInfo valueTi,
                                                  StreamingContext context)
             throws IOException {
-        if (reader.peekToken() == StreamingReader.Token.NULL) {
-            reader.nextNull();
+        if (reader.nextIfNull()) {
             return null;
         }
         Map<String, Object> map = mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class
                 ? new LinkedHashMap<>()
                 : NodeRegistry.newMapContainer(mapClazz, false);
         reader.startObject();
-        while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
+        while (!reader.nextIfObjectEnd()) {
             String key = reader.nextName();
             Object value = _readNode(reader, valueType, valueClazz, valueTi, context);
             map.put(key, value);
         }
-        reader.endObject();
         return map;
     }
 
@@ -536,19 +529,17 @@ public final class StreamingIO {
                                            TypeInfo valueTi,
                                            StreamingContext context)
             throws IOException {
-        if (reader.peekToken() == StreamingReader.Token.NULL) {
-            reader.nextNull();
+        if (reader.nextIfNull()) {
             return null;
         }
         List<Object> list = listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class
                 ? new ArrayList<>()
                 : NodeRegistry.newListContainer(listClazz, false);
         reader.startArray();
-        while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+        while (!reader.nextIfArrayEnd()) {
             Object value = _readNode(reader, valueType, valueClazz, valueTi, context);
             list.add(value);
         }
-        reader.endArray();
         return list;
     }
 
@@ -560,19 +551,17 @@ public final class StreamingIO {
                                          TypeInfo valueTi,
                                          StreamingContext context)
             throws IOException {
-        if (reader.peekToken() == StreamingReader.Token.NULL) {
-            reader.nextNull();
+        if (reader.nextIfNull()) {
             return null;
         }
         Set<Object> set = setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class
                 ? new LinkedHashSet<>()
                 : NodeRegistry.newSetContainer(setClazz, false);
         reader.startArray();
-        while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+        while (!reader.nextIfArrayEnd()) {
             Object value = _readNode(reader, valueType, valueClazz, valueTi, context);
             set.add(value);
         }
-        reader.endArray();
         return set;
     }
 

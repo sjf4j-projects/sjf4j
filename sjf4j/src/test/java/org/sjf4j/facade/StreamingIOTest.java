@@ -64,6 +64,7 @@ public class StreamingIOTest {
     }
 
     private enum Backend {
+        SIMPLE,
         JACKSON2,
         GSON,
         FASTJSON2
@@ -75,6 +76,13 @@ public class StreamingIOTest {
 
     private void useJackson2(StreamingContext.StreamingMode mode) {
         useJackson2(mode, true);
+    }
+
+    private void useSimple(StreamingContext.StreamingMode mode) {
+        sjf4j = Sjf4j.builder(Sjf4j.global())
+                .streamingMode(mode)
+                .jsonFacadeProvider(SimpleJsonFacade.provider())
+                .build();
     }
 
     private void useJackson2(StreamingContext.StreamingMode mode, boolean includeNulls) {
@@ -115,6 +123,9 @@ public class StreamingIOTest {
 
     private void use(Backend backend, StreamingContext.StreamingMode mode, boolean includeNulls) {
         switch (backend) {
+            case SIMPLE:
+                useSimple(mode);
+                return;
             case JACKSON2:
                 useJackson2(mode, includeNulls);
                 return;
@@ -418,6 +429,20 @@ public class StreamingIOTest {
         HashMap<String, Integer> map;
         LinkedList<Integer> list;
         TreeSet<Integer> set;
+    }
+
+    static class PrimitivePojo {
+        public boolean active;
+        public int integer;
+        public long longValue;
+        public float floatValue;
+        public double doubleValue;
+        public short shortValue;
+        public byte byteValue;
+        public String nullable;
+        public Map<String, Integer> map;
+        public List<Integer> list;
+        public Set<Integer> set;
     }
 
     @Getter
@@ -899,6 +924,26 @@ public class StreamingIOTest {
                 () -> assertSharedStreamingContainerContract(true), Backend.JACKSON2, Backend.FASTJSON2);
         runOnBackends(StreamingContext.StreamingMode.SHARED_IO, false,
                 () -> assertSharedStreamingContainerContract(false), Backend.JACKSON2, Backend.FASTJSON2);
+    }
+
+    @Test
+    void testSharedStreamingReadsPrimitivePojo() {
+        runOnBackends(StreamingContext.StreamingMode.SHARED_IO, () -> {
+            PrimitivePojo pojo = sjf4j.fromJson("{\"active\":true,\"integer\":1,\"longValue\":2,"
+                    + "\"floatValue\":3.5,\"doubleValue\":4.5,\"shortValue\":5,\"byteValue\":6,"
+                    + "\"nullable\":null,\"map\":{},\"list\":[],\"set\":[]}", PrimitivePojo.class);
+            assertTrue(pojo.active);
+            assertEquals(1, pojo.integer);
+            assertEquals(2L, pojo.longValue);
+            assertEquals(3.5F, pojo.floatValue);
+            assertEquals(4.5D, pojo.doubleValue);
+            assertEquals((short) 5, pojo.shortValue);
+            assertEquals((byte) 6, pojo.byteValue);
+            assertNull(pojo.nullable);
+            assertTrue(pojo.map.isEmpty());
+            assertTrue(pojo.list.isEmpty());
+            assertTrue(pojo.set.isEmpty());
+        }, Backend.SIMPLE, Backend.GSON);
     }
 
     @Test
