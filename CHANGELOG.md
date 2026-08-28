@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
 
+### Fixed
+- Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
+
 
 
 ## [1.3.3] - 2026.08.13

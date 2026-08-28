@@ -1,4 +1,4 @@
-package org.sjf4j;
+package org.sjf4j.hand;
 
 
 import com.alibaba.fastjson2.JSONFactory;
@@ -30,6 +30,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
+import org.sjf4j.JsonObject;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
@@ -40,13 +41,6 @@ import org.sjf4j.facade.jackson2.Jackson2Module;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonReader;
-import org.sjf4j.hand.Fastjson2HandMapReader;
-import org.sjf4j.hand.Fastjson2HandReader;
-import org.sjf4j.hand.Fastjson2HashHandReader;
-import org.sjf4j.hand.GsonHandMapReader;
-import org.sjf4j.hand.GsonHandReader;
-import org.sjf4j.hand.Jackson2HandMapReader;
-import org.sjf4j.hand.Jackson2HandReader;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeReference;
 
@@ -66,10 +60,10 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
-public class ReadBenchmark {
+public class HandReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{ReadBenchmark.class.getName()});
+        Main.main(new String[]{HandReadBenchmark.class.getName()});
 //        Main.main(new String[]{"ReadBenchmark.json_fastjson2", "ReadBenchmark.json_jackson2"});
     }
 

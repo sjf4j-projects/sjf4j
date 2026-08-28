@@ -483,7 +483,10 @@ SJF4J gives you:
 
 ## Contributing
 
-Contributions of all kinds are welcome — including code, documentation, bug reports,
-examples, benchmarks, ideas, and feedback.    
+SJF4J is still relatively new to production use, 
+and broader adoption will help uncover issues and edge cases that are difficult to anticipate in advance.  
+If you encounter any problems or unexpected behavior, please feel free to [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
 
-If you'd like to contribute or discuss an idea, [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
+All contributions, whether code, documentation, bug reports, examples, benchmarks, ideas, suggestions, 
+or feedback from real-world use, are welcome~
+

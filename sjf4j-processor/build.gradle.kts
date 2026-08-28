@@ -24,6 +24,7 @@ dependencies {
     testImplementation(project.findProject(":sjf4j-schema")?.let { project(":sjf4j-schema") } ?: "org.sjf4j:sjf4j-schema:$version")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     testImplementation("org.yaml:snakeyaml:2.5")
+    testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")

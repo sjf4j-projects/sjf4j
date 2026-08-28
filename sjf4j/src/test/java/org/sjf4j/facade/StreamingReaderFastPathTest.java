@@ -99,6 +99,22 @@ class StreamingReaderFastPathTest {
     }
 
     @Test
+    void fastjson2ConditionalFastPathsKeepCachedTokenOnFalse() throws IOException {
+        try (StreamingReader reader = new Fastjson2Reader(JSONReader.of("[1]"))) {
+            reader.startArray();
+            assertEquals(StreamingReader.Token.NUMBER, reader.peekToken());
+            assertFalse(reader.nextIfNull());
+            assertEquals(StreamingReader.Token.NUMBER, reader.peekToken());
+            assertEquals(1, reader.nextIntValue());
+
+            assertEquals(StreamingReader.Token.END_ARRAY, reader.peekToken());
+            assertFalse(reader.nextIfObjectEnd());
+            assertEquals(StreamingReader.Token.END_ARRAY, reader.peekToken());
+            assertTrue(reader.nextIfArrayEnd());
+        }
+    }
+
+    @Test
     void fastjson2PrimitiveFailureClearsConsumedPeekCache() throws IOException {
         try (StreamingReader reader = new Fastjson2Reader(JSONReader.of("[\"wrong\",1]"))) {
             assertEquals(StreamingReader.Token.START_ARRAY, reader.peekToken());

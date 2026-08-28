@@ -4,6 +4,8 @@ package org.sjf4j.facade.jackson2;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.introspect.Annotated;
@@ -26,6 +28,7 @@ import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.node.Nodes;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -136,6 +139,27 @@ public class Jackson2FacadeTest {
     }
 
     @Test
+    void testExclusiveReadClosesOwnedParserOnly() {
+        TrackingJsonFactory factory = new TrackingJsonFactory();
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(factory),
+                ctx(StreamingContext.StreamingMode.EXCLUSIVE_IO));
+
+        facade.readNode("{\"a\":1}", Map.class);
+        assertTrue(factory.stringParser.isClosed());
+
+        facade.readNode("{\"a\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8), Map.class);
+        assertTrue(factory.bytesParser.isClosed());
+
+        CloseTrackingReader reader = new CloseTrackingReader("{\"a\":1}");
+        facade.readNode(reader, Map.class);
+        assertFalse(reader.closed);
+
+        CloseTrackingInputStream input = new CloseTrackingInputStream("{\"a\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        facade.readNode(input, Map.class);
+        assertFalse(input.closed);
+    }
+
+    @Test
     void testPluginModuleAllowsNativeEquivalentPublicPojo() {
         Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
@@ -143,6 +167,49 @@ public class Jackson2FacadeTest {
         assertEquals("han", book.userName);
         assertEquals(2, book.loginCount);
         assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
+    }
+
+    private static final class TrackingJsonFactory extends JsonFactory {
+        JsonParser stringParser;
+        JsonParser bytesParser;
+
+        @Override
+        public JsonParser createParser(String content) throws IOException {
+            return stringParser = super.createParser(content);
+        }
+
+        @Override
+        public JsonParser createParser(byte[] data) throws IOException {
+            return bytesParser = super.createParser(data);
+        }
+    }
+
+    private static final class CloseTrackingReader extends StringReader {
+        boolean closed;
+
+        CloseTrackingReader(String content) {
+            super(content);
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+            super.close();
+        }
+    }
+
+    private static final class CloseTrackingInputStream extends ByteArrayInputStream {
+        boolean closed;
+
+        CloseTrackingInputStream(byte[] data) {
+            super(data);
+        }
+
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            super.close();
+        }
     }
 
     @Test

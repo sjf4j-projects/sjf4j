@@ -164,8 +164,8 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodeExclusive(Reader input, Type type) {
-        try {
-            JsonParser parser = objectMapper.getFactory().createParser(input);
+        try (JsonParser parser = objectMapper.getFactory().createParser(input)
+                .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
@@ -174,8 +174,8 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodeExclusive(InputStream input, Type type) {
-        try {
-            JsonParser parser = objectMapper.getFactory().createParser(input);
+        try (JsonParser parser = objectMapper.getFactory().createParser(input)
+                .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
@@ -184,8 +184,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodeExclusive(String input, Type type) {
-        try {
-            JsonParser parser = objectMapper.getFactory().createParser(input);
+        try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
@@ -193,8 +192,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
     }
     @Override
     public Object readNodeExclusive(byte[] input, Type type) {
-        try {
-            JsonParser parser = objectMapper.getFactory().createParser(input);
+        try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
