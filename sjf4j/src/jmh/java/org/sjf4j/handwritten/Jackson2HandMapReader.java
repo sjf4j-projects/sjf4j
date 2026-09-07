@@ -1,4 +1,4 @@
-package org.sjf4j.hand;
+package org.sjf4j.handwritten;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;

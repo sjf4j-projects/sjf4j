@@ -1,4 +1,4 @@
-package org.sjf4j.hand;
+package org.sjf4j.handwritten;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Direct Jackson2 parser baseline for {@link ReadBenchmark.UserPojo}. */
-public final class Jackson2HandReader {
+public final class Jackson2HandPojoReader {
 
-    private Jackson2HandReader() {}
+    private Jackson2HandPojoReader() {}
 
     public static ReadBenchmark.UserPojo readUser(JsonParser parser) throws IOException {
         JsonToken token = parser.currentToken();

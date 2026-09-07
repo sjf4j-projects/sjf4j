@@ -1,19 +1,15 @@
-package org.sjf4j.hand;
+package org.sjf4j.handwritten;
 
 import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.util.Fnv;
 import org.sjf4j.ReadBenchmark;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** Direct Fastjson2 baseline using its field-name hash reader API. */
-public final class Fastjson2HashHandReader {
+/** Direct Fastjson2 baseline for {@link ReadBenchmark.UserPojo}. */
+public final class Fastjson2HandPojoReader {
 
-    private static final long NAME_HASH = Fnv.hashCode64("name");
-    private static final long FRIENDS_HASH = Fnv.hashCode64("friends");
-
-    private Fastjson2HashHandReader() {}
+    private Fastjson2HandPojoReader() {}
 
     public static ReadBenchmark.UserPojo readUser(JSONReader reader) {
         if (reader.nextIfNull()) return null;
@@ -23,10 +19,10 @@ public final class Fastjson2HashHandReader {
 
         ReadBenchmark.UserPojo user = new ReadBenchmark.UserPojo();
         while (!reader.nextIfObjectEnd()) {
-            long hash = reader.readFieldNameHashCode();
-            if (hash == NAME_HASH) {
+            String name = reader.readFieldName();
+            if ("name".equals(name)) {
                 user.setName(reader.nextIfNull() ? null : reader.readString());
-            } else if (hash == FRIENDS_HASH) {
+            } else if ("friends".equals(name)) {
                 user.setFriends(readUsers(reader));
             } else {
                 reader.skipValue();
@@ -41,7 +37,7 @@ public final class Fastjson2HashHandReader {
             throw new IllegalStateException("expected array, but was " + reader.current());
         }
 
-        List<ReadBenchmark.UserPojo> users = new ArrayList<>();
+        List<ReadBenchmark.UserPojo> users = new ArrayList<ReadBenchmark.UserPojo>();
         while (!reader.nextIfArrayEnd()) {
             users.add(readUser(reader));
         }

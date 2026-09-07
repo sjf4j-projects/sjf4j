@@ -40,13 +40,6 @@ import org.sjf4j.facade.jackson2.Jackson2Module;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonReader;
-import org.sjf4j.hand.Fastjson2HandMapReader;
-import org.sjf4j.hand.Fastjson2HandReader;
-import org.sjf4j.hand.Fastjson2HashHandReader;
-import org.sjf4j.hand.GsonHandMapReader;
-import org.sjf4j.hand.GsonHandReader;
-import org.sjf4j.hand.Jackson2HandMapReader;
-import org.sjf4j.hand.Jackson2HandReader;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeReference;
 
@@ -358,14 +351,6 @@ public class ReadBenchmark {
         return JACKSON2.readValue(JSON_DATA2, UserPojo.class);
     }
 
-    /** Direct Jackson2 parser baseline for the same POJO shape as the native reader. */
-    @Benchmark
-    public Object json_jackson2_pojo_handwritten() throws IOException {
-        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
-            return Jackson2HandReader.readUser(parser);
-        }
-    }
-
     @Benchmark
     public Object json_jackson2_pojo_blackbird() throws IOException {
         return JACKSON2_BLACKBIRD.readValue(JSON_DATA2, UserPojo.class);
@@ -379,13 +364,6 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_jackson2_map_native() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_map_handwritten() throws IOException {
-        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
-            return Jackson2HandMapReader.read(parser);
-        }
     }
 
     @Benchmark
@@ -410,24 +388,9 @@ public class ReadBenchmark {
         return GSON.fromJson(JSON_DATA2, UserPojo.class);
     }
 
-    /** Direct Gson streaming baseline for the same POJO shape as the native reader. */
-    @Benchmark
-    public Object json_gson_pojo_handwritten() throws IOException {
-        try (com.google.gson.stream.JsonReader reader = GSON.newJsonReader(new StringReader(JSON_DATA2))) {
-            return GsonHandReader.readUser(reader);
-        }
-    }
-
     @Benchmark
     public Object json_gson_map_native() {
         return GSON.fromJson(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_gson_map_handwritten() throws IOException {
-        try (com.google.gson.stream.JsonReader reader = GSON.newJsonReader(new StringReader(JSON_DATA2))) {
-            return GsonHandMapReader.read(reader);
-        }
     }
 
     @Benchmark
@@ -454,22 +417,6 @@ public class ReadBenchmark {
         }
     }
 
-    /** Direct Fastjson2 parser baseline for the same POJO shape as the native reader. */
-    @Benchmark
-    public Object json_fastjson2_pojo_handwritten() {
-        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            return Fastjson2HandReader.readUser(reader);
-        }
-    }
-
-    /** Direct Fastjson2 parser baseline using native field-name hash dispatch. */
-    @Benchmark
-    public Object json_fastjson2_pojo_handwritten_hash() {
-        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            return Fastjson2HashHandReader.readUser(reader);
-        }
-    }
-
     @Benchmark
     public Object json_fastjson2_jojo_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
@@ -481,13 +428,6 @@ public class ReadBenchmark {
     public Object json_fastjson2_map_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
-        }
-    }
-
-    @Benchmark
-    public Object json_fastjson2_map_handwritten() {
-        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            return Fastjson2HandMapReader.read(reader);
         }
     }
 

@@ -1,4 +1,4 @@
-package org.sjf4j.hand;
+package org.sjf4j.handwritten;
 
 
 import com.alibaba.fastjson2.JSONFactory;
@@ -356,7 +356,7 @@ public class HandReadBenchmark {
     @Benchmark
     public Object json_jackson2_pojo_handwritten() throws IOException {
         try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
-            return Jackson2HandReader.readUser(parser);
+            return Jackson2HandPojoReader.readUser(parser);
         }
     }
 
@@ -408,7 +408,7 @@ public class HandReadBenchmark {
     @Benchmark
     public Object json_gson_pojo_handwritten() throws IOException {
         try (com.google.gson.stream.JsonReader reader = GSON.newJsonReader(new StringReader(JSON_DATA2))) {
-            return GsonHandReader.readUser(reader);
+            return GsonHandPojoReader.readUser(reader);
         }
     }
 
@@ -452,7 +452,7 @@ public class HandReadBenchmark {
     @Benchmark
     public Object json_fastjson2_pojo_handwritten() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            return Fastjson2HandReader.readUser(reader);
+            return Fastjson2HandPojoReader.readUser(reader);
         }
     }
 

@@ -1,4 +1,4 @@
-package org.sjf4j.hand;
+package org.sjf4j.handwritten;
 
 import com.alibaba.fastjson2.JSONReader;
 

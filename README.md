@@ -13,7 +13,7 @@
 
 
 SJF4J is a lightweight JSON facade for Java, 
-evolving into **a high-performance structural processing layer built around JSON standards and semantics**.
+evolving into **a high-performance structural processing layer built around JSON standards**.
    
 SJF4J integrates with JSON parsers including [Jackson](https://github.com/FasterXML/jackson-databind),
 [Gson](https://github.com/google/gson), 

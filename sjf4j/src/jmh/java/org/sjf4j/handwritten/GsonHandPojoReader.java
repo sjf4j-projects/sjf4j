@@ -1,4 +1,4 @@
-package org.sjf4j.hand;
+package org.sjf4j.handwritten;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Direct Gson streaming baseline for {@link ReadBenchmark.UserPojo}. */
-public final class GsonHandReader {
+public final class GsonHandPojoReader {
 
-    private GsonHandReader() {}
+    private GsonHandPojoReader() {}
 
     public static ReadBenchmark.UserPojo readUser(JsonReader reader) throws IOException {
         if (reader.peek() == JsonToken.NULL) {
