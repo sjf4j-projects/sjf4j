@@ -1,6 +1,7 @@
 package org.sjf4j.facade.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
+import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 
@@ -25,6 +26,8 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     private Token peeked;
+    private int[] scopes = new int[8];
+    private int depth;
 
     /**
      * Peeks next token from current JSONReader state.
@@ -32,9 +35,15 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Token peekToken() throws IOException {
         if (peeked == null) {
-            peeked = mappingToken(reader.current());
+            peeked = reader.isEnd() ? Token.EOF
+                    : _expectsName() && reader.current() == '"' ? Token.FIELD_NAME : mappingToken(reader.current());
         }
         return peeked;
+    }
+
+    @Override
+    public void endDocument() throws IOException {
+        if (!reader.isEnd()) throw new IOException("Expected end of document");
     }
 
     static Token mappingToken(char ch) {
@@ -81,6 +90,7 @@ public final class Fastjson2Reader implements StreamingReader {
         if (!reader.nextIfObjectStart()) {
             throw new BindingException("expected token 'START_OBJECT', but got " + reader.current());
         }
+        _push(1);
     }
 
     /**
@@ -92,6 +102,7 @@ public final class Fastjson2Reader implements StreamingReader {
         if (!reader.nextIfObjectEnd()) {
             throw new BindingException("expected token 'END_OBJECT', but got " + reader.current());
         }
+        _popValueDone();
     }
 
     /**
@@ -103,6 +114,7 @@ public final class Fastjson2Reader implements StreamingReader {
         if (!reader.nextIfArrayStart()) {
             throw new BindingException("expected token 'START_ARRAY', but got " + reader.current());
         }
+        _push(0);
     }
 
     /**
@@ -114,6 +126,7 @@ public final class Fastjson2Reader implements StreamingReader {
         if (!reader.nextIfArrayEnd()) {
             throw new BindingException("expected token 'END_ARRAY', but got " + reader.current());
         }
+        _popValueDone();
     }
 
     /**
@@ -122,6 +135,7 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public String nextName() throws IOException {
         peeked = null;
+        scopes[depth - 1] = 2;
         return reader.readFieldName();
     }
 
@@ -131,7 +145,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public String nextString() throws IOException {
         peeked = null;
-        return reader.readString();
+        String value = reader.readString();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -140,7 +156,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Number nextNumber() throws IOException {
         peeked = null;
-        return reader.readNumber();
+        Number value = reader.readNumber();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -149,7 +167,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Long nextLong() throws IOException {
         peeked = null;
-        return reader.readInt64Value();
+        Long value = reader.readInt64Value();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -158,7 +178,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Integer nextInt() throws IOException {
         peeked = null;
-        return reader.readInt32Value();
+        Integer value = reader.readInt32Value();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -167,7 +189,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Short nextShort() throws IOException {
         peeked = null;
-        return reader.readInt16Value();
+        Short value = reader.readInt16Value();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -176,7 +200,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Byte nextByte() throws IOException {
         peeked = null;
-        return reader.readInt8Value();
+        Byte value = reader.readInt8Value();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -185,7 +211,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Double nextDouble() throws IOException {
         peeked = null;
-        return reader.readDoubleValue();
+        Double value = reader.readDoubleValue();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -194,7 +222,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Float nextFloat() throws IOException {
         peeked = null;
-        return reader.readFloatValue();
+        Float value = reader.readFloatValue();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -203,7 +233,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public BigInteger nextBigInteger() throws IOException {
         peeked = null;
-        return reader.readBigInteger();
+        BigInteger value = reader.readBigInteger();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -212,7 +244,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public BigDecimal nextBigDecimal() throws IOException {
         peeked = null;
-        return reader.readBigDecimal();
+        BigDecimal value = reader.readBigDecimal();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -221,7 +255,9 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public Boolean nextBoolean() throws IOException {
         peeked = null;
-        return reader.readBoolValue();
+        Boolean value = reader.readBoolValue();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -231,12 +267,14 @@ public final class Fastjson2Reader implements StreamingReader {
     public void nextNull() throws IOException {
         peeked = null;
         reader.readNull();
+        _valueDone();
     }
 
     @Override
     public boolean nextIfNull() throws IOException {
         if (!reader.nextIfNull()) return false;
         peeked = null;
+        _valueDone();
         return true;
     }
 
@@ -244,6 +282,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public boolean nextIfObjectEnd() throws IOException {
         if (!reader.nextIfObjectEnd()) return false;
         peeked = null;
+        _popValueDone();
         return true;
     }
 
@@ -251,49 +290,64 @@ public final class Fastjson2Reader implements StreamingReader {
     public boolean nextIfArrayEnd() throws IOException {
         if (!reader.nextIfArrayEnd()) return false;
         peeked = null;
+        _popValueDone();
         return true;
     }
 
     @Override
     public long nextLongValue() throws IOException {
         peeked = null;
-        return reader.readInt64Value();
+        long value = reader.readInt64Value();
+        _valueDone();
+        return value;
     }
 
     @Override
     public int nextIntValue() throws IOException {
         peeked = null;
-        return reader.readInt32Value();
+        int value = reader.readInt32Value();
+        _valueDone();
+        return value;
     }
 
     @Override
     public short nextShortValue() throws IOException {
         peeked = null;
-        return reader.readInt16Value();
+        short value = reader.readInt16Value();
+        _valueDone();
+        return value;
     }
 
     @Override
     public byte nextByteValue() throws IOException {
         peeked = null;
-        return reader.readInt8Value();
+        byte value = reader.readInt8Value();
+        _valueDone();
+        return value;
     }
 
     @Override
     public double nextDoubleValue() throws IOException {
         peeked = null;
-        return reader.readDoubleValue();
+        double value = reader.readDoubleValue();
+        _valueDone();
+        return value;
     }
 
     @Override
     public float nextFloatValue() throws IOException {
         peeked = null;
-        return reader.readFloatValue();
+        float value = reader.readFloatValue();
+        _valueDone();
+        return value;
     }
 
     @Override
     public boolean nextBooleanValue() throws IOException {
         peeked = null;
-        return reader.readBoolValue();
+        boolean value = reader.readBoolValue();
+        _valueDone();
+        return value;
     }
 
     /**
@@ -309,8 +363,35 @@ public final class Fastjson2Reader implements StreamingReader {
      */
     @Override
     public void skipNext() throws IOException {
+        Token token = peekToken();
+        if (token.jsonType() == JsonType.UNKNOWN) {
+            throw new IOException("Expected value to skip, but was " + token);
+        }
         peeked = null;
         reader.skipValue();
+        _valueDone();
+    }
+
+    private boolean _expectsName() {
+        return depth > 0 && scopes[depth - 1] == 1;
+    }
+
+    private void _push(int scope) {
+        if (depth == scopes.length) {
+            int[] next = new int[depth << 1];
+            System.arraycopy(scopes, 0, next, 0, depth);
+            scopes = next;
+        }
+        scopes[depth++] = scope;
+    }
+
+    private void _popValueDone() {
+        if (depth > 0) depth--;
+        _valueDone();
+    }
+
+    private void _valueDone() {
+        if (depth > 0 && scopes[depth - 1] == 2) scopes[depth - 1] = 1;
     }
 
 }

@@ -252,7 +252,9 @@ public interface Jackson3Module {
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) {
             try {
-                return (T) StreamingIO.readOneOf(new Jackson3Reader(p), oneOfInfo, streamingContext);
+                // Databind advances from a property value's closing token to the next property.
+                // Keep that cursor while the fork is consumed on its token buffer.
+                return (T) StreamingIO.readOneOf(new Jackson3Reader(p, false), oneOfInfo, streamingContext);
             } catch (IOException e) {
                 throw new BindingException(e);
             }

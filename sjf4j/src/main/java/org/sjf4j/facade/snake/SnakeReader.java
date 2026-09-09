@@ -2,6 +2,7 @@ package org.sjf4j.facade.snake;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
+import org.sjf4j.JsonType;
 import org.sjf4j.node.Numbers;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
@@ -27,6 +28,9 @@ import java.util.Locale;
 public final class SnakeReader implements StreamingReader {
 
     private final Parser parser;
+    private boolean documentEnded;
+    private int[] scopes = new int[8];
+    private int depth;
 //    private Object cachedValue;
 
     /**
@@ -52,13 +56,16 @@ public final class SnakeReader implements StreamingReader {
     public void endDocument() {
         if (!(parser.getEvent() instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
         if (!(parser.getEvent() instanceof StreamEndEvent)) throw new IllegalStateException("Malformed YAML");
+        documentEnded = true;
     }
     /**
      * Peeks the next token from current YAML event.
      */
     @Override
     public Token peekToken() {
+        if (documentEnded) return Token.EOF;
         Event event = parser.peekEvent();
+        if (_expectsName() && event instanceof ScalarEvent) return Token.FIELD_NAME;
         if (event instanceof MappingStartEvent) {
             return Token.START_OBJECT;
         } else if (event instanceof MappingEndEvent) {
@@ -103,6 +110,7 @@ public final class SnakeReader implements StreamingReader {
     @Override
     public void startObject() {
         parser.getEvent(); // consume start
+        _push(1);
     }
 
     /**
@@ -111,6 +119,7 @@ public final class SnakeReader implements StreamingReader {
     @Override
     public void endObject() {
         parser.getEvent(); // consume end
+        _popValueDone();
     }
 
     /**
@@ -119,6 +128,7 @@ public final class SnakeReader implements StreamingReader {
     @Override
     public void startArray() {
         parser.getEvent(); // consume start
+        _push(0);
     }
 
     /**
@@ -127,6 +137,7 @@ public final class SnakeReader implements StreamingReader {
     @Override
     public void endArray() {
         parser.getEvent(); // consume end
+        _popValueDone();
     }
 
     /**
@@ -134,6 +145,7 @@ public final class SnakeReader implements StreamingReader {
      */
     @Override
     public String nextName() {
+        scopes[depth - 1] = 2;
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         return se.getValue();
     }
@@ -144,6 +156,7 @@ public final class SnakeReader implements StreamingReader {
     @Override
     public String nextString() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
+        _valueDone();
         return se.getValue();
     }
 
@@ -153,6 +166,7 @@ public final class SnakeReader implements StreamingReader {
     @Override
     public Number nextNumber() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
+        _valueDone();
         return Numbers.parseNumber(se.getValue());
     }
 
@@ -226,6 +240,7 @@ public final class SnakeReader implements StreamingReader {
     @Override
     public Boolean nextBoolean() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
+        _valueDone();
         String value = se.getValue();
         String low = value.toLowerCase();
         if (low.equals("true") || low.equals("yes") || low.equals("on")) {
@@ -247,6 +262,7 @@ public final class SnakeReader implements StreamingReader {
         String tag = se.getTag();
         if (value == null || value.isEmpty() || "tag:yaml.org,2002:null".equals(tag) ||
                 value.equalsIgnoreCase("null") || value.equals("~")) {
+            _valueDone();
             return;
         }
         throw new BindingException("expected null, but was '" + value + "'");
@@ -256,6 +272,7 @@ public final class SnakeReader implements StreamingReader {
     public boolean nextIfNull() {
         if (peekToken() != Token.NULL) return false;
         parser.getEvent();
+        _valueDone();
         return true;
     }
 
@@ -263,6 +280,7 @@ public final class SnakeReader implements StreamingReader {
     public boolean nextIfObjectEnd() {
         if (peekToken() != Token.END_OBJECT) return false;
         parser.getEvent();
+        _popValueDone();
         return true;
     }
 
@@ -270,6 +288,7 @@ public final class SnakeReader implements StreamingReader {
     public boolean nextIfArrayEnd() {
         if (peekToken() != Token.END_ARRAY) return false;
         parser.getEvent();
+        _popValueDone();
         return true;
     }
 
@@ -287,9 +306,14 @@ public final class SnakeReader implements StreamingReader {
      */
     @Override
     public void skipNext() throws IOException {
+        Token token = peekToken();
+        if (token.jsonType() == JsonType.UNKNOWN) {
+            throw new IOException("Expected value to skip, but was " + token);
+        }
         Event event = parser.peekEvent();
         if (event instanceof ScalarEvent) {
             parser.getEvent();
+            _valueDone();
         } else if (event instanceof MappingStartEvent || event instanceof SequenceStartEvent) {
             int depth = 0;
             do {
@@ -300,7 +324,30 @@ public final class SnakeReader implements StreamingReader {
                     depth--;
                 }
             } while (depth > 0);
+            _valueDone();
         }
+    }
+
+    private boolean _expectsName() {
+        return depth > 0 && scopes[depth - 1] == 1;
+    }
+
+    private void _push(int scope) {
+        if (depth == scopes.length) {
+            int[] next = new int[depth << 1];
+            System.arraycopy(scopes, 0, next, 0, depth);
+            scopes = next;
+        }
+        scopes[depth++] = scope;
+    }
+
+    private void _popValueDone() {
+        if (depth > 0) depth--;
+        _valueDone();
+    }
+
+    private void _valueDone() {
+        if (depth > 0 && scopes[depth - 1] == 2) scopes[depth - 1] = 1;
     }
 
 

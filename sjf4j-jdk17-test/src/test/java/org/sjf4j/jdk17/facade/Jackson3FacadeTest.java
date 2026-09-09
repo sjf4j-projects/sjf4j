@@ -268,6 +268,7 @@ class Jackson3FacadeTest {
 
     static class PetHolder {
         public TypedPet pet;
+        public String after;
     }
 
     static class User {
@@ -589,9 +590,10 @@ class Jackson3FacadeTest {
     }
 
     private static void assertOneOf(Jackson3JsonFacade facade) {
-        PetHolder holder = (PetHolder) facade.readNode("{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}",
+        PetHolder holder = (PetHolder) facade.readNode("{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"},\"after\":\"tail\"}",
                 PetHolder.class);
         assertEquals(Cat.class, holder.pet.getClass());
+        assertEquals("tail", holder.after);
 
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, holder);

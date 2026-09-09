@@ -2,24 +2,23 @@ package org.sjf4j.handwritten;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
-import org.sjf4j.ReadBenchmark;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Direct Gson streaming baseline for {@link ReadBenchmark.UserPojo}. */
+/** Direct Gson streaming baseline for {@link HandReadBenchmark.UserPojo}. */
 public final class GsonHandPojoReader {
 
     private GsonHandPojoReader() {}
 
-    public static ReadBenchmark.UserPojo readUser(JsonReader reader) throws IOException {
+    public static HandReadBenchmark.UserPojo readUser(JsonReader reader) throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
             return null;
         }
 
-        ReadBenchmark.UserPojo user = new ReadBenchmark.UserPojo();
+        HandReadBenchmark.UserPojo user = new HandReadBenchmark.UserPojo();
         reader.beginObject();
         while (reader.hasNext()) {
             String name = reader.nextName();
@@ -35,13 +34,13 @@ public final class GsonHandPojoReader {
         return user;
     }
 
-    private static List<ReadBenchmark.UserPojo> readUsers(JsonReader reader) throws IOException {
+    private static List<HandReadBenchmark.UserPojo> readUsers(JsonReader reader) throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
             return null;
         }
 
-        List<ReadBenchmark.UserPojo> users = new ArrayList<ReadBenchmark.UserPojo>();
+        List<HandReadBenchmark.UserPojo> users = new ArrayList<>();
         reader.beginArray();
         while (reader.hasNext()) {
             users.add(readUser(reader));

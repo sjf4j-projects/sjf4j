@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
- * Base streaming facade for reading/writing JSON-like data.
+ * Base streaming facade for reading and writing structured data.
  */
 public interface StreamingFacade<R extends StreamingReader, W extends StreamingWriter> {
 

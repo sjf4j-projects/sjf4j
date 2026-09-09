@@ -82,6 +82,28 @@ public class SchemaValidationTest {
     }
 
     @Test
+    public void testJsonContentMediaType() {
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
+        SchemaPlan json = JsonSchema.fromJson("{\"contentMediaType\":\"application/json\"}").createPlan(registry);
+        SchemaPlan base64Json = JsonSchema.fromJson("{\"contentEncoding\":\"base64\",\"contentMediaType\":\"application/json\"}").createPlan(registry);
+
+        assertTrue(json.isValid("{\"foo\":\"bar\"}"));
+        assertFalse(json.isValid("{:}"));
+        assertFalse(json.isValid("{\"foo\":\"bar\",}"));
+        assertFalse(json.isValid("{\"foo\":\"bar\":}"));
+        for (String content : Arrays.asList(",1", ":1", "1,", "1:", "tru", "01", "1.", "1e",
+                "\"\\x\"", "\"line\nbreak\"")) {
+            assertFalse(json.isValid(content), content);
+        }
+        assertFalse(json.isValid("{\"" + (char) 1 + "\":1}"));
+        assertFalse(base64Json.isValid("/w=="));
+        SchemaPlan base64 = JsonSchema.fromJson("{\"contentEncoding\":\"base64\"}").createPlan(registry);
+        assertTrue(base64.isValid("/w=="));
+        assertTrue(base64Json.isValid("eyJmb28iOiAiYmFyIn0K"));
+        assertFalse(base64Json.isValid("ezp9Cg=="));
+    }
+
+    @Test
     public void testStringLengthCountsCodePoints() {
         String json =
                 "{\n" +

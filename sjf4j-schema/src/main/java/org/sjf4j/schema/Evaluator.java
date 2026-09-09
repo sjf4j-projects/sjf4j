@@ -11,6 +11,8 @@ import java.io.StringReader;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
@@ -525,11 +527,11 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.STRING) return true;
 
             String content = Nodes.toString(instance.node());
+            byte[] decoded = null;
             if (contentEncoding != null) {
                 if (!"base64".equalsIgnoreCase(contentEncoding)) return true;
                 try {
-                    byte[] decoded = Base64.getDecoder().decode(content);
-                    content = new String(decoded, StandardCharsets.UTF_8);
+                    decoded = Base64.getDecoder().decode(content);
                 } catch (IllegalArgumentException e) {
                     ctx.addError(instance, ps, contentEncodingKeywordPs, schemaUri, "contentEncoding",
                             "expected base64-encoded content");
@@ -540,11 +542,16 @@ public interface Evaluator {
             if (contentMediaType != null) {
                 if (!"application/json".equalsIgnoreCase(contentMediaType)) return true;
                 try {
-                    SimpleJsonReader reader = new SimpleJsonReader(new StringReader(content));
-                    reader.skipNext();
-                    if (reader.peekToken() != StreamingReader.Token.UNKNOWN) {
-                        throw new IllegalArgumentException("trailing content");
+                    if (decoded != null) {
+                        content = StandardCharsets.UTF_8.newDecoder()
+                                .onMalformedInput(CodingErrorAction.REPORT)
+                                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                                .decode(ByteBuffer.wrap(decoded)).toString();
                     }
+                    SimpleJsonReader reader = new SimpleJsonReader(new StringReader(content));
+                    reader.startDocument();
+                    reader.skipNext();
+                    reader.endDocument();
                 } catch (Exception e) {
                     ctx.addError(instance, ps, contentMediaTypeKeywordPs, schemaUri, "contentMediaType",
                             "expected valid JSON content");

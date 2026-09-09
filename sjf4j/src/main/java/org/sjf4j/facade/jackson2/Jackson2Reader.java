@@ -2,6 +2,7 @@ package org.sjf4j.facade.jackson2;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import org.sjf4j.JsonType;
 import org.sjf4j.facade.StreamingReader;
 
 import java.io.IOException;
@@ -51,8 +52,17 @@ public final class Jackson2Reader implements StreamingReader {
                 return Token.BOOLEAN;
             case VALUE_NULL:
                 return Token.NULL;
+            case FIELD_NAME:
+                return Token.FIELD_NAME;
             default:
                 return Token.UNKNOWN;
+        }
+    }
+
+    @Override
+    public void endDocument() throws IOException {
+        if (parser.currentToken() != null || parser.nextToken() != null) {
+            throw new IOException("Expected end of document");
         }
     }
 
@@ -299,6 +309,10 @@ public final class Jackson2Reader implements StreamingReader {
      */
     @Override
     public void skipNext() throws IOException {
+        Token token = peekToken();
+        if (token.jsonType() == JsonType.UNKNOWN) {
+            throw new IOException("Expected value to skip, but was " + token);
+        }
         JsonToken tk = parser.currentToken();
         if (tk.isScalarValue()) {
             parser.nextToken();

@@ -2,10 +2,12 @@ package org.sjf4j.facade.gson;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import org.sjf4j.JsonType;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 
 import java.io.IOException;
+import java.io.EOFException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Objects;
@@ -30,7 +32,12 @@ public final class GsonReader implements StreamingReader {
      */
     @Override
     public Token peekToken() throws IOException {
-        JsonToken token = reader.peek();
+        JsonToken token;
+        try {
+            token = reader.peek();
+        } catch (EOFException e) {
+            return Token.EOF;
+        }
         switch (token) {
             case BEGIN_OBJECT:
                 return Token.START_OBJECT;
@@ -48,8 +55,21 @@ public final class GsonReader implements StreamingReader {
                 return Token.BOOLEAN;
             case NULL:
                 return Token.NULL;
+            case END_DOCUMENT:
+                return Token.EOF;
+            case NAME:
+                return Token.FIELD_NAME;
             default:
                 return Token.UNKNOWN;
+        }
+    }
+
+    @Override
+    public void endDocument() throws IOException {
+        try {
+            if (reader.peek() != JsonToken.END_DOCUMENT) throw new IOException("Expected end of document");
+        } catch (EOFException ignored) {
+            // Gson versions that report physical EOF instead of END_DOCUMENT are also complete.
         }
     }
 
@@ -258,6 +278,10 @@ public final class GsonReader implements StreamingReader {
      */
     @Override
     public void skipNext() throws IOException {
+        Token token = peekToken();
+        if (token.jsonType() == JsonType.UNKNOWN) {
+            throw new IOException("Expected value to skip, but was " + token);
+        }
         reader.skipValue();
     }
 

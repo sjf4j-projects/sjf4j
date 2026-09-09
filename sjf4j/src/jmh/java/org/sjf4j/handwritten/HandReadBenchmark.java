@@ -64,7 +64,6 @@ public class HandReadBenchmark {
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{HandReadBenchmark.class.getName()});
-//        Main.main(new String[]{"ReadBenchmark.json_fastjson2", "ReadBenchmark.json_jackson2"});
     }
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";

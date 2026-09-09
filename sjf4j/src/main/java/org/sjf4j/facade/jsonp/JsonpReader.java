@@ -1,6 +1,7 @@
 package org.sjf4j.facade.jsonp;
 
 import jakarta.json.stream.JsonParser;
+import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
@@ -52,6 +53,11 @@ public final class JsonpReader implements StreamingReader {
             default:
                 return Token.UNKNOWN;
         }
+    }
+
+    @Override
+    public void endDocument() throws IOException {
+        if (current != null) throw new IOException("Expected end of document");
     }
 
     /**
@@ -315,6 +321,10 @@ public final class JsonpReader implements StreamingReader {
      */
     @Override
     public void skipNext() throws IOException {
+        Token token = peekToken();
+        if (token.jsonType() == JsonType.UNKNOWN) {
+            throw new IOException("Expected value to skip, but was " + token);
+        }
         if (current == JsonParser.Event.VALUE_STRING || current == JsonParser.Event.VALUE_NUMBER
                 || current == JsonParser.Event.VALUE_TRUE || current == JsonParser.Event.VALUE_FALSE
                 || current == JsonParser.Event.VALUE_NULL) {

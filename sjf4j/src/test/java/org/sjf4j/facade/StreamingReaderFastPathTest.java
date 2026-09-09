@@ -115,6 +115,38 @@ class StreamingReaderFastPathTest {
     }
 
     @Test
+    void fastjson2ObjectValueTransitionsAndScopeGrowth() throws IOException {
+        assertObjectValueTransitions(json -> new Fastjson2Reader(JSONReader.of(json)));
+        assertNestedObjectScopes(json -> new Fastjson2Reader(JSONReader.of(json)));
+    }
+
+    @Test
+    void snakeValueTransitionsScopeGrowthAndDocumentBoundaries() throws IOException {
+        assertObjectValueTransitions(StreamingReaderFastPathTest::newSnakeReader);
+        assertNestedObjectScopes(StreamingReaderFastPathTest::newSnakeReader);
+
+        SnakeReader reader = newSnakeReader("1");
+        assertThrows(Exception.class, reader::endDocument);
+        reader = newSnakeReader("1");
+        reader.skipNext();
+        reader.endDocument();
+        assertThrows(Exception.class, reader::skipNext);
+
+        reader = newSnakeReader("{}");
+        reader.startObject();
+        assertThrows(Exception.class, reader::skipNext);
+        reader.endObject();
+        reader = newSnakeReader("[]");
+        reader.startArray();
+        assertThrows(Exception.class, reader::skipNext);
+        reader.endArray();
+        assertThrows(Exception.class, () -> newSnakeReader("[1").skipNext());
+        reader = newSnakeReader("--- 1\n--- 2");
+        reader.skipNext();
+        assertThrows(Exception.class, reader::endDocument);
+    }
+
+    @Test
     void fastjson2PrimitiveFailureClearsConsumedPeekCache() throws IOException {
         try (StreamingReader reader = new Fastjson2Reader(JSONReader.of("[\"wrong\",1]"))) {
             assertEquals(StreamingReader.Token.START_ARRAY, reader.peekToken());
@@ -131,6 +163,45 @@ class StreamingReaderFastPathTest {
     void jackson2EofDoesNotCauseNpe() throws IOException {
         try (StreamingReader reader = new Jackson2Reader(new ObjectMapper().getFactory().createParser(""))) {
             assertEofContract(reader);
+        }
+    }
+
+    @Test
+    void documentContractIsConsistentAcrossJsonReaders() throws IOException {
+        assertDocumentContract(json -> new SimpleJsonReader(new StringReader(json)));
+        assertDocumentContract(json -> new Jackson2Reader(new ObjectMapper().getFactory().createParser(json)));
+        assertDocumentContract(json -> new Fastjson2Reader(JSONReader.of(json)));
+        assertDocumentContract(json -> new GsonReader(new JsonReader(new StringReader(json))));
+        assertDocumentContract(json -> new JsonpReader(Json.createParser(new StringReader(json))));
+    }
+
+    @Test
+    void snakeDocumentContractKeepsYamlEnvelopeChecks() throws IOException {
+        SnakeReader reader = newSnakeReader("[1,{a:[true]}]");
+        reader.skipNext();
+        reader.endDocument();
+        assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+        reader = newSnakeReader("{value: 1}");
+        reader.startObject();
+        assertThrows(Exception.class, reader::skipNext);
+        assertObjectKeyState(newSnakeReader("{a: 1, b: {c: 2}, d: [{}]}"));
+    }
+
+    @Test
+    void simpleSkipRequiresStrictRootValue() throws IOException {
+        for (String json : new String[]{",1", ":1", "1,", "1:", "tru", "falsex", "nul",
+                "-", "01", "1.", "1e", "1e+", "\"\\x\"", "\"line\nbreak\""}) {
+            try (StreamingReader reader = new SimpleJsonReader(new StringReader(json))) {
+                reader.startDocument();
+                assertThrows(Exception.class, () -> {
+                    reader.skipNext();
+                    reader.endDocument();
+                }, json);
+            }
+        }
+        try (StreamingReader reader = new SimpleJsonReader(new StringReader("{\"" + (char) 1 + "\":1}"))) {
+            reader.startDocument();
+            assertThrows(Exception.class, reader::skipNext);
         }
     }
 
@@ -193,6 +264,55 @@ class StreamingReaderFastPathTest {
         }
     }
 
+    private static void assertObjectValueTransitions(ReaderFactory factory) throws IOException {
+        try (StreamingReader reader = factory.create("{\"s\":\"text\",\"n\":7,\"b\":true,\"nil\":null,\"ifNil\":null,\"nested\":{\"items\":[1]},\"after\":2}")) {
+            reader.startObject();
+            assertEquals("s", reader.nextName());
+            assertEquals("text", reader.nextString());
+            assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+            assertEquals("n", reader.nextName());
+            assertEquals(7, reader.nextIntValue());
+            assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+            assertEquals("b", reader.nextName());
+            assertTrue(reader.nextBooleanValue());
+            assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+            assertEquals("nil", reader.nextName());
+            reader.nextNull();
+            assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+            assertEquals("ifNil", reader.nextName());
+            assertTrue(reader.nextIfNull());
+            assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+            assertEquals("nested", reader.nextName());
+            reader.startObject();
+            assertEquals("items", reader.nextName());
+            reader.startArray();
+            assertEquals(1, reader.nextIntValue());
+            reader.endArray();
+            reader.endObject();
+            assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+            assertEquals("after", reader.nextName());
+            assertEquals(2, reader.nextIntValue());
+            assertTrue(reader.nextIfObjectEnd());
+        }
+    }
+
+    private static void assertNestedObjectScopes(ReaderFactory factory) throws IOException {
+        StringBuilder json = new StringBuilder();
+        for (int i = 0; i < 9; i++) json.append("{\"x\":");
+        json.append('1');
+        for (int i = 0; i < 9; i++) json.append('}');
+        try (StreamingReader reader = factory.create(json.toString())) {
+            for (int i = 0; i < 9; i++) {
+                reader.startObject();
+                assertEquals("x", reader.nextName());
+            }
+            assertEquals(1, reader.nextIntValue());
+            for (int i = 0; i < 9; i++) reader.endObject();
+            reader.endDocument();
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+        }
+    }
+
     private static void assertArrayEndProbes(StreamingReader reader) throws IOException {
         try (StreamingReader closeable = reader) {
             assertEquals(StreamingReader.Token.START_ARRAY, closeable.peekToken());
@@ -220,6 +340,68 @@ class StreamingReaderFastPathTest {
         for (PrimitiveRead read : PrimitiveRead.values()) {
             assertThrows(IOException.class, () -> read.read(reader), read.name());
         }
+    }
+
+    private static void assertDocumentContract(ReaderFactory factory) throws IOException {
+        for (String json : new String[]{"null", "1", "\"text\"", "[1,{\"a\":[true]}]"}) {
+            try (StreamingReader reader = factory.create(json + " \n\t")) {
+                reader.startDocument();
+                reader.skipNext();
+                reader.endDocument();
+            }
+        }
+        for (String json : new String[]{"1 2", "1 garbage", "1,"}) {
+            try (StreamingReader reader = factory.create(json)) {
+                reader.startDocument();
+                assertThrows(Exception.class, () -> {
+                    reader.skipNext();
+                    reader.endDocument();
+                }, json);
+            }
+        }
+        try (StreamingReader reader = factory.create("1")) {
+            reader.startDocument();
+            assertThrows(Exception.class, reader::endDocument);
+        }
+        try (StreamingReader reader = factory.create("1")) {
+            reader.startDocument();
+            reader.skipNext();
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertThrows(Exception.class, reader::skipNext);
+        }
+        try (StreamingReader reader = factory.create("{\"value\":1}")) {
+            assertEquals(StreamingReader.Token.START_OBJECT, reader.peekToken());
+            reader.startObject();
+            assertThrows(Exception.class, reader::skipNext);
+            reader.nextName();
+            reader.skipNext();
+            reader.endObject();
+        }
+        try (StreamingReader reader = factory.create("{\"a\":1,\"b\":{\"c\":2},\"d\":[{}]}")) {
+            assertObjectKeyState(reader);
+        }
+    }
+
+    private static void assertObjectKeyState(StreamingReader reader) throws IOException {
+        assertEquals(StreamingReader.Token.START_OBJECT, reader.peekToken());
+        reader.startObject();
+        assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+        assertEquals("a", reader.nextName());
+        reader.skipNext();
+        assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+        assertEquals("b", reader.nextName());
+        reader.startObject();
+        assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+        assertEquals("c", reader.nextName());
+        reader.skipNext();
+        reader.endObject();
+        assertEquals(StreamingReader.Token.FIELD_NAME, reader.peekToken());
+        assertEquals("d", reader.nextName());
+        reader.startArray();
+        reader.startObject();
+        reader.endObject();
+        reader.endArray();
+        reader.endObject();
     }
 
     private static SnakeReader newSnakeReader(String json) {

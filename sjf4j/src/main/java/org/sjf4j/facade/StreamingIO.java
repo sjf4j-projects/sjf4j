@@ -842,7 +842,7 @@ public final class StreamingIO {
         }
         if (!(rawNode instanceof Map)) {
             if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-            throw new BindingException("node must be a JSON object, when OneOf has a CURRENT discriminator");
+            throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
         }
 
         Object discriminatorValue = null;

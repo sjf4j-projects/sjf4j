@@ -1,6 +1,7 @@
 package org.sjf4j.facade.jackson3;
 
 import org.sjf4j.facade.StreamingReader;
+import org.sjf4j.JsonType;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
 import tools.jackson.databind.util.TokenBuffer;
@@ -16,10 +17,16 @@ import java.util.Objects;
 public final class Jackson3Reader implements StreamingReader {
 
     private final JsonParser parser;
+    private final boolean advanceForkSource;
 
     public Jackson3Reader(JsonParser parser) {
+        this(parser, true);
+    }
+
+    Jackson3Reader(JsonParser parser, boolean advanceForkSource) {
         Objects.requireNonNull(parser, "parser");
         this.parser = parser;
+        this.advanceForkSource = advanceForkSource;
     }
 
     @Override
@@ -46,16 +53,32 @@ public final class Jackson3Reader implements StreamingReader {
                 return Token.BOOLEAN;
             case VALUE_NULL:
                 return Token.NULL;
+            case PROPERTY_NAME:
+                return Token.FIELD_NAME;
             default:
                 return Token.UNKNOWN;
         }
     }
 
+
+    @Override
+    public void endDocument() throws IOException {
+        JsonToken token = parser.currentToken();
+        if (token == null) token = parser.nextToken();
+        if (token != null) throw new IOException("Expected end of document, but was " + peekToken());
+    }
+
+
     @Override
     public StreamingReader forkValue() throws IOException {
-        // Jackson databind may keep using the original parser after a field deserializer returns.
+        // Discriminator OneOf needs to consume the complete object before choosing its target type.
+        // Jackson databind may keep using this parser after a field deserializer returns, so doing
+        // that work on the source parser can violate its expected cursor state. Buffering advances
+        // the source past this value while the returned parser reads an isolated copy instead.
         TokenBuffer rawBuffer = TokenBuffer.forBuffering(parser, parser.objectReadContext());
         rawBuffer.copyCurrentStructure(parser);
+        // copyCurrentStructure leaves the parser on the value's closing token.
+        if (advanceForkSource) parser.nextToken();
         return new Jackson3Reader(rawBuffer.asParserOnFirstToken(parser.objectReadContext(), parser));
     }
 
@@ -245,6 +268,10 @@ public final class Jackson3Reader implements StreamingReader {
 
     @Override
     public void skipNext() throws IOException {
+        Token token = peekToken();
+        if (token.jsonType() == JsonType.UNKNOWN) {
+            throw new IOException("Expected value to skip, but was " + token);
+        }
         JsonToken tk = parser.currentToken();
         if (tk.isScalarValue()) {
             parser.nextToken();

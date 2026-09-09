@@ -9,21 +9,21 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /**
- * Streaming reader abstraction for JSON-like inputs.
+ * Streaming reader abstraction for structured inputs.
  */
 public interface StreamingReader extends Closeable {
 
     /**
-     * Enum representing JSON token types.
+     * Enum representing structural token types.
      */
     enum Token {
         EOF,            // End of streaming
         UNKNOWN,        // Unknown token type
-        START_OBJECT,   // Start of a JSON object '{'
-        END_OBJECT,     // End of a JSON object '}'
-        FIELD_NAME,     // Field name in JSON object
-        START_ARRAY,    // Start of a JSON array '['
-        END_ARRAY,      // End of a JSON array ']'
+        START_OBJECT,   // Start of an object-like structure (for JSON, '{')
+        END_OBJECT,     // End of an object-like structure (for JSON, '}')
+        FIELD_NAME,     // Field name in an object-like structure
+        START_ARRAY,    // Start of an array-like structure (for JSON, '[')
+        END_ARRAY,      // End of an array-like structure (for JSON, ']')
         STRING,         // JSON string value
         NUMBER,         // JSON number value
         BOOLEAN,        // JSON boolean value (true/false)
@@ -60,11 +60,23 @@ public interface StreamingReader extends Closeable {
 //    int ID_BOOLEAN = 8;
 //    int ID_NULL = 9;
 
+    /**
+     * Prepares this reader to consume one document without consuming its root value.
+     */
     default void startDocument() throws IOException {}
 
-    default void endDocument() throws IOException {}
+    /**
+     * Completes a document after its root value has been consumed.
+     * Implementations must reject remaining content that is invalid for their input format.
+     */
+    default void endDocument() throws IOException {
+        if (peekToken() != Token.EOF) throw new IOException("Expected end of document");
+    }
 
 
+    /**
+     * Returns the current token without consuming it. {@link Token#EOF} means no further input remains.
+     */
     Token peekToken() throws IOException;
 
     /**
@@ -101,7 +113,14 @@ public interface StreamingReader extends Closeable {
     }
 
     /**
-     * Returns an isolated reader for the current JSON value when the backend can buffer it.
+     * Buffers the current complete value and returns a reader over that isolated copy.
+     * The source reader is advanced past the value. This is optional because buffering
+     * costs memory; callers must handle a {@code null} result.
+     *
+     * <p>Used for discriminator-based {@code OneOf} binding when a backend's hosting
+     * databind framework needs to continue reading the original parser after a custom
+     * field deserializer returns. The fork can inspect and bind the value without
+     * disturbing that framework's parser cursor contract.</p>
      */
     default StreamingReader forkValue() throws IOException {
         return null;
@@ -181,6 +200,10 @@ public interface StreamingReader extends Closeable {
         return nextBoolean();
     }
 
+    /**
+     * Consumes exactly one complete value at the current position.
+     * Implementations must fail when no value is available.
+     */
     void skipNext() throws IOException;
 
 //    Token nextToken() throws IOException;

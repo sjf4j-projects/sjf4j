@@ -2,18 +2,17 @@ package org.sjf4j.handwritten;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import org.sjf4j.ReadBenchmark;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Direct Jackson2 parser baseline for {@link ReadBenchmark.UserPojo}. */
+/** Direct Jackson2 parser baseline for {@link HandReadBenchmark.UserPojo}. */
 public final class Jackson2HandPojoReader {
 
     private Jackson2HandPojoReader() {}
 
-    public static ReadBenchmark.UserPojo readUser(JsonParser parser) throws IOException {
+    public static HandReadBenchmark.UserPojo readUser(JsonParser parser) throws IOException {
         JsonToken token = parser.currentToken();
         if (token == null) token = parser.nextToken();
         if (token == JsonToken.VALUE_NULL) {
@@ -24,7 +23,7 @@ public final class Jackson2HandPojoReader {
             throw new IllegalStateException("expected object, but was " + token);
         }
 
-        ReadBenchmark.UserPojo user = new ReadBenchmark.UserPojo();
+        HandReadBenchmark.UserPojo user = new HandReadBenchmark.UserPojo();
         token = parser.nextToken();
         while (token != JsonToken.END_OBJECT) {
             if (token != JsonToken.FIELD_NAME) {
@@ -47,7 +46,7 @@ public final class Jackson2HandPojoReader {
         return user;
     }
 
-    private static List<ReadBenchmark.UserPojo> readUsers(JsonParser parser, JsonToken token)
+    private static List<HandReadBenchmark.UserPojo> readUsers(JsonParser parser, JsonToken token)
             throws IOException {
         if (token == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -57,7 +56,7 @@ public final class Jackson2HandPojoReader {
             throw new IllegalStateException("expected array, but was " + token);
         }
 
-        List<ReadBenchmark.UserPojo> users = new ArrayList<ReadBenchmark.UserPojo>();
+        List<HandReadBenchmark.UserPojo> users = new ArrayList<>();
         token = parser.nextToken();
         while (token != JsonToken.END_ARRAY) {
             users.add(readUser(parser));

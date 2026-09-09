@@ -6,54 +6,54 @@ import java.io.OutputStream;
 import java.io.Writer;
 
 /**
- * Streaming writer abstraction for JSON-like outputs.
+ * Streaming writer abstraction for structured outputs.
  */
 public interface StreamingWriter extends Closeable {
 
     /**
-     * Marks the start of a JSON document.
+     * Marks the start of a document.
      *
      * @throws IOException if an I/O error occurs
      */
     default void startDocument() throws IOException {}
 
     /**
-     * Marks the end of a JSON document.
+     * Marks the end of a document.
      *
      * @throws IOException if an I/O error occurs
      */
     default void endDocument() throws IOException {}
 
     /**
-     * Writes the start of a JSON object '{'
+     * Writes the start of an object-like structure (for JSON, '{').
      *
      * @throws IOException if an I/O error occurs
      */
     void startObject() throws IOException;
 
     /**
-     * Writes the end of a JSON object '}'
+     * Writes the end of an object-like structure (for JSON, '}').
      *
      * @throws IOException if an I/O error occurs
      */
     void endObject() throws IOException;
 
     /**
-     * Writes the start of a JSON array '['
+     * Writes the start of an array-like structure (for JSON, '[').
      *
      * @throws IOException if an I/O error occurs
      */
     void startArray() throws IOException;
 
     /**
-     * Writes the end of a JSON array ']'
+     * Writes the end of an array-like structure (for JSON, ']').
      *
      * @throws IOException if an I/O error occurs
      */
     void endArray() throws IOException;
 
     /**
-     * Writes a JSON object field name.
+     * Writes an object member name.
      *
      * @param name the field name to write
      * @throws IOException if an I/O error occurs
@@ -61,7 +61,7 @@ public interface StreamingWriter extends Closeable {
     void writeName(String name) throws IOException;
 
     /**
-     * Writes a JSON string value.
+     * Writes a string value.
      *
      * @param value the string value to write
      * @throws IOException if an I/O error occurs
@@ -69,7 +69,7 @@ public interface StreamingWriter extends Closeable {
     void writeString(String value) throws IOException;
 
     /**
-     * Writes a JSON number value.
+     * Writes a number value.
      *
      * @param value the number value to write
      * @throws IOException if an I/O error occurs
@@ -77,7 +77,7 @@ public interface StreamingWriter extends Closeable {
     void writeNumber(Number value) throws IOException;
 
     /**
-     * Writes a JSON boolean value.
+     * Writes a boolean value.
      *
      * @param value the boolean value to write
      * @throws IOException if an I/O error occurs
@@ -85,7 +85,7 @@ public interface StreamingWriter extends Closeable {
     void writeBoolean(Boolean value) throws IOException;
 
     /**
-     * Writes a JSON null value.
+     * Writes a null value.
      *
      * @throws IOException if an I/O error occurs
      */

@@ -63,4 +63,56 @@ class Jackson3ReaderFastPathTest {
             assertThrows(Exception.class, reader::nextBooleanValue);
         }
     }
+
+    @Test
+    void documentContractAndFreshSkip() throws IOException {
+        Jackson3JsonFacade facade = new Jackson3JsonFacade();
+        try (StreamingReader reader = facade.createReader("[1,{\"a\":[true]}] \n")) {
+            reader.startDocument();
+            reader.skipNext();
+            reader.endDocument();
+        }
+        for (String json : new String[]{"1 2", "1 garbage"}) {
+            try (StreamingReader reader = facade.createReader(json)) {
+                reader.startDocument();
+                assertThrows(Exception.class, () -> {
+                    reader.skipNext();
+                    reader.endDocument();
+                }, json);
+            }
+        }
+        try (StreamingReader reader = facade.createReader("1")) {
+            reader.startDocument();
+            assertThrows(Exception.class, reader::endDocument);
+            reader.skipNext();
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertThrows(Exception.class, reader::skipNext);
+        }
+    }
+
+    @Test
+    void forkedRootValuesLeaveTheSourceAtDocumentEnd() throws IOException {
+        Jackson3JsonFacade facade = new Jackson3JsonFacade();
+        for (String json : new String[]{"1", "[1]", "{\"value\":1}"}) {
+            try (StreamingReader reader = facade.createReader(json)) {
+                assertEquals(json.charAt(0) == '[' ? StreamingReader.Token.START_ARRAY
+                        : json.charAt(0) == '{' ? StreamingReader.Token.START_OBJECT : StreamingReader.Token.NUMBER,
+                        reader.peekToken());
+                try (StreamingReader fork = reader.forkValue()) {
+                    fork.skipNext();
+                    fork.endDocument();
+                }
+                reader.endDocument();
+            }
+        }
+        try (StreamingReader reader = facade.createReader("1,")) {
+            assertThrows(Exception.class, () -> {
+                reader.peekToken();
+                try (StreamingReader fork = reader.forkValue()) {
+                    fork.skipNext();
+                }
+                reader.endDocument();
+            });
+        }
+    }
 }
