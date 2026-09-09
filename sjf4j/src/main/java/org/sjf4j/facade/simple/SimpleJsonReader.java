@@ -42,7 +42,7 @@ public final class SimpleJsonReader implements StreamingReader {
     public Token peekToken() throws IOException {
         if (bufferedToken != null) return bufferedToken;
 
-        _beforeToken();
+        boolean fieldName = _prepareToken();
         int c = _peek();
         if (c == -1) return bufferedToken = Token.EOF;
         switch (c) {
@@ -50,7 +50,7 @@ public final class SimpleJsonReader implements StreamingReader {
             case '}': return bufferedToken = Token.END_OBJECT;
             case '[': return bufferedToken = Token.START_ARRAY;
             case ']': return bufferedToken = Token.END_ARRAY;
-            case '"': return bufferedToken = _expectsName() ? Token.FIELD_NAME : Token.STRING;
+            case '"': return bufferedToken = fieldName ? Token.FIELD_NAME : Token.STRING;
             case 't':
             case 'f': return bufferedToken = Token.BOOLEAN;
             case 'n': return bufferedToken = Token.NULL;
@@ -370,10 +370,6 @@ public final class SimpleJsonReader implements StreamingReader {
         return new PathSegment.Index(_containerPath(), state);
     }
 
-    private boolean _expectsName() {
-        return depth > 0 && containerStateStack[depth - 1] == OBJECT_FIRST_NAME;
-    }
-
     private void _valueDone() {
         if (depth > 0 && containerStateStack[depth - 1] == OBJECT_VALUE) {
             containerStateStack[depth - 1] = OBJECT_NEXT_NAME;
@@ -424,14 +420,19 @@ public final class SimpleJsonReader implements StreamingReader {
         }
     }
 
-    private void _beforeToken() throws IOException {
+    /**
+     * Validates and normalizes the current container position before token classification.
+     *
+     * @return whether the current position accepts an object field name
+     */
+    private boolean _prepareToken() throws IOException {
         _skipWhitespace();
-        if (depth == 0) return;
+        if (depth == 0) return false;
         int idx = depth - 1;
         int state = containerStateStack[idx];
         int c = _peek();
         if (state == OBJECT_NEXT_NAME || state <= -4) {
-            if ((state == OBJECT_NEXT_NAME && c == '}') || (state <= -4 && c == ']')) return;
+            if ((state == OBJECT_NEXT_NAME && c == '}') || (state <= -4 && c == ']')) return false;
             if (c != ',') throw _error("expected ',' or container end", c);
             _read();
             containerStateStack[idx] = state == OBJECT_NEXT_NAME ? OBJECT_FIRST_NAME : -state - 3;
@@ -447,10 +448,11 @@ public final class SimpleJsonReader implements StreamingReader {
         } else if (state >= 0 && c != ']' && !_isValueStart(c)) {
             throw _error("expected value or ']'", c);
         }
+        return state == OBJECT_FIRST_NAME;
     }
 
     private void _beforeValue() throws IOException {
-        _beforeToken();
+        _prepareToken();
         if (depth == 0) return;
         int state = containerStateStack[depth - 1];
         int c = _peek();
@@ -459,7 +461,7 @@ public final class SimpleJsonReader implements StreamingReader {
     }
 
     private void _beforeName() throws IOException {
-        _beforeToken();
+        _prepareToken();
         int c = _peek();
         if (depth == 0 || containerStateStack[depth - 1] != OBJECT_FIRST_NAME || c != '"') {
             throw _error("expected field name", c);
@@ -467,7 +469,7 @@ public final class SimpleJsonReader implements StreamingReader {
     }
 
     private void _beforeEnd(boolean object) throws IOException {
-        _beforeToken();
+        _prepareToken();
         int c = _peek();
         int state = depth == 0 ? 0 : containerStateStack[depth - 1];
         if (depth == 0 || (object ? (state != OBJECT_FIRST_NAME && state != OBJECT_NEXT_NAME)
