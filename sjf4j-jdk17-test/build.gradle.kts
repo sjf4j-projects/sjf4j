@@ -1,4 +1,5 @@
 import java.math.BigDecimal
+import org.gradle.api.attributes.java.TargetJvmVersion
 
 plugins {
     id("java-library")
@@ -14,6 +15,14 @@ java {
 configurations {
     testCompileOnly {
         extendsFrom(configurations.annotationProcessor.get())
+    }
+}
+
+// Micronaut Core 5 is published for JDK 25. JMH itself is compiled with the
+// module's Java 17 source/target settings, but is intentionally run on JDK 25.
+configurations.matching { it.name.startsWith("jmh") && it.isCanBeResolved }.configureEach {
+    attributes {
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 25)
     }
 }
 
@@ -51,10 +60,16 @@ dependencies {
     jmhAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     jmhImplementation("tools.jackson.core:jackson-databind:3.2.0")
+    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.2.0")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
     jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")
     jmhImplementation("org.eclipse.parsson:parsson:1.1.7")
+    jmhImplementation("io.micronaut:micronaut-context:5.1.3")
+    jmhImplementation("io.micronaut.serde:micronaut-serde-jackson:3.1.1")
+    jmhImplementation("io.micronaut.serde:micronaut-serde-support:3.1.1")
+    jmhAnnotationProcessor("io.micronaut.serde:micronaut-serde-processor:3.1.1")
+    jmhAnnotationProcessor("io.micronaut:micronaut-inject-java:5.1.3")
 
 }
 

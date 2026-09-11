@@ -45,6 +45,8 @@ dependencies {
     // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    jmhCompileOnly("org.projectlombok:lombok:1.18.38")
+    jmhAnnotationProcessor("org.projectlombok:lombok:1.18.38")
     jmhImplementation("com.jayway.jsonpath:json-path:2.10.0")
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.1")
