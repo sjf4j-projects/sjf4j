@@ -30,5 +30,5 @@ dependencyResolutionManagement {
 include("sjf4j")
 include("sjf4j-asm")
 include("sjf4j-schema")
-include("sjf4j-jdk17-test")
+include("sjf4j-testbench")
 include("sjf4j-processor")

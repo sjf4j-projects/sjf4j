@@ -36,7 +36,7 @@ jobs:
       uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
     - name: Run tests with coverage
-      run: ./gradlew :sjf4j-jdk17-test:jacocoTestReport :sjf4j-jdk17-test:jacocoTestCoverageVerification
+      run: ./gradlew :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
     - name: Print JaCoCo summary
       if: ${{ always() }}
@@ -44,7 +44,7 @@ jobs:
         python3 - <<'PY'
         import os
         import xml.etree.ElementTree as ET
-        path = 'sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml'
+        path = 'sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml'
         if not os.path.exists(path):
             print(f'JaCoCo report not found: {path}')
             raise SystemExit(0)
@@ -59,11 +59,11 @@ jobs:
         PY
 
     - name: Upload coverage to Codecov
-      if: ${{ always() && hashFiles('sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml') != '' && env.CODECOV_TOKEN != '' }}
+      if: ${{ always() && hashFiles('sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml') != '' && env.CODECOV_TOKEN != '' }}
       uses: codecov/codecov-action@v5
       with:
         token: ${{ env.CODECOV_TOKEN }}
-        files: sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml
+        files: sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml
         fail_ci_if_error: true
 
     # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).

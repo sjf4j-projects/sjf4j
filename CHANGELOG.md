@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
 
 ### Changed
+- Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`; its test-source packages now use `org.sjf4j.testbench`.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
 - `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains; built-in readers also report object member names as `FIELD_NAME` and reject non-values in `skipNext()`.
 
