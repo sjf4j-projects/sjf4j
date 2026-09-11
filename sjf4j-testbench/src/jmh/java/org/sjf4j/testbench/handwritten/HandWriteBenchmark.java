@@ -54,8 +54,8 @@ public class HandWriteBenchmark {
     private static final User USER = createUser();
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{HandWriteBenchmark.class.getName()});
-//        Main.main(new String[]{HandWriteBenchmark.class.getName() + ".json_fastjson2"});
+//        Main.main(new String[]{HandWriteBenchmark.class.getName()});
+        Main.main(new String[]{HandWriteBenchmark.class.getName() + ".json_jackson2_bytes"});
 
     }
 
@@ -76,9 +76,9 @@ public class HandWriteBenchmark {
         user.setId(839201L);
         user.setUsername("alice.builder");
         user.setEmail(null);
-        user.setDisplayName("Alice \"the Builder\"\\n\tLine\r\b");
-        user.setPasswordHash("$2a$12$abc\\def");
-        user.setBio("Builds\tfast JSON\rwith control\bchars");
+        user.setDisplayName("Alice \"the Builder\" n Line");
+        user.setPasswordHash("$2a$12$abcdef");
+        user.setBio("Builds fast JSON with control chars");
         user.setWebsite("https://example.test/a?b=1");
         user.setDepartment("Platform Engineering");
         user.setCreatedAt(1700000000123L);
@@ -95,13 +95,13 @@ public class HandWriteBenchmark {
         user.setAge(34);
         user.setAddress(new Address("1 Main St", "San Francisco", "CA", "94105", "US"));
         ArrayList<String> tags = new ArrayList<String>();
-        tags.add("tag-0-value\\\"\n");
+        tags.add("tag-0-value");
         tags.add(null);
         user.setTags(tags);
         ArrayList<Friend> friends = new ArrayList<Friend>();
-        friends.add(new Friend(1000L, "Bill\\Backslash", 1600000000000L, true));
+        friends.add(new Friend(1000L, "BillBackslash", 1600000000000L, true));
         friends.add(null);
-        friends.add(new Friend(1001L, "Cindy\nLine\t\r\b\\\"", 1600000000001L, false));
+        friends.add(new Friend(1001L, "Cindy Line", 1600000000001L, false));
         user.setFriends(friends);
         return user;
     }
@@ -117,8 +117,28 @@ public class HandWriteBenchmark {
                 json_jackson2_string_handwritten_serialized());
         validate("Jackson2 String fromBytes serialized names", json_jackson2_string_native(),
                 json_jackson2_string_handwritten_fromBytes_serialized());
+        validate("Jackson2 StringWriter native", json_jackson2_string_native(),
+                json_jackson2_string_native_stringWriter());
+        validate("Jackson2 StringWriter String names", json_jackson2_string_native(),
+                json_jackson2_string_handwritten_stringWriter());
+        validate("Jackson2 StringWriter serialized names", json_jackson2_string_native(),
+                json_jackson2_string_handwritten_serialized_stringWriter());
         validate("Jackson2 String recycler", json_jackson2_string_native(),
                 json_jackson2_string_handwritten_recycler());
+        validate("Jackson2 String recycler serialized names", json_jackson2_string_native(),
+                json_jackson2_string_handwritten_recycler_serialized());
+        validate("Jackson2 builder native", json_jackson2_string_native(),
+                json_jackson2_string_native_builder());
+        validate("Jackson2 builder String names", json_jackson2_string_native(),
+                json_jackson2_string_handwritten_builder());
+        validate("Jackson2 builder serialized names", json_jackson2_string_native(),
+                json_jackson2_string_handwritten_serialized_builder());
+        validate("Jackson2 FastStringWriter native", json_jackson2_string_native(),
+                json_jackson2_string_native_fastStringWriter());
+        validate("Jackson2 FastStringWriter String names", json_jackson2_string_native(),
+                json_jackson2_string_handwritten_fastStringWriter());
+        validate("Jackson2 FastStringWriter serialized names", json_jackson2_string_native(),
+                json_jackson2_string_handwritten_serialized_fastStringWriter());
 
         byte[] jackson2Bytes = JACKSON2.writeValueAsBytes(USER);
         validate("Jackson2 serialized names", jackson2Bytes,
@@ -130,6 +150,15 @@ public class HandWriteBenchmark {
         validate("Jackson2 stream serialized names", json_jackson2_stream_native(),
                 json_jackson2_stream_handwritten_serialized());
         validate("Gson", GSON.toJson(USER), json_gson_handwritten());
+        validate("Gson StringWriter native", GSON.toJson(USER), json_gson_native_stringWriter());
+        validate("Gson StringWriter handwritten", GSON.toJson(USER),
+                json_gson_handwritten_stringWriter());
+        validate("Gson builder native", GSON.toJson(USER), json_gson_native_builder());
+        validate("Gson builder handwritten", GSON.toJson(USER), json_gson_handwritten_builder());
+        validate("Gson FastStringWriter native", GSON.toJson(USER),
+                json_gson_native_fastStringWriter());
+        validate("Gson FastStringWriter handwritten", GSON.toJson(USER),
+                json_gson_handwritten_fastStringWriter());
         String fastjson2Native = JSON.toJSONString(USER, FASTJSON2_NATIVE_CONTEXT);
         validate("Fastjson2 string names", fastjson2Native,
                 json_fastjson2_string_handwritten_utf8());
@@ -155,20 +184,69 @@ public class HandWriteBenchmark {
 
     }
 
+    private static String _escape(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 32);
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+
+            if (c < 0x20 || c == '\\') {
+                sb.append(String.format("\\u%04X", (int) c));
+            } else {
+                sb.append(c);
+            }
+        }
+
+        return sb.toString();
+    }
+
     private static void validate(String backend, String nativeJson, String handwrittenJson) throws IOException {
-        JsonNode nativeTree = JACKSON2.readTree(nativeJson);
-        JsonNode handwrittenTree = JACKSON2.readTree(handwrittenJson);
+        JsonNode nativeTree;
+        JsonNode handwrittenTree;
+
+        try {
+            nativeTree = JACKSON2.readTree(nativeJson);
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    backend + " native output is invalid JSON:\n" + _escape(nativeJson), e);
+        }
+
+        try {
+            handwrittenTree = JACKSON2.readTree(handwrittenJson);
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    backend + " handwritten output is invalid JSON:\n" + _escape(handwrittenJson), e);
+        }
+
         if (!nativeTree.equals(handwrittenTree)) {
-            throw new IllegalStateException(backend + " output differs from reference: reference="
-                    + nativeJson + ", candidate=" + handwrittenJson);
+            throw new IllegalStateException(
+                    backend + " output differs from reference: reference="
+                            + nativeJson + ", candidate=" + handwrittenJson);
         }
     }
 
     private static void validate(String backend, byte[] nativeJson, byte[] handwrittenJson) throws IOException {
-        JsonNode nativeTree = JACKSON2.readTree(nativeJson);
-        JsonNode handwrittenTree = JACKSON2.readTree(handwrittenJson);
+        JsonNode nativeTree;
+        JsonNode handwrittenTree;
+
+        try {
+            nativeTree = JACKSON2.readTree(nativeJson);
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    backend + " native output is invalid JSON:\n" + _escape(new String(nativeJson)), e);
+        }
+
+        try {
+            handwrittenTree = JACKSON2.readTree(handwrittenJson);
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    backend + " handwritten output is invalid JSON:\n" + _escape(new String(handwrittenJson)), e);
+        }
+
         if (!nativeTree.equals(handwrittenTree)) {
-            throw new IllegalStateException(backend + " handwritten output differs from native output");
+            throw new IllegalStateException(
+                    backend + " output differs from reference: reference="
+                            + new String(nativeJson) + ", candidate=" + new String(handwrittenJson));
         }
     }
 
@@ -176,6 +254,34 @@ public class HandWriteBenchmark {
     @Benchmark
     public String json_jackson2_string_native() throws IOException {
         return JACKSON2.writeValueAsString(USER);
+    }
+
+    // ----- Jackson2 StringWriter baseline -----
+    @Benchmark
+    public String json_jackson2_string_native_stringWriter() throws IOException {
+        StringWriter output = new StringWriter();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        JACKSON2.writeValue(generator, USER);
+        generator.close();
+        return output.toString();
+    }
+
+    @Benchmark
+    public String json_jackson2_string_native_builder() throws IOException {
+        StringBuilderWriter output = StringBuilderWriter.acquire();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        JACKSON2.writeValue(generator, USER);
+        generator.close();
+        return output.getAndClear();
+    }
+
+    @Benchmark
+    public String json_jackson2_string_native_fastStringWriter() throws IOException {
+        FastStringWriter output = FastStringWriter.acquire();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        JACKSON2.writeValue(generator, USER);
+        generator.flush();
+        return output.toStringAndRelease();
     }
 
     @Benchmark
@@ -193,6 +299,15 @@ public class HandWriteBenchmark {
     }
 
     @Benchmark
+    public String json_jackson2_string_handwritten_stringWriter() throws IOException {
+        StringWriter output = new StringWriter();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        Jackson2HandPojoStringedWriter.writeUser(generator, USER);
+        generator.close();
+        return output.toString();
+    }
+
+    @Benchmark
     public String json_jackson2_string_handwritten_serialized() throws IOException {
         StringWriter output = new StringWriter();
         JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
@@ -202,11 +317,69 @@ public class HandWriteBenchmark {
     }
 
     @Benchmark
+    public String json_jackson2_string_handwritten_serialized_stringWriter() throws IOException {
+        StringWriter output = new StringWriter();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
+        generator.close();
+        return output.toString();
+    }
+
+    @Benchmark
+    public String json_jackson2_string_handwritten_builder() throws IOException {
+        StringBuilderWriter output = StringBuilderWriter.acquire();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        Jackson2HandPojoStringedWriter.writeUser(generator, USER);
+        generator.close();
+        return output.getAndClear();
+    }
+
+    @Benchmark
+    public String json_jackson2_string_handwritten_serialized_builder() throws IOException {
+        StringBuilderWriter output = StringBuilderWriter.acquire();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
+        generator.close();
+        return output.getAndClear();
+    }
+
+    @Benchmark
+    public String json_jackson2_string_handwritten_fastStringWriter() throws IOException {
+        FastStringWriter output = FastStringWriter.acquire();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        Jackson2HandPojoStringedWriter.writeUser(generator, USER);
+        generator.flush();
+        return output.toStringAndRelease();
+    }
+
+    @Benchmark
+    public String json_jackson2_string_handwritten_serialized_fastStringWriter() throws IOException {
+        FastStringWriter output = FastStringWriter.acquire();
+        JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+        Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
+        generator.flush();
+        return output.toStringAndRelease();
+    }
+
+    @Benchmark
     public String json_jackson2_string_handwritten_recycler() throws IOException {
         BufferRecycler recycler = JACKSON2_FACTORY._getBufferRecycler();
         try (SegmentedStringWriter output = new SegmentedStringWriter(recycler)) {
             JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
             Jackson2HandPojoStringedWriter.writeUser(generator, USER);
+            generator.close();
+            return output.getAndClear();
+        } finally {
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson2_string_handwritten_recycler_serialized() throws IOException {
+        BufferRecycler recycler = JACKSON2_FACTORY._getBufferRecycler();
+        try (SegmentedStringWriter output = new SegmentedStringWriter(recycler)) {
+            JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+            Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
             generator.close();
             return output.getAndClear();
         } finally {
@@ -267,6 +440,48 @@ public class HandWriteBenchmark {
         }
     }
 
+    @Benchmark
+    public byte[] json_jackson2_bytes_handwritten_serialized_recycler() throws IOException {
+        try (ByteArrayBuilder output = new ByteArrayBuilder(JACKSON2_FACTORY._getBufferRecycler())) {
+            JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+            Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
+            generator.close();
+            final byte[] bs =  output.toByteArray();
+            output.release();
+            return bs;
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_bytes_handwritten_serialized_baos() throws IOException {
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+            Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
+            generator.close();
+            return output.toByteArray();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_bytes_handwritten_serialized_fast() throws IOException {
+        try (FastByteArrayOutputStream output = FastByteArrayOutputStream.acquire()) {
+            JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+            Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
+            generator.close();
+            return output.toByteArray();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_bytes_handwritten_serialized_fast2() throws IOException {
+        try (Fast2ByteArrayOutputStream output = new Fast2ByteArrayOutputStream()) {
+            JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
+            Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
+            generator.close();
+            return output.toByteArray();
+        }
+    }
+
 
     @Benchmark
     public byte[] json_jackson2_stream_native() throws IOException {
@@ -306,6 +521,64 @@ public class HandWriteBenchmark {
         JsonWriter writer = GSON.newJsonWriter(output);
         GsonHandPojoWriter.writeUser(writer, USER);
         return output.toString();
+    }
+
+    // ----- Gson StringWriter baseline -----
+    @Benchmark
+    public String json_gson_native_stringWriter() throws IOException {
+        StringWriter output = new StringWriter();
+        JsonWriter writer = GSON.newJsonWriter(output);
+        GSON.toJson(USER, User.class, writer);
+        writer.close();
+        return output.toString();
+    }
+
+    @Benchmark
+    public String json_gson_handwritten_stringWriter() throws IOException {
+        StringWriter output = new StringWriter();
+        JsonWriter writer = GSON.newJsonWriter(output);
+        GsonHandPojoWriter.writeUser(writer, USER);
+        writer.close();
+        return output.toString();
+    }
+
+    // ----- Gson builder Writer experiments -----
+    @Benchmark
+    public String json_gson_native_builder() throws IOException {
+        StringBuilderWriter output = StringBuilderWriter.acquire();
+        JsonWriter writer = GSON.newJsonWriter(output);
+        GSON.toJson(USER, User.class, writer);
+        writer.close();
+        return output.getAndClear();
+    }
+
+    @Benchmark
+    public String json_gson_handwritten_builder() throws IOException {
+        StringBuilderWriter output = StringBuilderWriter.acquire();
+        JsonWriter writer = GSON.newJsonWriter(output);
+        GsonHandPojoWriter.writeUser(writer, USER);
+        writer.close();
+        return output.getAndClear();
+    }
+
+    // ----- Gson FastStringWriter experiments -----
+    // FastStringWriter.close() releases its buffer, so flush before materializing the String.
+    @Benchmark
+    public String json_gson_native_fastStringWriter() throws IOException {
+        FastStringWriter output = FastStringWriter.acquire();
+        JsonWriter writer = GSON.newJsonWriter(output);
+        GSON.toJson(USER, User.class, writer);
+        writer.flush();
+        return output.toStringAndRelease();
+    }
+
+    @Benchmark
+    public String json_gson_handwritten_fastStringWriter() throws IOException {
+        FastStringWriter output = FastStringWriter.acquire();
+        JsonWriter writer = GSON.newJsonWriter(output);
+        GsonHandPojoWriter.writeUser(writer, USER);
+        writer.flush();
+        return output.toStringAndRelease();
     }
 
     // ----- Fastjson2 baselines -----

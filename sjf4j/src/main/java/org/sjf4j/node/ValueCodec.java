@@ -113,8 +113,11 @@ public interface ValueCodec<V, R> {
 
     ValueCodec<URL, String> URL_CODEC = new SimpleValueCodec<>(URL.class, String.class,
             URL::toString, raw -> {
-                try { return new URL(raw); }
-                catch (MalformedURLException e) { throw new JsonException("invalid URL: " + raw, e); }
+                try {
+                    return URI.create(raw).toURL();
+                } catch (IllegalArgumentException | MalformedURLException e) {
+                    throw new JsonException("invalid URL: " + raw, e);
+                }
             });
 
     ValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,

@@ -20,10 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`; its test-source packages now use `org.sjf4j.testbench`.
+- Moved JMH-only handwritten JSON read/write benchmarks into `sjf4j-testbench` and enabled Lombok annotation processing for that source set.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
 - `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains; built-in readers also report object member names as `FIELD_NAME` and reject non-values in `skipNext()`.
 
 ### Fixed
+- Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.
 - Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
 - Fixed simple JSON parsing and JSON Schema `contentMediaType: application/json` validation to reject malformed delimiters, literals, numbers, escapes, surrogate pairs, trailing content, and invalid base64-decoded UTF-8.
 - Fixed Jackson 3 discriminator-based `OneOf` binding to preserve the parser cursor for following object properties.

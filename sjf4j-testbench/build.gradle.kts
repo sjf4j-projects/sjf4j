@@ -1,9 +1,10 @@
-import java.math.BigDecimal
+import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
 
 plugins {
     id("java-library")
     id("jacoco")
     id("me.champeau.jmh") version "0.7.2"
+    id("org.graalvm.buildtools.native") version "1.1.12"
 }
 
 java {
@@ -167,6 +168,7 @@ configurations.named(incubator.compileOnlyConfigurationName) {
 configurations.named(incubator.runtimeOnlyConfigurationName) {
     extendsFrom(configurations.testRuntimeOnly.get())
 }
+
 dependencies {
     add(incubator.implementationConfigurationName, project(":sjf4j"))
     add(incubator.implementationConfigurationName, project(":sjf4j-schema"))
@@ -174,4 +176,101 @@ dependencies {
     add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")
     add(incubator.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
     add(incubator.implementationConfigurationName, "org.openjdk.jmh:jmh-core:1.37")
+}
+
+
+
+/////////////////////
+/// GraalVM
+
+val graalVmHome = providers.environmentVariable("GRAALVM_HOME")
+
+val jmhJar = tasks.named<Jar>("jmhJar")
+
+val jmhAgentOutput =
+    layout.buildDirectory.dir("native/agent-output/jmhAgent")
+
+val nativeBenchmark = providers.gradleProperty("nativeBenchmark")
+    .orElse(".*HandWriteBenchmark.*")
+
+val jmhAgent = tasks.register<Exec>("jmhAgent") {
+    group = "benchmark"
+    description = "Runs JMH with the GraalVM Native Image tracing agent"
+
+    dependsOn(jmhJar)
+
+    doFirst {
+        val outputDir = jmhAgentOutput.get().asFile
+        delete(outputDir)
+        outputDir.mkdirs()
+
+        val jar = jmhJar.get().archiveFile.get().asFile
+
+        executable("${graalVmHome.get()}/bin/java")
+
+        args(
+            "-agentlib:native-image-agent=config-output-dir=${outputDir.absolutePath}",
+            "-cp",
+            jar.absolutePath,
+            "org.openjdk.jmh.Main",
+
+            nativeBenchmark.get(),
+
+            "-f", "0",
+            "-wi", "0",
+            "-i", "1",
+            "-r", "100ms"
+        )
+    }
+}
+
+graalvmNative {
+    toolchainDetection.set(false)
+
+    binaries {
+        named("main") {
+            imageName.set("sjf4j-benchmark-native")
+            mainClass.set("org.openjdk.jmh.Main")
+            sharedLibrary.set(false)
+
+            buildArgs.add("-O2")
+
+            buildArgs.add("--install-exit-handlers")
+
+            buildArgs.add(
+                "--initialize-at-build-time=" +
+                        "org.openjdk.jmh.infra," +
+                        "org.openjdk.jmh.util.Utils," +
+                        "org.openjdk.jmh.runner.InfraControl," +
+                        "org.openjdk.jmh.runner.InfraControlL0," +
+                        "org.openjdk.jmh.runner.InfraControlL1," +
+                        "org.openjdk.jmh.runner.InfraControlL2," +
+                        "org.openjdk.jmh.runner.InfraControlL3," +
+                        "org.openjdk.jmh.runner.InfraControlL4"
+            )
+
+            buildArgs.add(
+                "-H:ConfigurationFileDirectories=" +
+                        jmhAgentOutput.get().asFile.absolutePath
+            )
+
+            buildArgs.add(
+                "-H:IncludeResourceBundles=" +
+                        "joptsimple.ExceptionMessages," +
+                        "joptsimple.HelpFormatterMessages"
+            )
+        }
+    }
+}
+
+/*
+ * nativeCompile normally sees the main source set.
+ * Replace that classpath with the JMH fat jar.
+ */
+tasks.named<BuildNativeImageTask>("nativeCompile") {
+    dependsOn(jmhAgent)
+
+    classpathJar.set(
+        jmhJar.flatMap { it.archiveFile }
+    )
 }
