@@ -1,6 +1,9 @@
 package org.sjf4j.testbench.handwritten;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import org.sjf4j.testbench.model.Address;
+import org.sjf4j.testbench.model.Friend;
+import org.sjf4j.testbench.model.User;
 
 import java.io.IOException;
 

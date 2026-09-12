@@ -1,8 +1,7 @@
 package org.sjf4j.testbench.handwritten;
 
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.testbench.handwritten.GsonHandLargeWriter;
-import org.sjf4j.testbench.handwritten.User;
+import org.sjf4j.testbench.model.User;
 
 import java.io.IOException;
 

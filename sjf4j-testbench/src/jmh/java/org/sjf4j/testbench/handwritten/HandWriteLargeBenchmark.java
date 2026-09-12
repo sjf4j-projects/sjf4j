@@ -28,11 +28,11 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.facade.gson.GsonModule;
-import org.sjf4j.testbench.handwritten.Fastjson2HandLargeWriter;
-import org.sjf4j.testbench.handwritten.Jackson2HandLargeWriter;
-import org.sjf4j.testbench.handwritten.User;
-import org.sjf4j.testbench.handwritten.Users;
+import org.sjf4j.testbench.model.Address;
+import org.sjf4j.testbench.model.Friend;
+import org.sjf4j.testbench.model.User;
 import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.testbench.model.Users;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

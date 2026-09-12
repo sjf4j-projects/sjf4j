@@ -1,8 +1,10 @@
 package org.sjf4j.testbench.handwritten;
 
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.testbench.handwritten.User;
-import org.sjf4j.testbench.handwritten.Users;
+import org.sjf4j.testbench.model.Address;
+import org.sjf4j.testbench.model.Friend;
+import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.model.Users;
 
 import java.io.IOException;
 import java.util.List;

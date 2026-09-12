@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.util.BufferRecycler;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonWriter;
@@ -29,6 +30,9 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.testbench.model.Address;
+import org.sjf4j.testbench.model.Friend;
+import org.sjf4j.testbench.model.User;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -48,6 +52,8 @@ public class HandWriteBenchmark {
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final JsonFactory JACKSON2_FACTORY = JACKSON2.getFactory();
+    private static final ObjectMapper JACKSON2_BLACKBIRD = createBlackbirdJackson2();
+    private static final JsonFactory JACKSON2_BLACKBIRD_FACTORY = JACKSON2_BLACKBIRD.getFactory();
     private static final Gson GSON = createNativeGson();
     private static final JSONWriter.Context FASTJSON2_NATIVE_CONTEXT =
             JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
@@ -55,7 +61,7 @@ public class HandWriteBenchmark {
 
     public static void main(String[] args) throws Exception {
 //        Main.main(new String[]{HandWriteBenchmark.class.getName()});
-        Main.main(new String[]{HandWriteBenchmark.class.getName() + ".json_jackson2_bytes"});
+        Main.main(new String[]{HandWriteBenchmark.class.getName() + ".json_jackson2"});
 
     }
 
@@ -69,6 +75,10 @@ public class HandWriteBenchmark {
             return name != null ? name : field.getName();
         });
         return builder.create();
+    }
+
+    private static ObjectMapper createBlackbirdJackson2() {
+        return new ObjectMapper().registerModule(new BlackbirdModule());
     }
 
     private static User createUser() {
@@ -110,6 +120,16 @@ public class HandWriteBenchmark {
     public void validateHandwrittenWriters() throws IOException {
         validate("Jackson2 native String fromBytes", json_jackson2_string_native(),
                 json_jackson2_string_native_fromBytes());
+        validate("Jackson2 Blackbird String", json_jackson2_string_native(),
+                json_jackson2_string_blackbird());
+        validate("Jackson2 Blackbird StringWriter", json_jackson2_string_native(),
+                json_jackson2_string_blackbird_stringWriter());
+        validate("Jackson2 Blackbird builder", json_jackson2_string_native(),
+                json_jackson2_string_blackbird_builder());
+        validate("Jackson2 Blackbird FastStringWriter", json_jackson2_string_native(),
+                json_jackson2_string_blackbird_fastStringWriter());
+        validate("Jackson2 Blackbird String fromBytes", json_jackson2_string_native(),
+                json_jackson2_string_blackbird_fromBytes());
         validate("Jackson2 String", json_jackson2_string_native(), json_jackson2_string_handwritten());
         validate("Jackson2 String fromBytes", json_jackson2_string_native(),
                 json_jackson2_string_handwritten_fromBytes());
@@ -141,12 +161,15 @@ public class HandWriteBenchmark {
                 json_jackson2_string_handwritten_serialized_fastStringWriter());
 
         byte[] jackson2Bytes = JACKSON2.writeValueAsBytes(USER);
+        validate("Jackson2 Blackbird bytes", jackson2Bytes, json_jackson2_bytes_blackbird());
         validate("Jackson2 serialized names", jackson2Bytes,
                 json_jackson2_bytes_handwritten_serialized());
         validate("Jackson2 String names", jackson2Bytes,
                 json_jackson2_bytes_handwritten());
         validate("Jackson2 stream", json_jackson2_stream_native(),
                 json_jackson2_stream_handwritten());
+        validate("Jackson2 Blackbird stream", json_jackson2_stream_native(),
+                json_jackson2_stream_blackbird());
         validate("Jackson2 stream serialized names", json_jackson2_stream_native(),
                 json_jackson2_stream_handwritten_serialized());
         validate("Gson", GSON.toJson(USER), json_gson_handwritten());
@@ -256,12 +279,26 @@ public class HandWriteBenchmark {
         return JACKSON2.writeValueAsString(USER);
     }
 
+    @Benchmark
+    public String json_jackson2_string_blackbird() throws IOException {
+        return JACKSON2_BLACKBIRD.writeValueAsString(USER);
+    }
+
     // ----- Jackson2 StringWriter baseline -----
     @Benchmark
     public String json_jackson2_string_native_stringWriter() throws IOException {
         StringWriter output = new StringWriter();
         JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
         JACKSON2.writeValue(generator, USER);
+        generator.close();
+        return output.toString();
+    }
+
+    @Benchmark
+    public String json_jackson2_string_blackbird_stringWriter() throws IOException {
+        StringWriter output = new StringWriter();
+        JsonGenerator generator = JACKSON2_BLACKBIRD_FACTORY.createGenerator(output);
+        JACKSON2_BLACKBIRD.writeValue(generator, USER);
         generator.close();
         return output.toString();
     }
@@ -276,6 +313,15 @@ public class HandWriteBenchmark {
     }
 
     @Benchmark
+    public String json_jackson2_string_blackbird_builder() throws IOException {
+        StringBuilderWriter output = StringBuilderWriter.acquire();
+        JsonGenerator generator = JACKSON2_BLACKBIRD_FACTORY.createGenerator(output);
+        JACKSON2_BLACKBIRD.writeValue(generator, USER);
+        generator.close();
+        return output.getAndClear();
+    }
+
+    @Benchmark
     public String json_jackson2_string_native_fastStringWriter() throws IOException {
         FastStringWriter output = FastStringWriter.acquire();
         JsonGenerator generator = JACKSON2_FACTORY.createGenerator(output);
@@ -285,8 +331,22 @@ public class HandWriteBenchmark {
     }
 
     @Benchmark
+    public String json_jackson2_string_blackbird_fastStringWriter() throws IOException {
+        FastStringWriter output = FastStringWriter.acquire();
+        JsonGenerator generator = JACKSON2_BLACKBIRD_FACTORY.createGenerator(output);
+        JACKSON2_BLACKBIRD.writeValue(generator, USER);
+        generator.flush();
+        return output.toStringAndRelease();
+    }
+
+    @Benchmark
     public String json_jackson2_string_native_fromBytes() throws IOException {
         return new String(JACKSON2.writeValueAsBytes(USER), StandardCharsets.UTF_8);
+    }
+
+    @Benchmark
+    public String json_jackson2_string_blackbird_fromBytes() throws IOException {
+        return new String(JACKSON2_BLACKBIRD.writeValueAsBytes(USER), StandardCharsets.UTF_8);
     }
 
     @Benchmark
@@ -419,6 +479,11 @@ public class HandWriteBenchmark {
         return JACKSON2.writeValueAsBytes(USER);
     }
 
+    @Benchmark
+    public byte[] json_jackson2_bytes_blackbird() throws IOException {
+        return JACKSON2_BLACKBIRD.writeValueAsBytes(USER);
+    }
+
 
     @Benchmark
     public byte[] json_jackson2_bytes_handwritten() throws IOException {
@@ -487,6 +552,13 @@ public class HandWriteBenchmark {
     public byte[] json_jackson2_stream_native() throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         JACKSON2.writeValue(output, USER);
+        return output.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_stream_blackbird() throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        JACKSON2_BLACKBIRD.writeValue(output, USER);
         return output.toByteArray();
     }
 

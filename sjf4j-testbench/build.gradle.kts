@@ -191,7 +191,7 @@ val jmhAgentOutput =
     layout.buildDirectory.dir("native/agent-output/jmhAgent")
 
 val nativeBenchmark = providers.gradleProperty("nativeBenchmark")
-    .orElse(".*HandWriteBenchmark.*")
+    .orElse(".*(HandWriteBenchmark|HandReadBenchmark).*")
 
 val jmhAgent = tasks.register<Exec>("jmhAgent") {
     group = "benchmark"

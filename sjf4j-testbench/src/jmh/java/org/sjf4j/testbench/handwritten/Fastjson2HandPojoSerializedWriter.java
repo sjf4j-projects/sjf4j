@@ -1,7 +1,9 @@
 package org.sjf4j.testbench.handwritten;
 
 import com.alibaba.fastjson2.JSONWriter;
-import org.sjf4j.testbench.handwritten.User;
+import org.sjf4j.testbench.model.Address;
+import org.sjf4j.testbench.model.Friend;
+import org.sjf4j.testbench.model.User;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;

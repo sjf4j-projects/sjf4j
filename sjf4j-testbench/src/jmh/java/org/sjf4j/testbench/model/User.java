@@ -1,4 +1,4 @@
-package org.sjf4j.testbench.handwritten;
+package org.sjf4j.testbench.model;
 
 import lombok.Data;
 

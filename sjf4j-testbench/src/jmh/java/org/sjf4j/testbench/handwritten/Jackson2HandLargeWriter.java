@@ -3,6 +3,11 @@ package org.sjf4j.testbench.handwritten;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
+import org.sjf4j.testbench.model.Address;
+import org.sjf4j.testbench.model.Friend;
+import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.model.Users;
+
 import java.io.IOException;
 import java.util.List;
 

@@ -1,7 +1,6 @@
-package org.sjf4j.testbench.handwritten;
+package org.sjf4j.testbench.model;
 
 import lombok.Data;
-import org.sjf4j.testbench.handwritten.User;
 
 import java.util.List;
 
