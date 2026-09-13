@@ -1,11 +1,8 @@
 package org.sjf4j.testbench;
 
-
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,7 +27,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
-import org.sjf4j.JsonObject;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
@@ -42,13 +38,11 @@ import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.node.ReflectUtil;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.model.UserJojo;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.lang.reflect.Type;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -77,46 +71,22 @@ public class ReadBenchmark {
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"no_way\":99,\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
 
     private static final String JSON_DATA2 = "{\n" +
-            "  \"name\": \"Alice\",\n" +
+            "  \"id\": 839201, \"createdAt\": 1700000000123, \"updatedAt\": 1701234567890,\n" +
+            "  \"reputation\": 9876543210, \"loginCount\": 421, \"age\": 34,\n" +
+            "  \"active\": true, \"verified\": true, \"admin\": false, \"suspended\": false,\n" +
+            "  \"score\": 98.75, \"latitude\": 37.7749, \"longitude\": -122.4194,\n" +
+            "  \"username\": \"alice.builder\", \"email\": null,\n" +
+            "  \"displayName\": \"Alice \\\"the Builder\\\" n Line\", \"passwordHash\": \"$2a$12$abcdef\",\n" +
+            "  \"bio\": \"Builds fast JSON with control chars\", \"website\": \"https://example.test/a?b=1\",\n" +
+            "  \"department\": \"Platform Engineering\",\n" +
+            "  \"address\": {\"street\": \"1 Main St\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": \"94105\", \"country\": \"US\"},\n" +
+            "  \"tags\": [\"tag-0-value\", null],\n" +
             "  \"friends\": [\n" +
-            "    {\"name\": \"Bill\", \"active\": true, \"score\": 88.5 },\n" +
-            "    {\"name\": \"Eve\", \"active\": false, \"tags\": [\"x\",\"y\"] },\n" +
-            "    {\n" +
-            "      \"name\": \"Cindy\",\n" +
-            "      \"friends\": [\n" +
-            "        {\"name\": \"David\"},\n" +
-            "        {\"id\": 5, \"info\": \"blabla\"},\n" +
-            "        {\"name\": \"Frank\", \"friends\": [{\"name\": \"Gina\"}, {\"name\": \"Hank\"}]},\n" +
-            "        {\"name\": \"Ivy\", \"meta\": {\"a\":1,\"b\":2}},\n" +
-            "        {}\n" +
-            "      ]\n" +
-            "    },\n" +
-            "    {\"name\": \"Jane\"},\n" +
-            "    {\"name\": \"Kyle\", \"friends\": [{\"name\": \"Liam\"}, {\"name\": \"Mia\"}]},\n" +
-            "    {\"name\": \"Nina\", \"age\": 19, \"city\": \"SG\"}\n" +
-            "  ],\n" +
-            "  \"age\": 18,\n" +
-            "  \"city\": \"Singapore\",\n" +
-            "  \"ext\": {\"k1\": 1, \"k2\": true, \"k3\": [1,2,3]},\n" +
-            "  \"extra1\": 12345,\n" +
-            "  \"extra2\": \"hello\",\n" +
-            "  \"extra3\": {\"nested\": {\"x\": 1, \"y\": [1,2,3,4]}}\n" +
+            "    {\"id\": 1000, \"name\": \"BillBackslash\", \"since\": 1600000000000, \"close\": true},\n" +
+            "    null,\n" +
+            "    {\"id\": 1001, \"name\": \"Cindy Line\", \"since\": 1600000000001, \"close\": false}\n" +
+            "  ]\n" +
             "}\n";
-
-    // Kept for compatibility with older benchmark variants.
-    private static final String JSON_DATA2_NO_DYN = JSON_DATA2;
-
-    // Pure list of JojoUser to focus on array/collection parsing overhead.
-    private static final String JSON_DATA2_LIST = "[\n" +
-            "  {\"name\": \"Alice\", \"friends\": [\n" +
-            "    {\"name\": \"Bill\", \"friends\": []},\n" +
-            "    {\"name\": \"Cindy\", \"friends\": []}\n" +
-            "  ]},\n" +
-            "  {\"name\": \"David\", \"friends\": []}\n" +
-            "]\n";
-
-    private static final Type JOJO_USER_LIST_TYPE =
-            new TypeReference<List<UserJojo>>() {}.getType();
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final ObjectMapper JACKSON2_BLACKBIRD = createBlackbirdJackson2();
@@ -349,17 +319,17 @@ public class ReadBenchmark {
     // ----- Jackson2 baselines -----
     @Benchmark
     public Object json_jackson2_pojo_native() throws IOException {
-        return JACKSON2.readValue(JSON_DATA2, UserPojo.class);
+        return JACKSON2.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
     public Object json_jackson2_pojo_blackbird() throws IOException {
-        return JACKSON2_BLACKBIRD.readValue(JSON_DATA2, UserPojo.class);
+        return JACKSON2_BLACKBIRD.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
     public Object json_jackson2_jojo_native() throws IOException {
-        return JACKSON2.readValue(JSON_DATA2, UserHasAny.class);
+        return JACKSON2.readValue(JSON_DATA2, UserJojo.class);
     }
 
     @Benchmark
@@ -369,7 +339,7 @@ public class ReadBenchmark {
 
     @Benchmark
     public Object json_jackson2_pojo_facade(FacadeState state) throws IOException {
-        return state.jackson2Facade.readNode(JSON_DATA2, UserPojo.class);
+        return state.jackson2Facade.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
@@ -386,7 +356,7 @@ public class ReadBenchmark {
     // ----- Gson baselines -----
     @Benchmark
     public Object json_gson_pojo_native() {
-        return GSON.fromJson(JSON_DATA2, UserPojo.class);
+        return GSON.fromJson(JSON_DATA2, User.class);
     }
 
     @Benchmark
@@ -396,7 +366,7 @@ public class ReadBenchmark {
 
     @Benchmark
     public Object json_gson_pojo_facade(FacadeState2 state) {
-        return state.gsonFacade.readNode(JSON_DATA2, UserPojo.class);
+        return state.gsonFacade.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
@@ -414,14 +384,14 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_fastjson2_pojo_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.read(UserPojo.class);
+            return reader.read(User.class);
         }
     }
 
     @Benchmark
     public Object json_fastjson2_jojo_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.read(UserHasAny.class);
+            return reader.read(UserJojo.class);
         }
     }
 
@@ -434,7 +404,7 @@ public class ReadBenchmark {
 
     @Benchmark
     public Object json_fastjson2_pojo_facade(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2, UserPojo.class);
+        return state.fastjson2Facade.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
@@ -455,7 +425,7 @@ public class ReadBenchmark {
 
     @Benchmark
     public Object json_jsonp_pojo_facade() {
-        return JSONP_JSON_FACADE.readNode(JSON_DATA2, UserPojo.class);
+        return JSONP_JSON_FACADE.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
@@ -471,51 +441,11 @@ public class ReadBenchmark {
     // ----- Simple JSON baselines -----
     @Benchmark
     public Object json_simple_pojo_facade() throws IOException {
-        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserPojo.class);
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
     public Object json_simple_jojo_facade() throws IOException {
         return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserJojo.class);
     }
-
-
-
-    // Define a POJO `User`
-    public static class UserPojo {
-        private String name;
-        private List<UserPojo> friends;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public List<UserPojo> getFriends() {
-            return friends;
-        }
-
-        public void setFriends(List<UserPojo> friends) {
-            this.friends = friends;
-        }
-
-    }
-
-    // Define a JOJO `JojoUser`
-    static class UserJojo extends JsonObject {
-        public String name;
-        public List<UserJojo> friends;
-    }
-
-    static class UserHasAny {
-        public String name;
-        public List<UserHasAny> friends;
-        @JsonAnySetter @JsonAnyGetter
-        public Map<String, Object> ext = new LinkedHashMap<>();
-    }
-
-
 }

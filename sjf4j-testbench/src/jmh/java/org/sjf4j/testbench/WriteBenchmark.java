@@ -5,8 +5,6 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -36,11 +34,11 @@ import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.model.UserJojo;
 
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -61,30 +59,21 @@ public class WriteBenchmark {
 
     // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
     private static final String JSON_DATA2 = "{\n" +
-            "  \"name\": \"Alice\",\n" +
+            "  \"id\": 839201, \"createdAt\": 1700000000123, \"updatedAt\": 1701234567890,\n" +
+            "  \"reputation\": 9876543210, \"loginCount\": 421, \"age\": 34,\n" +
+            "  \"active\": true, \"verified\": true, \"admin\": false, \"suspended\": false,\n" +
+            "  \"score\": 98.75, \"latitude\": 37.7749, \"longitude\": -122.4194,\n" +
+            "  \"username\": \"alice.builder\", \"email\": null,\n" +
+            "  \"displayName\": \"Alice \\\"the Builder\\\" n Line\", \"passwordHash\": \"$2a$12$abcdef\",\n" +
+            "  \"bio\": \"Builds fast JSON with control chars\", \"website\": \"https://example.test/a?b=1\",\n" +
+            "  \"department\": \"Platform Engineering\",\n" +
+            "  \"address\": {\"street\": \"1 Main St\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": \"94105\", \"country\": \"US\"},\n" +
+            "  \"tags\": [\"tag-0-value\", null],\n" +
             "  \"friends\": [\n" +
-            "    {\"name\": \"Bill\", \"active\": true, \"score\": 88.5 },\n" +
-            "    {\"name\": \"Eve\", \"active\": false, \"tags\": [\"x\",\"y\"] },\n" +
-            "    {\n" +
-            "      \"name\": \"Cindy\",\n" +
-            "      \"friends\": [\n" +
-            "        {\"name\": \"David\"},\n" +
-            "        {\"id\": 5, \"info\": \"blabla\"},\n" +
-            "        {\"name\": \"Frank\", \"friends\": [{\"name\": \"Gina\"}, {\"name\": \"Hank\"}]},\n" +
-            "        {\"name\": \"Ivy\", \"meta\": {\"a\":1,\"b\":2}},\n" +
-            "        {}\n" +
-            "      ]\n" +
-            "    },\n" +
-            "    {\"name\": \"Jane\"},\n" +
-            "    {\"name\": \"Kyle\", \"friends\": [{\"name\": \"Liam\"}, {\"name\": \"Mia\"}]},\n" +
-            "    {\"name\": \"Nina\", \"age\": 19, \"city\": \"SG\"}\n" +
-            "  ],\n" +
-            "  \"age\": 18,\n" +
-            "  \"city\": \"Singapore\",\n" +
-            "  \"ext\": {\"k1\": 1, \"k2\": true, \"k3\": [1,2,3]},\n" +
-            "  \"extra1\": 12345,\n" +
-            "  \"extra2\": \"hello\",\n" +
-            "  \"extra3\": {\"nested\": {\"x\": 1, \"y\": [1,2,3,4]}}\n" +
+            "    {\"id\": 1000, \"name\": \"BillBackslash\", \"since\": 1600000000000, \"close\": true},\n" +
+            "    null,\n" +
+            "    {\"id\": 1001, \"name\": \"Cindy Line\", \"since\": 1600000000001, \"close\": false}\n" +
+            "  ]\n" +
             "}\n";
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
@@ -94,16 +83,14 @@ public class WriteBenchmark {
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
     private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
 
-    private static final UserPojo USER_POJO;
-    private static final UserHasAny USER_HAS_ANY;
+    private static final User USER;
     private static final UserJojo USER_JOJO;
     private static final Map<String, Object> MAP_NODE;
     private static final JsonObject JSONP_MAP_NODE;
 
     static {
         try {
-            USER_POJO = Sjf4j.global().fromJson(JSON_DATA2, UserPojo.class);
-            USER_HAS_ANY = Sjf4j.global().fromJson(JSON_DATA2, UserHasAny.class);
+            USER = Sjf4j.global().fromJson(JSON_DATA2, User.class);
             USER_JOJO = Sjf4j.global().fromJson(JSON_DATA2, UserJojo.class);
             MAP_NODE = Sjf4j.global().fromJson(JSON_DATA2, new TypeReference<Map<String, Object>>() {});
             JSONP_MAP_NODE = Json.createReader(new StringReader(JSON_DATA2)).readObject();
@@ -116,6 +103,7 @@ public class WriteBenchmark {
         GsonBuilder builder = new GsonBuilder();
         builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
+        builder.serializeNulls();
         builder.setFieldNamingStrategy(field -> {
             String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();
@@ -159,12 +147,7 @@ public class WriteBenchmark {
     // ----- Jackson2 baselines -----
     @Benchmark
     public Object json_jackson2_pojo_native() throws Exception {
-        return JACKSON2.writeValueAsString(USER_POJO);
-    }
-
-    @Benchmark
-    public Object json_jackson2_hasAny_native() throws Exception {
-        return JACKSON2.writeValueAsString(USER_HAS_ANY);
+        return JACKSON2.writeValueAsString(USER);
     }
 
     @Benchmark
@@ -174,17 +157,12 @@ public class WriteBenchmark {
 
     @Benchmark
     public Object json_jackson2_pojo_facade(FacadeState state) {
-        return state.jackson2Facade.writeNodeAsString(USER_POJO);
+        return state.jackson2Facade.writeNodeAsString(USER);
     }
 
     @Benchmark
     public Object json_jackson2_jojo_facade(FacadeState state) {
         return state.jackson2Facade.writeNodeAsString(USER_JOJO);
-    }
-
-    @Benchmark
-    public Object json_jackson2_hasAny_facade(FacadeState state) {
-        return state.jackson2Facade.writeNodeAsString(USER_HAS_ANY);
     }
 
     @Benchmark
@@ -196,12 +174,7 @@ public class WriteBenchmark {
     // ----- Gson baselines -----
     @Benchmark
     public Object json_gson_pojo_native() {
-        return GSON.toJson(USER_POJO);
-    }
-
-    @Benchmark
-    public Object json_gson_hasAny_native() throws Exception {
-        return GSON.toJson(USER_HAS_ANY);
+        return GSON.toJson(USER);
     }
 
     @Benchmark
@@ -211,17 +184,12 @@ public class WriteBenchmark {
 
     @Benchmark
     public Object json_gson_pojo_facade(GsonFacadeState state) {
-        return state.gsonFacade.writeNodeAsString(USER_POJO);
+        return state.gsonFacade.writeNodeAsString(USER);
     }
 
     @Benchmark
     public Object json_gson_jojo_facade(GsonFacadeState state) {
         return state.gsonFacade.writeNodeAsString(USER_JOJO);
-    }
-
-    @Benchmark
-    public Object json_gson_hasAny_facade(GsonFacadeState state) {
-        return state.gsonFacade.writeNodeAsString(USER_HAS_ANY);
     }
 
     @Benchmark
@@ -233,12 +201,7 @@ public class WriteBenchmark {
     // ----- Fastjson2 baselines -----
     @Benchmark
     public Object json_fastjson2_pojo_native() {
-        return JSON.toJSONString(USER_POJO, FASTJSON2_WRITER_CONTEXT);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_hasAny_native() {
-        return JSON.toJSONString(USER_HAS_ANY, FASTJSON2_WRITER_CONTEXT);
+        return JSON.toJSONString(USER, FASTJSON2_WRITER_CONTEXT);
     }
 
     @Benchmark
@@ -248,17 +211,12 @@ public class WriteBenchmark {
 
     @Benchmark
     public Object json_fastjson2_pojo_facade(FacadeState state) {
-        return state.fastjson2Facade.writeNodeAsString(USER_POJO);
+        return state.fastjson2Facade.writeNodeAsString(USER);
     }
 
     @Benchmark
     public Object json_fastjson2_jojo_facade(FacadeState state) {
         return state.fastjson2Facade.writeNodeAsString(USER_JOJO);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_hasAny_facade(FacadeState state) {
-        return state.fastjson2Facade.writeNodeAsString(USER_HAS_ANY);
     }
 
     @Benchmark
@@ -276,7 +234,7 @@ public class WriteBenchmark {
 
     @Benchmark
     public Object json_jsonp_pojo_facade() {
-        return JSONP_JSON_FACADE.writeNodeAsString(USER_POJO);
+        return JSONP_JSON_FACADE.writeNodeAsString(USER);
     }
 
     @Benchmark
@@ -292,29 +250,11 @@ public class WriteBenchmark {
     // ----- Simple JSON baselines -----
     @Benchmark
     public Object json_simple_pojo_facade() {
-        return SIMPLE_JSON_FACADE.writeNodeAsString(USER_POJO);
+        return SIMPLE_JSON_FACADE.writeNodeAsString(USER);
     }
 
     @Benchmark
     public Object json_simple_jojo_facade() {
         return SIMPLE_JSON_FACADE.writeNodeAsString(USER_JOJO);
-    }
-
-
-    static class UserPojo {
-        public String name;
-        public List<UserPojo> friends;
-    }
-
-    static class UserJojo extends org.sjf4j.JsonObject {
-        public String name;
-        public List<UserJojo> friends;
-    }
-
-    static class UserHasAny {
-        public String name;
-        public List<UserHasAny> friends;
-        @JsonAnySetter @JsonAnyGetter
-        public Map<String, Object> ext = new LinkedHashMap<>();
     }
 }
