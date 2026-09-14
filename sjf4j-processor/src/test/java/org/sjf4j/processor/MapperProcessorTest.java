@@ -1,6 +1,8 @@
 package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
@@ -536,8 +538,10 @@ public class MapperProcessorTest {
         Path dir = Files.createTempDirectory("sjf4j-processor-mapper-test");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
         Files.createDirectories(src);
         Files.createDirectories(out);
+        Files.createDirectories(generated);
 
         write(src.resolve("Person.java"),
                 "package testcase;\n" +
@@ -622,6 +626,50 @@ public class MapperProcessorTest {
         Object genericTarget = mapperClass.getMethod("generic", genericSourceClass).invoke(mapper, genericSource);
         assertEquals("generic", genericTarget.getClass().getField("value").get(genericTarget));
         assertNull(mapperClass.getMethod("toDto", personClass).invoke(mapper, new Object[]{null}));
+    }
+
+    @Test
+    public void mapsJsonObjectDynamicMembersToNestedTypedTargets() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-facade-mapper-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(generated);
+        write(src.resolve("FacadeMapper.java"),
+                "package testcase;\n"
+                        + "import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.node.*;\n"
+                        + "@CompiledMapper public interface FacadeMapper {\n"
+                        + "  Graph map(JsonObject source);\n"
+                        + "  class Graph { public String title; public byte byteValue; public short shortValue; public int count; public long total; public float ratio; public double score; public char initial; public boolean active; public Child owner; public List<Child> children; public Map<String, Value> labels; public Value primaryLabel; public List<Event> events; public Event event; }\n"
+                        + "  class Child { public long id; public String name; }\n"
+                        + "  @NodeValue class Value { public String value; @RawToValue public static Value fromRaw(String raw) { Value value = new Value(); value.value = raw; return value; } @ValueToRaw public String toRaw() { return value; } }\n"
+                        + "  @OneOf(key=\"type\", value={@OneOf.Mapping(value=Login.class, when=\"login\"), @OneOf.Mapping(value=Comment.class, when=\"comment\")}) interface Event {}\n"
+                        + "  class Login implements Event { public long id; public int attempts; }\n"
+                        + "  class Comment implements Event { public String text; }\n"
+                        + "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
+        assertTrue(compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()), null,
+                files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("FacadeMapper.java").toFile()))).call());
+        String generatedSource = new String(Files.readAllBytes(generated.resolve("testcase/FacadeMapper_Impl.java")), StandardCharsets.UTF_8);
+        assertTrue(generatedSource.contains("source.getInt(\"count\", 0)"), generatedSource);
+        assertTrue(generatedSource.contains("source.getString(\"title\")"), generatedSource);
+        assertTrue(generatedSource.contains("source.getJsonObject(\"owner\")"), generatedSource);
+        assertTrue(generatedSource.contains("source.getJsonArray(\"children\")"), generatedSource);
+        assertTrue(generatedSource.contains("s.getLong(\"id\", 0L)"), generatedSource);
+        assertTrue(generatedSource.contains("source.getNode(\"event\")"), generatedSource);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.FacadeMapper_Impl", true, loader);
+        assertNotNull(mapperClass.getConstructor().newInstance());
     }
 
     @Test

@@ -104,6 +104,9 @@ final class MapperModel {
         boolean facadeNode;
         /** Concrete declared facade root type used for typed nested converters. */
         TypeMirror facadeType;
+        /** Exact JsonObject root and flat member name available for a direct getter. */
+        String jsonObjectRoot;
+        String jsonObjectKey;
         /** Local variable declarations that must be emitted before this expression. */
         final List<String> temps = new ArrayList<String>();
         /** Original nullable source expression to guard before a null-preserving generated conversion. */
@@ -140,14 +143,19 @@ final class MapperModel {
         final boolean nullableRoot;
         final boolean facadeNode;
         final TypeMirror facadeType;
+        final String jsonObjectRoot;
+        final String jsonObjectKey;
 
-        CachedRead(String c, TypeMirror t, boolean p, boolean n, boolean f, TypeMirror ft) {
+        CachedRead(String c, TypeMirror t, boolean p, boolean n, boolean f, TypeMirror ft,
+                   String jr, String jk) {
             code = c;
             type = t;
             path = p;
             nullableRoot = n;
             facadeNode = f;
             facadeType = ft;
+            jsonObjectRoot = jr;
+            jsonObjectKey = jk;
         }
     }
 

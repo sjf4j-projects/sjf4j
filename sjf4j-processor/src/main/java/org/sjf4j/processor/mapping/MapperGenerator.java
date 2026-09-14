@@ -2259,6 +2259,8 @@ public final class MapperGenerator {
             MapperModel.Expr e = new MapperModel.Expr(cached.code, cached.type, cached.path, cached.nullableRoot, true);
             e.facadeNode = cached.facadeNode;
             e.facadeType = cached.facadeType;
+            e.jsonObjectRoot = cached.jsonObjectRoot;
+            e.jsonObjectKey = cached.jsonObjectKey;
             return e;
         }
 
@@ -2269,8 +2271,16 @@ public final class MapperGenerator {
                 resolved.path, state.names, state.pathCache, _pathCacheRoot(resolved));
         if (r == null) return null;
         MapperModel.Expr e = new MapperModel.Expr(r.code, r.type, r.path, resolved.nullableRoot, false);
-        e.facadeNode = facadeNodes.isFacadeNode(resolved.param.element.asType());
+        // JsonObject dynamic members, like external facade-node members, are
+        // exposed as Object.  Retain that fact only for those untyped reads;
+        // declared JOJO accessors already carry their real Java type.
+        e.facadeNode = GeneratorUtil.isObject(ctx, r.type) && (facadeNodes.isFacadeNode(resolved.param.element.asType())
+                || GeneratorUtil.isAssignableErasure(ctx, resolved.param.element.asType(), ctx.jsonObjectType));
         e.facadeType = e.facadeNode ? resolved.param.element.asType() : null;
+        if (_isExactJsonObject(resolved.param.element.asType()) && _isFlatNamePath(resolved.path)) {
+            e.jsonObjectRoot = resolved.param.name;
+            e.jsonObjectKey = resolved.path;
+        }
         if (r.path) {
             if (r.leafExpr != null && _readCount(state, path) <= 1) {
                 // inline leaf expression, suppress the leaf temp declaration
@@ -2282,17 +2292,23 @@ public final class MapperGenerator {
                 state.readTemps.addAll(r.temps);
                 e.local = true;
             }
-                state.cache.put(key, new MapperModel.CachedRead(r.code, r.type, true, resolved.nullableRoot, e.facadeNode, e.facadeType));
+                state.cache.put(key, new MapperModel.CachedRead(r.code, r.type, true, resolved.nullableRoot, e.facadeNode, e.facadeType,
+                        e.jsonObjectRoot, e.jsonObjectKey));
         } else if (_readCount(state, path) > 1) {
             String temp = preferredTemp == null ? state.names.prefixed("s", targetName) : preferredTemp;
             state.readTemps.add(_localTypeName(r.type, resolved.nullableRoot) + " " + temp + " = " + r.code + ";");
             e.code = temp;
             e.local = true;
-            state.cache.put(key, new MapperModel.CachedRead(temp, r.type, false, resolved.nullableRoot, e.facadeNode, e.facadeType));
+            state.cache.put(key, new MapperModel.CachedRead(temp, r.type, false, resolved.nullableRoot, e.facadeNode, e.facadeType,
+                    e.jsonObjectRoot, e.jsonObjectKey));
         } else {
             e.temps.addAll(r.temps);
         }
         return e;
+    }
+
+    private boolean _isFlatNamePath(String path) {
+        return path.length() != 0 && !path.startsWith("$") && !path.startsWith("/");
     }
 
     private MapperModel.ResolvedSource _resolveSource(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources,
@@ -2583,13 +2599,15 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Expr _maybeNestedExpr(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.Expr e, TypeMirror need, String nestedMapper, String name) {
+        MapperModel.Expr direct = _jsonObjectScalarExpr(e, need, nestedMapper);
+        if (direct != null) return direct;
         if (e.facadeNode) {
             MapperModel.Converter conv = _facadeValueConverter(iface, method, target, e.facadeType, need, nestedMapper);
             if (conv == null) return null;
             String value = generation.helperName("facadeValue");
             MapperModel.Expr r = new MapperModel.Expr(_facadeConvertValue(conv, value), conv.type, e.path, e.nullableRoot, true);
             r.temps.addAll(e.temps);
-            r.temps.add("Object " + value + " = " + e.code + ";");
+            r.temps.add("Object " + value + " = " + _jsonObjectContainerAccess(e, need, nestedMapper) + ";");
             return r;
         }
         MapperModel.ContainerType from = _container(e.type);
@@ -2632,6 +2650,50 @@ public final class MapperGenerator {
         return r;
     }
 
+    /**
+     * JsonObject can expose native object and array children directly.  Leave
+     * maps, node values, and polymorphic values on the generic path: those may
+     * legitimately be Map-backed values rather than JsonObject instances.
+     */
+    private String _jsonObjectContainerAccess(MapperModel.Expr e, TypeMirror need, String nestedMapper) {
+        if (e.jsonObjectRoot == null || nestedMapper != null && nestedMapper.length() != 0) return e.code;
+        String getter = null;
+        MapperModel.ContainerType container = _container(need);
+        if (container != null && !container.map) getter = "getJsonArray";
+        else if (_pojoTarget(need) && !_isNodeValue(need) && !_hasOneOfAnnotation(need)) getter = "getJsonObject";
+        if (getter == null) return e.code;
+        String access = e.jsonObjectRoot + "." + getter + "(\"" + GeneratorUtil.escape(e.jsonObjectKey) + "\")";
+        return e.nullableRoot ? e.jsonObjectRoot + " == null ? null : " + access : access;
+    }
+
+    /** Uses JsonObject's strict getters only for flat members of an exact JsonObject source. */
+    private MapperModel.Expr _jsonObjectScalarExpr(MapperModel.Expr e, TypeMirror need, String nestedMapper) {
+        if (e.jsonObjectRoot == null || nestedMapper != null && nestedMapper.length() != 0) return null;
+        String getter;
+        String defaultValue = _primitiveDefault(need);
+        switch (need.getKind()) {
+            case BOOLEAN: getter = "getBoolean"; break;
+            case BYTE: getter = "getByte"; break;
+            case SHORT: getter = "getShort"; break;
+            case INT: getter = "getInt"; break;
+            case LONG: getter = "getLong"; break;
+            case FLOAT: getter = "getFloat"; break;
+            case DOUBLE: getter = "getDouble"; break;
+            default:
+                if (!GeneratorUtil.isSameErasure(ctx, need, ctx.elements.getTypeElement(String.class.getName()).asType())) return null;
+                getter = "getString";
+                defaultValue = null;
+        }
+        String access = e.jsonObjectRoot + "." + getter + "(\"" + GeneratorUtil.escape(e.jsonObjectKey) + "\""
+                + (defaultValue == null ? ")" : ", " + defaultValue + ")");
+        if (e.nullableRoot) {
+            access = e.jsonObjectRoot + " == null ? " + (defaultValue == null ? "null" : defaultValue) + " : " + access;
+        }
+        MapperModel.Expr r = new MapperModel.Expr(access, need, e.path, e.nullableRoot, false);
+        r.temps.addAll(e.temps);
+        return r;
+    }
+
     private String _nullGuardCode(MapperModel.Expr e, String source) {
         return e.nullGuardCodeTemplate.replace("$source", source);
     }
@@ -2661,12 +2723,26 @@ public final class MapperGenerator {
     }
 
     private MapperModel.Converter _facadeValueConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                                          TypeMirror from, TypeMirror to, String nestedMapper) {
-        if (to.getKind().isPrimitive()) {
+                                                            TypeMirror from, TypeMirror to, String nestedMapper) {
+        // External facade nodes have no typed null contract.  JsonObject has
+        // long-standing direct primitive getters and is handled separately.
+        if (to.getKind().isPrimitive() && facadeNodes.isFacadeNode(from)) {
             _error(method, target, "Facade JSON null may be assigned to primitive target type " + to + "; use a boxed type");
             return null;
         }
         MapperModel.ContainerType container = _container(to);
+        // A JsonObject member known to be an object can retain its concrete
+        // type.  This lets the child helper use JsonObject's scalar getters
+        // too, rather than dropping back to the facade-neutral Nodes reader.
+        // getJsonObject() also safely wraps a Map-backed child.
+        if (_isExactJsonObject(from) && _pojoTarget(to) && !_isNodeValue(to)
+                && !_hasOneOfAnnotation(to) && (nestedMapper == null || nestedMapper.length() == 0)) {
+            // Keep Object dispatch at this boundary: JsonObject's direct
+            // getter can wrap a Map child, and JsonArray elements may still
+            // be Maps.  Its JsonObject branch carries the metadata above.
+            String helper = _ensureObjectDispatchHelper(iface, method, target, ctx.objectType, to);
+            return helper == null ? null : new MapperModel.Converter(helper, to);
+        }
         if (container != null && container.map) {
             if (container.value == null || container.key == null) {
                 _error(method, target, "Raw or non-parameterized collection/map types are unsupported");
@@ -2676,17 +2752,27 @@ public final class MapperGenerator {
             String helper = _ensureFacadeMapProjectionHelper(iface, method, target, from, container, nestedMapper);
             return helper == null ? null : new MapperModel.Converter(helper, to);
         }
-        if (_pojoTarget(to) && (nestedMapper == null || nestedMapper.length() == 0)) {
+        if (_pojoTarget(to) && !_isNodeValue(to) && !_hasOneOfAnnotation(to) && (nestedMapper == null || nestedMapper.length() == 0)) {
             return _facadeObjectLikeConverter(iface, method, target, from, to);
         }
         MapperModel.Converter array = _facadeArrayConverter(iface, method, target, from, to, nestedMapper);
         if (array != null) return array;
-        // Prefer the declared facade type so a named converter can accept its
-        // native node class.  Ordinary facade conversions still fall back to
-        // Object and therefore retain the facade-neutral Nodes scalar path.
-        MapperModel.Converter conv = _resolveConverter(iface, method, target, from, to, nestedMapper, false);
+        // Dynamic children are not themselves facade nodes.  In particular,
+        // @OneOf must receive Object so its Nodes-based object dispatch also
+        // accepts Map children; only an explicit named mapper needs the
+        // declared facade root type.
+        boolean typed = nestedMapper != null && nestedMapper.length() != 0;
+        MapperModel.Converter conv = typed
+                ? _resolveConverter(iface, method, target, from, to, nestedMapper, false) : null;
+        boolean nativeConverter = conv != null;
         if (conv == null) conv = _resolveConverter(iface, method, target, ctx.objectType, to, nestedMapper);
-        return conv == null ? null : new MapperModel.Converter(conv.method, conv.type, from);
+        // JsonObject dynamic reads return Object.  Missing and JSON-null
+        // values mapped to primitive fields deliberately use the Java
+        // primitive default, matching absent-property binding behavior and
+        // avoiding an implicit null unbox in generated code.
+        if (conv == null) return null;
+        TypeMirror result = to.getKind().isPrimitive() ? to : conv.type;
+        return new MapperModel.Converter(conv.method, result, nativeConverter ? from : null);
     }
 
     /** Converts a runtime-validated facade array through the facade-neutral Nodes API. */
@@ -3038,7 +3124,10 @@ public final class MapperGenerator {
                     && !sourceRawJsonType.equals(mapping.rawJsonType)) {
                 continue;
             }
-            MapperModel.Converter conv = _resolveConverter(iface, method, target, from, mapping.type, "");
+            MapperModel.Converter conv = (facadeNodes.isFacadeNode(from)
+                    || GeneratorUtil.isAssignableErasure(ctx, from, ctx.jsonObjectType))
+                    ? _facadeObjectLikeConverter(iface, method, target, from, mapping.type)
+                    : _resolveConverter(iface, method, target, from, mapping.type, "");
             if (conv == null) {
                 generation.inProgress.remove(key);
                 return null;
@@ -4432,11 +4521,26 @@ public final class MapperGenerator {
     }
 
     private Map<String, MapperModel.Expr> _objectLikeValues(TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                                            MapperModel.Plan plan, TypeMirror from, String source, String kind) {
+                                                             MapperModel.Plan plan, TypeMirror from, String source, String kind) {
         Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
         for (String name : plan.names) {
             TypeMirror rawType = _objectLikeValueType(from, kind);
             MapperModel.Expr e = new MapperModel.Expr(_objectLikeRead(source, name, kind), rawType);
+            if ("json".equals(kind)) {
+                // Keep this metadata on helper-created expressions as well as
+                // top-level path reads.  Nested automatic POJO helpers then
+                // retain the JsonObject fast path recursively.
+                e.facadeNode = true;
+                e.facadeType = ctx.jsonObjectType;
+                e.jsonObjectRoot = source;
+                e.jsonObjectKey = name;
+            } else if ("map".equals(kind)) {
+                // Map branches are dynamic too.  In particular this preserves
+                // array conversion and primitive null defaults in Object/
+                // @OneOf dispatch helpers.
+                e.facadeNode = true;
+                e.facadeType = ctx.objectType;
+            }
             e = _maybeNestedExpr(iface, method, target, e, plan.writes.get(name).type, "", name);
             if (e == null) return null;
             if (!_assignable(e.type, plan.writes.get(name).type)) {
@@ -4865,7 +4969,21 @@ public final class MapperGenerator {
 
     private String _facadeConvertValue(MapperModel.Converter conv, String value) {
         String typed = conv.facadeType == null ? value : "(" + conv.facadeType + ") " + value;
-        return "(org.sjf4j.NodeKind.of(" + value + ").isNull() ? null : " + _convertValue(conv, typed) + ")";
+        String nullValue = conv.type.getKind().isPrimitive() ? _primitiveDefault(conv.type) : "null";
+        return "(org.sjf4j.NodeKind.of(" + value + ").isNull() ? " + nullValue + " : " + _convertValue(conv, typed) + ")";
+    }
+
+    private String _primitiveDefault(TypeMirror type) {
+        switch (type.getKind()) {
+            case BOOLEAN: return "false";
+            case CHAR: return "'\\0'";
+            case BYTE: return "(byte) 0";
+            case SHORT: return "(short) 0";
+            case LONG: return "0L";
+            case FLOAT: return "0F";
+            case DOUBLE: return "0D";
+            default: return "0";
+        }
     }
 
     private void _emitArrayField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,

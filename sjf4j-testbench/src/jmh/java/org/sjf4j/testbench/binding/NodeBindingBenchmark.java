@@ -13,9 +13,11 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.TypeReference;
+import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.binding.NodeBinding;
 import org.sjf4j.binding.simple.SimpleNodeBinding;
 import org.sjf4j.testbench.model.Address;
@@ -56,6 +58,7 @@ public class NodeBindingBenchmark {
     private JsonArray eventsNode;
     private JsonObject valueMapNode;
     private UserGraph userGraph;
+    private UserGraphMapper compiledMapper;
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{NodeBindingBenchmark.class.getName()});
@@ -118,11 +121,20 @@ public class NodeBindingBenchmark {
         userGraph.setPrimaryLabel(new StringValue("primary-production"));
         userGraphNode = JsonObject.of("owner", createUserNode(0), "users", usersNode, "events", eventsNode,
                 "labels", labelNodes, "primaryLabel", "primary-production");
+        compiledMapper = CompiledInstances.of(UserGraphMapper.class);
+        assertGraph(compiledMapper.map(userGraphNode), userGraph);
+        assertGraph((UserGraph) binding.readNode(userGraphNode, UserGraph.class), userGraph);
+        assertGraph(readUserGraph(userGraphNode), userGraph);
     }
 
     @Benchmark
     public Object nodeBinding_fullGraph_read() {
         return binding.readNode(userGraphNode, UserGraph.class);
+    }
+
+    @Benchmark
+    public UserGraph compiledMapper_fullGraph_read() {
+        return compiledMapper.map(userGraphNode);
     }
 
     @Benchmark
@@ -163,6 +175,65 @@ public class NodeBindingBenchmark {
     @Benchmark
     public Object nodeBinding_nodeValue_map_read() {
         return binding.readNode(valueMapNode, VALUE_MAP_TYPE);
+    }
+
+    @CompiledMapper
+    public interface UserGraphMapper {
+        UserGraph map(JsonObject source);
+    }
+
+    private static void assertGraph(UserGraph actual, UserGraph expected) {
+        require(actual != null && actual.getOwner() != null && actual.getUsers() != null);
+        assertUser(actual.getOwner(), expected.getOwner());
+        require(actual.getUsers().getTotal() == expected.getUsers().getTotal()
+                && actual.getUsers().getPage() == expected.getUsers().getPage()
+                && actual.getUsers().getGeneratedAt() == expected.getUsers().getGeneratedAt()
+                && actual.getUsers().getUsers().size() == expected.getUsers().getUsers().size());
+        for (int i = 0; i < actual.getUsers().getUsers().size(); i++) assertUser(actual.getUsers().getUsers().get(i), expected.getUsers().getUsers().get(i));
+        require(actual.getEvents().size() == expected.getEvents().size());
+        for (int i = 0; i < actual.getEvents().size(); i++) assertEvent(actual.getEvents().get(i), expected.getEvents().get(i));
+        require(actual.getLabels().size() == expected.getLabels().size());
+        for (Map.Entry<String, StringValue> entry : expected.getLabels().entrySet())
+            require(actual.getLabels().containsKey(entry.getKey()) && entry.getValue().getValue().equals(actual.getLabels().get(entry.getKey()).getValue()));
+        require(expected.getPrimaryLabel().getValue().equals(actual.getPrimaryLabel().getValue()));
+    }
+
+    private static void assertUser(User actual, User expected) {
+        require(actual.getId() == expected.getId() && actual.getCreatedAt() == expected.getCreatedAt()
+                && actual.getUpdatedAt() == expected.getUpdatedAt() && actual.getReputation() == expected.getReputation()
+                && actual.getLoginCount() == expected.getLoginCount() && actual.getAge() == expected.getAge()
+                && actual.isActive() == expected.isActive() && actual.isVerified() == expected.isVerified()
+                && actual.isAdmin() == expected.isAdmin() && actual.isSuspended() == expected.isSuspended()
+                && actual.getScore() == expected.getScore() && actual.getLatitude() == expected.getLatitude()
+                && actual.getLongitude() == expected.getLongitude() && actual.getUsername().equals(expected.getUsername())
+                && actual.getEmail().equals(expected.getEmail()) && actual.getDisplayName().equals(expected.getDisplayName())
+                && actual.getPasswordHash().equals(expected.getPasswordHash()) && actual.getBio().equals(expected.getBio())
+                && actual.getWebsite().equals(expected.getWebsite()) && actual.getDepartment().equals(expected.getDepartment()));
+        Address a = actual.getAddress(), e = expected.getAddress();
+        require(a.getStreet().equals(e.getStreet()) && a.getCity().equals(e.getCity()) && a.getState().equals(e.getState())
+                && a.getZip().equals(e.getZip()) && a.getCountry().equals(e.getCountry()) && actual.getTags().equals(expected.getTags())
+                && actual.getFriends().size() == expected.getFriends().size());
+        for (int i = 0; i < actual.getFriends().size(); i++) {
+            Friend f = actual.getFriends().get(i), ef = expected.getFriends().get(i);
+            require(f.getId() == ef.getId() && f.getSince() == ef.getSince() && f.isClose() == ef.isClose() && f.getName().equals(ef.getName()));
+        }
+    }
+
+    private static void assertEvent(UserEvent actual, UserEvent expected) {
+        require(actual.getClass() == expected.getClass());
+        if (actual instanceof LoginEvent) {
+            LoginEvent a = (LoginEvent) actual, e = (LoginEvent) expected;
+            require(a.getType().equals(e.getType()) && a.getUserId() == e.getUserId() && a.getOccurredAt() == e.getOccurredAt()
+                    && a.getIpAddress().equals(e.getIpAddress()) && a.getDevice().equals(e.getDevice()));
+        } else {
+            CommentEvent a = (CommentEvent) actual, e = (CommentEvent) expected;
+            require(a.getType().equals(e.getType()) && a.getUserId() == e.getUserId() && a.getOccurredAt() == e.getOccurredAt()
+                    && a.getCommentId() == e.getCommentId() && a.getBody().equals(e.getBody()) && a.getReplyTo() == e.getReplyTo());
+        }
+    }
+
+    private static void require(boolean value) {
+        if (!value) throw new AssertionError("compiled mapper graph differs from expected graph");
     }
 
     private static User createUser(int index) {

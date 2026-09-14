@@ -236,7 +236,7 @@ public final class SimpleNodeBinding implements NodeBinding {
             Class<?> nodeClazz = node.getClass();
             if (node instanceof Map) {
                 Map<String, Object> srcMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = TypeRegistry.newMapContainer(nodeClazz, true);
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(nodeClazz, true, srcMap.size());
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 srcMap.forEach((k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, k);
@@ -247,7 +247,7 @@ public final class SimpleNodeBinding implements NodeBinding {
 
             if (node instanceof List) {
                 List<Object> srcList = (List<Object>) node;
-                List<Object> newList = TypeRegistry.newListContainer(nodeClazz, true);
+                List<Object> newList = TypeRegistry.newListContainer(nodeClazz, true, srcList.size());
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcList.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
@@ -258,7 +258,7 @@ public final class SimpleNodeBinding implements NodeBinding {
 
             if (node.getClass() == JsonObject.class) {
                 JsonObject srcJo = (JsonObject) node;
-                JsonObject newJo = new JsonObject();
+                JsonObject newJo = new JsonObject(TypeRegistry.newMapContainer(LinkedHashMap.class, false, srcJo.size()));
                 srcJo.forEach((k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, k);
                     newJo.put(k, _deepNode(v, Object.class, cps));
@@ -303,7 +303,7 @@ public final class SimpleNodeBinding implements NodeBinding {
             }
             if (node instanceof JsonArray) {
                 JsonArray srcJa = (JsonArray) node;
-                JsonArray newJa = nodeClazz == JsonArray.class ? new JsonArray()
+                JsonArray newJa = nodeClazz == JsonArray.class ? new JsonArray(new ArrayList<>(srcJa.size()))
                         : (JsonArray) TypeRegistry.registerPojoOrElseThrow(nodeClazz).creatorInfo.forceNewPojo();
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcJa.size(); i++) {
@@ -325,7 +325,7 @@ public final class SimpleNodeBinding implements NodeBinding {
             }
             if (node instanceof Set) {
                 Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet = TypeRegistry.newSetContainer(nodeClazz, true);
+                Set<Object> newSet = TypeRegistry.newSetContainer(nodeClazz, true, srcSet.size());
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
@@ -392,26 +392,27 @@ public final class SimpleNodeBinding implements NodeBinding {
         if (!deepCopy && rawClazz == JsonObject.class) {
             return new JsonObject(oldMap);
         }
-        return _readFromObjectSource(oldMap::entrySet, "Map", rawClazz, type, deepCopy, ps);
+        return _readFromObjectSource(oldMap.size(), oldMap.entrySet(), "Map", rawClazz, type, deepCopy, ps);
     }
 
     // JsonObject -> Map/JsonObject/JOJO/POJO
     private Object _readFromJsonObject(JsonObject oldJo, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
-        return _readFromObjectSource(oldJo::entrySet, "JsonObject", rawClazz, type, deepCopy, ps);
+        return _readFromObjectSource(oldJo.size(), oldJo.entrySet(), "JsonObject", rawClazz, type, deepCopy, ps);
     }
 
-    private Object _readFromObjectSource(ObjectSource source,
+    private Object _readFromObjectSource(int sourceSize,
+                                         Iterable<Map.Entry<String, Object>> entries,
                                          String sourceName,
                                          Class<?> rawClazz,
                                          Type type,
                                          boolean deepCopy,
-                                         PathSegment ps) {
+        PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false, sourceSize);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            for (Map.Entry<String, Object> entry : source.entries()) {
+            for (Map.Entry<String, Object> entry : entries) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object vv = _readNode(entry.getValue(), vt, vc, va, deepCopy, cps);
                 map.put(entry.getKey(), vv);
@@ -420,8 +421,8 @@ public final class SimpleNodeBinding implements NodeBinding {
         }
 
         if (rawClazz == JsonObject.class) {
-            JsonObject jo = new JsonObject();
-            for (Map.Entry<String, Object> entry : source.entries()) {
+            JsonObject jo = new JsonObject(TypeRegistry.newMapContainer(LinkedHashMap.class, false, sourceSize));
+            for (Map.Entry<String, Object> entry : entries) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object vv = _readNode(entry.getValue(), Object.class, Object.class, null, deepCopy, cps);
                 jo.put(entry.getKey(), vv);
@@ -431,7 +432,7 @@ public final class SimpleNodeBinding implements NodeBinding {
 
         ObjectInfo pi = TypeRegistry.registerTypeInfo(rawClazz).pojoInfo;
         if (pi != null && !pi.isJajo) {
-            return _readPojoFromEntries(source.entries(), type, rawClazz, pi, deepCopy, ps);
+            return _readPojoFromEntries(entries, type, rawClazz, pi, deepCopy, ps);
         }
         throw new BindingException("cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
     }
@@ -589,26 +590,20 @@ public final class SimpleNodeBinding implements NodeBinding {
         List<Object> values = new ArrayList<>(oldSet.size());
         values.addAll(oldSet);
         return _readFromArraySource(new ArraySource() {
-            @Override
-            public int size() {
-                return values.size();
-            }
-
-            @Override
-            public Object get(int i) {
-                return values.get(i);
-            }
+            @Override public int size() { return values.size(); }
+            @Override public Object get(int i) { return values.get(i); }
         }, "Set", rawClazz, type, deepCopy, ps);
     }
 
     private Object _readFromArraySource(ArraySource source, String sourceName, Class<?> rawClazz, Type type,
                                         boolean deepCopy, PathSegment ps) {
+        int size = source.size();
         if (List.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            List<Object> list = TypeRegistry.newListContainer(rawClazz, false);
-            for (int i = 0; i < source.size(); i++) {
+            List<Object> list = TypeRegistry.newListContainer(rawClazz, false, size);
+            for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
@@ -617,8 +612,8 @@ public final class SimpleNodeBinding implements NodeBinding {
             return list;
         }
         if (rawClazz == JsonArray.class) {
-            JsonArray ja = new JsonArray();
-            for (int i = 0; i < source.size(); i++) {
+            JsonArray ja = new JsonArray(new ArrayList<>(size));
+            for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, Object.class, Object.class, null, deepCopy, cps);
@@ -631,7 +626,7 @@ public final class SimpleNodeBinding implements NodeBinding {
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             Class<?> vc = jajo.elementType();
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            for (int i = 0; i < source.size(); i++) {
+            for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vc, vc, va, deepCopy, cps);
@@ -643,8 +638,8 @@ public final class SimpleNodeBinding implements NodeBinding {
             Class<?> vt = rawClazz.getComponentType();
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            Object array = Array.newInstance(vt, source.size());
-            for (int i = 0; i < source.size(); i++) {
+            Object array = Array.newInstance(vt, size);
+            for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
@@ -656,8 +651,8 @@ public final class SimpleNodeBinding implements NodeBinding {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, false);
-            for (int i = 0; i < source.size(); i++) {
+            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, false, size);
+            for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
@@ -672,7 +667,7 @@ public final class SimpleNodeBinding implements NodeBinding {
     private Object _readFromPojo(Object node, ObjectInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false, oldPi.readablePropertyCount);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
@@ -687,7 +682,7 @@ public final class SimpleNodeBinding implements NodeBinding {
         }
 
         if (rawClazz == JsonObject.class) {
-            JsonObject jo = new JsonObject();
+            JsonObject jo = new JsonObject(TypeRegistry.newMapContainer(LinkedHashMap.class, false, oldPi.readablePropertyCount));
             for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
@@ -713,12 +708,6 @@ public final class SimpleNodeBinding implements NodeBinding {
         int size();
         Object get(int i);
     }
-
-    private interface ObjectSource {
-        Iterable<Map.Entry<String, Object>> entries();
-    }
-
-
 
     /// Write
 

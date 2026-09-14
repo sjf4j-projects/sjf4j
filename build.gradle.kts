@@ -1,15 +1,6 @@
 
 
-subprojects {
-
-
-//    pluginManager.withPlugin("java") {
-//        configure<JavaPluginExtension> {
-//            toolchain {
-//                languageVersion.set(JavaLanguageVersion.of(17))
-//            }
-//        }
-//    }
-
+plugins {
+    id("com.vanniktech.maven.publish") version "0.35.0" apply false
 }
 

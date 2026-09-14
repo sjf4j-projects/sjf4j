@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved JMH-only handwritten JSON read/write benchmarks into `sjf4j-testbench` and enabled Lombok annotation processing for that source set.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
 - `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains.
+- Improved generated `@CompiledMapper` mappings from `JsonObject` with direct scalar and nested-container access, including dynamic Map-backed children and primitive defaults for missing or null values.
+- Pre-size built-in binding map, list, and set containers when the source size is known.
 
 ### Fixed
 - Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.
