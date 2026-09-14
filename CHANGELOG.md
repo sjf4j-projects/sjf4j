@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Removed capacity-aware `TypeRegistry` map, list, and set container factory overloads.
 - Moved compiled mapping annotations (including JDBC annotations) to `org.sjf4j.annotation.mapping`, compiled path annotations to `org.sjf4j.annotation.path`, and their processor generators to `org.sjf4j.processor.mapping` and `org.sjf4j.processor.path`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
 - Renamed `@MapperOptions` to `@MappingOptions`.
@@ -29,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
 - `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains.
 - Improved generated `@CompiledMapper` mappings from `JsonObject` with direct scalar and nested-container access, including dynamic Map-backed children and primitive defaults for missing or null values.
-- Pre-size built-in binding map, list, and set containers when the source size is known.
 
 ### Fixed
 - Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.

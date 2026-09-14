@@ -231,13 +231,8 @@ public final class TypeRegistry {
 
     @SuppressWarnings("unchecked")
     public static <T> Map<String, T> newMapContainer(Class<?> mapType, boolean fallback) {
-        return newMapContainer(mapType, fallback, -1);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> newMapContainer(Class<?> mapType, boolean fallback, int expectedSize) {
         if (mapType == null || mapType == Object.class || mapType == Map.class || mapType == LinkedHashMap.class) {
-            return expectedSize < 0 ? new LinkedHashMap<>() : new LinkedHashMap<>(_hashContainerCapacity(expectedSize));
+            return new LinkedHashMap<>();
         }
         ContainerInfo ci = registerTypeInfo(mapType).containerInfo;
         if (ci == null || ci.kind != NodeKind.OBJECT_MAP) {
@@ -249,14 +244,10 @@ public final class TypeRegistry {
         return (Map<String, T>) ci.newContainer();
     }
 
-    public static <T> List<T> newListContainer(Class<?> listType, boolean fallback) {
-        return newListContainer(listType, fallback, -1);
-    }
-
     @SuppressWarnings("unchecked")
-    public static <T> List<T> newListContainer(Class<?> listType, boolean fallback, int expectedSize) {
+    public static <T> List<T> newListContainer(Class<?> listType, boolean fallback) {
         if (listType == null || listType == Object.class || listType == List.class || listType == ArrayList.class) {
-            return expectedSize < 0 ? new ArrayList<>() : new ArrayList<>(expectedSize);
+            return new ArrayList<>();
         }
         ContainerInfo ci = registerTypeInfo(listType).containerInfo;
         if (ci == null || ci.kind != NodeKind.ARRAY_LIST) {
@@ -268,14 +259,10 @@ public final class TypeRegistry {
         return (List<T>) ci.newContainer();
     }
 
-    public static <T> Set<T> newSetContainer(Class<?> setType, boolean fallback) {
-        return newSetContainer(setType, fallback, -1);
-    }
-
     @SuppressWarnings("unchecked")
-    public static <T> Set<T> newSetContainer(Class<?> setType, boolean fallback, int expectedSize) {
+    public static <T> Set<T> newSetContainer(Class<?> setType, boolean fallback) {
         if (setType == null || setType == Object.class || setType == Set.class || setType == LinkedHashSet.class) {
-            return expectedSize < 0 ? new LinkedHashSet<>() : new LinkedHashSet<>(_hashContainerCapacity(expectedSize));
+            return new LinkedHashSet<>();
         }
         ContainerInfo ci = registerTypeInfo(setType).containerInfo;
         if (ci == null || ci.kind != NodeKind.ARRAY_SET) {
@@ -285,11 +272,6 @@ public final class TypeRegistry {
             throw new BindingException("unsupported Set target type '" + setType.getName() + "'");
         }
         return (Set<T>) ci.newContainer();
-    }
-
-    private static int _hashContainerCapacity(int expectedSize) {
-        if (expectedSize < 3) return expectedSize + 1;
-        return (int) Math.min((expectedSize * 4L + 2L) / 3L, Integer.MAX_VALUE);
     }
 
 
