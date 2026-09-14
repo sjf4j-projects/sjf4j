@@ -1,4 +1,4 @@
-package org.sjf4j.compiled;
+package org.sjf4j;
 
 import org.sjf4j.exception.JsonException;
 
@@ -18,8 +18,6 @@ import java.lang.reflect.InvocationTargetException;
 public final class CompiledInstances {
 
     private static final String IMPL_SUFFIX = "_Impl";
-    private static final String COMPILED_ANNOTATIONS =
-            "@CompiledNavigator or @CompiledMapper (or @CompiledJdbcMapper)";
 
     private static final ClassValue<Object> INSTANCES_CACHE = new ClassValue<Object>() {
         @Override
@@ -40,8 +38,8 @@ public final class CompiledInstances {
 
     private static Object _create(Class<?> type) {
         if (!type.isInterface()) {
-            throw new JsonException("CompiledInstances.of requires an interface type generated from "
-                    + COMPILED_ANNOTATIONS + ", but got " + type.getName());
+            throw new JsonException("CompiledInstances.of requires an interface type, but got " +
+                    type.getName());
         }
 
         String implName = type.getName() + IMPL_SUFFIX;
@@ -51,7 +49,7 @@ public final class CompiledInstances {
         } catch (ClassNotFoundException e) {
             throw new JsonException("Cannot find generated SJF4J implementation " + implName
                     + " for interface " + type.getName()
-                    + "; ensure the interface is annotated with " + COMPILED_ANNOTATIONS
+                    + "; ensure the interface is annotated with @CompiledXxx"
                     + ", annotation processing is enabled, and generated sources are compiled", e);
         } catch (LinkageError e) {
             throw new JsonException("Generated SJF4J implementation " + implName

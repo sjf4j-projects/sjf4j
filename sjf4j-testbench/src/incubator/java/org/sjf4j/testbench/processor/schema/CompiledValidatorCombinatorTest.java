@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatingOptions;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;

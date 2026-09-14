@@ -15,7 +15,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
@@ -59,7 +59,7 @@ public interface Fastjson2Module {
             if (rawClazz == JsonArray.class) {
                 return new JsonArrayReader<>(null);
             }
-            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (JsonObject.class.isAssignableFrom(rawClazz)) {
                 return new JsonObjectReader<>(type, ti.pojoInfo, streamingContext);
             }
@@ -318,7 +318,7 @@ public interface Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(objectClass)) {
                 return new JsonArrayWriter();
             }
-            TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
+            TypeInfo ti = TypeRegistry.registerTypeInfo(objectClass);
             if (JsonObject.class.isAssignableFrom(objectClass)) {
                 return new JsonObjectWriter(ti.pojoInfo, streamingContext);
             }

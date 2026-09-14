@@ -1,8 +1,8 @@
-package org.sjf4j.node;
+package org.sjf4j;
 
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
 import org.sjf4j.facade.FacadeNodes;
+import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.node.TypeInfo;
 
 import java.util.List;
 import java.util.Map;
@@ -65,7 +65,7 @@ public enum NodeKind {
         NodeKind kind = plainOf(clazz);
         if (kind != NodeKind.UNKNOWN) return kind;
 
-        TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueCodecInfo != null) {
             return NodeKind.VALUE_NODE_VALUE;
         } else if (ti.oneOfInfo != null) {

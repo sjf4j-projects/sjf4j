@@ -6,7 +6,7 @@ import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
 import org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions;
 import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 

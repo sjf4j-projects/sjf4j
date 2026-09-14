@@ -924,7 +924,7 @@ public final class JdbcMapperGenerator {
         if (name.equals("java.time.LocalDateTime")) return temporal(raw, "java.time.LocalDateTime", "java.sql.Timestamp", "toLocalDateTime", column);
         if (name.equals("java.time.LocalDate")) return temporal(raw, "java.time.LocalDate", "java.sql.Date", "toLocalDate", column);
         if (name.equals("java.time.LocalTime")) return temporal(raw, "java.time.LocalTime", "java.sql.Time", "toLocalTime", column);
-        if (name.equals("java.lang.String")) return "(" + raw + " == null ? null : org.sjf4j.node.Nodes.toString(" + raw + "))";
+        if (name.equals("java.lang.String")) return "(" + raw + " == null ? null : org.sjf4j.Nodes.toString(" + raw + "))";
         if (name.equals("java.lang.Integer") || name.equals("java.lang.Long")
                 || name.equals("java.lang.Short") || name.equals("java.lang.Byte")
                 || name.equals("java.lang.Double") || name.equals("java.lang.Float")
@@ -933,23 +933,23 @@ public final class JdbcMapperGenerator {
         }
         TypeElement element = GeneratorUtil.asTypeElement(type);
         if (element != null && element.getKind() == ElementKind.ENUM) {
-            return "(" + raw + " == null ? null : org.sjf4j.node.Nodes.toEnum(" + raw
+            return "(" + raw + " == null ? null : org.sjf4j.Nodes.toEnum(" + raw
                     + ", " + name + ".class))";
         }
         return "(" + name + ") " + raw;
     }
 
     private String scalar(String raw, String name) {
-        if (name.equals("int") || name.equals("java.lang.Integer")) return "org.sjf4j.node.Nodes.toInt(" + raw + ")";
-        if (name.equals("long") || name.equals("java.lang.Long")) return "org.sjf4j.node.Nodes.toLong(" + raw + ")";
-        if (name.equals("short") || name.equals("java.lang.Short")) return "org.sjf4j.node.Nodes.toShort(" + raw + ")";
-        if (name.equals("byte") || name.equals("java.lang.Byte")) return "org.sjf4j.node.Nodes.toByte(" + raw + ")";
-        if (name.equals("double") || name.equals("java.lang.Double")) return "org.sjf4j.node.Nodes.toDouble(" + raw + ")";
-        if (name.equals("float") || name.equals("java.lang.Float")) return "org.sjf4j.node.Nodes.toFloat(" + raw + ")";
-        if (name.equals("java.math.BigDecimal")) return "org.sjf4j.node.Nodes.toBigDecimal(" + raw + ")";
-        if (name.equals("java.math.BigInteger")) return "org.sjf4j.node.Nodes.toBigInteger(" + raw + ")";
-        if (name.equals("boolean") || name.equals("java.lang.Boolean")) return "org.sjf4j.node.Nodes.toBoolean(" + raw + ")";
-        return "org.sjf4j.node.Nodes.toChar(" + raw + ")";
+        if (name.equals("int") || name.equals("java.lang.Integer")) return "org.sjf4j.Nodes.toInt(" + raw + ")";
+        if (name.equals("long") || name.equals("java.lang.Long")) return "org.sjf4j.Nodes.toLong(" + raw + ")";
+        if (name.equals("short") || name.equals("java.lang.Short")) return "org.sjf4j.Nodes.toShort(" + raw + ")";
+        if (name.equals("byte") || name.equals("java.lang.Byte")) return "org.sjf4j.Nodes.toByte(" + raw + ")";
+        if (name.equals("double") || name.equals("java.lang.Double")) return "org.sjf4j.Nodes.toDouble(" + raw + ")";
+        if (name.equals("float") || name.equals("java.lang.Float")) return "org.sjf4j.Nodes.toFloat(" + raw + ")";
+        if (name.equals("java.math.BigDecimal")) return "org.sjf4j.Nodes.toBigDecimal(" + raw + ")";
+        if (name.equals("java.math.BigInteger")) return "org.sjf4j.Nodes.toBigInteger(" + raw + ")";
+        if (name.equals("boolean") || name.equals("java.lang.Boolean")) return "org.sjf4j.Nodes.toBoolean(" + raw + ")";
+        return "org.sjf4j.Nodes.toChar(" + raw + ")";
     }
 
     private static String jdbcGetter(TypeMirror type) {

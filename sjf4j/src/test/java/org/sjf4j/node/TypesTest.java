@@ -2,8 +2,7 @@ package org.sjf4j.node;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.Types;
+import org.sjf4j.TypeReference;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;

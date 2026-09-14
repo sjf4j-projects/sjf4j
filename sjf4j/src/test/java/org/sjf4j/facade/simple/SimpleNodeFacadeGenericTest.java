@@ -5,7 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.NodeFacade;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.TypeReference;
 
 import java.util.Arrays;
 import java.util.List;

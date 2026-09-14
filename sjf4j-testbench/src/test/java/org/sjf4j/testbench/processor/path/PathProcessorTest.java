@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.navigator.GetByPath;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

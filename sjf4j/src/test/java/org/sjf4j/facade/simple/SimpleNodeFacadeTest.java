@@ -14,7 +14,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.PatchOperation;
 import org.sjf4j.path.JsonPointer;

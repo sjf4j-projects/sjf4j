@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class NodeRegistryCoverageTest {
+class TypeRegistryCoverageTest {
 
     @NodeValue
     static class MiniValue {
@@ -227,9 +227,9 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testNamedValueCodecsAndValueFormatMetadata() {
-        ValueCodecInfo defaultCodec = NodeRegistry.registerTypeInfo(Instant.class).valueCodecInfo;
-        ValueCodecInfo isoCodec = NodeRegistry.resolveValueCodecOrElseThrow(Instant.class, "iso");
-        ValueCodecInfo epochCodec = NodeRegistry.resolveValueCodecOrElseThrow(Instant.class, "epochMillis");
+        ValueCodecInfo defaultCodec = TypeRegistry.registerTypeInfo(Instant.class).valueCodecInfo;
+        ValueCodecInfo isoCodec = TypeRegistry.resolveValueCodecOrElseThrow(Instant.class, "iso");
+        ValueCodecInfo epochCodec = TypeRegistry.resolveValueCodecOrElseThrow(Instant.class, "epochMillis");
 
         assertEquals("", defaultCodec.codecName);
         assertEquals("iso", isoCodec.codecName);
@@ -237,12 +237,12 @@ class NodeRegistryCoverageTest {
         assertEquals(String.class, isoCodec.rawClazz);
         assertEquals(Long.class, epochCodec.rawClazz);
 
-        PropertyInfo fi = NodeRegistry.registerPojoOrElseThrow(InstantFieldPojo.class).properties.get("createdAt");
+        PropertyInfo fi = TypeRegistry.registerPojoOrElseThrow(InstantFieldPojo.class).properties.get("createdAt");
         assertEquals("epochMillis", fi.codecName);
         assertNotNull(fi.resolvedValueCodec);
         assertEquals(Long.class, fi.resolvedValueCodec.rawClazz);
 
-        CreatorInfo creatorInfo = NodeRegistry.registerPojoOrElseThrow(InstantCreatorPojo.class).creatorInfo;
+        CreatorInfo creatorInfo = TypeRegistry.registerPojoOrElseThrow(InstantCreatorPojo.class).creatorInfo;
         assertEquals("epochMillis", creatorInfo.argCodecNames[0]);
         assertNotNull(creatorInfo.argValueCodecs[0]);
         assertEquals(Long.class, creatorInfo.argValueCodecs[0].rawClazz);
@@ -250,7 +250,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testCodecPatternResolvesLocalDateCodec() {
-        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(LocalDatePatternPojo.class);
+        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalDatePatternPojo.class);
         PropertyInfo fi = pi.properties.get("date");
         assertNotNull(fi);
         // codecName is null when only codecPattern is specified (separate attributes)
@@ -265,7 +265,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testCodecPatternOnCreatorParam() {
-        CreatorInfo ci = NodeRegistry.registerPojoOrElseThrow(LocalDatePatternCreatorPojo.class).creatorInfo;
+        CreatorInfo ci = TypeRegistry.registerPojoOrElseThrow(LocalDatePatternCreatorPojo.class).creatorInfo;
         // argCodecNames stores codecName (null when only codecPattern is set)
         assertNull(ci.argCodecNames[0]);
         assertNotNull(ci.argValueCodecs[0]);
@@ -276,7 +276,7 @@ class NodeRegistryCoverageTest {
     @Test
     void testCodecPatternOnNonPatternTypeThrows() {
         assertThrows(JsonException.class, () ->
-                NodeRegistry.registerPojoOrElseThrow(InvalidPatternPojo.class));
+                TypeRegistry.registerPojoOrElseThrow(InvalidPatternPojo.class));
     }
 
     static class LocalDatePatternPojo {
@@ -302,7 +302,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testLocalTimeCodecRoundTrip() {
-        TypeInfo ti = NodeRegistry.registerTypeInfo(LocalTime.class);
+        TypeInfo ti = TypeRegistry.registerTypeInfo(LocalTime.class);
         assertTrue(ti.hasValueCodecs());
         ValueCodecInfo vci = ti.getValueCodecInfo("");
         assertNotNull(vci);
@@ -315,7 +315,7 @@ class NodeRegistryCoverageTest {
     @Test
     @SuppressWarnings("unchecked")
     void testLocalTimeCodecPattern() {
-        ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(LocalTime.class, "");
+        ValueCodecInfo base = TypeRegistry.resolveValueCodecOrElseThrow(LocalTime.class, "");
         assertTrue(base.valueCodec instanceof PatternedValueCodec);
         // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
         PatternedValueCodec pc = (PatternedValueCodec) base.valueCodec;
@@ -330,7 +330,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testOptionalCodecPresent() {
-        TypeInfo ti = NodeRegistry.registerTypeInfo(Optional.class);
+        TypeInfo ti = TypeRegistry.registerTypeInfo(Optional.class);
         assertTrue(ti.hasValueCodecs());
         ValueCodecInfo vci = ti.getValueCodecInfo("");
         assertNotNull(vci);
@@ -346,7 +346,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testOptionalCodecEmpty() {
-        ValueCodecInfo vci = NodeRegistry.resolveValueCodecOrElseThrow(Optional.class, "");
+        ValueCodecInfo vci = TypeRegistry.resolveValueCodecOrElseThrow(Optional.class, "");
         assertNull(vci.valueToRaw(Optional.empty()));
         assertSame(Optional.empty(), vci.rawToValue(null));
     }
@@ -358,7 +358,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testLocalTimeFieldWithPattern() {
-        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(LocalTimeFieldPojo.class);
+        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalTimeFieldPojo.class);
         PropertyInfo fi = pi.properties.get("time");
         assertNotNull(fi);
         assertNull(fi.codecName);
@@ -374,7 +374,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testOptionalFieldWithCodec() {
-        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(OptionalFieldPojo.class);
+        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(OptionalFieldPojo.class);
         PropertyInfo fi = pi.properties.get("name");
         assertNotNull(fi);
         assertNotNull(fi.resolvedValueCodec);
@@ -536,31 +536,31 @@ class NodeRegistryCoverageTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         CreatorInfo sessionCreator = ReflectUtil.analyzeCreator(SessionPojo.class, lookup);
-        ObjectInfo sessionInfo = NodeRegistry.registerPojoOrElseThrow(SessionPojo.class);
+        ObjectInfo sessionInfo = TypeRegistry.registerPojoOrElseThrow(SessionPojo.class);
         PropertyInfo extraField = sessionInfo.properties.get("extra");
 
-        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(sessionCreator, 1);
+        TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(sessionCreator, 1);
         session.acceptProperty(extraField, "later");
         session.acceptCtorArg(0, "abc");
         SessionPojo pojo = (SessionPojo) session.finish();
         assertEquals("abc", pojo.id);
         assertEquals("later", pojo.extra);
 
-        NodeRegistry.PojoCreationSession fieldSession = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
+        TypeRegistry.PojoCreationSession fieldSession = new TypeRegistry.PojoCreationSession(sessionCreator, 0);
         fieldSession.acceptProperty(extraField, "value");
         fieldSession.acceptCtorArg(0, "id-1");
         SessionPojo fieldPojo = (SessionPojo) fieldSession.finish();
         assertEquals("value", fieldPojo.extra);
 
         CreatorInfo jsonCreator = ReflectUtil.analyzeCreator(JsonSessionPojo.class, lookup);
-        NodeRegistry.PojoCreationSession jsonSession = new NodeRegistry.PojoCreationSession(jsonCreator, 0);
+        TypeRegistry.PojoCreationSession jsonSession = new TypeRegistry.PojoCreationSession(jsonCreator, 0);
         jsonSession.acceptDynamic("extra", 1);
         jsonSession.acceptCtorArg(0, "json-id");
         JsonObject jsonObject = (JsonObject) jsonSession.finish();
         assertEquals(1, jsonObject.getInt("extra"));
 
-        ObjectInfo mixedInfo = NodeRegistry.registerPojoOrElseThrow(MixedJsonSessionPojo.class);
-        NodeRegistry.PojoCreationSession mixedSession = new NodeRegistry.PojoCreationSession(mixedInfo.creatorInfo, 2);
+        ObjectInfo mixedInfo = TypeRegistry.registerPojoOrElseThrow(MixedJsonSessionPojo.class);
+        TypeRegistry.PojoCreationSession mixedSession = new TypeRegistry.PojoCreationSession(mixedInfo.creatorInfo, 2);
         mixedSession.acceptProperty(mixedInfo.properties.get("extra"), "later");
         mixedSession.acceptDynamic("dynamic", 2);
         mixedSession.acceptCtorArg(0, "mixed-id");
@@ -568,12 +568,12 @@ class NodeRegistryCoverageTest {
         assertEquals("later", mixedPojo.extra);
         assertEquals(2, mixedPojo.getInt("dynamic"));
 
-        ObjectInfo containerInfo = NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
-        NodeRegistry.PojoCreationSession noArgsSession = new NodeRegistry.PojoCreationSession(containerInfo.creatorInfo, 2);
+        ObjectInfo containerInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
+        TypeRegistry.PojoCreationSession noArgsSession = new TypeRegistry.PojoCreationSession(containerInfo.creatorInfo, 2);
         noArgsSession.acceptProperty(containerInfo.properties.get("plain"), "plain");
         assertEquals("plain", ((ContainerPojo) noArgsSession.finish()).plain);
 
-        NodeRegistry.PojoCreationSession growthSession = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
+        TypeRegistry.PojoCreationSession growthSession = new TypeRegistry.PojoCreationSession(sessionCreator, 0);
         for (int i = 0; i < 5; i++) {
             growthSession.acceptProperty(extraField, "v" + i);
         }
@@ -581,14 +581,14 @@ class NodeRegistryCoverageTest {
         SessionPojo grown = (SessionPojo) growthSession.finish();
         assertEquals("v4", grown.extra);
 
-        NodeRegistry.PojoCreationSession fieldGrowth = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
+        TypeRegistry.PojoCreationSession fieldGrowth = new TypeRegistry.PojoCreationSession(sessionCreator, 0);
         for (int i = 0; i < 5; i++) {
             fieldGrowth.acceptProperty(extraField, "f" + i);
         }
         fieldGrowth.acceptCtorArg(0, "field-id");
         assertEquals("f4", ((SessionPojo) fieldGrowth.finish()).extra);
 
-        NodeRegistry.PojoCreationSession jsonGrowth = new NodeRegistry.PojoCreationSession(jsonCreator, 0);
+        TypeRegistry.PojoCreationSession jsonGrowth = new TypeRegistry.PojoCreationSession(jsonCreator, 0);
         for (int i = 0; i < 5; i++) {
             jsonGrowth.acceptDynamic("k" + i, i);
         }
@@ -597,7 +597,7 @@ class NodeRegistryCoverageTest {
         assertEquals(4, grownJson.getInt("k4"));
 
         CreatorInfo aliasCreator = ReflectUtil.analyzeCreator(AliasCreatorPojo.class, lookup);
-        NodeRegistry.PojoCreationSession duplicateSession = new NodeRegistry.PojoCreationSession(aliasCreator, 0);
+        TypeRegistry.PojoCreationSession duplicateSession = new TypeRegistry.PojoCreationSession(aliasCreator, 0);
         duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("name"), "first");
         JsonException duplicate = assertThrows(JsonException.class,
                 () -> duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("n"), "second"));
@@ -606,7 +606,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testDuplicateCreatorBindingFailsAfterMaterialization() {
-        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(AliasCreatorPojo.class);
+        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(AliasCreatorPojo.class);
         JsonException duplicate = assertThrows(JsonException.class,
                 () -> StreamingIO.readPojo(new SimpleJsonReader(new StringReader("{\"name\":\"first\",\"n\":\"second\"}")),
                         AliasCreatorPojo.class, AliasCreatorPojo.class, pi, StreamingContext.EMPTY));
@@ -615,7 +615,7 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testPropertyInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
-        ObjectInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
+        ObjectInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
         PropertyInfo namesField = pojoInfo.properties.get("names");
         PropertyInfo numbersField = pojoInfo.properties.get("numbers");
         PropertyInfo mappingField = pojoInfo.properties.get("mapping");
@@ -695,7 +695,7 @@ class NodeRegistryCoverageTest {
         assertThrows(JsonException.class, () -> throwingField.invokeGetter(accessor));
         assertThrows(JsonException.class, () -> throwingField.invokeSetter(accessor, "x"));
 
-        ValueCodecInfo codecInfo = NodeRegistry.registerTypeInfo(MiniValue.class).valueCodecInfo;
+        ValueCodecInfo codecInfo = TypeRegistry.registerTypeInfo(MiniValue.class).valueCodecInfo;
         MiniValue value = new MiniValue("v");
         assertEquals("v", codecInfo.valueToRaw(value));
         assertEquals("v", ((MiniValue) codecInfo.rawToValue("v")).value);

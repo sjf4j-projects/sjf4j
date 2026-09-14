@@ -8,7 +8,7 @@ import org.sjf4j.annotation.mapper.MappingIfParentPresent;
 import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.mapper.MappingCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 
 import java.util.LinkedHashMap;

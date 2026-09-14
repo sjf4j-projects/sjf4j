@@ -10,8 +10,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 
 import java.io.StringReader;
@@ -36,7 +35,7 @@ class JsonObjectTest {
     }
 
     static class PrecomputedMetadataJojo extends JsonObject {
-        static final ObjectInfo PI = NodeRegistry.registerPojoOrElseThrow(PrecomputedMetadataJojo.class);
+        static final ObjectInfo PI = TypeRegistry.registerPojoOrElseThrow(PrecomputedMetadataJojo.class);
 
         public String name;
 

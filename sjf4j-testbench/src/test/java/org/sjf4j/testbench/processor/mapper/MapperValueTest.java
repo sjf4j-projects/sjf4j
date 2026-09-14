@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

@@ -8,19 +8,14 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.node.Nodes;
-import org.sjf4j.node.TypeReference;
 
-import java.lang.reflect.Type;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

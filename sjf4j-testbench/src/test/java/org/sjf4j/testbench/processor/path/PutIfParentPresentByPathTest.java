@@ -5,7 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.navigator.PutByPath;
 import org.sjf4j.annotation.navigator.PutIfParentPresentByPath;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;

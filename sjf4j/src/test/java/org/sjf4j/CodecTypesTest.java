@@ -2,7 +2,6 @@ package org.sjf4j;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.node.TypeReference;
 
 import java.io.File;
 import java.net.URI;

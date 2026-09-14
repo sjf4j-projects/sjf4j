@@ -5,7 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

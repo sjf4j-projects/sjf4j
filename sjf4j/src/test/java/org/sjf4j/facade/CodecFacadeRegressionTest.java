@@ -11,7 +11,7 @@ import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.TypeReference;
 
 import java.time.LocalDate;
 import java.util.Arrays;

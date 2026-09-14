@@ -6,8 +6,8 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.NodeKind;
+import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
 
 import java.lang.reflect.Type;

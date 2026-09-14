@@ -18,7 +18,7 @@ import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NamingStrategy;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 
 import java.io.StringReader;
 import java.io.StringWriter;

@@ -11,8 +11,8 @@ import com.fasterxml.jackson.databind.node.POJONode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.NodeKind;
+import org.sjf4j.Nodes;
 
 import java.util.ArrayList;
 import java.util.Arrays;

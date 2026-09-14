@@ -7,7 +7,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
@@ -80,7 +80,7 @@ public interface Jackson3Module {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArrayDeserializer<>(clazz);
                     }
-                    TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
                     if (ti.oneOfInfo != null) {
                         return new OneOfDeserializer<>(ti.oneOfInfo, streamingContext);
                     }
@@ -110,7 +110,7 @@ public interface Jackson3Module {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
-                    TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
                         ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
@@ -136,7 +136,7 @@ public interface Jackson3Module {
         public JsonObjectDeserializer(JavaType javaType, StreamingContext streamingContext) {
             this.ownerType = _toType(javaType);
             this.ownerRawClazz = Types.rawBox(ownerType);
-            this.pi = ownerRawClazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(ownerRawClazz);
+            this.pi = ownerRawClazz == JsonObject.class ? null : TypeRegistry.registerPojoOrElseThrow(ownerRawClazz);
             this.streamingContext = streamingContext;
         }
 
@@ -201,7 +201,7 @@ public interface Jackson3Module {
         private final ObjectInfo pi;
 
         public JsonArrayDeserializer(Class<?> clazz) {
-            this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+            this.pi = clazz == JsonArray.class ? null : TypeRegistry.registerPojoOrElseThrow(clazz);
         }
 
         @SuppressWarnings("unchecked")

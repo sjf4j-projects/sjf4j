@@ -19,8 +19,10 @@
  *     <li>JAJO: a {@link org.sjf4j.JsonArray} subtype that combines a typed Java class with JSON-array behavior</li>
  * </ul>
  *
- * <p>{@link org.sjf4j.Sjf4j} is the main entry point for parsing and writing,
- * while {@link org.sjf4j.node.Nodes} provides structural conversion helpers on
- * top of the same OBNT model.
+ * <p>{@link org.sjf4j.Sjf4j} is the main entry point for parsing and writing.
+ * {@link Nodes} provides structural conversion helpers, {@link NodeStream}
+ * provides stream processing with JSONPath helpers, {@link NodeKind} classifies
+ * runtime node shapes, {@link TypeReference} captures generic target types, and
+ * {@link CompiledInstances} provides compile-time generated interface instances.
  */
 package org.sjf4j;

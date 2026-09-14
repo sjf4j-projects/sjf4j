@@ -3,9 +3,7 @@ package org.sjf4j;
 import lombok.Getter;
 import lombok.Setter;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
-import org.sjf4j.node.TypeReference;
 
 import java.util.ArrayList;
 import java.util.Arrays;

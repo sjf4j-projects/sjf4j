@@ -4,8 +4,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.node.Nodes;
-import org.sjf4j.node.TypeReference;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.Patches;
 

@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * Declares type-level JSON binding rules for a POJO, JOJO, or JAJO model.
  * <p>
  * This annotation is the single place for stable binding semantics that must be
- * cached inside {@code NodeRegistry}. It replaces global naming and plain-field
+ * cached inside {@code TypeRegistry}. It replaces global naming and plain-field
  * switches for framework-owned POJO analysis.
  * <p>
  * Precedence is explicit {@link NodeProperty} name first, then {@link #naming()},

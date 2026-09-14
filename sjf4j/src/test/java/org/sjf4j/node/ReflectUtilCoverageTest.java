@@ -341,11 +341,11 @@ class ReflectUtilCoverageTest {
         assertNull(ReflectUtil.createLambdaConstructor(lookup, LambdaCtorPojo.class, null));
 
         CreatorInfo creatorInfo = ReflectUtil.analyzeCreator(LambdaCtorPojo.class, lookup);
-        NodeRegistry.Func1 creator = ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, NodeRegistry.Func1.class, 1);
+        TypeRegistry.Func1 creator = ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 1);
         assertNotNull(creator);
         LambdaCtorPojo created = (LambdaCtorPojo) creator.apply("han");
         assertEquals("han", created.name);
-        assertNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, NodeRegistry.Func1.class, 0));
+        assertNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 0));
         assertNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, null, 1));
 
         assertFalse(ReflectUtil.isRecord(GetterPojo.class));

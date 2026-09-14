@@ -1,7 +1,10 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.NodeKind;
+import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.TypeReference;
 import org.sjf4j.exception.JsonException;
 
 import java.util.LinkedHashSet;

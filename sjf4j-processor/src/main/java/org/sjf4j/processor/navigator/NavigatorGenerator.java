@@ -852,7 +852,7 @@ public final class NavigatorGenerator {
             throw new AssertionError("CompiledNavigator emitName called with null current type");
         }
         if (GeneratorUtil.isObject(ctx, current)) {
-            out.line("Object " + nextVar + " = org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" +
+            out.line("Object " + nextVar + " = org.sjf4j.Nodes.getInObject(" + currentVar + ", \"" +
                     GeneratorUtil.escape(name) + "\");");
             _emitNullCheck(out, nextVar, ctx.objectType, checkValueNull ? nullReturn : null);
             return ctx.objectType;
@@ -912,7 +912,7 @@ public final class NavigatorGenerator {
     private TypeMirror _emitIndex(SourceWriter out, TypeMirror current, int index, String currentVar, String nextVar,
                                    String indexVar, String nullReturn, boolean checkValueNull) {
         if (GeneratorUtil.isObject(ctx, current)) {
-            out.line("Object " + nextVar + " = org.sjf4j.node.Nodes.getInArray(" + currentVar + ", " + index + ");");
+            out.line("Object " + nextVar + " = org.sjf4j.Nodes.getInArray(" + currentVar + ", " + index + ");");
             _emitNullCheck(out, nextVar, ctx.objectType, checkValueNull ? nullReturn : null);
             return ctx.objectType;
         }
@@ -950,7 +950,7 @@ public final class NavigatorGenerator {
     private TypeMirror _emitParamName(SourceWriter out, TypeMirror current, String paramName, String currentVar, String nextVar,
                                       String nullReturn, boolean checkValueNull) {
         if (GeneratorUtil.isObject(ctx, current)) {
-            out.line("Object " + nextVar + " = org.sjf4j.node.Nodes.getInObject(" + currentVar + ", " + paramName + ");");
+            out.line("Object " + nextVar + " = org.sjf4j.Nodes.getInObject(" + currentVar + ", " + paramName + ");");
             _emitNullCheck(out, nextVar, ctx.objectType, checkValueNull ? nullReturn : null);
             return ctx.objectType;
         }
@@ -969,7 +969,7 @@ public final class NavigatorGenerator {
     private TypeMirror _emitParamIndex(SourceWriter out, TypeMirror current, String paramName, String currentVar, String nextVar,
                                        String indexVar, String nullReturn, boolean checkValueNull) {
         if (GeneratorUtil.isObject(ctx, current)) {
-            out.line("Object " + nextVar + " = org.sjf4j.node.Nodes.getInArray(" + currentVar + ", " + paramName + ");");
+            out.line("Object " + nextVar + " = org.sjf4j.Nodes.getInArray(" + currentVar + ", " + paramName + ");");
             _emitNullCheck(out, nextVar, ctx.objectType, checkValueNull ? nullReturn : null);
             return ctx.objectType;
         }
@@ -1417,7 +1417,7 @@ public final class NavigatorGenerator {
         TypeMirror outputType = _indexValueType(current);
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
         if (GeneratorUtil.isObject(ctx, current)) {
-            out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.node.Nodes.getInArray(" +
+            out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.Nodes.getInArray(" +
                     currentVar + ", " + index + ");");
         } else if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
             out.line("int " + indexVar + " = " + GeneratorUtil.indexExpr(index, currentVar + ".size()") + ";");
@@ -1443,7 +1443,7 @@ public final class NavigatorGenerator {
         TypeMirror outputType = _indexValueType(current);
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
         if (GeneratorUtil.isObject(ctx, current)) {
-            out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.node.Nodes.getInArray(" +
+            out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.Nodes.getInArray(" +
                     currentVar + ", " + paramName + ");");
         } else if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
             out.line("int " + indexVar + " = " + paramName + " >= 0 ? " + paramName +
@@ -1482,7 +1482,7 @@ public final class NavigatorGenerator {
      */
     private TypeMirror _emitPutName(SourceWriter out, TypeMirror parent, String name, String parentVar, String valueExpr, String oldVar) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInObject(" + parentVar + ", \"" +
+            out.line("Object " + oldVar + " = org.sjf4j.Nodes.putInObject(" + parentVar + ", \"" +
                     GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return ctx.objectType;
         }
@@ -1536,7 +1536,7 @@ public final class NavigatorGenerator {
 
     private void _emitPutNameNoOld(SourceWriter out, TypeMirror parent, String name, String parentVar, String valueExpr) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("org.sjf4j.node.Nodes.putInObject(" + parentVar + ", \"" +
+            out.line("org.sjf4j.Nodes.putInObject(" + parentVar + ", \"" +
                     GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
             return;
         }
@@ -1599,7 +1599,7 @@ public final class NavigatorGenerator {
      */
     private TypeMirror _emitPutIndex(SourceWriter out, TypeMirror parent, int index, String parentVar, String valueExpr, String oldVar, String indexVar) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInArray(" +
+            out.line("Object " + oldVar + " = org.sjf4j.Nodes.putInArray(" +
                     parentVar + ", " + index + ", " + valueExpr + ");");
             return ctx.objectType;
         }
@@ -1640,7 +1640,7 @@ public final class NavigatorGenerator {
     private void _emitPutIndexNoOld(SourceWriter out, TypeMirror parent, int index, String parentVar,
                                     String valueExpr, String indexVar) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + index + ", " + valueExpr + ");");
+            out.line("org.sjf4j.Nodes.putInArray(" + parentVar + ", " + index + ", " + valueExpr + ");");
             return;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
@@ -1669,7 +1669,7 @@ public final class NavigatorGenerator {
      */
     private TypeMirror _emitPutAppend(SourceWriter out, TypeMirror parent, String parentVar, String valueExpr) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("org.sjf4j.node.Nodes.addInArray(" + parentVar + ", " + valueExpr + ");");
+            out.line("org.sjf4j.Nodes.addInArray(" + parentVar + ", " + valueExpr + ");");
             return null;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType) ||
@@ -1694,7 +1694,7 @@ public final class NavigatorGenerator {
     private TypeMirror _emitPutParamName(SourceWriter out, TypeMirror parent, String paramName, String parentVar,
                                          String valueExpr, String oldVar) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInObject(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
+            out.line("Object " + oldVar + " = org.sjf4j.Nodes.putInObject(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
             return ctx.objectType;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) {
@@ -1722,7 +1722,7 @@ public final class NavigatorGenerator {
     private void _emitPutParamNameNoOld(SourceWriter out, TypeMirror parent, String paramName, String parentVar,
                                         String valueExpr) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("org.sjf4j.node.Nodes.putInObject(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
+            out.line("org.sjf4j.Nodes.putInObject(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
             return;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
@@ -1737,7 +1737,7 @@ public final class NavigatorGenerator {
                                           String valueExpr, String oldVar, String posVar, String missing) {
         String indexVar = paramName;
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + indexVar + ", " + valueExpr + ");");
+            out.line("Object " + oldVar + " = org.sjf4j.Nodes.putInArray(" + parentVar + ", " + indexVar + ", " + valueExpr + ");");
             return ctx.objectType;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
@@ -1777,7 +1777,7 @@ public final class NavigatorGenerator {
     private void _emitPutParamIndexNoOld(SourceWriter out, TypeMirror parent, String paramName, String parentVar,
                                          String valueExpr, String missing, String indexVar) {
         if (GeneratorUtil.isObject(ctx, parent)) {
-            out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
+            out.line("org.sjf4j.Nodes.putInArray(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
             return;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {

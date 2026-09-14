@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.navigator.GetByPath;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
 import java.util.List;

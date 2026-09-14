@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.navigator.FindByPath;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 
 import java.util.LinkedHashMap;
 import java.util.List;

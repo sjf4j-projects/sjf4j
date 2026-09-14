@@ -3,7 +3,7 @@ package org.sjf4j.patch;
 
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPointer;
 
 import java.util.Map;

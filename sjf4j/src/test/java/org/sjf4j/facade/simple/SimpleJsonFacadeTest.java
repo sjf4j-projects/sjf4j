@@ -15,8 +15,7 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.node.Nodes;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.Nodes;
 
 import java.io.StringReader;
 import java.io.StringWriter;

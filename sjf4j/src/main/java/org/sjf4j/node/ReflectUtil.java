@@ -2,6 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
+import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
@@ -614,7 +615,7 @@ public final class ReflectUtil {
     static ValueCodecInfo _resolveCodec(Class<?> rawType, String codecName, String codecPattern) {
         if (codecPattern != null && !codecPattern.isEmpty()) {
             // codecPattern takes precedence: get the base codec and parameterize it
-            ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(rawType, "");
+            ValueCodecInfo base = TypeRegistry.resolveValueCodecOrElseThrow(rawType, "");
             if (base.valueCodec instanceof PatternedValueCodec) {
                 PatternedValueCodec<?, ?> pc = (PatternedValueCodec<?, ?>) base.valueCodec;
                 ValueCodec<?, ?> parameterized = pc.withPattern(codecPattern);
@@ -625,7 +626,7 @@ public final class ReflectUtil {
                     " its ValueCodec does not implement " + PatternedValueCodec.class.getName());
         }
         if (codecName != null) {
-            return NodeRegistry.resolveValueCodecOrElseThrow(rawType, codecName);
+            return TypeRegistry.resolveValueCodecOrElseThrow(rawType, codecName);
         }
         return null;
     }
@@ -668,11 +669,11 @@ public final class ReflectUtil {
                                              MethodHandles.Lookup lookup) {
         Executable creator = null;
         MethodHandle creatorHandle = null;
-        NodeRegistry.Func1 creatorLambda1 = null;
-        NodeRegistry.Func2 creatorLambda2 = null;
-        NodeRegistry.Func3 creatorLambda3 = null;
-        NodeRegistry.Func4 creatorLambda4 = null;
-        NodeRegistry.Func5 creatorLambda5 = null;
+        TypeRegistry.Func1 creatorLambda1 = null;
+        TypeRegistry.Func2 creatorLambda2 = null;
+        TypeRegistry.Func3 creatorLambda3 = null;
+        TypeRegistry.Func4 creatorLambda4 = null;
+        TypeRegistry.Func5 creatorLambda5 = null;
         String[] argNames = null;
         Type[] argTypes = null;
         Map<String, Integer> argIndexes = null;
@@ -747,19 +748,19 @@ public final class ReflectUtil {
             if (!hasPrimitiveArg) {
                 switch (creator.getParameterCount()) {
                     case 1:
-                        creatorLambda1 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func1.class, 1);
+                        creatorLambda1 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func1.class, 1);
                         break;
                     case 2:
-                        creatorLambda2 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func2.class, 2);
+                        creatorLambda2 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func2.class, 2);
                         break;
                     case 3:
-                        creatorLambda3 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func3.class, 3);
+                        creatorLambda3 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func3.class, 3);
                         break;
                     case 4:
-                        creatorLambda4 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func4.class, 4);
+                        creatorLambda4 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func4.class, 4);
                         break;
                     case 5:
-                        creatorLambda5 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func5.class, 5);
+                        creatorLambda5 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func5.class, 5);
                         break;
                     default:
                         break;

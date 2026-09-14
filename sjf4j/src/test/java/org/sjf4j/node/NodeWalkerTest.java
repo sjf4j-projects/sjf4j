@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.path.PathSyntax;
 

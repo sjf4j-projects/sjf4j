@@ -6,8 +6,8 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.gson.GsonNodes;
 import org.sjf4j.facade.jackson2.Jackson2Nodes;
 import org.sjf4j.facade.jackson3.Jackson3Nodes;
-import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.NodeKind;
+import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
 
 import java.lang.reflect.Type;

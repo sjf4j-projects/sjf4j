@@ -5,7 +5,7 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatingOptions;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.schema.SchemaException;
 import org.sjf4j.schema.ValidationResult;
 

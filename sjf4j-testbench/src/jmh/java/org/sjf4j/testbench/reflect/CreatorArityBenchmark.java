@@ -15,7 +15,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.CreatorInfo;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeRegistry;
 
 import java.util.concurrent.TimeUnit;
 
@@ -98,7 +98,7 @@ public class CreatorArityBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            ci = NodeRegistry.registerPojoOrElseThrow(modelClass()).creatorInfo;
+            ci = TypeRegistry.registerPojoOrElseThrow(modelClass()).creatorInfo;
             args = initArgs();
         }
     }

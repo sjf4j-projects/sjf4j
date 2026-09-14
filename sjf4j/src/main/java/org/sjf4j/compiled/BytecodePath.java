@@ -1,6 +1,6 @@
 package org.sjf4j.compiled;
 
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.TypeReference;
 
 /**
  * Bytecode-compiled accessor for one concrete JSON path expression.

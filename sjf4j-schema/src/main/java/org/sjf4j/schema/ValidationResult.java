@@ -1,6 +1,6 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 
 import java.util.Collections;
 import java.util.List;

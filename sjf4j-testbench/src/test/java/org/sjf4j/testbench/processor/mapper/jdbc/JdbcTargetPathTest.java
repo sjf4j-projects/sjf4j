@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
 import java.sql.ResultSet;

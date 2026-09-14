@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Nodes;
+import org.sjf4j.TypeReference;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;

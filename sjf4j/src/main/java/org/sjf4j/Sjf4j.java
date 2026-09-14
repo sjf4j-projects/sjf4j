@@ -9,7 +9,6 @@ import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.TypeReference;
 
 import java.io.InputStream;
 import java.io.OutputStream;

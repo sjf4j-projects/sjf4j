@@ -7,7 +7,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 
 import java.util.List;

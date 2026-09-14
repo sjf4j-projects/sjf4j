@@ -10,7 +10,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.CreatorInfo;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PropertyInfo;
@@ -45,7 +45,7 @@ public class Fastjson2StreamingIO {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
-        TypeInfo ti = NodeRegistry.registerTypeInfo(rawBox);
+        TypeInfo ti = TypeRegistry.registerTypeInfo(rawBox);
         return _readNode(reader, type, rawBox, ti, context);
     }
 
@@ -203,7 +203,7 @@ public class Fastjson2StreamingIO {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readMap(reader, rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz), context);
+                    TypeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -211,7 +211,7 @@ public class Fastjson2StreamingIO {
         }
 
         if (ti == null) {
-            ti = NodeRegistry.registerTypeInfo(rawClazz);
+            ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
@@ -219,7 +219,7 @@ public class Fastjson2StreamingIO {
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
-                TypeInfo valueTi = NodeRegistry.registerTypeInfo(valueClazz);
+                TypeInfo valueTi = TypeRegistry.registerTypeInfo(valueClazz);
                 Map<String, Object> map = _readMap(reader, vci.rawClazz, valueType, valueClazz, valueTi, context);
                 return vci.rawToValue(map);
             }
@@ -266,7 +266,7 @@ public class Fastjson2StreamingIO {
             return pojo;
         }
 
-        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
+        TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
         PropertyInfo deferredParentOneOfFi = null;
         Object deferredParentOneOfRaw = null;
         String parentOneOfKey = null;
@@ -282,7 +282,7 @@ public class Fastjson2StreamingIO {
             if (argIdx >= 0) {
                 Type argType = Types.resolveMemberType(ownerType, ownerRawClazz, ci.argTypes[argIdx]);
                 Class<?> argRaw = Types.rawBox(argType);
-                TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
+                TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
                 ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
@@ -361,7 +361,7 @@ public class Fastjson2StreamingIO {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readList(reader, rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz), context);
+                    TypeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -372,21 +372,21 @@ public class Fastjson2StreamingIO {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readSet(reader, rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz), context);
+                    TypeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
             return _readArray(reader, rawClazz, compType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz), context);
+                    TypeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
+            JsonArray ja = (JsonArray) TypeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementType();
             Class<?> elemRaw = Types.box(elemType);
-            TypeInfo elemTi = NodeRegistry.registerTypeInfo(elemRaw);
+            TypeInfo elemTi = TypeRegistry.registerTypeInfo(elemRaw);
             if (!reader.nextIfArrayStart()) {
                 throw new BindingException("expected token '[', but was " + reader.current());
             }
@@ -398,7 +398,7 @@ public class Fastjson2StreamingIO {
         }
 
         if (ti == null) {
-            ti = NodeRegistry.registerTypeInfo(rawClazz);
+            ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
         ValueCodecInfo vci = ti.hasValueCodecs()
                 ? ti.getValueCodecInfo(context.defaultValueFormat(rawClazz))
@@ -407,7 +407,7 @@ public class Fastjson2StreamingIO {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             List<Object> list = _readList(reader, vci.rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz), context);
+                    TypeRegistry.registerTypeInfo(valueClazz), context);
             return vci.rawToValue(list);
         }
 
@@ -423,7 +423,7 @@ public class Fastjson2StreamingIO {
 
         OneOfInfo fieldOneOf = fi.oneOfInfo;
         if (fieldOneOf == null && fieldRaw != fi.boxed) {
-            fieldOneOf = NodeRegistry.registerTypeInfo(fieldRaw).oneOfInfo;
+            fieldOneOf = TypeRegistry.registerTypeInfo(fieldRaw).oneOfInfo;
         }
         if (fieldOneOf != null) {
             return readOneOf(reader, fieldOneOf, context);
@@ -436,16 +436,16 @@ public class Fastjson2StreamingIO {
         switch (fieldType == fi.type ? fi.containerKind : PropertyInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMap(reader, fi.boxed, fi.argType, fi.argBoxed,
-                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
+                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
             case LIST:
                 return _readList(reader, fi.boxed, fi.argType, fi.argBoxed,
-                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
+                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
             case SET:
                 return _readSet(reader, fi.boxed, fi.argType, fi.argBoxed,
-                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
+                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
             case ARRAY:
                 return _readArray(reader, fi.boxed, fi.argType, fi.argBoxed,
-                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
+                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
             default:
                 return _readNode(reader, fieldType, fieldRaw, null, context);
         }
@@ -461,14 +461,14 @@ public class Fastjson2StreamingIO {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
                 Map<String, Object> map = _readMap(reader, valueCodecInfo.rawClazz, valueType, valueClazz,
-                        NodeRegistry.registerTypeInfo(valueClazz), context);
+                        TypeRegistry.registerTypeInfo(valueClazz), context);
                 return valueCodecInfo.rawToValue(map);
             }
             case START_ARRAY: {
                 Type valueType = Types.resolveTypeArgument(type, List.class, 0);
                 Class<?> valueClazz = Types.rawBox(valueType);
                 List<Object> list = _readList(reader, valueCodecInfo.rawClazz, valueType, valueClazz,
-                        NodeRegistry.registerTypeInfo(valueClazz), context);
+                        TypeRegistry.registerTypeInfo(valueClazz), context);
                 return valueCodecInfo.rawToValue(list);
             }
             case STRING:
@@ -495,7 +495,7 @@ public class Fastjson2StreamingIO {
         }
         Map<String, Object> map = mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class
                 ? new LinkedHashMap<>()
-                : NodeRegistry.newMapContainer(mapClazz, false);
+                : TypeRegistry.newMapContainer(mapClazz, false);
         if (!reader.nextIfObjectStart()) {
             throw new BindingException("expected token '{', but was " + reader.current());
         }
@@ -517,7 +517,7 @@ public class Fastjson2StreamingIO {
         }
         List<Object> list = listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class
                 ? new ArrayList<>()
-                : NodeRegistry.newListContainer(listClazz, false);
+                : TypeRegistry.newListContainer(listClazz, false);
         if (!reader.nextIfArrayStart()) {
             throw new BindingException("expected token '[', but was " + reader.current());
         }
@@ -538,7 +538,7 @@ public class Fastjson2StreamingIO {
         }
         Set<Object> set = setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class
                 ? new LinkedHashSet<>()
-                : NodeRegistry.newSetContainer(setClazz, false);
+                : TypeRegistry.newSetContainer(setClazz, false);
         if (!reader.nextIfArrayStart()) {
             throw new BindingException("expected token '[', but was " + reader.current());
         }
@@ -712,7 +712,7 @@ public class Fastjson2StreamingIO {
                 return;
             }
 
-            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
                 ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);

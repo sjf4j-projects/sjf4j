@@ -4,7 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
 
 import java.lang.reflect.Type;

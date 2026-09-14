@@ -12,7 +12,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
@@ -52,7 +52,7 @@ public interface GsonModule {
                 return (TypeAdapter<T>) new JsonArrayAdapter(gson, rawClazz);
             }
 
-            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.oneOfInfo != null) {
                 return new OneOfAdapter<>(ti.oneOfInfo, streamingContext);
             }
@@ -118,7 +118,7 @@ public interface GsonModule {
          */
         public JsonArrayAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
-            this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+            this.pi = clazz == JsonArray.class ? null : TypeRegistry.registerPojoOrElseThrow(clazz);
         }
 
         /**

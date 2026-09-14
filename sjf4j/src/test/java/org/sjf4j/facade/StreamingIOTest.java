@@ -20,8 +20,8 @@ import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.node.Nodes;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.Nodes;
+import org.sjf4j.TypeReference;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

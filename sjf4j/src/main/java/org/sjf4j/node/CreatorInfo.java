@@ -21,11 +21,11 @@ public class CreatorInfo {
     public final Supplier<?> noArgsCtorLambda;
     public final Executable argsCreator;
     public final MethodHandle argsCreatorHandle;
-    public final NodeRegistry.Func1 argsCreatorLambda1;
-    public final NodeRegistry.Func2 argsCreatorLambda2;
-    public final NodeRegistry.Func3 argsCreatorLambda3;
-    public final NodeRegistry.Func4 argsCreatorLambda4;
-    public final NodeRegistry.Func5 argsCreatorLambda5;
+    public final TypeRegistry.Func1 argsCreatorLambda1;
+    public final TypeRegistry.Func2 argsCreatorLambda2;
+    public final TypeRegistry.Func3 argsCreatorLambda3;
+    public final TypeRegistry.Func4 argsCreatorLambda4;
+    public final TypeRegistry.Func5 argsCreatorLambda5;
     public final String[] argNames;
     public final Type[] argTypes;
     public final String[] argCodecNames;
@@ -39,8 +39,8 @@ public class CreatorInfo {
      */
     public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
                        Executable argsCreator, MethodHandle argsCreatorHandle,
-                       NodeRegistry.Func1 argsCreatorLambda1, NodeRegistry.Func2 argsCreatorLambda2,
-                       NodeRegistry.Func3 argsCreatorLambda3, NodeRegistry.Func4 argsCreatorLambda4, NodeRegistry.Func5 argsCreatorLambda5,
+                       TypeRegistry.Func1 argsCreatorLambda1, TypeRegistry.Func2 argsCreatorLambda2,
+                       TypeRegistry.Func3 argsCreatorLambda3, TypeRegistry.Func4 argsCreatorLambda4, TypeRegistry.Func5 argsCreatorLambda5,
                        String[] argNames, Type[] argTypes,
                        String[] argCodecNames, ValueCodecInfo[] argValueCodecs,
                        Map<String, Integer> argIndexes,

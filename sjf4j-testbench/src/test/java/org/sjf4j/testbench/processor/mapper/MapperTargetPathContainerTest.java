@@ -7,7 +7,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 
 import java.util.ArrayList;
 import java.util.Arrays;

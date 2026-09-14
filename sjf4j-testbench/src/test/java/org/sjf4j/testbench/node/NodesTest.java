@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 
 import java.time.LocalDate;
 

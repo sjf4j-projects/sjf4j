@@ -12,7 +12,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.TypeReference;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.ValueCopy;
@@ -41,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 @Slf4j
-public class NodeRegistryTest {
+public class TypeRegistryTest {
 
     @Data
     @NoArgsConstructor
@@ -70,7 +72,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testRegisterPojo1() {
-        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
+        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
         assertEquals(4, pi.propertyCount);
@@ -84,7 +86,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testInheritedFieldSameKeyChildWins() {
-        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
+        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
         assertNotNull(pi.properties.get("key"));
         assertEquals(int.class, pi.properties.get("key").type);
 
@@ -94,23 +96,23 @@ public class NodeRegistryTest {
 
     @Test
     public void testContainerFactoryFallback() {
-        assertThrows(JsonException.class, () -> NodeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), false));
-        Map<String, Object> map = NodeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), true);
+        assertThrows(JsonException.class, () -> TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), false));
+        Map<String, Object> map = TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), true);
         assertTrue(map.isEmpty());
 
-        assertThrows(JsonException.class, () -> NodeRegistry.newListContainer(Arrays.asList("x").getClass(), false));
-        List<Object> list = NodeRegistry.newListContainer(Arrays.asList("x").getClass(), true);
+        assertThrows(JsonException.class, () -> TypeRegistry.newListContainer(Arrays.asList("x").getClass(), false));
+        List<Object> list = TypeRegistry.newListContainer(Arrays.asList("x").getClass(), true);
         assertTrue(list.isEmpty());
 
-        assertThrows(JsonException.class, () -> NodeRegistry.newSetContainer(Collections.singleton("z").getClass(), false));
-        Set<Object> set = NodeRegistry.newSetContainer(Collections.singleton("z").getClass(), true);
+        assertThrows(JsonException.class, () -> TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), false));
+        Set<Object> set = TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), true);
         assertTrue(set.isEmpty());
     }
 
     @Test
     public void testInvoke1() {
         Person p1 = new Person();
-        ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
+        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
         PropertyInfo fi = pi.properties.get("name");
 
         fi.invokeSetter(p1, "hahaha");
@@ -239,7 +241,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        ValueCodecInfo vci = NodeRegistry.registerTypeInfo(BigDay.class).valueCodecInfo;
+        ValueCodecInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).valueCodecInfo;
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -261,7 +263,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue2() {
-        ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<CodecDay, String>() {
+        ValueCodecInfo vci = TypeRegistry.registerValueCodec(new ValueCodec<CodecDay, String>() {
             @Override
             public String valueToRaw(CodecDay node) {
                 return node.localDate.toString();
@@ -297,7 +299,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testRegisterValueCodecDuplicateFails() {
-        assertThrows(JsonException.class, () -> NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
+        assertThrows(JsonException.class, () -> TypeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
             public String valueToRaw(LocalDate node) {
                 return node.toString();

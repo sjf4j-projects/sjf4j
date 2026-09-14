@@ -1,9 +1,7 @@
 package org.sjf4j;
 
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.NodeStream;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.PropertyInfo;
 
@@ -58,7 +56,7 @@ public class JsonObject extends JsonContainer {
         super();
         this.pi = this.getClass() == JsonObject.class
                 ? null
-                : NodeRegistry.registerPojoOrElseThrow(this.getClass());
+                : TypeRegistry.registerPojoOrElseThrow(this.getClass());
     }
 
     /**

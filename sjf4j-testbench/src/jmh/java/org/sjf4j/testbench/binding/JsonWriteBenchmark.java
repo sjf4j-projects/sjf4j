@@ -33,7 +33,7 @@ import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.ReflectUtil;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.TypeReference;
 import org.sjf4j.testbench.model.User;
 import org.sjf4j.testbench.model.UserJojo;
 

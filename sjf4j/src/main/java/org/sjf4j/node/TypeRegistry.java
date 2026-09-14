@@ -1,6 +1,8 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.NodeKind;
+import org.sjf4j.Nodes;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
@@ -19,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Central registry for SJF4J type metadata.
  * <p>
- * {@code NodeRegistry} analyzes Java classes once and caches the structural
+ * {@code TypeRegistry} analyzes Java classes once and caches the structural
  * {@link TypeInfo} later used by reads, writes, conversion, copying, and
  * traversal. It classifies a class as a value codec, {@code @OneOf} type,
  * supported container, or object binding.
@@ -28,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * metadata model defines the runtime binding semantics used across
  * {@link Nodes}, {@link org.sjf4j.Sjf4j}, and facade integrations.
  */
-public final class NodeRegistry {
+public final class TypeRegistry {
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
 
 

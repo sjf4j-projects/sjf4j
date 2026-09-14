@@ -6,7 +6,7 @@ import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.JsonObject;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;

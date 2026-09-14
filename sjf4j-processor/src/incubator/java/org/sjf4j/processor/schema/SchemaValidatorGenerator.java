@@ -310,9 +310,9 @@ public final class SchemaValidatorGenerator {
                 if (_runtimeReadableObject(type)) {
                     out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.OBJECT) {");
                     for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
-                        out.add("  if (org.sjf4j.node.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(entry.getKey()) + "\")) {");
+                        out.add("  if (org.sjf4j.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(entry.getKey()) + "\")) {");
                         for (String key : entry.getValue()) {
-                            out.add("    if (!org.sjf4j.node.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(key) + "\")) return false;");
+                            out.add("    if (!org.sjf4j.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(key) + "\")) return false;");
                         }
                         out.add("  }");
                     }
@@ -348,7 +348,7 @@ public final class SchemaValidatorGenerator {
                     if (_runtimeReadableObject(type)) {
                         out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.OBJECT) {");
                         for (String key : required) {
-                            out.add("  if (!org.sjf4j.node.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(key) + "\")) return false;");
+                            out.add("  if (!org.sjf4j.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(key) + "\")) return false;");
                         }
                         out.add("}");
                     } else {
@@ -373,7 +373,7 @@ public final class SchemaValidatorGenerator {
             String indent = guard != null ? "  " : "";
             if (min >= 0 || max >= 0) {
                 String size = "_os" + state.nextLocal++;
-                out.add(indent + "int " + size + " = org.sjf4j.node.Nodes.sizeInObject(" + var + ");");
+                out.add(indent + "int " + size + " = org.sjf4j.Nodes.sizeInObject(" + var + ");");
                 if (min >= 0) out.add(indent + "if (" + size + " < " + min + ") return false;");
                 if (max >= 0) out.add(indent + "if (" + size + " > " + max + ") return false;");
             }
@@ -489,9 +489,9 @@ public final class SchemaValidatorGenerator {
                 String item = "_uitem" + state.nextLocal++;
                 String old = "_uold" + state.nextLocal++;
                 out.add(indent + "java.util.ArrayList<Object> " + seen + " = new java.util.ArrayList<Object>();");
-                out.add(indent + "for (java.util.Iterator<Object> " + it + " = org.sjf4j.node.Nodes.iteratorInArray(" + var + "); " + it + ".hasNext(); ) {");
+                out.add(indent + "for (java.util.Iterator<Object> " + it + " = org.sjf4j.Nodes.iteratorInArray(" + var + "); " + it + ".hasNext(); ) {");
                 out.add(indent + "  Object " + item + " = " + it + ".next();");
-                out.add(indent + "  for (Object " + old + " : " + seen + ") if (org.sjf4j.node.Nodes.equals(" + old + ", " + item + ")) return false;");
+                out.add(indent + "  for (Object " + old + " : " + seen + ") if (org.sjf4j.Nodes.equals(" + old + ", " + item + ")) return false;");
                 out.add(indent + "  " + seen + ".add(" + item + ");");
                 out.add(indent + "}");
             }
@@ -594,7 +594,7 @@ public final class SchemaValidatorGenerator {
             state.target.addField(outField -> outField.line("private static final java.util.regex.Pattern " + field + " = org.sjf4j.schema.SchemaUtil.compileRegexPattern(\"" + GeneratorUtil.escape(pattern) + "\", \"pattern\");"));
             CompileJsonKind kind = _knownJsonKind(type);
             if (kind == CompileJsonKind.UNKNOWN) {
-                out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.STRING && !" + field + ".matcher(org.sjf4j.node.Nodes.toString(" + var + ")).find()) return false;");
+                out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.STRING && !" + field + ".matcher(org.sjf4j.Nodes.toString(" + var + ")).find()) return false;");
             } else if (kind == CompileJsonKind.STRING) {
                 String prefix = nonNull ? "" : var + " != null && ";
                 out.add("if (" + prefix + "!" + field + ".matcher(" + _stringValueExpr(var, type) + ").find()) return false;");
@@ -608,7 +608,7 @@ public final class SchemaValidatorGenerator {
             String field = _formatField(state, format);
             CompileJsonKind kind = _knownJsonKind(type);
             if (kind == CompileJsonKind.UNKNOWN) {
-                out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.STRING && !" + field + ".validate(org.sjf4j.node.Nodes.toString(" + var + "))) return false;");
+                out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.STRING && !" + field + ".validate(org.sjf4j.Nodes.toString(" + var + "))) return false;");
             } else if (kind == CompileJsonKind.STRING) {
                 String prefix = nonNull ? "" : var + " != null && ";
                 out.add("if (" + prefix + "!" + field + ".validate(" + _stringValueExpr(var, type) + ")) return false;");
@@ -627,7 +627,7 @@ public final class SchemaValidatorGenerator {
         if ("ConstEvaluator".equals(n)) {
             String literal = _literal(SchemaPlanIntrospector.field(e, "constValue"));
             if (literal == null) return _emitLocalPlanReturn(state, out, var, currentPlan, "const value");
-            out.add("if (!org.sjf4j.node.Nodes.equals(" + literal + ", " + var + ")) return false;");
+            out.add("if (!org.sjf4j.Nodes.equals(" + literal + ", " + var + ")) return false;");
             return CompileResult.OK;
         }
         if ("EnumEvaluator".equals(n)) {
@@ -637,7 +637,7 @@ public final class SchemaValidatorGenerator {
             for (Object value : values) {
                 String literal = _literal(value);
                 if (literal == null) return _emitLocalPlanReturn(state, out, var, currentPlan, "enum value");
-                out.add("if (org.sjf4j.node.Nodes.equals(" + literal + ", " + var + ")) " + matched + " = true;");
+                out.add("if (org.sjf4j.Nodes.equals(" + literal + ", " + var + ")) " + matched + " = true;");
             }
             out.add("if (!" + matched + ") return false;");
             return CompileResult.OK;
@@ -730,7 +730,7 @@ public final class SchemaValidatorGenerator {
         String jt = "org.sjf4j.JsonType.of(" + var + ")";
         if ("integer".equals(schemaType)) {
             return jt + " == org.sjf4j.JsonType.INTEGER || (" + jt + " == org.sjf4j.JsonType.NUMBER && " +
-                    "org.sjf4j.node.Numbers.isSemanticInteger(org.sjf4j.node.Nodes.toNumber(" + var + ")))";
+                    "org.sjf4j.node.Numbers.isSemanticInteger(org.sjf4j.Nodes.toNumber(" + var + ")))";
         }
         return jt + " == " + _jsonTypeConstant(schemaType);
     }
@@ -843,19 +843,19 @@ public final class SchemaValidatorGenerator {
             if ("java.lang.String".equals(qn)) return var;
             if ("java.lang.Character".equals(qn)) return "java.lang.String.valueOf(" + var + ")";
         }
-        return "org.sjf4j.node.Nodes.toString(" + var + ")";
+        return "org.sjf4j.Nodes.toString(" + var + ")";
     }
 
     private String _numberValueExpr(String var, TypeMirror type) {
         if (_knownJsonKind(type) == CompileJsonKind.NUMBER || _knownJsonKind(type) == CompileJsonKind.INTEGER_NUMBER) return var;
-        return "org.sjf4j.node.Nodes.toNumber(" + var + ")";
+        return "org.sjf4j.Nodes.toNumber(" + var + ")";
     }
 
     private String _numberDoubleExpr(String var, TypeMirror type) {
         TypeKind kind = type == null ? TypeKind.OTHER : type.getKind();
         if (kind.isPrimitive()) return var;
         if (_knownJsonKind(type) == CompileJsonKind.NUMBER || _knownJsonKind(type) == CompileJsonKind.INTEGER_NUMBER) return var + ".doubleValue()";
-        return "org.sjf4j.node.Nodes.toNumber(" + var + ").doubleValue()";
+        return "org.sjf4j.Nodes.toNumber(" + var + ").doubleValue()";
     }
 
     private String _arraySizeExpr(String var, TypeMirror type) {
@@ -869,7 +869,7 @@ public final class SchemaValidatorGenerator {
                 return var + ".size()";
             }
         }
-        return "org.sjf4j.node.Nodes.sizeInArray(" + var + ")";
+        return "org.sjf4j.Nodes.sizeInArray(" + var + ")";
     }
 
     private boolean _hasAnnotation(TypeElement element, String name) {

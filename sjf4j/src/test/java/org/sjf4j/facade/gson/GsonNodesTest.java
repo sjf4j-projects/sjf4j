@@ -8,8 +8,8 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.NodeKind;
+import org.sjf4j.Nodes;
 
 import java.util.ArrayList;
 import java.util.Arrays;

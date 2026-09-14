@@ -229,7 +229,7 @@ public final class PathAccessEmitter {
         temps.add(type + " " + nextVar + " = null;");
         String guard = checkParent && !parentType.getKind().isPrimitive() ? parentVar + " != null" : null;
         if (facadeNodes.isFacadeNode(parentType)) {
-            String size = "org.sjf4j.node.Nodes.sizeInArray(" + parentVar + ")";
+            String size = "org.sjf4j.Nodes.sizeInArray(" + parentVar + ")";
             String idx = nextVar + "i";
             String indent = guard == null ? "" : "  ";
             if (guard != null) temps.add("if (" + guard + ") {");
@@ -262,10 +262,10 @@ public final class PathAccessEmitter {
 
     private Access _nameAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, String name) {
         if (GeneratorUtil.isObject(ctx, current)) {
-            return new Access("org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
+            return new Access("org.sjf4j.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
         }
         if (facadeNodes.isFacadeNode(current)) {
-            return new Access("org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
+            return new Access("org.sjf4j.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
         }
         if (GeneratorUtil.isJojoType(ctx, current)) {
             TypeElement type = GeneratorUtil.asTypeElement(current);
@@ -309,10 +309,10 @@ public final class PathAccessEmitter {
 
     private Access _indexAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, int index) {
         if (GeneratorUtil.isObject(ctx, current)) {
-            return new Access("org.sjf4j.node.Nodes.getInArray(" + currentVar + ", " + index + ")", ctx.objectType);
+            return new Access("org.sjf4j.Nodes.getInArray(" + currentVar + ", " + index + ")", ctx.objectType);
         }
         if (facadeNodes.isFacadeNode(current)) {
-            return new Access("org.sjf4j.node.Nodes.getInArray(" + currentVar + ", #IDX#)", ctx.objectType);
+            return new Access("org.sjf4j.Nodes.getInArray(" + currentVar + ", #IDX#)", ctx.objectType);
         }
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
             return new Access(currentVar + ".getNode(" + index + ")", ctx.objectType);

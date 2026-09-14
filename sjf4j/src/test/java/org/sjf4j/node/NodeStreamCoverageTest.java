@@ -3,6 +3,7 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.NodeStream;
 
 import java.util.Arrays;
 import java.util.List;

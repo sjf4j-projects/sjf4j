@@ -1,10 +1,10 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.TypeReference;
 import org.sjf4j.exception.JsonException;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;

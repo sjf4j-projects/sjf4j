@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes
 - Moved JSONPath, JSON Pointer, path syntax, path segment, filter, and function APIs from `org.sjf4j.navigator` to `org.sjf4j.path`.
 - Renamed `@MapperOptions` to `@MappingOptions`.
-- Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()`.
+- Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Moved compiled-navigation annotations from `org.sjf4j.annotation.path` to `org.sjf4j.annotation.navigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `StreamingReader.Token.FIELD_NAME` to `NAME`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
 - Moved runtime metadata classes from `NodeRegistry` to top-level `org.sjf4j.node` types. `NodeRegistry.PojoInfo` is renamed to `ObjectInfo`; `TypeInfo`, `PropertyInfo`, `CreatorInfo`, `ContainerInfo`, `ValueCodecInfo`, `OneOfInfo`, and `RecordInfo` are now imported directly from `org.sjf4j.node`.
+- Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
+- Renamed `org.sjf4j.node.NodeRegistry` to `org.sjf4j.node.TypeRegistry`.
 - Made built-in JSON, YAML, and node facade implementations final; applications must use composition rather than subclassing these types.
 
 ### Added

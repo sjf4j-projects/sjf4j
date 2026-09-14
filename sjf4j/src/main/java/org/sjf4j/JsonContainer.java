@@ -1,6 +1,5 @@
 package org.sjf4j;
 
-import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.patch.Patches;

@@ -1,7 +1,6 @@
-package org.sjf4j.node;
+package org.sjf4j;
 
 
-import org.sjf4j.JsonArray;
 import org.sjf4j.path.JsonPath;
 
 import java.util.ArrayList;
@@ -30,8 +29,6 @@ public class NodeStream<T> {
 
     /**
      * Creates a NodeStream from an existing stream.
-     *
-     * @throws IllegalArgumentException if stream is null
      */
     protected NodeStream(Stream<T> stream) {
         this.stream = stream;
@@ -144,7 +141,7 @@ public class NodeStream<T> {
      * Filters the stream using the specified predicate.
      *
      * @param predicate the predicate to apply to each element to determine if it should be included
-     * @return a new JsonStream with the filtered elements
+     * @return a new NodeStream with the filtered elements
      */
     public NodeStream<T> filter(Predicate<? super T> predicate) {
         return new NodeStream<>(stream.filter(predicate));
@@ -155,7 +152,7 @@ public class NodeStream<T> {
      *
      * @param mapper the function to apply to each element
      * @param <R> the type of the new elements
-     * @return a new JsonStream with the mapped elements
+     * @return a new NodeStream with the mapped elements
      */
     public <R> NodeStream<R> map(Function<? super T, ? extends R> mapper) {
         return new NodeStream<>(stream.map(mapper));
@@ -164,7 +161,7 @@ public class NodeStream<T> {
     /**
      * Returns a new stream consisting of the distinct elements of this stream.
      *
-     * @return a new JsonStream with distinct elements
+     * @return a new NodeStream with distinct elements
      */
     public NodeStream<T> distinct() {
         return new NodeStream<>(stream.distinct());
@@ -175,7 +172,7 @@ public class NodeStream<T> {
      * the provided action on each element as elements are consumed from the resulting stream.
      *
      * @param action the action to perform on each element
-     * @return a new JsonStream with the peeked elements
+     * @return a new NodeStream with the peeked elements
      */
     public NodeStream<T> peek(Consumer<? super T> action) {
         return new NodeStream<>(stream.peek(action));
@@ -186,7 +183,7 @@ public class NodeStream<T> {
      * {@code maxSize} in length.
      *
      * @param maxSize the maximum number of elements to include
-     * @return a new JsonStream with the limited elements
+     * @return a new NodeStream with the limited elements
      */
     public NodeStream<T> limit(long maxSize) {
         return new NodeStream<>(stream.limit(maxSize));
@@ -197,7 +194,7 @@ public class NodeStream<T> {
      * {@code n} elements of the stream.
      *
      * @param n the number of leading elements to skip
-     * @return a new JsonStream with the skipped elements
+     * @return a new NodeStream with the skipped elements
      */
     public NodeStream<T> skip(long n) {
         return new NodeStream<>(stream.skip(n));
@@ -208,7 +205,7 @@ public class NodeStream<T> {
      * {@code Comparator}.
      *
      * @param comparator the comparator to determine the order of the stream
-     * @return a new JsonStream with the sorted elements
+     * @return a new NodeStream with the sorted elements
      */
     public NodeStream<T> sorted(Comparator<? super T> comparator) {
         return new NodeStream<>(stream.sorted(comparator));
@@ -220,7 +217,7 @@ public class NodeStream<T> {
      *
      * @param mapper the function to apply to each element which produces a stream of new values
      * @param <R> the type of the new elements
-     * @return a new JsonStream with the flattened elements
+     * @return a new NodeStream with the flattened elements
      */
     public <R> NodeStream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper) {
         return new NodeStream<>(stream.flatMap(mapper));

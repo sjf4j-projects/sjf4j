@@ -6,8 +6,8 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.TypeReference;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -69,7 +69,7 @@ public final class CodecFacadeAssertions {
 
     @SuppressWarnings("unchecked")
     public static void assertNodeValue(JsonFacade<?, ?> facade) {
-        NodeRegistry.registerTypeInfo(Ops.class);
+        TypeRegistry.registerTypeInfo(Ops.class);
 
         String json = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> values = (List<Ops>) facade.readNode(json, new TypeReference<List<Ops>>() {}.getType());

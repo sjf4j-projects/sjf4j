@@ -3,7 +3,7 @@ package org.sjf4j.facade.snakeyaml;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.snake.SnakeYamlFacade;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.TypeReference;
 
 import java.io.StringReader;
 import java.io.StringWriter;

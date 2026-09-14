@@ -3,7 +3,7 @@ package org.sjf4j.facade.simple;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.PropertiesFacade;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 import org.sjf4j.path.PathSyntax;
 
 import java.util.Objects;

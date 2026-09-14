@@ -1,5 +1,6 @@
 package org.sjf4j.node;
 
+import org.sjf4j.NodeKind;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 

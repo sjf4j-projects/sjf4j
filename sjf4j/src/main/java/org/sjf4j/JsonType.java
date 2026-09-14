@@ -2,8 +2,7 @@ package org.sjf4j;
 
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
 
 import java.util.Map;
@@ -85,7 +84,7 @@ public enum JsonType {
         NodeKind kind = NodeKind.plainOf(clazz);
         if (kind != NodeKind.UNKNOWN) return of(kind);
 
-        TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueCodecInfo != null) {
             return of(NodeKind.plainOf(ti.valueCodecInfo.rawClazz));
         } else if (ti.oneOfInfo != null) {

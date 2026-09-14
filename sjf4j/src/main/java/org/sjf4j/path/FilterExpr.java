@@ -2,7 +2,7 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 import org.sjf4j.node.Numbers;
 
 import java.util.List;

@@ -4,7 +4,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;

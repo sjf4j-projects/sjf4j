@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 
 import java.io.StringReader;
 import java.util.ArrayList;

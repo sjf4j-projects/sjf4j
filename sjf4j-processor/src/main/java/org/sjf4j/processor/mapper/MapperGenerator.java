@@ -1604,7 +1604,7 @@ public final class MapperGenerator {
     }
 
     private void _emitReadName(SourceWriter out, TypeMirror parent, String var, String name, String next, TypeMirror type) {
-        if (GeneratorUtil.isObject(ctx, parent)) out.line(_localTypeName(type, true) + " " + next + " = org.sjf4j.node.Nodes.getInObject(" + var + ", \"" + GeneratorUtil.escape(name) + "\");");
+        if (GeneratorUtil.isObject(ctx, parent)) out.line(_localTypeName(type, true) + " " + next + " = org.sjf4j.Nodes.getInObject(" + var + ", \"" + GeneratorUtil.escape(name) + "\");");
         else if (GeneratorUtil.isJojoType(ctx, parent)) {
             MapperModel.Read r = _jojoRead(parent, name);
             if (r != null) out.line(_localTypeName(type, true) + " " + next + " = " + (r.method != null ? var + "." + r.method.getSimpleName() + "()" : var + "." + r.javaName) + ";");
@@ -1621,7 +1621,7 @@ public final class MapperGenerator {
 
     private void _emitReadIndex(SourceWriter out, TypeMirror parent, String var, int idx, String next, TypeMirror type) {
         out.line(_localTypeName(type, true) + " " + next + " = null;");
-        if (GeneratorUtil.isObject(ctx, parent)) out.line(next + " = org.sjf4j.node.Nodes.getInArray(" + var + ", " + idx + ");");
+        if (GeneratorUtil.isObject(ctx, parent)) out.line(next + " = org.sjf4j.Nodes.getInArray(" + var + ", " + idx + ");");
         else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) out.line(next + " = " + var + ".getNode(" + idx + ");");
         else if (parent.getKind() == TypeKind.ARRAY) out.line("if (" + idx + " >= 0 && " + idx + " < " + var + ".length) " + next + " = " + var + "[" + idx + "];");
         else out.line("if (" + idx + " >= 0 && " + idx + " < " + var + ".size()) " + next + " = (" + _localTypeName(type, true) + ") " + var + ".get(" + idx + ");");
@@ -1652,7 +1652,7 @@ public final class MapperGenerator {
     private void _emitFinalWrite(SourceWriter out, TypeMirror parent, String var, PathSegment tail, String value) {
         if (tail instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) tail).name;
-            if (GeneratorUtil.isObject(ctx, parent)) out.line("org.sjf4j.node.Nodes.putInObject(" + var + ", \"" + GeneratorUtil.escape(name) + "\", " + value + ");");
+            if (GeneratorUtil.isObject(ctx, parent)) out.line("org.sjf4j.Nodes.putInObject(" + var + ", \"" + GeneratorUtil.escape(name) + "\", " + value + ");");
             else if (GeneratorUtil.isJojoType(ctx, parent)) {
                 MapperModel.Write w = _jojoWrite(parent, name);
                 if (w != null) out.line(w.setter != null ? var + "." + w.setter.getSimpleName() + "(" + value + ");" : var + "." + w.javaName + " = " + value + ";");
@@ -1667,7 +1667,7 @@ public final class MapperGenerator {
             }
         } else {
             int idx = ((PathSegment.Index) tail).index;
-            if (GeneratorUtil.isObject(ctx, parent)) out.line("org.sjf4j.node.Nodes.putInArray(" + var + ", " + idx + ", " + value + ");");
+            if (GeneratorUtil.isObject(ctx, parent)) out.line("org.sjf4j.Nodes.putInArray(" + var + ", " + idx + ", " + value + ");");
             else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) out.line(var + ".set(" + idx + ", " + value + ");");
             else if (parent.getKind() == TypeKind.ARRAY) out.line(var + "[" + idx + "] = " + value + ";");
             else out.line(var + ".set(" + idx + ", " + value + ");");
@@ -2725,12 +2725,12 @@ public final class MapperGenerator {
             out.line("");
             out.line("private " + resultType + " " + helper + "(Object source) {");
             out.indent();
-            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
-            out.line("int size = org.sjf4j.node.Nodes.sizeInArray(source);");
+            out.line("if (source == null || org.sjf4j.NodeKind.of(source).isNull()) return null;");
+            out.line("int size = org.sjf4j.Nodes.sizeInArray(source);");
             out.line(_containerLocalType(impl, to, resultType) + " " + targetVar + " = " + _newContainer(impl, to, "size") + ";");
             out.line("for (int " + index + " = 0; " + index + " < size; " + index + "++) {");
             out.indent();
-            out.line("Object node = org.sjf4j.node.Nodes.getInArray(source, " + index + ");");
+            out.line("Object node = org.sjf4j.Nodes.getInArray(source, " + index + ");");
             out.line(targetVar + ".add(" + _facadeConvertValue(value, "node") + ");");
             out.dedent();
             out.line("}");
@@ -2756,12 +2756,12 @@ public final class MapperGenerator {
             out.line("");
             out.line("private " + resultType + " " + helper + "(Object source) {");
             out.indent();
-            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
-            out.line("int size = org.sjf4j.node.Nodes.sizeInArray(source);");
+            out.line("if (source == null || org.sjf4j.NodeKind.of(source).isNull()) return null;");
+            out.line("int size = org.sjf4j.Nodes.sizeInArray(source);");
             out.line(resultType + " " + targetVar + " = new " + _arrayComponentTypeName(valueType) + "[size];");
             out.line("for (int " + index + " = 0; " + index + " < size; " + index + "++) {");
             out.indent();
-            out.line("Object node = org.sjf4j.node.Nodes.getInArray(source, " + index + ");");
+            out.line("Object node = org.sjf4j.Nodes.getInArray(source, " + index + ");");
             out.line(targetVar + "[" + index + "] = " + _facadeConvertValue(value, "node") + ";");
             out.dedent();
             out.line("}");
@@ -3073,7 +3073,7 @@ public final class MapperGenerator {
             out.line("}");
             return;
         }
-        out.line("Object discriminator = org.sjf4j.node.Nodes.getInObject(source, \"" + GeneratorUtil.escape(oneOf.key) + "\");");
+        out.line("Object discriminator = org.sjf4j.Nodes.getInObject(source, \"" + GeneratorUtil.escape(oneOf.key) + "\");");
         out.line("if (discriminator != null) {");
         out.indent();
         out.line("String discriminatorValue = String.valueOf(discriminator);");
@@ -3730,7 +3730,7 @@ public final class MapperGenerator {
         String field = "_sjf4j_codec_" + generation.nextCodec++;
         generation.helpers.put(key, field);
         String raw = GeneratorUtil.classLiteral(ctx, type);
-        target.addField(out -> out.line("private static final org.sjf4j.node.ValueCodecInfo " + field + " = org.sjf4j.node.NodeRegistry.resolveValueCodecOrElseThrow(" + raw + ", \"\");"));
+        target.addField(out -> out.line("private static final org.sjf4j.node.ValueCodecInfo " + field + " = org.sjf4j.node.TypeRegistry.resolveValueCodecOrElseThrow(" + raw + ", \"\");"));
         return field;
     }
 
@@ -3799,7 +3799,7 @@ public final class MapperGenerator {
         }
         Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
         for (String name : plan.names) {
-            MapperModel.Expr value = new MapperModel.Expr("org.sjf4j.node.Nodes.getInObject(source, \""
+            MapperModel.Expr value = new MapperModel.Expr("org.sjf4j.Nodes.getInObject(source, \""
                     + GeneratorUtil.escape(name) + "\")", ctx.objectType);
             value.facadeNode = true;
             value.facadeType = from;
@@ -3818,7 +3818,7 @@ public final class MapperGenerator {
             out.line("");
             out.line("private " + to + " " + helper + "(Object source) {");
             out.indent();
-            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
+            out.line("if (source == null || org.sjf4j.NodeKind.of(source).isNull()) return null;");
             _emitObjectLikeReturn(out, to, plan, values);
             out.dedent();
             out.line("}");
@@ -3960,10 +3960,10 @@ public final class MapperGenerator {
             out.line("");
             out.line("private " + to.mirror + " " + helper + "(Object source) {");
             out.indent();
-            out.line("if (source == null || org.sjf4j.node.NodeKind.of(source).isNull()) return null;");
+            out.line("if (source == null || org.sjf4j.NodeKind.of(source).isNull()) return null;");
             out.line(_containerLocalType(impl, to, to.mirror) + " " + targetVar + " = " + _newContainer(impl, to,
-                    "org.sjf4j.node.Nodes.sizeInObject(source)") + ";");
-            out.line("org.sjf4j.node.Nodes.forEachObject(source, (key, node) -> " + targetVar + ".put(key, "
+                    "org.sjf4j.Nodes.sizeInObject(source)") + ";");
+            out.line("org.sjf4j.Nodes.forEachObject(source, (key, node) -> " + targetVar + ".put(key, "
                     + _facadeConvertValue(value, "node") + "));");
             out.line("return " + targetVar + ";");
             out.dedent();
@@ -4581,9 +4581,9 @@ public final class MapperGenerator {
             if ("number".equals(kind)) {
                 out.line("return org.sjf4j.node.Numbers.to(source, " + GeneratorUtil.classLiteral(ctx, boxedTo) + ");");
             } else if ("toEnum".equals(kind)) {
-                out.line("return org.sjf4j.node.Nodes.toEnum(source, " + GeneratorUtil.classLiteral(ctx, enumType) + ");");
+                out.line("return org.sjf4j.Nodes.toEnum(source, " + GeneratorUtil.classLiteral(ctx, enumType) + ");");
             } else {
-                out.line("return org.sjf4j.node.Nodes." + kind + "(source);");
+                out.line("return org.sjf4j.Nodes." + kind + "(source);");
             }
             out.dedent();
             out.line("}");
@@ -4865,7 +4865,7 @@ public final class MapperGenerator {
 
     private String _facadeConvertValue(MapperModel.Converter conv, String value) {
         String typed = conv.facadeType == null ? value : "(" + conv.facadeType + ") " + value;
-        return "(org.sjf4j.node.NodeKind.of(" + value + ").isNull() ? null : " + _convertValue(conv, typed) + ")";
+        return "(org.sjf4j.NodeKind.of(" + value + ").isNull() ? null : " + _convertValue(conv, typed) + ")";
     }
 
     private void _emitArrayField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,

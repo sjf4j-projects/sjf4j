@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 
 import java.io.StringReader;
 import java.io.StringWriter;

@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.TypeReference;
+import org.sjf4j.TypeReference;
 
 import java.time.Instant;
 import java.util.Arrays;

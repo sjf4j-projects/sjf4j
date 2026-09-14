@@ -25,7 +25,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
@@ -58,7 +58,7 @@ public interface Jackson2Module {
         public TwoSimpleModule(StreamingContext streamingContext) {
             this.streamingContext = streamingContext;
 
-            TypeInfo ti = NodeRegistry.registerTypeInfo(Instant.class);
+            TypeInfo ti = TypeRegistry.registerTypeInfo(Instant.class);
             String valueFormat = streamingContext.defaultValueFormat(Instant.class);
             ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
             addDeserializer(Instant.class, new NodeValueDeserializer<>(vci));
@@ -78,7 +78,7 @@ public interface Jackson2Module {
                         return new JsonArrayDeserializer<>(null);
                     }
 
-                    TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
                     if (JsonObject.class.isAssignableFrom(clazz)) {
                         return new JsonObjectDeserializer<>(type, ti.pojoInfo, streamingContext);
                     }
@@ -114,7 +114,7 @@ public interface Jackson2Module {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
-                    TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
                         ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);

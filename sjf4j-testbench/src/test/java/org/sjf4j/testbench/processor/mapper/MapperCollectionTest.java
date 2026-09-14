@@ -7,7 +7,7 @@ import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
-import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.CompiledInstances;
 
 import java.util.*;
 

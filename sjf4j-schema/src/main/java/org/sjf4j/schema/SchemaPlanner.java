@@ -1,7 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 

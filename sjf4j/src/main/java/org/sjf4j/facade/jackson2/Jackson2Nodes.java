@@ -1,6 +1,5 @@
 package org.sjf4j.facade.jackson2;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.BooleanNode;
@@ -10,8 +9,8 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.NodeKind;
+import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
 
 import java.lang.reflect.Type;
