@@ -1,7 +1,6 @@
 plugins {
     id("java-library")
     id("jacoco")
-    id("me.champeau.jmh") version "0.7.2"
     id("com.vanniktech.maven.publish") version "0.35.0"
 }
 
@@ -42,18 +41,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    // jmh
-    jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
-    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
-    jmhCompileOnly("org.projectlombok:lombok:1.18.38")
-    jmhAnnotationProcessor("org.projectlombok:lombok:1.18.38")
-    jmhImplementation("com.jayway.jsonpath:json-path:2.10.0")
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
-    jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.1")
-    jmhImplementation("com.google.code.gson:gson:2.13.1")
-    jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
-    jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")
-    jmhImplementation("org.eclipse.parsson:parsson:1.1.7")
 }
 
 tasks.withType<JavaCompile>().configureEach {

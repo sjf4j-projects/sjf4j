@@ -103,10 +103,19 @@ public interface StreamingWriter extends Closeable {
      */
     void flush() throws IOException;
 
-    default void flushTo(Writer output) throws IOException {
-        // Only for Fastjson2
-    }
-    default void flushTo(OutputStream output) throws IOException {
-        // Only for Fastjson2
-    }
+    /**
+     * Transfers buffered output to {@code output}.
+     *
+     * <p>For implementations whose native writer is not backed by a
+     * {@link Writer} or {@link OutputStream}. The default implementation does nothing.</p>
+     */
+    default void flushTo(Writer output) throws IOException {}
+
+    /**
+     * Transfers buffered output to {@code output}.
+     *
+     * <p>For implementations whose native writer is not backed by a
+     * {@link Writer} or {@link OutputStream}. The default implementation does nothing.</p>
+     */
+    default void flushTo(OutputStream output) throws IOException {}
 }

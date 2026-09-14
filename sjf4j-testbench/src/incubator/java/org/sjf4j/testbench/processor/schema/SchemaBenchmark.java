@@ -12,9 +12,9 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.annotation.schema.CompiledSchemaValidator;
+import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
-import org.sjf4j.annotation.schema.ValidatorOptions;
+import org.sjf4j.annotation.schema.ValidatingOptions;
 import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaPlan;
@@ -134,9 +134,9 @@ public class SchemaBenchmark {
         }
     }
 
-    @CompiledSchemaValidator
+    @CompiledValidator
     public interface OrderValidator {
-        @ValidatorOptions(fallback = false)
+        @ValidatingOptions(fallback = false)
         boolean isValid(Order order);
     }
 

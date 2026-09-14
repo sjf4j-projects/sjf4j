@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved compiled-navigation annotations from `org.sjf4j.annotation.path` to `org.sjf4j.annotation.navigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
 - Renamed the annotation-processor navigation generator package from `org.sjf4j.processor.path` to `org.sjf4j.processor.navigator`.
-- Removed the `StreamingBinding` convenience read/write API and `StreamingContext` configuration API.
+- Renamed `@CompiledSchemaValidator` to `@CompiledValidator` and `@ValidatorOptions` to `@ValidatingOptions`.
 - Renamed `StreamingReader.Token.FIELD_NAME` to `NAME`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
 - Moved runtime metadata classes from `NodeRegistry` to top-level `org.sjf4j.node` types. `NodeRegistry.PojoInfo` is renamed to `ObjectInfo`; `TypeInfo`, `PropertyInfo`, `CreatorInfo`, `ContainerInfo`, `ValueCodecInfo`, `OneOfInfo`, and `RecordInfo` are now imported directly from `org.sjf4j.node`.
@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `org.sjf4j.binding.StreamingReader` with primitive-value and prepared name-matching fast paths for generated binders.
 - Added `StreamingBinding` and `StreamingWriter` APIs for backend-neutral streaming serialization with prepared property names and primitive fast paths.
+- Restored `StreamingBinding` convenience read/write methods and `StreamingContext` value-format configuration.
+- Added JSON, YAML, and node binding interfaces plus a reusable `StringBuilderWriter`.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 - Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.

@@ -1,3 +1,5 @@
 <configuration>
-    <root level="WARN"/>
+    <root level="ERROR"/>
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    <logger name="com.jayway.jsonpath" level="ERROR"/>
 </configuration>

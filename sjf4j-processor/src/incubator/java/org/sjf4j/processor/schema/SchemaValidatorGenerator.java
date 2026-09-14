@@ -1,7 +1,7 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
-import org.sjf4j.annotation.schema.ValidatorOptions;
+import org.sjf4j.annotation.schema.ValidatingOptions;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.ProcessorContext;
@@ -74,7 +74,7 @@ public final class SchemaValidatorGenerator {
             return;
         }
 
-        ValidatorOptions options = method.getAnnotation(ValidatorOptions.class);
+        ValidatingOptions options = method.getAnnotation(ValidatingOptions.class);
         boolean strictFormat = options == null || options.strictFormat();
         boolean fallback = options == null || options.fallback();
 

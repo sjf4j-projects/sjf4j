@@ -3,6 +3,8 @@ package org.sjf4j.binding;
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
@@ -65,6 +67,14 @@ public interface StreamingWriter extends Closeable, Flushable {
     default void endDocument() throws IOException {
     }
 
+    /**
+     * Transfers buffered output to {@code output}.
+     *
+     * <p>For implementations whose native writer is not backed by a
+     * {@link Writer} or {@link OutputStream}. The default implementation does nothing.</p>
+     */
+    default void flushTo(Writer output) throws IOException {}
+    default void flushTo(OutputStream output) throws IOException {}
 
     /*
      * ----------------------------------------------------------------------
@@ -80,6 +90,9 @@ public interface StreamingWriter extends Closeable, Flushable {
 
     void endArray() throws IOException;
 
+    default void separateProperty() throws IOException {}
+
+    default void separateElement() throws IOException {}
 
     /*
      * ----------------------------------------------------------------------
@@ -361,4 +374,5 @@ public interface StreamingWriter extends Closeable, Flushable {
         writeName(name);
         startArray();
     }
+
 }

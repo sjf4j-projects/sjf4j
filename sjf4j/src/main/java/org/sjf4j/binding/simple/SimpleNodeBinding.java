@@ -1,0 +1,881 @@
+package org.sjf4j.binding.simple;
+
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
+import org.sjf4j.JsonType;
+import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.binding.NodeBinding;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.Nodes;
+import org.sjf4j.node.Numbers;
+import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.OneOfInfo;
+import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.TypeInfo;
+import org.sjf4j.node.Types;
+import org.sjf4j.node.ValueCodec;
+import org.sjf4j.node.ValueCodecInfo;
+import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Strings;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
+
+/**
+ * Node binding implementation backed by core node utilities.
+ *
+ */
+public final class SimpleNodeBinding implements NodeBinding {
+
+    private final StreamingContext streamingContext;
+
+    /**
+     * Creates a binding with the default conversion pipeline.
+     */
+    public SimpleNodeBinding() {
+        this(StreamingContext.EMPTY);
+    }
+
+    /**
+     * Creates a binding with the supplied streaming configuration.
+     */
+    public SimpleNodeBinding(StreamingContext streamingContext) {
+        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
+    }
+
+
+    /**
+     * Converts node into target type.
+     */
+    @Override
+    public Object readNode(Object node, Type type, boolean deepCopy) {
+        try {
+            Class<?> rawBox = Types.rawBox(type);
+            return _readNode(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE);
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
+        }
+    }
+
+    /**
+     * Internal read conversion with binding path support.
+     */
+    @SuppressWarnings("unchecked")
+    private Object _readNode(Object node, Type type, Class<?> rawClazz,
+                             OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
+        try {
+            if (node == null) {
+                if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
+                return null;
+            }
+
+            if (anyOfInfo != null) {
+                return _readOneOf(node, rawClazz, anyOfInfo, deepCopy, ps);
+            }
+
+            if (rawClazz == Object.class) {
+                return deepCopy ? _deepNode(node, type, ps) : node;
+            }
+            // Raw-compatible values can only be returned as-is when the target has no
+            // generic structure to honor. Parameterized containers/POJOs still need a
+            // shallow/deep traversal so their declared element/member types are bound.
+            if (rawClazz.isInstance(node) && !Types.hasGenericStructure(type)) {
+                return deepCopy ? _deepNode(node, type, ps) : node;
+            }
+
+            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            anyOfInfo = ti.oneOfInfo;
+            if (anyOfInfo != null) {
+                return _readOneOf(node, rawClazz, anyOfInfo, deepCopy, ps);
+            }
+            if (ti.hasValueCodecs()) {
+                String valueFormat = streamingContext.defaultValueFormat(rawClazz);
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
+                }
+            }
+
+            if (node instanceof String) {
+                return _readString(node.toString(), rawClazz, ps);
+            }
+            if (node instanceof Number) {
+                if (Number.class.isAssignableFrom(rawClazz)) {
+                    return Numbers.to((Number) node, rawClazz);
+                }
+                throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
+            }
+            if (node instanceof Boolean) {
+                if (rawClazz == Boolean.class) {
+                    return node;
+                }
+                throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
+            }
+
+            if (node instanceof Map) {
+                return _readFromMap((Map<String, Object>) node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node instanceof List) {
+                return _readFromList((List<Object>) node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node instanceof JsonObject) {
+                return _readFromJsonObject((JsonObject) node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node instanceof JsonArray) {
+                return _readFromJsonArray((JsonArray) node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node.getClass().isArray()) {
+                return _readFromArray(node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node instanceof Set) {
+                return _readFromSet((Set<Object>) node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node instanceof Character) {
+                return _readString(node.toString(), rawClazz, ps);
+            }
+            if (node instanceof Enum) {
+                return _readString(((Enum<?>) node).name(), rawClazz, ps);
+            }
+
+            ObjectInfo oldPi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo; // source pi
+            if (oldPi != null) {
+                return _readFromPojo(node, oldPi, rawClazz, type, deepCopy, ps);
+            }
+
+            throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps, e);
+        }
+    }
+
+
+    private Object _readOneOf(Object node, Class<?> rawClazz,
+                              OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
+        Class<?> targetClazz;
+
+        if (anyOfInfo.hasDiscriminator) {
+            if (anyOfInfo.scope != OneOf.Scope.CURRENT) {
+                throw new BindingException("oneOf scope '" + anyOfInfo.scope + "' is not supported", ps);
+            }
+
+            if (!(node instanceof Map) && !(node instanceof JsonObject)) {
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("node must be a JSON object, when OneOf has a CURRENT discriminator", ps);
+            }
+
+            Object discriminatorValue;
+            if (!anyOfInfo.key.isEmpty()) {
+                discriminatorValue = Nodes.getInObject(node, anyOfInfo.key);
+            } else if (!anyOfInfo.path.isEmpty()) {
+                discriminatorValue = anyOfInfo.compiledPath.getNode(node);
+            } else {
+                discriminatorValue = null;
+            }
+
+            if (discriminatorValue == null) {
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("not found value for discriminator key '" + anyOfInfo.key + "'", ps);
+            }
+
+            targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
+            if (targetClazz == null) {
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
+            }
+        } else {
+            JsonType jsonType = JsonType.of(node);
+            targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+            if (targetClazz == null) {
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("oneOf mapping does not support jsonType=" + jsonType +
+                        " for type '" + rawClazz.getName() + "'", ps);
+            }
+        }
+        return _readNode(node, targetClazz, Types.rawBox(targetClazz), null, deepCopy, ps);
+    }
+
+    // Object -> deep copied Object
+    /**
+     * Internal deep copy with binding path support.
+     */
+    @SuppressWarnings("unchecked")
+    private Object _deepNode(Object node, Type type, PathSegment ps) {
+        try {
+            if (node == null) return null;
+
+            Class<?> targetRaw = type == null ? Object.class : Types.rawBox(type);
+            if (targetRaw != Object.class && !targetRaw.isInstance(node)) {
+                return _readNode(node, type, targetRaw, null, true, ps);
+            }
+
+            if (node instanceof String || node instanceof Number || node instanceof Boolean) {
+                return node;
+            }
+
+            Class<?> nodeClazz = node.getClass();
+            if (node instanceof Map) {
+                Map<String, Object> srcMap = (Map<String, Object>) node;
+                Map<String, Object> newMap = NodeRegistry.newMapContainer(nodeClazz, true);
+                Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+                srcMap.forEach((k, v) -> {
+                    PathSegment cps = new PathSegment.Name(ps, k);
+                    newMap.put(k, _deepNode(v, valueType, cps));
+                });
+                return newMap;
+            }
+
+            if (node instanceof List) {
+                List<Object> srcList = (List<Object>) node;
+                List<Object> newList = NodeRegistry.newListContainer(nodeClazz, true);
+                Type elemType = Types.resolveTypeArgument(type, List.class, 0);
+                for (int i = 0; i < srcList.size(); i++) {
+                    PathSegment cps = new PathSegment.Index(ps, i);
+                    newList.add(_deepNode(srcList.get(i), elemType, cps));
+                }
+                return newList;
+            }
+
+            if (node.getClass() == JsonObject.class) {
+                JsonObject srcJo = (JsonObject) node;
+                JsonObject newJo = new JsonObject();
+                srcJo.forEach((k, v) -> {
+                    PathSegment cps = new PathSegment.Name(ps, k);
+                    newJo.put(k, _deepNode(v, Object.class, cps));
+                });
+                return newJo;
+            }
+
+            if (node instanceof JsonObject) {
+                JsonObject srcJo = (JsonObject) node;
+                ObjectInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(nodeClazz);
+                CreatorInfo ci = pojoInfo.creatorInfo;
+                NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
+
+                for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
+                    String key = entry.getKey();
+                    int argIdx = ci.getArgIndexOrAlias(key);
+                    if (argIdx >= 0) {
+                        PathSegment cps = new PathSegment.Name(ps, key);
+                        Type argType = Types.resolveMemberType(type, targetRaw, ci.argTypes[argIdx]);
+                        Object vv = _deepNode(entry.getValue(), argType, cps);
+                        session.acceptCtorArg(argIdx, vv);
+                        continue;
+                    }
+
+                    PropertyInfo fi = pojoInfo.aliasProperties != null
+                            ? pojoInfo.aliasProperties.get(key)
+                            : pojoInfo.properties.get(key);
+                    if (fi != null) {
+                        PathSegment cps = new PathSegment.Name(ps, key);
+                        Type fieldType = Types.resolveMemberType(type, targetRaw, fi.type);
+                        Object vv = _deepNode(entry.getValue(), fieldType, cps);
+                        session.acceptProperty(fi, vv);
+                        continue;
+                    }
+
+                    PathSegment cps = new PathSegment.Name(ps, key);
+                    Object vv = _deepNode(entry.getValue(), Object.class, cps);
+                    session.acceptDynamic(key, vv);
+                }
+
+                return session.finish();
+            }
+            if (node instanceof JsonArray) {
+                JsonArray srcJa = (JsonArray) node;
+                JsonArray newJa = nodeClazz == JsonArray.class ? new JsonArray()
+                        : (JsonArray) NodeRegistry.registerPojoOrElseThrow(nodeClazz).creatorInfo.forceNewPojo();
+                Type elemType = Types.resolveTypeArgument(type, List.class, 0);
+                for (int i = 0; i < srcJa.size(); i++) {
+                    PathSegment cps = new PathSegment.Index(ps, i);
+                    newJa.add(_deepNode(srcJa.getNode(i), elemType, cps));
+                }
+                return newJa;
+            }
+            if (nodeClazz.isArray()) {
+                int len = Array.getLength(node);
+                Object newArr = Array.newInstance(nodeClazz.getComponentType(), len);
+                Type compType = nodeClazz.getComponentType();
+                for (int i = 0; i < len; i++) {
+                    PathSegment cps = new PathSegment.Index(ps, i);
+                    Object vv = _deepNode(Array.get(node, i), compType, cps);
+                    Array.set(newArr, i, vv);
+                }
+                return newArr;
+            }
+            if (node instanceof Set) {
+                Set<Object> srcSet = (Set<Object>) node;
+                Set<Object> newSet = NodeRegistry.newSetContainer(nodeClazz, true);
+                Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
+                int i = 0;
+                for (Object v : srcSet) {
+                    PathSegment cps = new PathSegment.Index(ps, i++);
+                    newSet.add(_deepNode(v, elemType, cps));
+                }
+                return newSet;
+            }
+
+            ObjectInfo pi = NodeRegistry.registerTypeInfo(nodeClazz).pojoInfo;
+            if (pi != null) {
+                CreatorInfo ci = pi.creatorInfo;
+                NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.readablePropertyCount);
+
+                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                    String key = entry.getKey();
+                    PropertyInfo fi = entry.getValue();
+
+                    int argIdx = ci.getArgIndexOrAlias(key);
+                    if (argIdx >= 0) {
+                        Object v = fi.invokeGetter(node);
+                        PathSegment cps = new PathSegment.Name(ps, key);
+                        Type argType = Types.resolveMemberType(type, targetRaw, ci.argTypes[argIdx]);
+                        session.acceptCtorArg(argIdx, _deepNode(v, argType, cps));
+                        continue;
+                    }
+
+                    Object v = fi.invokeGetter(node);
+                    PathSegment cps = new PathSegment.Name(ps, key);
+                    Type fieldType = Types.resolveMemberType(type, targetRaw, fi.type);
+                    Object vv = _deepNode(v, fieldType, cps);
+                    session.acceptProperty(fi, vv);
+                }
+                return session.finish();
+            }
+
+            return node;
+
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("failed to deep copy node '" + Types.name(node) + "'", ps, e);
+        }
+    }
+
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Object _readString(String s, Class<?> rawClazz, PathSegment ps) {
+        if (rawClazz == String.class) {
+            return s;
+        }
+        if (rawClazz == Character.class) {
+            return !s.isEmpty() ? s.charAt(0) : null;
+        }
+        if (rawClazz.isEnum()) {
+            return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
+        }
+        throw new BindingException("cannot convert String '" + Strings.truncate(s) + "' to '" +
+                rawClazz.getName() + "'", ps);
+    }
+
+    // Map -> Map/JsonObject/JOJO/POJO
+    private Object _readFromMap(Map<String, Object> oldMap, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        if (!deepCopy && rawClazz == JsonObject.class) {
+            return new JsonObject(oldMap);
+        }
+        return _readFromObjectSource(oldMap::entrySet, "Map", rawClazz, type, deepCopy, ps);
+    }
+
+    // JsonObject -> Map/JsonObject/JOJO/POJO
+    private Object _readFromJsonObject(JsonObject oldJo, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        return _readFromObjectSource(oldJo::entrySet, "JsonObject", rawClazz, type, deepCopy, ps);
+    }
+
+    private Object _readFromObjectSource(ObjectSource source,
+                                         String sourceName,
+                                         Class<?> rawClazz,
+                                         Type type,
+                                         boolean deepCopy,
+                                         PathSegment ps) {
+        if (Map.class.isAssignableFrom(rawClazz)) {
+            Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            for (Map.Entry<String, Object> entry : source.entries()) {
+                PathSegment cps = new PathSegment.Name(ps, entry.getKey());
+                Object vv = _readNode(entry.getValue(), vt, vc, va, deepCopy, cps);
+                map.put(entry.getKey(), vv);
+            }
+            return map;
+        }
+
+        if (rawClazz == JsonObject.class) {
+            JsonObject jo = new JsonObject();
+            for (Map.Entry<String, Object> entry : source.entries()) {
+                PathSegment cps = new PathSegment.Name(ps, entry.getKey());
+                Object vv = _readNode(entry.getValue(), Object.class, Object.class, null, deepCopy, cps);
+                jo.put(entry.getKey(), vv);
+            }
+            return jo;
+        }
+
+        ObjectInfo pi = NodeRegistry.registerTypeInfo(rawClazz).pojoInfo;
+        if (pi != null && !pi.isJajo) {
+            return _readPojoFromEntries(source.entries(), type, rawClazz, pi, deepCopy, ps);
+        }
+        throw new BindingException("cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
+    }
+
+    private Object _readPojoFromEntries(Iterable<Map.Entry<String, Object>> entries,
+                                        Type type, Class<?> rawClazz, ObjectInfo pi,
+                                        boolean deepCopy, PathSegment ps) {
+        CreatorInfo ci = pi.creatorInfo;
+        Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
+        Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
+        int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
+        int pendingSize = 0;
+        PropertyInfo[] pendingFields = null;
+        Object[] pendingValues = null;
+        Map<String, Object> dynamicMap = null;
+
+        for (Map.Entry<String, Object> entry : entries) {
+            String key = entry.getKey();
+            Object rawValue = entry.getValue();
+
+            int argIdx = -1;
+            if (pojo == null) {
+                argIdx = ci.getArgIndex(key);
+                if (argIdx < 0 && ci.aliasMap != null) {
+                    String origin = ci.aliasMap.get(key); // alias -> origin
+                    if (origin != null) {
+                        argIdx = ci.getArgIndex(origin);
+                    }
+                }
+            }
+            if (argIdx >= 0) {
+                assert args != null;
+                Type argType = Types.resolveMemberType(type, rawClazz, ci.argTypes[argIdx]);
+                PathSegment cps = new PathSegment.Name(ps, key);
+                Class<?> argRaw = Types.rawBox(argType);
+
+                TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
+                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                if (argVci == null && ti.hasValueCodecs()) {
+                    String valueFormat = streamingContext.defaultValueFormat(argRaw);
+                    argVci = ti.getValueCodecInfo(valueFormat);
+                }
+                if (ti.oneOfInfo == null && argVci != null) {
+                    args[argIdx] = argRaw.isInstance(rawValue) ? argVci.valueCopy(rawValue) : argVci.rawToValue(rawValue);
+                } else {
+                    args[argIdx] = _readNode(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps);
+                }
+                remainingArgs--;
+                if (remainingArgs == 0) {
+                    pojo = ci.newPojoWithArgs(args);
+                    for (int j = 0; j < pendingSize; j++) {
+                        pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
+                    }
+                    pendingSize = 0;
+                }
+                continue;
+            }
+
+            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            if (fi != null) {
+                PathSegment cps = new PathSegment.Name(ps, key);
+                Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
+                Class<?> fieldRaw = Types.rawBox(fieldType);
+                Object vv;
+                if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
+                    vv = fieldRaw.isInstance(rawValue) ? fi.resolvedValueCodec.valueCopy(rawValue) :
+                            fi.resolvedValueCodec.rawToValue(rawValue);
+                } else {
+                    vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
+                }
+
+                if (pojo != null) {
+                    fi.invokeSetterIfPresent(pojo, vv);
+                } else {
+                    if (pendingFields == null) {
+                        int cap = pi.propertyCount;
+                        pendingFields = new PropertyInfo[cap];
+                        pendingValues = new Object[cap];
+                    }
+                    pendingFields[pendingSize] = fi;
+                    pendingValues[pendingSize] = vv;
+                    pendingSize++;
+                }
+                continue;
+            }
+
+            if (pi.isJojo && pi.readDynamic) {
+                if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();
+                PathSegment cps = new PathSegment.Name(ps, key);
+                Object vv = _readNode(rawValue, Object.class, Object.class, null, deepCopy, cps);
+                dynamicMap.put(key, vv);
+            }
+        }
+
+        if (pojo == null) {
+            pojo = ci.newPojoWithArgs(args);
+            for (int j = 0; j < pendingSize; j++) {
+                pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
+            }
+        }
+        if (pi.isJojo) ((JsonObject) pojo)._dynamicMap(dynamicMap);
+        return pojo;
+    }
+
+    // List -> List/JsonArray/JAJO/Array/Set
+    private Object _readFromList(List<?> oldList, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        if (!deepCopy && rawClazz == JsonArray.class) {
+            return new JsonArray(oldList);
+        }
+        return _readFromArraySource(new ArraySource() {
+            @Override
+            public int size() {
+                return oldList.size();
+            }
+
+            @Override
+            public Object get(int i) {
+                return oldList.get(i);
+            }
+        }, "List", rawClazz, type, deepCopy, ps);
+    }
+
+    // JsonArray -> List/JsonArray/JAJO/Array/Set
+    private Object _readFromJsonArray(JsonArray oldJa, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        return _readFromArraySource(new ArraySource() {
+            @Override
+            public int size() {
+                return oldJa.size();
+            }
+
+            @Override
+            public Object get(int i) {
+                return oldJa.getNode(i);
+            }
+        }, "JsonArray", rawClazz, type, deepCopy, ps);
+    }
+
+    // Array -> List/JsonArray/JAJO/Array/Set
+    private Object _readFromArray(Object node, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        return _readFromArraySource(new ArraySource() {
+            @Override
+            public int size() {
+                return Array.getLength(node);
+            }
+
+            @Override
+            public Object get(int i) {
+                return Array.get(node, i);
+            }
+        }, "Array", rawClazz, type, deepCopy, ps);
+    }
+
+    // Set -> List/JsonArray/JAJO/Array/Set
+    private Object _readFromSet(Set<Object> oldSet, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        List<Object> values = new ArrayList<>(oldSet.size());
+        values.addAll(oldSet);
+        return _readFromArraySource(new ArraySource() {
+            @Override
+            public int size() {
+                return values.size();
+            }
+
+            @Override
+            public Object get(int i) {
+                return values.get(i);
+            }
+        }, "Set", rawClazz, type, deepCopy, ps);
+    }
+
+    private Object _readFromArraySource(ArraySource source, String sourceName, Class<?> rawClazz, Type type,
+                                        boolean deepCopy, PathSegment ps) {
+        if (List.class.isAssignableFrom(rawClazz)) {
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            List<Object> list = NodeRegistry.newListContainer(rawClazz, false);
+            for (int i = 0; i < source.size(); i++) {
+                PathSegment cps = new PathSegment.Index(ps, i);
+                Object v = source.get(i);
+                Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
+                list.add(vv);
+            }
+            return list;
+        }
+        if (rawClazz == JsonArray.class) {
+            JsonArray ja = new JsonArray();
+            for (int i = 0; i < source.size(); i++) {
+                PathSegment cps = new PathSegment.Index(ps, i);
+                Object v = source.get(i);
+                Object vv = _readNode(v, Object.class, Object.class, null, deepCopy, cps);
+                ja.add(vv);
+            }
+            return ja;
+        }
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
+            Class<?> vc = jajo.elementType();
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            for (int i = 0; i < source.size(); i++) {
+                PathSegment cps = new PathSegment.Index(ps, i);
+                Object v = source.get(i);
+                Object vv = _readNode(v, vc, vc, va, deepCopy, cps);
+                jajo.add(vv);
+            }
+            return jajo;
+        }
+        if (rawClazz.isArray()) {
+            Class<?> vt = rawClazz.getComponentType();
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            Object array = Array.newInstance(vt, source.size());
+            for (int i = 0; i < source.size(); i++) {
+                PathSegment cps = new PathSegment.Index(ps, i);
+                Object v = source.get(i);
+                Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
+                Array.set(array, i, vv);
+            }
+            return array;
+        }
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            Set<Object> set = NodeRegistry.newSetContainer(rawClazz, false);
+            for (int i = 0; i < source.size(); i++) {
+                PathSegment cps = new PathSegment.Index(ps, i);
+                Object v = source.get(i);
+                Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
+                set.add(vv);
+            }
+            return set;
+        }
+        throw new BindingException("cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
+    }
+
+    // POJO -> Map/JsonObject/JOJO/POJO
+    private Object _readFromPojo(Object node, ObjectInfo oldPi, Class<?> rawClazz,
+                                 Type type, boolean deepCopy, PathSegment ps) {
+        if (Map.class.isAssignableFrom(rawClazz)) {
+            Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
+            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+                String key = entry.getKey();
+                Object v = entry.getValue().invokeGetter(node);
+                PathSegment cps = new PathSegment.Name(ps, key);
+                Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
+                map.put(key, vv);
+            }
+            return map;
+        }
+
+        if (rawClazz == JsonObject.class) {
+            JsonObject jo = new JsonObject();
+            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+                String key = entry.getKey();
+                Object v = entry.getValue().invokeGetter(node);
+                PathSegment cps = new PathSegment.Name(ps, key);
+                Object vv = _readNode(v, Object.class, Object.class, null, deepCopy, cps);
+                jo.put(key, vv);
+            }
+            return jo;
+        }
+
+        ObjectInfo pi = NodeRegistry.registerTypeInfo(rawClazz).pojoInfo;
+        if (pi != null && !pi.isJajo) {
+            Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.readablePropertyCount);
+            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+                sourceValues.put(entry.getKey(), entry.getValue().invokeGetter(node));
+            }
+            return _readPojoFromEntries(sourceValues.entrySet(), type, rawClazz, pi, deepCopy, ps);
+        }
+        throw new BindingException("cannot convert POJO to '" + rawClazz.getName() + "'", ps);
+    }
+
+    private interface ArraySource {
+        int size();
+        Object get(int i);
+    }
+
+    private interface ObjectSource {
+        Iterable<Map.Entry<String, Object>> entries();
+    }
+
+
+
+    /// Write
+
+    /**
+     * Converts runtime object into writable node tree.
+     */
+    @Override
+    public Object writeNode(Object node) {
+        return _writeNode(node, PathSegment.Root.INSTANCE);
+    }
+
+    /**
+     * Internal write conversion with binding path support.
+     */
+    @SuppressWarnings("unchecked")
+    public Object _writeNode(Object node, PathSegment ps) {
+        try {
+            if (node == null) return null;
+
+            if (node instanceof String) {
+                return node.toString();
+            }
+
+            if (node instanceof Number) {
+                return node;
+            }
+
+            if (node instanceof Boolean) {
+                return node;
+            }
+
+            if (node instanceof Map) {
+                Map<String, Object> oldMap = (Map<String, Object>) node;
+                Map<String, Object> newMap = new LinkedHashMap<>(oldMap.size());
+                for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
+                    PathSegment cps = new PathSegment.Name(ps, entry.getKey());
+                    Object vv = _writeNode(entry.getValue(), cps);
+                    newMap.put(entry.getKey(), vv);
+                }
+                return newMap;
+            }
+
+            if (node instanceof List) {
+                List<Object> oldList = (List<Object>) node;
+                List<Object> newList = new ArrayList<>(oldList.size());
+                for (int i = 0, len = oldList.size(); i < len; i++) {
+                    PathSegment cps = new PathSegment.Index(ps, i);
+                    Object vv = _writeNode(oldList.get(i), cps);
+                    newList.add(vv);
+                }
+                return newList;
+            }
+
+            Class<?> rawClazz = node.getClass();
+            if (node instanceof JsonObject) {
+                JsonObject jo = (JsonObject) node;
+                Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
+                if (rawClazz != JsonObject.class) {
+                    ObjectInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+                    if (!pi.writeDynamic) {
+                        for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                            String key = entry.getKey();
+                            PathSegment cps = new PathSegment.Name(ps, key);
+                            Object vv = _writeNode(entry.getValue().invokeGetter(node), cps);
+                            newMap.put(key, vv);
+                        }
+                        return newMap;
+                    }
+                }
+                jo.forEach((k, v) -> {
+                    PathSegment cps = new PathSegment.Name(ps, k);
+                    Object vv = _writeNode(v, cps);
+                    newMap.put(k, vv);
+                });
+                return newMap;
+            }
+
+            if (node instanceof JsonArray) {
+                JsonArray ja = (JsonArray) node;
+                List<Object> newList = new ArrayList<>(ja.size());
+                for (int i = 0, len = ja.size(); i < len; i++) {
+                    PathSegment cps = new PathSegment.Index(ps, i);
+                    Object vv = _writeNode(ja.getNode(i), cps);
+                    newList.add(vv);
+                }
+                return newList;
+            }
+
+            if (rawClazz.isArray()) {
+                int len = Array.getLength(node);
+                List<Object> newList = new ArrayList<>(len);
+                for (int i = 0; i < len; i++) {
+                    PathSegment cps = new PathSegment.Index(ps, i);
+                    Object vv = _writeNode(Array.get(node, i), cps);
+                    newList.add(vv);
+                }
+                return newList;
+            }
+
+            if (node instanceof Set) {
+                Set<Object> set = (Set<Object>) node;
+                List<Object> newList = new ArrayList<>(set.size());
+                int i = 0;
+                for (Object v : set) {
+                    PathSegment cps = new PathSegment.Index(ps, i++);
+                    Object vv = _writeNode(v, cps);
+                    newList.add(vv);
+                }
+                return newList;
+            }
+
+            if (node instanceof Character) {
+                return node.toString();
+            }
+            if (node instanceof Enum) {
+                return ((Enum<?>) node).name();
+            }
+
+            TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            if (ti.hasValueCodecs()) {
+                String valueFormat = streamingContext.defaultValueFormat(rawClazz);
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    return vci.valueToRaw(node);
+                }
+            }
+
+            ObjectInfo pi = ti.pojoInfo;
+            if (pi != null) {
+                Map<String, Object> newMap = new LinkedHashMap<>(pi.readablePropertyCount);
+                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                    String key = entry.getKey();
+                    PropertyInfo fi = entry.getValue();
+                    Object v = fi.invokeGetter(node);
+                    PathSegment cps = new PathSegment.Name(ps, key);
+                    Object vv = _writeFieldValue(v, entry.getValue(), cps);
+                    newMap.put(key, vv);
+                }
+                return newMap;
+            }
+
+            throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);
+
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("cannot convert node from '" + Types.name(node) +
+                    "' to raw (Map/List/String/Number/Boolean/null)", ps, e);
+        }
+    }
+
+    private Object _writeFieldValue(Object value, PropertyInfo fi, PathSegment ps) {
+        if (value == null) return null;
+        if (fi.resolvedValueCodec != null) {
+            return fi.resolvedValueCodec.valueToRaw(value);
+        }
+        return _writeNode(value, ps);
+    }
+
+}
