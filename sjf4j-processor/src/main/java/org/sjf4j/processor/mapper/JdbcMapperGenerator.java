@@ -1,6 +1,6 @@
 package org.sjf4j.processor.mapper;
 
-import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
+import org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions;
 import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
 import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
 import org.sjf4j.annotation.mapper.ArrayPolicy;
@@ -136,21 +136,21 @@ public final class JdbcMapperGenerator {
             return false;
         }
 
-        JdbcMapperOptions options = method.getAnnotation(JdbcMapperOptions.class);
+        JdbcMappingOptions options = method.getAnnotation(JdbcMappingOptions.class);
         if (options != null) {
             if (list && options.singleResult() != SingleResultPolicy.FAIL_ON_MULTIPLE) {
-                error(method, "@JdbcMapperOptions.singleResult is supported only on non-List @CompiledJdbcMapper methods");
+                error(method, "@JdbcMappingOptions.singleResult is supported only on non-List @CompiledJdbcMapper methods");
                 return false;
             }
             if (currentRow && options.singleResult() != SingleResultPolicy.FAIL_ON_MULTIPLE) {
-                error(method, "@JdbcMapperOptions.singleResult does not apply to current-row methods");
+                error(method, "@JdbcMappingOptions.singleResult does not apply to current-row methods");
                 return false;
             }
         }
 
         boolean map = isMap(row);
         if (options != null && map && options.columnProjection() != ColumnProjectionPolicy.REQUIRE_ALL) {
-            error(method, "@JdbcMapperOptions.columnProjection is supported only on POJO or JOJO @CompiledJdbcMapper results");
+            error(method, "@JdbcMappingOptions.columnProjection is supported only on POJO or JOJO @CompiledJdbcMapper results");
             return false;
         }
         if (map) {
@@ -168,7 +168,7 @@ public final class JdbcMapperGenerator {
         RowPlan plan = map ? null : plan(iface, method, creator == null ? row : creator.type, creator, columnPolicy == ColumnProjectionPolicy.PRESENT_ONLY);
         if (!map && plan == null) return false;
         if (!map && columnPolicy == ColumnProjectionPolicy.PRESENT_ONLY && plan.constructor) {
-            error(method, "@JdbcMapperOptions.columnProjection=PRESENT_ONLY requires a mutable POJO target");
+            error(method, "@JdbcMappingOptions.columnProjection=PRESENT_ONLY requires a mutable POJO target");
             return false;
         }
 
@@ -208,7 +208,7 @@ public final class JdbcMapperGenerator {
             if (name.equals("org.sjf4j.annotation.mapper.Mapping")
                     || name.equals("org.sjf4j.annotation.mapper.Mappings")
                     || name.equals("org.sjf4j.annotation.mapper.MappingOptions")
-                    || name.equals(JdbcMapperOptions.class.getName())
+                    || name.equals(JdbcMappingOptions.class.getName())
                     || name.equals("org.sjf4j.annotation.mapper.MappingCreator")
                     || name.equals("org.sjf4j.annotation.mapper.MappingCreators")) {
                 continue;

@@ -1,4 +1,4 @@
-package org.sjf4j.processor.path;
+package org.sjf4j.processor.navigator;
 
 import org.sjf4j.annotation.navigator.EnsurePutByPath;
 import org.sjf4j.annotation.navigator.EnsurePutIfAbsentByPath;
@@ -47,7 +47,7 @@ import java.util.Set;
  * ensure put creates intermediate containers where the target type can be
  * inferred safely.</p>
  */
-public final class PathGenerator {
+public final class NavigatorGenerator {
 
     private final ProcessorContext ctx;
     private final FindGenerator findGenerator;
@@ -55,7 +55,7 @@ public final class PathGenerator {
     /**
      * Creates a path generator using the shared processor context.
      */
-    public PathGenerator(ProcessorContext ctx) {
+    public NavigatorGenerator(ProcessorContext ctx) {
         this.ctx = ctx;
         this.findGenerator = new FindGenerator(ctx);
     }

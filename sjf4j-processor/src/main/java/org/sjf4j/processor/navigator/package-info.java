@@ -11,4 +11,4 @@
  * annotation explicitly allows a runtime fallback.  This keeps the default
  * behavior predictable and makes performance trade-offs visible in source.</p>
  */
-package org.sjf4j.processor.path;
+package org.sjf4j.processor.navigator;

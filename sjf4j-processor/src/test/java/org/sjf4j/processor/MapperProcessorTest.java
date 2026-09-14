@@ -184,10 +184,10 @@ public class MapperProcessorTest {
                 + "@CompiledJdbcMapper interface BadCompute { class P { public String value; public P(){} } @Mapping(target=\"value\",compute=\"this::convert\") P map(ResultSet rs); default String convert(Object value) { return \"x\"; } }"
                 + "@CompiledMapper @CompiledJdbcMapper interface Both { String x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface Unsupported { @MappingOptions(using=\"convert\") String x(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface ListPolicy { @JdbcMapperOptions(singleResult=SingleResultPolicy.FIRST) java.util.List<String> x(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface PresentRecord { record P(String value) {} @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface PresentConstructor { class P { P(String value) {} } @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface MapColumns { @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) java.util.Map<String,Object> x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface ListPolicy { @JdbcMappingOptions(singleResult=SingleResultPolicy.FIRST) java.util.List<String> x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface PresentRecord { record P(String value) {} @JdbcMappingOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface PresentConstructor { class P { P(String value) {} } @JdbcMappingOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface MapColumns { @JdbcMappingOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) java.util.Map<String,Object> x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface CurrentRowList { java.util.List<String> x(ResultSet rs, int rowNum); }"
                 + "interface RowParent { String mapRow(ResultSet rs, int rowNum); }"
                 + "@CompiledJdbcMapper interface UnrelatedMapRow extends RowParent { }";
@@ -200,7 +200,7 @@ public class MapperProcessorTest {
         assertTrue(text.contains("supports compute only as this::helper with exactly one sources entry"), text);
         assertTrue(text.contains("both @CompiledMapper and @CompiledJdbcMapper"));
         assertEquals(text.indexOf("both @CompiledMapper and @CompiledJdbcMapper"), text.lastIndexOf("both @CompiledMapper and @CompiledJdbcMapper"));
-        assertTrue(text.contains("@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
+        assertTrue(text.contains("@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMappingOptions"), text);
         assertTrue(text.contains("singleResult is supported only on non-List"));
         assertTrue(text.contains("columnProjection=PRESENT_ONLY requires a mutable POJO target"), text);
         assertTrue(text.contains("columnProjection is supported only on POJO or JOJO"), text);
@@ -295,7 +295,7 @@ public class MapperProcessorTest {
     public void jdbcPresentOnlyListResolvesMetadataOnce() throws Exception {
         String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value = \"default\"; public String other; public P(){} }"
-                + " @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<P> map(ResultSet rs); }";
+                + " @JdbcMappingOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<P> map(ResultSet rs); }";
         String generated = jdbcGeneratedSource(source);
         assertEquals(1, countOccurrences(generated, "rs.getMetaData()"), generated);
         assertEquals(1, countOccurrences(generated, "for (int jdbcIndex = 1, jdbcCount = meta.getColumnCount()"), generated);
@@ -305,7 +305,7 @@ public class MapperProcessorTest {
     public void jdbcJojoPrecomputesColumnsOutsideTheRowHelper() throws Exception {
         String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
                 + "@CompiledJdbcMapper interface Input { class J extends JsonObject { public String value; public J(){} }"
-                + " @Mapping(target=\"value\",source=\"alias\") @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<J> map(ResultSet rs); }";
+                + " @Mapping(target=\"value\",source=\"alias\") @JdbcMappingOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<J> map(ResultSet rs); }";
         String generated = jdbcGeneratedSource(source);
         int helper = generated.indexOf("map_Row(ResultSet rs, int[] propertyColumns, String[] dynamicColumns)");
         assertTrue(helper >= 0, generated);
@@ -364,7 +364,7 @@ public class MapperProcessorTest {
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         assertFalse(compileJdbc(source, diagnostics).booleanValue());
         String text = diagnosticsToString(diagnostics);
-        assertTrue(text.contains("@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
+        assertTrue(text.contains("@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMappingOptions"), text);
     }
 
     @Test
@@ -431,7 +431,7 @@ public class MapperProcessorTest {
                 "  User user(ResultSet rs);",
                 "  User named(ResultSet result);",
                 "  @Mapping(target = \"created\", ignore = true) User ignored(ResultSet rs);",
-                "  @JdbcMapperOptions(singleResult = SingleResultPolicy.FIRST) User first(ResultSet rs);",
+                "  @JdbcMappingOptions(singleResult = SingleResultPolicy.FIRST) User first(ResultSet rs);",
                 "  List<User> users(ResultSet rs);",
                 "  Map<String, Object> row(ResultSet rs);",
                 "  List<Map<String, Object>> rows(ResultSet rs);",

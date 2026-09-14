@@ -1,4 +1,4 @@
-package org.sjf4j.processor.path;
+package org.sjf4j.processor.navigator;
 
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;

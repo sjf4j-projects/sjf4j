@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
-import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
+import org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions;
 import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 
@@ -59,7 +59,7 @@ class JdbcCurrentRowTest {
 
         Map<String, Object> row(ResultSet rs, int rowNum);
 
-        @JdbcMapperOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
+        @JdbcMappingOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
         Present present(ResultSet rs, int rowNum);
     }
 

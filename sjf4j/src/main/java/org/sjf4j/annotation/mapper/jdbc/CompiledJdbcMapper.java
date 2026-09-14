@@ -20,13 +20,13 @@ import java.lang.annotation.Target;
  * advance its cursor but never close it; the caller retains ownership of the result set, statement,
  * and connection. A single-target method returns {@code null} when there is no row. By default it
  * throws {@link org.sjf4j.exception.BindingException} after reading a second row; use
- * {@link JdbcMapperOptions}{@code (singleResult = SingleResultPolicy.FIRST)} to return the first row
+ * {@link JdbcMappingOptions}{@code (singleResult = SingleResultPolicy.FIRST)} to return the first row
  * without checking for another. A {@code List<T>} method consumes all remaining rows and returns an
  * empty list when there are none. Two-argument methods map the current row: the caller must already
  * position the result set on a row, and generated code neither advances the cursor nor checks another row.
  * The {@code int} row number is ignored during mapping and current-row methods do not support {@code List} results.</p>
  *
- * <p>{@link JdbcMapperOptions#columnProjection()} defaults to requiring every POJO or JOJO declared property;
+ * <p>{@link JdbcMappingOptions#columnProjection()} defaults to requiring every POJO or JOJO declared property;
  * {@code PRESENT_ONLY} leaves absent mutable properties at their initialized value. For map results, duplicate result
  * columns overwrite the earlier value with the last value.</p>
  *

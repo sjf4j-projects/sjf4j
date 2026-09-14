@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)
-public @interface JdbcMapperOptions {
+public @interface JdbcMappingOptions {
     /** Result-cardinality behavior for a single-target JDBC mapper method. */
     SingleResultPolicy singleResult() default SingleResultPolicy.FAIL_ON_MULTIPLE;
 

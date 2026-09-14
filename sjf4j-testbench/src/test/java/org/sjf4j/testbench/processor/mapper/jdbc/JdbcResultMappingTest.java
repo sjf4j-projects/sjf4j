@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
-import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
+import org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions;
 import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.compiled.CompiledInstances;
@@ -166,7 +166,7 @@ class JdbcResultMappingTest {
 
         Map<String, Object> currentRow(ResultSet rs, int rowNum);
 
-        @JdbcMapperOptions(singleResult = SingleResultPolicy.FIRST)
+        @JdbcMappingOptions(singleResult = SingleResultPolicy.FIRST)
         User first(ResultSet rs);
 
         @Mapping(target = "name", source = "full_name")
@@ -179,7 +179,7 @@ class JdbcResultMappingTest {
         Jojo currentJojo(ResultSet rs, int rowNum);
 
         @Mapping(target = "name", source = "full_name")
-        @JdbcMapperOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
+        @JdbcMappingOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
         Jojo presentJojo(ResultSet rs);
 
         @Mapping(target = "name", source = "full_name", ignore = true)

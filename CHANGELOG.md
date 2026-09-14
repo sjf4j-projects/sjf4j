@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Moved compiled-navigation annotations from `org.sjf4j.annotation.path` to `org.sjf4j.annotation.navigator`.
+- Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
+- Renamed the annotation-processor navigation generator package from `org.sjf4j.processor.path` to `org.sjf4j.processor.navigator`.
+- Removed the `StreamingBinding` convenience read/write API and `StreamingContext` configuration API.
+- Renamed `StreamingReader.Token.FIELD_NAME` to `NAME`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
 - Moved runtime metadata classes from `NodeRegistry` to top-level `org.sjf4j.node` types. `NodeRegistry.PojoInfo` is renamed to `ObjectInfo`; `TypeInfo`, `PropertyInfo`, `CreatorInfo`, `ContainerInfo`, `ValueCodecInfo`, `OneOfInfo`, and `RecordInfo` are now imported directly from `org.sjf4j.node`.
 - Made built-in JSON, YAML, and node facade implementations final; applications must use composition rather than subclassing these types.
@@ -29,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`; its test-source packages now use `org.sjf4j.testbench`.
 - Moved JMH-only handwritten JSON read/write benchmarks into `sjf4j-testbench` and enabled Lombok annotation processing for that source set.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
-- `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains; built-in readers also report object member names as `FIELD_NAME` and reject non-values in `skipNext()`.
+- `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains.
 
 ### Fixed
 - Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.

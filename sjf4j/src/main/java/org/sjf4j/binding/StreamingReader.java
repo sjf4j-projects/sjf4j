@@ -31,7 +31,7 @@ public interface StreamingReader extends Closeable {
 
         START_OBJECT(2),
         END_OBJECT(3),
-        FIELD_NAME(4),
+        NAME(4),
 
         START_ARRAY(5),
         END_ARRAY(6),
@@ -77,29 +77,29 @@ public interface StreamingReader extends Closeable {
 
     /*
      * ----------------------------------------------------------------------
-     * Field matching
+     * Property matching
      * ----------------------------------------------------------------------
      */
 
     /**
-     * Prepared set of field names.
+     * Prepared set of property names.
      *
      * <p>A matcher may contain backend-specific precomputed state:</p>
      *
      * <ul>
-     *   <li>field hashes</li>
+     *   <li>property hashes</li>
      *   <li>serialized UTF-8 names</li>
      *   <li>Jackson PropertyNameMatcher</li>
      *   <li>plain strings</li>
      * </ul>
      *
-     * <p>Field indexes are stable and normally correspond to generated
+     * <p>Property indexes are stable and normally correspond to generated
      * property indexes.</p>
      */
     interface NameMatcher {
 
         /**
-         * No known field matched.
+         * No known property matched.
          */
         int UNKNOWN = -1;
 
@@ -112,19 +112,19 @@ public interface StreamingReader extends Closeable {
         int END_OBJECT = -2;
 
         /**
-         * Number of known fields.
+         * Number of known properties.
          */
         int size();
 
         /**
-         * Canonical field name for the specified index.
+         * Canonical property name for the specified index.
          */
         String name(int index);
 
         /**
          * Generic String-based fallback matching.
          *
-         * @return field index or {@link #UNKNOWN}
+         * @return property index or {@link #UNKNOWN}
          */
         int match(String name);
     }
@@ -248,28 +248,28 @@ public interface StreamingReader extends Closeable {
 
     /*
      * ----------------------------------------------------------------------
-     * Field names
+     * Property names
      * ----------------------------------------------------------------------
      */
 
     /**
-     * Reads and consumes the next field name.
+     * Reads and consumes the next property name.
      *
      * <p>After this method returns, the reader is positioned so that
-     * the corresponding field value can be consumed.</p>
+     * the corresponding property value can be consumed.</p>
      */
     String nextName() throws IOException;
 
     /**
-     * Matches the next field name against a prepared field set.
+     * Matches the next property name against a prepared property set.
      *
      * <p>This is the primary fast-path API for generated binders.</p>
      *
-     * <p>The default implementation falls back to String field-name
+     * <p>The default implementation falls back to String property-name
      * materialization. High-performance backends should override this
      * method.</p>
      *
-     * @return matched field index,
+     * @return matched property index,
      *         {@link NameMatcher#UNKNOWN}, or
      *         {@link NameMatcher#END_OBJECT}
      */
@@ -284,10 +284,10 @@ public interface StreamingReader extends Closeable {
     }
 
     /**
-     * Matches the next field name, with an optional expected field index.
+     * Matches the next property name, with an optional expected property index.
      *
      * <p>{@code expectedIndex} is only a performance hint. Implementations
-     * must remain correct when fields are reordered, omitted, or unknown.</p>
+     * must remain correct when properties are reordered, omitted, or unknown.</p>
      *
      * <p>This allows implementations such as an ordered-name reader to
      * attempt an expected-name fast path first, and fall back to general

@@ -4,8 +4,8 @@ import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
-import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
-import org.sjf4j.processor.path.PathGenerator;
+import org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions;
+import org.sjf4j.processor.navigator.NavigatorGenerator;
 import org.sjf4j.processor.mapper.MapperGenerator;
 import org.sjf4j.processor.mapper.JdbcMapperGenerator;
 
@@ -27,7 +27,7 @@ import java.util.Set;
  * <p>The entry point keeps round handling intentionally small: it validates that
  * method-level annotations are attached to the proper owning interface, then
  * delegates all operation-specific validation and source emission to
- * {@link PathGenerator} or {@link MapperGenerator}.  This separation keeps
+ * {@link NavigatorGenerator} or {@link MapperGenerator}.  This separation keeps
  * cross-feature annotation rules centralized without mixing path and mapper code
  * generation logic.</p>
  *
@@ -45,11 +45,11 @@ import java.util.Set;
         "org.sjf4j.annotation.navigator.FindByPath",
 
         "org.sjf4j.annotation.mapper.CompiledMapper",
-         "org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper",
+        "org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper",
         "org.sjf4j.annotation.mapper.Mapping",
         "org.sjf4j.annotation.mapper.Mappings",
         "org.sjf4j.annotation.mapper.MappingOptions",
-        "org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions",
+        "org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions",
         "org.sjf4j.annotation.mapper.MappingCreator",
         "org.sjf4j.annotation.mapper.MappingCreators",
         "org.sjf4j.annotation.mapper.MappingIfParentPresent",
@@ -57,12 +57,12 @@ import java.util.Set;
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
-    private static final String ANNO_COMPILED_PATH = CompiledNavigator.class.getName();
+    private static final String ANNO_COMPILED_NAVIGATOR = CompiledNavigator.class.getName();
     private static final String ANNO_COMPILED_MAPPER = CompiledMapper.class.getName();
     private static final String ANNO_COMPILED_JDBC_MAPPER = CompiledJdbcMapper.class.getName();
 
     private ProcessorContext context;
-    private PathGenerator pathGenerator;
+    private NavigatorGenerator navigatorGenerator;
     private MapperGenerator mapperGenerator;
     private JdbcMapperGenerator jdbcMapperGenerator;
 
@@ -81,7 +81,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.context = new ProcessorContext(processingEnv);
-        this.pathGenerator = new PathGenerator(context);
+        this.navigatorGenerator = new NavigatorGenerator(context);
         this.mapperGenerator = new MapperGenerator(context);
         this.jdbcMapperGenerator = new JdbcMapperGenerator(context);
     }
@@ -97,7 +97,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
             if (element.getKind() != ElementKind.INTERFACE) {
                 context.error(element, "@CompiledNavigator can be applied only to interfaces");
             } else {
-                pathGenerator.generate((TypeElement) element);
+                navigatorGenerator.generate((TypeElement) element);
             }
         }
         for (Element element : roundEnv.getElementsAnnotatedWith(CompiledMapper.class)) {
@@ -131,7 +131,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
     private void validateAnnotation(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (TypeElement anno : annotations) {
             String annoName = anno.getQualifiedName().toString();
-            if (ANNO_COMPILED_PATH.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName) || ANNO_COMPILED_JDBC_MAPPER.equals(annoName)) continue;
+            if (ANNO_COMPILED_NAVIGATOR.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName) || ANNO_COMPILED_JDBC_MAPPER.equals(annoName)) continue;
             for (Element element : roundEnv.getElementsAnnotatedWith(anno)) {
                 if ("org.sjf4j.annotation.mapper.MappingCreator".equals(annoName)
                         || "org.sjf4j.annotation.mapper.MappingCreators".equals(annoName)) {
@@ -158,15 +158,15 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                         if (MappingOptions.class.getName().equals(annoName)
                                 && owner.getKind() == ElementKind.INTERFACE
                                 && owner.getAnnotation(CompiledJdbcMapper.class) != null) {
-                            context.error(element, "@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions");
-                        } else if (JdbcMapperOptions.class.getName().equals(annoName)
+                            context.error(element, "@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMappingOptions");
+                        } else if (JdbcMappingOptions.class.getName().equals(annoName)
                                 && (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledJdbcMapper.class) == null)) {
-                            context.error(element, "@JdbcMapperOptions is valid only on methods in an @CompiledJdbcMapper interface");
-                        } else if (JdbcMapperOptions.class.getName().equals(annoName)
+                            context.error(element, "@JdbcMappingOptions is valid only on methods in an @CompiledJdbcMapper interface");
+                        } else if (JdbcMappingOptions.class.getName().equals(annoName)
                                 && owner.getKind() == ElementKind.INTERFACE
                                 && owner.getAnnotation(CompiledJdbcMapper.class) != null
                                 && !element.getModifiers().contains(Modifier.ABSTRACT)) {
-                            context.error(element, "@JdbcMapperOptions is valid only on abstract methods in an @CompiledJdbcMapper interface");
+                            context.error(element, "@JdbcMappingOptions is valid only on abstract methods in an @CompiledJdbcMapper interface");
                         } else if (owner.getKind() != ElementKind.INTERFACE || (owner.getAnnotation(CompiledMapper.class) == null && owner.getAnnotation(CompiledJdbcMapper.class) == null)) {
                             context.error(element, "@" + anno + " method must be declared in an @CompiledMapper interface");
                         }
