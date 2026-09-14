@@ -1,6 +1,6 @@
 package org.sjf4j.processor;
 
-import org.sjf4j.annotation.path.CompiledPath;
+import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
@@ -36,13 +36,13 @@ import java.util.Set;
  * the same compilation.</p>
  */
 @SupportedAnnotationTypes({
-        "org.sjf4j.annotation.path.CompiledPath",
-        "org.sjf4j.annotation.path.GetByPath",
-        "org.sjf4j.annotation.path.PutByPath",
-        "org.sjf4j.annotation.path.PutIfParentPresentByPath",
-        "org.sjf4j.annotation.path.EnsurePutByPath",
-        "org.sjf4j.annotation.path.EnsurePutIfAbsentByPath",
-        "org.sjf4j.annotation.path.FindByPath",
+        "org.sjf4j.annotation.navigator.CompiledNavigator",
+        "org.sjf4j.annotation.navigator.GetByPath",
+        "org.sjf4j.annotation.navigator.PutByPath",
+        "org.sjf4j.annotation.navigator.PutIfParentPresentByPath",
+        "org.sjf4j.annotation.navigator.EnsurePutByPath",
+        "org.sjf4j.annotation.navigator.EnsurePutIfAbsentByPath",
+        "org.sjf4j.annotation.navigator.FindByPath",
 
         "org.sjf4j.annotation.mapper.CompiledMapper",
          "org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper",
@@ -57,7 +57,7 @@ import java.util.Set;
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
-    private static final String ANNO_COMPILED_PATH = CompiledPath.class.getName();
+    private static final String ANNO_COMPILED_PATH = CompiledNavigator.class.getName();
     private static final String ANNO_COMPILED_MAPPER = CompiledMapper.class.getName();
     private static final String ANNO_COMPILED_JDBC_MAPPER = CompiledJdbcMapper.class.getName();
 
@@ -88,14 +88,14 @@ public final class Sjf4jProcessor extends AbstractProcessor {
 
     /**
      * Validates annotation placement and emits implementations for discovered
-     * {@code @CompiledPath} and {@code @CompiledMapper} interfaces.
+     * {@code @CompiledNavigator} and {@code @CompiledMapper} interfaces.
      */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         validateAnnotation(annotations, roundEnv);
-        for (Element element : roundEnv.getElementsAnnotatedWith(CompiledPath.class)) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(CompiledNavigator.class)) {
             if (element.getKind() != ElementKind.INTERFACE) {
-                context.error(element, "@CompiledPath can be applied only to interfaces");
+                context.error(element, "@CompiledNavigator can be applied only to interfaces");
             } else {
                 pathGenerator.generate((TypeElement) element);
             }
@@ -170,9 +170,9 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                         } else if (owner.getKind() != ElementKind.INTERFACE || (owner.getAnnotation(CompiledMapper.class) == null && owner.getAnnotation(CompiledJdbcMapper.class) == null)) {
                             context.error(element, "@" + anno + " method must be declared in an @CompiledMapper interface");
                         }
-                    } else if (annoName.startsWith("org.sjf4j.annotation.path.")) {
-                        if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledPath.class) == null) {
-                            context.error(element, "@" + anno + " method must be declared in an @CompiledPath interface");
+                    } else if (annoName.startsWith("org.sjf4j.annotation.navigator.")) {
+                        if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledNavigator.class) == null) {
+                            context.error(element, "@" + anno + " method must be declared in an @CompiledNavigator interface");
                         }
                     } else {
                         context.error(element, "Unrecognized annotation " + annoName);

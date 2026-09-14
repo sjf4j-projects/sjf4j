@@ -11,8 +11,8 @@ import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.NameAllocator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.SourceWriter;
-import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.navigator.PathSegment;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;

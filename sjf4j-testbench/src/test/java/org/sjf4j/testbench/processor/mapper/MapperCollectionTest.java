@@ -7,7 +7,7 @@ import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.*;
 
@@ -15,24 +15,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MapperCollectionTest {
     @Test public void rootListDirectAndMapped() {
-        CollectionMapper m = CompiledNodes.instanceOf(CollectionMapper.class);
+        CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         assertEquals(List.of("a", "b"), m.strings(List.of("a", "b")));
-        assertEquals(List.of(new UserDto("a"), new UserDto("b")), CompiledNodes.instanceOf(UniqueMapper.class).users(List.of(new User("a"), new User("b"))));
+        assertEquals(List.of(new UserDto("a"), new UserDto("b")), CompiledInstances.of(UniqueMapper.class).users(List.of(new User("a"), new User("b"))));
         assertNull(m.strings(null));
     }
 
     @Test public void withSelectsConverterAndSetKeepsOrder() {
-        CollectionMapper m = CompiledNodes.instanceOf(CollectionMapper.class);
+        CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         assertEquals(List.of(new UserDto("x!")), m.usersWith(List.of(new User("x"))));
         Set<String> out = m.set(List.of("b", "a"));
         assertEquals(List.of("b", "a"), new ArrayList<>(out));
     }
 
     @Test public void rootMapCreateAndUpdates() {
-        CollectionMapper m = CompiledNodes.instanceOf(CollectionMapper.class);
+        CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         Map<String, User> in = new LinkedHashMap<>();
         in.put("a", new User("A"));
-        assertEquals(new UserDto("A"), CompiledNodes.instanceOf(UniqueMapper.class).map(in).get("a"));
+        assertEquals(new UserDto("A"), CompiledInstances.of(UniqueMapper.class).map(in).get("a"));
 
         List<List<User>> nested = new ArrayList<>();
         nested.add(Arrays.asList(new User("A"), null));
@@ -72,7 +72,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void autoNestedRecursivelyUsesUniqueLeafConverter() {
-        AutoNestedMapper m = CompiledNodes.instanceOf(AutoNestedMapper.class);
+        AutoNestedMapper m = CompiledInstances.of(AutoNestedMapper.class);
 
         List<List<User>> nested = new ArrayList<>();
         nested.add(Arrays.asList(new User("A"), null));
@@ -93,7 +93,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void importedMapperSupportsExplicitUsingAndAutoContainers() {
-        ImportedCollectionMapper m = CompiledNodes.instanceOf(ImportedCollectionMapper.class);
+        ImportedCollectionMapper m = CompiledInstances.of(ImportedCollectionMapper.class);
 
         assertEquals(List.of(new UserDto("A!")), m.users(List.of(new User("A"))));
         assertEquals(List.of(new UserDto("B!")), m.explicitUsers(List.of(new User("B"))));
@@ -107,7 +107,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void beanCreateAndUpdateContainers() {
-        CollectionMapper m = CompiledNodes.instanceOf(CollectionMapper.class);
+        CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         UserBox box = new UserBox();
         box.users = List.of(new User("a"));
         box.map = Map.of("b", new User("b"));
@@ -154,7 +154,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void beanAppendField() {
-        CollectionMapper m = CompiledNodes.instanceOf(CollectionMapper.class);
+        CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         DtoBox target = new DtoBox();
         target.users = new ArrayList<>(List.of(new UserDto("old")));
         UserBox source = new UserBox();
@@ -164,7 +164,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void beanMapObjectPolicies() {
-        CollectionMapper m = CompiledNodes.instanceOf(CollectionMapper.class);
+        CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         UserBox source = new UserBox();
         source.map = new LinkedHashMap<>();
         source.map.put("old", new User("new-old"));
@@ -200,7 +200,7 @@ public class MapperCollectionTest {
 
     @Test public void putIfAbsentMapSkipsConverterForExistingValue() {
         PutIfAbsentMapper.calls[0] = 0;
-        PutIfAbsentMapper m = CompiledNodes.instanceOf(PutIfAbsentMapper.class);
+        PutIfAbsentMapper m = CompiledInstances.of(PutIfAbsentMapper.class);
         Map<String, Long> target = new LinkedHashMap<>();
         target.put("keep", 1L);
         target.put("fill", null);
@@ -218,7 +218,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void recursiveUpdatePoliciesApplyToNestedContainers() {
-        RecursiveUpdateMapper m = CompiledNodes.instanceOf(RecursiveUpdateMapper.class);
+        RecursiveUpdateMapper m = CompiledInstances.of(RecursiveUpdateMapper.class);
 
         Map<String, List<UserDto>> listTarget = new LinkedHashMap<>();
         List<UserDto> existingList = new ArrayList<>(List.of(new UserDto("old")));
@@ -299,7 +299,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void mapsObntStructuralKinds() {
-        CollectionMapper m = CompiledNodes.instanceOf(CollectionMapper.class);
+        CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         ObntSource source = new ObntSource();
         source.text = "text";
         source.integer = 7;

@@ -1,14 +1,14 @@
 package org.sjf4j.processor.path;
 
-import org.sjf4j.annotation.path.EnsurePutByPath;
-import org.sjf4j.annotation.path.EnsurePutIfAbsentByPath;
-import org.sjf4j.annotation.path.FindByPath;
-import org.sjf4j.annotation.path.GetByPath;
-import org.sjf4j.annotation.path.PutByPath;
-import org.sjf4j.annotation.path.PutIfParentPresentByPath;
+import org.sjf4j.annotation.navigator.EnsurePutByPath;
+import org.sjf4j.annotation.navigator.EnsurePutIfAbsentByPath;
+import org.sjf4j.annotation.navigator.FindByPath;
+import org.sjf4j.annotation.navigator.GetByPath;
+import org.sjf4j.annotation.navigator.PutByPath;
+import org.sjf4j.annotation.navigator.PutIfParentPresentByPath;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.navigator.PathSegment;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.NameAllocator;
@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Generates direct Java code for {@code @CompiledPath} methods.
+ * Generates direct Java code for {@code @CompiledNavigator} methods.
  *
  * <p>The generator resolves path segment types during annotation processing so
  * generated methods can use direct field/getter/setter, map, list, array, and
@@ -62,11 +62,11 @@ public final class PathGenerator {
 
 
     /**
-     * Generates an implementation for one {@code @CompiledPath} interface.
+     * Generates an implementation for one {@code @CompiledNavigator} interface.
      */
     public void generate(TypeElement iface) {
         if (!iface.getTypeParameters().isEmpty()) {
-            ctx.error(iface, "@CompiledPath interfaces cannot declare type parameters");
+            ctx.error(iface, "@CompiledNavigator interfaces cannot declare type parameters");
             return;
         }
 
@@ -79,7 +79,7 @@ public final class PathGenerator {
             Set<Modifier> mods = method.getModifiers();
             if (mods.contains(Modifier.DEFAULT) || mods.contains(Modifier.STATIC)) continue;
             if (!method.getTypeParameters().isEmpty()) {
-                ctx.error(method, "@CompiledPath methods cannot declare type parameters");
+                ctx.error(method, "@CompiledNavigator methods cannot declare type parameters");
                 return;
             }
 
@@ -151,7 +151,7 @@ public final class PathGenerator {
             }
 
             if (generatedAnno == null) {
-                ctx.error(method, "@CompiledPath abstract methods must be annotated, for example @GetByPath");
+                ctx.error(method, "@CompiledNavigator abstract methods must be annotated, for example @GetByPath");
                 return;
             }
         }
@@ -849,7 +849,7 @@ public final class PathGenerator {
     private TypeMirror _emitName(SourceWriter out, TypeMirror current, String name, String currentVar, String nextVar,
                                  String nullReturn, boolean checkValueNull) {
         if (current == null) {
-            throw new AssertionError("CompiledPath emitName called with null current type");
+            throw new AssertionError("CompiledNavigator emitName called with null current type");
         }
         if (GeneratorUtil.isObject(ctx, current)) {
             out.line("Object " + nextVar + " = org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" +
@@ -877,7 +877,7 @@ public final class PathGenerator {
 
         TypeMirror outputType = _emitPojoName(out, current, name, currentVar, nextVar, nullReturn, checkValueNull);
         if (outputType == null) {
-            throw new AssertionError("CompiledPath emitName cannot resolve type element for " + current);
+            throw new AssertionError("CompiledNavigator emitName cannot resolve type element for " + current);
         }
         return outputType;
     }
@@ -1036,7 +1036,7 @@ public final class PathGenerator {
         }
         if (!ctx.types.isSameType(ctx.types.erasure(currentType), ctx.types.erasure(parentType))) {
             // validation already resolved the parent type; this is only a generator guard.
-            throw new AssertionError("CompiledPath PUT parent type mismatch");
+            throw new AssertionError("CompiledNavigator PUT parent type mismatch");
         }
 
         String valueExpr = scope.param(value);
@@ -1056,7 +1056,7 @@ public final class PathGenerator {
             VariableElement param = pathParams.get(((PathSegment.Param) last).param);
             oldType = _emitPutParam(out, parentType, param, scope.param(param), currentVar, valueExpr, oldVar, lastIndexVar, missing);
         } else {
-            throw new AssertionError("CompiledPath PUT unsupported segment");
+            throw new AssertionError("CompiledNavigator PUT unsupported segment");
         }
         _emitPutReturn(out, method, oldVar, oldType);
         out.dedent();
@@ -1121,7 +1121,7 @@ public final class PathGenerator {
             currentType = nextType;
         }
         if (!ctx.types.isSameType(ctx.types.erasure(currentType), ctx.types.erasure(parentType))) {
-            throw new AssertionError("CompiledPath ENSURE parent type mismatch");
+            throw new AssertionError("CompiledNavigator ENSURE parent type mismatch");
         }
 
         String valueExpr = scope.param(value);
@@ -1152,7 +1152,7 @@ public final class PathGenerator {
             return _emitPutParam(out, parentType, param, scope.param(param), parentVar, valueExpr, oldVar,
                     _isInt(param.asType()) ? _indexName(scope.names) : null, missing);
         }
-        throw new AssertionError("CompiledPath PUT unsupported segment");
+        throw new AssertionError("CompiledNavigator PUT unsupported segment");
     }
 
     /**
@@ -1232,7 +1232,7 @@ public final class PathGenerator {
             _emitPutParamNoOld(out, parentType, param, scope.param(param), parentVar, valueExpr, missing,
                     _isInt(param.asType()) ? _indexName(scope.names) : null);
         } else {
-            throw new AssertionError("CompiledPath PUT unsupported segment");
+            throw new AssertionError("CompiledNavigator PUT unsupported segment");
         }
     }
 
@@ -1243,7 +1243,7 @@ public final class PathGenerator {
     private void _emitCreateContainer(SourceWriter out, String var, TypeMirror type, PathSegment next,
                                       Map<String, VariableElement> pathParams) {
         String expr = _createContainerExpr(type, next, pathParams, null, null);
-        if (expr == null) throw new AssertionError("CompiledPath ENSURE cannot create container for " + type);
+        if (expr == null) throw new AssertionError("CompiledNavigator ENSURE cannot create container for " + type);
         out.line(var + " = " + expr + ";");
     }
 
@@ -1502,7 +1502,7 @@ public final class PathGenerator {
         }
         TypeMirror oldType = _emitPojoPutName(out, parent, name, parentVar, valueExpr, oldVar);
         if (oldType == null) {
-            throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
+            throw new AssertionError("CompiledNavigator PUT cannot resolve type element for " + parent);
         }
         return oldType;
     }
@@ -1528,7 +1528,7 @@ public final class PathGenerator {
         if (setter != null) {
             out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
         } else {
-            if (writableField == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
+            if (writableField == null) throw new AssertionError("CompiledNavigator PUT cannot resolve writable field '" + name + "'");
             out.line(parentVar + "." + writableField.getSimpleName() + " = " + valueExpr + ";");
         }
         return oldType == null ? ctx.objectType : oldType;
@@ -1550,7 +1550,7 @@ public final class PathGenerator {
             return;
         }
         if (_emitPojoPutNameNoOld(out, parent, name, parentVar, valueExpr)) return;
-        throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
+        throw new AssertionError("CompiledNavigator PUT cannot resolve type element for " + parent);
     }
 
     private boolean _emitPojoPutNameNoOld(SourceWriter out, TypeMirror parent, String name, String parentVar, String valueExpr) {
@@ -1677,7 +1677,7 @@ public final class PathGenerator {
             out.line(parentVar + ".add(" + valueExpr + ");");
             return null;
         }
-        throw new AssertionError("CompiledPath PUT cannot append on " + parent);
+        throw new AssertionError("CompiledNavigator PUT cannot append on " + parent);
     }
 
     /**
@@ -1702,7 +1702,7 @@ public final class PathGenerator {
             return ctx.objectType;
         }
         if (!GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
-            throw new AssertionError("CompiledPath PUT cannot resolve dynamic key on " + parent);
+            throw new AssertionError("CompiledNavigator PUT cannot resolve dynamic key on " + parent);
         }
         TypeMirror outputType = GeneratorUtil.mapValueType(ctx, parent);
         out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + " = " + parentVar + ".put(" +
@@ -1730,7 +1730,7 @@ public final class PathGenerator {
             out.line(parentVar + ".put(" + paramName + ", " + valueExpr + ");");
             return;
         }
-        throw new AssertionError("CompiledPath PUT cannot resolve dynamic key on " + parent);
+        throw new AssertionError("CompiledNavigator PUT cannot resolve dynamic key on " + parent);
     }
 
     private TypeMirror _emitPutParamIndex(SourceWriter out, TypeMirror parent, String paramName, String parentVar,

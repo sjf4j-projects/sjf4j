@@ -9,7 +9,7 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.navigator.JsonPath;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

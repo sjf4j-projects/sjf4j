@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
 import java.sql.ResultSet;
@@ -15,7 +15,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcTargetPathTest {
     @Test
     void mapsNestedTargetPathsWithoutAllocatingParents() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
 
         assertEquals("Ada", mapper.nested(result(new String[]{"full_name"},
                 new Object[]{"Ada"})).getProfile().getName());
@@ -29,7 +29,7 @@ class JdbcTargetPathTest {
 
     @Test
     void mapsSingleNameTargetPathAsAColumnAlias() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
 
         assertEquals("Ada", mapper.rootPath(result(new String[]{"full_name"}, new Object[]{"Ada"})).name);
         assertEquals("Grace", mapper.rootPointer(result(new String[]{"full_name"}, new Object[]{"Grace"})).name);

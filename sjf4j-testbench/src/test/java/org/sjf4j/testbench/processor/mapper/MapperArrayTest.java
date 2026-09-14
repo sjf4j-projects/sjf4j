@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.MapperOptions;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 
@@ -22,7 +22,7 @@ public class MapperArrayTest {
 
     @Test
     public void convertsArrayLikeSourcesToCollections() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
 
         assertEquals(List.of(1, 2), mapper.jsonArrayInts(JsonArray.of(1L, 2)));
         assertEquals(new LinkedHashSet<>(List.of(Status.ACTIVE)), mapper.jsonArrayStatuses(JsonArray.of("ACTIVE")));
@@ -35,14 +35,14 @@ public class MapperArrayTest {
 
     @Test
     public void importedMapperSupportsRootArrayUsing() {
-        ImportedArrayMapper mapper = CompiledNodes.instanceOf(ImportedArrayMapper.class);
+        ImportedArrayMapper mapper = CompiledInstances.of(ImportedArrayMapper.class);
 
         assertEquals(List.of(new UserDto("ADA")), List.of(mapper.userDtoArray(new User[] {new User("ada")})));
     }
 
     @Test
     public void mapsAndUpdatesArrayLikeSourcePropertiesToCollections() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
         ArrayLikeSource source = new ArrayLikeSource();
 
         ArrayLikeTarget created = mapper.arrayLike(source);
@@ -64,7 +64,7 @@ public class MapperArrayTest {
 
     @Test
     public void updatesRootCollectionsFromArrayLikeSources() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
 
         List<Long> longs = new ArrayList<>(List.of(99L));
         mapper.updateLongsFromPrimitiveArray(longs, new int[] {1, 2});
@@ -77,7 +77,7 @@ public class MapperArrayTest {
 
     @Test
     public void projectsArrayLikeSourcesToJsonArrayShallowly() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
         Object nested = new User("ada");
         List<Object> list = List.of(Long.valueOf(1), nested);
         @SuppressWarnings("rawtypes") List rawList = list;
@@ -114,7 +114,7 @@ public class MapperArrayTest {
 
     @Test
     public void mapsObjectRuntimeListOnlyToTypedCollectionsAndArrays() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
         @SuppressWarnings("rawtypes") List rawList = List.of(Long.valueOf(9), Integer.valueOf(10));
 
         assertEquals(List.of(1, 2), mapper.intsFromObject(List.of(Long.valueOf(1), Integer.valueOf(2))));
@@ -127,7 +127,7 @@ public class MapperArrayTest {
 
     @Test
     public void createsJajoTargetsShallowly() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
         Object nested = new User("ada");
 
         TypedJsonArray fromList = mapper.typedJsonArrayFromList(List.of(Long.valueOf(1), nested));
@@ -151,14 +151,14 @@ public class MapperArrayTest {
 
     @Test
     public void jajoTargetUsesRuntimeElementTypeCheck() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
 
         assertThrows(JsonException.class, () -> mapper.stringJsonArray(List.of("ok", Integer.valueOf(1))));
     }
 
     @Test
     public void mapsArrayLikeSourcesToJavaArraysWithTypedConversion() {
-        ArrayMapper mapper = CompiledNodes.instanceOf(ArrayMapper.class);
+        ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
         @SuppressWarnings("rawtypes") List rawList = List.of(Long.valueOf(7), Integer.valueOf(8));
 
         assertEquals(List.of(1, 2), List.of(mapper.integerArray(JsonArray.of(1L, 2L))));
@@ -169,7 +169,7 @@ public class MapperArrayTest {
         assertEquals(List.of(5L, 6L), List.of(mapper.longArrayFromList(List.of(Integer.valueOf(5), Integer.valueOf(6)))));
         assertEquals(List.of(11L, 12L), mapper.longListFromSet(new LinkedHashSet<>(List.of(Integer.valueOf(11), Integer.valueOf(12)))));
 
-        NamedArrayMapper named = CompiledNodes.instanceOf(NamedArrayMapper.class);
+        NamedArrayMapper named = CompiledInstances.of(NamedArrayMapper.class);
         assertEquals(List.of(new UserDto("ADA")), List.of(named.userDtoArray(new User[] {new User("ada")})));
     }
 

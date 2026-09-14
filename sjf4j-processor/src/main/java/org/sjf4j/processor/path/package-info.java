@@ -1,5 +1,5 @@
 /**
- * Code generators for {@code @CompiledPath} interfaces.
+ * Code generators for {@code @CompiledNavigator} interfaces.
  *
  * <p>Path annotations are validated during annotation processing, then emitted
  * as ordinary Java methods that navigate objects, maps, lists, arrays, and SJF4J

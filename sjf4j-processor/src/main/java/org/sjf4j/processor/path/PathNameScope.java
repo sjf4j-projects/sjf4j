@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * Holds the generated parameter name mapping and local name allocator for one
- * CompiledPath method emission.
+ * CompiledNavigator method emission.
  *
  * <p>Path methods may contain dynamic path parameters whose Java source names
  * differ from generated method parameter names after collision avoidance.  This

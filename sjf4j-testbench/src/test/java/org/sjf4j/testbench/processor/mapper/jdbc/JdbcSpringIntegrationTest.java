@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.ResultSet;
@@ -21,7 +21,7 @@ class JdbcSpringIntegrationTest {
         jdbcTemplate.update("insert into users (name, age) values (?, ?)", "Ada", 36);
         jdbcTemplate.update("insert into users (name, age) values (?, ?)", "Grace", 40);
 
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
         List<User> users = jdbcTemplate.query("select name, age from users order by age", mapper::mapRow);
 
         assertEquals(List.of(new User("Ada", 36), new User("Grace", 40)), users);

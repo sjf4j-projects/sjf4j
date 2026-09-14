@@ -3,9 +3,9 @@ package org.sjf4j.testbench.processor.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.path.CompiledPath;
-import org.sjf4j.annotation.path.EnsurePutByPath;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.annotation.navigator.CompiledNavigator;
+import org.sjf4j.annotation.navigator.EnsurePutByPath;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;
@@ -24,7 +24,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void createsMissingMapListAndPojoParents() {
-        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledInstances.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureDefaultMap(root, "map-value"));
@@ -43,7 +43,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void preservesConcreteContainerTypesWhenCreatingParents() {
-        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledInstances.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureHashMap(root, "hash-value"));
@@ -57,7 +57,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void createsJsonObjectAndJsonArrayParents() {
-        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledInstances.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureJsonObject(root, "json-object"));
@@ -69,7 +69,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void supportsDynamicKeysIndexesAndMiddleAppend() {
-        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledInstances.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureDynamic(root, "region", 0, "dynamic-value"));
@@ -83,14 +83,14 @@ public class EnsurePutByPathTest {
 
     @Test
     public void nullRootThrowsNullPointerException() {
-        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledInstances.of(EnsurePutNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.ensureDefaultMap(null, "x"));
     }
 
     @Test
     public void traversesExistingRecordComponentAndFailsAtRuntimeWhenMissing() {
-        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledInstances.of(EnsurePutNodes.class);
 
         Map<String, Object> map = new HashMap<>();
         assertNull(nodes.ensureRecordMap(new RecordRoot(map), "record-value"));
@@ -101,7 +101,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void testMapChild() {
-        EnsurePutNodes nodes = CompiledNodes.instanceOf(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledInstances.of(EnsurePutNodes.class);
 
         RecordRoot root = new RecordRoot(new HashMap<>());
         assertNull(nodes.ensureRecordMapChild(root, 5566L));
@@ -138,7 +138,7 @@ public class EnsurePutByPathTest {
 
     record RecordRoot(Map<String, Object> map) {}
 
-    @CompiledPath
+    @CompiledNavigator
     interface EnsurePutNodes {
         @EnsurePutByPath("$.map.a.b")
         Object ensureDefaultMap(Root root, Object value);

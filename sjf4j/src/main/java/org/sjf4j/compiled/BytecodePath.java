@@ -8,13 +8,13 @@ import org.sjf4j.node.TypeReference;
  * <p>The static {@code compile(...)} methods require an optional bytecode compiler module,
  * such as {@code sjf4j-bytecode}, to be present on the runtime classpath. Core-only or fully
  * dynamic users can instantiate {@link FallbackBytecodePath} with a parsed
- * {@link org.sjf4j.path.JsonPath} when reflective path access is desired.
+ * {@link org.sjf4j.navigator.JsonPath} when reflective path access is desired.
  *
  * <p>Bytecode-compiled paths produced by {@code compile(...)} support negative array indexes
  * such as {@code [-1]} for tail-relative access. For performance, bytecode-compiled paths use
  * direct list/array access for indexed segments. Out-of-range intermediate indexes may therefore
  * throw instead of resolving to {@code null}, including for {@link #putIfParentPresent(Object, Object)}; use
- * {@link FallbackBytecodePath} or direct {@link org.sjf4j.path.JsonPath} access when full
+ * {@link FallbackBytecodePath} or direct {@link org.sjf4j.navigator.JsonPath} access when full
  * missing-index JSON path semantics are required.
  */
 public interface BytecodePath<R, V> {

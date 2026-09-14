@@ -123,7 +123,7 @@ Maven:
 
 For frequently executed JSON Path access and object mapping, SJF4J provides
 compile-time code generation through `sjf4j-processor`.  
-It generates direct implementations for `@CompiledPath`, `@CompiledMapper`,
+It generates direct implementations for `@CompiledNavigator`, `@CompiledMapper`,
 and `@CompiledJdbcMapper` interfaces, avoiding reflection, metadata lookup,
 and interpreted path or mapping execution at runtime.
 
@@ -306,11 +306,11 @@ JOJOs additionally provide shortcut methods:
 studentJojo.getIntByPath("$.scores.math");
 ```
 
-For performance-critical paths, `@CompiledPath` generates direct access code at compile time,
+For performance-critical paths, `@CompiledNavigator` generates direct access code at compile time,
 approaching hand-written access performance:  
 (This requires the `sjf4j-processor` annotation processor)
 ```java
-@CompiledPath
+@CompiledNavigator
 interface StudentPath {
 
     @GetByPath("$.scores.math")
@@ -319,7 +319,7 @@ interface StudentPath {
 ```
 
 ```java
-StudentPath path = CompiledNodes.instanceOf(StudentPath.class);
+StudentPath path = CompiledInstances.of(StudentPath.class);
 path.getScoresMath(student);
 ```
 
@@ -421,7 +421,7 @@ public interface StudentMapper {
 
 Use the generated mapper:
 ```java
-StudentMapper mapper = CompiledNodes.instanceOf(StudentMapper.class);
+StudentMapper mapper = CompiledInstances.of(StudentMapper.class);
 StudentDto studentDto = mapper.toDto(student);
 ```
 
@@ -451,7 +451,7 @@ SJF4J adds unified structural semantics and flexible binding on top of existing 
 while remaining close to native backend performance in typical workloads.
 
 **JSON Path Navigating Benchmark**  
-`JsonPath` provides interpreted querying and mutation, while `@CompiledPath` generates direct Java access code for hot paths.   
+`JsonPath` provides interpreted querying and mutation, while `@CompiledNavigator` generates direct Java access code for hot paths.
 Its specification compatibility is evaluated by the [JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/).
 
 **JSON Schema Validating Benchmark**  
@@ -489,4 +489,3 @@ If you encounter any problems or unexpected behavior, please feel free to [open 
 
 All contributions, whether code, documentation, bug reports, examples, benchmarks, ideas, suggestions, 
 or feedback from real-world use, are welcome~
-

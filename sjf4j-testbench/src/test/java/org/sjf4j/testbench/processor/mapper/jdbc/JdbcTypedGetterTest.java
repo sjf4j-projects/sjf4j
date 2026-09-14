@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 
 import java.lang.reflect.Proxy;
@@ -19,7 +19,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcTypedGetterTest {
     @Test
     void usesTypedGetterForPrimitivePropertiesAndRejectsNull() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
         int[] getInts = {0};
 
         assertEquals(36, mapper.user(typedUserResult(getInts, false)).age);
@@ -33,7 +33,7 @@ class JdbcTypedGetterTest {
 
     @Test
     void usesAllTypedGettersAndChecksWasNullForPrimitiveColumns() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
         List<String> getters = new ArrayList<>();
 
         PrimitiveValues values = mapper.primitives(typedPrimitiveResult(getters, null, false));

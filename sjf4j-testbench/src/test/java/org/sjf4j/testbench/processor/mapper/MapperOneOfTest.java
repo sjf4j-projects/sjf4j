@@ -7,7 +7,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 
 import java.util.List;
@@ -22,7 +22,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesRootPojoSourceByDiscriminator() {
-        OneOfMapper mapper = CompiledNodes.instanceOf(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.of(OneOfMapper.class);
 
         Animal cat = mapper.animal(new AnimalSource("cat", "Milo", 9, null));
         Animal dog = mapper.animal(new AnimalSource("dog", "Rex", null, Boolean.TRUE));
@@ -40,7 +40,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesMapAndJsonObjectSources() {
-        OneOfMapper mapper = CompiledNodes.instanceOf(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.of(OneOfMapper.class);
 
         Animal fromMap = mapper.animalMap(Map.of("type", "cat", "name", "MapCat", "lives", 7));
         Animal fromJson = mapper.animalJson(JsonObject.of("type", "dog", "name", "JsonDog", "goodDog", Boolean.TRUE));
@@ -51,7 +51,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesContainerElementsAndNestedProperties() {
-        OneOfMapper mapper = CompiledNodes.instanceOf(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.of(OneOfMapper.class);
 
         List<Animal> animals = mapper.animals(List.of(
                 Map.of("type", "cat", "name", "A", "lives", 8),
@@ -70,7 +70,7 @@ public class MapperOneOfTest {
 
     @Test
     public void appliesOnNoMatchPolicies() {
-        OneOfMapper mapper = CompiledNodes.instanceOf(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.of(OneOfMapper.class);
 
         assertNull(mapper.nullableAnimal(Map.of("type", "bird", "name", "Sky")));
         BindingException ex = assertThrows(BindingException.class,
@@ -80,7 +80,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesByShapeWithoutDiscriminator() {
-        OneOfMapper mapper = CompiledNodes.instanceOf(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.of(OneOfMapper.class);
 
         ShapeAnimal fromMap = mapper.shapeMap(Map.<String, Object>of("name", "MapCat"));
         ShapeAnimal fromJson = mapper.shapeJson(JsonObject.of("name", "JsonCat"));
@@ -94,7 +94,7 @@ public class MapperOneOfTest {
 
     @Test
     public void appliesShapeOnNoMatchPolicies() {
-        OneOfMapper mapper = CompiledNodes.instanceOf(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.of(OneOfMapper.class);
 
         assertNull(mapper.nullableShape(Boolean.TRUE));
         BindingException ex = assertThrows(BindingException.class, () -> mapper.shapeFail(Boolean.TRUE));

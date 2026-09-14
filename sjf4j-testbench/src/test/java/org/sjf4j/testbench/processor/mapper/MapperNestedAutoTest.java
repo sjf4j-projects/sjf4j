@@ -2,7 +2,7 @@ package org.sjf4j.testbench.processor.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.List;
 import java.util.Map;
@@ -14,7 +14,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void autoMapsNestedBeanProperty() {
-        AutoOnlyMapper mapper = CompiledNodes.instanceOf(AutoOnlyMapper.class);
+        AutoOnlyMapper mapper = CompiledInstances.of(AutoOnlyMapper.class);
 
         Target target = mapper.map(new Source(new ChildSource("Ada")));
 
@@ -25,7 +25,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void declaredMapperTakesPriorityOverAutoHelper() {
-        DeclaredMapper mapper = CompiledNodes.instanceOf(DeclaredMapper.class);
+        DeclaredMapper mapper = CompiledInstances.of(DeclaredMapper.class);
 
         Target target = mapper.mapWithDeclared(new Source(new ChildSource("Ada")));
 
@@ -34,7 +34,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void declaredMapperTakesPriorityForContainerValues() {
-        DeclaredMapper mapper = CompiledNodes.instanceOf(DeclaredMapper.class);
+        DeclaredMapper mapper = CompiledInstances.of(DeclaredMapper.class);
 
         ContainerTarget target = mapper.containersWithDeclared(new ContainerSource(
                 List.of(new ChildSource("one")),
@@ -46,7 +46,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void importedMapperSupportsPropertyUsingAndAutoNestedMapping() {
-        ImportedMapper mapper = CompiledNodes.instanceOf(ImportedMapper.class);
+        ImportedMapper mapper = CompiledInstances.of(ImportedMapper.class);
 
         Target explicit = mapper.explicit(new Source(new ChildSource("Ada")));
         Target auto = mapper.auto(new Source(new ChildSource("Bob")));
@@ -57,7 +57,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void unqualifiedUsingPrefersLocalMapperOverImportedMapper() {
-        LocalPriorityMapper mapper = CompiledNodes.instanceOf(LocalPriorityMapper.class);
+        LocalPriorityMapper mapper = CompiledInstances.of(LocalPriorityMapper.class);
 
         Target target = mapper.map(new Source(new ChildSource("Ada")));
 
@@ -66,7 +66,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void autoMapsCollectionElementsAndMapValues() {
-        AutoOnlyMapper mapper = CompiledNodes.instanceOf(AutoOnlyMapper.class);
+        AutoOnlyMapper mapper = CompiledInstances.of(AutoOnlyMapper.class);
 
         ContainerTarget target = mapper.containers(new ContainerSource(
                 List.of(new ChildSource("one"), new ChildSource("two")),
@@ -79,7 +79,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void autoMapsNestedRecordAndConstructorTargets() {
-        AutoOnlyMapper mapper = CompiledNodes.instanceOf(AutoOnlyMapper.class);
+        AutoOnlyMapper mapper = CompiledInstances.of(AutoOnlyMapper.class);
 
         MixedTarget target = mapper.mixed(new MixedSource(new ChildSource("record"), new ChildSource("ctor")));
 
@@ -89,7 +89,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void autoMapsNestedBeanAndEnumOnUpdate() {
-        AutoOnlyMapper mapper = CompiledNodes.instanceOf(AutoOnlyMapper.class);
+        AutoOnlyMapper mapper = CompiledInstances.of(AutoOnlyMapper.class);
         UpdateTarget target = new UpdateTarget();
 
         mapper.update(target, new UpdateSource(new ChildSource("updated"), "B"));
@@ -100,7 +100,7 @@ public class MapperNestedAutoTest {
 
     @Test
     public void mapsEnumFallbacks() {
-        AutoOnlyMapper mapper = CompiledNodes.instanceOf(AutoOnlyMapper.class);
+        AutoOnlyMapper mapper = CompiledInstances.of(AutoOnlyMapper.class);
 
         EnumTarget fromEnum = mapper.enums(new EnumSource(SourceKind.B));
         assertEquals(TargetKind.B, fromEnum.kind);

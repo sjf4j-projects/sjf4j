@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +15,7 @@ public class MapperComplexTest {
 
     @Test
     public void mapsMixedRecordBeanFieldAndConstructorModels() {
-        ComplexMapper mapper = CompiledNodes.instanceOf(ComplexMapper.class);
+        ComplexMapper mapper = CompiledInstances.of(ComplexMapper.class);
         Account account = new Account(
                 new AccountId("A-001"),
                 new Profile("Ada", "Lovelace", true),
@@ -46,7 +46,7 @@ public class MapperComplexTest {
 
     @Test
     public void mapsToRecordSummaryWithConstructorArguments() {
-        ComplexMapper mapper = CompiledNodes.instanceOf(ComplexMapper.class);
+        ComplexMapper mapper = CompiledInstances.of(ComplexMapper.class);
         Account account = new Account(
                 new AccountId("A-002"),
                 new Profile("Grace", "Hopper", false),
@@ -67,7 +67,7 @@ public class MapperComplexTest {
 
     @Test
     public void mapsToUniqueConstructorTarget() {
-        ComplexMapper mapper = CompiledNodes.instanceOf(ComplexMapper.class);
+        ComplexMapper mapper = CompiledInstances.of(ComplexMapper.class);
         Account account = new Account(
                 new AccountId("A-003"),
                 new Profile("Katherine", "Johnson", true),

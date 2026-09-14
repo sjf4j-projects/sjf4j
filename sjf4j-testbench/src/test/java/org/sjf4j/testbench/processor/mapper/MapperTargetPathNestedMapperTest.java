@@ -6,7 +6,7 @@ import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
 import org.sjf4j.annotation.mapper.MapperOptions;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,7 +21,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @Test
     public void targetPathAppliesNamedNestedMapperToBeanListAndMapValues() {
-        NestedPathMapper mapper = CompiledNodes.instanceOf(NestedPathMapper.class);
+        NestedPathMapper mapper = CompiledInstances.of(NestedPathMapper.class);
         Source source = new Source(new Child("Ada"));
 
         Target target = mapper.create(source);
@@ -32,7 +32,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @Test
     public void targetPathNestedMapperWorksWithIfParentPresentAndEnsure() {
-        NestedPathMapper mapper = CompiledNodes.instanceOf(NestedPathMapper.class);
+        NestedPathMapper mapper = CompiledInstances.of(NestedPathMapper.class);
         Source source = new Source(new Child("Grace"));
 
         OptionalTarget optional = new OptionalTarget();

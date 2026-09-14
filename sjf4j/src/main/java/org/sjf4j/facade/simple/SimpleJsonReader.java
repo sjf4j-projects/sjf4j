@@ -4,7 +4,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.JsonType;
 import org.sjf4j.node.Numbers;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.PathSegment;
 
 import java.io.BufferedReader;
 import java.io.IOException;

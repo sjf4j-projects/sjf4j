@@ -15,7 +15,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.annotation.schema.CompiledSchemaValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatorOptions;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.SchemaValidator;
@@ -159,7 +159,7 @@ public class SchemaBenchmark {
                     3,
                     "SAVE10",
                     Boolean.FALSE);
-            compiledValidator = CompiledNodes.instanceOf(OrderValidator.class);
+            compiledValidator = CompiledInstances.of(OrderValidator.class);
             schemaPlan = JsonSchema.fromJson(ORDER_SCHEMA_JSON).createPlan();
             schemaValidator = new SchemaValidator();
 

@@ -1,6 +1,6 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.PathSegment;
 
 import java.net.URI;
 import java.util.List;

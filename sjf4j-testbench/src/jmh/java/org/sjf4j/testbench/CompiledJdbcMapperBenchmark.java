@@ -14,7 +14,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.apache.ibatis.executor.resultset.DefaultResultSetHandler;
 import org.apache.ibatis.builder.StaticSqlSource;
 import org.apache.ibatis.mapping.BoundSql;
@@ -93,7 +93,7 @@ public class CompiledJdbcMapperBenchmark {
                 insert.executeBatch();
             }
             select = connection.prepareStatement("select id, name, balance from users order by id");
-            mapper = CompiledNodes.instanceOf(JdbcMapper.class);
+            mapper = CompiledInstances.of(JdbcMapper.class);
             springMapper = BeanPropertyRowMapper.newInstance(User.class);
             mybatisConfiguration = new Configuration();
             mybatisConfiguration.setMapUnderscoreToCamelCase(true);

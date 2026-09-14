@@ -18,7 +18,6 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
@@ -26,7 +25,7 @@ import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.ReflectUtil;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.PathSegment;
 
 import java.io.IOException;
 import java.util.ArrayList;

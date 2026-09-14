@@ -5,7 +5,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -14,7 +14,7 @@ public class MapperUpdateTest {
 
     @Test
     public void updatesSameNamePropertiesInPlace() {
-        UpdateMapper mapper = CompiledNodes.instanceOf(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
         Target target = new Target();
 
         mapper.update(target, new Source("Ada", "Lovelace", 36));
@@ -26,7 +26,7 @@ public class MapperUpdateTest {
 
     @Test
     public void supportsRenameAndIgnore() {
-        UpdateMapper mapper = CompiledNodes.instanceOf(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
         Target target = new Target();
         target.age = 99;
 
@@ -38,7 +38,7 @@ public class MapperUpdateTest {
 
     @Test
     public void nullPolicyIgnoreSkipsNullValues() {
-        UpdateMapper mapper = CompiledNodes.instanceOf(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
         target.age = 7;
@@ -51,7 +51,7 @@ public class MapperUpdateTest {
 
     @Test
     public void defaultNullPolicySetsNullValues() {
-        UpdateMapper mapper = CompiledNodes.instanceOf(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
 
@@ -63,7 +63,7 @@ public class MapperUpdateTest {
 
     @Test
     public void updatesFromMultipleSourcesAndReturnsWhenAllSourcesNull() {
-        UpdateMapper mapper = CompiledNodes.instanceOf(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
         target.city = "old-city";

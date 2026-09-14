@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.path.JsonPointer;
+import org.sjf4j.navigator.JsonPointer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

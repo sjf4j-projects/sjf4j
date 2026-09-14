@@ -1,7 +1,7 @@
 package org.sjf4j.processor.mapper;
 
-import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.navigator.PathSegment;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.NameAllocator;

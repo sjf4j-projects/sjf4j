@@ -6,7 +6,7 @@ import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.JsonObject;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -22,7 +22,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToNoArgsBeanWithRenameIgnoreAndInlineCompute() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         UserDto dto = mapper.toDto(person);
@@ -36,7 +36,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToRecordAndConstructorTargets() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         NameRecord record = mapper.toRecord(person);
@@ -50,7 +50,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsWithLocalHelperCompute() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         UserDto dto = mapper.withHelper(new Person("Ada", "Lovelace", 36));
 
@@ -59,7 +59,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsSameNamePropertiesWithoutMappingAnnotations() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         SameDto dto = mapper.sameNames(new Person("Ada", "Lovelace", 36));
 
@@ -70,7 +70,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJsonPathAndJsonPointerSources() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         JsonObject object = new JsonObject();
         object.put("name", "JsonObjectName");
 
@@ -99,7 +99,7 @@ public class MapperSimpleTest {
 
     @Test
     public void treatsDottedMapKeyAsPlainPropertyName() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         NameOnly dto = mapper.dottedKey(Map.of("profile.name", "literal-key"));
 
@@ -108,7 +108,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsNullablePathSourceToReferenceTarget() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         AgeDto dto = mapper.age(new AgeSource(new AgeBox(42)));
 
@@ -117,7 +117,7 @@ public class MapperSimpleTest {
 
     @Test
     public void createMapperSetsNullPathValuesByDefault() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         ReferenceDefaultsDto dto = mapper.setNulls(new DefaultsSource(null, null, null));
 
@@ -128,7 +128,7 @@ public class MapperSimpleTest {
 
     @Test
     public void groupedSetPathSourcesAssignNullsForMissingParents() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         GroupedDefaultsDto dto = mapper.groupedSet(new GroupedSource(null));
         assertNull(dto.first);
@@ -141,7 +141,7 @@ public class MapperSimpleTest {
 
     @Test
     public void groupedIgnorePathSourcesSkipMissingParentsAndNullLeaves() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         GroupedDefaultsDto missingParent = mapper.groupedIgnore(new GroupedSource(null));
         assertEquals("default-first", missingParent.first);
@@ -154,7 +154,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParameters() {
-        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -179,7 +179,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToRecordTarget() {
-        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -198,7 +198,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToConstructorTarget() {
-        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         MultiCtor ctor = mapper.toCtor(null, address);
@@ -211,7 +211,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsPrimitiveConstructorValueOnlyThroughExplicitCompute() {
-        MultiMapper mapper = CompiledNodes.instanceOf(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         assertEquals(7, mapper.toAgeRecord(new Score(7), address).age());
@@ -221,7 +221,7 @@ public class MapperSimpleTest {
 
     @Test
     public void thirdPartyPropertyNamesDriveRecordTargetAutoMapping() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         ThirdPartyRecord record = mapper.thirdPartyNames(Map.of(
                 "first_name", "Ada",
@@ -233,7 +233,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJacksonJsonNodeToRecordIncludingNestedRecord() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         ObjectNode address = JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1");
         JsonNode source = JsonNodeFactory.instance.objectNode()
                 .put("name", "Ada").put("age", 36).put("active", true).set("address", address);
@@ -249,7 +249,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJacksonArrayNodesToJavaArraysAndCollections() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         JsonNode numbers = JsonNodeFactory.instance.arrayNode().add(1).add(2);
 
         assertEquals(List.of(1, 2), List.of(mapper.jacksonArray(numbers)));
@@ -263,7 +263,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFacadeIndexedPathAndCachedPojoChildReads() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         JsonNode item = JsonNodeFactory.instance.objectNode().put("name", "Ada");
         assertEquals("Ada", mapper.jacksonFirst(JsonNodeFactory.instance.arrayNode().add(item)).name());
         assertEquals("Ada", mapper.jacksonLast(JsonNodeFactory.instance.arrayNode().add(item)).name());
@@ -277,7 +277,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFacadeNullNodesAsJavaNull() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         ObjectNode source = JsonNodeFactory.instance.objectNode();
         source.putNull("name");
         source.putNull("age");
@@ -302,7 +302,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJacksonObjectNodeToTypedMap() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
 
         assertEquals(Map.of("one", 1, "two", 2), mapper.jacksonMap(
                 JsonNodeFactory.instance.objectNode().put("one", 1).put("two", 2)));
@@ -312,7 +312,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJacksonNestedObjectNodeToTypedMapProperty() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         JsonNode source = JsonNodeFactory.instance.objectNode().set("addresses",
                 JsonNodeFactory.instance.objectNode().set("home",
                         JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1")));
@@ -322,7 +322,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFacadeChildWithExplicitJacksonNodeConverter() {
-        UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
+        UserMapper mapper = CompiledInstances.of(UserMapper.class);
         JsonNode source = JsonNodeFactory.instance.objectNode().set("address",
                 JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1"));
 

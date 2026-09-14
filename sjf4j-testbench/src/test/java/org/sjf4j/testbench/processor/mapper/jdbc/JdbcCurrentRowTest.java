@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
 import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 
 import java.sql.ResultSet;
@@ -19,7 +19,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.currentR
 class JdbcCurrentRowTest {
     @Test
     void mapsAlreadyPositionedRowWithoutAdvancingCursor() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
         int[] nextCalls = {0};
 
         User user = mapper.anyName(currentRowResult(new String[]{"name", "age"}, nextCalls, "Ada", 36), 42);
@@ -34,7 +34,7 @@ class JdbcCurrentRowTest {
 
     @Test
     void wrapsCurrentRowSqlExceptions() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
 
         assertInstanceOf(java.sql.SQLException.class,
                 assertThrows(BindingException.class, () -> mapper.anyName(brokenCurrentRowResult("getString"), 0)).getCause());
@@ -44,7 +44,7 @@ class JdbcCurrentRowTest {
 
     @Test
     void mapsPresentColumnsWithoutAdvancingCurrentRow() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
         int[] nextCalls = {0};
 
         Present present = mapper.present(currentRowResult(new String[]{"name"}, nextCalls, "Ada"), 0);

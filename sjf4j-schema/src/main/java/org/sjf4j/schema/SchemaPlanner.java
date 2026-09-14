@@ -2,8 +2,8 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.navigator.PathSegment;
 
 import java.net.URI;
 import java.util.ArrayList;

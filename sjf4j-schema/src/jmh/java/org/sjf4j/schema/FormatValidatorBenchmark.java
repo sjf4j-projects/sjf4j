@@ -11,7 +11,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.path.PathSyntax;
+import org.sjf4j.navigator.PathSyntax;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;

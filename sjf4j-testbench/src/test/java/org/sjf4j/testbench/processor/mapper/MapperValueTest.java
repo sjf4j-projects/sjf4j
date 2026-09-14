@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -18,7 +18,7 @@ public class MapperValueTest {
 
     @Test
     public void convertsNumberFamily() {
-        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
+        ScalarMapper mapper = CompiledInstances.of(ScalarMapper.class);
 
         NumericTarget target = mapper.numbers(new NumericSource());
 
@@ -45,7 +45,7 @@ public class MapperValueTest {
 
     @Test
     public void convertsStringCharacterEnumBooleanFamily() {
-        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
+        ScalarMapper mapper = CompiledInstances.of(ScalarMapper.class);
 
         TextTarget target = mapper.text(new TextSource());
 
@@ -64,7 +64,7 @@ public class MapperValueTest {
 
     @Test
     public void mapsApplicationPayloadWithStrictScalarLeaves() {
-        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
+        ScalarMapper mapper = CompiledInstances.of(ScalarMapper.class);
 
         ApplicationDto dto = mapper.application(new ApplicationPayload(
                 Map.of(
@@ -85,7 +85,7 @@ public class MapperValueTest {
 
     @Test
     public void recursivelyConvertsCollectionAndMapScalarLeaves() {
-        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
+        ScalarMapper mapper = CompiledInstances.of(ScalarMapper.class);
 
         assertEquals(List.of(1L, 2L), mapper.longs(List.of(1, 2)));
         assertEquals(List.of(List.of(1L), List.of(2L, 3L)),
@@ -106,7 +106,7 @@ public class MapperValueTest {
 
     @Test
     public void updatesCollectionAndMapScalarLeavesInPlace() {
-        ScalarMapper mapper = CompiledNodes.instanceOf(ScalarMapper.class);
+        ScalarMapper mapper = CompiledInstances.of(ScalarMapper.class);
 
         List<Long> longs = new ArrayList<>(List.of(99L));
         mapper.updateLongs(longs, List.of(1, 2));

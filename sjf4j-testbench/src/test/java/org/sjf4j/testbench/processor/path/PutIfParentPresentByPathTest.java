@@ -2,10 +2,10 @@ package org.sjf4j.testbench.processor.path;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.path.CompiledPath;
-import org.sjf4j.annotation.path.PutByPath;
-import org.sjf4j.annotation.path.PutIfParentPresentByPath;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.annotation.navigator.CompiledNavigator;
+import org.sjf4j.annotation.navigator.PutByPath;
+import org.sjf4j.annotation.navigator.PutIfParentPresentByPath;
+import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;
@@ -21,7 +21,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void existingParentMutatesContainersAndPojo() {
-        PutIfNodes nodes = CompiledNodes.instanceOf(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
 
         Map<String, String> map = new HashMap<>();
         map.put("name", "old-map");
@@ -45,7 +45,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void missingIntermediateParentReturnsNullAndDoesNotCreate() {
-        PutIfNodes nodes = CompiledNodes.instanceOf(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
         Account missingProfile = new Account(null);
         assertNull(nodes.putMemberEmail(missingProfile, "x"));
         assertNull(missingProfile.profile);
@@ -59,7 +59,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void voidReturnMissingParentIsNoop() {
-        PutIfNodes nodes = CompiledNodes.instanceOf(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
         Account account = new Account(null);
         nodes.putMemberEmailVoid(account, "x");
         assertNull(account.profile);
@@ -67,7 +67,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void dynamicNestedParamsMutateWhenParentExists() {
-        PutIfNodes nodes = CompiledNodes.instanceOf(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
         Account account = account();
 
         assertEquals("old-east", nodes.putRegionDistrict(account, "east", 0, "new-east"));
@@ -79,13 +79,13 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void finalInvalidIndexWithExistingParentStillThrows() {
-        PutIfNodes nodes = CompiledNodes.instanceOf(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
         assertThrows(JsonException.class, () -> nodes.putListValue(new ArrayList<>(), "x"));
     }
 
     @Test
     public void testPutMissing() {
-        PutIfNodes nodes = CompiledNodes.instanceOf(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
         Account account = new Account(null);
         nodes.putIfParentMissing(account, "x");
         assertThrows(JsonException.class, () -> nodes.putMissing(account, "x"));
@@ -130,7 +130,7 @@ public class PutIfParentPresentByPathTest {
         public void setValue(String value) { this.value = value; }
     }
 
-    @CompiledPath
+    @CompiledNavigator
     interface PutIfNodes {
         @PutIfParentPresentByPath("$.name")
         String putMapName(Map<String, String> root, String value);

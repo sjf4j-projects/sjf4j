@@ -5,14 +5,14 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MapperJojoPathTest {
     @Test
     public void readsJojoStaticPropertiesBeforeDynamicKeys() {
-        JojoPathMapper mapper = CompiledNodes.instanceOf(JojoPathMapper.class);
+        JojoPathMapper mapper = CompiledInstances.of(JojoPathMapper.class);
         Source source = new Source();
         source.jojo = new SourceJojo();
         source.jojo.setTypedName("typed-name");
@@ -32,7 +32,7 @@ public class MapperJojoPathTest {
 
     @Test
     public void autoMappingFallsBackToJojoDynamicKeys() {
-        JojoPathMapper mapper = CompiledNodes.instanceOf(JojoPathMapper.class);
+        JojoPathMapper mapper = CompiledInstances.of(JojoPathMapper.class);
         SourceJojo source = new SourceJojo();
         source.setTypedName("typed-auto");
         source.put("dynamicAuto", "dynamic-auto");
@@ -45,7 +45,7 @@ public class MapperJojoPathTest {
 
     @Test
     public void writesJojoStaticPropertiesBeforeDynamicKeys() {
-        JojoPathMapper mapper = CompiledNodes.instanceOf(JojoPathMapper.class);
+        JojoPathMapper mapper = CompiledInstances.of(JojoPathMapper.class);
 
         WriteTarget target = mapper.write(new WriteSource("Ada", "alias", "other"));
 

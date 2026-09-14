@@ -1,8 +1,8 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.Sjf4j;
-import org.sjf4j.path.PathSegment;
-import org.sjf4j.path.PathSyntax;
+import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.navigator.PathSyntax;
 
 import java.io.InputStream;
 import java.net.URI;

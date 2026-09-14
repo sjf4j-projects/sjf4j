@@ -18,7 +18,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -80,8 +80,8 @@ public class OrderMapperBenchmark {
                     attributes("priority", "bronze", "coupon", "BASIC", "region", "apac"),
                     metadata("store", "exp-c"));
 
-            sjf4jIgnoreMapper = CompiledNodes.instanceOf(Sjf4jIgnoreMapper.class);
-            sjf4jSetMapper = CompiledNodes.instanceOf(Sjf4jSetMapper.class);
+            sjf4jIgnoreMapper = CompiledInstances.of(Sjf4jIgnoreMapper.class);
+            sjf4jSetMapper = CompiledInstances.of(Sjf4jSetMapper.class);
             mapStructMapper = Mappers.getMapper(MapStructMapper.class);
             handMapper = new HandMapper();
 

@@ -1,6 +1,6 @@
 package org.sjf4j.processor.mapper;
 
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.PathSegment;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;

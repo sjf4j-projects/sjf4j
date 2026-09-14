@@ -1,0 +1,412 @@
+package org.sjf4j.navigator;
+
+
+import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.Numbers;
+
+import java.util.List;
+
+
+/**
+ * Immutable segment in a JSONPath/JSON Pointer token chain.
+ *
+ * <p>Each segment points to its parent to allow reconstructing the full path
+ * when formatting errors or converting to expressions.
+ */
+public abstract class PathSegment {
+    protected final PathSegment parent;
+
+    /**
+     * Creates a path segment with parent and container type.
+     */
+    public PathSegment(PathSegment parent) {
+        this.parent = parent;
+    }
+
+    /**
+     * Returns the parent segment in the chain.
+     */
+    public PathSegment parent() {return parent;}
+
+    /**
+     * Returns true if this segment matches the given object key.
+     */
+    public boolean matchKey(String key) { return false; }
+    /**
+     * Returns true if this segment matches the given array index.
+     */
+    public boolean matchIndex(int idx, int size) { return false; }
+
+
+    /**
+     * Returns a JSON Pointer expression rooted at this segment.
+     */
+    public String rootedPointerExpr() {
+        return PathSyntax.rootedPointerExpr(this);
+    }
+
+    /**
+     * Returns a JSONPath expression rooted at this segment.
+     */
+    public String rootedPathExpr() {
+        return PathSyntax.rootedPathExpr(this);
+    }
+
+    /// Subclasses: Root, Name, Index, Param, Wildcard, Slice, Union, Descendant, Function, Filter, Append
+
+    /**
+     * Represents the root token ($) in a JSON path expression.
+     */
+    public static final class Root extends PathSegment {
+        private Root() {super(null);}
+        public static final Root INSTANCE = new Root();
+        @Override public String toString() { return "$"; }
+    }
+
+
+    /**
+     * Represents the current token (@) in a JSON path expression.
+     * This token is used only inside filter expressions.
+     */
+    public static final class Current extends PathSegment {
+        private Current() {super(null);}
+        public static final Current INSTANCE = new Current();
+        @Override public String toString() { return "@"; }
+    }
+
+    /**
+     * Represents a named property token in a JSON path expression.
+     */
+    public static final class Name extends PathSegment {
+        public final String name;
+
+        /**
+         * Creates a property-name segment.
+         */
+        public Name(PathSegment parent, String name) {
+            super(parent);
+            this.name = name;
+        }
+        @Override public boolean matchKey(String key) { return name.equals(key); }
+        public boolean needQuoted() { return shouldArrayStyle(name); }
+        public String toQuoted() { return quoteName(name); }
+        @Override public String toString() {
+            if (shouldArrayStyle(name)) {
+                return "[" + quoteName(name) + "]";
+            } else {
+                return "." + name;
+            }
+        }
+    }
+
+    /**
+     * Represents an index token in a JSON path expression.
+     */
+    public static final class Index extends PathSegment {
+        public final int index;
+        final String pointerToken;
+
+        /**
+         * Creates an array-index segment.
+         */
+        public Index(PathSegment parent, int index) {
+            this(parent, index, null);
+        }
+
+        /**
+         * Creates an index segment with optional original JSON Pointer token.
+         */
+        public Index(PathSegment parent, int index, String pointerToken) {
+            super(parent);
+            this.index = index;
+            this.pointerToken = pointerToken;
+        }
+
+        /**
+         * Matches index with support for negative offsets.
+         */
+        @Override
+        public boolean matchIndex(int idx, int size) {
+            int pindex = index < 0 ? size + index : index;
+            return pindex == idx;
+        }
+        @Override public String toString() {
+            return "[" + index + "]";
+        }
+    }
+
+    /**
+     * Represents a dynamic bracket path parameter token, e.g. {@code [{idx}]}.
+     */
+    public static final class Param extends PathSegment {
+        public final String param;
+
+        /**
+         * Creates a dynamic bracket parameter segment.
+         */
+        public Param(PathSegment parent, String param) {
+            super(parent);
+            this.param = param;
+        }
+
+        @Override public String toString() {
+            return "[{" + param + "}]";
+        }
+    }
+
+    /**
+     * Represents a wildcard token (*) in a JSON path expression.
+     */
+    public static final class Wildcard extends PathSegment {
+        /**
+         * Creates a wildcard segment.
+         */
+        public Wildcard(PathSegment parent) {
+            super(parent);
+        }
+        @Override public boolean matchKey(String key) { return true; }
+        @Override public boolean matchIndex(int index, int size) { return true; }
+        @Override public String toString() { return "[*]"; }
+    }
+
+    /**
+     * Represents a slice token in a JSON path expression.
+     */
+    public static final class Slice extends PathSegment {
+        public final Long start; // null allowed
+        public final Long end;   // null allowed
+        public final Long step;  // null allowed
+        /**
+         * Creates an array-slice segment.
+         */
+        public Slice(PathSegment parent, Long s, Long e, Long st) {
+            super(parent);
+            start = s; end = e; step = st;
+        }
+
+        /**
+         * Matches index against slice bounds and step.
+         */
+        @Override
+        public boolean matchIndex(int idx, int size) {
+            long st = step == null ? 1 : step;
+            if (st == 0) return false;
+            long first = start == null ? (st < 0 ? size - 1L : 0L) : start;
+            long last = end == null ? (st < 0 ? -1L : size) : end;
+            if (start != null && first < 0) first += size;
+            if (end != null && last < 0) last += size;
+            if (st < 0) {
+                first = Math.min(Math.max(first, -1L), size - 1L);
+                last = Math.min(Math.max(last, -1L), size - 1L);
+                return idx <= first && idx > last && (first - idx) % -st == 0;
+            }
+            first = Math.min(Math.max(first, 0L), size);
+            last = Math.min(Math.max(last, 0L), size);
+            return idx >= first && idx < last && (idx - first) % st == 0;
+        }
+
+        /**
+         * Returns slice expression without brackets.
+         */
+        public String toExpr() {
+            if (start == null) {
+                if (end == null) {
+                    return "::" + step;
+                } else if (step == null){
+                    return ":" + end;
+                } else {
+                    return ":" + end + ":" + step;
+                }
+            } else if (end == null) {
+                if (step == null) {
+                    return start + ":";
+                } else {
+                    return start + "::" + step;
+                }
+            } else if (step == null) {
+                return start + ":" + end;
+            } else {
+                return start + ":" + end + ":" + step;
+            }
+        }
+        @Override public String toString() {
+            return "[" + toExpr() + "]";
+        }
+    }
+
+    /**
+     * Represents a union token in a JSON path expression.
+     */
+    public static final class Union extends PathSegment {
+        public final PathSegment[] union;
+
+        /**
+         * Creates a union segment.
+         */
+        public Union(PathSegment parent, PathSegment[] union) {
+            super(parent);
+            this.union = union;
+        }
+        @Override public boolean matchKey(String key) {
+            for (PathSegment pt : union) {
+                if (pt.matchKey(key)) return true;
+            }
+            return false;
+        }
+        @Override public boolean matchIndex(int index, int size) {
+            for (PathSegment pt : union) {
+                if (pt.matchIndex(index, size)) return true;
+            }
+            return false;
+        }
+        @Override public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            for (int i = 0; i < union.length; i++) {
+                if (i > 0) sb.append(",");
+                PathSegment pt = union[i];
+                if (pt instanceof Name) {
+                    sb.append(quoteName(((Name) pt).name));
+                } else if (pt instanceof Index) {
+                    sb.append(((Index) pt).index);
+                } else if (pt instanceof Slice) {
+                    sb.append(((Slice) pt).toExpr());
+                }
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+    }
+
+    public static final class Descendant extends PathSegment {
+        /**
+         * Creates a descendant segment.
+         */
+        public Descendant(PathSegment parent) {
+            super(parent);
+        }
+        @Override public String toString() {
+            return "..";
+        }
+    }
+
+    /**
+     * JSONPath function call token, e.g. ".length()".
+     */
+    public static final class Function extends PathSegment {
+        public final String name;
+        public final List<String> args;
+        public final Object[] resolvedArgs;
+
+        /**
+         * Creates a function-call segment.
+         */
+        public Function(PathSegment parent, String name, List<String> args) {
+            super(parent);
+            this.name = name;
+            this.args = args;
+            this.resolvedArgs = _resolveFunctionArgs(args);
+        }
+        @Override public String toString() {
+            if (args == null || args.isEmpty()) return "." + name + "()";
+            return "." + name + "(" + String.join(", ", args) + ")";
+        }
+    }
+
+    private static Object[] _resolveFunctionArgs(List<String> args) {
+        if (args == null || args.isEmpty()) return new Object[0];
+        Object[] resolved = new Object[args.size()];
+        for (int i = 0; i < args.size(); i++) {
+            resolved[i] = _resolveFunctionArg(args.get(i));
+        }
+        return resolved;
+    }
+
+    private static Object _resolveFunctionArg(String raw) {
+        if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\""))) {
+            return raw.substring(1, raw.length() - 1);
+        } else if ("true".equals(raw)) {
+            return true;
+        } else if ("false".equals(raw)) {
+            return false;
+        } else if ("null".equals(raw)) {
+            return null;
+        } else if (Numbers.isNumeric(raw)) {
+            return Numbers.parseNumber(raw);
+        } else {
+            throw new JsonException("invalid function argument '" + raw + "'");
+        }
+    }
+
+    /**
+     * Filter token, e.g. "[?(@.a > 1)]".
+     */
+    public static final class Filter extends PathSegment {
+        public final FilterExpr filterExpr;
+
+        /**
+         * Creates a filter-expression segment.
+         */
+        public Filter(PathSegment parent, FilterExpr filterExpr) {
+            super(parent);
+            this.filterExpr = filterExpr;
+        }
+        public String toString() { return "[?" + filterExpr + "]"; }
+    }
+
+    /**
+     * Append token used by JSON Pointer ("-") and JSONPath ("[+]").
+     */
+    public static final class Append extends PathSegment {
+        /**
+         * Creates an append segment.
+         */
+        public Append(PathSegment parent) {
+            super(parent);
+        }
+        @Override public String toString() {
+            return "[+]";
+        }
+    }
+
+    /// protected
+
+    protected boolean shouldArrayStyle(String name) {
+        if (name.isEmpty()) {
+            return true;
+        }
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (!Character.isLetterOrDigit(c) && c != '_') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected String quoteName(String name) {
+        boolean needsEscape = false;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c == '\\' || c == '\'') {
+                needsEscape = true;
+                break;
+            }
+        }
+        if (!needsEscape) {
+            return "'" + name + "'";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("'");
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c == '\\') sb.append("\\\\");
+            else if (c == '\'') sb.append("\\'");
+            else sb.append(c);
+        }
+        sb.append("'");
+        return sb.toString();
+    }
+
+}

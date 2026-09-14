@@ -7,7 +7,7 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.facade.FacadeNodes;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.PathSegment;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;

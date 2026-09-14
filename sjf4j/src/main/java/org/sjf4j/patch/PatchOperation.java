@@ -2,7 +2,7 @@ package org.sjf4j.patch;
 
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.path.JsonPointer;
+import org.sjf4j.navigator.JsonPointer;
 
 
 /**

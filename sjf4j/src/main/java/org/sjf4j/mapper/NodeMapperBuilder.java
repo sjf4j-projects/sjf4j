@@ -6,8 +6,8 @@ import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
-import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.JsonPointer;
+import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.navigator.JsonPointer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -224,7 +224,7 @@ public final class NodeMapperBuilder<S, T> {
         }
         if (action instanceof ComputeAction) {
             ComputeAction<S, T> a = (ComputeAction<S, T>) action;
-            // Wildcard/multi-path compute cannot use CompiledPath;
+            // Wildcard/multi-path compute cannot use CompiledNavigator;
             // fall back to JsonPath.compute() via WILDCARD_COMPUTE.
             if (!a.targetPath.isSinglePut()) {
                 return CompiledAction.wildcardCompute(a.targetPath, a.computer);

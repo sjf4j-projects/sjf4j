@@ -3,7 +3,7 @@ package org.sjf4j.compiled;
 
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Types;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.navigator.JsonPath;
 
 import java.lang.reflect.Type;
 import java.util.Iterator;

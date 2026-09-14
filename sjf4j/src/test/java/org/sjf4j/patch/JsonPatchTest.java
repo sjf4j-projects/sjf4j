@@ -7,7 +7,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.path.JsonPointer;
+import org.sjf4j.navigator.JsonPointer;
 
 import java.util.ArrayList;
 import java.util.Arrays;

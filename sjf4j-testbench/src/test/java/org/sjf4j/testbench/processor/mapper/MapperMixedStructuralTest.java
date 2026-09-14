@@ -7,7 +7,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 public class MapperMixedStructuralTest {
     @Test
     public void createReadsMixedStructuralSourcesAndNestedMaps() {
-        MixedMapper mapper = CompiledNodes.instanceOf(MixedMapper.class);
+        MixedMapper mapper = CompiledInstances.of(MixedMapper.class);
         MixedSource source = fullSource();
 
         MixedTarget target = mapper.toTarget(source);
@@ -43,7 +43,7 @@ public class MapperMixedStructuralTest {
 
     @Test
     public void createWritesTargetPathsIntoInitializedJsonContainers() {
-        MixedMapper mapper = CompiledNodes.instanceOf(MixedMapper.class);
+        MixedMapper mapper = CompiledInstances.of(MixedMapper.class);
 
         PathTarget target = mapper.toPathTarget(fullSource());
 
@@ -54,7 +54,7 @@ public class MapperMixedStructuralTest {
 
     @Test
     public void ignoreNullsPreservesDefaultsForMissingStructuralSources() {
-        MixedMapper mapper = CompiledNodes.instanceOf(MixedMapper.class);
+        MixedMapper mapper = CompiledInstances.of(MixedMapper.class);
         MixedSource source = new MixedSource();
         DefaultsTarget target = new DefaultsTarget();
 

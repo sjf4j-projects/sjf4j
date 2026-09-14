@@ -57,9 +57,9 @@ public class FindProcessorTest {
         write(src.resolve("FindNodes.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindNodes {\n" +
                 "  @FindByPath(\"$.items[*].name\")\n" +
                 "  List<String> itemNames(Root root);\n" +
@@ -132,9 +132,9 @@ public class FindProcessorTest {
         write(src.resolve("FindObjNodes.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindObjNodes {\n" +
                 "  @FindByPath(\"$.items[*]\")\n" +
                 "  List<Object> allItems(Root root);\n" +
@@ -193,9 +193,9 @@ public class FindProcessorTest {
         write(src.resolve("BadNodes.java"),
                 "package testcase;\n" +
                 "import java.util.Map;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface BadNodes {\n" +
                 "  @FindByPath(\"$.items[*]\")\n" +
                 "  String names(Map<String, Object> root);\n" +
@@ -228,9 +228,9 @@ public class FindProcessorTest {
         write(src.resolve("BadNodes.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface BadNodes {\n" +
                 "  @FindByPath(\"$.items[*]\")\n" +
                 "  List<String> names();\n" +
@@ -280,9 +280,9 @@ public class FindProcessorTest {
         write(src.resolve("FindWildcard.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindWildcard {\n" +
                 "  @FindByPath(\"$.items[*].name\")\n" +
                 "  List<String> names(Root root);\n" +
@@ -361,9 +361,9 @@ public class FindProcessorTest {
         write(src.resolve("FindComplex.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindComplex {\n" +
                 "  @FindByPath(\"$..name\")\n" +
                 "  List<String> allNames(DeepNode root);\n" +
@@ -411,9 +411,9 @@ public class FindProcessorTest {
         write(src.resolve("FindDeep.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindDeep {\n" +
                 "  @FindByPath(value=\"$.child..name\", allowFallback=true)\n" +
                 "  List<String> names(Root root);\n" +
@@ -495,9 +495,9 @@ public class FindProcessorTest {
         write(src.resolve("FindFiltered.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindFiltered {\n" +
                 "  @FindByPath(value=\"$.items[?(@.age > 18)].name\", allowFallback=true)\n" +
                 "  List<String> adultNames(FilterRoot root);\n" +
@@ -524,7 +524,7 @@ public class FindProcessorTest {
         assertTrue(Files.exists(genSource), "Generated source not found at " + genSource);
         String source = Files.readString(genSource);
         assertTrue(source.contains("private static final FilterExpr") ||
-                source.contains("private static final org.sjf4j.path.FilterExpr"), source);
+                source.contains("private static final org.sjf4j.navigator.FilterExpr"), source);
         assertTrue(source.contains(".evalTruth("), source);
         assertFalse(source.contains(".find("), "Filter path should not fall back to .find(; source:\n" + source);
 
@@ -585,9 +585,9 @@ public class FindProcessorTest {
         write(src.resolve("FindUnionIndex.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindUnionIndex {\n" +
                 "  @FindByPath(\"$.items[2,-1,:2,::2,0].name\")\n" +
                 "  List<String> names(Root root);\n" +
@@ -675,9 +675,9 @@ public class FindProcessorTest {
         write(src.resolve("FindUnionName.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindUnionName {\n" +
                 "  @FindByPath(\"$.metadata['version','missing','author','nullable']\")\n" +
                 "  List<Object> fields(Root root);\n" +
@@ -766,9 +766,9 @@ public class FindProcessorTest {
         write(src.resolve("FindOutParam.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindOutParam {\n" +
                 "  @FindByPath(\"$.items[*].name\")\n" +
                 "  List<String> names(Root out);\n" +
@@ -842,9 +842,9 @@ public class FindProcessorTest {
         write(src.resolve("FindItemParam.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindItemParam {\n" +
                 "  @FindByPath(\"$.items[*].name\")\n" +
                 "  List<String> names(Root item);\n" +
@@ -910,9 +910,9 @@ public class FindProcessorTest {
         write(src.resolve("FindRoot.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindRoot {\n" +
                 "  @FindByPath(\"$\")\n" +
                 "  List<Root> root(Root root);\n" +
@@ -979,9 +979,9 @@ public class FindProcessorTest {
         write(src.resolve("FindSlice.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindSlice {\n" +
                 "  @FindByPath(\"$.items[0:2].name\")\n" +
                 "  List<String> firstTwoNames(Root root);\n" +
@@ -1083,9 +1083,9 @@ public class FindProcessorTest {
         write(src.resolve("FindDoubleWildcard.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindDoubleWildcard {\n" +
                 "  @FindByPath(\"$.items[*].children[*]\")\n" +
                 "  List<Child> children(Root root);\n" +
@@ -1157,9 +1157,9 @@ public class FindProcessorTest {
         write(src.resolve("FindMixedUnion.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
-                "import org.sjf4j.annotation.path.CompiledPath;\n" +
-                "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledPath\n" +
+                "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.navigator.FindByPath;\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindMixedUnion {\n" +
                 "  @FindByPath(\"$.items[0,'name']\")\n" +
                 "  List<String> names(Root root);\n" +
@@ -1213,8 +1213,8 @@ public class FindProcessorTest {
         write(src.resolve("FindGenericNodes.java"),
                 "package testcase;\n" +
                         "import java.util.*;\n" +
-                        "import org.sjf4j.annotation.path.*;\n" +
-                        "@CompiledPath\n" +
+                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "@CompiledNavigator\n" +
                         "public interface FindGenericNodes {\n" +
                         "  @FindByPath(\"$.boxed.value[*].name\") List<String> boxedNames(Model root);\n" +
                         "  @FindByPath(\"$.regions['east','west'][0].name\") List<String> firstRegionNames(Model root);\n" +
@@ -1274,8 +1274,8 @@ public class FindProcessorTest {
         write(src.resolve("BadFindGenericNodes.java"),
                 "package testcase;\n" +
                         "import java.util.*;\n" +
-                        "import org.sjf4j.annotation.path.*;\n" +
-                        "@CompiledPath\n" +
+                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "@CompiledNavigator\n" +
                         "public interface BadFindGenericNodes {\n" +
                         "  @FindByPath(\"$.names[*]\") List<Integer> names(Root root);\n" +
                         "}\n");

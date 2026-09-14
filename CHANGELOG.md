@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()`.
+- Renamed `@CompiledPath` to `@CompiledNavigator`.
+- Moved compiled-navigation annotations from `org.sjf4j.annotation.path` to `org.sjf4j.annotation.navigator`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
 - Moved runtime metadata classes from `NodeRegistry` to top-level `org.sjf4j.node` types. `NodeRegistry.PojoInfo` is renamed to `ObjectInfo`; `TypeInfo`, `PropertyInfo`, `CreatorInfo`, `ContainerInfo`, `ValueCodecInfo`, `OneOfInfo`, and `RecordInfo` are now imported directly from `org.sjf4j.node`.
 - Made built-in JSON, YAML, and node facade implementations final; applications must use composition rather than subclassing these types.

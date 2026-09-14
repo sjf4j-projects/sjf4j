@@ -13,10 +13,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.path.CompiledPath;
-import org.sjf4j.annotation.path.FindByPath;
-import org.sjf4j.compiled.CompiledNodes;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.annotation.navigator.CompiledNavigator;
+import org.sjf4j.annotation.navigator.FindByPath;
+import org.sjf4j.compiled.CompiledInstances;
+import org.sjf4j.navigator.JsonPath;
 
 import java.util.List;
 import java.util.Objects;
@@ -101,7 +101,7 @@ public class CompiledFindBenchmark {
         public Double price;
     }
 
-    @CompiledPath
+    @CompiledNavigator
     public interface FindNodes {
         @FindByPath("$.store.book[*].author")
         List<String> authors(Bookstore root);
@@ -132,7 +132,7 @@ public class CompiledFindBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             pojo = Sjf4j.global().fromJson(BOOKSTORE_JSON, Bookstore.class);
-            compiled = CompiledNodes.instanceOf(FindNodes.class);
+            compiled = CompiledInstances.of(FindNodes.class);
             authorsPath = JsonPath.parse("$.store.book[*].author");
             expensiveTitlesPath = JsonPath.parse("$.store.book[?(@.price > 10)].title");
             unionTitlesPath = JsonPath.parse("$.store.book[0,2].title");

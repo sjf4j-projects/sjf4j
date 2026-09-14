@@ -13,8 +13,8 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.navigator.PathSegment;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;

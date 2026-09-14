@@ -2,9 +2,9 @@ package org.sjf4j;
 
 import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.navigator.JsonPath;
 import org.sjf4j.patch.Patches;
-import org.sjf4j.path.PathSegment;
+import org.sjf4j.navigator.PathSegment;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

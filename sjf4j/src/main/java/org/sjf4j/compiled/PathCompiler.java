@@ -1,6 +1,6 @@
 package org.sjf4j.compiled;
 
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.navigator.JsonPath;
 
 import java.lang.reflect.Type;
 

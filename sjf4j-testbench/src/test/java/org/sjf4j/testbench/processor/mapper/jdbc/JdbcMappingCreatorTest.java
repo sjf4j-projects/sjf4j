@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingCreator;
-import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.compiled.CompiledInstances;
 
 import java.sql.ResultSet;
 import java.util.List;
@@ -15,7 +15,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcMappingCreatorTest {
     @Test
     void selectsImplementationsAndFactoriesForRows() {
-        Mapper mapper = CompiledNodes.instanceOf(Mapper.class);
+        Mapper mapper = CompiledInstances.of(Mapper.class);
 
         assertEquals("Ada", ((ViewImpl) mapper.view(result(new String[]{"name"}, new Object[]{"Ada"}))).name);
         assertEquals("Grace", ((FactoryView) mapper.factory(result(new String[]{"name"}, new Object[]{"Grace"}))).name);
