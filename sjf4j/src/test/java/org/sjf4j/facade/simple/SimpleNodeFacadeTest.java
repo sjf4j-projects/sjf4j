@@ -17,7 +17,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.PatchOperation;
-import org.sjf4j.navigator.JsonPointer;
+import org.sjf4j.path.JsonPointer;
 
 import java.util.ArrayList;
 import java.util.Arrays;

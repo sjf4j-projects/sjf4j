@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.JsonObject;
 import org.sjf4j.compiled.CompiledInstances;
@@ -503,7 +503,7 @@ public class MapperSimpleTest {
         @Mapping(target = "last", source = "/profile/name/last")
         GroupedDefaultsDto groupedSet(GroupedSource source);
 
-        @MapperOptions(nulls = NullValuePolicy.IGNORE)
+        @MappingOptions(nulls = NullValuePolicy.IGNORE)
         @Mapping(target = "first", source = "$.profile.name.first")
         @Mapping(target = "last", source = "/profile/name/last")
         GroupedDefaultsDto groupedIgnore(GroupedSource source);
@@ -535,7 +535,7 @@ public class MapperSimpleTest {
 
         JacksonNullDto jacksonNulls(JsonNode source);
 
-        @MapperOptions(nulls = NullValuePolicy.IGNORE)
+        @MappingOptions(nulls = NullValuePolicy.IGNORE)
         JacksonIgnoreDto jacksonIgnoreNulls(JsonNode source);
 
         Map<String, Integer> jacksonMap(JsonNode source);
@@ -544,7 +544,7 @@ public class MapperSimpleTest {
 
         JacksonAddressBook jacksonAddressBook(JsonNode source);
 
-        @MapperOptions(using = {"mapJacksonAddress"})
+        @MappingOptions(using = {"mapJacksonAddress"})
         @Mapping(target = "address", source = "address")
         JacksonExplicitAddressDto jacksonExplicitAddress(JsonNode source);
 

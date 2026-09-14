@@ -4,7 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Numbers;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.PathSegment;
 
 import java.io.StringReader;
 import java.lang.reflect.Array;

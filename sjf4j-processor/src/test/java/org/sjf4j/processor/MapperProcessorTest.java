@@ -183,7 +183,7 @@ public class MapperProcessorTest {
                 + "@CompiledJdbcMapper interface Bad { class P { public String ok; public final String required; public P(String required){this.required=required;} } @Mapping(target=\"missing\",source=\"x\") P unknown(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface BadCompute { class P { public String value; public P(){} } @Mapping(target=\"value\",compute=\"this::convert\") P map(ResultSet rs); default String convert(Object value) { return \"x\"; } }"
                 + "@CompiledMapper @CompiledJdbcMapper interface Both { String x(ResultSet rs); }"
-                + "@CompiledJdbcMapper interface Unsupported { @MapperOptions(using=\"convert\") String x(ResultSet rs); }"
+                + "@CompiledJdbcMapper interface Unsupported { @MappingOptions(using=\"convert\") String x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface ListPolicy { @JdbcMapperOptions(singleResult=SingleResultPolicy.FIRST) java.util.List<String> x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface PresentRecord { record P(String value) {} @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface PresentConstructor { class P { P(String value) {} } @JdbcMapperOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) P x(ResultSet rs); }"
@@ -200,7 +200,7 @@ public class MapperProcessorTest {
         assertTrue(text.contains("supports compute only as this::helper with exactly one sources entry"), text);
         assertTrue(text.contains("both @CompiledMapper and @CompiledJdbcMapper"));
         assertEquals(text.indexOf("both @CompiledMapper and @CompiledJdbcMapper"), text.lastIndexOf("both @CompiledMapper and @CompiledJdbcMapper"));
-        assertTrue(text.contains("@MapperOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
+        assertTrue(text.contains("@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
         assertTrue(text.contains("singleResult is supported only on non-List"));
         assertTrue(text.contains("columnProjection=PRESENT_ONLY requires a mutable POJO target"), text);
         assertTrue(text.contains("columnProjection is supported only on POJO or JOJO"), text);
@@ -359,12 +359,12 @@ public class MapperProcessorTest {
     public void genericMapperOptionsAreRejectedOnJdbcMethods() throws Exception {
         String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
                 + "class P { public String value; public P(){} }"
-                + "@CompiledMapper interface Json { @MapperOptions P map(P value); }"
-                + "@CompiledJdbcMapper interface Jdbc { @MapperOptions default P helper(ResultSet rs) { return null; } }";
+                + "@CompiledMapper interface Json { @MappingOptions P map(P value); }"
+                + "@CompiledJdbcMapper interface Jdbc { @MappingOptions default P helper(ResultSet rs) { return null; } }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         assertFalse(compileJdbc(source, diagnostics).booleanValue());
         String text = diagnosticsToString(diagnostics);
-        assertTrue(text.contains("@MapperOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
+        assertTrue(text.contains("@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions"), text);
     }
 
     @Test
@@ -652,9 +652,9 @@ public class MapperProcessorTest {
         write(src.resolve("UsingImportedMapper.java"),
                 "package testcase; import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
                         "@CompiledMapper(importing={ImportedUserMapper.class}) public interface UsingImportedMapper {\n" +
-                        "  @MapperOptions(using={\"ImportedUserMapper::toDto\"}) Target explicit(Source source);\n" +
+                        "  @MappingOptions(using={\"ImportedUserMapper::toDto\"}) Target explicit(Source source);\n" +
                         "  Target auto(Source source);\n" +
-                        "  @MapperOptions(using={\"ImportedUserMapper::toDto\"}) List<UserDto> users(List<User> users);\n" +
+                        "  @MappingOptions(using={\"ImportedUserMapper::toDto\"}) List<UserDto> users(List<User> users);\n" +
                         "}\n");
 
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -710,7 +710,7 @@ public class MapperProcessorTest {
                         "  @Mapping(target=\"name\", compute=\"this::badHelper\") HelperTarget badHelperMap(Source s);\n" +
                         "  @Mapping(target=\"name\", compute=\"this::display\") HelperTarget overloadedHelperMap(Source s);\n" +
                         "  @Mapping(target=\"$.name\", source=\"name\") NameRecord pathRecord(Source s);\n" +
-                        "  @MapperOptions(nulls=NullValuePolicy.IGNORE) NameRecord ignoreCtor(Source s);\n" +
+                        "  @MappingOptions(nulls=NullValuePolicy.IGNORE) NameRecord ignoreCtor(Source s);\n" +
                         "  @EnsureMapping(target=\"$.items[0].name\", source=\"name\") PathTarget ensureIndex(Source s);\n" +
                         "  default long badHelper(String name) { return 1; }\n" +
                         "  default String display(String name) { return name; }\n" +
@@ -754,8 +754,8 @@ public class MapperProcessorTest {
                         "@CompiledMapper interface ImportedA { default UserDto toDto(User user) { return new UserDto(); } }\n" +
                         "@CompiledMapper interface ImportedB { default UserDto toDto(User user) { return new UserDto(); } }\n" +
                         "@CompiledMapper(importing={PlainMapper.class}) interface BadImporting { Target map(Source source); }\n" +
-                        "@CompiledMapper(importing={ImportedA.class}) interface UnknownImported { @MapperOptions(using={\"ImportedB::toDto\"}) Target map(Source source); }\n" +
-                        "@CompiledMapper(importing={ImportedA.class}) interface ClassOnlyUsing { @MapperOptions(using={\"ImportedA\"}) Target map(Source source); }\n" +
+                        "@CompiledMapper(importing={ImportedA.class}) interface UnknownImported { @MappingOptions(using={\"ImportedB::toDto\"}) Target map(Source source); }\n" +
+                        "@CompiledMapper(importing={ImportedA.class}) interface ClassOnlyUsing { @MappingOptions(using={\"ImportedA\"}) Target map(Source source); }\n" +
                         "@CompiledMapper(importing={ImportedA.class, ImportedB.class}) interface AmbiguousImported { Target map(Source source); }\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler is required");
@@ -771,7 +771,7 @@ public class MapperProcessorTest {
         assertTrue(messages.contains("Imported mapper 'testcase.PlainMapper' must be annotated with @CompiledMapper"), messages);
         assertTrue(messages.contains("Cannot resolve imported mapper 'ImportedB'; it must be listed in @CompiledMapper.importing"), messages);
         assertTrue(messages.contains("Cannot resolve converter 'ImportedA'"), messages);
-        assertTrue(messages.contains("Ambiguous imported element/value converter; specify @MapperOptions(using = ...) with mapper qualification"), messages);
+        assertTrue(messages.contains("Ambiguous imported element/value converter; specify @MappingOptions(using = ...) with mapper qualification"), messages);
     }
 
     @Test
@@ -789,9 +789,9 @@ public class MapperProcessorTest {
                         "class SetterOnly { public void setUsers(List<Dto> users) {} }\n" +
                         "@CompiledMapper interface BadCollectionMapper {\n" +
                         "  List<Dto> ambiguous(List<User> users);\n" +
-                        "  @MapperOptions(using={\"Other::conv\"}) List<Dto> badNested(List<User> users);\n" +
-                        "  @MapperOptions(using={\"this::missing\"}) List<Dto> badNestedThis(List<User> users);\n" +
-                        "  @MapperOptions(using={\"conv\"}) List<Dto> ambiguousNested(List<User> users);\n" +
+                        "  @MappingOptions(using={\"Other::conv\"}) List<Dto> badNested(List<User> users);\n" +
+                        "  @MappingOptions(using={\"this::missing\"}) List<Dto> badNestedThis(List<User> users);\n" +
+                        "  @MappingOptions(using={\"conv\"}) List<Dto> ambiguousNested(List<User> users);\n" +
                         "  Map<Integer, Dto> badKey(Map<String, User> users);\n" +
                         "  List rawTarget(List<Dto> users);\n" +
                         "  Map<String, List<Dto>> badNestedKey(Map<Integer, List<User>> users);\n" +
@@ -799,7 +799,7 @@ public class MapperProcessorTest {
                         "  JsonNode facadeTarget(JsonNode source);\n" +
                         "  Map rawFacadeMap(JsonNode source);\n" +
                         "  List<List<Dto>> nested(List<List<Integer>> users);\n" +
-                        "  @MapperOptions(using={\"one\"}) @Mapping(target=\"users\", array=ArrayPolicy.ADD) void setterOnly(SetterOnly t, Source s);\n" +
+                        "  @MappingOptions(using={\"one\"}) @Mapping(target=\"users\", array=ArrayPolicy.ADD) void setterOnly(SetterOnly t, Source s);\n" +
                         "  default Dto one(User u) { return new Dto(); } default Dto two(User u) { return new Dto(); }\n" +
                         "  default Dto conv(User u) { return new Dto(); } default Dto conv(String s) { return new Dto(); }\n" +
                         "}\n");
@@ -824,7 +824,7 @@ public class MapperProcessorTest {
         assertTrue(messages.contains("Cannot find element/value converter from java.lang.Integer to testcase.Dto"), messages);
         assertTrue(messages.contains("setter-only target has no readable collection/map"), messages);
         assertTrue(countOccurrences(messages, "Map key type mismatch") >= 2, messages);
-        assertTrue(countOccurrences(messages, "Ambiguous element/value converter; specify @MapperOptions(using = ...) preference") >= 1, messages);
+        assertTrue(countOccurrences(messages, "Ambiguous element/value converter; specify @MappingOptions(using = ...) preference") >= 1, messages);
     }
 
     @Test
@@ -1030,7 +1030,7 @@ public class MapperProcessorTest {
                         "class TargetItem { public String name; public TargetItem() {} }\n" +
                         "class Source { private List<SourceItem> items; Source(List<SourceItem> i) { items = i; } public List<SourceItem> getItems() { return items; } }\n" +
                         "class Target { private List<TargetItem> items = new ArrayList<>(); public Target() {} public List<TargetItem> getItems() { return items; } public void setItems(List<TargetItem> i) { items = i; } }\n" +
-                        "@CompiledMapper interface IgnoreContainerMapper { @MapperOptions(nulls=NullValuePolicy.IGNORE) Target map(Source source); }\n");
+                        "@CompiledMapper interface IgnoreContainerMapper { @MappingOptions(nulls=NullValuePolicy.IGNORE) Target map(Source source); }\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler is required");
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
@@ -1109,7 +1109,7 @@ public class MapperProcessorTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("AmbiguousAutoMapper.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("Ambiguous element/value converter; specify @MapperOptions(using = ...) preference"), messages);
+        assertTrue(messages.contains("Ambiguous element/value converter; specify @MappingOptions(using = ...) preference"), messages);
     }
 
     @Test
@@ -1209,7 +1209,7 @@ public class MapperProcessorTest {
                         "  void recordTarget(NameRecord target, Source s);\n" +
                         "  void ctorOnly(CtorOnly target, Source s);\n" +
                         "  @Mapping(target=\"name\", source=\"name\") void readOnly(ReadOnly target, Source s);\n" +
-                        "  @MapperOptions(nulls=NullValuePolicy.IGNORE) @Mapping(target=\"age\", sources={\"name\"}, compute=\"(name) -> 1\") void primitiveCompute(Target target, Source s);\n" +
+                        "  @MappingOptions(nulls=NullValuePolicy.IGNORE) @Mapping(target=\"age\", sources={\"name\"}, compute=\"(name) -> 1\") void primitiveCompute(Target target, Source s);\n" +
                         "  record NameRecord(String name) {}\n" +
                         "}\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -1604,8 +1604,8 @@ public class MapperProcessorTest {
                         "@MappingCreator(targetType=DogDto.class, implementation=DogDtoImpl.class)\n" +
                         "@MappingCreator(targetType=CreatorDto.class, creator=\"this::newCreator\")\n" +
                         "interface CreatorMapper extends ParentFactory {\n" +
-                        "  @MapperOptions(using={\"skip\",\"profileToDto\"}) WrapperDto wrapper(Wrapper source);\n" +
-                        "  @MapperOptions(using={\"upper\"}) List<String> names(List<String> source);\n" +
+                        "  @MappingOptions(using={\"skip\",\"profileToDto\"}) WrapperDto wrapper(Wrapper source);\n" +
+                        "  @MappingOptions(using={\"upper\"}) List<String> names(List<String> source);\n" +
                         "  AnimalDto animal(User source);\n" +
                         "  DogDto dog(User source);\n" +
                         "  CreatorDto created(User source);\n" +
@@ -1868,7 +1868,7 @@ public class MapperProcessorTest {
                         "@MappingCreator(targetType=Target.class, implementation=TargetImpl.class) class CreatorOnClass {}\n" +
                         "interface Plain {\n" +
                         "  @MappingCreator(targetType=Target.class, implementation=TargetImpl.class) Target creator(Source s);\n" +
-                        "  @MapperOptions void options(Source s);\n" +
+                        "  @MappingOptions void options(Source s);\n" +
                         "  @Mapping(target=\"name\") Target mapping(Source s);\n" +
                         "  @MappingIfParentPresent(target=\"$.name\") void ifParent(Target t, Source s);\n" +
                         "  @EnsureMapping(target=\"$.name\") void ensure(Target t, Source s);\n" +

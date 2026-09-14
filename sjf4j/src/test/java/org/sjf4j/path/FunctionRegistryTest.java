@@ -1,4 +1,4 @@
-package org.sjf4j.navigator;
+package org.sjf4j.path;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@ package org.sjf4j.processor.schema;
 
 import org.sjf4j.schema.Evaluator;
 import org.sjf4j.schema.SchemaPlan;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.PathSegment;
 
 import java.lang.reflect.Field;
 

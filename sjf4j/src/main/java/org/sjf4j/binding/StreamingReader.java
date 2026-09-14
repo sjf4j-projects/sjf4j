@@ -1,0 +1,471 @@
+package org.sjf4j.binding;
+
+import org.sjf4j.JsonType;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
+/**
+ * Unified streaming reader for structured data.
+ *
+ * <p>The interface defines common structural semantics while allowing
+ * implementations to provide backend-specific fast paths.</p>
+ *
+ * <p>Generated binders should prefer primitive value methods and
+ * {@link #nextNameMatch(NameMatcher)} where possible.</p>
+ */
+public interface StreamingReader extends Closeable {
+
+    /*
+     * ----------------------------------------------------------------------
+     * Tokens
+     * ----------------------------------------------------------------------
+     */
+
+    enum Token {
+
+        EOF(0),
+        UNKNOWN(1),
+
+        START_OBJECT(2),
+        END_OBJECT(3),
+        FIELD_NAME(4),
+
+        START_ARRAY(5),
+        END_ARRAY(6),
+
+        STRING(7),
+        NUMBER(8),
+        BOOLEAN(9),
+        NULL(10);
+
+        private final int id;
+
+        Token(int id) {
+            this.id = id;
+        }
+
+        /**
+         * Stable integer token id for hot-path dispatch.
+         */
+        public int id() {
+            return id;
+        }
+
+        public JsonType jsonType() {
+            switch (this) {
+                case START_OBJECT:
+                    return JsonType.OBJECT;
+                case START_ARRAY:
+                    return JsonType.ARRAY;
+                case STRING:
+                    return JsonType.STRING;
+                case NUMBER:
+                    return JsonType.NUMBER;
+                case BOOLEAN:
+                    return JsonType.BOOLEAN;
+                case NULL:
+                    return JsonType.NULL;
+                default:
+                    return JsonType.UNKNOWN;
+            }
+        }
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Field matching
+     * ----------------------------------------------------------------------
+     */
+
+    /**
+     * Prepared set of field names.
+     *
+     * <p>A matcher may contain backend-specific precomputed state:</p>
+     *
+     * <ul>
+     *   <li>field hashes</li>
+     *   <li>serialized UTF-8 names</li>
+     *   <li>Jackson PropertyNameMatcher</li>
+     *   <li>plain strings</li>
+     * </ul>
+     *
+     * <p>Field indexes are stable and normally correspond to generated
+     * property indexes.</p>
+     */
+    interface NameMatcher {
+
+        /**
+         * No known field matched.
+         */
+        int UNKNOWN = -1;
+
+        /**
+         * The next token is END_OBJECT.
+         *
+         * <p>The END_OBJECT token is not consumed by
+         * {@code nextNameMatch}; the caller must call {@link #endObject()}.</p>
+         */
+        int END_OBJECT = -2;
+
+        /**
+         * Number of known fields.
+         */
+        int size();
+
+        /**
+         * Canonical field name for the specified index.
+         */
+        String name(int index);
+
+        /**
+         * Generic String-based fallback matching.
+         *
+         * @return field index or {@link #UNKNOWN}
+         */
+        int match(String name);
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Document
+     * ----------------------------------------------------------------------
+     */
+
+    /**
+     * Prepares this reader to consume one document without consuming
+     * its root value.
+     */
+    default void startDocument() throws IOException {
+    }
+
+    /**
+     * Completes a document after its root value has been consumed.
+     */
+    default void endDocument() throws IOException {
+        if (peekToken() != Token.EOF) {
+            throw new IOException("Expected end of document");
+        }
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Token inspection
+     * ----------------------------------------------------------------------
+     */
+
+    /**
+     * Returns the current token without consuming it.
+     */
+    Token peekToken() throws IOException;
+
+    /**
+     * Integer version of {@link #peekToken()} for hot-path dispatch.
+     *
+     * <p>Implementations may override this method when they can obtain
+     * the token id more cheaply than materializing/mapping {@link Token}.</p>
+     */
+    default int peekTokenId() throws IOException {
+        return peekToken().id();
+    }
+
+    default boolean isEnd() throws IOException {
+        return peekToken() == Token.EOF;
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Structural fast paths
+     * ----------------------------------------------------------------------
+     */
+
+    default boolean nextIfNull() throws IOException {
+        if (peekToken() != Token.NULL) {
+            return false;
+        }
+
+        nextNull();
+        return true;
+    }
+
+    default boolean nextIfObjectStart() throws IOException {
+        if (peekToken() != Token.START_OBJECT) {
+            return false;
+        }
+
+        startObject();
+        return true;
+    }
+
+    default boolean nextIfObjectEnd() throws IOException {
+        if (peekToken() != Token.END_OBJECT) {
+            return false;
+        }
+
+        endObject();
+        return true;
+    }
+
+    default boolean nextIfArrayStart() throws IOException {
+        if (peekToken() != Token.START_ARRAY) {
+            return false;
+        }
+
+        startArray();
+        return true;
+    }
+
+    default boolean nextIfArrayEnd() throws IOException {
+        if (peekToken() != Token.END_ARRAY) {
+            return false;
+        }
+
+        endArray();
+        return true;
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Structural tokens
+     * ----------------------------------------------------------------------
+     */
+
+    void startObject() throws IOException;
+
+    void endObject() throws IOException;
+
+    void startArray() throws IOException;
+
+    void endArray() throws IOException;
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Field names
+     * ----------------------------------------------------------------------
+     */
+
+    /**
+     * Reads and consumes the next field name.
+     *
+     * <p>After this method returns, the reader is positioned so that
+     * the corresponding field value can be consumed.</p>
+     */
+    String nextName() throws IOException;
+
+    /**
+     * Matches the next field name against a prepared field set.
+     *
+     * <p>This is the primary fast-path API for generated binders.</p>
+     *
+     * <p>The default implementation falls back to String field-name
+     * materialization. High-performance backends should override this
+     * method.</p>
+     *
+     * @return matched field index,
+     *         {@link NameMatcher#UNKNOWN}, or
+     *         {@link NameMatcher#END_OBJECT}
+     */
+    default int nextNameMatch(
+            NameMatcher matcher) throws IOException {
+
+        if (peekToken() == Token.END_OBJECT) {
+            return NameMatcher.END_OBJECT;
+        }
+
+        return matcher.match(nextName());
+    }
+
+    /**
+     * Matches the next field name, with an optional expected field index.
+     *
+     * <p>{@code expectedIndex} is only a performance hint. Implementations
+     * must remain correct when fields are reordered, omitted, or unknown.</p>
+     *
+     * <p>This allows implementations such as an ordered-name reader to
+     * attempt an expected-name fast path first, and fall back to general
+     * matching on a miss.</p>
+     *
+     * <p>A negative expected index means that no ordered-name hint is
+     * available.</p>
+     */
+    default int nextNameMatch(
+            NameMatcher matcher,
+            int expectedIndex) throws IOException {
+
+        return nextNameMatch(matcher);
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * String
+     * ----------------------------------------------------------------------
+     */
+
+    /**
+     * Reads the current value as a String.
+     *
+     * <p>The current token must represent a string value.</p>
+     */
+    String nextString() throws IOException;
+
+    /**
+     * Reads a nullable String.
+     *
+     * <p>Implementations may override this to provide a fused null/string
+     * fast path.</p>
+     */
+    default String nextStringOrNull() throws IOException {
+        if (nextIfNull()) {
+            return null;
+        }
+
+        return nextString();
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Generic number
+     * ----------------------------------------------------------------------
+     */
+
+    /**
+     * Reads the current numeric value using the backend's natural
+     * Number representation.
+     */
+    Number nextNumber() throws IOException;
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Primitive numeric fast paths
+     *
+     * These methods are intentionally primitive-first because generated
+     * binding should not pay boxing costs for primitive Java properties.
+     * ----------------------------------------------------------------------
+     */
+
+    long nextLongValue() throws IOException;
+
+    int nextIntValue() throws IOException;
+
+    short nextShortValue() throws IOException;
+
+    byte nextByteValue() throws IOException;
+
+    double nextDoubleValue() throws IOException;
+
+    float nextFloatValue() throws IOException;
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Boxed numeric compatibility APIs
+     * ----------------------------------------------------------------------
+     */
+
+    default Long nextLong() throws IOException {
+        return nextIfNull()
+                ? null
+                : nextLongValue();
+    }
+
+    default Integer nextInt() throws IOException {
+        return nextIfNull()
+                ? null
+                : nextIntValue();
+    }
+
+    default Short nextShort() throws IOException {
+        return nextIfNull()
+                ? null
+                : nextShortValue();
+    }
+
+    default Byte nextByte() throws IOException {
+        return nextIfNull()
+                ? null
+                : nextByteValue();
+    }
+
+    default Double nextDouble() throws IOException {
+        return nextIfNull()
+                ? null
+                : nextDoubleValue();
+    }
+
+    default Float nextFloat() throws IOException {
+        return nextIfNull()
+                ? null
+                : nextFloatValue();
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Arbitrary precision numbers
+     * ----------------------------------------------------------------------
+     */
+
+    BigInteger nextBigInteger() throws IOException;
+
+    BigDecimal nextBigDecimal() throws IOException;
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Boolean
+     * ----------------------------------------------------------------------
+     */
+
+    boolean nextBooleanValue() throws IOException;
+
+    default Boolean nextBoolean() throws IOException {
+        return nextIfNull()
+                ? null
+                : nextBooleanValue();
+    }
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Null
+     * ----------------------------------------------------------------------
+     */
+
+    void nextNull() throws IOException;
+
+
+    /*
+     * ----------------------------------------------------------------------
+     * Skipping / buffering
+     * ----------------------------------------------------------------------
+     */
+
+    /**
+     * Consumes exactly one complete value at the current position.
+     */
+    void skipNext() throws IOException;
+
+    /**
+     * Buffers the current complete value and returns a reader over that
+     * isolated copy.
+     *
+     * <p>The source reader is advanced past the value.</p>
+     *
+     * <p>This operation is optional because it may require allocation
+     * and copying.</p>
+     */
+    default StreamingReader forkValue() throws IOException {
+        return null;
+    }
+}

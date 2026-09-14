@@ -1,10 +1,20 @@
 package org.sjf4j.compiled;
 
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 
 import java.util.function.BiFunction;
 
 
+/**
+ * Reflective {@link BytecodePath} implementation backed by a parsed {@link JsonPath}.
+ *
+ * <p>This implementation requires no optional bytecode compiler module and delegates every
+ * operation to {@code JsonPath}. Use it when dynamic path behavior or the full missing-path
+ * semantics of {@code JsonPath} are required instead of compiled direct access.
+ *
+ * <p>The supplied root and value classes define the declared types used for path reads. Instances
+ * are reusable when the underlying path and accessed object graph are safe for concurrent use.
+ */
 public class FallbackBytecodePath<R, V> implements BytecodePath<R, V> {
 
     protected final JsonPath path;

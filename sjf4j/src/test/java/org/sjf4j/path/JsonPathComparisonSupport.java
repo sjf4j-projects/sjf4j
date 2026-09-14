@@ -1,4 +1,4 @@
-package org.sjf4j.navigator;
+package org.sjf4j.path;
 
 import org.junit.jupiter.api.function.Executable;
 import org.sjf4j.Sjf4j;

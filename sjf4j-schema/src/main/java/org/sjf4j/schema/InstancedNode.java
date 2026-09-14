@@ -5,7 +5,7 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ValueCodecInfo;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;

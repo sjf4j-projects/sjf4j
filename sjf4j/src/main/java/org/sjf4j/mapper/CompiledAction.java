@@ -3,7 +3,7 @@ package org.sjf4j.mapper;
 import org.sjf4j.compiled.BytecodePath;
 import org.sjf4j.compiled.FallbackBytecodePath;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 
 /**
  * Pre-compiled mapping action that replaces per-call {@link JsonPath} segment

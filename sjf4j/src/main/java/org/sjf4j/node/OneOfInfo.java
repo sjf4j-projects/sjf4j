@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 
 import java.util.EnumMap;
 import java.util.HashMap;

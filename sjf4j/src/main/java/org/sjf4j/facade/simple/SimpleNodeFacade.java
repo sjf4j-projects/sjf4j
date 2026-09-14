@@ -20,7 +20,7 @@ import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.ValueCodecInfo;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
 
 import java.lang.reflect.Array;

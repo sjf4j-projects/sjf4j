@@ -30,7 +30,7 @@ import java.lang.annotation.Target;
  * </ul>
  *
  * <p>This annotation does not choose mapper methods. Automatic converter
- * preferences are declared at method scope with {@link MapperOptions#using()}.
+ * preferences are declared at method scope with {@link MappingOptions#using()}.
  * Forced value computation or normalization should be expressed with
  * {@link #compute()}.</p>
  *

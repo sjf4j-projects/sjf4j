@@ -2,6 +2,7 @@ package org.sjf4j.testbench.processor.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.List;
@@ -200,7 +201,7 @@ public class MapperNestedAutoTest {
 
     @CompiledMapper(importing = {ImportedChildMapper.class})
     public interface ImportedMapper {
-        @org.sjf4j.annotation.mapper.MapperOptions(using = {"ImportedChildMapper::toDto"})
+        @MappingOptions(using = {"ImportedChildMapper::toDto"})
         Target explicit(Source source);
 
         Target auto(Source source);
@@ -208,7 +209,7 @@ public class MapperNestedAutoTest {
 
     @CompiledMapper(importing = {ImportedChildMapper.class})
     public interface LocalPriorityMapper {
-        @org.sjf4j.annotation.mapper.MapperOptions(using = {"this::toDto"})
+        @MappingOptions(using = {"this::toDto"})
         Target map(Source source);
 
         default ChildTarget toDto(ChildSource source) {

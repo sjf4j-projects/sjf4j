@@ -25,7 +25,7 @@ import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.ReflectUtil;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package org.sjf4j.navigator;
+package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;

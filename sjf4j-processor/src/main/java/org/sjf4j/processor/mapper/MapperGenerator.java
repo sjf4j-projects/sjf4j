@@ -3,14 +3,14 @@ package org.sjf4j.processor.mapper;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
 import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.navigator.JsonPath;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.JsonPath;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.NameAllocator;
@@ -203,7 +203,7 @@ public final class MapperGenerator {
         if (plan == null) return;
         boolean jojo = GeneratorUtil.isJojoType(ctx, plan.type);
         if (jojo && !_validateJojoDynamicSources(method, target, sources)) return;
-        MapperOptions cfg = method.getAnnotation(MapperOptions.class);
+        MappingOptions cfg = method.getAnnotation(MappingOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET_TO_NULL : cfg.nulls();
         if (plan.ctor != null && nulls == NullValuePolicy.IGNORE) {
             _error(method, target, "NullValuePolicy.IGNORE is supported only for mutable no-args create targets and update targets");
@@ -440,7 +440,7 @@ public final class MapperGenerator {
             explicit.put(t, e);
         }
 
-        MapperOptions cfg = method.getAnnotation(MapperOptions.class);
+        MappingOptions cfg = method.getAnnotation(MappingOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET_TO_NULL : cfg.nulls();
         ArrayPolicy defaultArrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
         ObjectPolicy defaultObjectPolicy = cfg == null ? ObjectPolicy.PUT : cfg.objects();
@@ -813,7 +813,7 @@ public final class MapperGenerator {
             if (!_rootMethodMappingsSupported(method, target, "Root collection/map update methods")) return;
             MapperModel.Converter conv = _arrayLikeElementConverter(iface, method, target, arrayFrom, to, "");
             if (conv == null) return;
-            MapperOptions cfg = method.getAnnotation(MapperOptions.class);
+            MappingOptions cfg = method.getAnnotation(MappingOptions.class);
             ArrayPolicy arrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
             if (arrayPolicy == ArrayPolicy.SET) {
                 _error(method, target, "Root collection update does not support ArrayPolicy.SET; use CLEAR_ADD or ADD");
@@ -840,7 +840,7 @@ public final class MapperGenerator {
         if (!_rootMethodMappingsSupported(method, target, "Root collection/map update methods")) return;
         MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, "");
         if (conv == null) return;
-        MapperOptions cfg = method.getAnnotation(MapperOptions.class);
+        MappingOptions cfg = method.getAnnotation(MappingOptions.class);
         ArrayPolicy arrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
         ObjectPolicy objectPolicy = cfg == null ? ObjectPolicy.PUT : cfg.objects();
         if (!to.map && arrayPolicy == ArrayPolicy.SET) {
@@ -880,7 +880,7 @@ public final class MapperGenerator {
     }
 
     private String[] _methodUsingRefs(ExecutableElement method) {
-        MapperOptions options = method.getAnnotation(MapperOptions.class);
+        MappingOptions options = method.getAnnotation(MappingOptions.class);
         return options == null ? new String[0] : options.using();
     }
 
@@ -888,7 +888,7 @@ public final class MapperGenerator {
         for (int i = 0; i < refs.length; i++) {
             String ref = refs[i] == null ? "" : refs[i].trim();
             if (!_isValidMapperRef(ref, false)) {
-                _error(method, target, "@MapperOptions.using expects 'method', 'this::method', 'ImportedMapper::method', or 'pkg.ImportedMapper::method'");
+                _error(method, target, "@MappingOptions.using expects 'method', 'this::method', 'ImportedMapper::method', or 'pkg.ImportedMapper::method'");
                 return false;
             }
             if (ref.length() != 0 && !_usingRefExists(method, target, ref)) return false;
@@ -3446,7 +3446,7 @@ public final class MapperGenerator {
             if (conv == null) continue;
             compatible++;
             if (compatible > 1) {
-                _error(method, target, "Ambiguous imported converter '" + name + "'; qualify it with @MapperOptions(using = ...)");
+                _error(method, target, "Ambiguous imported converter '" + name + "'; qualify it with @MappingOptions(using = ...)");
                 generation.failed = true;
                 return null;
             }
@@ -3494,7 +3494,7 @@ public final class MapperGenerator {
             MapperModel.Converter conv = _compatibleConverter(iface, iface.asType(), method, target, h, from, to, null);
             if (conv == null) continue;
             if (found != null) {
-                _error(method, target, "Ambiguous element/value converter; specify @MapperOptions(using = ...) preference");
+                _error(method, target, "Ambiguous element/value converter; specify @MappingOptions(using = ...) preference");
                 generation.failed = true;
                 return null;
             }
@@ -3513,7 +3513,7 @@ public final class MapperGenerator {
                 MapperModel.Converter conv = _compatibleConverter(imported.type, imported.type.asType(), method, target, h, from, to, imported);
                 if (conv == null) continue;
                 if (found != null) {
-                    _error(method, target, "Ambiguous imported element/value converter; specify @MapperOptions(using = ...) with mapper qualification");
+                    _error(method, target, "Ambiguous imported element/value converter; specify @MappingOptions(using = ...) with mapper qualification");
                     generation.failed = true;
                     return null;
                 }
@@ -3552,7 +3552,7 @@ public final class MapperGenerator {
         for (ImportedMapperRef imported : generation.importedMappers) {
             if (!imported.simpleName.equals(owner) && !imported.qualifiedName.equals(owner)) continue;
             if (found != null && imported.simpleName.equals(owner)) {
-                _error(method, target, "Ambiguous imported mapper '" + owner + "'; use the qualified name in @MapperOptions(using = ...)");
+                _error(method, target, "Ambiguous imported mapper '" + owner + "'; use the qualified name in @MappingOptions(using = ...)");
                 generation.failed = true;
                 return null;
             }

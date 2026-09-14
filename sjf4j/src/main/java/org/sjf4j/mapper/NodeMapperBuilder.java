@@ -6,8 +6,8 @@ import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
-import org.sjf4j.navigator.JsonPath;
-import org.sjf4j.navigator.JsonPointer;
+import org.sjf4j.path.JsonPath;
+import org.sjf4j.path.JsonPointer;
 
 import java.util.ArrayList;
 import java.util.List;

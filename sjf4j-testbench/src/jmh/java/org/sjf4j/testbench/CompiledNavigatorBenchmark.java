@@ -22,7 +22,7 @@ import org.sjf4j.annotation.navigator.PutByPath;
 import org.sjf4j.compiled.BytecodePath;
 import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 
 import java.util.ArrayList;
 import java.util.List;

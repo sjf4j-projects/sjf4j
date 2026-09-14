@@ -1,4 +1,4 @@
-package org.sjf4j.navigator;
+package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;

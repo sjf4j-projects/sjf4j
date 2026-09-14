@@ -18,7 +18,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 
 import java.io.IOException;
 import java.util.ArrayList;

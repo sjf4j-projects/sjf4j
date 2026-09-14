@@ -24,7 +24,7 @@ import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 import org.sjf4j.exception.JsonException;
 import tools.jackson.databind.PropertyName;
 import tools.jackson.databind.cfg.MapperConfig;

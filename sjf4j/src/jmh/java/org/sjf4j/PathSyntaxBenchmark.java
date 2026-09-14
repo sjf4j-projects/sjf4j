@@ -7,8 +7,8 @@ import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.navigator.PathSegment;
-import org.sjf4j.navigator.PathSyntax;
+import org.sjf4j.path.PathSegment;
+import org.sjf4j.path.PathSyntax;
 
 import java.util.concurrent.TimeUnit;
 

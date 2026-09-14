@@ -5,7 +5,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.compiled.CompiledInstances;
 
 import java.util.ArrayList;
@@ -68,7 +68,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @CompiledMapper
     public interface NestedPathMapper {
-        @MapperOptions(using = {"toDto"})
+        @MappingOptions(using = {"toDto"})
         @Mapping(target = "$.child", source = "child")
         @Mapping(target = "$.items[0]", source = "child")
         @Mapping(target = "$.map.one", source = "child")

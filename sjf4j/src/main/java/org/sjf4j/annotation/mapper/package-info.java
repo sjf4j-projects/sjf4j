@@ -13,7 +13,7 @@
  *     or writes target properties and paths.</li>
  *     <li>{@link org.sjf4j.annotation.mapper.MappingCreator} selects a concrete
  *     implementation or mapper factory for an abstract/interface target.</li>
- *     <li>{@link org.sjf4j.annotation.mapper.MapperOptions} configures conversion,
+ *     <li>{@link MappingOptions} configures conversion,
  *     update, and null policies.</li>
  * </ul>
  */

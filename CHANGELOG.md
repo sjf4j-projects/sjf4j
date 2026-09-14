@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Moved JSONPath, JSON Pointer, path syntax, path segment, filter, and function APIs from `org.sjf4j.navigator` to `org.sjf4j.path`.
+- Renamed `@MapperOptions` to `@MappingOptions`.
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Moved compiled-navigation annotations from `org.sjf4j.annotation.path` to `org.sjf4j.annotation.navigator`.
@@ -17,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made built-in JSON, YAML, and node facade implementations final; applications must use composition rather than subclassing these types.
 
 ### Added
+- Added `org.sjf4j.binding.StreamingReader` with primitive-value and prepared name-matching fast paths for generated binders.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 - Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.

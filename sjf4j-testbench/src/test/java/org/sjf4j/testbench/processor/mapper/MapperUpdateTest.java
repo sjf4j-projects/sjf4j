@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.compiled.CompiledInstances;
 
@@ -100,7 +100,7 @@ public class MapperUpdateTest {
         @Mapping(target = "age", ignore = true)
         void rename(Target target, Source source);
 
-        @MapperOptions(nulls = NullValuePolicy.IGNORE)
+        @MappingOptions(nulls = NullValuePolicy.IGNORE)
         void ignoreNulls(Target target, BoxedSource source);
 
         void setNulls(Target target, BoxedSource source);

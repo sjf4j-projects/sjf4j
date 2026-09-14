@@ -2,7 +2,7 @@ package org.sjf4j.processor;
 
 import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions;
 import org.sjf4j.processor.path.PathGenerator;
@@ -48,7 +48,7 @@ import java.util.Set;
          "org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper",
         "org.sjf4j.annotation.mapper.Mapping",
         "org.sjf4j.annotation.mapper.Mappings",
-        "org.sjf4j.annotation.mapper.MapperOptions",
+        "org.sjf4j.annotation.mapper.MappingOptions",
         "org.sjf4j.annotation.mapper.jdbc.JdbcMapperOptions",
         "org.sjf4j.annotation.mapper.MappingCreator",
         "org.sjf4j.annotation.mapper.MappingCreators",
@@ -155,10 +155,10 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                 } else {
                     Element owner = element.getEnclosingElement();
                     if (annoName.startsWith("org.sjf4j.annotation.mapper.")) {
-                        if (MapperOptions.class.getName().equals(annoName)
+                        if (MappingOptions.class.getName().equals(annoName)
                                 && owner.getKind() == ElementKind.INTERFACE
                                 && owner.getAnnotation(CompiledJdbcMapper.class) != null) {
-                            context.error(element, "@MapperOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions");
+                            context.error(element, "@MappingOptions is not supported on @CompiledJdbcMapper methods; use @JdbcMapperOptions");
                         } else if (JdbcMapperOptions.class.getName().equals(annoName)
                                 && (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledJdbcMapper.class) == null)) {
                             context.error(element, "@JdbcMapperOptions is valid only on methods in an @CompiledJdbcMapper interface");

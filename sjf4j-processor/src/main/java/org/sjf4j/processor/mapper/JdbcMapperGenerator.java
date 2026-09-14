@@ -11,8 +11,8 @@ import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.NameAllocator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.SourceWriter;
-import org.sjf4j.navigator.JsonPath;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.JsonPath;
+import org.sjf4j.path.PathSegment;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -207,7 +207,7 @@ public final class JdbcMapperGenerator {
             String name = element.getQualifiedName().toString();
             if (name.equals("org.sjf4j.annotation.mapper.Mapping")
                     || name.equals("org.sjf4j.annotation.mapper.Mappings")
-                    || name.equals("org.sjf4j.annotation.mapper.MapperOptions")
+                    || name.equals("org.sjf4j.annotation.mapper.MappingOptions")
                     || name.equals(JdbcMapperOptions.class.getName())
                     || name.equals("org.sjf4j.annotation.mapper.MappingCreator")
                     || name.equals("org.sjf4j.annotation.mapper.MappingCreators")) {

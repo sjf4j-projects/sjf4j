@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)
-public @interface MapperOptions {
+public @interface MappingOptions {
 
     /**
      * Preferred converter methods for automatic conversion points in this method.

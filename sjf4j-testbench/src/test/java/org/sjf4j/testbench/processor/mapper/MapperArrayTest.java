@@ -3,7 +3,7 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.compiled.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
@@ -284,7 +284,7 @@ public class MapperArrayTest {
 
     @CompiledMapper
     public interface NamedArrayMapper {
-        @MapperOptions(using = {"upper"})
+        @MappingOptions(using = {"upper"})
         UserDto[] userDtoArray(User[] source);
 
         default UserDto upper(User user) { return new UserDto(user.name().toUpperCase()); }
@@ -299,7 +299,7 @@ public class MapperArrayTest {
 
     @CompiledMapper(importing = {ImportedArrayLeafMapper.class})
     public interface ImportedArrayMapper {
-        @MapperOptions(using = {"ImportedArrayLeafMapper::toDto"})
+        @MappingOptions(using = {"ImportedArrayLeafMapper::toDto"})
         UserDto[] userDtoArray(User[] source);
     }
 }

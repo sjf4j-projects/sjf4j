@@ -16,7 +16,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.navigator.CompiledNavigator;
 import org.sjf4j.annotation.navigator.FindByPath;
 import org.sjf4j.compiled.CompiledInstances;
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 
 import java.util.List;
 import java.util.Objects;

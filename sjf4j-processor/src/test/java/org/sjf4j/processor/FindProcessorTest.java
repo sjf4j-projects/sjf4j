@@ -524,7 +524,7 @@ public class FindProcessorTest {
         assertTrue(Files.exists(genSource), "Generated source not found at " + genSource);
         String source = Files.readString(genSource);
         assertTrue(source.contains("private static final FilterExpr") ||
-                source.contains("private static final org.sjf4j.navigator.FilterExpr"), source);
+                source.contains("private static final org.sjf4j.path.FilterExpr"), source);
         assertTrue(source.contains(".evalTruth("), source);
         assertFalse(source.contains(".find("), "Filter path should not fall back to .find(; source:\n" + source);
 

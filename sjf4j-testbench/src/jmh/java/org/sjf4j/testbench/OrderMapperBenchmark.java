@@ -15,7 +15,7 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.compiled.CompiledInstances;
@@ -135,7 +135,7 @@ public class OrderMapperBenchmark {
 
     @CompiledMapper
     public interface Sjf4jIgnoreMapper {
-        @MapperOptions(nulls = NullValuePolicy.IGNORE, using = {"productToProductDTO"})
+        @MappingOptions(nulls = NullValuePolicy.IGNORE, using = {"productToProductDTO"})
         @Mapping(target = "customerName", source = "$.customer.name")
         @Mapping(target = "billingStreetAddress", source = "$.customer.billingAddress.street")
         @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")
@@ -151,7 +151,7 @@ public class OrderMapperBenchmark {
 
     @CompiledMapper
     public interface Sjf4jSetMapper {
-        @MapperOptions(using = {"productToProductDTO"})
+        @MappingOptions(using = {"productToProductDTO"})
         @Mapping(target = "customerName", source = "$.customer.name")
         @Mapping(target = "billingStreetAddress", source = "$.customer.billingAddress.street")
         @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")

@@ -5,7 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.MappingOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.compiled.CompiledInstances;
 
@@ -141,7 +141,7 @@ public class MapperMixedStructuralTest {
         @Mapping(target = "arrayFirst", source = "$.array[0]")
         @Mapping(target = "firstItemName", source = "$.items[0].name")
         @Mapping(target = "secondArrayItemName", source = "$.itemArray[1].name")
-        @MapperOptions(using = {"toDto"})
+        @MappingOptions(using = {"toDto"})
         @Mapping(target = "set", source = "set")
         @Mapping(target = "itemDtos", source = "items")
         @Mapping(target = "itemDtoMap", source = "itemMap")
@@ -156,7 +156,7 @@ public class MapperMixedStructuralTest {
         @Mapping(target = "$.arrayOut[0]", source = "$.array[0]")
         PathTarget toPathTarget(MixedSource source);
 
-        @MapperOptions(nulls = NullValuePolicy.IGNORE, using = {"toDto"})
+        @MappingOptions(nulls = NullValuePolicy.IGNORE, using = {"toDto"})
         @Mapping(target = "metadataName", source = "$.metadata.name")
         @Mapping(target = "childDto", source = "child")
         void updateIgnoreNulls(DefaultsTarget target, MixedSource source);

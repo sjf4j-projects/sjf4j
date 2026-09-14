@@ -1,8 +1,8 @@
 package org.sjf4j.processor.path;
 
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.navigator.JsonPath;
-import org.sjf4j.navigator.PathSegment;
+import org.sjf4j.path.JsonPath;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.NameAllocator;
@@ -185,8 +185,8 @@ public final class FindGenerator {
             if (segments[i] instanceof PathSegment.Descendant) {
                 String fallbackField = "_sjf4j_find_fallback_" + fallbackSeq++;
                 String fallbackExpr = path.toString();
-                target.addField(out -> out.line("private static final org.sjf4j.navigator.JsonPath " + fallbackField +
-                        " = org.sjf4j.navigator.JsonPath.parse(\"" + GeneratorUtil.escape(fallbackExpr) + "\");"));
+                target.addField(out -> out.line("private static final org.sjf4j.path.JsonPath " + fallbackField +
+                        " = org.sjf4j.path.JsonPath.parse(\"" + GeneratorUtil.escape(fallbackExpr) + "\");"));
 
                 target.addMethod(out -> {
                     String rootVar = root.getSimpleName().toString();
@@ -417,8 +417,8 @@ public final class FindGenerator {
                 String field = "_sjf4j_find_filter_" + filterSeq++;
                 int filterIndex = i;
                 filterFields[i] = field;
-                target.addField(out -> out.line("private static final org.sjf4j.navigator.FilterExpr " + field +
-                        " = ((org.sjf4j.navigator.PathSegment.Filter) org.sjf4j.navigator.JsonPath.parse(\"" +
+                target.addField(out -> out.line("private static final org.sjf4j.path.FilterExpr " + field +
+                        " = ((org.sjf4j.path.PathSegment.Filter) org.sjf4j.path.JsonPath.parse(\"" +
                         GeneratorUtil.escape(rawExpr) + "\").segments()[" + filterIndex + "]).filterExpr;"));
             }
         }

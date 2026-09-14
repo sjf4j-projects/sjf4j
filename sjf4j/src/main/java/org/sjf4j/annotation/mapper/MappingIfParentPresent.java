@@ -38,7 +38,7 @@ public @interface MappingIfParentPresent {
      * Explicit local mapper method for the path value.
      *
      * <p>This path-specific hook is kept separate from method-level
-     * {@link MapperOptions#using()} preferences. It supports a simple method
+     * {@link MappingOptions#using()} preferences. It supports a simple method
      * name on the current mapper and cannot be combined with {@link #compute()}.</p>
      */
     String nestedMapper() default "";

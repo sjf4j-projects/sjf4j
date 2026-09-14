@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * <p>By default, source and target properties with the same name are mapped
  * automatically. Use repeatable {@link Mapping} annotations to rename a source
  * property, ignore a target property, compute a value from one or more source
- * properties, or write to an SJF4J target path. Use {@link MapperOptions} for
+ * properties, or write to an SJF4J target path. Use {@link MappingOptions} for
  * null handling, method-level converter preferences, and collection/map update
  * policies. Use repeatable {@link MappingCreator} annotations to customize
  * target instantiation, especially for interface or abstract targets. Type-level

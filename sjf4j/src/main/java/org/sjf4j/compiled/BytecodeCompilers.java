@@ -3,13 +3,20 @@ package org.sjf4j.compiled;
 
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Types;
-import org.sjf4j.navigator.JsonPath;
+import org.sjf4j.path.JsonPath;
 
 import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.ServiceLoader;
 
+/**
+ * Internal bootstrap and validation support for {@link BytecodePath} compilation.
+ *
+ * <p>The optional {@link PathCompiler} is resolved once through {@link ServiceLoader}. When no
+ * provider is available, callers may explicitly request the reflective
+ * {@link FallbackBytecodePath} implementation.
+ */
 final class BytecodeCompilers {
 
     static final PathCompiler PATH_COMPILER = loadPathCompiler();

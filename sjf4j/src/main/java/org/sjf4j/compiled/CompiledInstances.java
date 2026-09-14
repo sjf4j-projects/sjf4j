@@ -4,6 +4,17 @@ import org.sjf4j.exception.JsonException;
 
 import java.lang.reflect.InvocationTargetException;
 
+/**
+ * Creates and caches runtime instances of annotation-processor generated interfaces.
+ *
+ * <p>For an interface annotated with {@code @CompiledNavigator}, {@code @CompiledMapper}, or
+ * {@code @CompiledJdbcMapper}, the processor generates an implementation named by appending
+ * {@code _Impl} to the interface's binary name. {@link #of(Class)} loads that implementation with
+ * the interface's class loader and invokes its public no-argument constructor.
+ *
+ * <p>One instance is cached per interface class. The generated implementation must therefore be
+ * stateless or safe to share between callers.
+ */
 public final class CompiledInstances {
 
     private static final String IMPL_SUFFIX = "_Impl";

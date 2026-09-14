@@ -1,7 +1,7 @@
 package org.sjf4j.exception;
 
-import org.sjf4j.navigator.PathSegment;
-import org.sjf4j.navigator.PathSyntax;
+import org.sjf4j.path.PathSegment;
+import org.sjf4j.path.PathSyntax;
 
 /**
  * Exception for binding/streaming errors with optional path context.
