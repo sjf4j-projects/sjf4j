@@ -188,7 +188,7 @@ class ReflectUtilTest {
         ) {}
     }
 
-    // ---------- 6) lambdaSetter：reference/primitive/private ----------
+    // ---------- 6) lambdaSetter: reference/primitive/private ----------
 
     @Test
     void lambdaSetter_setsPrivateReferenceField() throws Throwable {

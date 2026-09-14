@@ -534,7 +534,7 @@ public class CompiledNavigatorBenchmark {
         return s.colorRaw.getNode(s.pojo);
     }
 
-    /** null 中间路径测试 */
+    /** Tests a null intermediate path segment. */
     @Benchmark
     public String get_color_bytecode_empty(BenchmarkState s) {
         return s.colorAsm.get(s.emptyRoot);
@@ -545,7 +545,7 @@ public class CompiledNavigatorBenchmark {
         return s.colorFallback.get(s.emptyRoot);
     }
 
-    /** null root 测试 */
+    /** Tests a null root value. */
     @Benchmark
     public String get_color_bytecode_null(BenchmarkState s) {
         return s.colorAsm.get(null);

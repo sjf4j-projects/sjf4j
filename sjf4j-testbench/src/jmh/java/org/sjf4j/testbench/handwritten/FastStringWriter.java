@@ -5,22 +5,22 @@ import java.util.Arrays;
 
 public final class FastStringWriter extends Writer {
 
-    // 根据你的典型 JSON 大小调。
-    // 如果大部分 JSON < 1 KB，1024 是比较合理的起点。
+    // Tune for the typical JSON size.
+    // 1024 is a reasonable starting point when most JSON payloads are under 1 KB.
     private static final int INITIAL_CAPACITY = 1024;
 
-    // 防止偶然一次超大 JSON 永久占住 ThreadLocal。
-    // 做纯 benchmark 时，如果 payload > 64K，可以暂时调大。
+    // Prevent an occasional oversized JSON payload from being retained by the ThreadLocal.
+    // For dedicated benchmarks with payloads over 64 KB, this can be increased temporarily.
     private static final int MAX_RETAINED_CAPACITY = 64 * 1024;
 
     /**
-     * 只缓存 char[]，不缓存 Writer。
+     * Cache only the char[] and not the Writer itself.
      *
-     * 这样：
-     * 1. Writer 本身每次 new，TLAB 分配很便宜；
-     * 2. 避免 Writer 重入问题；
-     * 3. 真正昂贵的大数组被复用；
-     * 4. nested serialization 也能正常工作。
+     * This means:
+     * 1. A Writer is allocated for each call, which is cheap in the TLAB;
+     * 2. Writer reentrancy is avoided;
+     * 3. The expensive large array is reused; and
+     * 4. Nested serialization continues to work correctly.
      */
     private static final ThreadLocal<BufferRecycler> RECYCLER =
             ThreadLocal.withInitial(BufferRecycler::new);
@@ -29,8 +29,8 @@ public final class FastStringWriter extends Writer {
     private int count;
 
     /**
-     * acquire() 创建的 writer 持有对应线程的 recycler。
-     * 普通构造函数创建的 writer 不参与 recycling。
+     * Writers created by acquire() retain the recycler for their thread.
+     * Writers created by the regular constructors do not participate in recycling.
      */
     private BufferRecycler recycler;
 
@@ -42,21 +42,21 @@ public final class FastStringWriter extends Writer {
     }
 
     /**
-     * 非 recycling 版本。
+     * Non-recycling variant.
      */
     public FastStringWriter() {
         this(new char[INITIAL_CAPACITY], null);
     }
 
     /**
-     * 非 recycling 版本。
+     * Non-recycling variant.
      */
     public FastStringWriter(int initialCapacity) {
         this(new char[Math.max(1, initialCapacity)], null);
     }
 
     /**
-     * 推荐的高性能入口。
+     * Recommended high-performance entry point.
      */
     public static FastStringWriter acquire() {
         BufferRecycler recycler = RECYCLER.get();
@@ -66,9 +66,9 @@ public final class FastStringWriter extends Writer {
         if (buffer == null) {
             buffer = new char[INITIAL_CAPACITY];
         } else {
-            // 当前 buffer 已被取走。
-            // 如果当前线程发生 nested serialization，
-            // 第二个 acquire() 会拿到一个新的 buffer。
+            // The current buffer has been checked out.
+            // If nested serialization occurs on this thread,
+            // the second acquire() receives a new buffer.
             recycler.buffer = null;
         }
 
@@ -183,9 +183,9 @@ public final class FastStringWriter extends Writer {
     }
 
     /**
-     * 普通转换，不释放 buffer。
+     * Performs a normal conversion without releasing the buffer.
      *
-     * 非 recycler 模式或者需要继续使用 Writer 时使用。
+     * Use this outside recycler mode or when the Writer remains in use.
      */
     @Override
     public String toString() {
@@ -194,10 +194,10 @@ public final class FastStringWriter extends Writer {
     }
 
     /**
-     * 高性能 recycler 模式建议使用这个。
+     * Recommended for high-performance recycler mode.
      *
-     * 构造 String 后立即把 char[] 归还当前 recycler。
-     * 调用后 Writer 不可继续使用。
+     * Returns the char[] to the current recycler immediately after creating the String.
+     * The Writer cannot be used after this call.
      */
     public String toStringAndRelease() {
         ensureOpen();
@@ -210,7 +210,7 @@ public final class FastStringWriter extends Writer {
     }
 
     /**
-     * 不生成 String，直接归还 buffer。
+     * Returns the buffer directly without creating a String.
      */
     public void release() {
         if (!released) {
@@ -219,7 +219,7 @@ public final class FastStringWriter extends Writer {
     }
 
     /**
-     * 只适合非 release 状态下手工复用同一个 Writer。
+     * Suitable only for manually reusing the same Writer before it is released.
      */
     public void reset() {
         ensureOpen();
@@ -252,8 +252,8 @@ public final class FastStringWriter extends Writer {
 
         int oldCapacity = buffer.length;
 
-        // 1.5x growth。
-        // Recycler 热起来以后，大多数调用不会进入这里。
+        // 1.5x growth.
+        // Once the recycler is warm, most calls do not reach this point.
         int newCapacity = oldCapacity + (oldCapacity >> 1);
 
         if (newCapacity < minCapacity) {
@@ -284,15 +284,15 @@ public final class FastStringWriter extends Writer {
             return;
         }
 
-        // 超大 buffer 不进入缓存。
+        // Do not cache oversized buffers.
         if (buf.length > MAX_RETAINED_CAPACITY) {
             return;
         }
 
         char[] cached = recycler.buffer;
 
-        // nested serialization 时可能已经有另一个 buffer 被归还。
-        // 保留其中更大的一个。
+        // Nested serialization may already have returned another buffer.
+        // Retain the larger one.
         if (cached == null || buf.length > cached.length) {
             recycler.buffer = buf;
         }

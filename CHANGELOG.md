@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added `org.sjf4j.binding.StreamingReader` with primitive-value and prepared name-matching fast paths for generated binders.
+- Added `StreamingBinding` and `StreamingWriter` APIs for backend-neutral streaming serialization with prepared property names and primitive fast paths.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 - Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
