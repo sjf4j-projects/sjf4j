@@ -59,8 +59,8 @@ public class PathProcessorTest {
                         "}\n");
         write(src.resolve("MyNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
-                        "import org.sjf4j.annotation.navigator.GetByPath;\n" +
+                        "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
                         "@CompiledNavigator\n" +
                         "public interface MyNodes {\n" +
                         "  @GetByPath(\"$.city.name\")\n" +
@@ -112,8 +112,8 @@ public class PathProcessorTest {
                         "import java.util.List;\n" +
                         "import java.util.Map;\n" +
                         "import org.sjf4j.JsonObject;\n" +
-                        "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
-                        "import org.sjf4j.annotation.navigator.GetByPath;\n" +
+                        "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadNodes {\n" +
                         "  @GetByPath(\"$.value\")\n" +
@@ -164,7 +164,7 @@ public class PathProcessorTest {
 
         write(src.resolve("BadNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
+                        "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadNodes {\n" +
                         "  String missing(String root);\n" +
@@ -204,8 +204,8 @@ public class PathProcessorTest {
                         "import java.util.List;\n" +
                         "import java.util.Map;\n" +
                         "import org.sjf4j.JsonObject;\n" +
-                        "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
-                        "import org.sjf4j.annotation.navigator.GetByPath;\n" +
+                        "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadParamNodes {\n" +
                         "  @GetByPath(\"$[{idx}]\") String missing(List<String> root);\n" +
@@ -255,8 +255,8 @@ public class PathProcessorTest {
                 "package testcase;\n" +
                         "import java.util.List;\n" +
                         "import java.util.Map;\n" +
-                        "import org.sjf4j.annotation.navigator.CompiledNavigator;\n" +
-                        "import org.sjf4j.annotation.navigator.PutByPath;\n" +
+                        "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
+                        "import org.sjf4j.annotation.path.PutByPath;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadPutParamNodes {\n" +
                         "  @PutByPath(\"$[{idx}]\") String missing(List<String> root, String value);\n" +
@@ -310,7 +310,7 @@ public class PathProcessorTest {
         write(src.resolve("BadPutIfNodes.java"),
                 "package testcase;\n" +
                         "import java.util.List;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadPutIfNodes {\n" +
                         "  @PutIfParentPresentByPath(\"$[{idx}]\") String missing(List<String> root, String value);\n" +
@@ -355,7 +355,7 @@ public class PathProcessorTest {
         write(src.resolve("BadShapeNodes.java"),
                 "package testcase;\n" +
                         "import java.util.*;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadShapeNodes {\n" +
                         "  @GetByPath(\"$.x\") String noRoot();\n" +
@@ -436,7 +436,7 @@ public class PathProcessorTest {
                         "}\n");
         write(src.resolve("PathNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface PathNodes {\n" +
                         "  @GetByPath(\"$.map.name\") String getStaticMap(Model.Root root);\n" +
@@ -600,7 +600,7 @@ public class PathProcessorTest {
                         "}\n");
         write(src.resolve("JojoPathNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface JojoPathNodes {\n" +
                         "  @GetByPath(\"$.id\") String getId(Model.Order root);\n" +
@@ -701,7 +701,7 @@ public class PathProcessorTest {
         write(src.resolve("BadJojoPaths.java"),
                 "package testcase;\n" +
                         "import org.sjf4j.JsonObject;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "class Order extends JsonObject { public void setHidden(String hidden) {} }\n" +
                         "@CompiledNavigator interface BadJojoPaths {\n" +
                         "  @GetByPath(\"$.hidden\") String hidden(Order root);\n" +
@@ -735,7 +735,7 @@ public class PathProcessorTest {
                 "package testcase;\n" +
                         "import org.sjf4j.JsonObject;\n" +
                         "import org.sjf4j.annotation.node.NodeProperty;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "class Order extends JsonObject { @NodeProperty(\"external\") public String internal; public String external; }\n" +
                         "@CompiledNavigator interface ExplicitJojoPaths {\n" +
                         "  @GetByPath(\"$.external\") String getExternal(Order root);\n" +
@@ -772,7 +772,7 @@ public class PathProcessorTest {
                 "package testcase;\n" +
                         "import org.sjf4j.JsonObject;\n" +
                         "import org.sjf4j.annotation.node.NodeProperty;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "class Order extends JsonObject {\n" +
                         "  @NodeProperty(\"external\") public String internal;\n" +
                         "  public String getExternal() { return \"raw\"; }\n" +
@@ -829,7 +829,7 @@ public class PathProcessorTest {
                         "}\n");
         write(src.resolve("GenericNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface GenericNodes {\n" +
                         "  @GetByPath(\"$.box.value\") String getBoxValue(Model root);\n" +
@@ -879,7 +879,7 @@ public class PathProcessorTest {
 
         write(src.resolve("BadGenericNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "class Box<T> { public T value; }\n" +
                         "@CompiledNavigator interface GenericIface<T> {\n" +
                         "  @GetByPath(\"$.value\") T get(Box<T> box);\n" +
@@ -920,7 +920,7 @@ public class PathProcessorTest {
         write(src.resolve("BadGenericTypeNodes.java"),
                 "package testcase;\n" +
                         "import java.util.*;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadGenericTypeNodes {\n" +
                         "  @GetByPath(\"$.names\") List<Integer> getNames(Model root);\n" +
@@ -970,7 +970,7 @@ public class PathProcessorTest {
                         "}\n");
         write(src.resolve("testcase/PathNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator public interface PathNodes {\n" +
                         "  @GetByPath(\"$.first_name\") String getFirst(Bean b);\n" +
                         "  @PutByPath(\"$.first_name\") String putFirst(Bean b, String v);\n" +
@@ -1035,7 +1035,7 @@ public class PathProcessorTest {
                         "}\n");
         write(src.resolve("EnsureNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface EnsureNodes {\n" +
                         "  @EnsurePutByPath(\"$.map.a.b\") Object ensureMap(Model.Root root, Object value);\n" +
@@ -1144,7 +1144,7 @@ public class PathProcessorTest {
         write(src.resolve("BadEnsureNodes.java"),
                 "package testcase;\n" +
                         "import java.util.*;\n" +
-                        "import org.sjf4j.annotation.navigator.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
                         "@CompiledNavigator\n" +
                         "public interface BadEnsureNodes {\n" +
                         "  @EnsurePutIfAbsentByPath(\"$.x\") int primitiveAbsent(Map<String,String> root, String value);\n" +

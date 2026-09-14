@@ -14,10 +14,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.MappingOptions;
-import org.sjf4j.annotation.mapper.NullValuePolicy;
-import org.sjf4j.annotation.mapper.Mapping;
+import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.MappingOptions;
+import org.sjf4j.annotation.mapping.NullValuePolicy;
+import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.CompiledInstances;
 
 import java.util.ArrayList;

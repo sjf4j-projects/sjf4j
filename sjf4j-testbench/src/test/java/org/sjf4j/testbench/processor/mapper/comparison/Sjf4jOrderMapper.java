@@ -1,8 +1,8 @@
 package org.sjf4j.testbench.processor.mapper.comparison;
 
-import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.Mappings;
+import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.Mapping;
+import org.sjf4j.annotation.mapping.Mappings;
 import org.sjf4j.testbench.processor.mapper.comparison.dto.OrderDTO;
 import org.sjf4j.testbench.processor.mapper.comparison.dto.ProductDTO;
 import org.sjf4j.testbench.processor.mapper.comparison.entity.Order;

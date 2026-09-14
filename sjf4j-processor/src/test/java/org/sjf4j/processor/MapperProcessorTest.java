@@ -1,9 +1,5 @@
 package org.sjf4j.processor;
 
-import org.sjf4j.annotation.mapper.NullValuePolicy;
-import org.sjf4j.annotation.mapper.ArrayPolicy;
-import org.sjf4j.annotation.mapper.ObjectPolicy;
-
 import org.junit.jupiter.api.Test;
 
 import javax.tools.Diagnostic;
@@ -175,7 +171,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperRejectsInvalidContractsAndMappings() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.*;"
                 + "interface Parent { String inherited(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface Inherited extends Parent { }"
                 + "@CompiledJdbcMapper interface Generic<T> { String x(ResultSet rs); }"
@@ -210,7 +206,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperRejectsNestedSourcePaths() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} }"
                 + "@Mapping(target=\"value\",source=\"$.payload.name\") P map(ResultSet rs); }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
@@ -220,7 +216,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperAcceptsFlatJsonPathAndPointerSourceAliases() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} }"
                 + "@Mapping(target=\"value\",source=\"$.full_name\") P path(ResultSet rs);"
                 + "@Mapping(target=\"value\",source=\"/full_name\") P pointer(ResultSet rs); }";
@@ -230,7 +226,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperRejectsDuplicateEquivalentTargets() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface RepeatedPath { class P { public N profile = new N(); public P(){} } class N { public String name; }"
                 + "@Mapping(target=\"$.profile.name\",source=\"one\") @Mapping(target=\"$.profile.name\",source=\"two\") P map(ResultSet rs); }"
                 + "@CompiledJdbcMapper interface MixedRoot { class P { public String name; public P(){} }"
@@ -247,25 +243,25 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperGeneratedSourceSupportsRelease8() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper; @CompiledJdbcMapper interface Eight { class P { public String value; public P(){} } P map(ResultSet result); }";
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper; @CompiledJdbcMapper interface Eight { class P { public String value; public P(){} } P map(ResultSet result); }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         assertTrue(compileJdbc(source, diagnostics, "--release", "8").booleanValue(), diagnosticsToString(diagnostics));
     }
 
     @Test
     public void jdbcMapperEmitsOnlyUsedConversionHelpers() throws Exception {
-        String stringOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String stringOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} } P map(ResultSet input); }");
         assertTrue(stringOnly.contains("map(ResultSet rs)"), stringOnly);
         assertFalse(stringOnly.contains("primitiveNull("), stringOnly);
         assertFalse(stringOnly.contains("temporalType("), stringOnly);
 
-        String primitiveOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String primitiveOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public int value; public P(){} } P map(ResultSet input); }");
         assertTrue(primitiveOnly.contains("primitiveNull("), primitiveOnly);
         assertFalse(primitiveOnly.contains("temporalType("), primitiveOnly);
 
-        String temporalOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import java.time.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String temporalOnly = jdbcGeneratedSource("package testcase; import java.sql.*; import java.time.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public Instant value; public P(){} } P map(ResultSet input); }");
         assertFalse(temporalOnly.contains("primitiveNull("), temporalOnly);
         assertTrue(temporalOnly.contains("temporalType("), temporalOnly);
@@ -273,7 +269,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperUsesTypedGettersForPrimitiveScalars() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input {"
                 + " class P { public String text; public int i; public long l; public short s; public byte b;"
                 + " public double d; public float f; public boolean z; public char c; public P(){} }"
@@ -293,7 +289,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcPresentOnlyListResolvesMetadataOnce() throws Exception {
-        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
+        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.*;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value = \"default\"; public String other; public P(){} }"
                 + " @JdbcMappingOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<P> map(ResultSet rs); }";
         String generated = jdbcGeneratedSource(source);
@@ -303,7 +299,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcJojoPrecomputesColumnsOutsideTheRowHelper() throws Exception {
-        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.*;"
+        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.*;"
                 + "@CompiledJdbcMapper interface Input { class J extends JsonObject { public String value; public J(){} }"
                 + " @Mapping(target=\"value\",source=\"alias\") @JdbcMappingOptions(columnProjection=ColumnProjectionPolicy.PRESENT_ONLY) List<J> map(ResultSet rs); }";
         String generated = jdbcGeneratedSource(source);
@@ -316,7 +312,7 @@ public class MapperProcessorTest {
 
     @Test
     public void mapperRejectsNonStringMapKeysForJojoDynamicPropagation() throws Exception {
-        String source = "package testcase; import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapper.CompiledMapper;"
+        String source = "package testcase; import java.util.*; import org.sjf4j.JsonObject; import org.sjf4j.annotation.mapping.CompiledMapper;"
                 + "@CompiledMapper interface Input { class J extends JsonObject { public J(){} } J map(Map<Integer,Object> source); }";
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         assertFalse(compileJdbc(source, diagnostics).booleanValue());
@@ -325,7 +321,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcCurrentRowMethodCompilesWithoutCursorAdvancement() throws Exception {
-        String generated = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String generated = jdbcGeneratedSource("package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { class P { public String value; public P(){} } P anyName(ResultSet rs, int rowNum) throws SQLException; }");
         assertTrue(generated.contains("anyName(ResultSet rs, int rowNum)"), generated);
         assertFalse(generated.contains("anyName(ResultSet rs, int rowNum) throws"), generated);
@@ -336,7 +332,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapColumnsDoNotRequireGeneratedHelpers() throws Exception {
-        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import java.util.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Input { Map<String,Object> map(ResultSet rs);"
                 + " default String[] jdbcColumns() { return null; } }";
         String generated = jdbcGeneratedSource(source);
@@ -345,7 +341,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperAcceptsMappingCreatorsOnInterfacesAndMethods() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "class P { public P(){} }"
                 + "@MappingCreator(targetType=P.class,implementation=P.class) @CompiledJdbcMapper interface InterfaceCreator { P map(ResultSet rs); }"
                 + "@MappingCreators({@MappingCreator(targetType=P.class,implementation=P.class)}) @CompiledJdbcMapper interface InterfaceCreators { P map(ResultSet rs); }"
@@ -357,7 +353,7 @@ public class MapperProcessorTest {
 
     @Test
     public void genericMapperOptionsAreRejectedOnJdbcMethods() throws Exception {
-        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "class P { public String value; public P(){} }"
                 + "@CompiledMapper interface Json { @MappingOptions P map(P value); }"
                 + "@CompiledJdbcMapper interface Jdbc { @MappingOptions default P helper(ResultSet rs) { return null; } }";
@@ -369,7 +365,7 @@ public class MapperProcessorTest {
 
     @Test
     public void jdbcMapperHelperNamesDoNotCollideWithInterfaceMembers() throws Exception {
-        String source = "package testcase; import java.sql.*; import java.time.*; import java.util.*; import org.sjf4j.annotation.mapper.*; import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;"
+        String source = "package testcase; import java.sql.*; import java.time.*; import java.util.*; import org.sjf4j.annotation.mapping.*; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;"
                 + "@CompiledJdbcMapper interface Collision {"
                 + " class P { public int count; public Instant created; public P(){} }"
                 + " P map(ResultSet rs); Map<String,Object> mapRow(ResultSet rs);"
@@ -419,8 +415,8 @@ public class MapperProcessorTest {
                 "import java.sql.*;",
                 "import java.time.*;",
                 "import java.util.*;",
-                "import org.sjf4j.annotation.mapper.*;",
-                "import org.sjf4j.annotation.mapper.jdbc.*;",
+                "import org.sjf4j.annotation.mapping.*;",
+                "import org.sjf4j.annotation.mapping.jdbc.*;",
                 "",
                 "@CompiledJdbcMapper public interface JdbcMapper {",
                 "  class User { public String name; public int age; public Instant created; public User() {} }",
@@ -574,7 +570,7 @@ public class MapperProcessorTest {
                 "package testcase; public record NameRecord(String first, String surname) {}\n");
         write(src.resolve("MyMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "@CompiledMapper public interface MyMapper {\n" +
                         "  @Mapping(target=\"surname\", source=\"last\") @Mapping(target=\"age\", ignore=true)\n" +
                         "  @Mapping(target=\"full\", sources={\"first\",\"last\"}, compute=\"(a, b) -> a + \\\" \\\" + b\") Dto toDto(Person p);\n" +
@@ -645,12 +641,12 @@ public class MapperProcessorTest {
         write(src.resolve("Target.java"),
                 "package testcase; public class Target { public UserDto user; public Target() {} }\n");
         write(src.resolve("ImportedUserMapper.java"),
-                "package testcase; import org.sjf4j.annotation.mapper.*;\n" +
+                "package testcase; import org.sjf4j.annotation.mapping.*;\n" +
                         "@CompiledMapper public interface ImportedUserMapper {\n" +
                         "  default UserDto toDto(User user) { if (user == null) return null; UserDto dto = new UserDto(); dto.name = user.name.toUpperCase(); return dto; }\n" +
                         "}\n");
         write(src.resolve("UsingImportedMapper.java"),
-                "package testcase; import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                "package testcase; import org.sjf4j.annotation.mapping.*; import java.util.*;\n" +
                         "@CompiledMapper(importing={ImportedUserMapper.class}) public interface UsingImportedMapper {\n" +
                         "  @MappingOptions(using={\"ImportedUserMapper::toDto\"}) Target explicit(Source source);\n" +
                         "  Target auto(Source source);\n" +
@@ -698,7 +694,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source { public String name; } class Target { public Target() {} public void setName(int name) {} }\n" +
                         "class HelperTarget { public HelperTarget() {} public void setName(String name) {} }\n" +
                         "class ClassTarget { public ClassTarget() {} public void setClass(Class<?> value) {} }\n" +
@@ -747,7 +743,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadImportedMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class User {} class UserDto { public UserDto() {} }\n" +
                         "class Source { public User user; } class Target { public UserDto user; public Target() {} }\n" +
                         "interface PlainMapper { default UserDto toDto(User user) { return new UserDto(); } }\n" +
@@ -783,7 +779,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadCollectionMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*; import java.util.*; import com.fasterxml.jackson.databind.JsonNode;\n" +
+                        "import org.sjf4j.annotation.mapping.*; import java.util.*; import com.fasterxml.jackson.databind.JsonNode;\n" +
                         "class User {} class Dto {}\n" +
                         "class Source { public List<User> users; }\n" +
                         "class SetterOnly { public void setUsers(List<Dto> users) {} }\n" +
@@ -836,7 +832,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadFacadePrimitiveMapper.java"),
                 "package testcase;\n" +
-                        "import com.fasterxml.jackson.databind.JsonNode; import org.sjf4j.annotation.mapper.*;\n" +
+                        "import com.fasterxml.jackson.databind.JsonNode; import org.sjf4j.annotation.mapping.*;\n" +
                         "class Dto { public int value; public int[] values; }\n" +
                         "@CompiledMapper interface BadFacadePrimitiveMapper { Dto map(JsonNode source); int[] array(JsonNode source); }\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -862,7 +858,7 @@ public class MapperProcessorTest {
         write(src.resolve("BadJojoMapper.java"),
                 "package testcase;\n" +
                         "import org.sjf4j.JsonObject;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source { public SetterOnlyJojo jojo; }\n" +
                         "class SetterOnlyJojo extends JsonObject { public void setName(String name) {} }\n" +
                         "class Target { public String name; public Target() {} }\n" +
@@ -893,7 +889,7 @@ public class MapperProcessorTest {
                 "package testcase;\n" +
                         "import org.sjf4j.JsonObject;\n" +
                         "import org.sjf4j.annotation.node.NodeProperty;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Order extends JsonObject {\n" +
                         "  @NodeProperty(\"external\") public String internal;\n" +
                         "  public String getExternal() { return \"raw\"; }\n" +
@@ -934,7 +930,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadBoundaryMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.*; import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "import org.sjf4j.*; import org.sjf4j.annotation.mapping.*; import java.util.*;\n" +
                         "class ScalarSource { public String text; public Boolean flag; public Number number; }\n" +
                         "class ScalarTarget { public Integer text; public String flag; public String number; public ScalarTarget() {} }\n" +
                         "class Source { public String name; public List<String> names; }\n" +
@@ -990,7 +986,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadListSourceMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.*; import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "import org.sjf4j.*; import org.sjf4j.annotation.mapping.*; import java.util.*;\n" +
                         "class MyJajo extends JsonArray { public MyJajo() {} }\n" +
                         "@CompiledMapper interface BadListSourceMapper {\n" +
                         "  List<String> listFromCollection(Collection<String> source);\n" +
@@ -1025,7 +1021,7 @@ public class MapperProcessorTest {
 
         write(src.resolve("IgnoreContainerMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*; import java.util.*;\n" +
                         "class SourceItem { public String name; SourceItem(String n) { name = n; } }\n" +
                         "class TargetItem { public String name; public TargetItem() {} }\n" +
                         "class Source { private List<SourceItem> items; Source(List<SourceItem> i) { items = i; } public List<SourceItem> getItems() { return items; } }\n" +
@@ -1061,7 +1057,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadEnumMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "enum SourceKind { A, B } enum TargetKind { A }\n" +
                         "class Source { public SourceKind kind; } class Target { public TargetKind kind; public Target() {} }\n" +
                         "@CompiledMapper interface BadEnumMapper { Target map(Source s); }\n");
@@ -1088,7 +1084,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("AmbiguousAutoMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Child { public String name; }\n" +
                         "class ChildDto { public String name; public ChildDto() {} }\n" +
                         "class Source { public Child child; }\n" +
@@ -1121,7 +1117,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("AnnotationUse.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class AnnotationUse {\n" +
                         "  @MappingIfParentPresent(target=\"/a/b\", source=\"name\", nestedMapper=\"x\") void one() {}\n" +
                         "  @EnsureMapping(target=\"$.a.b\", sources={\"a\"}, compute=\"a -> a\", array=ArrayPolicy.SET, object=ObjectPolicy.PUT) void two() {}\n" +
@@ -1146,7 +1142,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("PathMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source { public String name; public String value; public Source(String n, String v) { name = n; value = v; } }\n" +
                         "class Profile { public String name; public Profile() {} }\n" +
                         "class Target { public Profile profile = new Profile(); public Target() {} }\n" +
@@ -1200,7 +1196,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadUpdateMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source { public String name; }\n" +
                         "class Target { public Target() {} public void setName(String name) {} public void setAge(int age) {} }\n" +
                         "class ReadOnly { public String getName() { return \"x\"; } public void setOther(String other) {} }\n" +
@@ -1238,7 +1234,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("FirstSourceMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class A { public String name; } class B { public String name; }\n" +
                         "class Target { public String name; public Target() {} }\n" +
                         "@CompiledMapper interface FirstSourceMapper { Target map(A a, B b); }\n");
@@ -1262,7 +1258,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadMultiMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class A { public String name; public int age; } class B { public String city; }\n" +
                         "class BeanTarget { public int age; public String name; public BeanTarget() {} }\n" +
                         "class CtorPrimitive { public CtorPrimitive(int age) {} }\n" +
@@ -1300,7 +1296,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadPathMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import java.util.*;\n" +
                         "class Source { public Profile profile; public List<String> tags; }\n" +
                         "class Profile { public String name; }\n" +
@@ -1331,7 +1327,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadOneOfMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import org.sjf4j.annotation.node.OneOf;\n" +
                         "class Source { public String type; public String name; }\n" +
                         "@OneOf(key=\"type\", path=\"$.type\", value={@OneOf.Mapping(value=PathCat.class, when=\"cat\")}) abstract class PathAnimal {}\n" +
@@ -1369,7 +1365,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadShapeOneOfMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import org.sjf4j.annotation.node.OneOf;\n" +
                         "class Source { public String name; }\n" +
                         "@OneOf({@OneOf.Mapping(value=ObjectCat.class), @OneOf.Mapping(value=ObjectDog.class)}) abstract class DuplicateShapeAnimal {}\n" +
@@ -1410,7 +1406,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("DottedKeyMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import java.util.*;\n" +
                         "class Target { private String name; public Target() {} public String getName() { return name; } public void setName(String name) { this.name = name; } }\n" +
                         "@CompiledMapper interface DottedKeyMapper {\n" +
@@ -1446,7 +1442,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("NodePropertyMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import org.sjf4j.annotation.node.*;\n" +
                         "import java.util.*;\n" +
                         "class Target { @NodeProperty(\"@type\") public String type; public Target() {} }\n" +
@@ -1485,7 +1481,7 @@ public class MapperProcessorTest {
                         "@NodeValue public class Id { public final String value; public Id(String v) { value = v; } @RawToValue public static Id of(String v) { return new Id(v); } @ValueToRaw public String raw() { return value; } }\n");
         write(src.resolve("NodeValueMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source { public Id id = new Id(\"a\"); }\n" +
                         "class Target { public String id; public Target() {} }\n" +
                         "class RawSource { public String id = \"b\"; }\n" +
@@ -1524,7 +1520,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("ScalarMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import java.util.*;\n" +
                         "enum Status { ACTIVE }\n" +
                         "class Source {\n" +
@@ -1582,7 +1578,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("CreatorMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import java.util.*;\n" +
                         "class Profile { public String name; public Profile(String name) { this.name = name; } }\n" +
                         "class ProfileDto { public String name; public ProfileDto() {} }\n" +
@@ -1668,7 +1664,7 @@ public class MapperProcessorTest {
 
         write(parentSrc.resolve("ParentFactory.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "abstract class ParentDto { public String name; }\n" +
                         "class ParentDtoImpl extends ParentDto { public ParentDtoImpl() {} }\n" +
                         "@MappingCreator(targetType=ParentDto.class, implementation=ParentDtoImpl.class) public interface ParentFactory {}\n");
@@ -1683,7 +1679,7 @@ public class MapperProcessorTest {
 
         write(childSrc.resolve("ChildMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class User { public String name; public User(String name) { this.name = name; } }\n" +
                         "@CompiledMapper public interface ChildMapper extends ParentFactory { ParentDto map(User source); }\n");
         StandardJavaFileManager childFiles = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
@@ -1716,7 +1712,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("MethodCreatorOverrideMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class User { public String name; public User(String name) { this.name = name; } }\n" +
                         "abstract class View { public String name; }\n" +
                         "class GlobalView extends View { public GlobalView() {} }\n" +
@@ -1760,7 +1756,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("MethodCreatorFactoryMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class User { public String name; public User(String name) { this.name = name; } }\n" +
                         "abstract class View { public String name; }\n" +
                         "class ViewImpl extends View { private String marker; public ViewImpl() { this.marker = \"factory\"; } }\n" +
@@ -1800,7 +1796,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadCreatorMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class User { public String name; }\n" +
                         "abstract class View { public String name; }\n" +
                         "class ViewImplA extends View { public ViewImplA() {} }\n" +
@@ -1832,7 +1828,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadMapperContracts.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source { public String name; } class Target { public Target() {} public String name; }\n" +
                         "interface ParentMapper { Target inherited(Source s); }\n" +
                         "@CompiledMapper interface GenericMapper<T> { Target map(Source s); }\n" +
@@ -1863,7 +1859,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("MisplacedMapperAnnotations.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source {} class Target {} class TargetImpl extends Target { public TargetImpl() {} }\n" +
                         "@MappingCreator(targetType=Target.class, implementation=TargetImpl.class) class CreatorOnClass {}\n" +
                         "interface Plain {\n" +
@@ -1897,7 +1893,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadMethodCreatorMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source {} class Target {} class TargetImpl extends Target { public TargetImpl() {} }\n" +
                         "@CompiledMapper interface BadMethodCreatorMapper {\n" +
                         "  Target map(Source source);\n" +
@@ -1926,7 +1922,7 @@ public class MapperProcessorTest {
         Files.createDirectories(out);
         write(src.resolve("BadUnusedMethodCreatorMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "class Source {} class Target {} class TargetImpl extends Target { public TargetImpl() {} }\n" +
                         "@CompiledMapper interface BadUnusedMethodCreatorMapper {\n" +
                         "  @MappingCreator(targetType=Target.class) void update(Target target, Source source);\n" +
@@ -1960,7 +1956,7 @@ public class MapperProcessorTest {
                 "package com.alibaba.fastjson2.annotation; public @interface JSONField { String name() default \"\"; String[] alternateNames() default {}; }\n");
         write(src.resolve("testcase/ThirdPartyMapper.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*;\n" +
                         "import com.fasterxml.jackson.annotation.JsonProperty;\n" +
                         "import com.alibaba.fastjson2.annotation.JSONField;\n" +
                         "import java.util.*;\n" +

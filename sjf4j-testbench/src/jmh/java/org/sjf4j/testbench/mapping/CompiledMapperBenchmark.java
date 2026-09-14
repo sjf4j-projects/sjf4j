@@ -218,27 +218,27 @@ public class CompiledMapperBenchmark {
         public Boolean active;
     }
 
-    @org.sjf4j.annotation.mapper.CompiledMapper
+    @org.sjf4j.annotation.mapping.CompiledMapper
     public interface Sjf4jMapper {
-        @org.sjf4j.annotation.mapper.Mapping(target = "surname", source = "lastName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "fullName", sources = {"firstName", "lastName"}, compute = "(first, last) -> first + \" \" + last")
-        @org.sjf4j.annotation.mapper.Mapping(target = "age", ignore = true)
-        @org.sjf4j.annotation.mapper.Mapping(target = "ignored", ignore = true)
+        @org.sjf4j.annotation.mapping.Mapping(target = "surname", source = "lastName")
+        @org.sjf4j.annotation.mapping.Mapping(target = "fullName", sources = {"firstName", "lastName"}, compute = "(first, last) -> first + \" \" + last")
+        @org.sjf4j.annotation.mapping.Mapping(target = "age", ignore = true)
+        @org.sjf4j.annotation.mapping.Mapping(target = "ignored", ignore = true)
         FlatTarget flat(FlatSource source);
 
-        @org.sjf4j.annotation.mapper.Mapping(target = "surname", source = "lastName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "fullName", sources = {"firstName", "lastName"}, compute = "(first, last) -> first + \" \" + last")
-        @org.sjf4j.annotation.mapper.Mapping(target = "age", ignore = true)
-        @org.sjf4j.annotation.mapper.Mapping(target = "ignored", ignore = true)
+        @org.sjf4j.annotation.mapping.Mapping(target = "surname", source = "lastName")
+        @org.sjf4j.annotation.mapping.Mapping(target = "fullName", sources = {"firstName", "lastName"}, compute = "(first, last) -> first + \" \" + last")
+        @org.sjf4j.annotation.mapping.Mapping(target = "age", ignore = true)
+        @org.sjf4j.annotation.mapping.Mapping(target = "ignored", ignore = true)
         void update(FlatTarget target, FlatSource source);
 
         List<FlatTarget> flatList(List<FlatSource> source);
 
-        @org.sjf4j.annotation.mapper.Mapping(target = "firstName", source = "profile:firstName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "lastName", source = "profile:$.lastName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "age", sources = {"profile:age"}, compute = "(age) -> age == null ? 0 : age")
-        @org.sjf4j.annotation.mapper.Mapping(target = "accountType", source = "account:type")
-        @org.sjf4j.annotation.mapper.Mapping(target = "active", source = "account:active")
+        @org.sjf4j.annotation.mapping.Mapping(target = "firstName", source = "profile:firstName")
+        @org.sjf4j.annotation.mapping.Mapping(target = "lastName", source = "profile:$.lastName")
+        @org.sjf4j.annotation.mapping.Mapping(target = "age", sources = {"profile:age"}, compute = "(age) -> age == null ? 0 : age")
+        @org.sjf4j.annotation.mapping.Mapping(target = "accountType", source = "account:type")
+        @org.sjf4j.annotation.mapping.Mapping(target = "active", source = "account:active")
         NestedTarget multi(Profile profile, Account account);
     }
 

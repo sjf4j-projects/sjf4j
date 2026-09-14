@@ -1,8 +1,5 @@
 package org.sjf4j.processor;
 
-import org.sjf4j.annotation.mapper.ArrayPolicy;
-import org.sjf4j.annotation.mapper.ObjectPolicy;
-
 import org.junit.jupiter.api.Test;
 
 import javax.tools.Diagnostic;
@@ -33,7 +30,7 @@ public class MapperAnnotationContractTest {
         Files.createDirectories(out);
         write(src.resolve("BadContracts.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "import org.sjf4j.annotation.mapping.*; import java.util.*;\n" +
                         "class Source { public String name; public String other; public Child child; }\n" +
                         "class Child { public String name; } class ChildDto { public String name; public ChildDto() {} }\n" +
                         "class Target { public String name; public List<String> list; public Map<String,String> map; public ChildDto child; public Target() {} }\n" +

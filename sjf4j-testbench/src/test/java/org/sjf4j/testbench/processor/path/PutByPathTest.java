@@ -3,8 +3,8 @@ package org.sjf4j.testbench.processor.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.navigator.CompiledNavigator;
-import org.sjf4j.annotation.navigator.PutByPath;
+import org.sjf4j.annotation.path.CompiledNavigator;
+import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 

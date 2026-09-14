@@ -1,9 +1,9 @@
 package org.sjf4j.testbench.processor.mapper.jdbc;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
-import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.MappingCreator;
+import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapping.Mapping;
+import org.sjf4j.annotation.mapping.MappingCreator;
 import org.sjf4j.CompiledInstances;
 
 import java.sql.ResultSet;

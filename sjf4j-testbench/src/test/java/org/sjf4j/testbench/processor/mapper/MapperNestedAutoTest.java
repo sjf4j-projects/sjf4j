@@ -1,8 +1,8 @@
 package org.sjf4j.testbench.processor.mapper;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.MappingOptions;
+import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.CompiledInstances;
 
 import java.util.List;

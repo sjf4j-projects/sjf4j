@@ -1,11 +1,11 @@
 package org.sjf4j.testbench.processor.mapper.jdbc;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
-import org.sjf4j.annotation.mapper.jdbc.ColumnProjectionPolicy;
-import org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions;
-import org.sjf4j.annotation.mapper.jdbc.SingleResultPolicy;
-import org.sjf4j.annotation.mapper.Mapping;
+import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapping.jdbc.ColumnProjectionPolicy;
+import org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions;
+import org.sjf4j.annotation.mapping.jdbc.SingleResultPolicy;
+import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;

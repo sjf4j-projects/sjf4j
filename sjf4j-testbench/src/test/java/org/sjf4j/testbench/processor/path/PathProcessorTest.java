@@ -1,8 +1,8 @@
 package org.sjf4j.testbench.processor.path;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.navigator.CompiledNavigator;
-import org.sjf4j.annotation.navigator.GetByPath;
+import org.sjf4j.annotation.path.CompiledNavigator;
+import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 
@@ -33,7 +33,7 @@ public class PathProcessorTest {
 
         JsonException notCompiled = assertThrows(JsonException.class, () -> CompiledInstances.of(NotCompiled.class));
         assertTrue(notCompiled.getMessage().contains("Cannot find generated SJF4J implementation"), notCompiled.getMessage());
-        assertTrue(notCompiled.getMessage().contains("@CompiledNavigator or @CompiledMapper"), notCompiled.getMessage());
+        assertTrue(notCompiled.getMessage().contains("@CompiledXxx"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains(NotCompiled.class.getName() + "_Impl"), notCompiled.getMessage());
     }
 

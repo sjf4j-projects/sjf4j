@@ -131,6 +131,16 @@ public class NodeBindingBenchmark {
     }
 
     @Benchmark
+    public Object handwritten_fullGraph_read() {
+        return readUserGraph(userGraphNode);
+    }
+
+    @Benchmark
+    public Object handwritten_fullGraph_write() {
+        return writeUserGraph(userGraph);
+    }
+
+    @Benchmark
     public Object nodeBinding_users_nestedCollection_read() {
         return binding.readNode(usersNode, Users.class);
     }
@@ -203,5 +213,220 @@ public class NodeBindingBenchmark {
                                 "name", "Friend " + index, "close", true),
                         JsonObject.of("id", 3000L + index, "since", 1_610_000_000_000L + index,
                                 "name", "Colleague " + index, "close", false)));
+    }
+
+    private static UserGraph readUserGraph(JsonObject node) {
+        UserGraph graph = new UserGraph();
+        graph.setOwner(readUser(node.getJsonObject("owner")));
+        graph.setUsers(readUsers(node.getJsonObject("users")));
+        graph.setEvents(readEvents(node.getJsonArray("events")));
+        graph.setLabels(readLabels(node.getJsonObject("labels")));
+        graph.setPrimaryLabel(StringValue.fromRaw(node.getString("primaryLabel")));
+        return graph;
+    }
+
+    private static Users readUsers(JsonObject node) {
+        Users users = new Users();
+        JsonArray userNodes = node.getJsonArray("users");
+        List<User> userList = new ArrayList<>(userNodes.size());
+        for (int i = 0; i < userNodes.size(); i++) {
+            userList.add(readUser(userNodes.getJsonObject(i)));
+        }
+        users.setUsers(userList);
+        users.setTotal(node.getInt("total"));
+        users.setPage(node.getInt("page"));
+        users.setGeneratedAt(node.getLong("generatedAt"));
+        return users;
+    }
+
+    private static User readUser(JsonObject node) {
+        User user = new User();
+        user.setId(node.getLong("id"));
+        user.setCreatedAt(node.getLong("createdAt"));
+        user.setUpdatedAt(node.getLong("updatedAt"));
+        user.setReputation(node.getLong("reputation"));
+        user.setLoginCount(node.getInt("loginCount"));
+        user.setAge(node.getInt("age"));
+        user.setActive(node.getBoolean("active"));
+        user.setVerified(node.getBoolean("verified"));
+        user.setAdmin(node.getBoolean("admin"));
+        user.setSuspended(node.getBoolean("suspended"));
+        user.setScore(node.getDouble("score"));
+        user.setLatitude(node.getDouble("latitude"));
+        user.setLongitude(node.getDouble("longitude"));
+        user.setUsername(node.getString("username"));
+        user.setEmail(node.getString("email"));
+        user.setDisplayName(node.getString("displayName"));
+        user.setPasswordHash(node.getString("passwordHash"));
+        user.setBio(node.getString("bio"));
+        user.setWebsite(node.getString("website"));
+        user.setDepartment(node.getString("department"));
+        user.setAddress(readAddress(node.getJsonObject("address")));
+
+        JsonArray tagNodes = node.getJsonArray("tags");
+        List<String> tags = new ArrayList<>(tagNodes.size());
+        for (int i = 0; i < tagNodes.size(); i++) {
+            tags.add(tagNodes.getString(i));
+        }
+        user.setTags(tags);
+
+        JsonArray friendNodes = node.getJsonArray("friends");
+        List<Friend> friends = new ArrayList<>(friendNodes.size());
+        for (int i = 0; i < friendNodes.size(); i++) {
+            friends.add(readFriend(friendNodes.getJsonObject(i)));
+        }
+        user.setFriends(friends);
+        return user;
+    }
+
+    private static Address readAddress(JsonObject node) {
+        return new Address(node.getString("street"), node.getString("city"), node.getString("state"),
+                node.getString("zip"), node.getString("country"));
+    }
+
+    private static Friend readFriend(JsonObject node) {
+        return new Friend(node.getLong("id"), node.getString("name"), node.getLong("since"),
+                node.getBoolean("close"));
+    }
+
+    private static List<UserEvent> readEvents(JsonArray nodes) {
+        List<UserEvent> events = new ArrayList<>(nodes.size());
+        for (int i = 0; i < nodes.size(); i++) {
+            events.add(readEvent(nodes.getJsonObject(i)));
+        }
+        return events;
+    }
+
+    private static UserEvent readEvent(JsonObject node) {
+        String type = node.getString("type");
+        if ("login".equals(type)) {
+            LoginEvent event = new LoginEvent();
+            event.setType(type);
+            event.setUserId(node.getLong("userId"));
+            event.setOccurredAt(node.getLong("occurredAt"));
+            event.setIpAddress(node.getString("ipAddress"));
+            event.setDevice(node.getString("device"));
+            return event;
+        }
+        if ("comment".equals(type)) {
+            CommentEvent event = new CommentEvent();
+            event.setType(type);
+            event.setUserId(node.getLong("userId"));
+            event.setOccurredAt(node.getLong("occurredAt"));
+            event.setCommentId(node.getLong("commentId"));
+            event.setBody(node.getString("body"));
+            event.setReplyTo(node.getLong("replyTo"));
+            return event;
+        }
+        throw new IllegalArgumentException("Unknown user event type: " + type);
+    }
+
+    private static Map<String, StringValue> readLabels(JsonObject node) {
+        Map<String, StringValue> labels = new LinkedHashMap<>(node.size());
+        for (String key : node.keySet()) {
+            labels.put(key, StringValue.fromRaw(node.getString(key)));
+        }
+        return labels;
+    }
+
+    private static JsonObject writeUserGraph(UserGraph graph) {
+        JsonObject node = new JsonObject();
+        node.put("owner", writeUser(graph.getOwner()));
+        node.put("users", writeUsers(graph.getUsers()));
+        node.put("events", writeEvents(graph.getEvents()));
+        node.put("labels", writeLabels(graph.getLabels()));
+        node.put("primaryLabel", graph.getPrimaryLabel().toRaw());
+        return node;
+    }
+
+    private static JsonObject writeUsers(Users users) {
+        JsonObject node = new JsonObject();
+        JsonArray userNodes = new JsonArray();
+        for (User user : users.getUsers()) {
+            userNodes.add(writeUser(user));
+        }
+        node.put("users", userNodes);
+        node.put("total", users.getTotal());
+        node.put("page", users.getPage());
+        node.put("generatedAt", users.getGeneratedAt());
+        return node;
+    }
+
+    private static JsonObject writeUser(User user) {
+        JsonObject node = new JsonObject();
+        node.put("id", user.getId());
+        node.put("createdAt", user.getCreatedAt());
+        node.put("updatedAt", user.getUpdatedAt());
+        node.put("reputation", user.getReputation());
+        node.put("loginCount", user.getLoginCount());
+        node.put("age", user.getAge());
+        node.put("active", user.isActive());
+        node.put("verified", user.isVerified());
+        node.put("admin", user.isAdmin());
+        node.put("suspended", user.isSuspended());
+        node.put("score", user.getScore());
+        node.put("latitude", user.getLatitude());
+        node.put("longitude", user.getLongitude());
+        node.put("username", user.getUsername());
+        node.put("email", user.getEmail());
+        node.put("displayName", user.getDisplayName());
+        node.put("passwordHash", user.getPasswordHash());
+        node.put("bio", user.getBio());
+        node.put("website", user.getWebsite());
+        node.put("department", user.getDepartment());
+        node.put("address", writeAddress(user.getAddress()));
+
+        JsonArray tags = new JsonArray();
+        for (String tag : user.getTags()) {
+            tags.add(tag);
+        }
+        node.put("tags", tags);
+
+        JsonArray friends = new JsonArray();
+        for (Friend friend : user.getFriends()) {
+            friends.add(writeFriend(friend));
+        }
+        node.put("friends", friends);
+        return node;
+    }
+
+    private static JsonObject writeAddress(Address address) {
+        return JsonObject.of("street", address.getStreet(), "city", address.getCity(), "state", address.getState(),
+                "zip", address.getZip(), "country", address.getCountry());
+    }
+
+    private static JsonObject writeFriend(Friend friend) {
+        return JsonObject.of("id", friend.getId(), "since", friend.getSince(), "name", friend.getName(),
+                "close", friend.isClose());
+    }
+
+    private static JsonArray writeEvents(List<UserEvent> events) {
+        JsonArray nodes = new JsonArray();
+        for (UserEvent event : events) {
+            nodes.add(writeEvent(event));
+        }
+        return nodes;
+    }
+
+    private static JsonObject writeEvent(UserEvent event) {
+        if (event instanceof LoginEvent login) {
+            return JsonObject.of("type", login.getType(), "userId", login.getUserId(),
+                    "occurredAt", login.getOccurredAt(), "ipAddress", login.getIpAddress(),
+                    "device", login.getDevice());
+        }
+        if (event instanceof CommentEvent comment) {
+            return JsonObject.of("type", comment.getType(), "userId", comment.getUserId(),
+                    "occurredAt", comment.getOccurredAt(), "commentId", comment.getCommentId(),
+                    "body", comment.getBody(), "replyTo", comment.getReplyTo());
+        }
+        throw new IllegalArgumentException("Unknown user event class: " + event.getClass().getName());
+    }
+
+    private static JsonObject writeLabels(Map<String, StringValue> labels) {
+        JsonObject node = new JsonObject();
+        for (Map.Entry<String, StringValue> label : labels.entrySet()) {
+            node.put(label.getKey(), label.getValue().toRaw());
+        }
+        return node;
     }
 }

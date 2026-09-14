@@ -1,12 +1,12 @@
 package org.sjf4j.testbench.processor.mapper;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.MappingOptions;
-import org.sjf4j.annotation.mapper.NullValuePolicy;
-import org.sjf4j.annotation.mapper.ArrayPolicy;
-import org.sjf4j.annotation.mapper.ObjectPolicy;
+import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.Mapping;
+import org.sjf4j.annotation.mapping.MappingOptions;
+import org.sjf4j.annotation.mapping.NullValuePolicy;
+import org.sjf4j.annotation.mapping.ArrayPolicy;
+import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.CompiledInstances;
 
 import java.util.*;

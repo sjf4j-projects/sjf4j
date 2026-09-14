@@ -1,11 +1,11 @@
 package org.sjf4j.testbench.processor.mapper;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.EnsureMapping;
-import org.sjf4j.annotation.mapper.Mapping;
-import org.sjf4j.annotation.mapper.MappingIfParentPresent;
-import org.sjf4j.annotation.mapper.MappingOptions;
+import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.EnsureMapping;
+import org.sjf4j.annotation.mapping.Mapping;
+import org.sjf4j.annotation.mapping.MappingIfParentPresent;
+import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.CompiledInstances;
 
 import java.util.ArrayList;

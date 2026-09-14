@@ -1,8 +1,8 @@
 package org.sjf4j.testbench.processor.path;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.navigator.CompiledNavigator;
-import org.sjf4j.annotation.navigator.FindByPath;
+import org.sjf4j.annotation.path.CompiledNavigator;
+import org.sjf4j.annotation.path.FindByPath;
 import org.sjf4j.CompiledInstances;
 
 import java.util.LinkedHashMap;

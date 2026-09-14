@@ -2,7 +2,7 @@ package org.sjf4j.testbench.processor.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.mapper.CompiledMapper;
+import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.RawToValue;

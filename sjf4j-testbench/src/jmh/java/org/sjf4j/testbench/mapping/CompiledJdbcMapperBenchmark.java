@@ -13,7 +13,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.CompiledInstances;
 import org.apache.ibatis.executor.resultset.DefaultResultSetHandler;
 import org.apache.ibatis.builder.StaticSqlSource;

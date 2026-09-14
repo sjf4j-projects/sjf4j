@@ -1,13 +1,13 @@
 package org.sjf4j.processor;
 
-import org.sjf4j.annotation.navigator.CompiledNavigator;
-import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.mapper.MappingOptions;
-import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
-import org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions;
-import org.sjf4j.processor.navigator.NavigatorGenerator;
-import org.sjf4j.processor.mapper.MapperGenerator;
-import org.sjf4j.processor.mapper.JdbcMapperGenerator;
+import org.sjf4j.annotation.path.CompiledNavigator;
+import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.MappingOptions;
+import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions;
+import org.sjf4j.processor.path.NavigatorGenerator;
+import org.sjf4j.processor.mapping.MapperGenerator;
+import org.sjf4j.processor.mapping.JdbcMapperGenerator;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -36,24 +36,24 @@ import java.util.Set;
  * the same compilation.</p>
  */
 @SupportedAnnotationTypes({
-        "org.sjf4j.annotation.navigator.CompiledNavigator",
-        "org.sjf4j.annotation.navigator.GetByPath",
-        "org.sjf4j.annotation.navigator.PutByPath",
-        "org.sjf4j.annotation.navigator.PutIfParentPresentByPath",
-        "org.sjf4j.annotation.navigator.EnsurePutByPath",
-        "org.sjf4j.annotation.navigator.EnsurePutIfAbsentByPath",
-        "org.sjf4j.annotation.navigator.FindByPath",
+         "org.sjf4j.annotation.path.CompiledNavigator",
+         "org.sjf4j.annotation.path.GetByPath",
+         "org.sjf4j.annotation.path.PutByPath",
+         "org.sjf4j.annotation.path.PutIfParentPresentByPath",
+         "org.sjf4j.annotation.path.EnsurePutByPath",
+         "org.sjf4j.annotation.path.EnsurePutIfAbsentByPath",
+         "org.sjf4j.annotation.path.FindByPath",
 
-        "org.sjf4j.annotation.mapper.CompiledMapper",
-        "org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper",
-        "org.sjf4j.annotation.mapper.Mapping",
-        "org.sjf4j.annotation.mapper.Mappings",
-        "org.sjf4j.annotation.mapper.MappingOptions",
-        "org.sjf4j.annotation.mapper.jdbc.JdbcMappingOptions",
-        "org.sjf4j.annotation.mapper.MappingCreator",
-        "org.sjf4j.annotation.mapper.MappingCreators",
-        "org.sjf4j.annotation.mapper.MappingIfParentPresent",
-        "org.sjf4j.annotation.mapper.EnsureMapping"
+         "org.sjf4j.annotation.mapping.CompiledMapper",
+         "org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper",
+         "org.sjf4j.annotation.mapping.Mapping",
+         "org.sjf4j.annotation.mapping.Mappings",
+         "org.sjf4j.annotation.mapping.MappingOptions",
+         "org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions",
+         "org.sjf4j.annotation.mapping.MappingCreator",
+         "org.sjf4j.annotation.mapping.MappingCreators",
+         "org.sjf4j.annotation.mapping.MappingIfParentPresent",
+         "org.sjf4j.annotation.mapping.EnsureMapping"
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
@@ -133,8 +133,8 @@ public final class Sjf4jProcessor extends AbstractProcessor {
             String annoName = anno.getQualifiedName().toString();
             if (ANNO_COMPILED_NAVIGATOR.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName) || ANNO_COMPILED_JDBC_MAPPER.equals(annoName)) continue;
             for (Element element : roundEnv.getElementsAnnotatedWith(anno)) {
-                if ("org.sjf4j.annotation.mapper.MappingCreator".equals(annoName)
-                        || "org.sjf4j.annotation.mapper.MappingCreators".equals(annoName)) {
+                if ("org.sjf4j.annotation.mapping.MappingCreator".equals(annoName)
+                        || "org.sjf4j.annotation.mapping.MappingCreators".equals(annoName)) {
                     if (element.getKind() == ElementKind.INTERFACE) {
                         continue;
                     }
@@ -154,7 +154,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                     context.error(element, "@" + anno.getSimpleName() + " can be applied only to methods");
                 } else {
                     Element owner = element.getEnclosingElement();
-                    if (annoName.startsWith("org.sjf4j.annotation.mapper.")) {
+                    if (annoName.startsWith("org.sjf4j.annotation.mapping.")) {
                         if (MappingOptions.class.getName().equals(annoName)
                                 && owner.getKind() == ElementKind.INTERFACE
                                 && owner.getAnnotation(CompiledJdbcMapper.class) != null) {
@@ -170,7 +170,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                         } else if (owner.getKind() != ElementKind.INTERFACE || (owner.getAnnotation(CompiledMapper.class) == null && owner.getAnnotation(CompiledJdbcMapper.class) == null)) {
                             context.error(element, "@" + anno + " method must be declared in an @CompiledMapper interface");
                         }
-                    } else if (annoName.startsWith("org.sjf4j.annotation.navigator.")) {
+                    } else if (annoName.startsWith("org.sjf4j.annotation.path.")) {
                         if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledNavigator.class) == null) {
                             context.error(element, "@" + anno + " method must be declared in an @CompiledNavigator interface");
                         }

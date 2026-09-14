@@ -2,7 +2,7 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.mapper.jdbc.CompiledJdbcMapper;
+import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.CompiledInstances;
 import org.springframework.jdbc.core.JdbcTemplate;
 
