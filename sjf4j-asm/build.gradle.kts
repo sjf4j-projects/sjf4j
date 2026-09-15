@@ -71,8 +71,8 @@ tasks.withType<Javadoc> {
 //    coordinates(group.toString(), name, version.toString())
 //
 //    pom {
-//        name.set("SJF4J")
-//        description.set("SJF4J bytecode acceleration module — ASM-based compiled-path compiler for SJF4J")
+//        name.set("SJF4J Asm")
+//        description.set("ASM-based support for SJF4J")
 //        inceptionYear.set("2026")
 //        url.set("https://sjf4j.org")
 //        licenses {

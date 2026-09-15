@@ -70,8 +70,8 @@ mavenPublishing {
     coordinates(group.toString(), name, version.toString())
 
     pom {
-        name.set("SJF4J")
-        description.set("SJF4J annotation processor module — compile-time generators for paths and mappers")
+        name.set("SJF4J Processor")
+        description.set("Annotation processor for SJF4J")
         inceptionYear.set("2026")
         url.set("https://sjf4j.org")
         licenses {

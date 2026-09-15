@@ -167,8 +167,8 @@ mavenPublishing {
     coordinates(group.toString(), name, version.toString())
 
     pom {
-        name.set("SJF4J")
-        description.set("SJF4J JSON Schema module — schema parsing, evaluation, format validation")
+        name.set("SJF4J Schema")
+        description.set("JSON Schema validation for SJF4")
         inceptionYear.set("2026")
         url.set("https://sjf4j.org")
         licenses {

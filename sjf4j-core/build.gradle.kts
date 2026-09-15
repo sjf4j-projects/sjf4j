@@ -73,8 +73,8 @@ mavenPublishing {
     coordinates(group.toString(), name, version.toString())
 
     pom {
-        name.set("SJF4J")
-        description.set("Simple JSON Facade for Java")
+        name.set("SJF4J Core")
+        description.set("Core JSON facade and structural processing APIs for Java")
         inceptionYear.set("2025")
         url.set("https://sjf4j.org")
         licenses {
