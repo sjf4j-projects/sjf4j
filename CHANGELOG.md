@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
 
 ### Added
+- Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
 - Added JSON, YAML, and node binding interfaces plus a reusable `StringBuilderWriter`.
 - Added built-in `SimpleJsonBinding` and `SimplePropertiesBinding` implementations for JSON streaming and flattened `Properties` nodes.
 - Added `SimpleYamlBinding`, which reports a clear unsupported-operation error when SnakeYAML is unavailable.

@@ -27,6 +27,7 @@ dependencyResolutionManagement {
 }
 
 
+include("sjf4j")
 include("sjf4j-core")
 include("sjf4j-asm")
 include("sjf4j-schema")
