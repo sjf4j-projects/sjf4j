@@ -3,6 +3,7 @@ package org.sjf4j;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
+import org.sjf4j.node.external.ExternalNode;
 
 import java.util.List;
 import java.util.Map;
@@ -20,17 +21,21 @@ import java.util.Set;
 public enum NodeKind {
     /** Represents a null or void value. */
     VALUE_NULL,
+
     /** Represents a string value. */
     VALUE_STRING,
     VALUE_STRING_CHARACTER,
     VALUE_STRING_ENUM,
-    VALUE_STRING_FACADE,
+    VALUE_STRING_EXTERNAL,
+
     /** Represents a numeric value. */
     VALUE_NUMBER,
-    VALUE_NUMBER_FACADE,
+    VALUE_NUMBER_EXTERNAL,
+
     /** Represents a boolean value. */
     VALUE_BOOLEAN,
-    VALUE_BOOLEAN_FACADE,
+    VALUE_BOOLEAN_EXTERNAL,
+
     /** Represents a registered @NodeValue with custom codec. */
     VALUE_NODE_VALUE,
 
@@ -42,7 +47,7 @@ public enum NodeKind {
     OBJECT_JOJO,
     /** Represents a Plain Old Java Object (POJO). */
     OBJECT_POJO,
-    OBJECT_FACADE,
+    OBJECT_EXTERNAL,
 
     /** Represents a {@link List} collection. */
     ARRAY_LIST,
@@ -54,14 +59,15 @@ public enum NodeKind {
     ARRAY_ARRAY,
     /** Represents a {@link Set}. */
     ARRAY_SET,
-    ARRAY_FACADE,
+    ARRAY_EXTERNAL,
 
     /** Represents an unknown node type. */
     UNKNOWN;
 
+    @SuppressWarnings("unchecked")
     public static NodeKind of(Object node) {
         if (node == null) return VALUE_NULL;
-        Class<? extends Object> clazz = node.getClass();
+        Class<?> clazz = node.getClass();
         NodeKind kind = plainOf(clazz);
         if (kind != NodeKind.UNKNOWN) return kind;
 
@@ -70,6 +76,8 @@ public enum NodeKind {
             return NodeKind.VALUE_NODE_VALUE;
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
+        } else if (ti.externalNode != null) {
+            return ((ExternalNode<Object>)ti.externalNode).nodeKind(node);
         } else if (ti.pojoInfo != null) {
             return NodeKind.OBJECT_POJO;
         }
@@ -80,7 +88,6 @@ public enum NodeKind {
 
         return NodeKind.UNKNOWN;
     }
-
 
     public static NodeKind plainOf(Class<?> clazz) {
         Objects.requireNonNull(clazz);
@@ -125,16 +132,16 @@ public enum NodeKind {
     }
 
     public boolean isNumber() {
-        return this == VALUE_NUMBER || this == VALUE_NUMBER_FACADE;
+        return this == VALUE_NUMBER || this == VALUE_NUMBER_EXTERNAL;
     }
 
     public boolean isString() {
         return this == VALUE_STRING || this == VALUE_STRING_CHARACTER
-                || this == VALUE_STRING_ENUM || this == VALUE_STRING_FACADE;
+                || this == VALUE_STRING_ENUM || this == VALUE_STRING_EXTERNAL;
     }
 
     public boolean isBoolean() {
-        return this == VALUE_BOOLEAN || this == VALUE_BOOLEAN_FACADE;
+        return this == VALUE_BOOLEAN || this == VALUE_BOOLEAN_EXTERNAL;
     }
 
     public boolean isNull() {
@@ -149,13 +156,13 @@ public enum NodeKind {
     public boolean isObject() {
         return this == OBJECT_MAP || this == OBJECT_JSON_OBJECT
                 || this == OBJECT_JOJO || this == OBJECT_POJO
-                || this == OBJECT_FACADE;
+                || this == OBJECT_EXTERNAL;
     }
 
     public boolean isArray() {
         return this == ARRAY_LIST || this == ARRAY_JSON_ARRAY
                 || this == ARRAY_JAJO || this == ARRAY_ARRAY
-                || this == ARRAY_SET || this == ARRAY_FACADE;
+                || this == ARRAY_SET || this == ARRAY_EXTERNAL;
     }
 
     public boolean isContainer() {

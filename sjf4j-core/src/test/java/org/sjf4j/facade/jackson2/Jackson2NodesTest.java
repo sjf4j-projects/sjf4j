@@ -40,16 +40,16 @@ class Jackson2NodesTest {
         assertFalse(Jackson2Nodes.isNode(String.class));
 
         assertEquals(NodeKind.VALUE_NULL, Jackson2Nodes.kindOf(JsonNodeFactory.instance.nullNode()));
-        assertEquals(NodeKind.VALUE_STRING_FACADE, Jackson2Nodes.kindOf(TextNode.valueOf("x")));
-        assertEquals(NodeKind.VALUE_NUMBER_FACADE, Jackson2Nodes.kindOf(JsonNodeFactory.instance.numberNode(1)));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, Jackson2Nodes.kindOf(BooleanNode.TRUE));
-        assertEquals(NodeKind.OBJECT_FACADE, Jackson2Nodes.kindOf(objectNode));
-        assertEquals(NodeKind.ARRAY_FACADE, Jackson2Nodes.kindOf(arrayNode));
-        assertEquals(NodeKind.OBJECT_FACADE, Jackson2Nodes.kindOf(ObjectNode.class));
-        assertEquals(NodeKind.ARRAY_FACADE, Jackson2Nodes.kindOf(ArrayNode.class));
-        assertEquals(NodeKind.VALUE_STRING_FACADE, Jackson2Nodes.kindOf(TextNode.class));
-        assertEquals(NodeKind.VALUE_NUMBER_FACADE, Jackson2Nodes.kindOf(JsonNodeFactory.instance.numberNode(1).getClass()));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, Jackson2Nodes.kindOf(BooleanNode.class));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, Jackson2Nodes.kindOf(TextNode.valueOf("x")));
+        assertEquals(NodeKind.VALUE_NUMBER_EXTERNAL, Jackson2Nodes.kindOf(JsonNodeFactory.instance.numberNode(1)));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, Jackson2Nodes.kindOf(BooleanNode.TRUE));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, Jackson2Nodes.kindOf(objectNode));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, Jackson2Nodes.kindOf(arrayNode));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, Jackson2Nodes.kindOf(ObjectNode.class));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, Jackson2Nodes.kindOf(ArrayNode.class));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, Jackson2Nodes.kindOf(TextNode.class));
+        assertEquals(NodeKind.VALUE_NUMBER_EXTERNAL, Jackson2Nodes.kindOf(JsonNodeFactory.instance.numberNode(1).getClass()));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, Jackson2Nodes.kindOf(BooleanNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson2Nodes.kindOf(JsonNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson2Nodes.kindOf(new BinaryNode(new byte[]{1})));
         assertThrows(JsonException.class, () -> Jackson2Nodes.kindOf(new POJONode("x")));

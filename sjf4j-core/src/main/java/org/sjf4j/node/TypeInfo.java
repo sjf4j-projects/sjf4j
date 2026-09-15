@@ -1,5 +1,7 @@
 package org.sjf4j.node;
 
+import org.sjf4j.node.external.ExternalNode;
+
 /**
  * Cached classification and metadata for a Java type.
  *
@@ -13,21 +15,26 @@ public class TypeInfo {
     public final OneOfInfo oneOfInfo;
     public final ContainerInfo containerInfo;
     public final ObjectInfo pojoInfo;
+    public final ExternalNode<?> externalNode;
 
     static final ValueCodecInfo[] EMPTY_VALUE_CODECS = new ValueCodecInfo[0];
-    static final TypeInfo NONE = new TypeInfo(Object.class, null, EMPTY_VALUE_CODECS, null, null, null);
+    static final TypeInfo NONE = new TypeInfo(Object.class, null, EMPTY_VALUE_CODECS,
+            null, null, null, null);
 
     /**
-     * Creates type metadata for the supplied classification.
+     * Creates type metadata for the supplied classification, including an
+     * external node classifier when applicable.
      */
     public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, ValueCodecInfo[] namedValueCodecs,
-                    OneOfInfo oneOfInfo, ContainerInfo containerInfo, ObjectInfo pojoInfo) {
+                    OneOfInfo oneOfInfo, ContainerInfo containerInfo, ObjectInfo pojoInfo,
+                    ExternalNode<?> externalNode) {
         this.clazz = clazz;
         this.valueCodecInfo = valueCodecInfo;
         this.namedValueCodecs = namedValueCodecs == null ? EMPTY_VALUE_CODECS : namedValueCodecs;
         this.oneOfInfo = oneOfInfo;
         this.containerInfo = containerInfo;
         this.pojoInfo = pojoInfo;
+        this.externalNode = externalNode;
     }
 
     public boolean isNone() {

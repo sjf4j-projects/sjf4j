@@ -55,12 +55,12 @@ public final class GsonNodes {
         if (jsonNode.isJsonNull()) return NodeKind.VALUE_NULL;
         if (jsonNode.isJsonPrimitive()) {
             JsonPrimitive jp = jsonNode.getAsJsonPrimitive();
-            if (jp.isString()) return NodeKind.VALUE_STRING_FACADE;
-            if (jp.isNumber()) return NodeKind.VALUE_NUMBER_FACADE;
-            if (jp.isBoolean()) return NodeKind.VALUE_BOOLEAN_FACADE;
+            if (jp.isString()) return NodeKind.VALUE_STRING_EXTERNAL;
+            if (jp.isNumber()) return NodeKind.VALUE_NUMBER_EXTERNAL;
+            if (jp.isBoolean()) return NodeKind.VALUE_BOOLEAN_EXTERNAL;
         }
-        if (jsonNode.isJsonObject()) return NodeKind.OBJECT_FACADE;
-        if (jsonNode.isJsonArray()) return NodeKind.ARRAY_FACADE;
+        if (jsonNode.isJsonObject()) return NodeKind.OBJECT_EXTERNAL;
+        if (jsonNode.isJsonArray()) return NodeKind.ARRAY_EXTERNAL;
         return NodeKind.UNKNOWN;
     }
 
@@ -69,10 +69,10 @@ public final class GsonNodes {
      */
     public static NodeKind kindOf(Class<?> clazz) {
         if (JsonObject.class.isAssignableFrom(clazz)) {
-            return NodeKind.OBJECT_FACADE;
+            return NodeKind.OBJECT_EXTERNAL;
         }
         if (JsonArray.class.isAssignableFrom(clazz)) {
-            return NodeKind.ARRAY_FACADE;
+            return NodeKind.ARRAY_EXTERNAL;
         }
         if (JsonNull.class.isAssignableFrom(clazz)) {
             return NodeKind.VALUE_NULL;

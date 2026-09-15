@@ -53,20 +53,20 @@ class FacadeNodesTest {
         assertFalse(FacadeNodes.isNode("x"));
         assertFalse(FacadeNodes.isNode(String.class));
 
-        assertEquals(NodeKind.OBJECT_FACADE, FacadeNodes.kindOf(jacksonObject));
-        assertEquals(NodeKind.ARRAY_FACADE, FacadeNodes.kindOf(jacksonArray));
-        assertEquals(NodeKind.VALUE_STRING_FACADE, FacadeNodes.kindOf(TextNode.valueOf("x")));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, FacadeNodes.kindOf(BooleanNode.TRUE));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(jacksonObject));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, FacadeNodes.kindOf(jacksonArray));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, FacadeNodes.kindOf(TextNode.valueOf("x")));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, FacadeNodes.kindOf(BooleanNode.TRUE));
         assertEquals(NodeKind.VALUE_NULL, FacadeNodes.kindOf(JsonNodeFactory.instance.nullNode()));
 
-        assertEquals(NodeKind.OBJECT_FACADE, FacadeNodes.kindOf(gsonObject));
-        assertEquals(NodeKind.ARRAY_FACADE, FacadeNodes.kindOf(gsonArray));
-        assertEquals(NodeKind.VALUE_STRING_FACADE, FacadeNodes.kindOf(new JsonPrimitive("x")));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, FacadeNodes.kindOf(new JsonPrimitive(true)));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(gsonObject));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, FacadeNodes.kindOf(gsonArray));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, FacadeNodes.kindOf(new JsonPrimitive("x")));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, FacadeNodes.kindOf(new JsonPrimitive(true)));
         assertEquals(NodeKind.VALUE_NULL, FacadeNodes.kindOf(JsonNull.INSTANCE));
 
-        assertEquals(NodeKind.OBJECT_FACADE, FacadeNodes.kindOf(jacksonObject.getClass()));
-        assertEquals(NodeKind.OBJECT_FACADE, FacadeNodes.kindOf(gsonObject.getClass()));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(jacksonObject.getClass()));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(gsonObject.getClass()));
         assertThrows(JsonException.class, () -> FacadeNodes.kindOf("x"));
         assertThrows(JsonException.class, () -> FacadeNodes.kindOf(String.class));
     }

@@ -44,16 +44,16 @@ class Jackson3NodesTest {
         assertFalse(Jackson3Nodes.isNode(String.class));
 
         assertEquals(NodeKind.VALUE_NULL, Jackson3Nodes.kindOf(JsonNodeFactory.instance.nullNode()));
-        assertEquals(NodeKind.VALUE_STRING_FACADE, Jackson3Nodes.kindOf(StringNode.valueOf("x")));
-        assertEquals(NodeKind.VALUE_NUMBER_FACADE, Jackson3Nodes.kindOf(JsonNodeFactory.instance.numberNode(1)));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, Jackson3Nodes.kindOf(BooleanNode.TRUE));
-        assertEquals(NodeKind.OBJECT_FACADE, Jackson3Nodes.kindOf(objectNode));
-        assertEquals(NodeKind.ARRAY_FACADE, Jackson3Nodes.kindOf(arrayNode));
-        assertEquals(NodeKind.OBJECT_FACADE, Jackson3Nodes.kindOf(ObjectNode.class));
-        assertEquals(NodeKind.ARRAY_FACADE, Jackson3Nodes.kindOf(ArrayNode.class));
-        assertEquals(NodeKind.VALUE_STRING_FACADE, Jackson3Nodes.kindOf(StringNode.class));
-        assertEquals(NodeKind.VALUE_NUMBER_FACADE, Jackson3Nodes.kindOf(JsonNodeFactory.instance.numberNode(1).getClass()));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, Jackson3Nodes.kindOf(BooleanNode.class));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, Jackson3Nodes.kindOf(StringNode.valueOf("x")));
+        assertEquals(NodeKind.VALUE_NUMBER_EXTERNAL, Jackson3Nodes.kindOf(JsonNodeFactory.instance.numberNode(1)));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, Jackson3Nodes.kindOf(BooleanNode.TRUE));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, Jackson3Nodes.kindOf(objectNode));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, Jackson3Nodes.kindOf(arrayNode));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, Jackson3Nodes.kindOf(ObjectNode.class));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, Jackson3Nodes.kindOf(ArrayNode.class));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, Jackson3Nodes.kindOf(StringNode.class));
+        assertEquals(NodeKind.VALUE_NUMBER_EXTERNAL, Jackson3Nodes.kindOf(JsonNodeFactory.instance.numberNode(1).getClass()));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, Jackson3Nodes.kindOf(BooleanNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson3Nodes.kindOf(JsonNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson3Nodes.kindOf(new BinaryNode(new byte[]{1})));
         assertThrows(JsonException.class, () -> Jackson3Nodes.kindOf(new POJONode("x")));
@@ -186,8 +186,8 @@ class Jackson3NodesTest {
         assertTrue(FacadeNodes.isJackson3NodesPresent());
         assertTrue(FacadeNodes.isNode(objectNode));
         assertTrue(FacadeNodes.isNode(objectNode.getClass()));
-        assertEquals(NodeKind.OBJECT_FACADE, FacadeNodes.kindOf(objectNode));
-        assertEquals(NodeKind.OBJECT_FACADE, FacadeNodes.kindOf(objectNode.getClass()));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(objectNode));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(objectNode.getClass()));
 
         assertEquals("han", FacadeNodes.toString(objectNode.get("name")));
         assertEquals("18", FacadeNodes.asString(objectNode.get("age")));

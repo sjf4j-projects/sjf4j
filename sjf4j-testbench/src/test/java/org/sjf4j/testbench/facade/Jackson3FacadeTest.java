@@ -755,10 +755,10 @@ class Jackson3FacadeTest {
 
         assertTrue(FacadeNodes.isJackson3NodesPresent());
         assertTrue(FacadeNodes.isNode(objectNode));
-        assertEquals(NodeKind.OBJECT_FACADE, FacadeNodes.kindOf(objectNode));
-        assertEquals(NodeKind.ARRAY_FACADE, FacadeNodes.kindOf(arrayNode));
-        assertEquals(NodeKind.VALUE_STRING_FACADE, FacadeNodes.kindOf(StringNode.valueOf("x")));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, FacadeNodes.kindOf(BooleanNode.TRUE));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(objectNode));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, FacadeNodes.kindOf(arrayNode));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, FacadeNodes.kindOf(StringNode.valueOf("x")));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, FacadeNodes.kindOf(BooleanNode.TRUE));
         assertEquals(NodeKind.VALUE_NULL, FacadeNodes.kindOf(JsonNodeFactory.instance.nullNode()));
         assertEquals("han", FacadeNodes.toString(objectNode.get("name")));
         assertEquals(18, FacadeNodes.toNumber(objectNode.get("age")).intValue());

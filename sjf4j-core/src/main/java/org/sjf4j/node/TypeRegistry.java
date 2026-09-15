@@ -7,6 +7,8 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.node.external.ExternalNode;
+import org.sjf4j.node.external.ExternalNodeRegistry;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -63,12 +65,22 @@ public final class TypeRegistry {
             return ti;
         }
 
+        ExternalNode<?> externalNode = ExternalNodeRegistry.resolve(clazz);
+        if (externalNode != null) {
+            if (mustPojo) {
+                throw new JsonException("class '" + clazz.getName() + "' is an external node, not a POJO");
+            }
+            ti = new TypeInfo(clazz, null, null, null, null, null, externalNode);
+            TYPE_INFO_CACHE.put(clazz, ti);
+            return ti;
+        }
+
         ValueCodecInfo vci = ReflectUtil.analyzeNodeValue(clazz);
         if (vci != null) {
             if (mustPojo) {
                 throw new JsonException("class '" + clazz.getName() + "' is annotated with @NodeValue, not a POJO");
             }
-            ti = new TypeInfo(clazz, vci, null, null, null, null);
+            ti = new TypeInfo(clazz, vci, null, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -76,7 +88,7 @@ public final class TypeRegistry {
         OneOf ann = clazz.getAnnotation(OneOf.class);
         if (ann != null) {
             OneOfInfo aoi = ReflectUtil.analyzeOneOf(clazz, ann);
-            ti = new TypeInfo(clazz, null, null, aoi, null, null);
+            ti = new TypeInfo(clazz, null, null, aoi, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -86,14 +98,14 @@ public final class TypeRegistry {
             if (mustPojo) {
                 throw new JsonException("class '" + clazz.getName() + "' is a container, not a POJO");
             }
-            ti = new TypeInfo(clazz, null, null, null, ci, null);
+            ti = new TypeInfo(clazz, null, null, null, ci, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
         ObjectInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
         if (pi != null) {
-            ti = new TypeInfo(clazz, null, null, null, null, pi);
+            ti = new TypeInfo(clazz, null, null, null, null, pi, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -171,10 +183,10 @@ public final class TypeRegistry {
         TypeInfo oldTi = TYPE_INFO_CACHE.get(valueClazz);
         if (oldTi == null || oldTi.isNone()) {
             TYPE_INFO_CACHE.put(valueClazz,
-                    new TypeInfo(valueClazz, vci, null, null, null, null));
+                    new TypeInfo(valueClazz, vci, null, null, null, null, null));
             return;
         }
-        if (oldTi.pojoInfo != null || oldTi.oneOfInfo != null || oldTi.containerInfo != null) {
+        if (oldTi.pojoInfo != null || oldTi.oneOfInfo != null || oldTi.containerInfo != null || oldTi.externalNode != null) {
             throw new JsonException("type '" + valueClazz.getName() +
                     "' is already classified as a non-ValueCodec node type");
         }
@@ -188,7 +200,7 @@ public final class TypeRegistry {
                         "' and default format ''");
             }
             return new TypeInfo(ti.clazz, vci, ti.namedValueCodecs,
-                    ti.oneOfInfo, ti.containerInfo, ti.pojoInfo);
+                    ti.oneOfInfo, ti.containerInfo, ti.pojoInfo, ti.externalNode);
         }
 
         for (int i = 0; i < ti.namedValueCodecs.length; i++) {
@@ -202,7 +214,7 @@ public final class TypeRegistry {
         System.arraycopy(ti.namedValueCodecs, 0, appended, 0, ti.namedValueCodecs.length);
         appended[ti.namedValueCodecs.length] = vci;
         return new TypeInfo(ti.clazz, ti.valueCodecInfo, appended,
-                ti.oneOfInfo, ti.containerInfo, ti.pojoInfo);
+                ti.oneOfInfo, ti.containerInfo, ti.pojoInfo, ti.externalNode);
     }
 
     /**

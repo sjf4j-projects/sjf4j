@@ -56,11 +56,11 @@ public final class Jackson2Nodes {
         if (!isNode(node)) throw _notNode(node);
         JsonNode jsonNode = (JsonNode) node;
         if (jsonNode.isNull() || jsonNode.isMissingNode()) return NodeKind.VALUE_NULL;
-        if (jsonNode.isTextual()) return NodeKind.VALUE_STRING_FACADE;
-        if (jsonNode.isNumber()) return NodeKind.VALUE_NUMBER_FACADE;
-        if (jsonNode.isBoolean()) return NodeKind.VALUE_BOOLEAN_FACADE;
-        if (jsonNode.isObject()) return NodeKind.OBJECT_FACADE;
-        if (jsonNode.isArray()) return NodeKind.ARRAY_FACADE;
+        if (jsonNode.isTextual()) return NodeKind.VALUE_STRING_EXTERNAL;
+        if (jsonNode.isNumber()) return NodeKind.VALUE_NUMBER_EXTERNAL;
+        if (jsonNode.isBoolean()) return NodeKind.VALUE_BOOLEAN_EXTERNAL;
+        if (jsonNode.isObject()) return NodeKind.OBJECT_EXTERNAL;
+        if (jsonNode.isArray()) return NodeKind.ARRAY_EXTERNAL;
         if (jsonNode.isPojo()) throw new JsonException("Jackson 2.x POJONode is not supported");
         return NodeKind.UNKNOWN;
     }
@@ -70,11 +70,11 @@ public final class Jackson2Nodes {
      */
     public static NodeKind kindOf(Class<?> clazz) {
         if (!isNode(clazz)) throw _notNode(clazz);
-        if (ObjectNode.class.isAssignableFrom(clazz)) return NodeKind.OBJECT_FACADE;
-        if (ArrayNode.class.isAssignableFrom(clazz)) return NodeKind.ARRAY_FACADE;
-        if (TextNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_STRING_FACADE;
-        if (NumericNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_NUMBER_FACADE;
-        if (BooleanNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_BOOLEAN_FACADE;
+        if (ObjectNode.class.isAssignableFrom(clazz)) return NodeKind.OBJECT_EXTERNAL;
+        if (ArrayNode.class.isAssignableFrom(clazz)) return NodeKind.ARRAY_EXTERNAL;
+        if (TextNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_STRING_EXTERNAL;
+        if (NumericNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_NUMBER_EXTERNAL;
+        if (BooleanNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_BOOLEAN_EXTERNAL;
         if (JsonNode.class == clazz || JsonNode.class.isAssignableFrom(clazz)) return NodeKind.UNKNOWN;
         return NodeKind.UNKNOWN;
     }

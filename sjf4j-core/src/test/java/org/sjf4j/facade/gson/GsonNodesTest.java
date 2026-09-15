@@ -34,16 +34,16 @@ class GsonNodesTest {
         assertFalse(GsonNodes.isNode("x"));
         assertFalse(GsonNodes.isNode(String.class));
 
-        assertEquals(NodeKind.VALUE_STRING_FACADE, GsonNodes.kindOf(new JsonPrimitive("x")));
-        assertEquals(NodeKind.VALUE_NUMBER_FACADE, GsonNodes.kindOf(new JsonPrimitive(1)));
-        assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, GsonNodes.kindOf(new JsonPrimitive(true)));
-        assertEquals(NodeKind.OBJECT_FACADE, GsonNodes.kindOf(objectNode));
-        assertEquals(NodeKind.ARRAY_FACADE, GsonNodes.kindOf(arrayNode));
+        assertEquals(NodeKind.VALUE_STRING_EXTERNAL, GsonNodes.kindOf(new JsonPrimitive("x")));
+        assertEquals(NodeKind.VALUE_NUMBER_EXTERNAL, GsonNodes.kindOf(new JsonPrimitive(1)));
+        assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, GsonNodes.kindOf(new JsonPrimitive(true)));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, GsonNodes.kindOf(objectNode));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, GsonNodes.kindOf(arrayNode));
         assertEquals(NodeKind.VALUE_NULL, GsonNodes.kindOf(JsonNull.INSTANCE));
         assertThrows(JsonException.class, () -> GsonNodes.kindOf("x"));
 
-        assertEquals(NodeKind.OBJECT_FACADE, GsonNodes.kindOf(JsonObject.class));
-        assertEquals(NodeKind.ARRAY_FACADE, GsonNodes.kindOf(JsonArray.class));
+        assertEquals(NodeKind.OBJECT_EXTERNAL, GsonNodes.kindOf(JsonObject.class));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, GsonNodes.kindOf(JsonArray.class));
         assertEquals(NodeKind.VALUE_NULL, GsonNodes.kindOf(JsonNull.class));
         assertEquals(NodeKind.UNKNOWN, GsonNodes.kindOf(String.class));
 

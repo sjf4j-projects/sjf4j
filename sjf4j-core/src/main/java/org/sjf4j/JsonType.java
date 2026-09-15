@@ -2,6 +2,7 @@ package org.sjf4j;
 
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.external.ExternalNode;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
 
@@ -39,25 +40,25 @@ public enum JsonType {
             case OBJECT_JSON_OBJECT:
             case OBJECT_JOJO:
             case OBJECT_POJO:
-            case OBJECT_FACADE:
+            case OBJECT_EXTERNAL:
                 return OBJECT;
             case ARRAY_LIST:
             case ARRAY_JSON_ARRAY:
             case ARRAY_JAJO:
             case ARRAY_ARRAY:
             case ARRAY_SET:
-            case ARRAY_FACADE:
+            case ARRAY_EXTERNAL:
                 return ARRAY;
             case VALUE_STRING:
             case VALUE_STRING_CHARACTER:
             case VALUE_STRING_ENUM:
-            case VALUE_STRING_FACADE:
+            case VALUE_STRING_EXTERNAL:
                 return STRING;
             case VALUE_NUMBER:
-            case VALUE_NUMBER_FACADE:
+            case VALUE_NUMBER_EXTERNAL:
                 return NUMBER;
             case VALUE_BOOLEAN:
-            case VALUE_BOOLEAN_FACADE:
+            case VALUE_BOOLEAN_EXTERNAL:
                 return BOOLEAN;
             case VALUE_NULL:
                 return NULL;
@@ -77,7 +78,7 @@ public enum JsonType {
      * Resolves the JSON-semantic type implied by a Java class.
      * <p>
      * This method checks plain container/value classes first, then SJF4J-managed
-     * types such as {@code @NodeValue}, {@code @OneOf}, POJO, JOJO, and facade
+     * types such as {@code @NodeValue}, {@code @OneOf}, POJO, JOJO, and external
      * node classes.
      */
     public static JsonType rawOf(Class<?> clazz) {
@@ -89,6 +90,8 @@ public enum JsonType {
             return of(NodeKind.plainOf(ti.valueCodecInfo.rawClazz));
         } else if (ti.oneOfInfo != null) {
             return JsonType.UNKNOWN;
+        } else if (ti.externalNode != null) {
+            return _externalRawOf(ti.externalNode, clazz);
         } else if (ti.pojoInfo != null) {
             return OBJECT;
         }
@@ -97,6 +100,11 @@ public enum JsonType {
             return of(FacadeNodes.kindOf(clazz));
         }
         return UNKNOWN;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static JsonType _externalRawOf(ExternalNode<?> externalNode, Class<?> clazz) {
+        return ((ExternalNode<Object>) externalNode).jsonTypeOfClass(clazz);
     }
 
     /**
