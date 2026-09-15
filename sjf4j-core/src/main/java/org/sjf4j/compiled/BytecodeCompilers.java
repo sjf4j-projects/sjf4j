@@ -55,7 +55,7 @@ final class BytecodeCompilers {
 
         String message = "CompiledPath requires an optional bytecode compiler for '" + path.toExpr() +
                 "' (rootType=" + Types.name(rootType) + ", valueType=" + Types.name(valueType) +
-                "). Add sjf4j-bytecode to the runtime classpath, or instantiate FallbackCompiledPath explicitly.";
+                "). Add sjf4j-asm to the runtime classpath, or instantiate FallbackCompiledPath explicitly.";
         throw new JsonException(message);
     }
 

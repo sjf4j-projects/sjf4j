@@ -34,7 +34,7 @@ import java.util.function.BiFunction;
  *
  * <p>Run:
  * <pre>{@code
- *   ./gradlew :sjf4j-bytecode:jmh
+ *   ./gradlew :sjf4j-asm:jmh
  * }</pre>
  */
 @BenchmarkMode(Mode.AverageTime)

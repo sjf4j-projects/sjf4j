@@ -18,7 +18,7 @@ configurations {
 }
 
 dependencies {
-    implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
+    implementation(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
 
     // test
     testImplementation(project.findProject(":sjf4j-schema")?.let { project(":sjf4j-schema") } ?: "org.sjf4j:sjf4j-schema:$version")
@@ -104,8 +104,8 @@ tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
 
 /////////////////////
 /// Incubator
-evaluationDependsOn(":sjf4j")
-val sjf4jIncubator = project(":sjf4j")
+evaluationDependsOn(":sjf4j-core")
+val sjf4jIncubator = project(":sjf4j-core")
     .extensions
     .getByType<SourceSetContainer>()
     .getByName("incubator")

@@ -25,7 +25,7 @@ configurations {
 }
 
 dependencies {
-    api(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
+    api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
     compileOnly("com.ibm.icu:icu4j:77.1")
 
     // test

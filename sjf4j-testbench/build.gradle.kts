@@ -20,7 +20,7 @@ configurations {
 
 
 dependencies {
-    implementation(project(":sjf4j"))
+    implementation(project(":sjf4j-core"))
     implementation(project(":sjf4j-asm"))
     implementation(project(":sjf4j-schema"))
 
@@ -79,7 +79,7 @@ tasks.test {
     )
 }
 
-val coverageProjects = listOf(":sjf4j", ":sjf4j-asm", ":sjf4j-schema")
+val coverageProjects = listOf(":sjf4j-core", ":sjf4j-asm", ":sjf4j-schema")
 evaluationDependsOn(":sjf4j-schema")
 val schemaOfficialLatestTest = project(":sjf4j-schema").tasks.named("officialLatestTest")
 val coverageExecFiles = files(
@@ -137,8 +137,8 @@ gradle.projectsEvaluated {
 
 /////////////////////
 /// Incubator
-evaluationDependsOn(":sjf4j")
-val sjf4jIncubator = project(":sjf4j")
+evaluationDependsOn(":sjf4j-core")
+val sjf4jIncubator = project(":sjf4j-core")
     .extensions
     .getByType<SourceSetContainer>()
     .getByName("incubator")
@@ -171,7 +171,7 @@ configurations.named(incubator.runtimeOnlyConfigurationName) {
 }
 
 dependencies {
-    add(incubator.implementationConfigurationName, project(":sjf4j"))
+    add(incubator.implementationConfigurationName, project(":sjf4j-core"))
     add(incubator.implementationConfigurationName, project(":sjf4j-schema"))
     add(incubator.implementationConfigurationName, platform("org.junit:junit-bom:5.10.0"))
     add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")

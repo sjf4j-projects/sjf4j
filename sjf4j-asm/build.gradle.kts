@@ -18,7 +18,7 @@ configurations {
 }
 
 dependencies {
-    implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
+    implementation(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
 
     // ASM — bytecode generation
     implementation("org.ow2.asm:asm:9.7.1")

@@ -10,7 +10,7 @@ import org.sjf4j.TypeReference;
  * The default mutation methods throw {@link UnsupportedOperationException}.
  *
  * <p>The static {@code compile(...)} methods require an optional bytecode compiler module,
- * such as {@code sjf4j-bytecode}, to be present on the runtime classpath. Core-only or fully
+ * such as {@code sjf4j-asm}, to be present on the runtime classpath. Core-only or fully
  * dynamic users can instantiate {@link FallbackBytecodePath} with a parsed
  * {@link org.sjf4j.path.JsonPath} when reflective path access is desired.
  *

@@ -32,7 +32,7 @@ The goal is consistent JSON semantics across backends, formats, paths, patches, 
   - `./gradlew :sjf4j-testbench:test`
 - Keep branch coverage at or above 75%.
 - Run targeted JMH benchmarks for touched hot paths when needed.
-- Compare jar size, usually `sjf4j/build/libs/sjf4j-*.jar`.
+- Compare jar size, usually `sjf4j-core`.
 - If performance regresses by more than 3%, stop and investigate.
 - If jar size grows by more than 3%, stop and investigate.
 

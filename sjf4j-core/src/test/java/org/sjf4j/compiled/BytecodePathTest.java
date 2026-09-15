@@ -21,7 +21,7 @@ public class BytecodePathTest {
     public void testAsm1() {
         JsonException ex = assertThrows(JsonException.class,
                 () -> BytecodePath.compile("$.a.b", Root.class, Integer.class));
-        assertTrue(ex.getMessage().contains("sjf4j-bytecode"));
+        assertTrue(ex.getMessage().contains("sjf4j-asm"));
     }
 
     @Test
