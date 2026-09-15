@@ -1,12 +1,12 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.path.PathSegment;
 
-import java.io.StringReader;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -547,7 +547,7 @@ public interface Evaluator {
                                 .onUnmappableCharacter(CodingErrorAction.REPORT)
                                 .decode(ByteBuffer.wrap(decoded)).toString();
                     }
-                    SimpleJsonReader reader = new SimpleJsonReader(new StringReader(content));
+                    SimpleJsonReader reader = new SimpleJsonReader(new FastStringReader(content));
                     reader.startDocument();
                     reader.skipNext();
                     reader.endDocument();

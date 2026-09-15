@@ -27,6 +27,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
+import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
@@ -218,6 +219,13 @@ public class JsonReadBenchmark {
     @Benchmark
     public void parse_simple_native(Blackhole bh) throws IOException {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(JSON_DATA2))) {
+            traverseStreamingReader(reader, bh);
+        }
+    }
+
+    @Benchmark
+    public void parse_simple_fast_string_reader(Blackhole bh) throws IOException {
+        try (SimpleJsonReader reader = new SimpleJsonReader(new FastStringReader(JSON_DATA2))) {
             traverseStreamingReader(reader, bh);
         }
     }

@@ -421,18 +421,6 @@ public final class Sjf4j {
         return props;
     }
 
-    /// NodeMapper
-
-    /**
-     * Creates a node-mapper builder for structural mapping between two declared types.
-     *
-     * @deprecated Use {@link org.sjf4j.annotation.mapping.CompiledMapper} instead.
-     */
-    @Deprecated
-    public <S, T> org.sjf4j.mapper.NodeMapperBuilder<S, T> nodeMapperBuilder(Class<S> sourceClass, Class<T> targetClass) {
-        return new org.sjf4j.mapper.NodeMapperBuilder<>(sourceClass, targetClass, streamingContext);
-    }
-
     /// Builder
 
     public static final class Builder {

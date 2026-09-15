@@ -1,4 +1,4 @@
-package org.sjf4j.compiled;
+package org.sjf4j.bytecode;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;

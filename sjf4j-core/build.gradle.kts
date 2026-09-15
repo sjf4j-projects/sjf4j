@@ -5,6 +5,9 @@ plugins {
 }
 
 java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
     withSourcesJar()
@@ -43,7 +46,8 @@ dependencies {
 
 }
 
-tasks.withType<JavaCompile>().configureEach {
+tasks.named<JavaCompile>("compileJava") {
+    options.release.set(8)
     options.compilerArgs.addAll(listOf(
         "-Xlint:unchecked",
         "-Xlint:deprecation"
@@ -120,4 +124,9 @@ configurations.named(incubator.implementationConfigurationName) {
 }
 configurations.named(incubator.compileOnlyConfigurationName) {
     extendsFrom(configurations.compileOnly.get())
+}
+
+dependencies {
+    add(incubator.implementationConfigurationName, platform("org.junit:junit-bom:5.10.0"))
+    add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")
 }

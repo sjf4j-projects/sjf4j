@@ -19,7 +19,7 @@ import org.sjf4j.annotation.path.EnsurePutByPath;
 import org.sjf4j.annotation.path.EnsurePutIfAbsentByPath;
 import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.annotation.path.PutByPath;
-import org.sjf4j.compiled.BytecodePath;
+import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;

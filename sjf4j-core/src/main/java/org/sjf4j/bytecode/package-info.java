@@ -5,4 +5,4 @@
  * compile-time generation through annotation processing, which keeps runtime behavior
  * simpler and avoids runtime bytecode generation.
  */
-package org.sjf4j.compiled;
+package org.sjf4j.bytecode;

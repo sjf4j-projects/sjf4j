@@ -1,6 +1,7 @@
 package org.sjf4j.facade;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
@@ -10,7 +11,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Type;
@@ -104,7 +104,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default Object readNodeExclusive(String input, Type type) {
-        return readNodeExclusive(new StringReader(input), type);
+        return readNodeExclusive(new FastStringReader(input), type);
     }
 
     default Object readNodeExclusive(byte[] input, Type type) {
@@ -120,7 +120,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default Object readNodePlugin(String input, Type type) {
-        return readNodePlugin(new StringReader(input), type);
+        return readNodePlugin(new FastStringReader(input), type);
     }
 
     default Object readNodePlugin(byte[] input, Type type) {

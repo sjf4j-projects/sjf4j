@@ -1,12 +1,12 @@
 package org.sjf4j.mapper;
 
-import org.sjf4j.compiled.BytecodePath;
-import org.sjf4j.compiled.FallbackBytecodePath;
+import org.sjf4j.bytecode.BytecodePath;
+import org.sjf4j.bytecode.FallbackBytecodePath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 
 /**
- * Pre-compiled mapping action that replaces per-call {@link JsonPath} segment
+ * Pre-compiled incubating mapping action that replaces per-call {@link JsonPath} segment
  * interpretation with {@link BytecodePath} accessors.
  *
  * <p>All actions share a single type so the action-loop dispatch remains
@@ -17,7 +17,6 @@ import org.sjf4j.path.JsonPath;
  *
  * @deprecated Use {@link org.sjf4j.annotation.mapping.CompiledMapper} instead.
  */
-@Deprecated
 final class CompiledAction<S, T> {
 
     static final int COPY = 0;

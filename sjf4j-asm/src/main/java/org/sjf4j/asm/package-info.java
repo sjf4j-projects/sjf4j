@@ -1,8 +1,8 @@
 /**
  * Optional ASM-backed runtime compiled-path support for SJF4J.
  * <p>
- * This package provides a {@link org.sjf4j.compiled.PathCompiler} implementation
- * that generates {@link org.sjf4j.compiled.BytecodePath} classes at runtime for
+ * This package provides a {@link org.sjf4j.bytecode.PathCompiler} implementation
+ * that generates {@link org.sjf4j.bytecode.BytecodePath} classes at runtime for
  * supported typed {@link org.sjf4j.path.JsonPath} read and write operations.
  * It remains usable for applications that can accept runtime class generation
  * and the ASM dependency.

@@ -1,6 +1,7 @@
 package org.sjf4j.facade;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
@@ -11,7 +12,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Type;
@@ -47,7 +47,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      */
     default R createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input");
-        return createReader(new StringReader(input));
+        return createReader(new FastStringReader(input));
     }
 
     /**

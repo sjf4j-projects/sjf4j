@@ -1,15 +1,15 @@
-package org.sjf4j.util;
+package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-class StringBuilderWriterTest {
+class FastStringWriterTest {
 
     @Test
     void writesAndAppendsToBuilder() {
-        StringBuilderWriter writer = new StringBuilderWriter();
+        FastStringWriter writer = new FastStringWriter();
 
         writer.write('a');
         writer.write(new char[] {'x', 'b', 'c'}, 1, 2);
@@ -23,7 +23,7 @@ class StringBuilderWriterTest {
     @Test
     void exposesAndResetsSuppliedBuilder() {
         StringBuilder builder = new StringBuilder("prefix");
-        StringBuilderWriter writer = new StringBuilderWriter(builder);
+        FastStringWriter writer = new FastStringWriter(builder);
 
         assertSame(builder, writer.getBuilder());
         writer.reset();

@@ -1,14 +1,13 @@
 package org.sjf4j.mapper;
 
 /**
- * Runtime structural mapper between two object-graph node types.
+ * Incubating runtime structural mapper between two object-graph node types.
  *
  * <p>A mapper usually starts from default deep conversion and then applies
  * path-based copy/value/compute overrides declared by {@link NodeMapperBuilder}.
  *
  * @deprecated Use {@link org.sjf4j.annotation.mapping.CompiledMapper} instead.
  */
-@Deprecated
 public interface NodeMapper<S, T> {
 
     /**

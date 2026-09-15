@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.binding;
 
 import java.io.Writer;
 import java.util.Objects;
@@ -6,19 +6,19 @@ import java.util.Objects;
 /**
  * A non-synchronized {@link Writer} backed by a {@link StringBuilder}.
  */
-public final class StringBuilderWriter extends Writer {
+public final class FastStringWriter extends Writer {
 
     private final StringBuilder builder;
 
-    public StringBuilderWriter() {
+    public FastStringWriter() {
         this(new StringBuilder());
     }
 
-    public StringBuilderWriter(int initialSize) {
+    public FastStringWriter(int initialSize) {
         this(new StringBuilder(initialSize));
     }
 
-    public StringBuilderWriter(StringBuilder builder) {
+    public FastStringWriter(StringBuilder builder) {
         this.builder = Objects.requireNonNull(builder, "builder");
     }
 
@@ -51,19 +51,19 @@ public final class StringBuilderWriter extends Writer {
     }
 
     @Override
-    public StringBuilderWriter append(char c) {
+    public FastStringWriter append(char c) {
         builder.append(c);
         return this;
     }
 
     @Override
-    public StringBuilderWriter append(CharSequence csq) {
+    public FastStringWriter append(CharSequence csq) {
         builder.append(csq);
         return this;
     }
 
     @Override
-    public StringBuilderWriter append(CharSequence csq, int start, int end) {
+    public FastStringWriter append(CharSequence csq, int start, int end) {
         builder.append(csq, start, end);
         return this;
     }

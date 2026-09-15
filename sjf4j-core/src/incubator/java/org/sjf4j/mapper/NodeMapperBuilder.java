@@ -1,6 +1,6 @@
 package org.sjf4j.mapper;
 
-import org.sjf4j.compiled.BytecodePath;
+import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
@@ -15,14 +15,13 @@ import java.util.Objects;
 import java.util.function.Function;
 
 /**
- * Builder for path-driven object graph mapping.
+ * Builder for incubating path-driven object graph mapping.
  *
  * <p>The builder first deep-converts the source object into the target type,
  * then applies declared actions in registration order.
  *
  * @deprecated Use {@link org.sjf4j.annotation.mapping.CompiledMapper} instead.
  */
-@Deprecated
 public final class NodeMapperBuilder<S, T> {
 
     /**

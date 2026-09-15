@@ -11,8 +11,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -47,7 +45,7 @@ public interface StreamingBinding<R extends StreamingReader, W extends Streaming
      */
     default R createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input");
-        return createReader(new StringReader(input));
+        return createReader(new FastStringReader(input));
     }
 
     /**
@@ -174,7 +172,7 @@ public interface StreamingBinding<R extends StreamingReader, W extends Streaming
      * Serializes one node to string.
      */
     default String writeNodeAsString(Object node) {
-        try (StringWriter output = new StringWriter()) {
+        try (FastStringWriter output = new FastStringWriter()) {
             writeNode(output, node);
             return output.toString();
         } catch (Exception e) {
