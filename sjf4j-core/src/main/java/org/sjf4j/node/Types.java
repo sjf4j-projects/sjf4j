@@ -244,7 +244,8 @@ public final class Types {
      */
     private static Type substitute(Type type, Map<TypeVariable<?>, Type> map) {
         if (type instanceof TypeVariable<?>) {
-            return map.getOrDefault(type, Object.class);
+            Type replacement = map.get(type);
+            return replacement == null || replacement == type ? Object.class : substitute(replacement, map);
         }
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = (ParameterizedType) type;

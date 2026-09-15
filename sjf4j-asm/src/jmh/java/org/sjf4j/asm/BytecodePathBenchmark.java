@@ -44,11 +44,11 @@ import java.util.function.BiFunction;
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
-public class CompiledNavigatorBenchmark {
+public class BytecodePathBenchmark {
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(new String[]{
-                CompiledNavigatorBenchmark.class.getSimpleName()
+                BytecodePathBenchmark.class.getSimpleName()
         });
     }
 

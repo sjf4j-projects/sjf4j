@@ -8,6 +8,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +58,10 @@ class TypesTest {
         Map<A, List<B>> map;
     }
 
+    static class StringMap extends LinkedHashMap<String, Integer> {}
+
+    static class StringList extends ArrayList<String> {}
+
     @Test
     void resolvesRawTypesAndBoxesPrimitives() throws NoSuchFieldException {
         assertEquals(Object.class, Types.rawClazz(null));
@@ -89,6 +95,8 @@ class TypesTest {
         assertEquals(Float.class, Types.resolveTypeArgument(listType, List.class, 0));
         assertEquals(Object.class, Types.resolveTypeArgument(listType, List.class, 1));
         assertEquals(String.class, Types.resolveTypeArgument(StringBox.class, Box.class, 0));
+        assertEquals(Integer.class, Types.resolveTypeArgument(StringMap.class, Map.class, 1));
+        assertEquals(String.class, Types.resolveTypeArgument(StringList.class, List.class, 0));
 
         Field valueField = GenericHolder.class.getDeclaredField("value");
         Field listField = GenericHolder.class.getDeclaredField("list");
