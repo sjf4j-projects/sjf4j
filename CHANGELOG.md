@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added JSON, YAML, and node binding interfaces plus a reusable `StringBuilderWriter`.
 - Added built-in `SimpleJsonBinding` and `SimplePropertiesBinding` implementations for JSON streaming and flattened `Properties` nodes.
+- Added `SimpleYamlBinding`, which reports a clear unsupported-operation error when SnakeYAML is unavailable.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 - Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.

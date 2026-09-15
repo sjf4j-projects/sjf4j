@@ -10,5 +10,4 @@ package org.sjf4j.binding;
  * through the appropriate path and normalize common exception handling.</p>
  */
 public interface JsonBinding<R extends StreamingReader, W extends StreamingWriter> extends StreamingBinding<R, W> {
-
 }

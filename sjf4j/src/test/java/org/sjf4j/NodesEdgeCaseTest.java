@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class NodesCoverageEdgeTest {
+class NodesEdgeCaseTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

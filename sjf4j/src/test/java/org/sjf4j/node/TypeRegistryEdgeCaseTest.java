@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class TypeRegistryCoverageTest {
+class TypeRegistryEdgeCaseTest {
 
     @NodeValue
     static class MiniValue {
