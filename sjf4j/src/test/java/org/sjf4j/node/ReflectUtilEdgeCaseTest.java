@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ReflectUtilCoverageTest {
+class ReflectUtilEdgeCaseTest {
 
     @NodeValue
     static class ValidValue {
@@ -255,7 +255,7 @@ class ReflectUtilCoverageTest {
     }
 
     @Test
-    void testAnalyzeNodeValueSuccessAndValidationFailures() {
+    void analyzesNodeValuesAndRejectsInvalidDeclarations() {
         ValueCodecInfo codecInfo = ReflectUtil.analyzeNodeValue(ValidValue.class);
         assertNotNull(codecInfo);
         assertEquals(String.class, codecInfo.rawClazz);
@@ -274,7 +274,7 @@ class ReflectUtilCoverageTest {
     }
 
     @Test
-    void testAnalyzeOneOfAndNamingValidation() {
+    void analyzesOneOfAndNamingMetadata() {
         OneOfInfo disc = ReflectUtil.analyzeOneOf(DiscOneOf.class, DiscOneOf.class.getAnnotation(OneOf.class));
         assertTrue(disc.hasDiscriminator);
         assertEquals(DiscA.class, disc.resolveByWhen("a"));
@@ -316,7 +316,7 @@ class ReflectUtilCoverageTest {
     }
 
     @Test
-    void testLambdaHelpersAndAccessorFallbacks() throws Throwable {
+    void createsLambdaHelpersAndAccessorFallbacks() throws Throwable {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         Field nameField = GetterPojo.class.getDeclaredField("name");
@@ -353,7 +353,7 @@ class ReflectUtilCoverageTest {
     }
 
     @Test
-    void testAnalyzeCreatorStaticMethodBranches() {
+    void analyzesStaticCreatorMethods() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         CreatorInfo staticCreator = ReflectUtil.analyzeCreator(StaticCreatorPojo.class, lookup);

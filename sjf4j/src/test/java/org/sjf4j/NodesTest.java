@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j;
 
 import com.alibaba.fastjson2.JSONObject;
 import lombok.AllArgsConstructor;
@@ -7,15 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.Nodes;
-import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.JsonArray;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.JsonObject;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

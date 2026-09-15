@@ -1,10 +1,6 @@
-package org.sjf4j.node;
+package org.sjf4j;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
-import org.sjf4j.JsonType;
-import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.OneOf;
 
 import java.net.URI;

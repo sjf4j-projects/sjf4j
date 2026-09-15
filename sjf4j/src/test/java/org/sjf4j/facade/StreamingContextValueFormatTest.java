@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.facade;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.facade.StreamingContext;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StreamingContextValueFormatTest {
 
     @Test
-    void testOfRejectsPrimitiveValueType() {
+    void rejectsPrimitiveValueFormatTypes() {
         LinkedHashMap<Class<?>, String> formats = new LinkedHashMap<>();
         formats.put(int.class, "any");
 
@@ -27,7 +27,7 @@ class StreamingContextValueFormatTest {
     }
 
     @Test
-    void testDefaultValueFormatDoesNotBoxLookupType() {
+    void looksUpValueFormatsWithoutBoxing() {
         StreamingContext context = new StreamingContext(Map.of(Integer.class, "number"));
 
         assertEquals("number", context.defaultValueFormat(Integer.class));

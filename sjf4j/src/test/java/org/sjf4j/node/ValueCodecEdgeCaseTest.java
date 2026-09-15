@@ -30,10 +30,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class ValueCodecCoverageTest {
+class ValueCodecEdgeCaseTest {
 
     @Test
-    void testStringBackedCodecsNullBranchesAndClassMetadata() throws Exception {
+    void convertsStringBackedValuesAndHandlesNulls() throws Exception {
         URI uri = URI.create("https://example.com/a?b=1");
         assertStringCodec(ValueCodec.URI_CODEC, uri, uri.toString(), URI.class);
 
@@ -93,7 +93,7 @@ class ValueCodecCoverageTest {
     }
 
     @Test
-    void testNonStringBackedCodecsAndErrorBranches() throws Exception {
+    void convertsNonStringBackedValuesAndRejectsInvalidInput() throws Exception {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         assertEquals(Long.class, ValueCodec.INSTANT_EPOCH_MILLIS.rawClass());
         assertEquals(Instant.class, ValueCodec.INSTANT_EPOCH_MILLIS.valueClass());
@@ -124,13 +124,13 @@ class ValueCodecCoverageTest {
     }
 
     @Test
-    void testDefaultValueCopyReturnsSameReference() {
+    void defaultValueCopyRetainsReference() {
         URI uri = URI.create("https://example.com/default-copy");
         assertSame(uri, ValueCodec.URI_CODEC.valueCopy(uri));
     }
 
     @Test
-    void testSimpleValueCodecNullEncoderDecoder() {
+    void nullEncoderAndDecoderReturnNull() {
         // Null encoder/decoder should produce null
         assertNull(ValueCodec.URI_CODEC.valueToRaw(null));
         assertNull(ValueCodec.URI_CODEC.rawToValue(null));

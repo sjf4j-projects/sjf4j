@@ -710,7 +710,7 @@ public final class StreamingIO {
             if (node.getClass().isArray()) {
                 writer.startArray();
                 for (int i = 0, len = Array.getLength(node); i < len; i++) {
-                    if (i > 0) writer.separateProperty();
+                    if (i > 0) writer.separateElement();
                     _writeNode(writer, Array.get(node, i), context);
                 }
                 writer.endArray();

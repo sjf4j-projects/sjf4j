@@ -3,6 +3,8 @@ package org.sjf4j.binding.simple;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.exception.BindingException;
@@ -15,6 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -36,6 +39,16 @@ class SimpleNodeBindingTest {
         public int age;
         public List<User> friends;
         public Map<String, Integer> scores;
+    }
+
+    static class SourceUser {
+        public String name;
+        public long age;
+    }
+
+    static class TargetUser {
+        public String name;
+        public int age;
     }
 
     enum Status { ACTIVE, DISABLED }
@@ -84,6 +97,33 @@ class SimpleNodeBindingTest {
         }
     }
 
+    static class DeepPojo {
+        public Map<String, List<User>> users;
+        public Set<int[]> arrays;
+        public JsonObject dynamic;
+    }
+
+    static class CreatedUser {
+        final String name;
+        final List<Integer> scores;
+        String city;
+
+        @NodeCreator CreatedUser(@NodeProperty(value = "name", aliases = "n") String name,
+                                 @NodeProperty("scores") List<Integer> scores) {
+            this.name = name;
+            this.scores = scores;
+        }
+
+        public String getCity() { return city; }
+        public void setCity(String city) { this.city = city; }
+    }
+
+    static class AnimalContainers {
+        public List<Animal> animals;
+        public Map<String, Animal> byName;
+        public Animal[] array;
+    }
+
     @Test
     void readsGenericPojoContainersAndConcreteTargets() {
         Map<String, Object> source = new LinkedHashMap<>();
@@ -103,6 +143,38 @@ class SimpleNodeBindingTest {
         TreeSet<Integer> sorted = (TreeSet<Integer>) binding.readNode(new int[]{3, 1, 3}, TreeSet.class);
         assertEquals(new TreeSet<>(Arrays.asList(1, 3)), sorted);
         assertArrayEquals(new int[]{1, 2}, (int[]) binding.readNode(Arrays.asList(1L, 2L), int[].class));
+    }
+
+    @Test
+    void convertsPojoSourcesToPojoMapAndJsonObjectTargets() {
+        SourceUser source = new SourceUser();
+        source.name = "Ann";
+        source.age = 7L;
+
+        TargetUser target = (TargetUser) binding.readNode(source, TargetUser.class);
+        assertEquals("Ann", target.name);
+        assertEquals(7, target.age);
+
+        Map<String, Object> map = (Map<String, Object>) binding.readNode(source,
+                new TypeReference<Map<String, Object>>() {}.getType());
+        assertEquals("Ann", map.get("name"));
+        assertEquals(7L, map.get("age"));
+        JsonObject object = (JsonObject) binding.readNode(source, JsonObject.class);
+        assertEquals("Ann", object.getString("name"));
+        assertEquals(7L, object.getLong("age"));
+    }
+
+    @Test
+    void convertsSetSourcesThroughArraySourceTargets() {
+        LinkedHashSet<Long> source = new LinkedHashSet<>(Arrays.asList(3L, 1L, 3L));
+
+        List<Integer> list = (List<Integer>) binding.readNode(source,
+                new TypeReference<List<Integer>>() {}.getType());
+        assertEquals(Arrays.asList(3, 1), list);
+        assertArrayEquals(new int[]{3, 1}, (int[]) binding.readNode(source, int[].class));
+        JsonArray array = (JsonArray) binding.readNode(source, JsonArray.class);
+        assertEquals(3L, array.getLong(0));
+        assertEquals(1L, array.getLong(1));
     }
 
     @Test
@@ -138,6 +210,54 @@ class SimpleNodeBindingTest {
         assertNotSame(user, copiedUser);
         assertNotSame(user.friends, copiedUser.friends);
         assertNotSame(user.friends.get(0), copiedUser.friends.get(0));
+    }
+
+    @Test
+    void deepCopiesNestedMapsListsSetsArraysJsonNodesAndPojos() {
+        User user = new User();
+        user.name = "Ann";
+        DeepPojo source = new DeepPojo();
+        source.users = new LinkedHashMap<>();
+        source.users.put("team", new java.util.ArrayList<>(List.of(user)));
+        source.arrays = new LinkedHashSet<>();
+        source.arrays.add(new int[]{1, 2});
+        source.dynamic = JsonObject.of("items", JsonArray.of(new LinkedHashMap<>(Map.of("v", 1))));
+
+        DeepPojo copy = (DeepPojo) binding.readNode(source, DeepPojo.class, true);
+        assertNotSame(source, copy);
+        assertNotSame(source.users, copy.users);
+        assertNotSame(source.users.get("team"), copy.users.get("team"));
+        assertNotSame(source.users.get("team").get(0), copy.users.get("team").get(0));
+        assertNotSame(source.arrays.iterator().next(), copy.arrays.iterator().next());
+        assertNotSame(source.dynamic, copy.dynamic);
+        assertNotSame(source.dynamic.getJsonArray("items"), copy.dynamic.getJsonArray("items"));
+
+        copy.users.get("team").get(0).name = "Beth";
+        copy.arrays.iterator().next()[0] = 9;
+        copy.dynamic.getJsonArray("items").getJsonObject(0).put("v", 2);
+        assertEquals("Ann", source.users.get("team").get(0).name);
+        assertEquals(1, source.arrays.iterator().next()[0]);
+        assertEquals(1, source.dynamic.getJsonArray("items").getJsonObject(0).getInt("v"));
+    }
+
+    @Test
+    void convertsCreatorPojosAndTypedOneOfContainers() {
+        Map<String, Object> creatorSource = new LinkedHashMap<>();
+        creatorSource.put("city", "Shanghai");
+        creatorSource.put("n", "Ann");
+        creatorSource.put("scores", Arrays.asList(1L, 2L));
+        CreatedUser created = (CreatedUser) binding.readNode(creatorSource, CreatedUser.class);
+        assertEquals("Ann", created.name);
+        assertEquals(Arrays.asList(1, 2), created.scores);
+        assertEquals("Shanghai", created.city);
+
+        AnimalContainers containers = (AnimalContainers) binding.readNode(JsonObject.of(
+                "animals", JsonArray.of(JsonObject.of("kind", "cat", "lives", 9)),
+                "byName", JsonObject.of("rex", JsonObject.of("kind", "dog", "bark", 3)),
+                "array", JsonArray.of(JsonObject.of("kind", "cat", "lives", 7))), AnimalContainers.class);
+        assertInstanceOf(Cat.class, containers.animals.get(0));
+        assertInstanceOf(Dog.class, containers.byName.get("rex"));
+        assertInstanceOf(Cat.class, containers.array[0]);
     }
 
     @Test

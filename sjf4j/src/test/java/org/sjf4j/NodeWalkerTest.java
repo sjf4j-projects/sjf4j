@@ -1,12 +1,7 @@
-package org.sjf4j.node;
+package org.sjf4j;
 
 import lombok.ToString;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
-import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.path.PathSyntax;
 
 import java.util.ArrayList;
@@ -15,13 +10,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Slf4j
 public class NodeWalkerTest {
 
     @Test
-    public void testWalkValues() {
+    public void walksObjectValues() {
         JsonObject jo = JsonObject.fromJson("{\"a\":1,\"b\":{\"c\":2,\"d\":[3,4]},\"e\":\"test\"}");
         
         List<String> paths = new ArrayList<>();
@@ -33,9 +30,6 @@ public class NodeWalkerTest {
             return true;
         });
         
-        log.info("Paths: {}", paths);
-        log.info("Values: {}", values);
-
         assertFalse(paths.isEmpty());
         assertFalse(paths.contains("$"));
         assertTrue(paths.contains("$.a"));
@@ -49,7 +43,7 @@ public class NodeWalkerTest {
     }
 
     @Test
-    public void testWalkContainersBottomUp() {
+    public void walksContainersBottomUp() {
         JsonObject jo = JsonObject.fromJson("{\"a\":1,\"b\":{\"c\":2}}");
         
         List<String> containerPaths = new ArrayList<>();
@@ -61,15 +55,12 @@ public class NodeWalkerTest {
             return true;
         });
         
-        log.info("Container paths: {}", containerPaths);
-        
-        // Should include all containers in bottom-up order
         assertTrue(containerPaths.contains("$"));
         assertTrue(containerPaths.contains("$.b"));
     }
 
     @Test
-    public void testWalkArray() {
+    public void walksNestedArrays() {
         JsonArray ja = JsonArray.fromJson("[1,2,[3,4],{\"a\":5}]");
         
         AtomicInteger count = new AtomicInteger(0);
@@ -82,7 +73,6 @@ public class NodeWalkerTest {
             return true;
         });
         
-        log.info("Array paths: {}", paths);
         assertTrue(count.get() > 0);
         assertFalse(paths.contains("$"));
         assertTrue(paths.contains("$[0]"));
@@ -94,7 +84,7 @@ public class NodeWalkerTest {
     }
 
     @Test
-    public void testWalkMap() {
+    public void walksMaps() {
         Map<String, Object> map = new HashMap<>();
         map.put("a", 1);
         Map<String, Object> nested = new HashMap<>();
@@ -107,13 +97,12 @@ public class NodeWalkerTest {
             return true;
         });
         
-        log.info("Map paths: {}", paths);
         assertTrue(paths.contains("$.a"));
         assertTrue(paths.contains("$.nested.b"));
     }
 
     @Test
-    public void testWalkList() {
+    public void walksLists() {
         List<Object> list = new ArrayList<>();
         list.add(1);
         list.add(2);
@@ -127,14 +116,13 @@ public class NodeWalkerTest {
             return true;
         });
         
-        log.info("List paths: {}", paths);
         assertTrue(paths.contains("$[0]"));
         assertTrue(paths.contains("$[1]"));
         assertTrue(paths.contains("$[2][0]"));
     }
 
     @Test
-    public void testWalkArrayObject() {
+    public void walksPrimitiveArrays() {
         int[] array = {1, 2, 3};
         
         List<String> paths = new ArrayList<>();
@@ -143,14 +131,13 @@ public class NodeWalkerTest {
             return true;
         });
         
-        log.info("Array object paths: {}", paths);
         assertTrue(paths.contains("$[0]"));
         assertTrue(paths.contains("$[1]"));
         assertTrue(paths.contains("$[2]"));
     }
 
     @Test
-    public void testWalkPrimitive() {
+    public void walksPrimitiveValues() {
         AtomicInteger count = new AtomicInteger(0);
         
         Nodes.walk("test", (ps, value) -> {
@@ -163,7 +150,7 @@ public class NodeWalkerTest {
     }
 
     @Test
-    public void testWalkNestedStructure() {
+    public void walksNestedStructures() {
         JsonObject jo = JsonObject.fromJson("{\n" +
                 "  \"users\": [\n" +
                 "    {\"name\": \"Alice\", \"age\": 25},\n" +
@@ -178,11 +165,8 @@ public class NodeWalkerTest {
         AtomicInteger count = new AtomicInteger(0);
         Nodes.walk(jo, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             count.incrementAndGet();
-            log.debug("PathSegment: {}, Value: {}", ps, value);
             return true;
         });
-        
-        log.info("Total values walked: {}", count.get());
         assertEquals(7, count.get());
     }
 
@@ -211,13 +195,11 @@ public class NodeWalkerTest {
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
 
     @Test
-    public void testWalkPojo1() {
+    public void walksPojosInConfiguredOrder() {
         Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
-        log.info("person={}", person);
 
         List<String> values1 = new ArrayList<>();
         Nodes.walk(person, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, node) -> {
-            log.info("walk1 ps={}, node={}", ps, node);
             values1.add(ps.rootedPathExpr());
             return true;
         });
@@ -225,7 +207,6 @@ public class NodeWalkerTest {
 
         List<String> values2 = new ArrayList<>();
         Nodes.walk(person, Nodes.WalkTarget.ANY, Nodes.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
-            log.info("walk2 ps={}, node={}", ps, node);
             values2.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
@@ -235,4 +216,3 @@ public class NodeWalkerTest {
     }
 
 }
-

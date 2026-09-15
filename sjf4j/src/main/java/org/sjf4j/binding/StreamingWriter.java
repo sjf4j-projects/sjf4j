@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
 
 /**
  * Unified streaming writer for structured data.
@@ -75,6 +76,7 @@ public interface StreamingWriter extends Closeable, Flushable {
      */
     default void flushTo(Writer output) throws IOException {}
     default void flushTo(OutputStream output) throws IOException {}
+
 
     /*
      * ----------------------------------------------------------------------

@@ -1,10 +1,6 @@
-package org.sjf4j.node;
+package org.sjf4j;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.NodeKind;
-import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
-import org.sjf4j.TypeReference;
 import org.sjf4j.exception.JsonException;
 
 import java.util.LinkedHashSet;
@@ -19,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ObjectSetTest {
 
     @Test
-    public void testSetIsValueNode() {
+    public void setIsRecognizedAsArray() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
         set.add("b");
@@ -28,7 +24,7 @@ public class ObjectSetTest {
     }
 
     @Test
-    public void testSetIsArrayContainer1() {
+    public void setSupportsArrayIteration() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
 
@@ -40,7 +36,7 @@ public class ObjectSetTest {
     }
 
     @Test
-    public void testSetIsArrayContainer2() {
+    public void setSupportsArrayAddition() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
 
@@ -52,7 +48,7 @@ public class ObjectSetTest {
     }
 
     @Test
-    public void testSetJsonStreamingGeneral() {
+    public void setRoundTripsThroughJson() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
         set.add("b");
@@ -65,11 +61,10 @@ public class ObjectSetTest {
     }
 
     @Test
-    public void testSetFromNode() {
+    public void setConvertsToNodeAndRawArray() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
         Object node = Sjf4j.global().deepNode(set);
-        System.out.println("type: " + node.getClass().getName() + " node: " + Nodes.inspect(node));
         assertInstanceOf(Set.class, node);
         assertEquals("[\"a\"]", Sjf4j.global().toJsonString(node));
 

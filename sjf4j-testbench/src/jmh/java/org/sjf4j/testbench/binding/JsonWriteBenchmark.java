@@ -257,4 +257,20 @@ public class JsonWriteBenchmark {
     public Object json_simple_jojo_facade() {
         return SIMPLE_JSON_FACADE.writeNodeAsString(USER_JOJO);
     }
+
+    @Benchmark
+    public Object json_simple_map_facade() {
+        return SIMPLE_JSON_FACADE.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_binding_simple_map_native() throws Exception {
+        StringWriter output = new StringWriter();
+        try (org.sjf4j.binding.simple.SimpleJsonWriter writer =
+                     new org.sjf4j.binding.simple.SimpleJsonWriter(output)) {
+            org.sjf4j.binding.StreamingIO.writeNode(writer, MAP_NODE,
+                    org.sjf4j.binding.StreamingContext.EMPTY);
+        }
+        return output.toString();
+    }
 }

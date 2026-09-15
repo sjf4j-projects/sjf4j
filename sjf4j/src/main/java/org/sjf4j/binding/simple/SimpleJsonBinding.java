@@ -1,0 +1,46 @@
+package org.sjf4j.binding.simple;
+
+import org.sjf4j.binding.JsonBinding;
+import org.sjf4j.binding.StreamingContext;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Objects;
+
+/**
+ * Built-in lightweight JSON binding.
+ */
+public final class SimpleJsonBinding implements JsonBinding<SimpleJsonReader, SimpleJsonWriter> {
+    private final StreamingContext streamingContext;
+
+    public SimpleJsonBinding() {
+        this(StreamingContext.EMPTY);
+    }
+
+    public SimpleJsonBinding(StreamingContext streamingContext) {
+        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
+    }
+
+
+    @Override
+    public StreamingContext streamingContext() {
+        return streamingContext;
+    }
+
+    /**
+     * Creates a binding reader from java.io.Reader.
+     */
+    @Override
+    public SimpleJsonReader createReader(Reader input) throws IOException {
+        return new SimpleJsonReader(input);
+    }
+
+    /**
+     * Creates a binding writer to java.io.Writer.
+     */
+    @Override
+    public SimpleJsonWriter createWriter(Writer output) throws IOException {
+        return new SimpleJsonWriter(output);
+    }
+}
