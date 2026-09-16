@@ -36,7 +36,7 @@ public final class StreamingIO {
 
     /// FieldReader
 
-    public static FieldReader createFieldReader(FieldInfo fieldInfo) {
+    public static FieldBinder createFieldReader(FieldInfo fieldInfo) {
         Objects.requireNonNull(fieldInfo, "fieldInfo");
 
         if (fieldInfo.genericDependent) {

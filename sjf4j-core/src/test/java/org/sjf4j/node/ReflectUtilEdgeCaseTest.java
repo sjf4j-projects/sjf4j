@@ -19,6 +19,7 @@ import org.sjf4j.util.Strings;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -315,21 +316,21 @@ class ReflectUtilEdgeCaseTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     void createsLambdaHelpersAndAccessorFallbacks() throws Throwable {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-        Field nameField = GetterPojo.class.getDeclaredField("name");
-        assertEquals("han", ReflectUtil.createLambdaGetter(lookup, GetterPojo.class, nameField).apply(new GetterPojo()));
+        MethodHandle nameGetter = lookup.unreflect(GetterPojo.class.getDeclaredMethod("getName"));
+        assertEquals("han", ReflectUtil.createLambdaGetter(lookup, nameGetter, Function.class, Object.class).apply(new GetterPojo()));
 
-        Field activeField = BooleanPojo.class.getDeclaredField("active");
-        assertEquals(true, ReflectUtil.createLambdaGetter(lookup, BooleanPojo.class, activeField).apply(new BooleanPojo()));
+        MethodHandle activeGetter = lookup.unreflect(BooleanPojo.class.getDeclaredMethod("isActive"));
+        assertEquals(true, ReflectUtil.createLambdaGetter(lookup, activeGetter, Function.class, Object.class).apply(new BooleanPojo()));
 
-        Field boolObjField = BooleanGetterPojo.class.getDeclaredField("active");
-        assertEquals(Boolean.TRUE, ReflectUtil.createLambdaGetter(lookup, BooleanGetterPojo.class, boolObjField).apply(new BooleanGetterPojo()));
+        MethodHandle boolObjGetter = lookup.unreflect(BooleanGetterPojo.class.getDeclaredMethod("getActive"));
+        assertEquals(Boolean.TRUE, ReflectUtil.createLambdaGetter(lookup, boolObjGetter, Function.class, Object.class).apply(new BooleanGetterPojo()));
 
-        Field hiddenField = NoGetterPojo.class.getDeclaredField("hidden");
-        assertNull(ReflectUtil.createLambdaGetter(lookup, NoGetterPojo.class, hiddenField));
+        assertNull(ReflectUtil.createLambdaGetter(lookup, null, Function.class, Object.class));
 
         assertEquals("Name", Strings.capitalize("name"));
         assertEquals("X", Strings.capitalize("x"));

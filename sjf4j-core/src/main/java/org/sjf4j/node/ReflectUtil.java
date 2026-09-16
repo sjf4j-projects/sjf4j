@@ -241,7 +241,7 @@ public final class ReflectUtil {
             }
 
             Function<Object, Object> getterLambda = getterHandle == null ? null :
-                    createLambdaGetter(lookup, getterHandle);
+                    createLambdaGetter(lookup, getterHandle, Function.class, Object.class);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
                     createLambdaSetter(lookup, setterHandle, BiConsumer.class, Object.class);
             ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
@@ -1175,13 +1175,15 @@ public final class ReflectUtil {
     }
 
     @SuppressWarnings("unchecked")
-    static <T> T createLambdaArgsCreator(MethodHandles.Lookup lookup,
-                                         MethodHandle creator,
-                                         Class<T> funcType,
-                                         int arity) {
-        if (creator == null || funcType == null || arity <= 0 || arity > 5) return null;
+    static <T> T createLambdaArgsCreator(MethodHandles.Lookup lookup, MethodHandle creator,
+                                         Class<T> funcType, int arity) {
+        if (creator == null || funcType == null || arity <= 0 || arity > 5) {
+            return null;
+        }
         Class<?>[] params = new Class<?>[arity];
-        for (int i = 0; i < arity; i++) params[i] = Object.class;
+        for (int i = 0; i < arity; i++) {
+            params[i] = Object.class;
+        }
         MethodType erasedSamType = MethodType.methodType(Object.class, params);
         try {
             MethodType instantiatedSamType = creator.type().changeReturnType(Object.class);
@@ -1204,14 +1206,14 @@ public final class ReflectUtil {
     }
 
     @SuppressWarnings("unchecked")
-    static Function<Object, Object> createLambdaGetter(MethodHandles.Lookup lookup,
-                                                       MethodHandle getter) {
+    static <T> T createLambdaGetter(MethodHandles.Lookup lookup, MethodHandle getter,
+                                    Class<T> functionType, Class<?> returnType) {
         if (getter == null) return null;
         try {
-            MethodType invokedType = MethodType.methodType(Function.class);
-            MethodType samMethodType = MethodType.methodType(Object.class, Object.class);
+            MethodType invokedType = MethodType.methodType(functionType);
+            MethodType samMethodType = MethodType.methodType(returnType, Object.class);
 
-            return (Function<Object, Object>) LambdaMetafactory.metafactory(
+            return (T) LambdaMetafactory.metafactory(
                     lookup,
                     "apply",
                     invokedType,
@@ -1224,42 +1226,11 @@ public final class ReflectUtil {
         }
     }
 
-//    static Function<Object, Object> createLambdaGetter(MethodHandles.Lookup lookup,
-//                                                       Class<?> clazz,
-//                                                       Field field) {
-//        MethodHandle getter = null;
-//        Class<?> type = field.getType();
-//        if (type == boolean.class || type == Boolean.class) {
-//            try {
-//                getter = lookup.findVirtual(clazz, "is" + Strings.capitalize(field.getName()),
-//                        MethodType.methodType(field.getType()));
-//            } catch (Exception ignored) {}
-//            if (getter == null) {
-//                try {
-//                    getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
-//                            MethodType.methodType(field.getType()));
-//                } catch (Exception ignored) {}
-//            }
-//        } else {
-//            try {
-//                getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
-//                        MethodType.methodType(field.getType()));
-//            } catch (Exception ignored) {}
-//        }
-//        if (getter == null) {
-////            log.warn("Failed to find lambda getter for '{}' of {}", field.getName(), clazz);
-//            return null;
-//        }
-//
-//        return createLambdaGetter(lookup, getter);
-//    }
 
     @SuppressWarnings("unchecked")
     static <T> T createLambdaSetter(MethodHandles.Lookup lookup, MethodHandle setter,
                                     Class<T> functionType, Class<?> valueType) {
-        if (setter == null || setter.type().parameterCount() < 2) {
-            return null;
-        }
+        if (setter == null || setter.type().parameterCount() < 2) return null;
         try {
             MethodType invokedType = MethodType.methodType(functionType);
             MethodType samMethodType = MethodType.methodType(void.class, Object.class, valueType);
@@ -1276,22 +1247,6 @@ public final class ReflectUtil {
             return null;
         }
     }
-
-//    public static <T> T createLambdaSetter(MethodHandles.Lookup lookup, Class<?> clazz, Field field,
-//                                           Class<T> functionType, Class<?> valueType) {
-//        // Lambda-based setter does NOT support primitive types.
-//        if (field.getType().isPrimitive()) return null;
-//
-//        MethodHandle setter = null;
-//        try {
-//            setter = lookup.findVirtual(clazz, "set" + Strings.capitalize(field.getName()),
-//                    MethodType.methodType(void.class, field.getType()));
-//        } catch (Exception e) {
-//            return null;
-//        }
-//
-//        return createLambdaSetter(lookup, setter, functionType,  valueType);
-//    }
 
 
     /// OneOf

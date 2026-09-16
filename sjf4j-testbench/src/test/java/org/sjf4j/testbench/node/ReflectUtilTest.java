@@ -9,15 +9,12 @@ import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.RecordInfo;
 import org.sjf4j.node.ReflectUtil;
 
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.function.BiConsumer;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -188,67 +185,4 @@ class ReflectUtilTest {
         ) {}
     }
 
-    // ---------- 6) lambdaSetter: reference/primitive/private ----------
-
-    @Test
-    void lambdaSetter_setsPrivateReferenceField() throws Throwable {
-        PrivateFieldPojo p = new PrivateFieldPojo();
-
-        MethodHandles.Lookup root = MethodHandles.lookup();
-        MethodHandles.Lookup lookup = root;
-        if (!ReflectUtil.IS_JDK8) {
-            try {
-                lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrivateFieldPojo.class, root);
-            } catch (Exception ignored) {}
-        }
-
-        Field f = PrivateFieldPojo.class.getDeclaredField("name");
-        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, PrivateFieldPojo.class, f);
-        assertNotNull(lambda);
-        lambda.accept(p, "ok");
-        assertEquals("ok", p.getName());
-
-        Field f2 = PrivateFieldPojo.class.getDeclaredField("name2");
-        BiConsumer<Object, Object> lambda2 = ReflectUtil.createLambdaSetter(lookup, PrivateFieldPojo.class, f2);
-        assertNull(lambda2);
-    }
-
-    @Test
-    void lambdaSetter_setsPrimitiveField_withBoxedValue() throws Throwable {
-        PrimitiveFieldPojo p = new PrimitiveFieldPojo();
-
-        MethodHandles.Lookup root = MethodHandles.lookup();
-        MethodHandles.Lookup lookup = root;
-        if (!ReflectUtil.IS_JDK8) {
-            try {
-                lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrimitiveFieldPojo.class, root);
-            } catch (Exception ignored) {}
-        }
-
-        Field f = PrimitiveFieldPojo.class.getDeclaredField("age");
-        MethodHandle setter = lookup.unreflectSetter(f);
-
-        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, PrimitiveFieldPojo.class, f);
-        assertNull(lambda);
-    }
-
-    static class PrivateFieldPojo {
-        private String name;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-
-        private String name2;
-    }
-
-    static class PrimitiveFieldPojo {
-        int age;
-    }
-
-    // ---- helpers: access private analyzeCreator/createLambdaSetter (if they are private) ----
-    // If analyzeCreator/createLambdaSetter are package-private, this test can be cleaner.
-    // Use reflection here to avoid changing production code.
-
-    private static Method getPrivateLookupIn() throws Exception {
-        return MethodHandles.class.getMethod("privateLookupIn", Class.class, MethodHandles.Lookup.class);
-    }
 }

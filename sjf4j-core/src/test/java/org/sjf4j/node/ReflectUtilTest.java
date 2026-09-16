@@ -164,6 +164,7 @@ class ReflectUtilTest {
     // ---------- 6) lambdaSetter: reference/primitive/private ----------
 
     @Test
+    @SuppressWarnings("unchecked")
     void lambdaSetter_setsPrivateReferenceField() throws Throwable {
         PrivateFieldPojo p = new PrivateFieldPojo();
 
@@ -173,18 +174,18 @@ class ReflectUtilTest {
             lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrivateFieldPojo.class, root);
         }
 
-        Field f = PrivateFieldPojo.class.getDeclaredField("name");
-        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, PrivateFieldPojo.class, f);
+        MethodHandle setter = lookup.unreflect(PrivateFieldPojo.class.getDeclaredMethod("setName", String.class));
+        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, setter, BiConsumer.class, Object.class);
         assertNotNull(lambda);
         lambda.accept(p, "ok");
         assertEquals("ok", p.getName());
 
-        Field f2 = PrivateFieldPojo.class.getDeclaredField("name2");
-        BiConsumer<Object, Object> lambda2 = ReflectUtil.createLambdaSetter(lookup, PrivateFieldPojo.class, f2);
+        BiConsumer<Object, Object> lambda2 = ReflectUtil.createLambdaSetter(lookup, null, BiConsumer.class, Object.class);
         assertNull(lambda2);
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void lambdaSetter_setsPrimitiveField_withBoxedValue() throws Throwable {
         PrimitiveFieldPojo p = new PrimitiveFieldPojo();
 
@@ -197,7 +198,7 @@ class ReflectUtilTest {
         Field f = PrimitiveFieldPojo.class.getDeclaredField("age");
         MethodHandle setter = lookup.unreflectSetter(f);
 
-        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, PrimitiveFieldPojo.class, f);
+        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, setter, BiConsumer.class, Object.class);
         assertNull(lambda);
     }
 
