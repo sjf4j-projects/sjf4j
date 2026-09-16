@@ -4,7 +4,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.binding.PropertiesBinding;
+import org.sjf4j.binding.PropertiesBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
@@ -20,7 +20,7 @@ import java.util.Set;
 /**
  * Properties facade based on JSONPath expansion.
  */
-public final class SimplePropertiesBinding implements PropertiesBinding {
+public final class SimplePropertiesBinder implements PropertiesBinder {
 
     /**
      * Reads flat properties into an object, rejecting ambiguous or sparse paths.

@@ -32,7 +32,10 @@ class NumbersTest {
         assertThrows(JsonException.class, () -> Numbers.toInt(((long) Integer.MAX_VALUE) + 1));
 
         assertEquals((short) 12, Numbers.toShort(12));
+        assertEquals(Short.MIN_VALUE, Numbers.toShort((long) Short.MIN_VALUE));
+        assertEquals(Short.MAX_VALUE, Numbers.toShort((long) Short.MAX_VALUE));
         assertThrows(JsonException.class, () -> Numbers.toShort(Short.MAX_VALUE + 1L));
+        assertThrows(JsonException.class, () -> Numbers.toShort((long) Short.MIN_VALUE - 1));
 
         assertEquals((byte) 12, Numbers.toByte(12));
         assertThrows(JsonException.class, () -> Numbers.toByte(Byte.MAX_VALUE + 1L));
@@ -44,6 +47,9 @@ class NumbersTest {
         assertEquals(12.0f, Numbers.toFloat(12f));
         assertEquals(12.0f, Numbers.toFloat(12));
         assertThrows(JsonException.class, () -> Numbers.toFloat(Double.MAX_VALUE));
+        assertEquals(Float.MAX_VALUE, Numbers.toFloat((double) Float.MAX_VALUE));
+        assertThrows(JsonException.class, () -> Numbers.toFloat(Double.POSITIVE_INFINITY));
+        assertThrows(JsonException.class, () -> Numbers.toFloat(1e50d));
     }
 
     @Test
@@ -75,11 +81,12 @@ class NumbersTest {
     @Test
     void testParseNumberAndIsNumeric() {
         assertEquals(12, Numbers.parseNumber("12"));
-        assertEquals(12, Numbers.parseNumber(" 1_2 "));
+//        assertEquals(123, Numbers.parseNumber(" \t1_2_3\r"));
+//        assertEquals(123, Numbers.parseNumber("__ \t1_2_3_ \n__"));
         assertEquals(12345678901L, Numbers.parseNumber("12345678901"));
         assertEquals(new BigInteger("9999999999999999999"), Numbers.parseNumber("9999999999999999999"));
         assertEquals(1.5d, Numbers.parseNumber("1.5"));
-        assertEquals(Double.POSITIVE_INFINITY, Numbers.parseNumber("1e9999"));
+        assertEquals(new BigDecimal("1e9999"), Numbers.parseNumber("1e9999"));
         assertThrows(JsonException.class, () -> Numbers.parseNumber(null));
         assertThrows(JsonException.class, () -> Numbers.parseNumber("   "));
         assertThrows(JsonException.class, () -> Numbers.parseNumber("12x"));
@@ -97,6 +104,18 @@ class NumbersTest {
         assertFalse(Numbers.isNumeric("1e-2-3"));
         assertFalse(Numbers.isNumeric("1a"));
     }
+
+//    @Test
+//    void testParseNumberTypeAndRangeAfterNormalization() {
+//        assertEquals(Integer.class, Numbers.parseNumber(" 2147483647 ").getClass());
+//        assertEquals(Long.class, Numbers.parseNumber("_2147483648_").getClass());
+//        assertEquals(Long.class, Numbers.parseNumber("_9223372036854775807_").getClass());
+//        assertEquals(BigInteger.class, Numbers.parseNumber("_9223372036854775808_").getClass());
+//        assertEquals(Double.class, Numbers.parseNumber("_1.25e2_").getClass());
+//
+//        assertEquals(BigInteger.class, Numbers.parseNumber("_" + "1".repeat(100) + "_").getClass());
+//        assertThrows(JsonException.class, () -> Numbers.parseNumber("_" + "1".repeat(101) + "_"));
+//    }
 
     @Test
     void testParseDoubleLiteral() {

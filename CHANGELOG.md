@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
+- Renamed JSON, YAML, node, properties, and streaming binding APIs from `*Binding` to `*Binder`, including the built-in simple implementations.
 - Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
 - Moved runtime bytecode-path APIs (`BytecodePath`, `FallbackBytecodePath`, `PathCompiler`, and `BytecodeCompilers`) from `org.sjf4j.compiled` to `org.sjf4j.bytecode`, including the `PathCompiler` service-provider contract.
 - Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.
@@ -26,8 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.
 - Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
 - Added JSON, YAML, and node binding interfaces plus a reusable `FastStringReader`.
-- Added built-in `SimpleJsonBinding` and `SimplePropertiesBinding` implementations for JSON streaming and flattened `Properties` nodes.
-- Added `SimpleYamlBinding`, which reports a clear unsupported-operation error when SnakeYAML is unavailable.
+- Added the `sjf4j-integration-gson` artifact with Gson streaming reader and writer bindings.
+- Added domain-specific mapping, node, patch, and path exception types.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 - Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
 - `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains.
 - Improved generated `@CompiledMapper` mappings from `JsonObject` with direct scalar and nested-container access.
+- Improved numeric conversion range errors and preserve overflowing floating-point literals as `BigDecimal` values.
 
 ### Fixed
 - Fixed generic type-argument resolution through parameterized intermediate superclasses.

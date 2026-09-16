@@ -9,7 +9,7 @@ plugins {
     id("java-library")
     id("jacoco")
     id("me.champeau.jmh") version "0.7.2"
-    id("com.vanniktech.maven.publish") version "0.35.0"
+    id("com.vanniktech.maven.publish")
 }
 
 java {

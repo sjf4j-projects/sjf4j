@@ -5,7 +5,7 @@ import java.lang.reflect.Type;
 /**
  * Facade for converting between arbitrary nodes and JSON-compatible trees.
  */
-public interface NodeBinding {
+public interface NodeBinder {
 
     /**
      * Converts a node to target type, with optional deep copy behavior.

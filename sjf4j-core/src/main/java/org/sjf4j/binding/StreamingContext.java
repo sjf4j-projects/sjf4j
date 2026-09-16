@@ -1,7 +1,6 @@
 package org.sjf4j.binding;
 
-import org.sjf4j.binding.simple.SimpleNodeBinding;
-import org.sjf4j.facade.NodeFacade;
+import org.sjf4j.binding.simple.SimpleNodeBinder;
 import org.sjf4j.node.Types;
 
 import java.util.Map;
@@ -11,7 +10,7 @@ import java.util.Objects;
  * Shared runtime streaming context assembled by {@code Sjf4j.Builder}.
  */
 public final class StreamingContext {
-    public final NodeBinding nodeBinding;
+    public final NodeBinder nodeBinder;
     public final boolean includeNulls;
     private final Class<?>[] valueFormatTypes;
     private final String[] valueFormats;
@@ -26,7 +25,7 @@ public final class StreamingContext {
         this.valueFormatTypes = EMPTY_VALUE_TYPES;
         this.valueFormats = EMPTY_VALUE_FORMATS;
         this.includeNulls = includeNulls;
-        this.nodeBinding = new SimpleNodeBinding(this);
+        this.nodeBinder = new SimpleNodeBinder(this);
     }
 
     public StreamingContext(Map<Class<?>, String> defaultValueFormats) {
@@ -54,7 +53,7 @@ public final class StreamingContext {
             }
         }
         this.includeNulls = includeNulls;
-        this.nodeBinding = new SimpleNodeBinding(this);
+        this.nodeBinder = new SimpleNodeBinder(this);
     }
 
     public String defaultValueFormat(Class<?> valueType) {

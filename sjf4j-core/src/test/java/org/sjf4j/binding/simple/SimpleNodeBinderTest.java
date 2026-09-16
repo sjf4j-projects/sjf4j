@@ -30,9 +30,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("unchecked")
-class SimpleNodeBindingTest {
+class SimpleNodeBinderTest {
 
-    private final SimpleNodeBinding binding = new SimpleNodeBinding();
+    private final SimpleNodeBinder binding = new SimpleNodeBinder();
 
     static class User {
         public String name;
@@ -285,7 +285,7 @@ class SimpleNodeBindingTest {
     @Test
     void usesStreamingContextValueFormatForValueCodecs() {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
-        SimpleNodeBinding configured = new SimpleNodeBinding(
+        SimpleNodeBinder configured = new SimpleNodeBinder(
                 new StreamingContext(Map.of(Instant.class, "epochMillis")));
 
         assertEquals(instant.toEpochMilli(), configured.writeNode(instant));
@@ -294,7 +294,7 @@ class SimpleNodeBindingTest {
 
     @Test
     void rejectsNullStreamingContext() {
-        assertThrows(NullPointerException.class, () -> new SimpleNodeBinding(null));
+        assertThrows(NullPointerException.class, () -> new SimpleNodeBinder(null));
     }
 
     @Test

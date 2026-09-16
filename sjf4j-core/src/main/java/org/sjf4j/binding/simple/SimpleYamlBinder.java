@@ -3,7 +3,7 @@ package org.sjf4j.binding.simple;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
-import org.sjf4j.binding.YamlBinding;
+import org.sjf4j.binding.YamlBinder;
 import org.sjf4j.exception.BindingException;
 
 import java.io.IOException;
@@ -13,14 +13,14 @@ import java.io.Writer;
 /**
  * Placeholder YAML facade used when SnakeYAML is not available.
  */
-public final class SimpleYamlBinding implements YamlBinding<StreamingReader, StreamingWriter> {
+public final class SimpleYamlBinder implements YamlBinder<StreamingReader, StreamingWriter> {
     private final StreamingContext streamingContext;
 
-    public SimpleYamlBinding() {
+    public SimpleYamlBinder() {
         this(StreamingContext.EMPTY);
     }
 
-    public SimpleYamlBinding(StreamingContext streamingContext) {
+    public SimpleYamlBinder(StreamingContext streamingContext) {
         this.streamingContext = streamingContext;
     }
 

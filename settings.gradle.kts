@@ -33,3 +33,5 @@ include("sjf4j-asm")
 include("sjf4j-schema")
 include("sjf4j-testbench")
 include("sjf4j-processor")
+
+include("sjf4j-integration-gson")

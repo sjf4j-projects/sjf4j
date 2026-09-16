@@ -1,6 +1,6 @@
 package org.sjf4j.binding.simple;
 
-import org.sjf4j.binding.JsonBinding;
+import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
 
 import java.io.IOException;
@@ -11,14 +11,14 @@ import java.util.Objects;
 /**
  * Built-in lightweight JSON binding.
  */
-public final class SimpleJsonBinding implements JsonBinding<SimpleJsonReader, SimpleJsonWriter> {
+public final class SimpleJsonBinder implements JsonBinder<SimpleJsonReader, SimpleJsonWriter> {
     private final StreamingContext streamingContext;
 
-    public SimpleJsonBinding() {
+    public SimpleJsonBinder() {
         this(StreamingContext.EMPTY);
     }
 
-    public SimpleJsonBinding(StreamingContext streamingContext) {
+    public SimpleJsonBinder(StreamingContext streamingContext) {
         this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
     }
 

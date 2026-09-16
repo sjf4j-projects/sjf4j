@@ -5,7 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.StreamingContext;
-import org.sjf4j.binding.NodeBinding;
+import org.sjf4j.binding.NodeBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.TypeRegistry;
@@ -36,21 +36,21 @@ import java.util.Set;
  * Node binding implementation backed by core node utilities.
  *
  */
-public final class SimpleNodeBinding implements NodeBinding {
+public final class SimpleNodeBinder implements NodeBinder {
 
     private final StreamingContext streamingContext;
 
     /**
      * Creates a binding with the default conversion pipeline.
      */
-    public SimpleNodeBinding() {
+    public SimpleNodeBinder() {
         this(StreamingContext.EMPTY);
     }
 
     /**
      * Creates a binding with the supplied streaming configuration.
      */
-    public SimpleNodeBinding(StreamingContext streamingContext) {
+    public SimpleNodeBinder(StreamingContext streamingContext) {
         this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
     }
 

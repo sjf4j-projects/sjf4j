@@ -3,7 +3,7 @@ package org.sjf4j.binding.simple;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.binding.PropertiesBinding;
+import org.sjf4j.binding.PropertiesBinder;
 import org.sjf4j.exception.BindingException;
 
 import java.util.Properties;
@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class SimplePropertiesBindingTest {
-    private final PropertiesBinding binding = new SimplePropertiesBinding();
+class SimplePropertiesBinderTest {
+    private final PropertiesBinder binding = new SimplePropertiesBinder();
 
     @Test
     void roundTripsSupportedNestedObjectsAndArraysAsStrings() {

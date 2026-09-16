@@ -18,8 +18,8 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.mapping.CompiledMapper;
-import org.sjf4j.binding.NodeBinding;
-import org.sjf4j.binding.simple.SimpleNodeBinding;
+import org.sjf4j.binding.NodeBinder;
+import org.sjf4j.binding.simple.SimpleNodeBinder;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.CommentEvent;
 import org.sjf4j.testbench.model.Friend;
@@ -50,7 +50,7 @@ public class NodeBindingBenchmark {
     private static final Type EVENT_LIST_TYPE = new TypeReference<List<UserEvent>>() {}.getType();
     private static final Type VALUE_MAP_TYPE = new TypeReference<Map<String, StringValue>>() {}.getType();
 
-    private final NodeBinding binding = new SimpleNodeBinding();
+    private final NodeBinder binding = new SimpleNodeBinder();
     private JsonObject userGraphNode;
     private JsonObject usersNode;
     private JsonObject loginEventNode;

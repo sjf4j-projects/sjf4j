@@ -26,16 +26,16 @@ class SimpleJsonBindingTest {
 
     @Test
     void usesDefaultAndCustomStreamingContexts() {
-        assertSame(StreamingContext.EMPTY, new SimpleJsonBinding().streamingContext());
+        assertSame(StreamingContext.EMPTY, new SimpleJsonBinder().streamingContext());
 
         StreamingContext context = new StreamingContext(false);
-        assertSame(context, new SimpleJsonBinding(context).streamingContext());
-        assertThrows(NullPointerException.class, () -> new SimpleJsonBinding(null));
+        assertSame(context, new SimpleJsonBinder(context).streamingContext());
+        assertThrows(NullPointerException.class, () -> new SimpleJsonBinder(null));
     }
 
     @Test
     void createsConcreteReadersAndWritersForAllFactoryForms() throws Exception {
-        SimpleJsonBinding binding = new SimpleJsonBinding();
+        SimpleJsonBinder binding = new SimpleJsonBinder();
 
         try (SimpleJsonReader reader = binding.createReader(new StringReader("null"))) {
             assertInstanceOf(SimpleJsonReader.class, reader);
@@ -61,7 +61,7 @@ class SimpleJsonBindingTest {
 
     @Test
     void readsAndWritesNestedNodesThroughConvenienceMethods() {
-        SimpleJsonBinding binding = new SimpleJsonBinding();
+        SimpleJsonBinder binding = new SimpleJsonBinder();
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("greeting", "héllo");
         source.put("items", List.of(1, JsonObject.of("nested", JsonArray.of(true, "x"))));
@@ -90,7 +90,7 @@ class SimpleJsonBindingTest {
 
     @Test
     void handlesRootValuesAndRejectsTrailingDocuments() {
-        SimpleJsonBinding binding = new SimpleJsonBinding();
+        SimpleJsonBinder binding = new SimpleJsonBinder();
 
         assertEquals("null", binding.writeNodeAsString(null));
         assertEquals("true", binding.writeNodeAsString(true));
@@ -114,7 +114,7 @@ class SimpleJsonBindingTest {
 
     @Test
     void readsStringsWhoseEscapesCrossTheInternalBufferBoundary() {
-        SimpleJsonBinding binding = new SimpleJsonBinding();
+        SimpleJsonBinder binding = new SimpleJsonBinder();
         String prefix = "a".repeat(8190);
         String json = '"' + prefix + "\\n\"";
 
@@ -127,13 +127,13 @@ class SimpleJsonBindingTest {
         source.put("present", 1);
         source.put("missing", null);
 
-        assertEquals("{\"present\":1,\"missing\":null}", new SimpleJsonBinding().writeNodeAsString(source));
-        assertEquals("{\"present\":1}", new SimpleJsonBinding(new StreamingContext(false)).writeNodeAsString(source));
+        assertEquals("{\"present\":1,\"missing\":null}", new SimpleJsonBinder().writeNodeAsString(source));
+        assertEquals("{\"present\":1}", new SimpleJsonBinder(new StreamingContext(false)).writeNodeAsString(source));
     }
 
     @Test
     void wrapsMalformedInputAndNonFiniteOutputFailures() {
-        SimpleJsonBinding binding = new SimpleJsonBinding();
+        SimpleJsonBinder binding = new SimpleJsonBinder();
 
         BindingException readFailure = assertThrows(BindingException.class,
                 () -> binding.readNode("{\"value\":}", Map.class));

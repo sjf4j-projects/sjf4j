@@ -32,11 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Portable streaming-binding behavior. Subclasses opt parser bindings into this contract. */
 public abstract class JsonBindingContractTest {
 
-    protected abstract JsonBinding<?, ?> binding(StreamingContext context);
+    protected abstract JsonBinder<?, ?> binding(StreamingContext context);
 
     @Test
     void readerAndWriterExposeStructuralJson() throws Exception {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
         StringWriter output = new StringWriter();
         try (StreamingWriter writer = binding.createWriter(output)) {
             writer.startDocument();
@@ -71,7 +71,7 @@ public abstract class JsonBindingContractTest {
 
     @Test
     void bindsScalarsAndContainers() {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
         assertNull(binding.readNode("null", String.class));
         assertEquals(Optional.empty(), binding.readNode("null", new TypeReference<Optional<String>>() {}.getType()));
         assertEquals(1, binding.readNode("1", Integer.class));
@@ -95,7 +95,7 @@ public abstract class JsonBindingContractTest {
 
     @Test
     void bindsPojoUnknownFieldsCreatorsAndAliases() {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
         Plain pojo = (Plain) binding.readNode("{\"name\":\"han\",\"unknown\":{\"x\":[1]}}", Plain.class);
         assertEquals("han", pojo.name);
 
@@ -111,7 +111,7 @@ public abstract class JsonBindingContractTest {
 
     @Test
     void honorsDynamicFlagsAndNullInclusion() {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
         ReadStatic readStatic = (ReadStatic) binding.readNode("{\"id\":1,\"extra\":2}", ReadStatic.class);
         assertNull(readStatic.getNode("extra"));
         WriteStatic writeStatic = (WriteStatic) binding.readNode("{\"id\":1,\"extra\":2}", WriteStatic.class);
@@ -126,7 +126,7 @@ public abstract class JsonBindingContractTest {
         Map<?, ?> included = cast(binding.readNode(binding.writeNodeAsString(nullable), Map.class));
         assertTrue(included.containsKey("drop"));
         assertNull(included.get("drop"));
-        JsonBinding<?, ?> nullOmittingBinding = binding(new StreamingContext(false));
+        JsonBinder<?, ?> nullOmittingBinding = binding(new StreamingContext(false));
         Map<?, ?> omitted = cast(nullOmittingBinding.readNode(
                 nullOmittingBinding.writeNodeAsString(nullable), Map.class));
         assertEquals(Set.of("keep"), omitted.keySet());
@@ -135,7 +135,7 @@ public abstract class JsonBindingContractTest {
 
     @Test
     void bindsOneOfByDiscriminatorAndJsonType() {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
         Zoo zoo = (Zoo) binding.readNode("{\"pet\":{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}}", Zoo.class);
         Cat cat = assertInstanceOf(Cat.class, zoo.pet);
         assertEquals(9, cat.lives);
@@ -145,7 +145,7 @@ public abstract class JsonBindingContractTest {
 
     @Test
     void readsAndWritesValueCodecsWithoutDependingOnJsonFormatting() {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
 
         Code code = (Code) binding.readNode("\"alpha\"", Code.class);
         assertEquals("alpha", code.value);
@@ -159,7 +159,7 @@ public abstract class JsonBindingContractTest {
 
     @Test
     void dispatchesCodecAndContainerValuesAtRootsAndFields() {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
 
         assertEquals(true, ((BooleanCode) binding.readNode("true", BooleanCode.class)).value);
         assertEquals(12, ((NumberCode) binding.readNode("12", NumberCode.class)).value.intValue());
@@ -194,7 +194,7 @@ public abstract class JsonBindingContractTest {
 
     @Test
     void bindsParentScopedOneOfBeforeAndAfterItsDiscriminator() {
-        JsonBinding<?, ?> binding = binding(StreamingContext.EMPTY);
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
 
         ParentZoo deferred = (ParentZoo) binding.readNode(
                 "{\"pet\":{\"name\":\"Mimi\",\"lives\":9},\"kind\":\"cat\"}", ParentZoo.class);

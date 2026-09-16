@@ -19,11 +19,9 @@ import java.util.Objects;
 /**
  * Base streaming binding for reading and writing structured data.
  */
-public interface StreamingBinding<R extends StreamingReader, W extends StreamingWriter> {
+public interface StreamingBinder<R extends StreamingReader, W extends StreamingWriter> {
 
-    default StreamingContext streamingContext() {
-        return StreamingContext.EMPTY;
-    }
+    StreamingContext streamingContext();
 
     /// Reader
 

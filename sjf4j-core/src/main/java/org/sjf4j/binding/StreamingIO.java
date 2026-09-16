@@ -610,7 +610,7 @@ public final class StreamingIO {
             Object rawNode = _readRawNode(reader);
             Class<?> targetClazz = resolveCurrentDiscriminatorTarget(rawNode, anyOfInfo);
             if (targetClazz == null) return null;
-            return context.nodeBinding.readNode(rawNode, targetClazz);
+            return context.nodeBinder.readNode(rawNode, targetClazz);
         }
 
         Class<?> targetClazz = resolveOneOfJsonTypeTarget(reader.peekToken().jsonType(), anyOfInfo);
@@ -882,7 +882,7 @@ public final class StreamingIO {
         Class<?> targetClazz = aoi.resolveByWhen(parentOneOfValue == unsetSentinel ? null : parentOneOfValue);
         Object vv;
         if (targetClazz != null) {
-            vv = context.nodeBinding.readNode(deferredParentOneOfRaw, targetClazz);
+            vv = context.nodeBinder.readNode(deferredParentOneOfRaw, targetClazz);
         } else if (aoi.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
             vv = null;
         } else {

@@ -16,7 +16,7 @@ import java.util.Properties;
  * changing array shape; this is distinct from omitted object members and empty
  * containers, which are allowed.
  */
-public interface PropertiesBinding {
+public interface PropertiesBinder {
 
     JsonObject readNode(Properties props);
 

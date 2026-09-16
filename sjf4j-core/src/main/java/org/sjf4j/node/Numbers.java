@@ -15,7 +15,7 @@ public final class Numbers {
     /**
      * Maximum number of digits allowed for numeric numbers.
      */
-    private final static int MAX_NUMBER_DIGITS = 100;
+    private final static int MAX_NUMBER_LENGTH = 100;
     
     /**
      * BigInteger representation of Long.MIN_VALUE.
@@ -92,13 +92,13 @@ public final class Numbers {
         Objects.requireNonNull(number, "number");
         if (number instanceof Long) return (long) number;
         if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
-            throw new JsonException("cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
+            throw new ArithmeticException("cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
         }
         if (number instanceof BigInteger && !inLongRange((BigInteger) number)) {
-            throw new JsonException("cannot convert BigInteger '" + number + "' to Long: out of 64-bit range");
+            throw new ArithmeticException("cannot convert BigInteger '" + number + "' to Long: out of 64-bit range");
         }
         if (number instanceof BigDecimal && !inLongRange((BigDecimal) number)) {
-            throw new JsonException("cannot convert BigDecimal '" + number + "' to Long: out of 64-bit range");
+            throw new ArithmeticException("cannot convert BigDecimal '" + number + "' to Long: out of 64-bit range");
         }
         return number.longValue();
     }
@@ -108,8 +108,15 @@ public final class Numbers {
      */
     public static int toInt(Number number) {
         long longValue = toLong(number);
+        return toInt(longValue);
+    }
+
+    /**
+     * Converts a long to an int with range checking.
+     */
+    public static int toInt(long longValue) {
         if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
-            throw new JsonException("cannot convert Number '" + number + "' to Integer: out of 32-bit range");
+            throw new ArithmeticException("cannot convert long '" + longValue + "' to int: out of 32-bit range");
         }
         return (int) longValue;
     }
@@ -119,8 +126,15 @@ public final class Numbers {
      */
     public static short toShort(Number number) {
         long longValue = toLong(number);
+        return toShort(longValue);
+    }
+
+    /**
+     * Converts a long to a short with range checking.
+     */
+    public static short toShort(long longValue) {
         if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
-            throw new JsonException("cannot convert Number '" + number + "' to Short: out of 16-bit range");
+            throw new ArithmeticException("cannot convert long '" + longValue + "' to short: out of 16-bit range");
         }
         return (short) longValue;
     }
@@ -130,8 +144,15 @@ public final class Numbers {
      */
     public static byte toByte(Number number) {
         long longValue = toLong(number);
+        return toByte(longValue);
+    }
+
+    /**
+     * Converts a long to a byte with range checking.
+     */
+    public static byte toByte(long longValue) {
         if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
-            throw new JsonException("cannot convert Number '" + number + "' to Byte: out of 8-bit range");
+            throw new ArithmeticException("cannot convert long '" + longValue + "' to byte: out of 8-bit range");
         }
         return (byte) longValue;
     }
@@ -144,7 +165,7 @@ public final class Numbers {
         if (number instanceof Double) return (double) number;
         double d = number.doubleValue();
         if (!Double.isFinite(d)) {
-            throw new JsonException("cannot convert Number '" + number + "' to Double: non-finite value");
+            throw new ArithmeticException("cannot convert Number '" + number + "' to double: non-finite value");
         }
         return d;
     }
@@ -155,12 +176,22 @@ public final class Numbers {
     public static float toFloat(Number number) {
         Objects.requireNonNull(number, "number");
         if (number instanceof Float) return (float) number;
-
         float f = number.floatValue();
         if (!Float.isFinite(f)) {
-            throw new JsonException("cannot convert Number '" + number + "' to Float: non-finite value");
+            throw new ArithmeticException("cannot convert Number '" + number + "' to float: non-finite value");
         }
         return f;
+    }
+
+    /**
+     * Converts a double to a finite float with range checking.
+     */
+    public static float toFloat(double doubleValue) {
+        float floatValue = (float) doubleValue;
+        if (!Float.isFinite(floatValue)) {
+            throw new ArithmeticException("cannot convert double '" + doubleValue + "' to float: non-finite value");
+        }
+        return floatValue;
     }
 
     /**
@@ -173,7 +204,7 @@ public final class Numbers {
         if (number instanceof Double || number instanceof Float) {
             double d = number.doubleValue();
             if (!Double.isFinite(d)) {
-                throw new JsonException("cannot convert non-finite floating-point '" + number + "' to BigInteger");
+                throw new ArithmeticException("cannot convert non-finite floating-point '" + number + "' to BigInteger");
             }
             return BigInteger.valueOf((long) d);
         }
@@ -213,99 +244,114 @@ public final class Numbers {
     }
 
 
-//    public static Number asNumber(String text) {
-//        if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
-//
-//        if (text.length() > MAX_NUMBER_DIGITS) {
-//            throw new IllegalArgumentException("Number too large (" + text.length() + " digits): '" +
-//                    text.substring(0, 20) + "'");
-//        }
-//        if (text.contains(".") || text.contains("e") || text.contains("E")) {
-//            try {
-//                // `parseDouble` is faster than `parseFloat`
-//                return Double.parseDouble(text);
-//            } catch (NumberFormatException e) {
-//                return new BigDecimal(text);
-//            }
-//        } else {
-//            try {
-//                return Integer.parseInt(text);
-//            } catch (NumberFormatException e) {
-//                try {
-//                    return Long.parseLong(text);
-//                } catch (NumberFormatException ex) {
-//                    return new BigInteger(text);
-//                }
-//            }
-//        }
-//    }
-
     /**
-     * Parses a numeric string into an appropriate Number implementation.
+     * Parses a numeric literal into the smallest practical representation.
+     *
+     * <p>Integral literals are returned in this order: {@link Integer},
+     * {@link Long}, then {@link BigInteger}. Decimal or exponent literals are
+     * returned as a finite {@link Double}; when the literal overflows
+     * {@code double}, it is preserved as a {@link BigDecimal} instead.</p>
+     *
+     * @param text numeric literal text
+     * @return an {@code Integer}, {@code Long}, {@code BigInteger},
+     *         {@code Double}, or {@code BigDecimal}, according to the literal
+     *         form and range
+     * @throws NumberFormatException if the text is empty, too long, or invalid
      */
     public static Number parseNumber(String text) {
-        if (text == null || text.isEmpty()) throw new JsonException("invalid number text: value is null or empty");
-        text = text.replace("_", "").trim();
-        if (text.isEmpty()) throw new JsonException("invalid number text: value is empty");
+        if (text == null || text.isEmpty()) {
+            throw new NumberFormatException("invalid number text: value is null or empty");
+        }
 
         final int len = text.length();
-        if (len > MAX_NUMBER_DIGITS) {
-            throw new JsonException("invalid number text: too large (" + len + " digits): '" +
-                    Strings.truncate(text) + "'");
+        if (len > MAX_NUMBER_LENGTH) {
+            throw new NumberFormatException("invalid number text: too large (" + len + " chars): '" +
+                    text + "'");
         }
 
-        boolean floating = false;
-        for (int i = 0; i < len; i++) {
-            char c = text.charAt(i);
-            if (c == '.' || c == 'e' || c == 'E') {
-                floating = true;
-                break;
+        int i = 0;
+        final boolean negative = text.charAt(0) == '-';
+        if (negative) {
+            if (++i == len) {
+                throw new NumberFormatException("invalid number text: '" + text + "'");
             }
         }
 
-        if (floating) {
-            try {
-                return Double.parseDouble(text);
-            } catch (NumberFormatException e) {
-                try {
-                    return new BigDecimal(text);
-                } catch (NumberFormatException ex) {
-                    throw new JsonException("invalid number text: '" + Strings.truncate(text) + "'", ex);
+        /*
+         * Use negative accumulation, same basic technique as Long.parseLong().
+         *
+         * This allows Long.MIN_VALUE (-9223372036854775808) to be represented
+         * without overflowing during parsing.
+         */
+        final long limit = negative ? Long.MIN_VALUE : -Long.MAX_VALUE;
+        final long multMin = limit / 10;
+
+        long result = 0;
+        int digits = 0;
+        boolean overflow = false;
+
+        for (; i < len; i++) {
+            final char c = text.charAt(i);
+            final int digit = c - '0';
+            if (digit >= 0 && digit <= 9) {
+                digits++;
+
+                // Preserve the existing semantic:
+                // more than 19 integer digits -> BigInteger.
+                if (digits > 19) {
+                    overflow = true;
+                    continue;
                 }
+                if (!overflow) {
+                    if (result < multMin) {
+                        overflow = true;
+                        continue;
+                    }
+                    result *= 10;
+                    if (result < limit + digit) {
+                        overflow = true;
+                        continue;
+                    }
+                    result -= digit;
+                }
+                continue;
             }
+
+            // Floating-point number: delegate syntax validation to the JDK parser.
+            if (c == '.' || c == 'e' || c == 'E') {
+                return _parseFloatingNumber(text);
+            }
+
+            throw new NumberFormatException("invalid number text: '" + text + "'");
         }
 
-        final boolean neg = text.charAt(0) == '-';
-        final int digits = neg ? (len - 1) : len;
-        if (digits > 19) {
+        if (digits == 0) {
+            throw new NumberFormatException("invalid number text: '" + text + "'");
+        }
+
+        if (overflow) {
             return new BigInteger(text);
         }
-        if (digits < 10) {
-            try {
-                return Integer.parseInt(text);
-            } catch (NumberFormatException e) {
-                throw new JsonException("invalid number text: '" + Strings.truncate(text) + "'", e);
-            }
-        }
 
-        if (len <= 11) {
-            try {
-                return Integer.parseInt(text);
-            } catch (NumberFormatException ignore) {
-                return Long.parseLong(text);
-            }
+        final long value = negative ? result : -result;
+        if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+            return (int) value;
         }
-
-        try {
-            return Long.parseLong(text);
-        } catch (NumberFormatException e) {
-            try {
-                return new BigInteger(text);
-            } catch (NumberFormatException ex) {
-                throw new JsonException("invalid number text: '" + Strings.truncate(text) + "'", ex);
-            }
-        }
+        return value;
     }
+
+    private static Number _parseFloatingNumber(String text) {
+        final double value = Double.parseDouble(text);
+        if (Double.isFinite(value)) {
+            return value;
+        }
+
+        // Double overflow (e.g. 1e10000):
+        // preserve the finite numeric value using BigDecimal.
+        return new BigDecimal(text);
+    }
+
+
 
     /**
      * Parses a simple decimal literal in-place from a character sequence.
