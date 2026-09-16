@@ -113,7 +113,7 @@ public class TypeRegistryTest {
     public void testInvoke1() {
         Person p1 = new Person();
         ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
-        PropertyInfo fi = pi.properties.get("name");
+        FieldInfo fi = pi.properties.get("name");
 
         fi.invokeSetter(p1, "hahaha");
         String name1 = (String) fi.invokeGetter(p1);

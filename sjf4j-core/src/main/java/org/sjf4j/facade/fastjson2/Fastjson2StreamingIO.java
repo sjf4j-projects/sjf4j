@@ -13,7 +13,7 @@ import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.ValueCodec;
@@ -247,7 +247,7 @@ public class Fastjson2StreamingIO {
             }
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
-                PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+                FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
                     Object vv = _readField(reader, fi, ownerType, ownerRawClazz, context);
                     fi.invokeSetterIfPresent(pojo, vv);
@@ -267,7 +267,7 @@ public class Fastjson2StreamingIO {
         }
 
         TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
-        PropertyInfo deferredParentOneOfFi = null;
+        FieldInfo deferredParentOneOfFi = null;
         Object deferredParentOneOfRaw = null;
         String parentOneOfKey = null;
         Object parentOneOfValue = UNSET;
@@ -301,7 +301,7 @@ public class Fastjson2StreamingIO {
                 continue;
             }
 
-            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 Object vv;
                 OneOfInfo fieldOneOf = fi.oneOfInfo;
@@ -414,7 +414,7 @@ public class Fastjson2StreamingIO {
         throw new BindingException("cannot read array value into type '" + rawClazz.getName() + "'");
     }
 
-    private static Object _readField(JSONReader reader, PropertyInfo fi,
+    private static Object _readField(JSONReader reader, FieldInfo fi,
                                      Type ownerType, Class<?> ownerRawClazz,
                                      StreamingContext context)
             throws IOException {
@@ -433,7 +433,7 @@ public class Fastjson2StreamingIO {
             return _readValueWithCodec(reader, fieldType, fieldRaw, fi.resolvedValueCodec, context);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : PropertyInfo.ContainerKind.NONE) {
+        switch (fieldType == fi.type ? fi.containerKind : FieldInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMap(reader, fi.boxed, fi.argType, fi.argBoxed,
                         TypeRegistry.registerTypeInfo(fi.argBoxed), context);
@@ -740,7 +740,7 @@ public class Fastjson2StreamingIO {
     public static void writePojo(JSONWriter writer, Object node, ObjectInfo pi,
                                  StreamingContext context) throws IOException {
         writer.startObject();
-        for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+        for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
             Object vv = entry.getValue().invokeGetter(node);
             if (vv == null && !context.includeNulls) continue;
             String key = entry.getKey();
@@ -749,7 +749,7 @@ public class Fastjson2StreamingIO {
             if (vv == null) {
                 writer.writeNull();
             } else {
-                PropertyInfo fi = entry.getValue();
+                FieldInfo fi = entry.getValue();
                 if (fi.resolvedValueCodec != null) {
                     vv = fi.resolvedValueCodec.valueToRaw(vv);
                 }

@@ -11,7 +11,7 @@ import org.sjf4j.bytecode.PathCompiler;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
@@ -446,7 +446,7 @@ public class AsmPathCompiler implements PathCompiler {
                         "' from " + currentClazz.getName() + " at '" + expr + "'");
             }
 
-            PropertyInfo propInfo = pi.readableProperties.get(name);
+            FieldInfo propInfo = pi.readableProperties.get(name);
             if (propInfo != null) {
                 Type vvt = propInfo.type;
                 Class<?> vvc = Types.rawClazz(vvt);
@@ -779,7 +779,7 @@ public class AsmPathCompiler implements PathCompiler {
                         "' on " + currentClazz.getName() + " at '" + expr + "'");
             }
 
-            PropertyInfo propInfo = pi.properties.get(name);
+            FieldInfo propInfo = pi.properties.get(name);
             if (propInfo != null) {
                 Type vvt = propInfo.type;
                 Class<?> vvc = Types.rawClazz(vvt);
@@ -1135,7 +1135,7 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitInsn(returnValue ? Opcodes.ARETURN : Opcodes.POP);
         } else {
             ObjectInfo pi = TypeRegistry.registerTypeInfo(parentClazz).pojoInfo;
-            PropertyInfo propInfo = pi == null ? null : pi.properties.get(name);
+            FieldInfo propInfo = pi == null ? null : pi.properties.get(name);
             if (propInfo != null && propInfo.publicField != null) {
                 Class<?> fieldClazz = propInfo.publicField.getType();
                 // parent.field = value;

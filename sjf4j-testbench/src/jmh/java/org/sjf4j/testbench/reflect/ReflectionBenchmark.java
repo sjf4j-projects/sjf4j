@@ -16,7 +16,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.FieldInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
@@ -114,11 +114,11 @@ public class ReflectionBenchmark {
     private final static MethodHandle ctorMethodHandle = pi.creatorInfo.noArgsCtorHandle;
     private final static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
 
-    private final static PropertyInfo propertyInfo = pi.properties.get("name");
-    private final static MethodHandle getterMethodHandle = propertyInfo.getterHandle;
-    private final static Function<Object, Object> getterLambda = propertyInfo.getterLambda;
-    private final static MethodHandle setterMethodHandle = propertyInfo.setterHandle;
-    private final static BiConsumer<Object, Object> setterLambda = propertyInfo.setterLambda;
+    private final static FieldInfo FIELD_INFO = pi.properties.get("name");
+    private final static MethodHandle getterMethodHandle = FIELD_INFO.getterHandle;
+    private final static Function<Object, Object> getterLambda = FIELD_INFO.getterLambda;
+    private final static MethodHandle setterMethodHandle = FIELD_INFO.setterHandle;
+    private final static BiConsumer<Object, Object> setterLambda = FIELD_INFO.setterLambda;
 
     private final static Constructor<Person> personCtor;
     private final static Method getterMethod;

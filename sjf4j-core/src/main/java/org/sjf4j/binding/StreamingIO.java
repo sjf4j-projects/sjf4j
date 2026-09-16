@@ -9,7 +9,7 @@ import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.ValueCodec;
@@ -257,7 +257,7 @@ public final class StreamingIO {
             reader.startObject();
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.nextName();
-                PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+                FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
                     Object vv = _readField(reader, fi, ownerType, ownerRawClazz, context);
                     fi.invokeSetterIfPresent(pojo, vv);
@@ -277,7 +277,7 @@ public final class StreamingIO {
         }
 
         TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
-        PropertyInfo deferredParentOneOfFi = null;
+        FieldInfo deferredParentOneOfFi = null;
         Object deferredParentOneOfRaw = null;
         String parentOneOfKey = null;
         Object parentOneOfValue = UNSET;
@@ -309,7 +309,7 @@ public final class StreamingIO {
                 continue;
             }
 
-            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 Object vv;
                 OneOfInfo fieldOneOf = fi.oneOfInfo;
@@ -427,9 +427,8 @@ public final class StreamingIO {
     /**
      * Reads one object field based on field container metadata.
      */
-    private static Object _readField(StreamingReader reader, PropertyInfo fi,
-                                     Type ownerType, Class<?> ownerRawClazz,
-                                     StreamingContext context)
+    private static Object _readField(StreamingReader reader, FieldInfo fi, Type ownerType,
+                                     Class<?> ownerRawClazz, StreamingContext context)
             throws IOException {
         Type fieldType = Types.resolveMemberType(ownerType, ownerRawClazz, fi.type);
         Class<?> fieldRaw = fieldType == fi.type ? fi.boxed : Types.rawBox(fieldType);
@@ -446,7 +445,7 @@ public final class StreamingIO {
             return _readValueWithCodec(reader, fieldType, fieldRaw, fi.resolvedValueCodec, context);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : PropertyInfo.ContainerKind.NONE) {
+        switch (fieldType == fi.type ? fi.containerKind : FieldInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMap(reader, fi.boxed, fi.argType, fi.argBoxed,
                         TypeRegistry.registerTypeInfo(fi.argBoxed), context);
@@ -767,7 +766,7 @@ public final class StreamingIO {
                                  StreamingContext context) throws IOException {
         writer.startObject();
         int cnt = 0;
-        for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+        for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
             Object vv = entry.getValue().invokeGetter(node);
             if (vv == null && !context.includeNulls) continue;
             if (cnt++ > 0) writer.separateProperty();
@@ -776,7 +775,7 @@ public final class StreamingIO {
             if (vv == null) {
                 writer.writeNull();
             } else {
-                PropertyInfo fi = entry.getValue();
+                FieldInfo fi = entry.getValue();
                 if (fi.resolvedValueCodec != null) {
                     vv = fi.resolvedValueCodec.valueToRaw(vv);
                 }
@@ -855,7 +854,7 @@ public final class StreamingIO {
     }
 
     public static void applyDeferredParentOneOf(Object pojo, ObjectInfo pi,
-                                                PropertyInfo deferredParentOneOfFi,
+                                                FieldInfo deferredParentOneOfFi,
                                                 Object deferredParentOneOfRaw, Object parentOneOfValue,
                                                 Object unsetSentinel,
                                                 StreamingContext context) {
@@ -867,7 +866,7 @@ public final class StreamingIO {
         String parentKey = aoi.key;
         if (parentOneOfValue == unsetSentinel) {
             Object discriminator = null;
-            PropertyInfo parentFi = pi.aliasProperties != null
+            FieldInfo parentFi = pi.aliasProperties != null
                     ? pi.aliasProperties.get(parentKey) : pi.properties.get(parentKey);
             if (parentFi != null) {
                 discriminator = parentFi.invokeGetter(pojo);

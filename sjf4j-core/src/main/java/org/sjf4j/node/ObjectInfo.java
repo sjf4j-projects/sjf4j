@@ -23,11 +23,11 @@ public class ObjectInfo {
     public final PropertyStrategy propertyStrategy;
     public final boolean readDynamic;
     public final boolean writeDynamic;
-    public final Map<String, PropertyInfo> properties;
+    public final Map<String, FieldInfo> properties;
     public final int propertyCount;
-    public final Map<String, PropertyInfo> readableProperties;
+    public final Map<String, FieldInfo> readableProperties;
     public final int readablePropertyCount;
-    public final Map<String, PropertyInfo> aliasProperties;
+    public final Map<String, FieldInfo> aliasProperties;
     public final boolean isJojo;
     public final boolean isJajo;
     public final boolean hasParentScopeOneOf;
@@ -48,8 +48,8 @@ public class ObjectInfo {
                       PropertyStrategy propertyStrategy,
                       boolean readDynamic,
                       boolean writeDynamic,
-                      Map<String, PropertyInfo> properties,
-                      Map<String, PropertyInfo> aliasProperties,
+                      Map<String, FieldInfo> properties,
+                      Map<String, FieldInfo> aliasProperties,
                       boolean hasExplicitBinding,
                       boolean hasNonPublicFields,
                       boolean hasNonPublicReaderGap,
@@ -62,8 +62,8 @@ public class ObjectInfo {
         this.writeDynamic = writeDynamic;
         this.properties = properties;
         this.propertyCount = properties.size();
-        Map<String, PropertyInfo> readableProperties = null;
-        for (Map.Entry<String, PropertyInfo> entry : properties.entrySet()) {
+        Map<String, FieldInfo> readableProperties = null;
+        for (Map.Entry<String, FieldInfo> entry : properties.entrySet()) {
             if (!entry.getValue().hasGetter()) {
                 continue;
             }
@@ -78,7 +78,7 @@ public class ObjectInfo {
         this.isJojo = JsonObject.class.isAssignableFrom(clazz);
         this.isJajo = JsonArray.class.isAssignableFrom(clazz);
         boolean hasParentScopeOneOf = false;
-        for (PropertyInfo fi : properties.values()) {
+        for (FieldInfo fi : properties.values()) {
             OneOfInfo aoi = fi.oneOfInfo;
             if (aoi != null && aoi.scope == OneOf.Scope.PARENT) {
                 hasParentScopeOneOf = true;
@@ -92,7 +92,7 @@ public class ObjectInfo {
         this.hasNonPublicReaderGap = hasNonPublicReaderGap;
         this.hasNonPublicWriterGap = hasNonPublicWriterGap;
         boolean hasPropertyCodecNameBinding = false;
-        for (PropertyInfo fi : properties.values()) {
+        for (FieldInfo fi : properties.values()) {
             if (fi.resolvedValueCodec != null) {
                 hasPropertyCodecNameBinding = true;
                 break;

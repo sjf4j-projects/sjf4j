@@ -294,7 +294,7 @@ public final class TypeRegistry {
         private Object[] args;
         private boolean[] argAssigned;
         private int remainingArgs;
-        private PropertyInfo[] pendingProperties;
+        private FieldInfo[] pendingProperties;
         private Object[] pendingFieldValues;
         private int pendingFieldSize;
         private String[] pendingNames;
@@ -331,12 +331,12 @@ public final class TypeRegistry {
             }
         }
 
-        public void acceptProperty(PropertyInfo propertyInfo, Object value) {
+        public void acceptProperty(FieldInfo fieldInfo, Object value) {
             if (pojo != null) {
-                propertyInfo.invokeSetterIfPresent(pojo, value);
+                fieldInfo.invokeSetterIfPresent(pojo, value);
             } else {
                 _ensurePendingPropertyCapacity();
-                pendingProperties[pendingFieldSize] = propertyInfo;
+                pendingProperties[pendingFieldSize] = fieldInfo;
                 pendingFieldValues[pendingFieldSize] = value;
                 pendingFieldSize++;
             }
@@ -382,13 +382,13 @@ public final class TypeRegistry {
         private void _ensurePendingPropertyCapacity() {
             if (pendingProperties == null || pendingFieldValues == null) {
                 int cap = pendingCapacity;
-                pendingProperties = new PropertyInfo[cap];
+                pendingProperties = new FieldInfo[cap];
                 pendingFieldValues = new Object[cap];
                 return;
             }
             if (pendingFieldSize < pendingProperties.length) return;
             int newCap = pendingProperties.length << 1;
-            PropertyInfo[] newProperties = new PropertyInfo[newCap];
+            FieldInfo[] newProperties = new FieldInfo[newCap];
             Object[] newValues = new Object[newCap];
             System.arraycopy(pendingProperties, 0, newProperties, 0, pendingFieldSize);
             System.arraycopy(pendingFieldValues, 0, newValues, 0, pendingFieldSize);

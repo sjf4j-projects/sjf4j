@@ -170,7 +170,7 @@ public final class ReflectUtil {
             curClazz = curClazz.getSuperclass();
         } while (isPojoCandidate(curClazz));
 
-        Map<String, PropertyInfo> properties = new LinkedHashMap<>();
+        Map<String, FieldInfo> properties = new LinkedHashMap<>();
         for (PropertyFamily family : families.values()) {
             hasExplicitBinding |= family.explicitName != null || family.fieldExplicitName != null;
             MethodHandle getterHandle = null;
@@ -243,10 +243,10 @@ public final class ReflectUtil {
             Function<Object, Object> getterLambda = getterHandle == null ? null : createLambdaGetter(lookup, getterHandle);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null : createLambdaSetter(lookup, setterHandle);
             ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
-            PropertyInfo pi = new PropertyInfo(finalName, type, publicField,
+            FieldInfo pi = new FieldInfo(finalName, type, publicField,
                     family.getterMethod, getterHandle, getterLambda, family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(raw), family.codecName, resolvedCodec);
-            PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
+            FieldInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new JsonException("multiple property families resolve to JSON property '" + pi.name +
                         "' in " + clazz.getName());
@@ -262,11 +262,11 @@ public final class ReflectUtil {
             }
         }
 
-        Map<String, PropertyInfo> aliasProperties = null;
+        Map<String, FieldInfo> aliasProperties = null;
         if (aliasMap != null ) {
             aliasProperties = new HashMap<>(properties);
             for (Map.Entry<String, String> alias : aliasMap.entrySet()) {
-                PropertyInfo fi = properties.get(alias.getValue());
+                FieldInfo fi = properties.get(alias.getValue());
                 if (fi != null) aliasProperties.put(alias.getKey(), fi);
             }
         }

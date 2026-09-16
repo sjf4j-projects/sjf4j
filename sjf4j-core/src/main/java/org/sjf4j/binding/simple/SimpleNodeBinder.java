@@ -13,7 +13,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.ObjectInfo;
 import org.sjf4j.node.OneOfInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.ValueCodec;
@@ -283,7 +283,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                         continue;
                     }
 
-                    PropertyInfo fi = pojoInfo.aliasProperties != null
+                    FieldInfo fi = pojoInfo.aliasProperties != null
                             ? pojoInfo.aliasProperties.get(key)
                             : pojoInfo.properties.get(key);
                     if (fi != null) {
@@ -340,9 +340,9 @@ public final class SimpleNodeBinder implements NodeBinder {
                 CreatorInfo ci = pi.creatorInfo;
                 TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.readablePropertyCount);
 
-                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
-                    PropertyInfo fi = entry.getValue();
+                    FieldInfo fi = entry.getValue();
 
                     int argIdx = ci.getArgIndexOrAlias(key);
                     if (argIdx >= 0) {
@@ -444,7 +444,7 @@ public final class SimpleNodeBinder implements NodeBinder {
         Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
         int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
         int pendingSize = 0;
-        PropertyInfo[] pendingFields = null;
+        FieldInfo[] pendingFields = null;
         Object[] pendingValues = null;
         Map<String, Object> dynamicMap = null;
 
@@ -490,7 +490,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 continue;
             }
 
-            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 PathSegment cps = new PathSegment.Name(ps, key);
                 Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
@@ -508,7 +508,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 } else {
                     if (pendingFields == null) {
                         int cap = pi.propertyCount;
-                        pendingFields = new PropertyInfo[cap];
+                        pendingFields = new FieldInfo[cap];
                         pendingValues = new Object[cap];
                     }
                     pendingFields[pendingSize] = fi;
@@ -669,7 +669,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+            for (Map.Entry<String, FieldInfo> entry : oldPi.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, key);
@@ -681,7 +681,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+            for (Map.Entry<String, FieldInfo> entry : oldPi.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, key);
@@ -694,7 +694,7 @@ public final class SimpleNodeBinder implements NodeBinder {
         ObjectInfo pi = TypeRegistry.registerTypeInfo(rawClazz).pojoInfo;
         if (pi != null && !pi.isJajo) {
             Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.readablePropertyCount);
-            for (Map.Entry<String, PropertyInfo> entry : oldPi.readableProperties.entrySet()) {
+            for (Map.Entry<String, FieldInfo> entry : oldPi.readableProperties.entrySet()) {
                 sourceValues.put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
             return _readPojoFromEntries(sourceValues.entrySet(), type, rawClazz, pi, deepCopy, ps);
@@ -770,7 +770,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 if (rawClazz != JsonObject.class) {
                     ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
-                        for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                        for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
                             String key = entry.getKey();
                             PathSegment cps = new PathSegment.Name(ps, key);
                             Object vv = _writeNode(entry.getValue().invokeGetter(node), cps);
@@ -840,9 +840,9 @@ public final class SimpleNodeBinder implements NodeBinder {
             ObjectInfo pi = ti.pojoInfo;
             if (pi != null) {
                 Map<String, Object> newMap = new LinkedHashMap<>(pi.readablePropertyCount);
-                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
-                    PropertyInfo fi = entry.getValue();
+                    FieldInfo fi = entry.getValue();
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
                     Object vv = _writeFieldValue(v, entry.getValue(), cps);
@@ -861,7 +861,7 @@ public final class SimpleNodeBinder implements NodeBinder {
         }
     }
 
-    private Object _writeFieldValue(Object value, PropertyInfo fi, PathSegment ps) {
+    private Object _writeFieldValue(Object value, FieldInfo fi, PathSegment ps) {
         if (value == null) return null;
         if (fi.resolvedValueCodec != null) {
             return fi.resolvedValueCodec.valueToRaw(value);

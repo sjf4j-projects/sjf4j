@@ -16,7 +16,7 @@ import java.util.function.Function;
 /**
  * Cached binding metadata and accessors for one object property.
  */
-public class PropertyInfo {
+public class FieldInfo {
     public enum ContainerKind {
         NONE,
         LIST,
@@ -51,10 +51,10 @@ public class PropertyInfo {
     /**
      * Creates property binding metadata and resolves its container element type.
      */
-    public PropertyInfo(String name, Type type, Field publicField,
-                        Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
-                        Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                        OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec) {
+    public FieldInfo(String name, Type type, Field publicField,
+                     Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
+                     Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
+                     OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec) {
         this.name = name;
         this.type = type;
         this.boxed = Types.rawBox(type);
