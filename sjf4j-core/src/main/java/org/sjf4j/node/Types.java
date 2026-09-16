@@ -115,6 +115,40 @@ public final class Types {
         return false;
     }
 
+    public static boolean containsTypeVariable(Type type) {
+        if (type instanceof TypeVariable<?>) {
+            return true;
+        }
+        if (type instanceof ParameterizedType) {
+            ParameterizedType pt = (ParameterizedType) type;
+            for (Type arg : pt.getActualTypeArguments()) {
+                if (containsTypeVariable(arg)) {
+                    return true;
+                }
+            }
+            Type owner = pt.getOwnerType();
+            return containsTypeVariable(owner);
+        }
+        if (type instanceof GenericArrayType) {
+            return containsTypeVariable(((GenericArrayType) type).getGenericComponentType());
+        }
+        if (type instanceof WildcardType) {
+            WildcardType wt = (WildcardType) type;
+            for (Type bound : wt.getUpperBounds()) {
+                if (containsTypeVariable(bound)) {
+                    return true;
+                }
+            }
+            for (Type bound : wt.getLowerBounds()) {
+                if (containsTypeVariable(bound)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
     // Cache for resolveTypeArgument results (only used for the recursive slow path)
     private static final ConcurrentHashMap<TypeArgKey, Type> TYPE_ARG_CACHE = new ConcurrentHashMap<>();
 

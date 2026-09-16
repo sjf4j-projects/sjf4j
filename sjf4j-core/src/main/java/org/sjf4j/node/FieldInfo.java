@@ -6,6 +6,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -17,6 +18,7 @@ import java.util.function.Function;
  * Cached binding metadata and accessors for one object property.
  */
 public class FieldInfo {
+
     public enum ContainerKind {
         NONE,
         LIST,
@@ -26,9 +28,11 @@ public class FieldInfo {
     }
 
     public final String name;
-    public final Type type;
-    public final Class<?> boxed;
     public final Field publicField;
+
+    public final Type type;
+    public final boolean genericDependent;
+    public final Class<?> boxed;
 
     public final ContainerKind containerKind;
     public final Type argType;
@@ -56,9 +60,16 @@ public class FieldInfo {
                      Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
                      OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec) {
         this.name = name;
-        this.type = type;
-        this.boxed = Types.rawBox(type);
         this.publicField = publicField;
+
+        this.type = type;
+        if (Types.containsTypeVariable(type)) {
+            this.genericDependent = true;
+            this.boxed = Object.class;
+        } else {
+            this.genericDependent = false;
+            this.boxed = Types.rawBox(type);
+        }
 
         ContainerKind kind = ContainerKind.NONE;
         Type argType = null;

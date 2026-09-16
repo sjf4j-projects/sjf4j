@@ -34,9 +34,36 @@ import java.util.Set;
  */
 public final class StreamingIO {
 
-    private static final Object UNSET = new Object();
+    /// FieldReader
+
+    public static FieldReader createFieldReader(FieldInfo fieldInfo) {
+        Objects.requireNonNull(fieldInfo, "fieldInfo");
+
+        if (fieldInfo.genericDependent) {
+            return null;
+        }
+
+        if (fieldInfo.oneOfInfo != null) {
+            OneOfInfo oneOfInfo = fieldInfo.oneOfInfo;
+            return (reader, ownerType, ownerRawClazz, context) ->
+                    readOneOf(reader, oneOfInfo, context);
+        }
+
+        if (fieldInfo.resolvedValueCodec != null) {
+            Type type = fieldInfo.type;
+            Class<?> rawClazz = fieldInfo.boxed;
+            ValueCodecInfo codec = fieldInfo.resolvedValueCodec;
+
+            return (reader, ownerType, ownerRawClazz, context) ->
+                    _readValueWithCodec(reader, type, rawClazz, codec, context);
+        }
+
+        return null;
+    }
 
     /// Read
+
+    private static final Object UNSET = new Object();
 
     /**
      * Reads one node from streaming reader into target type using streaming context.

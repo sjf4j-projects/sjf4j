@@ -240,8 +240,10 @@ public final class ReflectUtil {
                 }
             }
 
-            Function<Object, Object> getterLambda = getterHandle == null ? null : createLambdaGetter(lookup, getterHandle);
-            BiConsumer<Object, Object> setterLambda = setterHandle == null ? null : createLambdaSetter(lookup, setterHandle);
+            Function<Object, Object> getterLambda = getterHandle == null ? null :
+                    createLambdaGetter(lookup, getterHandle);
+            BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
+                    createLambdaSetter(lookup, setterHandle, BiConsumer.class, Object.class);
             ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
             FieldInfo pi = new FieldInfo(finalName, type, publicField,
                     family.getterMethod, getterHandle, getterLambda, family.setterMethod, setterHandle, setterLambda,
@@ -1222,47 +1224,47 @@ public final class ReflectUtil {
         }
     }
 
-    static Function<Object, Object> createLambdaGetter(MethodHandles.Lookup lookup,
-                                                       Class<?> clazz,
-                                                       Field field) {
-        MethodHandle getter = null;
-        Class<?> type = field.getType();
-        if (type == boolean.class || type == Boolean.class) {
-            try {
-                getter = lookup.findVirtual(clazz, "is" + Strings.capitalize(field.getName()),
-                        MethodType.methodType(field.getType()));
-            } catch (Exception ignored) {}
-            if (getter == null) {
-                try {
-                    getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
-                            MethodType.methodType(field.getType()));
-                } catch (Exception ignored) {}
-            }
-        } else {
-            try {
-                getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
-                        MethodType.methodType(field.getType()));
-            } catch (Exception ignored) {}
-        }
-        if (getter == null) {
-//            log.warn("Failed to find lambda getter for '{}' of {}", field.getName(), clazz);
-            return null;
-        }
-
-        return createLambdaGetter(lookup, getter);
-    }
+//    static Function<Object, Object> createLambdaGetter(MethodHandles.Lookup lookup,
+//                                                       Class<?> clazz,
+//                                                       Field field) {
+//        MethodHandle getter = null;
+//        Class<?> type = field.getType();
+//        if (type == boolean.class || type == Boolean.class) {
+//            try {
+//                getter = lookup.findVirtual(clazz, "is" + Strings.capitalize(field.getName()),
+//                        MethodType.methodType(field.getType()));
+//            } catch (Exception ignored) {}
+//            if (getter == null) {
+//                try {
+//                    getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
+//                            MethodType.methodType(field.getType()));
+//                } catch (Exception ignored) {}
+//            }
+//        } else {
+//            try {
+//                getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
+//                        MethodType.methodType(field.getType()));
+//            } catch (Exception ignored) {}
+//        }
+//        if (getter == null) {
+////            log.warn("Failed to find lambda getter for '{}' of {}", field.getName(), clazz);
+//            return null;
+//        }
+//
+//        return createLambdaGetter(lookup, getter);
+//    }
 
     @SuppressWarnings("unchecked")
-    static BiConsumer<Object, Object> createLambdaSetter(MethodHandles.Lookup lookup,
-                                                         MethodHandle setter) {
-        if (setter == null || setter.type().parameterCount() < 2 || setter.type().parameterType(1).isPrimitive()) {
+    static <T> T createLambdaSetter(MethodHandles.Lookup lookup, MethodHandle setter,
+                                    Class<T> functionType, Class<?> valueType) {
+        if (setter == null || setter.type().parameterCount() < 2) {
             return null;
         }
         try {
-            MethodType invokedType = MethodType.methodType(BiConsumer.class);
-            MethodType samMethodType = MethodType.methodType(void.class, Object.class, Object.class);
+            MethodType invokedType = MethodType.methodType(functionType);
+            MethodType samMethodType = MethodType.methodType(void.class, Object.class, valueType);
 
-            return (BiConsumer<Object, Object>) LambdaMetafactory.metafactory(
+            return (T) LambdaMetafactory.metafactory(
                     lookup,
                     "accept",
                     invokedType,
@@ -1275,24 +1277,21 @@ public final class ReflectUtil {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static BiConsumer<Object, Object> createLambdaSetter(MethodHandles.Lookup lookup,
-                                                                Class<?> clazz,
-                                                                Field field) {
-        // Lambda-based setter does NOT support primitive types.
-        if (field.getType().isPrimitive()) return null;
-
-        MethodHandle setter = null;
-        try {
-            setter = lookup.findVirtual(clazz, "set" + Strings.capitalize(field.getName()),
-                    MethodType.methodType(void.class, field.getType()));
-        } catch (Exception e) {
-//            log.warn("Failed to find lambda setter for '{}' of {}", field.getName(), clazz);
-            return null;
-        }
-
-        return createLambdaSetter(lookup, setter);
-    }
+//    public static <T> T createLambdaSetter(MethodHandles.Lookup lookup, Class<?> clazz, Field field,
+//                                           Class<T> functionType, Class<?> valueType) {
+//        // Lambda-based setter does NOT support primitive types.
+//        if (field.getType().isPrimitive()) return null;
+//
+//        MethodHandle setter = null;
+//        try {
+//            setter = lookup.findVirtual(clazz, "set" + Strings.capitalize(field.getName()),
+//                    MethodType.methodType(void.class, field.getType()));
+//        } catch (Exception e) {
+//            return null;
+//        }
+//
+//        return createLambdaSetter(lookup, setter, functionType,  valueType);
+//    }
 
 
     /// OneOf
