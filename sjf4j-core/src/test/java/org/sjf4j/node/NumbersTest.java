@@ -24,32 +24,32 @@ class NumbersTest {
         assertEquals(12L, Numbers.toLong(12));
         assertEquals(12L, Numbers.toLong(new BigInteger("12")));
         assertEquals(12L, Numbers.toLong(new BigDecimal("12")));
-        assertThrows(JsonException.class, () -> Numbers.toLong(Double.MAX_VALUE));
-        assertThrows(JsonException.class, () -> Numbers.toLong(new BigInteger("9223372036854775808")));
-        assertThrows(JsonException.class, () -> Numbers.toLong(new BigDecimal("9223372036854775808")));
+        assertThrows(ArithmeticException.class, () -> Numbers.toLong(Double.MAX_VALUE));
+        assertThrows(ArithmeticException.class, () -> Numbers.toLong(new BigInteger("9223372036854775808")));
+        assertThrows(ArithmeticException.class, () -> Numbers.toLong(new BigDecimal("9223372036854775808")));
 
         assertEquals(12, Numbers.toInt(12L));
-        assertThrows(JsonException.class, () -> Numbers.toInt(((long) Integer.MAX_VALUE) + 1));
+        assertThrows(ArithmeticException.class, () -> Numbers.toInt(((long) Integer.MAX_VALUE) + 1));
 
         assertEquals((short) 12, Numbers.toShort(12));
         assertEquals(Short.MIN_VALUE, Numbers.toShort((long) Short.MIN_VALUE));
         assertEquals(Short.MAX_VALUE, Numbers.toShort((long) Short.MAX_VALUE));
-        assertThrows(JsonException.class, () -> Numbers.toShort(Short.MAX_VALUE + 1L));
-        assertThrows(JsonException.class, () -> Numbers.toShort((long) Short.MIN_VALUE - 1));
+        assertThrows(ArithmeticException.class, () -> Numbers.toShort(Short.MAX_VALUE + 1L));
+        assertThrows(ArithmeticException.class, () -> Numbers.toShort((long) Short.MIN_VALUE - 1));
 
         assertEquals((byte) 12, Numbers.toByte(12));
-        assertThrows(JsonException.class, () -> Numbers.toByte(Byte.MAX_VALUE + 1L));
+        assertThrows(ArithmeticException.class, () -> Numbers.toByte(Byte.MAX_VALUE + 1L));
 
         assertEquals(12.0d, Numbers.toDouble(12d));
         assertEquals(12.0d, Numbers.toDouble(12));
-        assertThrows(JsonException.class, () -> Numbers.toDouble(Float.POSITIVE_INFINITY));
+        assertThrows(ArithmeticException.class, () -> Numbers.toDouble(Float.POSITIVE_INFINITY));
 
         assertEquals(12.0f, Numbers.toFloat(12f));
         assertEquals(12.0f, Numbers.toFloat(12));
-        assertThrows(JsonException.class, () -> Numbers.toFloat(Double.MAX_VALUE));
+        assertThrows(ArithmeticException.class, () -> Numbers.toFloat(Double.MAX_VALUE));
         assertEquals(Float.MAX_VALUE, Numbers.toFloat((double) Float.MAX_VALUE));
-        assertThrows(JsonException.class, () -> Numbers.toFloat(Double.POSITIVE_INFINITY));
-        assertThrows(JsonException.class, () -> Numbers.toFloat(1e50d));
+        assertThrows(ArithmeticException.class, () -> Numbers.toFloat(Double.POSITIVE_INFINITY));
+        assertThrows(ArithmeticException.class, () -> Numbers.toFloat(1e50d));
     }
 
     @Test
@@ -57,7 +57,7 @@ class NumbersTest {
         assertEquals(BigInteger.TEN, Numbers.toBigInteger(BigInteger.TEN));
         assertEquals(BigInteger.TEN, Numbers.toBigInteger(new BigDecimal("10.9")));
         assertEquals(BigInteger.valueOf(12), Numbers.toBigInteger(12.8d));
-        assertThrows(JsonException.class, () -> Numbers.toBigInteger(Double.NEGATIVE_INFINITY));
+        assertThrows(ArithmeticException.class, () -> Numbers.toBigInteger(Double.NEGATIVE_INFINITY));
 
         assertEquals(new BigDecimal("10.5"), Numbers.toBigDecimal(new BigDecimal("10.5")));
         assertEquals(new BigDecimal("10"), Numbers.toBigDecimal(BigInteger.TEN));
@@ -87,10 +87,10 @@ class NumbersTest {
         assertEquals(new BigInteger("9999999999999999999"), Numbers.parseNumber("9999999999999999999"));
         assertEquals(1.5d, Numbers.parseNumber("1.5"));
         assertEquals(new BigDecimal("1e9999"), Numbers.parseNumber("1e9999"));
-        assertThrows(JsonException.class, () -> Numbers.parseNumber(null));
-        assertThrows(JsonException.class, () -> Numbers.parseNumber("   "));
-        assertThrows(JsonException.class, () -> Numbers.parseNumber("12x"));
-        assertThrows(JsonException.class, () -> Numbers.parseNumber("1".repeat(101)));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseNumber(null));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseNumber("   "));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseNumber("12x"));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseNumber("1".repeat(101)));
 
         assertFalse(Numbers.isNumeric(null));
         assertFalse(Numbers.isNumeric(""));
