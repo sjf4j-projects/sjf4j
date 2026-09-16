@@ -142,7 +142,7 @@ class SimpleJsonBindingTest {
         BindingException writeFailure = assertThrows(BindingException.class,
                 () -> binding.writeNodeAsString(Double.NaN));
         assertInstanceOf(BindingException.class, writeFailure.getCause());
-        assertInstanceOf(IOException.class, rootCause(writeFailure));
+        assertInstanceOf(BindingException.class, rootCause(writeFailure));
     }
 
     private static Throwable rootCause(Throwable error) {

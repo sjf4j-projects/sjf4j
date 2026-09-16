@@ -1,42 +1,46 @@
 package org.sjf4j.integration.gson.binding;
 
 import com.google.gson.Gson;
+import com.google.gson.stream.JsonWriter;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
-import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.binding.StreamingWriter;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Objects;
 
 
-public class GsonJsonBinder implements JsonBinder {
+public class GsonJsonBinder implements JsonBinder<GsonReader, GsonWriter> {
 
     private final Gson gson;
-    private final StreamingContext streamingContext;
+    private final StreamingContext context;
 
     public GsonJsonBinder(Gson gson) {
         this(gson, StreamingContext.EMPTY);
     }
 
-    public GsonJsonBinder(Gson gson, StreamingContext streamingContext) {
-        this.gson = gson;
-        this.streamingContext = streamingContext;
+    public GsonJsonBinder(Gson gson, StreamingContext context) {
+        this.gson = Objects.requireNonNull(gson, "gson");
+        this.context = Objects.requireNonNull(context, "streamingContext");
     }
 
     @Override
     public StreamingContext streamingContext() {
-        return streamingContext;
+        return context;
     }
 
     @Override
-    public StreamingReader createReader(Reader input) throws IOException {
+    public GsonReader createReader(Reader input) throws IOException {
+        Objects.requireNonNull(input, "input");
         return new GsonReader(gson.newJsonReader(input));
     }
 
     @Override
-    public StreamingWriter createWriter(Writer output) throws IOException {
-        return null;
+    public GsonWriter createWriter(Writer output) throws IOException {
+        Objects.requireNonNull(output, "output");
+        JsonWriter writer = gson.newJsonWriter(output);
+        writer.setSerializeNulls(context.includeNulls);
+        return new GsonWriter(writer);
     }
 }

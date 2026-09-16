@@ -166,22 +166,22 @@ public final class SimpleJsonReader implements StreamingReader {
 
     @Override
     public long nextLongValue() throws IOException {
-        return _readLongValue(Long.MIN_VALUE, Long.MAX_VALUE, "Invalid long literal");
+        return _readLongValue(Long.MIN_VALUE, Long.MAX_VALUE, "invalid long literal");
     }
 
     @Override
     public int nextIntValue() throws IOException {
-        return (int) _readLongValue(Integer.MIN_VALUE, Integer.MAX_VALUE, "Invalid int literal");
+        return (int) _readLongValue(Integer.MIN_VALUE, Integer.MAX_VALUE, "invalid int literal");
     }
 
     @Override
     public short nextShortValue() throws IOException {
-        return (short) _readLongValue(Short.MIN_VALUE, Short.MAX_VALUE, "Invalid short literal");
+        return (short) _readLongValue(Short.MIN_VALUE, Short.MAX_VALUE, "invalid short literal");
     }
 
     @Override
     public byte nextByteValue() throws IOException {
-        return (byte) _readLongValue(Byte.MIN_VALUE, Byte.MAX_VALUE, "Invalid byte literal");
+        return (byte) _readLongValue(Byte.MIN_VALUE, Byte.MAX_VALUE, "invalid byte literal");
     }
 
     @Override
@@ -416,7 +416,7 @@ public final class SimpleJsonReader implements StreamingReader {
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Invalid number literal", _path(), e);
+            throw new BindingException("invalid number literal", _path(), e);
         } finally {
             _clearActivePath();
             _valueDone();
@@ -454,12 +454,12 @@ public final class SimpleJsonReader implements StreamingReader {
                     ? Float.parseFloat(new String(numberBuffer, 0, numberLength))
                     : Double.parseDouble(new String(numberBuffer, 0, numberLength));
             if (!Double.isFinite(value) || (floatValue && !Float.isFinite((float) value))) {
-                throw new BindingException(floatValue ? "Invalid float literal" : "Invalid double literal", _path());
+                throw new BindingException(floatValue ? "invalid float literal" : "invalid double literal", _path());
             }
             _checkValueEnd();
             return value;
         } catch (NumberFormatException e) {
-            throw new BindingException(floatValue ? "Invalid float literal" : "Invalid double literal", _path(), e);
+            throw new BindingException(floatValue ? "invalid float literal" : "invalid double literal", _path(), e);
         } finally {
             _clearActivePath();
             _valueDone();
@@ -472,12 +472,12 @@ public final class SimpleJsonReader implements StreamingReader {
         _prepareValuePath();
         try {
             _scanNumber(true);
-            if (numberFraction || numberExponent) throw new BindingException("Invalid BigInteger literal", _path());
+            if (numberFraction || numberExponent) throw new BindingException("invalid BigInteger literal", _path());
             BigInteger value = new BigInteger(new String(numberBuffer, 0, numberLength));
             _checkValueEnd();
             return value;
         } catch (NumberFormatException e) {
-            throw new BindingException("Invalid BigInteger literal", _path(), e);
+            throw new BindingException("invalid BigInteger literal", _path(), e);
         } finally { _clearActivePath(); _valueDone(); _releaseNumberBuffer(); }
     }
 
@@ -490,7 +490,7 @@ public final class SimpleJsonReader implements StreamingReader {
             _checkValueEnd();
             return value;
         } catch (NumberFormatException e) {
-            throw new BindingException("Invalid BigDecimal literal", _path(), e);
+            throw new BindingException("invalid BigDecimal literal", _path(), e);
         } finally { _clearActivePath(); _valueDone(); _releaseNumberBuffer(); }
     }
 
@@ -602,7 +602,7 @@ public final class SimpleJsonReader implements StreamingReader {
             if (c == '"') return sb.toString();
             if (c == '\\') {
                 int e = _read();
-                if (e == -1) throw _error("Unexpected EOF after escape '\\'", e);
+                if (e == -1) throw _error("unexpected EOF after escape '\\'", e);
 
                 switch (e) {
                     case '"': sb.append('"'); break;
@@ -614,8 +614,8 @@ public final class SimpleJsonReader implements StreamingReader {
                     case 'r': sb.append('\r'); break;
                     case 't': sb.append('\t'); break;
                     case 'u':
-                        char ch = _readUnicodeEscape("Unexpected EOF in unicode escape",
-                                "Invalid hex digit in \\u escape");
+                        char ch = _readUnicodeEscape("unexpected EOF in unicode escape",
+                                "invalid hex digit in \\u escape");
 
                         // surrogate pair handling
                         if (Character.isHighSurrogate(ch)) {
@@ -625,10 +625,10 @@ public final class SimpleJsonReader implements StreamingReader {
                                 _read(); // consume '\'
                                 int b2 = _read();
                                 if (b2 == 'u') {
-                                    char low = _readUnicodeEscape("Unexpected EOF in second \\u",
-                                            "Invalid hex digit in second \\u");
+                                    char low = _readUnicodeEscape("unexpected EOF in second \\u",
+                                            "invalid hex digit in second \\u");
                                     if (!Character.isLowSurrogate(low)) {
-                                        throw _error("Invalid low surrogate", low);
+                                        throw _error("invalid low surrogate", low);
                                     }
                                     sb.append(Character.toChars(Character.toCodePoint(ch, low)));
                                     break;
@@ -641,18 +641,18 @@ public final class SimpleJsonReader implements StreamingReader {
                         if (Character.isHighSurrogate(ch)) {
                             throw _error("expected '\\u' for surrogate pair", _peek());
                         }
-                        if (Character.isLowSurrogate(ch)) throw _error("Unexpected low surrogate", ch);
+                        if (Character.isLowSurrogate(ch)) throw _error("unexpected low surrogate", ch);
                         sb.append(ch);
                         break;
                     default:
                         throw _error("Invalid escape: \\", e);
                 }
             } else {
-                if (c < 0x20) throw _error("Unescaped control character in string", c);
+                if (c < 0x20) throw _error("unescaped control character in string", c);
                 sb.append((char) c);
             }
         }
-        throw _error("Unexpected EOF in string", -1);
+        throw _error("unexpected EOF in string", -1);
     }
 
     private char[] numberBuffer = new char[NUMBER_BUFFER_INITIAL_SIZE];
@@ -678,20 +678,20 @@ public final class SimpleJsonReader implements StreamingReader {
         if (c == '0') {
             _numberDigit(_read(), negative, retainText);
             c = _peek();
-            if (c >= '0' && c <= '9') throw _error("Leading zero in number", c);
+            if (c >= '0' && c <= '9') throw _error("leading zero in number", c);
         } else if (c >= '1' && c <= '9') {
             do {
                 _numberDigit(_read(), negative, retainText);
                 c = _peek();
             } while (c >= '0' && c <= '9');
         } else {
-            throw _error("Invalid number", c);
+            throw _error("invalid number", c);
         }
         if (c == '.') {
             numberFraction = true;
             _numberChar(_read(), retainText);
             c = _peek();
-            if (c < '0' || c > '9') throw _error("Invalid fraction", c);
+            if (c < '0' || c > '9') throw _error("invalid fraction", c);
             do {
                 _numberChar(_read(), retainText);
                 c = _peek();
@@ -705,7 +705,7 @@ public final class SimpleJsonReader implements StreamingReader {
                 _numberChar(_read(), retainText);
                 c = _peek();
             }
-            if (c < '0' || c > '9') throw _error("Invalid exponent", c);
+            if (c < '0' || c > '9') throw _error("invalid exponent", c);
             do {
                 _numberChar(_read(), retainText);
                 c = _peek();
@@ -816,13 +816,13 @@ public final class SimpleJsonReader implements StreamingReader {
                 _checkValueEnd();
                 return;
             }
-            if (c < 0x20) throw _error("Unescaped control character in string", c);
+            if (c < 0x20) throw _error("unescaped control character in string", c);
             if (c == '\\') { // escape
                 int e = _read();
-                if (e == -1) throw _error("Unexpected EOF in escape", e);
+                if (e == -1) throw _error("unexpected EOF in escape", e);
                 if (e == 'u') {
-                    char ch = _readUnicodeEscape("Unexpected EOF in unicode escape",
-                            "Invalid hex digit in \\u escape");
+                    char ch = _readUnicodeEscape("unexpected EOF in unicode escape",
+                            "invalid hex digit in \\u escape");
                     if (Character.isHighSurrogate(ch)) {
                         int b1 = _peek();
                         if (b1 != '\\') throw _error("expected '\\u' for surrogate pair", b1);
@@ -831,19 +831,19 @@ public final class SimpleJsonReader implements StreamingReader {
                         if (b2 != 'u') {
                             throw _error("expected 'u' after '\\' for surrogate pair", b2);
                         }
-                        char low = _readUnicodeEscape("Unexpected EOF in second \\u",
-                                "Invalid hex digit in second \\u");
-                        if (!Character.isLowSurrogate(low)) throw _error("Invalid low surrogate", low);
+                        char low = _readUnicodeEscape("unexpected EOF in second \\u",
+                                "invalid hex digit in second \\u");
+                        if (!Character.isLowSurrogate(low)) throw _error("invalid low surrogate", low);
                     } else if (Character.isLowSurrogate(ch)) {
-                        throw _error("Unexpected low surrogate", ch);
+                        throw _error("unexpected low surrogate", ch);
                     }
                 } else if (e != '"' && e != '\\' && e != '/' && e != 'b' && e != 'f'
                         && e != 'n' && e != 'r' && e != 't') {
-                    throw _error("Invalid escape", e);
+                    throw _error("invalid escape", e);
                 }
             }
         }
-        throw _error("Unexpected EOF in string", -1);
+        throw _error("unexpected EOF in string", -1);
     }
 
     private void _skipNumber() throws IOException {
@@ -855,19 +855,19 @@ public final class SimpleJsonReader implements StreamingReader {
         if (c == '0') {
             _read();
             c = _peek();
-            if (c >= '0' && c <= '9') throw _error("Leading zero in number", c);
+            if (c >= '0' && c <= '9') throw _error("leading zero in number", c);
         } else if (c >= '1' && c <= '9') {
             do {
                 _read();
                 c = _peek();
             } while (c >= '0' && c <= '9');
         } else {
-            throw _error("Invalid number", c);
+            throw _error("invalid number", c);
         }
         if (c == '.') {
             _read();
             c = _peek();
-            if (c < '0' || c > '9') throw _error("Invalid fraction", c);
+            if (c < '0' || c > '9') throw _error("invalid fraction", c);
             do {
                 _read();
                 c = _peek();
@@ -880,7 +880,7 @@ public final class SimpleJsonReader implements StreamingReader {
                 _read();
                 c = _peek();
             }
-            if (c < '0' || c > '9') throw _error("Invalid exponent", c);
+            if (c < '0' || c > '9') throw _error("invalid exponent", c);
             do {
                 _read();
                 c = _peek();
@@ -892,7 +892,7 @@ public final class SimpleJsonReader implements StreamingReader {
     private void _skipLiteral(String literal) throws IOException {
         for (int i = 0; i < literal.length(); i++) {
             int c = _read();
-            if (c != literal.charAt(i)) throw _error("Invalid literal", c);
+            if (c != literal.charAt(i)) throw _error("invalid literal", c);
         }
         _checkValueEnd();
     }
@@ -904,7 +904,7 @@ public final class SimpleJsonReader implements StreamingReader {
             int state = containerStateStack[depth - 1];
             if (c == ',' || (state == OBJECT_VALUE && c == '}') || (state <= -4 && c == ']')) return;
         }
-        throw _error("Invalid character after value", c);
+        throw _error("invalid character after value", c);
     }
 
     private void _skipObject() throws IOException {
@@ -1010,7 +1010,7 @@ public final class SimpleJsonReader implements StreamingReader {
                     _skipNumber();
                     return;
                 }
-                throw _error("Unexpected token", c);
+                throw _error("unexpected token", c);
         }
     }
 }

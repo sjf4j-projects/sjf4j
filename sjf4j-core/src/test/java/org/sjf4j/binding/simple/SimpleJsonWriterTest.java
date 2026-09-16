@@ -83,8 +83,8 @@ class SimpleJsonWriterTest {
     @Test
     void validatesNamesAndSupportsBufferedWriters() throws Exception {
         assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(null));
-        assertThrows(IOException.class, () -> new SimpleJsonWriter(new StringWriter()).writeName((String) null));
-        assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(new StringWriter()).writeName((StreamingWriter.PropertyName) null));
+        assertThrows(BindingException.class, () -> new SimpleJsonWriter(new StringWriter()).writeName((String) null));
+        assertThrows(BindingException.class, () -> new SimpleJsonWriter(new StringWriter()).writeName((StreamingWriter.PropertyName) null));
 
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(new BufferedWriter(output))) {
@@ -98,11 +98,11 @@ class SimpleJsonWriterTest {
     void rejectsNonFiniteNumbersDirectlyAndThroughStreamingIo() throws Exception {
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
-            assertThrows(IOException.class, () -> writer.writeDoubleValue(Double.NaN));
-            assertThrows(IOException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
-            assertThrows(IOException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
-            assertThrows(IOException.class, () -> writer.writeNumberValue(Double.NaN));
-            assertThrows(IOException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
+            assertThrows(BindingException.class, () -> writer.writeDoubleValue(Double.NaN));
+            assertThrows(BindingException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
+            assertThrows(BindingException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
+            assertThrows(BindingException.class, () -> writer.writeNumberValue(Double.NaN));
+            assertThrows(BindingException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
             writer.flush();
         }
         assertEquals("", output.toString());
@@ -118,14 +118,14 @@ class SimpleJsonWriterTest {
             StringWriter valueOutput = new StringWriter();
             try (SimpleJsonWriter writer = new SimpleJsonWriter(valueOutput)) {
                 writer.writeStringValue("valid");
-                assertThrows(IOException.class, () -> writer.writeStringValue(value));
+                assertThrows(BindingException.class, () -> writer.writeStringValue(value));
                 writer.flush();
             }
             assertEquals("\"valid\"", valueOutput.toString());
 
             StringWriter nameOutput = new StringWriter();
             try (SimpleJsonWriter writer = new SimpleJsonWriter(nameOutput)) {
-                assertThrows(IOException.class, () -> writer.writeName(value));
+                assertThrows(BindingException.class, () -> writer.writeName(value));
                 writer.flush();
             }
             assertEquals("", nameOutput.toString());
@@ -136,7 +136,7 @@ class SimpleJsonWriterTest {
     void rejectsNullStringValueBeforeWriting() throws Exception {
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
-            assertThrows(IOException.class, () -> writer.writeStringValue(null));
+            assertThrows(BindingException.class, () -> writer.writeStringValue(null));
             writer.flush();
         }
         assertEquals("", output.toString());
@@ -174,9 +174,8 @@ class SimpleJsonWriterTest {
     private static void assertStreamingIoRejectsNonFiniteNumber(Number value) throws Exception {
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
-            BindingException exception = assertThrows(BindingException.class,
+            assertThrows(BindingException.class,
                     () -> StreamingIO.writeNode(writer, value, StreamingContext.EMPTY));
-            assertEquals(IOException.class, exception.getCause().getClass());
             writer.flush();
         }
         assertEquals("", output.toString());

@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
 
 ### Changed
+- Gson streaming binders now create configured writers and honor the `StreamingContext` null-serialization policy.
 - Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`.
 - Optimized the built-in JSON reader with buffered input and allocation-conscious primitive number parsing.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
@@ -42,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved numeric conversion range errors and preserve overflowing floating-point literals as `BigDecimal` values.
 
 ### Fixed
+- Fixed simple JSON streaming reader and writer failures to consistently report `BindingException` errors.
 - Fixed generic type-argument resolution through parameterized intermediate superclasses.
 - Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.
 - Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
