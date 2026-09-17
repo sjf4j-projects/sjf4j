@@ -96,8 +96,9 @@ public abstract class JsonBindingContractTest {
     @Test
     void bindsPojoUnknownFieldsCreatorsAndAliases() {
         JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
-        Plain pojo = (Plain) binding.readNode("{\"name\":\"han\",\"unknown\":{\"x\":[1]}}", Plain.class);
+        Plain pojo = (Plain) binding.readNode("{\"name\":\"han\",\"initial\":\"\",\"unknown\":{\"x\":[1]}}", Plain.class);
         assertEquals("han", pojo.name);
+        assertNull(pojo.initial);
 
         Created created = (Created) binding.readNode("{\"n\":\"han\",\"city\":\"sh\"}", Created.class);
         assertEquals("han", created.name);
@@ -213,7 +214,7 @@ public abstract class JsonBindingContractTest {
     private static <T> T cast(Object value) { return (T) value; }
 
     enum Kind { FIRST }
-    static class Plain { public String name; }
+    static class Plain { public String name; public Character initial; }
     static class Created {
         final String name;
         final int age;

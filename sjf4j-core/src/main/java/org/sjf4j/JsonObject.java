@@ -2,7 +2,7 @@ package org.sjf4j;
 
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.FieldInfo;
 
 import java.math.BigDecimal;
@@ -47,7 +47,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores property metadata for POJO mapping.
      */
-    protected final transient ObjectInfo pi;
+    protected final transient PojoInfo pi;
 
     /**
      * Creates an empty JsonObject instance.
@@ -62,7 +62,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Creates a JOJO with precomputed property metadata.
      */
-    protected JsonObject(ObjectInfo pi) {
+    protected JsonObject(PojoInfo pi) {
         super();
         this.pi = pi;
     }

@@ -322,32 +322,32 @@ class ReflectUtilEdgeCaseTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         MethodHandle nameGetter = lookup.unreflect(GetterPojo.class.getDeclaredMethod("getName"));
-        assertEquals("han", ReflectUtil.createLambdaGetter(lookup, nameGetter, Function.class, Object.class).apply(new GetterPojo()));
+        assertEquals("han", PojoAccess.createGetterLambda(lookup, nameGetter, Function.class, Object.class).apply(new GetterPojo()));
 
         MethodHandle activeGetter = lookup.unreflect(BooleanPojo.class.getDeclaredMethod("isActive"));
-        assertEquals(true, ReflectUtil.createLambdaGetter(lookup, activeGetter, Function.class, Object.class).apply(new BooleanPojo()));
+        assertEquals(true, PojoAccess.createGetterLambda(lookup, activeGetter, Function.class, Object.class).apply(new BooleanPojo()));
 
         MethodHandle boolObjGetter = lookup.unreflect(BooleanGetterPojo.class.getDeclaredMethod("getActive"));
-        assertEquals(Boolean.TRUE, ReflectUtil.createLambdaGetter(lookup, boolObjGetter, Function.class, Object.class).apply(new BooleanGetterPojo()));
+        assertEquals(Boolean.TRUE, PojoAccess.createGetterLambda(lookup, boolObjGetter, Function.class, Object.class).apply(new BooleanGetterPojo()));
 
-        assertNull(ReflectUtil.createLambdaGetter(lookup, null, Function.class, Object.class));
+        assertNull(PojoAccess.createGetterLambda(lookup, null, Function.class, Object.class));
 
         assertEquals("Name", Strings.capitalize("name"));
         assertEquals("X", Strings.capitalize("x"));
 
         MethodHandle ctor = lookup.unreflectConstructor(NoArgsCtorPojo.class.getDeclaredConstructor());
-        Supplier<NoArgsCtorPojo> noArgsCtor = ReflectUtil.createLambdaConstructor(lookup, NoArgsCtorPojo.class, ctor);
+        Supplier<NoArgsCtorPojo> noArgsCtor = PojoAccess.createConstructorLambda(lookup, NoArgsCtorPojo.class, ctor);
         assertNotNull(noArgsCtor);
         assertNotNull(noArgsCtor.get());
-        assertNull(ReflectUtil.createLambdaConstructor(lookup, LambdaCtorPojo.class, null));
+        assertNull(PojoAccess.createConstructorLambda(lookup, LambdaCtorPojo.class, null));
 
         CreatorInfo creatorInfo = ReflectUtil.analyzeCreator(LambdaCtorPojo.class, lookup);
-        TypeRegistry.Func1 creator = ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 1);
+        TypeRegistry.Func1 creator = PojoAccess.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 1);
         assertNotNull(creator);
         LambdaCtorPojo created = (LambdaCtorPojo) creator.apply("han");
         assertEquals("han", created.name);
-        assertNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 0));
-        assertNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, null, 1));
+        assertNull(PojoAccess.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 0));
+        assertNull(PojoAccess.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, null, 1));
 
         assertFalse(ReflectUtil.isRecord(GetterPojo.class));
         assertNull(ReflectUtil.analyzeRecord(GetterPojo.class, lookup));

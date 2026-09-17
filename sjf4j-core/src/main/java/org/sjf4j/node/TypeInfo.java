@@ -14,7 +14,7 @@ public class TypeInfo {
     public final ValueCodecInfo[] namedValueCodecs;
     public final OneOfInfo oneOfInfo;
     public final ContainerInfo containerInfo;
-    public final ObjectInfo pojoInfo;
+    public final PojoInfo pojoInfo;
     public final ExternalNode<?> externalNode;
 
     static final ValueCodecInfo[] EMPTY_VALUE_CODECS = new ValueCodecInfo[0];
@@ -26,7 +26,7 @@ public class TypeInfo {
      * external node classifier when applicable.
      */
     public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, ValueCodecInfo[] namedValueCodecs,
-                    OneOfInfo oneOfInfo, ContainerInfo containerInfo, ObjectInfo pojoInfo,
+                    OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo,
                     ExternalNode<?> externalNode) {
         this.clazz = clazz;
         this.valueCodecInfo = valueCodecInfo;

@@ -8,7 +8,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeInfo;
@@ -130,7 +130,7 @@ public interface Jackson3Module {
     class JsonObjectDeserializer<T extends JsonObject> extends ValueDeserializer<T> {
         private final Type ownerType;
         private final Class<?> ownerRawClazz;
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
 
         public JsonObjectDeserializer(JavaType javaType, StreamingContext streamingContext) {
@@ -198,7 +198,7 @@ public interface Jackson3Module {
     }
 
     class JsonArrayDeserializer<T extends JsonArray> extends ValueDeserializer<T> {
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
 
         public JsonArrayDeserializer(Class<?> clazz) {
             this.pi = clazz == JsonArray.class ? null : TypeRegistry.registerPojoOrElseThrow(clazz);
@@ -215,7 +215,7 @@ public interface Jackson3Module {
             }
 
             T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
-            ValueDeserializer<Object> deserializer = ctx.findRootValueDeserializer(ctx.constructType(ja.elementType()));
+            ValueDeserializer<Object> deserializer = ctx.findRootValueDeserializer(ctx.constructType(ja.elementClass()));
             while (p.nextToken() != JsonToken.END_ARRAY) {
                 Object v = deserializer.deserialize(p, ctx);
                 ja.add(v);
@@ -262,10 +262,10 @@ public interface Jackson3Module {
     }
 
     class PojoDeserializer<T> extends ValueDeserializer<T> {
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
 
-        public PojoDeserializer(ObjectInfo pi, StreamingContext streamingContext) {
+        public PojoDeserializer(PojoInfo pi, StreamingContext streamingContext) {
             this.pi = pi;
             this.streamingContext = streamingContext;
         }

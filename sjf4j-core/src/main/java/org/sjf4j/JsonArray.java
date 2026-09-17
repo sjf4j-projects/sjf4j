@@ -70,18 +70,18 @@ public class JsonArray extends JsonContainer {
     /// Object
 
     /**
-     * Returns the expected element type for this array.
+     * Returns the expected element class for this array.
      */
-    public Class<?> elementType() {
+    public Class<?> elementClass() {
         return Object.class;
     }
 
     /**
-     * Replaces internal list storage with optional runtime element type check.
+     * Replaces internal list storage with optional runtime element class check.
      */
     protected void _dynamicList(List<Object> list) {
         if (list != null) {
-            Class<?> elemClazz = elementType();
+            Class<?> elemClazz = elementClass();
             if (elemClazz != Object.class) {
                 for (int i = 0; i < list.size(); i++) {
                     Object v = list.get(i);
@@ -107,7 +107,6 @@ public class JsonArray extends JsonContainer {
      */
     @Override
     public boolean equals(Object target) {
-//        return Nodes.equals(this, target);
         if (target == this) return true;
         if (target == null || target.getClass() != this.getClass()) return false;
         JsonArray targetJa = (JsonArray) target;
@@ -619,9 +618,9 @@ public class JsonArray extends JsonContainer {
      * Appends an element to the array.
      */
     public void add(Object object) {
-        if (object != null && !elementType().isInstance(object))
+        if (object != null && !elementClass().isInstance(object))
             throw new JsonException("cannot add element of type '" + object.getClass().getName() +
-                    " to JsonArray with elementType '" + elementType().getName() + "'");
+                    " to JsonArray with elementType '" + elementClass().getName() + "'");
 
         if (dynamicList == null) dynamicList = new ArrayList<>();
         dynamicList.add(object);
@@ -653,9 +652,9 @@ public class JsonArray extends JsonContainer {
      * {@code [0, size]}.
      */
     public void add(int idx, Object object) {
-        if (object != null && !elementType().isInstance(object))
+        if (object != null && !elementClass().isInstance(object))
             throw new JsonException("cannot add element of type '" + object.getClass().getName() +
-                    " to JsonArray with elementType '" + elementType().getName() + "'");
+                    " to JsonArray with elementType '" + elementClass().getName() + "'");
 
         int pidx = _pos(idx);
         if (pidx < 0 || pidx > size()) {
@@ -673,9 +672,9 @@ public class JsonArray extends JsonContainer {
      * {@code [0, size-1]}.
      */
     public Object set(int idx, Object object) {
-        if (object != null && !elementType().isInstance(object))
+        if (object != null && !elementClass().isInstance(object))
             throw new JsonException("cannot set element of type '" + object.getClass().getName() +
-                    " in JsonArray with elementType '" + elementType().getName() + "'");
+                    " in JsonArray with elementType '" + elementClass().getName() + "'");
 
         int pidx = _pos(idx);
         if (pidx < 0 || pidx >= size()) {

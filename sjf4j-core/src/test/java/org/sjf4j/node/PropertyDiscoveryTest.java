@@ -152,7 +152,7 @@ class PropertyDiscoveryTest {
 
     @Test
     void defaultIsBeanFieldAndFindsGetterSetter() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(DefaultBeanFieldPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(DefaultBeanFieldPojo.class);
         assertEquals(PropertyStrategy.BEAN_FIELD, pi.propertyStrategy);
         assertNotNull(pi.properties.get("name"));
         assertTrue(pi.properties.get("name").hasGetter());
@@ -161,7 +161,7 @@ class PropertyDiscoveryTest {
 
     @Test
     void methodRenameMergesSinglePropertyFamily() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(MethodRenamePojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(MethodRenamePojo.class);
         assertNotNull(pi.properties.get("nick"));
         assertNull(pi.properties.get("name"));
         MethodRenamePojo pojo = Sjf4j.global().fromJson("{\"nick\":\"x\"}", MethodRenamePojo.class);
@@ -182,14 +182,14 @@ class PropertyDiscoveryTest {
 
     @Test
     void nodeIgnoreOnFieldAndMethodWorks() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(IgnorePojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(IgnorePojo.class);
         assertFalse(pi.properties.containsKey("ignoredField"));
         assertFalse(pi.properties.get("name").hasGetter());
     }
 
     @Test
     void nodeIgnoreTypeOnFieldExcludesProperty() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(TypeIgnoreContainer.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(TypeIgnoreContainer.class);
         assertEquals(1, pi.propertyCount);
         assertTrue(pi.properties.containsKey("name"));
         assertNull(pi.properties.get("address"));
@@ -197,20 +197,20 @@ class PropertyDiscoveryTest {
 
     @Test
     void nodeIgnoreTypeOnBeanMethodExcludesGetterSetter() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(TypeIgnoreBeanContainer.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(TypeIgnoreBeanContainer.class);
         assertNull(pi.properties.get("info"));
     }
 
     @Test
     void nodeIgnoreTypeStillAllowsDirectPojoAnalysis() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(IgnoredType.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(IgnoredType.class);
         assertNotNull(pi);
         assertTrue(pi.properties.containsKey("street"));
     }
 
     @Test
     void fieldOnlyAnnotationWorks() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(AccessCompatPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(AccessCompatPojo.class);
         assertEquals(PropertyStrategy.FIELD_ONLY, pi.propertyStrategy);
         assertNotNull(pi.properties.get("name"));
     }
@@ -222,18 +222,18 @@ class PropertyDiscoveryTest {
 
         assertTrue(TypeRegistry.registerPojoOrElseThrow(FieldOnlyPojo.class).properties.containsKey("name"));
 
-        ObjectInfo beanField = TypeRegistry.registerPojoOrElseThrow(BeanFieldPojo.class);
+        PojoInfo beanField = TypeRegistry.registerPojoOrElseThrow(BeanFieldPojo.class);
         assertTrue(beanField.properties.containsKey("hidden"));
         assertTrue(beanField.properties.containsKey("publicField"));
 
-        ObjectInfo fieldBean = TypeRegistry.registerPojoOrElseThrow(FieldBeanPojo.class);
+        PojoInfo fieldBean = TypeRegistry.registerPojoOrElseThrow(FieldBeanPojo.class);
         assertTrue(fieldBean.properties.get("name").hasGetter());
         assertTrue(fieldBean.properties.get("name").hasSetter());
     }
 
     @Test
     void defaultBeanFieldIgnoresPrivateImplicitBeanMethods() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(PrivateBeanMethodPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(PrivateBeanMethodPojo.class);
         assertFalse(pi.properties.containsKey("hidden"));
     }
 
@@ -244,7 +244,7 @@ class PropertyDiscoveryTest {
 
     @Test
     void fieldRenameCanMergeIntoMatchingBeanImplicitFamily() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(FieldRenameToBeanImplicitPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(FieldRenameToBeanImplicitPojo.class);
         assertTrue(pi.properties.containsKey("name"));
         assertFalse(pi.properties.containsKey("userName"));
     }

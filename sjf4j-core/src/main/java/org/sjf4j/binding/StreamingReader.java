@@ -374,39 +374,27 @@ public interface StreamingReader extends Closeable {
      */
 
     default Long nextLong() throws IOException {
-        return nextIfNull()
-                ? null
-                : nextLongValue();
+        return nextIfNull() ? null : nextLongValue();
     }
 
     default Integer nextInt() throws IOException {
-        return nextIfNull()
-                ? null
-                : nextIntValue();
+        return nextIfNull() ? null : nextIntValue();
     }
 
     default Short nextShort() throws IOException {
-        return nextIfNull()
-                ? null
-                : nextShortValue();
+        return nextIfNull() ? null : nextShortValue();
     }
 
     default Byte nextByte() throws IOException {
-        return nextIfNull()
-                ? null
-                : nextByteValue();
+        return nextIfNull() ? null : nextByteValue();
     }
 
     default Double nextDouble() throws IOException {
-        return nextIfNull()
-                ? null
-                : nextDoubleValue();
+        return nextIfNull() ? null : nextDoubleValue();
     }
 
     default Float nextFloat() throws IOException {
-        return nextIfNull()
-                ? null
-                : nextFloatValue();
+        return nextIfNull() ? null : nextFloatValue();
     }
 
 
@@ -430,9 +418,7 @@ public interface StreamingReader extends Closeable {
     boolean nextBooleanValue() throws IOException;
 
     default Boolean nextBoolean() throws IOException {
-        return nextIfNull()
-                ? null
-                : nextBooleanValue();
+        return nextIfNull() ? null : nextBooleanValue();
     }
 
 

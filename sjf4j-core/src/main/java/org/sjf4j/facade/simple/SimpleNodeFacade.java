@@ -11,7 +11,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.Nodes;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
@@ -191,7 +191,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 return _readString(((Enum<?>) node).name(), rawClazz, ps);
             }
 
-            ObjectInfo oldPi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo; // source pi
+            PojoInfo oldPi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo; // source pi
             if (oldPi != null) {
                 return _readFromPojo(node, oldPi, rawClazz, type, deepCopy, ps);
             }
@@ -324,7 +324,7 @@ public final class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof JsonObject) {
                 JsonObject srcJo = (JsonObject) node;
-                ObjectInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(nodeClazz);
+                PojoInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(nodeClazz);
                 CreatorInfo ci = pojoInfo.creatorInfo;
                 TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
 
@@ -391,7 +391,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 return newSet;
             }
 
-            ObjectInfo pi = TypeRegistry.registerTypeInfo(nodeClazz).pojoInfo;
+            PojoInfo pi = TypeRegistry.registerTypeInfo(nodeClazz).pojoInfo;
             if (pi != null) {
                 CreatorInfo ci = pi.creatorInfo;
                 TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.readablePropertyCount);
@@ -515,7 +515,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             return jo;
         }
 
-        ObjectInfo pi = TypeRegistry.registerTypeInfo(rawClazz).pojoInfo;
+        PojoInfo pi = TypeRegistry.registerTypeInfo(rawClazz).pojoInfo;
         if (pi != null && !pi.isJajo) {
             return _readPojoFromObjectEntries(source.entries(), type, rawClazz, pi, deepCopy, ps);
         }
@@ -525,7 +525,7 @@ public final class SimpleNodeFacade implements NodeFacade {
     private Object _readPojoFromObjectEntries(Iterable<Map.Entry<String, Object>> entries,
                                               Type type,
                                               Class<?> rawClazz,
-                                              ObjectInfo pi,
+                                              PojoInfo pi,
                                               boolean deepCopy,
                                               PathSegment ps) {
         CreatorInfo ci = pi.creatorInfo;
@@ -720,7 +720,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             return ja;
         }
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
+            PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -760,7 +760,7 @@ public final class SimpleNodeFacade implements NodeFacade {
     }
 
     // POJO -> Map/JsonObject/JOJO/POJO
-    private Object _readFromPojo(Object node, ObjectInfo oldPi, Class<?> rawClazz,
+    private Object _readFromPojo(Object node, PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
             Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false);
@@ -789,7 +789,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             return jo;
         }
 
-        ObjectInfo pi = TypeRegistry.registerTypeInfo(rawClazz).pojoInfo;
+        PojoInfo pi = TypeRegistry.registerTypeInfo(rawClazz).pojoInfo;
         if (pi != null && !pi.isJajo) {
             Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.readablePropertyCount);
             for (Map.Entry<String, FieldInfo> entry : oldPi.readableProperties.entrySet()) {
@@ -858,7 +858,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 JsonObject jo = (JsonObject) node;
                 Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
                 if (rawClazz != JsonObject.class) {
-                    ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
+                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
                         for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
                             String key = entry.getKey();
@@ -927,7 +927,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 }
             }
 
-            ObjectInfo pi = ti.pojoInfo;
+            PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
                 Map<String, Object> newMap = new LinkedHashMap<>(pi.readablePropertyCount);
                 for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {

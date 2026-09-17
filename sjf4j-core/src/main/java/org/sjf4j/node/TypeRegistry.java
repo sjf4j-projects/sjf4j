@@ -103,7 +103,7 @@ public final class TypeRegistry {
             return ti;
         }
 
-        ObjectInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
+        PojoInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
         if (pi != null) {
             ti = new TypeInfo(clazz, null, null, null, null, pi, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -236,52 +236,52 @@ public final class TypeRegistry {
     /**
      * Returns object binding metadata or throws when the class cannot be bound as an object.
      */
-    public static ObjectInfo registerPojoOrElseThrow(Class<?> clazz) {
+    public static PojoInfo registerPojoOrElseThrow(Class<?> clazz) {
         return registerTypeInfo(clazz, true).pojoInfo;
     }
 
 
     @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> newMapContainer(Class<?> mapType, boolean fallback) {
-        if (mapType == null || mapType == Object.class || mapType == Map.class || mapType == LinkedHashMap.class) {
+    public static <T> Map<String, T> newMapContainer(Class<?> mapClazz, boolean fallback) {
+        if (mapClazz == null || mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class) {
             return new LinkedHashMap<>();
         }
-        ContainerInfo ci = registerTypeInfo(mapType).containerInfo;
+        ContainerInfo ci = registerTypeInfo(mapClazz).containerInfo;
         if (ci == null || ci.kind != NodeKind.OBJECT_MAP) {
             if (fallback) {
                 return new LinkedHashMap<>();
             }
-            throw new BindingException("unsupported Map target type '" + mapType.getName() + "'");
+            throw new BindingException("unsupported Map target type '" + mapClazz.getName() + "'");
         }
         return (Map<String, T>) ci.newContainer();
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> List<T> newListContainer(Class<?> listType, boolean fallback) {
-        if (listType == null || listType == Object.class || listType == List.class || listType == ArrayList.class) {
+    public static <T> List<T> newListContainer(Class<?> listClazz, boolean fallback) {
+        if (listClazz == null || listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class) {
             return new ArrayList<>();
         }
-        ContainerInfo ci = registerTypeInfo(listType).containerInfo;
+        ContainerInfo ci = registerTypeInfo(listClazz).containerInfo;
         if (ci == null || ci.kind != NodeKind.ARRAY_LIST) {
             if (fallback) {
                 return new ArrayList<>();
             }
-            throw new BindingException("unsupported List target type '" + listType.getName() + "'");
+            throw new BindingException("unsupported List target type '" + listClazz.getName() + "'");
         }
         return (List<T>) ci.newContainer();
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> Set<T> newSetContainer(Class<?> setType, boolean fallback) {
-        if (setType == null || setType == Object.class || setType == Set.class || setType == LinkedHashSet.class) {
+    public static <T> Set<T> newSetContainer(Class<?> setClazz, boolean fallback) {
+        if (setClazz == null || setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class) {
             return new LinkedHashSet<>();
         }
-        ContainerInfo ci = registerTypeInfo(setType).containerInfo;
+        ContainerInfo ci = registerTypeInfo(setClazz).containerInfo;
         if (ci == null || ci.kind != NodeKind.ARRAY_SET) {
             if (fallback) {
                 return new LinkedHashSet<>();
             }
-            throw new BindingException("unsupported Set target type '" + setType.getName() + "'");
+            throw new BindingException("unsupported Set target type '" + setClazz.getName() + "'");
         }
         return (Set<T>) ci.newContainer();
     }
@@ -439,7 +439,5 @@ public final class TypeRegistry {
     public interface Func5 {
         Object apply(Object a1, Object a2, Object a3, Object a4, Object a5);
     }
-
-
 
 }

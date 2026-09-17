@@ -250,7 +250,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testCodecPatternResolvesLocalDateCodec() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalDatePatternPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalDatePatternPojo.class);
         FieldInfo fi = pi.properties.get("date");
         assertNotNull(fi);
         // codecName is null when only codecPattern is specified (separate attributes)
@@ -358,7 +358,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testLocalTimeFieldWithPattern() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalTimeFieldPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalTimeFieldPojo.class);
         FieldInfo fi = pi.properties.get("time");
         assertNotNull(fi);
         assertNull(fi.codecName);
@@ -374,7 +374,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testOptionalFieldWithCodec() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(OptionalFieldPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(OptionalFieldPojo.class);
         FieldInfo fi = pi.properties.get("name");
         assertNotNull(fi);
         assertNotNull(fi.resolvedValueCodec);
@@ -536,7 +536,7 @@ class TypeRegistryEdgeCaseTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         CreatorInfo sessionCreator = ReflectUtil.analyzeCreator(SessionPojo.class, lookup);
-        ObjectInfo sessionInfo = TypeRegistry.registerPojoOrElseThrow(SessionPojo.class);
+        PojoInfo sessionInfo = TypeRegistry.registerPojoOrElseThrow(SessionPojo.class);
         FieldInfo extraField = sessionInfo.properties.get("extra");
 
         TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(sessionCreator, 1);
@@ -559,7 +559,7 @@ class TypeRegistryEdgeCaseTest {
         JsonObject jsonObject = (JsonObject) jsonSession.finish();
         assertEquals(1, jsonObject.getInt("extra"));
 
-        ObjectInfo mixedInfo = TypeRegistry.registerPojoOrElseThrow(MixedJsonSessionPojo.class);
+        PojoInfo mixedInfo = TypeRegistry.registerPojoOrElseThrow(MixedJsonSessionPojo.class);
         TypeRegistry.PojoCreationSession mixedSession = new TypeRegistry.PojoCreationSession(mixedInfo.creatorInfo, 2);
         mixedSession.acceptProperty(mixedInfo.properties.get("extra"), "later");
         mixedSession.acceptDynamic("dynamic", 2);
@@ -568,7 +568,7 @@ class TypeRegistryEdgeCaseTest {
         assertEquals("later", mixedPojo.extra);
         assertEquals(2, mixedPojo.getInt("dynamic"));
 
-        ObjectInfo containerInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
+        PojoInfo containerInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
         TypeRegistry.PojoCreationSession noArgsSession = new TypeRegistry.PojoCreationSession(containerInfo.creatorInfo, 2);
         noArgsSession.acceptProperty(containerInfo.properties.get("plain"), "plain");
         assertEquals("plain", ((ContainerPojo) noArgsSession.finish()).plain);
@@ -606,7 +606,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testDuplicateCreatorBindingFailsAfterMaterialization() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(AliasCreatorPojo.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(AliasCreatorPojo.class);
         JsonException duplicate = assertThrows(JsonException.class,
                 () -> StreamingIO.readPojo(new SimpleJsonReader(new StringReader("{\"name\":\"first\",\"n\":\"second\"}")),
                         AliasCreatorPojo.class, AliasCreatorPojo.class, pi, StreamingContext.EMPTY));
@@ -615,7 +615,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testPropertyInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
-        ObjectInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
+        PojoInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
         FieldInfo namesField = pojoInfo.properties.get("names");
         FieldInfo numbersField = pojoInfo.properties.get("numbers");
         FieldInfo mappingField = pojoInfo.properties.get("mapping");
@@ -660,6 +660,9 @@ class TypeRegistryEdgeCaseTest {
 
         FieldInfo missingGetter = new FieldInfo(
                 "name",
+                null,
+                String.class,
+                false,
                 String.class,
                 null,
                 null,
@@ -669,8 +672,7 @@ class TypeRegistryEdgeCaseTest {
                 null,
                 null,
                 null,
-                null,
-                null
+                null, null
         );
         assertThrows(JsonException.class, () -> missingGetter.invokeGetter(new Object()));
 
@@ -679,13 +681,16 @@ class TypeRegistryEdgeCaseTest {
         Method setterMethod = ThrowingAccessor.class.getDeclaredMethod("setName", String.class);
         FieldInfo throwingField = new FieldInfo(
                 "name",
-                String.class,
                 null,
+                String.class,
+                false,
+                String.class,
                 getterMethod,
                 lookup.unreflect(getterMethod),
                 null,
                 setterMethod,
                 lookup.unreflect(setterMethod),
+                null,
                 null,
                 null,
                 null,

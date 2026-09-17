@@ -1,5 +1,6 @@
 package org.sjf4j.node;
 
+import org.sjf4j.binding.FieldBinder;
 import org.sjf4j.exception.BindingException;
 
 import java.lang.invoke.MethodHandle;
@@ -52,24 +53,21 @@ public class FieldInfo {
     public final String codecName;
     public final ValueCodecInfo resolvedValueCodec;
 
+    public final FieldBinder binder;
+
     /**
      * Creates property binding metadata and resolves its container element type.
      */
-    public FieldInfo(String name, Type type, Field publicField,
+    public FieldInfo(String name, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                      Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                      Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                     OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec) {
+                     OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec,
+                     FieldBinder binder) {
         this.name = name;
         this.publicField = publicField;
-
         this.type = type;
-        if (Types.containsTypeVariable(type)) {
-            this.genericDependent = true;
-            this.boxed = Object.class;
-        } else {
-            this.genericDependent = false;
-            this.boxed = Types.rawBox(type);
-        }
+        this.genericDependent = genericDependent;
+        this.boxed = boxed;
 
         ContainerKind kind = ContainerKind.NONE;
         Type argType = null;
@@ -108,6 +106,7 @@ public class FieldInfo {
         this.oneOfInfo = oneOfInfo;
         this.codecName = codecName;
         this.resolvedValueCodec = resolvedValueCodec;
+        this.binder = binder;
     }
 
     /**
@@ -130,17 +129,7 @@ public class FieldInfo {
      */
     public Object invokeGetter(Object receiver) {
         Objects.requireNonNull(receiver, "receiver");
-        if (getterLambda != null) {
-            return getterLambda.apply(receiver);
-        }
-        if (getterHandle == null) {
-            throw new BindingException("no getter available for property '" + name + "' of " + type);
-        }
-        try {
-            return getterHandle.invoke(receiver);
-        } catch (Throwable e) {
-            throw new BindingException("failed to invoke getter for property '" + name + "' of " + type, e);
-        }
+        return PojoAccess.invokeGetter(name, getterHandle, getterLambda, receiver);
     }
 
     /**
@@ -157,18 +146,7 @@ public class FieldInfo {
      */
     public void invokeSetter(Object receiver, Object value) {
         Objects.requireNonNull(receiver, "receiver");
-        try {
-            if (setterLambda != null) {
-                setterLambda.accept(receiver, value);
-                return;
-            }
-            if (setterHandle == null)
-                throw new BindingException("no setter available for property '" + name + "' of " + type);
-            setterHandle.invoke(receiver, value);
-        } catch (Throwable e) {
-            throw new BindingException("failed to invoke setter for property '" + name + "' of type '" + type +
-                    "' with value '" + Types.name(value) + "' (node type: " + Types.name(receiver) + ")", e);
-        }
+        PojoAccess.invokeSetter(name, setterHandle, setterLambda, receiver, value);
     }
 
 }

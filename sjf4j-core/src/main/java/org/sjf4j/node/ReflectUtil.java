@@ -7,6 +7,7 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.PropertyStrategy;
+import org.sjf4j.binding.FieldBinder;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -19,11 +20,8 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.util.Strings;
 
 import java.lang.annotation.Annotation;
-import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
@@ -56,7 +54,7 @@ public final class ReflectUtil {
     /**
      * Flag indicating if the current JVM is running JDK 8.
      */
-    public static final boolean IS_JDK8 = System.getProperty("java.version").startsWith("1.");
+    public static final boolean IS_JDK8 = PojoAccess.IS_JDK8;
 
 
     /// POJO
@@ -97,12 +95,12 @@ public final class ReflectUtil {
             return null;
         }
 
-        MethodHandles.Lookup lookup = _resolveLookup(clazz);
+        MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
         try {
             Constructor<?> ctor = clazz.getDeclaredConstructor();
             try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
             MethodHandle noArgsCtor = lookup.unreflectConstructor(ctor);
-            Supplier<?> noArgsLambdaCtor = createLambdaConstructor(lookup, clazz, noArgsCtor);
+            Supplier<?> noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
             return new ContainerInfo(clazz, kind, noArgsCtor, noArgsLambdaCtor);
         } catch (NoSuchMethodException | IllegalAccessException e) {
             return null;
@@ -117,13 +115,13 @@ public final class ReflectUtil {
         return ann == null ? null : analyzeOneOf(clazz, ann);
     }
 
-    public static ObjectInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
+    public static PojoInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
         if (!isPojoCandidate(clazz)) {
             if (orElseThrow) throw new JsonException("class " + clazz.getName() + " cannot be a POJO candidate");
             else return null;
         }
 
-        MethodHandles.Lookup lookup = _resolveLookup(clazz);
+        MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
 
         // Creator constructor (for final fields / record-style)
         CreatorInfo creatorInfo;
@@ -224,8 +222,6 @@ public final class ReflectUtil {
             }
             _assertCompatiblePropertyTypes(family, clazz);
 
-            Type type = family.resolveType(propertyStrategy);
-            Class<?> raw = Types.rawClazz(type);
             String finalName = family.resolveFinalName(clazz, namingStrategy);
             if (creatorInfo.argIndexes != null) {
                 Integer implicitIdx = creatorInfo.argIndexes.get(family.implicitName);
@@ -240,14 +236,29 @@ public final class ReflectUtil {
                 }
             }
 
+            Type type = family.resolveType(propertyStrategy);
+            Class<?> boxed = Types.rawBox(type);
+            boolean genericDependent = Types.containsTypeVariable(type);
+            if (genericDependent &&
+                    (family.oneOfInfo != null || family.codecName != null || family.codecPattern != null)) {
+                throw new JsonException("generic field '" + finalName +
+                        "' does not support field-level OneOf or value codec");
+            }
+
             Function<Object, Object> getterLambda = getterHandle == null ? null :
-                    createLambdaGetter(lookup, getterHandle, Function.class, Object.class);
+                    PojoAccess.createGetterLambda(lookup, getterHandle, Function.class, Object.class);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
-                    createLambdaSetter(lookup, setterHandle, BiConsumer.class, Object.class);
-            ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
-            FieldInfo pi = new FieldInfo(finalName, type, publicField,
-                    family.getterMethod, getterHandle, getterLambda, family.setterMethod, setterHandle, setterLambda,
-                    family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(raw), family.codecName, resolvedCodec);
+                    PojoAccess.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
+            ValueCodecInfo resolvedCodec = _resolveCodec(boxed, family.codecName, family.codecPattern);
+
+            FieldBinder fieldBinder = FieldBinder.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
+                    setterHandle, setterLambda, resolvedCodec, lookup);
+            FieldInfo pi = new FieldInfo(finalName, publicField, type, genericDependent, boxed,
+                    family.getterMethod, getterHandle, getterLambda,
+                    family.setterMethod, setterHandle, setterLambda,
+                    family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
+                    family.codecName, resolvedCodec,
+                    fieldBinder);
             FieldInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new JsonException("multiple property families resolve to JSON property '" + pi.name +
@@ -262,7 +273,7 @@ public final class ReflectUtil {
                     throw new JsonException("alias '" + alias + "' is mapped to multiple properties in " + clazz.getName());
                 }
             }
-        }
+        } //for
 
         Map<String, FieldInfo> aliasProperties = null;
         if (aliasMap != null ) {
@@ -276,7 +287,7 @@ public final class ReflectUtil {
             hasNonPublicFields = true;
         }
 
-        return new ObjectInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
+        return new PojoInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
                 readDynamic, writeDynamic, properties, aliasProperties,
                 hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap);
     }
@@ -643,30 +654,6 @@ public final class ReflectUtil {
         return false;
     }
 
-    private static final MethodHandles.Lookup ROOT_LOOKUP = MethodHandles.lookup();
-    private static final Method PRIVATE_LOOKUP_IN;
-    static {
-        Method privateLookupIn = null;
-        try {
-            privateLookupIn = MethodHandles.class.getMethod("privateLookupIn", Class.class,
-                    MethodHandles.Lookup.class);
-        } catch (Exception ignored) {}
-        PRIVATE_LOOKUP_IN = privateLookupIn;
-    }
-
-    private static MethodHandles.Lookup _resolveLookup(Class<?> clazz) {
-        MethodHandles.Lookup lookup = ROOT_LOOKUP;
-        if (!IS_JDK8 && PRIVATE_LOOKUP_IN != null) {
-            try {
-                lookup = (MethodHandles.Lookup) PRIVATE_LOOKUP_IN.invoke(null, clazz, ROOT_LOOKUP);
-            } catch (Exception e) {
-                // log.debug("Failed to get 'privateLookupIn'", e);
-            }
-        }
-        return lookup;
-    }
-
-
     public static CreatorInfo analyzeCreator(Class<?> clazz,
                                              MethodHandles.Lookup lookup) {
         Executable creator = null;
@@ -750,19 +737,19 @@ public final class ReflectUtil {
             if (!hasPrimitiveArg) {
                 switch (creator.getParameterCount()) {
                     case 1:
-                        creatorLambda1 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func1.class, 1);
+                        creatorLambda1 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func1.class, 1);
                         break;
                     case 2:
-                        creatorLambda2 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func2.class, 2);
+                        creatorLambda2 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func2.class, 2);
                         break;
                     case 3:
-                        creatorLambda3 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func3.class, 3);
+                        creatorLambda3 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func3.class, 3);
                         break;
                     case 4:
-                        creatorLambda4 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func4.class, 4);
+                        creatorLambda4 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func4.class, 4);
                         break;
                     case 5:
-                        creatorLambda5 = createLambdaArgsCreator(lookup, creatorHandle, TypeRegistry.Func5.class, 5);
+                        creatorLambda5 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func5.class, 5);
                         break;
                     default:
                         break;
@@ -817,11 +804,11 @@ public final class ReflectUtil {
             } catch (NoSuchMethodException | IllegalAccessException e) {
                 throw new JsonException("no defined creator or no-args constructor of " + clazz.getName(), e);
             }
-            noArgsLambdaCtor = createLambdaConstructor(lookup, clazz, noArgsCtor);
+            noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
         } else if (creator.getParameterCount() == 0) {
             // The defined creator is no-args Constructor
             noArgsCtor = creatorHandle;
-            noArgsLambdaCtor = createLambdaConstructor(lookup, clazz, noArgsCtor);
+            noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
             creator = null;
             creatorHandle = null;
         }
@@ -838,7 +825,7 @@ public final class ReflectUtil {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
         MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
-        MethodHandles.Lookup lookup = _resolveLookup(clazz);
+        MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
 
         Class<?> current = clazz;
         while (current != null && current != Object.class &&
@@ -924,10 +911,10 @@ public final class ReflectUtil {
             throw new JsonException("@" + ValueToRaw.class.getName() + " method must have no parameters, but found " +
                     (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
-        Class<?> valueToRawReturnBox = Types.box(valueToRawHandle.type().returnType());
-        if (!NodeKind.plainOf(valueToRawReturnBox).isRaw())
+        Class<?> valueToRawReturnBoxed = Types.box(valueToRawHandle.type().returnType());
+        if (!NodeKind.plainOf(valueToRawReturnBoxed).isRaw())
             throw new JsonException("@" + ValueToRaw.class.getName() + " method return invalid type " +
-                    valueToRawReturnBox.getName() + " in " + clazz.getName() +
+                    valueToRawReturnBoxed.getName() + " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
         if (rawToValueHandle == null)
@@ -935,12 +922,12 @@ public final class ReflectUtil {
         if (rawToValueHandle.type().parameterCount() != 1)
             throw new JsonException("@" + RawToValue.class.getName() +
                     " method must have exactly one parameter, but found " + rawToValueHandle.type().parameterCount());
-        Class<?> rawToValueParamBox = Types.box(rawToValueHandle.type().parameterType(0));
+        Class<?> rawToValueParamBoxed = Types.box(rawToValueHandle.type().parameterType(0));
         Class<?> rawToValueReturnClazz = rawToValueHandle.type().returnType();
-        if (rawToValueParamBox != valueToRawReturnBox)
+        if (rawToValueParamBoxed != valueToRawReturnBoxed)
             throw new JsonException("@" + RawToValue.class.getName() + " method parameter type must match @" +
-                    ValueToRaw.class.getName() + " return type. " + "Expected: " + valueToRawReturnBox.getName() +
-                    ", Found: " + rawToValueParamBox.getName());
+                    ValueToRaw.class.getName() + " return type. " + "Expected: " + valueToRawReturnBoxed.getName() +
+                    ", Found: " + rawToValueParamBoxed.getName());
         if (rawToValueReturnClazz != clazz)
             throw new JsonException("@" + RawToValue.class.getName() + " method return type must be " +
                     clazz.getName() + ", but found " + rawToValueReturnClazz.getName());
@@ -955,7 +942,7 @@ public final class ReflectUtil {
                         ", but found " + copyReturnClazz.getName());
         }
 
-        return new ValueCodecInfo("", clazz, valueToRawReturnBox, null,
+        return new ValueCodecInfo("", clazz, valueToRawReturnBoxed, null,
                 valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 
@@ -1151,103 +1138,6 @@ public final class ReflectUtil {
         }
         return argIndexes;
     }
-
-
-    /// Lambda
-
-    @SuppressWarnings("unchecked")
-    static <T> Supplier<T> createLambdaConstructor(MethodHandles.Lookup lookup,
-                                                   Class<T> clazz,
-                                                   MethodHandle constructor) {
-        if (constructor == null) return null;
-        try {
-            return (Supplier<T>) LambdaMetafactory.metafactory(
-                    lookup,
-                    "get",
-                    MethodType.methodType(Supplier.class),
-                    MethodType.methodType(Object.class), // erased SAM (Object)get()
-                    constructor,
-                    constructor.type().changeReturnType(clazz)
-            ).getTarget().invoke();
-        } catch (Throwable e) {
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> T createLambdaArgsCreator(MethodHandles.Lookup lookup, MethodHandle creator,
-                                         Class<T> funcType, int arity) {
-        if (creator == null || funcType == null || arity <= 0 || arity > 5) {
-            return null;
-        }
-        Class<?>[] params = new Class<?>[arity];
-        for (int i = 0; i < arity; i++) {
-            params[i] = Object.class;
-        }
-        MethodType erasedSamType = MethodType.methodType(Object.class, params);
-        try {
-            MethodType instantiatedSamType = creator.type().changeReturnType(Object.class);
-            return (T) LambdaMetafactory.metafactory(
-                    lookup,
-                    "apply",
-                    MethodType.methodType(funcType),
-                    erasedSamType,
-                    creator,
-                    instantiatedSamType
-            ).getTarget().invoke();
-        } catch (Throwable e) {
-            try {
-                MethodHandle adapted = creator.asType(erasedSamType);
-                return (T) MethodHandleProxies.asInterfaceInstance(funcType, adapted);
-            } catch (Throwable ignored) {
-                return null;
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> T createLambdaGetter(MethodHandles.Lookup lookup, MethodHandle getter,
-                                    Class<T> functionType, Class<?> returnType) {
-        if (getter == null) return null;
-        try {
-            MethodType invokedType = MethodType.methodType(functionType);
-            MethodType samMethodType = MethodType.methodType(returnType, Object.class);
-
-            return (T) LambdaMetafactory.metafactory(
-                    lookup,
-                    "apply",
-                    invokedType,
-                    samMethodType,
-                    getter,
-                    getter.type()
-            ).getTarget().invoke();
-        } catch (Throwable e) {
-            return null;
-        }
-    }
-
-
-    @SuppressWarnings("unchecked")
-    static <T> T createLambdaSetter(MethodHandles.Lookup lookup, MethodHandle setter,
-                                    Class<T> functionType, Class<?> valueType) {
-        if (setter == null || setter.type().parameterCount() < 2) return null;
-        try {
-            MethodType invokedType = MethodType.methodType(functionType);
-            MethodType samMethodType = MethodType.methodType(void.class, Object.class, valueType);
-
-            return (T) LambdaMetafactory.metafactory(
-                    lookup,
-                    "accept",
-                    invokedType,
-                    samMethodType,
-                    setter,
-                    setter.type()
-            ).getTarget().invoke();
-        } catch (Throwable e) {
-            return null;
-        }
-    }
-
 
     /// OneOf
 

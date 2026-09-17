@@ -455,7 +455,7 @@ class JsonArrayTest {
     public static class MyArray1 extends JsonArray {
         private int a = 33;
         @Override
-        public Class<?> elementType() {
+        public Class<?> elementClass() {
             return int.class;
         }
     }

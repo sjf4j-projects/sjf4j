@@ -72,7 +72,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testRegisterPojo1() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
         assertEquals(4, pi.propertyCount);
@@ -86,7 +86,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testInheritedFieldSameKeyChildWins() {
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
         assertNotNull(pi.properties.get("key"));
         assertEquals(int.class, pi.properties.get("key").type);
 
@@ -112,7 +112,7 @@ public class TypeRegistryTest {
     @Test
     public void testInvoke1() {
         Person p1 = new Person();
-        ObjectInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
+        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
         FieldInfo fi = pi.properties.get("name");
 
         fi.invokeSetter(p1, "hahaha");

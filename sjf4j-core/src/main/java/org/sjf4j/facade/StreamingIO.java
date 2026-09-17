@@ -7,7 +7,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
@@ -237,7 +237,7 @@ public final class StreamingIO {
             }
         }
 
-        ObjectInfo pi = ti.pojoInfo;
+        PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
             return readPojo(reader, type, rawClazz, pi, context);
         }
@@ -246,7 +246,7 @@ public final class StreamingIO {
     }
 
     public static Object readPojo(StreamingReader reader, Type ownerType, Class<?> ownerRawClazz,
-                                  ObjectInfo pi, StreamingContext context)
+                                  PojoInfo pi, StreamingContext context)
             throws IOException {
         CreatorInfo ci = pi.creatorInfo;
         boolean hasParentOneOf = pi.hasParentScopeOneOf;
@@ -396,7 +396,7 @@ public final class StreamingIO {
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) TypeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
-            Class<?> elemType = ja.elementType();
+            Class<?> elemType = ja.elementClass();
             Class<?> elemRaw = Types.box(elemType);
             TypeInfo elemTi = TypeRegistry.registerTypeInfo(elemRaw);
             reader.startArray();
@@ -749,7 +749,7 @@ public final class StreamingIO {
                 }
             }
 
-            ObjectInfo pi = ti.pojoInfo;
+            PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
                 writePojo(writer, node, pi, context);
                 return;
@@ -763,7 +763,7 @@ public final class StreamingIO {
         }
     }
 
-    public static void writePojo(StreamingWriter writer, Object node, ObjectInfo pi,
+    public static void writePojo(StreamingWriter writer, Object node, PojoInfo pi,
                                  StreamingContext context) throws IOException {
         writer.startObject();
         int cnt = 0;
@@ -854,7 +854,7 @@ public final class StreamingIO {
         return resolveOneOfDiscriminatorTarget(discriminatorValue, anyOfInfo);
     }
 
-    public static void applyDeferredParentOneOf(Object pojo, ObjectInfo pi,
+    public static void applyDeferredParentOneOf(Object pojo, PojoInfo pi,
                                                 FieldInfo deferredParentOneOfFi,
                                                 Object deferredParentOneOfRaw, Object parentOneOfValue,
                                                 Object unsetSentinel,

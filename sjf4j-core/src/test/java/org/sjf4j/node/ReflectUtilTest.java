@@ -175,12 +175,12 @@ class ReflectUtilTest {
         }
 
         MethodHandle setter = lookup.unreflect(PrivateFieldPojo.class.getDeclaredMethod("setName", String.class));
-        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, setter, BiConsumer.class, Object.class);
+        BiConsumer<Object, Object> lambda = PojoAccess.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
         assertNotNull(lambda);
         lambda.accept(p, "ok");
         assertEquals("ok", p.getName());
 
-        BiConsumer<Object, Object> lambda2 = ReflectUtil.createLambdaSetter(lookup, null, BiConsumer.class, Object.class);
+        BiConsumer<Object, Object> lambda2 = PojoAccess.createSetterLambda(lookup, null, BiConsumer.class, Object.class);
         assertNull(lambda2);
     }
 
@@ -198,7 +198,7 @@ class ReflectUtilTest {
         Field f = PrimitiveFieldPojo.class.getDeclaredField("age");
         MethodHandle setter = lookup.unreflectSetter(f);
 
-        BiConsumer<Object, Object> lambda = ReflectUtil.createLambdaSetter(lookup, setter, BiConsumer.class, Object.class);
+        BiConsumer<Object, Object> lambda = PojoAccess.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
         assertNull(lambda);
     }
 

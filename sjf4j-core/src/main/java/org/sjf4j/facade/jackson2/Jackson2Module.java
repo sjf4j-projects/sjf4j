@@ -26,7 +26,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeInfo;
@@ -150,10 +150,10 @@ public interface Jackson2Module {
 
     class JsonObjectDeserializer<T extends JsonObject> extends JsonDeserializer<T> {
         private final Type type;
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
 
-        public JsonObjectDeserializer(JavaType type, ObjectInfo pi, StreamingContext streamingContext) {
+        public JsonObjectDeserializer(JavaType type, PojoInfo pi, StreamingContext streamingContext) {
             this.type = TwoSimpleModule.toType(type);
             this.pi = pi;
             this.streamingContext = streamingContext;
@@ -192,11 +192,11 @@ public interface Jackson2Module {
     }
 
     class JsonArrayDeserializer<T extends JsonArray> extends JsonDeserializer<T> {
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         /**
          * Creates deserializer for JsonArray or subclass.
          */
-        public JsonArrayDeserializer(ObjectInfo pi) {
+        public JsonArrayDeserializer(PojoInfo pi) {
             this.pi = pi;
         }
 
@@ -215,7 +215,7 @@ public interface Jackson2Module {
 
             T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
             JsonDeserializer<Object> deserializer =
-                    ctx.findContextualValueDeserializer(ctx.constructType(ja.elementType()), null);
+                    ctx.findContextualValueDeserializer(ctx.constructType(ja.elementClass()), null);
             while (p.nextToken() != JsonToken.END_ARRAY) {
                 Object v = deserializer.deserialize(p, ctx);
                 ja.add(v);
@@ -267,12 +267,12 @@ public interface Jackson2Module {
 
     class PojoDeserializer<T> extends JsonDeserializer<T> {
         private final Type type;
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public PojoDeserializer(JavaType javaType, ObjectInfo pi, StreamingContext streamingContext) {
+        public PojoDeserializer(JavaType javaType, PojoInfo pi, StreamingContext streamingContext) {
             this.type = TwoSimpleModule.toType(javaType);
             this.pi = pi;
             this.streamingContext = streamingContext;

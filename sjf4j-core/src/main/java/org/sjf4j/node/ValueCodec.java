@@ -36,6 +36,13 @@ import java.util.regex.Pattern;
  * {@link String}, {@link Number}, {@link Boolean}, {@link java.util.Map},
  * {@link java.util.List}, or {@link Object}. Implementations should be stable,
  * deterministic, and reversible for predictable reads and writes.
+ * <p>
+ * A map-shaped raw value represents a raw JSON object and must be handled as
+ * {@code Map<String, Object>}. Its values are raw JSON-tree values; SJF4J does
+ * not recursively bind typed map values such as {@code Map<String, SomePojo>}
+ * while decoding a codec raw value. This is a contract rather than a
+ * registration-time check because generic type arguments are erased from
+ * {@link #rawClass()}.
  */
 public interface ValueCodec<V, R> {
 

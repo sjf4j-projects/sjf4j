@@ -16,7 +16,7 @@ import java.util.Map;
  * <p>It describes construction, property access, naming, dynamic JSON-object
  * behavior, and whether the framework reader or writer is required.</p>
  */
-public class ObjectInfo {
+public class PojoInfo {
     public final Class<?> clazz;
     public final CreatorInfo creatorInfo;
     public final NamingStrategy namingStrategy;
@@ -43,17 +43,17 @@ public class ObjectInfo {
     /**
      * Creates object binding metadata.
      */
-    public ObjectInfo(Class<?> clazz, CreatorInfo creatorInfo,
-                      NamingStrategy namingStrategy,
-                      PropertyStrategy propertyStrategy,
-                      boolean readDynamic,
-                      boolean writeDynamic,
-                      Map<String, FieldInfo> properties,
-                      Map<String, FieldInfo> aliasProperties,
-                      boolean hasExplicitBinding,
-                      boolean hasNonPublicFields,
-                      boolean hasNonPublicReaderGap,
-                      boolean hasNonPublicWriterGap) {
+    public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
+                    NamingStrategy namingStrategy,
+                    PropertyStrategy propertyStrategy,
+                    boolean readDynamic,
+                    boolean writeDynamic,
+                    Map<String, FieldInfo> properties,
+                    Map<String, FieldInfo> aliasProperties,
+                    boolean hasExplicitBinding,
+                    boolean hasNonPublicFields,
+                    boolean hasNonPublicReaderGap,
+                    boolean hasNonPublicWriterGap) {
         this.clazz = clazz;
         this.creatorInfo = creatorInfo;
         this.namingStrategy = namingStrategy;

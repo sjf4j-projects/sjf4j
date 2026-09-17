@@ -13,7 +13,7 @@ import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
@@ -290,7 +290,7 @@ public class Jackson2StreamingIO {
             }
         }
 
-        ObjectInfo pi = ti.pojoInfo;
+        PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
             return readPojo(parser, type, rawClazz, pi, context);
         }
@@ -299,7 +299,7 @@ public class Jackson2StreamingIO {
     }
 
     public static Object readPojo(JsonParser parser, Type ownerType, Class<?> ownerRawClazz,
-                                  ObjectInfo pi, StreamingContext context) throws IOException {
+                                  PojoInfo pi, StreamingContext context) throws IOException {
         CreatorInfo ci = pi.creatorInfo;
         boolean hasParentOneOf = pi.hasParentScopeOneOf;
 
@@ -449,7 +449,7 @@ public class Jackson2StreamingIO {
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) TypeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
-            Class<?> elemType = ja.elementType();
+            Class<?> elemType = ja.elementClass();
             Class<?> elemRaw = Types.box(elemType);
             TypeInfo elemTi = TypeRegistry.registerTypeInfo(elemRaw);
             parser.nextToken();
@@ -866,7 +866,7 @@ public class Jackson2StreamingIO {
                 }
             }
 
-            ObjectInfo pi = ti.pojoInfo;
+            PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
                 writePojo(gen, node, pi, context);
                 return;
@@ -880,7 +880,7 @@ public class Jackson2StreamingIO {
         }
     }
 
-    public static void writePojo(JsonGenerator gen, Object node, ObjectInfo pi,
+    public static void writePojo(JsonGenerator gen, Object node, PojoInfo pi,
                                  StreamingContext context) throws IOException {
         gen.writeStartObject();
         for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {

@@ -16,7 +16,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeInfo;
@@ -153,12 +153,12 @@ public interface Fastjson2Module {
 
     class JsonObjectReader<T extends JsonObject> implements ObjectReader<T> {
         private final Type type;
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public JsonObjectReader(Type type, ObjectInfo pi, StreamingContext streamingContext) {
+        public JsonObjectReader(Type type, PojoInfo pi, StreamingContext streamingContext) {
             this.type = type;
             this.pi = pi;
             this.streamingContext = streamingContext;
@@ -193,11 +193,11 @@ public interface Fastjson2Module {
 
 
     class JsonArrayReader<T extends JsonArray> implements ObjectReader<T> {
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public JsonArrayReader(ObjectInfo pi) {
+        public JsonArrayReader(PojoInfo pi) {
             this.pi = pi;
         }
 
@@ -211,7 +211,7 @@ public interface Fastjson2Module {
             if (!reader.nextIfArrayStart()) throw new JSONException(reader.info("expect '['"));
             T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
             while (!reader.nextIfArrayEnd()) {
-                Object value = reader.read(ja.elementType());
+                Object value = reader.read(ja.elementClass());
                 ja.add(value);
             }
             return ja;
@@ -266,12 +266,12 @@ public interface Fastjson2Module {
 
     class PojoReader<T> implements ObjectReader<T> {
         private final Type type;
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public PojoReader(Type type, ObjectInfo pi, StreamingContext streamingContext) {
+        public PojoReader(Type type, PojoInfo pi, StreamingContext streamingContext) {
             this.type = type;
             this.pi = pi;
             this.streamingContext = streamingContext;
@@ -352,10 +352,10 @@ public interface Fastjson2Module {
     }
 
     class JsonObjectWriter implements ObjectWriter<JsonObject> {
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
 
-        public JsonObjectWriter(ObjectInfo pi, StreamingContext streamingContext) {
+        public JsonObjectWriter(PojoInfo pi, StreamingContext streamingContext) {
             this.pi = pi;
             this.streamingContext = streamingContext;
         }
@@ -421,10 +421,10 @@ public interface Fastjson2Module {
     }
 
     class PojoWriter implements ObjectWriter<Object> {
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
         private final StreamingContext streamingContext;
 
-        public PojoWriter(ObjectInfo pi, StreamingContext streamingContext) {
+        public PojoWriter(PojoInfo pi, StreamingContext streamingContext) {
             this.pi = pi;
             this.streamingContext = streamingContext;
         }

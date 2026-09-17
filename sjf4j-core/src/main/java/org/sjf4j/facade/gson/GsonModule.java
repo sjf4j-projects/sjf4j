@@ -14,7 +14,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
@@ -111,7 +111,7 @@ public interface GsonModule {
 
     class JsonArrayAdapter<T extends JsonArray> extends TypeAdapter<T> {
         private final Gson gson;
-        private final ObjectInfo pi;
+        private final PojoInfo pi;
 
         /**
          * Creates adapter for JsonArray or subclass.
@@ -129,7 +129,7 @@ public interface GsonModule {
         public T read(JsonReader in) throws IOException {
             T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
             in.beginArray();
-            TypeAdapter<?> adapter = gson.getAdapter(ja.elementType());
+            TypeAdapter<?> adapter = gson.getAdapter(ja.elementClass());
             while (in.hasNext()) {
                 Object value = adapter.read(in);
                 ja.add(value);
@@ -185,10 +185,10 @@ public interface GsonModule {
 
     class PojoAdapter<T> extends TypeAdapter<T> {
         private final Type ownerType;
-        private final ObjectInfo pojoInfo;
+        private final PojoInfo pojoInfo;
         private final StreamingContext streamingContext;
 
-        public PojoAdapter(Type ownerType, ObjectInfo pojoInfo, StreamingContext streamingContext) {
+        public PojoAdapter(Type ownerType, PojoInfo pojoInfo, StreamingContext streamingContext) {
             this.ownerType = ownerType;
             this.pojoInfo = pojoInfo;
             this.streamingContext = streamingContext == null ? StreamingContext.EMPTY : streamingContext;

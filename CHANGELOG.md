@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes
 - Renamed `org.sjf4j.binding.FieldReader` to `FieldBinder`; update streaming binding references accordingly.
 - Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.
+- Renamed `org.sjf4j.node.ObjectInfo` to `PojoInfo`; update imports and public metadata references accordingly.
+- Renamed `JsonArray.elementType()` to `elementClass()`; update typed `JsonArray` subclasses accordingly.
 - Renamed the core Gradle module and published artifact from `sjf4j` to `sjf4j-core`; update project dependencies accordingly.
 - Removed capacity-aware `TypeRegistry` map, list, and set container factory overloads.
 - Moved compiled mapping annotations (including JDBC annotations) to `org.sjf4j.annotation.mapping`, compiled path annotations to `org.sjf4j.annotation.path`, and their processor generators to `org.sjf4j.processor.mapping` and `org.sjf4j.processor.path`.
@@ -32,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `sjf4j-integration-gson` artifact with Gson streaming reader and writer bindings.
 - Added domain-specific mapping, node, patch, and path exception types.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
-- Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
+- Added a protected `JsonObject(PojoInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
 
 ### Changed

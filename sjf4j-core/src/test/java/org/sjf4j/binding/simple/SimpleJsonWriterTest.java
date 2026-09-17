@@ -1,10 +1,6 @@
 package org.sjf4j.binding.simple;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
-import org.sjf4j.binding.StreamingContext;
-import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.exception.BindingException;
 
@@ -14,9 +10,7 @@ import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -95,7 +89,7 @@ class SimpleJsonWriterTest {
     }
 
     @Test
-    void rejectsNonFiniteNumbersDirectlyAndThroughStreamingIo() throws Exception {
+    void rejectsNonFiniteNumbersDirectlyAndThroughJsonBinder() throws Exception {
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
             assertThrows(BindingException.class, () -> writer.writeDoubleValue(Double.NaN));
@@ -107,8 +101,8 @@ class SimpleJsonWriterTest {
         }
         assertEquals("", output.toString());
 
-        assertStreamingIoRejectsNonFiniteNumber(Double.NaN);
-        assertStreamingIoRejectsNonFiniteNumber(Float.NEGATIVE_INFINITY);
+        assertJsonBinderRejectsNonFiniteNumber(Double.NaN);
+        assertJsonBinderRejectsNonFiniteNumber(Float.NEGATIVE_INFINITY);
     }
 
     @Test
@@ -153,31 +147,9 @@ class SimpleJsonWriterTest {
         assertEquals(List.of("first", "\\n", "second"), output.stringWrites);
     }
 
-    @Test
-    void streamingIoWritesMapsArraysAndNodes() throws Exception {
+    private static void assertJsonBinderRejectsNonFiniteNumber(Number value) {
         StringWriter output = new StringWriter();
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("items", new int[]{1, 2});
-        map.put("node", JsonObject.of("values", JsonArray.of("a", "b")));
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
-            StreamingIO.writeNode(writer, map, StreamingContext.EMPTY);
-            writer.flush();
-        }
-        assertEquals("{\"items\":[1,2],\"node\":{\"values\":[\"a\",\"b\"]}}", output.toString());
-
-        SeparatorWriter separators = new SeparatorWriter();
-        StreamingIO.writeNode(separators, new int[]{1, 2}, StreamingContext.EMPTY);
-        assertEquals(0, separators.properties);
-        assertEquals(1, separators.elements);
-    }
-
-    private static void assertStreamingIoRejectsNonFiniteNumber(Number value) throws Exception {
-        StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
-            assertThrows(BindingException.class,
-                    () -> StreamingIO.writeNode(writer, value, StreamingContext.EMPTY));
-            writer.flush();
-        }
+        assertThrows(BindingException.class, () -> new SimpleJsonBinder().writeNode(output, value));
         assertEquals("", output.toString());
     }
 
@@ -201,28 +173,4 @@ class SimpleJsonWriterTest {
         }
     }
 
-    private static final class SeparatorWriter implements StreamingWriter {
-        private int properties;
-        private int elements;
-
-        @Override public void startObject() {}
-        @Override public void endObject() {}
-        @Override public void startArray() {}
-        @Override public void endArray() {}
-        @Override public void writeName(String name) {}
-        @Override public void writeNull() {}
-        @Override public void writeStringValue(String value) {}
-        @Override public void writeLongValue(long value) {}
-        @Override public void writeIntValue(int value) {}
-        @Override public void writeShortValue(short value) {}
-        @Override public void writeByteValue(byte value) {}
-        @Override public void writeDoubleValue(double value) {}
-        @Override public void writeFloatValue(float value) {}
-        @Override public void writeBooleanValue(boolean value) {}
-        @Override public void writeNumberValue(Number value) {}
-        @Override public void separateProperty() { properties++; }
-        @Override public void separateElement() { elements++; }
-        @Override public void flush() {}
-        @Override public void close() {}
-    }
 }

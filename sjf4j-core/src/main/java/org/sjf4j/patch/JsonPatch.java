@@ -20,7 +20,7 @@ public class JsonPatch extends JsonArray {
      * Returns patch operation element type.
      */
     @Override
-    public Class<?> elementType() {
+    public Class<?> elementClass() {
         return PatchOperation.class;
     }
 

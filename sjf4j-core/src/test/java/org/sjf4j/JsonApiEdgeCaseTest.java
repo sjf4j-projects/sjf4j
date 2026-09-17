@@ -45,7 +45,7 @@ class JsonApiEdgeCaseTest {
         }
 
         @Override
-        public Class<?> elementType() {
+        public Class<?> elementClass() {
             return Integer.class;
         }
     }

@@ -188,7 +188,7 @@ public class MapperArrayTest {
 
     public static final class StringJsonArray extends JsonArray {
         @Override
-        public Class<?> elementType() {
+        public Class<?> elementClass() {
             return String.class;
         }
     }

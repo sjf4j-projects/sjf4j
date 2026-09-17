@@ -10,7 +10,7 @@ import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.bytecode.PathCompiler;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ObjectInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPath;
@@ -440,7 +440,7 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitVarInsn(Opcodes.ASTORE, dstLocal);
             return Object.class;
         } else {
-            ObjectInfo pi = TypeRegistry.registerTypeInfo(currentClazz).pojoInfo;
+            PojoInfo pi = TypeRegistry.registerTypeInfo(currentClazz).pojoInfo;
             if (pi == null) {
                 throw new JsonException("cannot read property '" + name +
                         "' from " + currentClazz.getName() + " at '" + expr + "'");
@@ -773,7 +773,7 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitVarInsn(Opcodes.ASTORE, childLocal);
             childType = Object.class;
         } else {
-            ObjectInfo pi = TypeRegistry.registerTypeInfo(currentClazz).pojoInfo;
+            PojoInfo pi = TypeRegistry.registerTypeInfo(currentClazz).pojoInfo;
             if (pi == null) {
                 throw new JsonException("cannot resolve property '" + name +
                         "' on " + currentClazz.getName() + " at '" + expr + "'");
@@ -1134,7 +1134,7 @@ public class AsmPathCompiler implements PathCompiler {
                     "put", "(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", false);
             mv.visitInsn(returnValue ? Opcodes.ARETURN : Opcodes.POP);
         } else {
-            ObjectInfo pi = TypeRegistry.registerTypeInfo(parentClazz).pojoInfo;
+            PojoInfo pi = TypeRegistry.registerTypeInfo(parentClazz).pojoInfo;
             FieldInfo propInfo = pi == null ? null : pi.properties.get(name);
             if (propInfo != null && propInfo.publicField != null) {
                 Class<?> fieldClazz = propInfo.publicField.getType();
@@ -1437,7 +1437,7 @@ public class AsmPathCompiler implements PathCompiler {
         if (Map.class.isAssignableFrom(childClazz)) {
             return _requirePublicNoArgsCtor(childClazz, "Map", expr);
         }
-        ObjectInfo pi = TypeRegistry.registerTypeInfo(childClazz).pojoInfo;
+        PojoInfo pi = TypeRegistry.registerTypeInfo(childClazz).pojoInfo;
         if (pi != null) {
             return _requirePublicNoArgsCtor(childClazz, "object", expr);
         }

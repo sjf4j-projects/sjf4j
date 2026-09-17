@@ -92,7 +92,7 @@ class SimpleNodeBinderTest {
 
     static class TypedIntegerArray extends JsonArray {
         @Override
-        public Class<?> elementType() {
+        public Class<?> elementClass() {
             return Integer.class;
         }
     }
@@ -334,7 +334,7 @@ class SimpleNodeBinderTest {
     void readsTypedJsonArraySubclassWithElementConversion() {
         TypedIntegerArray array = (TypedIntegerArray) binding.readNode(JsonArray.of(1L, 2L), TypedIntegerArray.class);
 
-        assertEquals(Integer.class, array.elementType());
+        assertEquals(Integer.class, array.elementClass());
         assertEquals(1, array.getNode(0));
         assertEquals(2, array.getNode(1));
     }
