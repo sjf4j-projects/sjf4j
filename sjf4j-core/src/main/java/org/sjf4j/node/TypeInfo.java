@@ -1,6 +1,6 @@
 package org.sjf4j.node;
 
-import org.sjf4j.node.external.ExternalNode;
+import org.sjf4j.external.ExternalNode;
 
 /**
  * Cached classification and metadata for a Java type.

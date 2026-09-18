@@ -119,14 +119,38 @@ val incubator by sourceSets.creating {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += output + compileClasspath
 }
+val incubatorTest by sourceSets.creating {
+    java.srcDir("src/incubatorTest/java")
+    resources.srcDir("src/incubatorTest/resources")
+
+    compileClasspath += sourceSets.main.get().output + incubator.output
+    runtimeClasspath += output + compileClasspath
+}
 configurations.named(incubator.implementationConfigurationName) {
     extendsFrom(configurations.implementation.get())
 }
 configurations.named(incubator.compileOnlyConfigurationName) {
     extendsFrom(configurations.compileOnly.get())
 }
-
-dependencies {
-    add(incubator.implementationConfigurationName, platform("org.junit:junit-bom:5.10.0"))
-    add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")
+configurations.named(incubatorTest.implementationConfigurationName) {
+    extendsFrom(configurations.testImplementation.get())
 }
+configurations.named(incubatorTest.compileOnlyConfigurationName) {
+    extendsFrom(configurations.testCompileOnly.get())
+}
+configurations.named(incubatorTest.annotationProcessorConfigurationName) {
+    extendsFrom(configurations.testAnnotationProcessor.get())
+}
+configurations.named(incubatorTest.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.testRuntimeOnly.get())
+}
+
+tasks.register<Test>("incubatorTest") {
+    description = "Runs incubator tests."
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    testClassesDirs = incubatorTest.output.classesDirs
+    classpath = incubatorTest.runtimeClasspath
+    useJUnitPlatform()
+    jvmArgs("-Xshare:off")
+}
+tasks.named("check") { dependsOn("incubatorTest") }

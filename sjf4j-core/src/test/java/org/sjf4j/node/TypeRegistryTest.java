@@ -27,7 +27,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
-import org.sjf4j.models.JojoTest;
+import org.sjf4j.testsupport.fixture.JsonObjectPersonFixture;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -59,7 +59,7 @@ public class TypeRegistryTest {
         private String name;
         private int age;
         private JsonObject info;
-        private List<JojoTest.Person> friends;
+        private List<JsonObjectPersonFixture.Person> friends;
     }
 
     public static class ParentSameKey {
@@ -80,7 +80,7 @@ public class TypeRegistryTest {
         assertNotNull(pi.properties.get("name").setterHandle);
         assertEquals(int.class, pi.properties.get("age").type);
         assertEquals(JsonObject.class, pi.properties.get("info").type);
-        assertEquals(new TypeReference<List<JojoTest.Person>>(){}.getType(),
+        assertEquals(new TypeReference<List<JsonObjectPersonFixture.Person>>(){}.getType(),
                 pi.properties.get("friends").type);
     }
 

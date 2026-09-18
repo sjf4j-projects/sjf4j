@@ -239,9 +239,9 @@ SJF4J is built around a unified structural model called the **Object-Based Node 
 ```mermaid
 graph BT
   node(("Object-Based <br/> Node Tree"))
-  node --> object(("JSON Object <br/> { }"))
-  node --> array(("JSON Array <br/> [ ]"))
-  node --> value(("JSON Value <br/> ..."))
+  node --> object(("Object Node<br/> { }"))
+  node --> array(("Array Node<br/> [ ]"))
+  node --> value(("Value Node<br/> ..."))
 ```
 
 As a result, JSON-oriented operations can be applied directly to existing

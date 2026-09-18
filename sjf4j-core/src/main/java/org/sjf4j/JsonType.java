@@ -2,7 +2,7 @@ package org.sjf4j;
 
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.external.ExternalNode;
+import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
 
