@@ -735,17 +735,17 @@ class TypeRegistryEdgeCaseTest {
                 DiscriminatedOneOf.class.getAnnotation(OneOf.class)
         );
         assertTrue(discriminated.hasDiscriminator);
-        assertEquals(JsonSubtype.class, discriminated.resolveByWhen("json"));
-        assertNull(discriminated.resolveByWhen(null));
+        assertEquals(JsonSubtype.class, discriminated.matchByWhen("json"));
+        assertNull(discriminated.matchByWhen(null));
 
         OneOfInfo typed = ReflectUtil.analyzeOneOf(
                 TypedOneOf.class,
                 TypedOneOf.class.getAnnotation(OneOf.class)
         );
         assertFalse(typed.hasDiscriminator);
-        assertEquals(TypedObjectSubtype.class, typed.resolveByJsonType(JsonType.OBJECT));
-        assertEquals(ArraySubtype.class, typed.resolveByJsonType(JsonType.ARRAY));
-        assertNull(typed.resolveByJsonType(null));
+        assertEquals(TypedObjectSubtype.class, typed.matchByJsonType(JsonType.OBJECT));
+        assertEquals(ArraySubtype.class, typed.matchByJsonType(JsonType.ARRAY));
+        assertNull(typed.matchByJsonType(null));
 
         OneOfInfo compiled = new OneOfInfo(
                 DiscriminatedOneOf.class,
@@ -756,7 +756,7 @@ class TypeRegistryEdgeCaseTest {
                 OneOf.OnNoMatch.FAILBACK_NULL
         );
         assertNotNull(compiled.compiledPath);
-        assertEquals(JsonSubtype.class, compiled.resolveByWhen("json"));
+        assertEquals(JsonSubtype.class, compiled.matchByWhen("json"));
 
         RecordInfo recordInfo = new RecordInfo(
                 ContainerPojo.class,

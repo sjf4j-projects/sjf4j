@@ -323,7 +323,7 @@ public final class StreamingIO {
                     } else if (!parentOneOfKey.equals(parentKey)) {
                         throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                     }
-                    Class<?> targetClazz = fieldOneOf.resolveByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
+                    Class<?> targetClazz = fieldOneOf.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
                     if (targetClazz != null) {
                         vv = _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, context);
                     } else {
@@ -810,7 +810,7 @@ public final class StreamingIO {
     }
 
     public static Class<?> resolveOneOfJsonTypeTarget(JsonType jsonType, OneOfInfo anyOfInfo) {
-        Class<?> targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+        Class<?> targetClazz = anyOfInfo.matchByJsonType(jsonType);
         if (targetClazz == null) {
             if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                 return null;
@@ -828,7 +828,7 @@ public final class StreamingIO {
             throw new BindingException("not found value for discriminator " + source);
         }
 
-        Class<?> targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
+        Class<?> targetClazz = anyOfInfo.matchByWhen(discriminatorValue);
         if (targetClazz == null) {
             if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
             throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
@@ -879,7 +879,7 @@ public final class StreamingIO {
             }
         }
 
-        Class<?> targetClazz = aoi.resolveByWhen(parentOneOfValue == unsetSentinel ? null : parentOneOfValue);
+        Class<?> targetClazz = aoi.matchByWhen(parentOneOfValue == unsetSentinel ? null : parentOneOfValue);
         Object vv;
         if (targetClazz != null) {
             vv = context.nodeFacade.readNode(deferredParentOneOfRaw, targetClazz);

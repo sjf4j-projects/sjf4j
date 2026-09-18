@@ -9,7 +9,7 @@ import java.util.Arrays;
 public final class CreatorState {
 
     private static final Object UNSET = new Object();
-    private static final int INITIAL_PENDING_CAPACITY = 6;
+    private static final int INITIAL_PENDING_CAPACITY = 4;
 
     private final CreatorInfo creatorInfo;
 

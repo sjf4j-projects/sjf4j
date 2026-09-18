@@ -145,6 +145,14 @@ public abstract class JsonBindingContractTest {
     }
 
     @Test
+    void skipsUnmappedJsonTypeOneOfValues() {
+        JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
+        FallbackHolder holder = (FallbackHolder) binding.readNode("{\"value\":1,\"after\":2}", FallbackHolder.class);
+        assertNull(holder.value);
+        assertEquals(2, holder.after);
+    }
+
+    @Test
     void readsAndWritesValueCodecsWithoutDependingOnJsonFormatting() {
         JsonBinder<?, ?> binding = binding(StreamingContext.EMPTY);
 
@@ -283,4 +291,8 @@ public abstract class JsonBindingContractTest {
     @OneOf({@OneOf.Mapping(PolyObject.class), @OneOf.Mapping(PolyArray.class)}) interface Poly { }
     static class PolyObject extends JsonObject implements Poly { }
     static class PolyArray extends JsonArray implements Poly { }
+    @OneOf(value = {@OneOf.Mapping(FallbackObject.class)}, onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
+    interface FallbackPoly { }
+    static class FallbackObject extends JsonObject implements FallbackPoly { }
+    static class FallbackHolder { public FallbackPoly value; public int after; }
 }

@@ -433,7 +433,7 @@ public interface StreamingReader extends Closeable {
 
     /*
      * ----------------------------------------------------------------------
-     * Skipping / buffering
+     * Skipping
      * ----------------------------------------------------------------------
      */
 
@@ -441,17 +441,4 @@ public interface StreamingReader extends Closeable {
      * Consumes exactly one complete value at the current position.
      */
     void skipNext() throws IOException;
-
-    /**
-     * Buffers the current complete value and returns a reader over that
-     * isolated copy.
-     *
-     * <p>The source reader is advanced past the value.</p>
-     *
-     * <p>This operation is optional because it may require allocation
-     * and copying.</p>
-     */
-    default StreamingReader forkValue() throws IOException {
-        return null;
-    }
 }

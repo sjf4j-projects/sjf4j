@@ -78,7 +78,7 @@ public interface FieldBinder {
 
         if (oneOfInfo != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Object value = StreamingIO.readOneOf(reader, oneOfInfo, context);
+                Object value = OneOfIO.readOneOf(reader, oneOfInfo, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -121,7 +121,7 @@ public interface FieldBinder {
                     elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
                     elementTiRef[0] = elementTi;
                 }
-                Object value = StreamingIO.readList(reader, fieldBoxed, elementType, elementBoxed, elementTi, context);
+                Object value = StreamingIO.readListOrNull(reader, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -136,7 +136,7 @@ public interface FieldBinder {
                     elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
                     elementTiRef[0] = elementTi;
                 }
-                Object value = StreamingIO.readSet(reader, fieldBoxed, elementType, elementBoxed, elementTi, context);
+                Object value = StreamingIO.readSetOrNull(reader, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -151,22 +151,23 @@ public interface FieldBinder {
                     valueTi = TypeRegistry.registerTypeInfo(valueBoxed);
                     valueTiRef[0] = valueTi;
                 }
-                Object value = StreamingIO.readMap(reader, fieldBoxed, valueType, valueBoxed, valueTi, context);
+                Object value = StreamingIO.readMapOrNull(reader, fieldBoxed, valueType, valueBoxed, valueTi, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
         if (fieldBoxed.isArray()) {
-            Type componentType = fieldBoxed.getComponentType();
-            Class<?> componentBoxed = Types.rawBox(componentType);
+            Class<?> componentClazz = fieldBoxed.getComponentType();
+            Class<?> componentBoxed = Types.box(componentClazz);
             TypeInfo[] componentTiRef = new TypeInfo[1];
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo componentTi = componentTiRef[0];
                 if (componentTi == null) {
-                    componentTi = TypeRegistry.registerTypeInfo(componentBoxed);
+                    componentTi = TypeRegistry.registerTypeInfo(componentClazz);
                     componentTiRef[0] = componentTi;
                 }
-                Object value = StreamingIO.readJavaArray(reader, fieldBoxed, componentType, componentBoxed, componentTi, context);
+                Object value = StreamingIO.readJavaArrayOrNull(reader, fieldBoxed, componentClazz, componentBoxed,
+                        componentTi, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }

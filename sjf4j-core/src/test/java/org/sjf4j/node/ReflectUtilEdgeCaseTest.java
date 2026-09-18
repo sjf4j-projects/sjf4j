@@ -278,7 +278,7 @@ class ReflectUtilEdgeCaseTest {
     void analyzesOneOfAndNamingMetadata() {
         OneOfInfo disc = ReflectUtil.analyzeOneOf(DiscOneOf.class, DiscOneOf.class.getAnnotation(OneOf.class));
         assertTrue(disc.hasDiscriminator);
-        assertEquals(DiscA.class, disc.resolveByWhen("a"));
+        assertEquals(DiscA.class, disc.matchByWhen("a"));
 
         assertThrows(JsonException.class, () -> ReflectUtil.analyzeOneOf(
                 DuplicateRawOneOf.class,

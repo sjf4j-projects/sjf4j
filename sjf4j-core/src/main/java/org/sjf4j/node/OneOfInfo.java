@@ -21,7 +21,9 @@ public class OneOfInfo {
     public final String path;
     public final OneOf.Scope scope;
     public final OneOf.OnNoMatch onNoMatch;
+    public final boolean fallbackNull;
     public final boolean hasDiscriminator;
+    public final boolean keyDiscriminator;
     public final EnumMap<JsonType, Class<?>> byJsonType;
     public final Map<String, Class<?>> byWhen;
     public final JsonPath compiledPath;
@@ -37,8 +39,10 @@ public class OneOfInfo {
         this.path = path;
         this.scope = scope;
         this.onNoMatch = onNoMatch;
+        this.fallbackNull = onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL;
         this.compiledPath = path.isEmpty() ? null : JsonPath.parse(path);
         this.hasDiscriminator = !key.isEmpty() || !path.isEmpty();
+        this.keyDiscriminator = !key.isEmpty();
         if (hasDiscriminator) {
             this.byJsonType = null;
             this.byWhen = new HashMap<>();
@@ -59,7 +63,7 @@ public class OneOfInfo {
     /**
      * Resolves a mapped subtype for a JSON type, or {@code null} when absent.
      */
-    public Class<?> resolveByJsonType(JsonType jsonType) {
+    public Class<?> matchByJsonType(JsonType jsonType) {
         if (byJsonType == null || jsonType == null) return null;
         return byJsonType.get(jsonType);
     }
@@ -67,7 +71,7 @@ public class OneOfInfo {
     /**
      * Resolves a mapped subtype for a discriminator value, or {@code null} when absent.
      */
-    public Class<?> resolveByWhen(Object when) {
+    public Class<?> matchByWhen(Object when) {
         if (byWhen == null || when == null) return null;
         return byWhen.get(String.valueOf(when));
     }

@@ -2,7 +2,6 @@ package org.sjf4j.binding;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
@@ -13,7 +12,6 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodec;
 import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
@@ -54,7 +52,7 @@ public final class StreamingIO {
                            StreamingContext context) {
         try {
             if (ti.oneOfInfo != null) {
-                return readOneOf(reader, ti.oneOfInfo, context);
+                return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
             }
             if (nodeBoxed == Object.class) {
                 return readRawNode(reader);
@@ -258,128 +256,6 @@ public final class StreamingIO {
         throw new BindingException("cannot read object value into type '" + nodeBoxed + "'");
     }
 
-//    static Object readPojo(StreamingReader reader, Type ownerType, Class<?> ownerBoxed, PojoInfo pi,
-//                           StreamingContext context) throws IOException {
-//        CreatorInfo ci = pi.creatorInfo;
-//        boolean hasParentOneOf = pi.hasParentScopeOneOf;
-//
-//        if (!hasParentOneOf && ci.hasNoArgsCreator() && (ci.argNames == null || ci.argNames.length == 0)) {
-//            Object pojo = ci.newPojoNoArgs();
-//            Map<String, Object> dynamicMap = null;
-//            reader.startObject();
-//            while (!reader.nextIfObjectEnd()) {
-//                String key = reader.nextName();
-//                FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
-//                if (fi != null) {
-//                    try {
-//                        fi.binder.bind(reader, pojo, ownerType, ownerBoxed, context);
-//                    } catch (BindingException e) {
-//                        throw e;
-//                    } catch (Throwable e) {
-//                        throw new BindingException("failed to bind value to field '" + fi.name +
-//                                "' of node type '" + ownerBoxed.getSimpleName() + "'", e);
-//                    }
-//                } else if (pi.isJojo && pi.readDynamic) {
-//                    if (dynamicMap == null) {
-//                        dynamicMap = new LinkedHashMap<>();
-//                    }
-//                    dynamicMap.put(key, readRawNode(reader));
-//                } else {
-//                    reader.skipNext();
-//                }
-//            }
-//            if (pi.isJojo) {
-//                ((JsonObject) pojo)._dynamicMap(dynamicMap);
-//            }
-//            return pojo;
-//        }
-//
-//        TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
-//        FieldInfo deferredParentOneOfFi = null;
-//        Object deferredParentOneOfRaw = null;
-//        String parentOneOfKey = null;
-//        Object parentOneOfValue = UNSET;
-//
-//        reader.startObject();
-//        while (!reader.nextIfObjectEnd()) {
-//            String key = reader.nextName();
-//
-//            int argIdx = ci.getArgIndexOrAlias(key);
-//            if (argIdx >= 0) {
-//                Type argType = Types.resolveMemberType(ownerType, ownerBoxed, ci.argTypes[argIdx]);
-//                Class<?> argRaw = Types.rawBox(argType);
-//                TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-//                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
-//                if (argVci == null && ti.hasValueCodecs()) {
-//                    String valueFormat = context.defaultValueFormat(argRaw);
-//                    argVci = ti.getValueCodecInfo(valueFormat);
-//                }
-//                Object argValue;
-//                if (ti.oneOfInfo == null && argVci != null) {
-//                    argValue = readValueWithCodec(reader, argType, argRaw, argVci, context);
-//                } else {
-//                    argValue = readNode(reader, argType, argRaw, ti, context);
-//                }
-//                session.acceptCtorArg(argIdx, argValue);
-//                if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
-//                    parentOneOfValue = argValue;
-//                }
-//                continue;
-//            }
-//
-//            FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
-//            if (fi != null) {
-//                Object vv;
-//                OneOfInfo fieldOneOf = fi.oneOfInfo;
-//                if (hasParentOneOf && fieldOneOf != null && fieldOneOf.scope == OneOf.Scope.PARENT) {
-//                    if (!fieldOneOf.path.isEmpty()) {
-//                        throw new BindingException("oneOf scope=PARENT does not support path discriminator");
-//                    }
-//                    String parentKey = fieldOneOf.key;
-//                    if (parentOneOfKey == null) {
-//                        parentOneOfKey = parentKey;
-//                    } else if (!parentOneOfKey.equals(parentKey)) {
-//                        throw new BindingException("at most one OneOf parent discriminator key is supported per class");
-//                    }
-//                    Class<?> targetClazz = fieldOneOf.resolveByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
-//                    if (targetClazz != null) {
-//                        vv = readNode(reader, targetClazz, Types.rawBox(targetClazz), null, context);
-//                    } else {
-//                        if (deferredParentOneOfFi != null) {
-//                            throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
-//                        }
-//                        deferredParentOneOfFi = fi;
-//                        deferredParentOneOfRaw = readRawNode(reader);
-//                        continue;
-//                    }
-//                } else {
-//                    vv = readField(reader, fi, ownerType, ownerBoxed, context);
-//                }
-//
-//                if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
-//                    parentOneOfValue = vv;
-//                }
-//                session.acceptProperty(fi, vv);
-//                continue;
-//            }
-//
-//            if (pi.isJojo && pi.readDynamic) {
-//                Object vv = readRawNode(reader);
-//                session.acceptDynamic(key, vv);
-//                if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
-//                    parentOneOfValue = vv;
-//                }
-//            } else {
-//                reader.skipNext();
-//            }
-//        }
-//
-//        Object pojo = session.finish();
-//        applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw,
-//                parentOneOfValue, UNSET, context);
-//        return pojo;
-//    }
-
 
     static Object readPojo(StreamingReader reader, Type pojoType, Class<?> pojoBoxed,
                            PojoInfo pi, StreamingContext context) throws IOException {
@@ -398,7 +274,7 @@ public final class StreamingIO {
                 String key = reader.nextName();
                 FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
-                    _bindField(reader, fi, pojo, pojoType, pojoBoxed, context);
+                    bindField(reader, fi, pojo, pojoType, pojoBoxed, context);
                     continue;
                 }
 
@@ -475,7 +351,7 @@ public final class StreamingIO {
                     } else if (!parentOneOfKey.equals(parentKey)) {
                         throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                     }
-                    Class<?> targetClazz = fieldOneOf.resolveByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
+                    Class<?> targetClazz = fieldOneOf.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
 
                     if (targetClazz != null) {
                         Object value = readNode(reader, targetClazz, context);
@@ -499,10 +375,10 @@ public final class StreamingIO {
 
                 // Known PARENT discriminator field
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
-                    Object value = _readPendingFieldValue(reader, fi, pojoType, pojoBoxed, context);
+                    Object value = readFieldValue(reader, fi, pojoType, pojoBoxed, context);
                     parentOneOfValue = value;
                     if (state.isCreated()) {
-                        fi.invokeSetterIfPresent(state.pojo(), value);
+                        fi.invokeSetter(state.pojo(), value);
                     } else {
                         state.bufferProperty(fi, value);
                     }
@@ -511,13 +387,13 @@ public final class StreamingIO {
 
                 // POJO already exists
                 if (state.isCreated()) {
-                    _bindField(reader, fi, state.pojo(), pojoType, pojoBoxed, context);
+                    bindField(reader, fi, state.pojo(), pojoType, pojoBoxed, context);
                     continue;
                 }
 
                 // POJO does not exist yet
                 if (fi.hasSetter()) {
-                    Object value = _readPendingFieldValue(reader, fi, pojoType, pojoBoxed, context);
+                    Object value = readFieldValue(reader, fi, pojoType, pojoBoxed, context);
                     state.bufferProperty(fi, value);
                 } else {
                     reader.skipNext();
@@ -542,9 +418,71 @@ public final class StreamingIO {
         }// while
 
         Object pojo = state.finish();
-        applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw, parentOneOfValue, UNSET, context);
+        if (deferredParentOneOfFi != null) {
+            OneOfInfo oneOfInfo = deferredParentOneOfFi.oneOfInfo;
+            String parentKey = oneOfInfo.key;
+            if (parentOneOfValue == UNSET) {
+                Object discriminator = null;
+                FieldInfo parentFi = pi.aliasProperties != null
+                        ? pi.aliasProperties.get(parentKey) : pi.properties.get(parentKey);
+                if (parentFi != null) {
+                    discriminator = parentFi.invokeGetter(pojo);
+                } else if (pi.isJojo) {
+                    discriminator = ((JsonObject) pojo).getNode(parentKey);
+                }
+                if (discriminator != null) {
+                    parentOneOfValue = discriminator;
+                }
+            }
+
+            Class<?> targetClazz = oneOfInfo.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
+            Object value;
+            if (targetClazz != null) {
+                value = context.nodeBinder.readNode(deferredParentOneOfRaw, targetClazz);
+            } else if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
+                value = null;
+            } else {
+                throw new BindingException("oneOf discriminator has no matching mapping: key='" +
+                        oneOfInfo.key + "', value='" + (parentOneOfValue == UNSET ? null : parentOneOfValue) + "'");
+            }
+            deferredParentOneOfFi.invokeSetterIfPresent(pojo, value);
+        }
 
         return pojo;
+    }
+
+
+    static void bindField(StreamingReader reader, FieldInfo fi, Object pojo, Type ownerType,
+                          Class<?> ownerBoxed, StreamingContext context) throws IOException {
+        try {
+            fi.binder.bind(reader, pojo, ownerType, ownerBoxed, context);
+        } catch (BindingException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new BindingException("failed to bind value to field '" + fi.name +
+                    "' of node type '" + ownerBoxed.getSimpleName() + "'", e);
+        }
+    }
+
+    static Object readFieldValue(StreamingReader reader, FieldInfo fi, Type ownerType,
+                                 Class<?> ownerBoxed, StreamingContext context) throws IOException {
+        Type fieldType = fi.type;
+        Class<?> fieldBoxed = fi.boxed;
+        if (fi.genericDependent) {
+            fieldType = Types.resolveMemberType(ownerType, ownerBoxed, fi.type);
+            fieldBoxed = Types.rawBox(fieldType);
+        }
+
+        if (fi.oneOfInfo != null) {
+            return OneOfIO.readOneOf(reader, fi.oneOfInfo, context);
+        }
+
+        if (fi.resolvedValueCodec != null) {
+            return readValueWithCodec(reader, fieldType, fieldBoxed, fi.resolvedValueCodec, context);
+        }
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(fieldBoxed);
+        return readNode(reader, fieldType, fieldBoxed, ti, context);
     }
 
 
@@ -554,10 +492,10 @@ public final class StreamingIO {
     static Object readArray(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
                             StreamingContext context) throws IOException {
         if (List.class.isAssignableFrom(nodeBoxed)) {
-            Type valueType = Types.resolveTypeArgument(nodeType, List.class, 0);
-            Class<?> valueClazz = Types.rawBox(valueType);
-            return readList(reader, nodeBoxed, valueType, valueClazz,
-                    TypeRegistry.registerTypeInfo(valueClazz), context);
+            Type elementType = Types.resolveTypeArgument(nodeType, List.class, 0);
+            Class<?> elementBoxed = Types.rawBox(elementType);
+            return readList(reader, nodeBoxed, elementType, elementBoxed,
+                    TypeRegistry.registerTypeInfo(elementBoxed), context);
         }
 
         if (nodeBoxed == JsonArray.class) {
@@ -566,25 +504,25 @@ public final class StreamingIO {
 
         if (Set.class.isAssignableFrom(nodeBoxed)) {
             Type valueType = Types.resolveTypeArgument(nodeType, Set.class, 0);
-            Class<?> valueClazz = Types.rawBox(valueType);
-            return readSet(reader, nodeBoxed, valueType, valueClazz,
-                    TypeRegistry.registerTypeInfo(valueClazz), context);
+            Class<?> valueBoxed = Types.rawBox(valueType);
+            return readSet(reader, nodeBoxed, valueType, valueBoxed,
+                    TypeRegistry.registerTypeInfo(valueBoxed), context);
         }
 
         if (nodeBoxed.isArray()) {
-            Class<?> compType = nodeBoxed.getComponentType();
-            Class<?> valueClazz = Types.box(compType);
-            return readJavaArray(reader, nodeBoxed, compType, valueClazz,
-                    TypeRegistry.registerTypeInfo(valueClazz), context);
+            Class<?> componentClazz = nodeBoxed.getComponentType();
+            Class<?> componentBoxed = Types.box(componentClazz);
+            return readJavaArray(reader, nodeBoxed, componentClazz, componentBoxed,
+                    TypeRegistry.registerTypeInfo(componentClazz), context);
         }
 
         if (JsonArray.class.isAssignableFrom(nodeBoxed)) {
             JsonArray ja = (JsonArray) ti.pojoInfo.creatorInfo.forceNewPojo();
             Class<?> elementClazz = ja.elementClass();
-            TypeInfo elemTi = TypeRegistry.registerTypeInfo(elementClazz);
+            TypeInfo elementTi = TypeRegistry.registerTypeInfo(elementClazz);
             reader.startArray();
             while (!reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, elementClazz, elementClazz, elemTi, context);
+                Object value = readNode(reader, elementClazz, elementClazz, elementTi, context);
                 ja.add(value);
             }
             return ja;
@@ -601,44 +539,6 @@ public final class StreamingIO {
 
         throw new BindingException("cannot read array value into type '" + nodeBoxed + "'");
     }
-
-//    /**
-//     * Reads one object field based on field container metadata.
-//     */
-//    static Object readField(StreamingReader reader, FieldInfo fi, Type ownerType, Class<?> ownerBoxed,
-//                            StreamingContext context) throws IOException {
-//        Type fieldType = Types.resolveMemberType(ownerType, ownerBoxed, fi.type);
-//        Class<?> fieldRaw = fieldType == fi.type ? fi.boxed : Types.rawBox(fieldType);
-//
-//        OneOfInfo fieldOneOf = fi.oneOfInfo;
-//        if (fieldOneOf == null && fieldRaw != fi.boxed) {
-//            fieldOneOf = TypeRegistry.registerTypeInfo(fieldRaw).oneOfInfo;
-//        }
-//        if (fieldOneOf != null) {
-//            return readOneOf(reader, fieldOneOf, context);
-//        }
-//
-//        if (fi.resolvedValueCodec != null) {
-//            return readValueWithCodec(reader, fieldType, fieldRaw, fi.resolvedValueCodec, context);
-//        }
-//
-//        switch (fieldType == fi.type ? fi.containerKind : FieldInfo.ContainerKind.NONE) {
-//            case MAP:
-//                return readMap(reader, fi.boxed, fi.argType, fi.argBoxed,
-//                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
-//            case LIST:
-//                return readList(reader, fi.boxed, fi.argType, fi.argBoxed,
-//                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
-//            case SET:
-//                return readSet(reader, fi.boxed, fi.argType, fi.argBoxed,
-//                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
-//            case ARRAY:
-//                return readArray(reader, fi.boxed, fi.argType, fi.argBoxed,
-//                        TypeRegistry.registerTypeInfo(fi.argBoxed), context);
-//            default:
-//                return readNode(reader, fieldType, fieldRaw, null, context);
-//        }
-//    }
 
     static Object readValueWithCodec(StreamingReader reader, Type valueType, Class<?> valueBoxed, ValueCodecInfo valueCodecInfo,
                                      StreamingContext context) throws IOException {
@@ -696,117 +596,120 @@ public final class StreamingIO {
 
     }
 
+    static Map<String, Object> readMapOrNull(StreamingReader reader, Class<?> mapClazz, Type valueType, Class<?> valueBoxed,
+                                       TypeInfo ti, StreamingContext context) throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        return readMap(reader, mapClazz, valueType, valueBoxed, ti, context);
+    }
+
     /**
      * Reads object token into map with typed values.
      */
     static Map<String, Object> readMap(StreamingReader reader, Class<?> mapClazz, Type valueType, Class<?> valueBoxed,
-                                       TypeInfo valueTi, StreamingContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
+                                       TypeInfo ti, StreamingContext context) throws IOException {
         Map<String, Object> map = (mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class)
                 ? new LinkedHashMap<>()
                 : TypeRegistry.newMapContainer(mapClazz, false);
         reader.startObject();
         while (!reader.nextIfObjectEnd()) {
             String key = reader.nextName();
-            Object value = readNode(reader, valueType, valueBoxed, valueTi, context);
+            Object value = readNode(reader, valueType, valueBoxed, ti, context);
             map.put(key, value);
         }
         return map;
+    }
+
+
+    static List<Object> readListOrNull(StreamingReader reader, Class<?> listClazz, Type elementType, Class<?> elementBoxed,
+                                 TypeInfo ti, StreamingContext context) throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        return readList(reader, listClazz, elementType, elementBoxed, ti, context);
     }
 
     /**
      * Reads array token into list with typed elements.
      */
     static List<Object> readList(StreamingReader reader, Class<?> listClazz, Type elementType, Class<?> elementBoxed,
-                                 TypeInfo elementTi, StreamingContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
+                                 TypeInfo ti, StreamingContext context) throws IOException {
         List<Object> list = (listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class)
                 ? new ArrayList<>()
                 : TypeRegistry.newListContainer(listClazz, false);
         reader.startArray();
         while (!reader.nextIfArrayEnd()) {
-            Object value = readNode(reader, elementType, elementBoxed, elementTi, context);
+            Object value = readNode(reader, elementType, elementBoxed, ti, context);
             list.add(value);
         }
         return list;
+    }
+
+
+    static Set<Object> readSetOrNull(StreamingReader reader, Class<?> setClazz, Type valueType, Class<?> valueClazz,
+                                     TypeInfo ti, StreamingContext context) throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        return readSet(reader, setClazz, valueType, valueClazz, ti, context);
     }
 
     /**
      * Reads array token into set with typed elements.
      */
     static Set<Object> readSet(StreamingReader reader, Class<?> setClazz, Type valueType, Class<?> valueClazz,
-                               TypeInfo valueTi, StreamingContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
+                               TypeInfo ti, StreamingContext context) throws IOException {
         Set<Object> set = (setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class)
                 ? new LinkedHashSet<>()
                 : TypeRegistry.newSetContainer(setClazz, false);
         reader.startArray();
         while (!reader.nextIfArrayEnd()) {
-            Object value = readNode(reader, valueType, valueClazz, valueTi, context);
+            Object value = readNode(reader, valueType, valueClazz, ti, context);
             set.add(value);
         }
         return set;
     }
 
-    /**
-     * Reads array token into Java array with typed elements.
-     */
-    static Object readJavaArray(StreamingReader reader, Class<?> rawClazz, Type valueType, Class<?> valueClazz,
-                                TypeInfo valueTi, StreamingContext context) throws IOException {
-        List<Object> list = readList(reader, List.class, valueType, valueClazz, valueTi, context);
-        if (list == null) {
+    static Object readJavaArrayOrNull(StreamingReader reader, Class<?> arrClazz, Class<?> componentClazz, Class<?> componentBoxed,
+                                      TypeInfo ti, StreamingContext context) throws IOException {
+        if (reader.nextIfNull()) {
             return null;
         }
-
-        Object array = Array.newInstance(rawClazz.getComponentType(), list.size());
-        for (int j = 0, len = list.size(); j < len; j++) {
-            Array.set(array, j, list.get(j));
-        }
-        return array;
+        return readJavaArray(reader, arrClazz, componentClazz, componentBoxed, ti, context);
     }
 
-    /**
-     * Reads OneOf target by discriminator or token kind.
-     */
-    static Object readOneOf(StreamingReader reader, OneOfInfo anyOfInfo,
-                            StreamingContext context) throws IOException {
-        if (anyOfInfo.hasDiscriminator) {
-            // Discriminator-based OneOf may need to inspect the current value before binding it.
-            StreamingReader forked = reader.forkValue();
-            if (forked != null) {
-                try (StreamingReader buffered = forked) {
-                    return readOneOfValue(buffered, anyOfInfo, context);
-                }
+    @SuppressWarnings("SuspiciousSystemArraycopy")
+    static Object readJavaArray(StreamingReader reader, Class<?> arrClazz, Class<?> componentClazz, Class<?> componentBoxed,
+                                TypeInfo ti, StreamingContext context) throws IOException {
+        Object array = null;
+        int size = 0;
+        reader.startArray();
+        while (!reader.nextIfArrayEnd()) {
+            if (array == null) {
+                array = Array.newInstance(componentClazz, 8);
+            } else if (size == Array.getLength(array)) {
+                int capacity = size << 1;
+                Object expanded = Array.newInstance(componentClazz, capacity);
+                System.arraycopy(array, 0, expanded, 0, size);
+                array = expanded;
             }
-        }
-        return readOneOfValue(reader, anyOfInfo, context);
-    }
-
-    /**
-     * Binds one OneOf value from a reader that owns the current value.
-     */
-    private static Object readOneOfValue(StreamingReader reader, OneOfInfo anyOfInfo,
-                                         StreamingContext context) throws IOException {
-        if (anyOfInfo.hasDiscriminator) {
-            Object rawNode = readRawNode(reader);
-            Class<?> targetClazz = resolveCurrentDiscriminatorTarget(rawNode, anyOfInfo);
-            if (targetClazz == null) return null;
-            return context.nodeBinder.readNode(rawNode, targetClazz);
+            Array.set(array, size++, readNode(reader, componentClazz, componentBoxed, ti, context));
         }
 
-        Class<?> targetClazz = resolveOneOfJsonTypeTarget(reader.peekToken().jsonType(), anyOfInfo);
-        if (targetClazz == null) {
-            readRawNode(reader);
-            return null;
+        if (array == null) {
+            return Array.newInstance(componentClazz, 0);
         }
-        return readNode(reader, targetClazz, context);
+        if (size == Array.getLength(array)) {
+            return array;
+        }
+
+        Object exact = Array.newInstance(componentClazz, size);
+        System.arraycopy(array, 0, exact, 0, size);
+        return exact;
     }
+
+
 
 
     /// Write
@@ -886,7 +789,77 @@ public final class StreamingIO {
                 return;
             }
 
-            if (node.getClass().isArray()) {
+            if (rawClazz == boolean[].class) {
+                writer.startArray();
+                boolean[] array = (boolean[]) node;
+                for (int i = 0; i < array.length; i++) {
+                    if (i > 0) writer.separateElement();
+                    writer.writeBooleanValue(array[i]);
+                }
+                writer.endArray();
+                return;
+            }
+            if (rawClazz == byte[].class) {
+                writer.startArray();
+                byte[] array = (byte[]) node;
+                for (int i = 0; i < array.length; i++) {
+                    if (i > 0) writer.separateElement();
+                    writer.writeByteValue(array[i]);
+                }
+                writer.endArray();
+                return;
+            }
+            if (rawClazz == short[].class) {
+                writer.startArray();
+                short[] array = (short[]) node;
+                for (int i = 0; i < array.length; i++) {
+                    if (i > 0) writer.separateElement();
+                    writer.writeShortValue(array[i]);
+                }
+                writer.endArray();
+                return;
+            }
+            if (rawClazz == int[].class) {
+                writer.startArray();
+                int[] array = (int[]) node;
+                for (int i = 0; i < array.length; i++) {
+                    if (i > 0) writer.separateElement();
+                    writer.writeIntValue(array[i]);
+                }
+                writer.endArray();
+                return;
+            }
+            if (rawClazz == long[].class) {
+                writer.startArray();
+                long[] array = (long[]) node;
+                for (int i = 0; i < array.length; i++) {
+                    if (i > 0) writer.separateElement();
+                    writer.writeLongValue(array[i]);
+                }
+                writer.endArray();
+                return;
+            }
+            if (rawClazz == float[].class) {
+                writer.startArray();
+                float[] array = (float[]) node;
+                for (int i = 0; i < array.length; i++) {
+                    if (i > 0) writer.separateElement();
+                    writer.writeFloatValue(array[i]);
+                }
+                writer.endArray();
+                return;
+            }
+            if (rawClazz == double[].class) {
+                writer.startArray();
+                double[] array = (double[]) node;
+                for (int i = 0; i < array.length; i++) {
+                    if (i > 0) writer.separateElement();
+                    writer.writeDoubleValue(array[i]);
+                }
+                writer.endArray();
+                return;
+            }
+            if (rawClazz.isArray()) {
                 writer.startArray();
                 for (int i = 0, len = Array.getLength(node); i < len; i++) {
                     if (i > 0) writer.separateElement();
@@ -977,100 +950,6 @@ public final class StreamingIO {
         writer.endObject();
     }
 
-    /// Support
-
-    private static ValueCodecInfo resolveValueCodecInfo(Class<?> clazz, StreamingContext context) {
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.hasValueCodecs()) {
-            String valueFormat = context.defaultValueFormat(clazz);
-            return ti.getValueCodecInfo(valueFormat);
-        }
-        return null;
-    }
-
-    private static Class<?> resolveOneOfJsonTypeTarget(JsonType jsonType, OneOfInfo anyOfInfo) {
-        Class<?> targetClazz = anyOfInfo.resolveByJsonType(jsonType);
-        if (targetClazz == null) {
-            if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
-                return null;
-            }
-            throw new BindingException("oneOf mapping does not support jsonType=" + jsonType +
-                    " for type '" + anyOfInfo.clazz.getName() + "'");
-        }
-        return targetClazz;
-    }
-
-    private static Class<?> resolveOneOfDiscriminatorTarget(Object discriminatorValue, OneOfInfo anyOfInfo) {
-        if (discriminatorValue == null) {
-            if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-            String source = !anyOfInfo.key.isEmpty() ? "key '" + anyOfInfo.key + "'" : "path '" + anyOfInfo.path + "'";
-            throw new BindingException("not found value for discriminator " + source);
-        }
-
-        Class<?> targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
-        if (targetClazz == null) {
-            if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-            throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
-        }
-        return targetClazz;
-    }
-
-    private static Class<?> resolveCurrentDiscriminatorTarget(Object rawNode, OneOfInfo anyOfInfo) {
-        if (anyOfInfo.scope != OneOf.Scope.CURRENT) {
-            throw new BindingException("oneOf scope '" + anyOfInfo.scope + "' is not supported in streaming parser");
-        }
-        if (!(rawNode instanceof Map)) {
-            if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-            throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
-        }
-
-        Object discriminatorValue = null;
-        if (!anyOfInfo.key.isEmpty()) {
-            discriminatorValue = ((Map<?, ?>) rawNode).get(anyOfInfo.key);
-        } else if (!anyOfInfo.path.isEmpty()) {
-            discriminatorValue = anyOfInfo.compiledPath.getNode(rawNode);
-        }
-        return resolveOneOfDiscriminatorTarget(discriminatorValue, anyOfInfo);
-    }
-
-    private static void applyDeferredParentOneOf(Object pojo, PojoInfo pi,
-                                                FieldInfo deferredParentOneOfFi,
-                                                Object deferredParentOneOfRaw, Object parentOneOfValue,
-                                                Object unsetSentinel,
-                                                StreamingContext context) {
-        if (deferredParentOneOfFi == null) {
-            return;
-        }
-
-        OneOfInfo aoi = deferredParentOneOfFi.oneOfInfo;
-        String parentKey = aoi.key;
-        if (parentOneOfValue == unsetSentinel) {
-            Object discriminator = null;
-            FieldInfo parentFi = pi.aliasProperties != null
-                    ? pi.aliasProperties.get(parentKey) : pi.properties.get(parentKey);
-            if (parentFi != null) {
-                discriminator = parentFi.invokeGetter(pojo);
-            } else if (pi.isJojo) {
-                discriminator = ((JsonObject) pojo).getNode(parentKey);
-            }
-            if (discriminator != null) {
-                parentOneOfValue = discriminator;
-            }
-        }
-
-        Class<?> targetClazz = aoi.resolveByWhen(parentOneOfValue == unsetSentinel ? null : parentOneOfValue);
-        Object vv;
-        if (targetClazz != null) {
-            vv = context.nodeBinder.readNode(deferredParentOneOfRaw, targetClazz);
-        } else if (aoi.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
-            vv = null;
-        } else {
-            throw new BindingException("oneOf discriminator has no matching mapping: key='" +
-                    aoi.key + "', value='" + (parentOneOfValue == unsetSentinel ? null : parentOneOfValue) + "'");
-        }
-        deferredParentOneOfFi.invokeSetterIfPresent(pojo, vv);
-    }
-
 
     /*
      * --------------------------------------------------------------
@@ -1078,38 +957,5 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    private static void _bindField(StreamingReader reader, FieldInfo fi, Object pojo, Type ownerType,
-                                   Class<?> ownerBoxed, StreamingContext context) throws IOException {
-        try {
-            fi.binder.bind(reader, pojo, ownerType, ownerBoxed, context);
-        } catch (BindingException e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new BindingException("failed to bind value to field '" + fi.name +
-                    "' of node type '" + ownerBoxed.getSimpleName() + "'", e);
-        }
-    }
-
-    /** Slow path */
-    private static Object _readPendingFieldValue(StreamingReader reader, FieldInfo fi, Type ownerType,
-                                                Class<?> ownerBoxed, StreamingContext context) throws IOException {
-        Type fieldType = fi.type;
-        Class<?> fieldBoxed = fi.boxed;
-        if (fi.genericDependent) {
-            fieldType = Types.resolveMemberType(ownerType, ownerBoxed, fi.type);
-            fieldBoxed = Types.rawBox(fieldType);
-        }
-
-        if (fi.oneOfInfo != null) {
-            return readOneOf(reader, fi.oneOfInfo, context);
-        }
-
-        if (fi.resolvedValueCodec != null) {
-            return readValueWithCodec(reader, fieldType, fieldBoxed, fi.resolvedValueCodec, context);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(fieldBoxed);
-        return readNode(reader, fieldType, fieldBoxed, ti, context);
-    }
 
 }

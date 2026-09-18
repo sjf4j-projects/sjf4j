@@ -379,7 +379,7 @@ public class Jackson2StreamingIO {
                     } else if (!parentOneOfKey.equals(parentKey)) {
                         throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                     }
-                    Class<?> targetClazz = fieldOneOf.resolveByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
+                    Class<?> targetClazz = fieldOneOf.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
                     if (targetClazz != null) {
                         vv = _readNode(parser, targetClazz, Types.rawBox(targetClazz), null, context);
                     } else {

@@ -198,14 +198,14 @@ public final class SimpleNodeBinder implements NodeBinder {
                 throw new BindingException("not found value for discriminator key '" + anyOfInfo.key + "'", ps);
             }
 
-            targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
+            targetClazz = anyOfInfo.matchByWhen(discriminatorValue);
             if (targetClazz == null) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
             }
         } else {
             JsonType jsonType = JsonType.of(node);
-            targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+            targetClazz = anyOfInfo.matchByJsonType(jsonType);
             if (targetClazz == null) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("oneOf mapping does not support jsonType=" + jsonType +
