@@ -121,6 +121,11 @@ public final class SimpleJsonWriter implements StreamingWriter {
     }
 
     @Override
+    public void writeCharValue(char value) throws IOException {
+        writer.write(Character.toString(value));
+    }
+
+    @Override
     public void writeNumberValue(Number value) throws IOException {
         if (value == null) throw new BindingException("number value must not be null");
         if ((value instanceof Double && !Double.isFinite((Double) value))

@@ -171,6 +171,8 @@ public interface StreamingWriter extends Closeable, Flushable {
 
     void writeBooleanValue(boolean value) throws IOException;
 
+    void writeCharValue(char value) throws IOException;
+
 
     /*
      * ----------------------------------------------------------------------

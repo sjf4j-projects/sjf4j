@@ -25,6 +25,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.RandomAccess;
 import java.util.Set;
 
 /**
@@ -32,7 +33,12 @@ import java.util.Set;
  */
 public final class StreamingIO {
 
-    /// Read
+
+    /*
+     * --------------------------------------------------------------
+     * Reading
+     * --------------------------------------------------------------
+     */
 
     static final Object UNSET = new Object();
 
@@ -274,7 +280,7 @@ public final class StreamingIO {
                 String key = reader.nextName();
                 FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
-                    bindField(reader, fi, pojo, pojoType, pojoBoxed, context);
+                    fi.binder.bind(reader, pojo, pojoType, pojoBoxed, context);
                     continue;
                 }
 
@@ -387,7 +393,7 @@ public final class StreamingIO {
 
                 // POJO already exists
                 if (state.isCreated()) {
-                    bindField(reader, fi, state.pojo(), pojoType, pojoBoxed, context);
+                    fi.binder.bind(reader, state.pojo(), pojoType, pojoBoxed, context);
                     continue;
                 }
 
@@ -452,17 +458,6 @@ public final class StreamingIO {
     }
 
 
-    static void bindField(StreamingReader reader, FieldInfo fi, Object pojo, Type ownerType,
-                          Class<?> ownerBoxed, StreamingContext context) throws IOException {
-        try {
-            fi.binder.bind(reader, pojo, ownerType, ownerBoxed, context);
-        } catch (BindingException e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new BindingException("failed to bind value to field '" + fi.name +
-                    "' of node type '" + ownerBoxed.getSimpleName() + "'", e);
-        }
-    }
 
     static Object readFieldValue(StreamingReader reader, FieldInfo fi, Type ownerType,
                                  Class<?> ownerBoxed, StreamingContext context) throws IOException {
@@ -710,9 +705,12 @@ public final class StreamingIO {
     }
 
 
+    /*
+     * --------------------------------------------------------------
+     * Writing
+     * --------------------------------------------------------------
+     */
 
-
-    /// Write
 
     /**
      * Writes one node to streaming writer using instance-level value formats.
@@ -725,15 +723,15 @@ public final class StreamingIO {
             }
 
             if (node instanceof String) {
-                writer.writeString(node.toString());
+                writer.writeStringValue((String) node);
                 return;
             }
             if (node instanceof Number) {
-                writer.writeNumber((Number) node);
+                writer.writeNumberValue((Number) node);
                 return;
             }
             if (node instanceof Boolean) {
-                writer.writeBoolean((Boolean) node);
+                writer.writeBooleanValue((Boolean) node);
                 return;
             }
 
@@ -755,9 +753,21 @@ public final class StreamingIO {
             if (node instanceof List) {
                 writer.startArray();
                 List<?> list = (List<?>) node;
-                for (int i = 0; i < list.size(); i++) {
-                    if (i > 0) writer.separateElement();
-                    writeNode(writer, list.get(i), context);
+                if (list instanceof RandomAccess) {
+                    for (int i = 0, size = list.size(); i < size; i++) {
+                        if (i > 0) writer.separateElement();
+                        writeNode(writer, list.get(i), context);
+                    }
+                } else {
+                    boolean first = true;
+                    for (Object value : list) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            writer.separateElement();
+                        }
+                        writeNode(writer, value, context);
+                    }
                 }
                 writer.endArray();
                 return;
@@ -859,11 +869,12 @@ public final class StreamingIO {
                 writer.endArray();
                 return;
             }
-            if (rawClazz.isArray()) {
+            if (node instanceof Object[]) {
+                Object[] array = (Object[]) node;
                 writer.startArray();
-                for (int i = 0, len = Array.getLength(node); i < len; i++) {
+                for (int i = 0, len = array.length; i < len; i++) {
                     if (i > 0) writer.separateElement();
-                    writeNode(writer, Array.get(node, i), context);
+                    writeNode(writer, array[i], context);
                 }
                 writer.endArray();
                 return;
@@ -882,11 +893,11 @@ public final class StreamingIO {
             }
 
             if (node instanceof Character) {
-                writer.writeString(node.toString());
+                writer.writeCharValue((Character) node);
                 return;
             }
             if (node instanceof Enum) {
-                writer.writeString(((Enum<?>) node).name());
+                writer.writeStringValue(((Enum<?>) node).name());
                 return;
             }
 
@@ -915,26 +926,17 @@ public final class StreamingIO {
         }
     }
 
+
     static void writePojo(StreamingWriter writer, Object node, PojoInfo pi,
                           StreamingContext context) throws IOException {
         writer.startObject();
         int cnt = 0;
-        for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
-            Object vv = entry.getValue().invokeGetter(node);
-            if (vv == null && !context.includeNulls) continue;
-            if (cnt++ > 0) writer.separateProperty();
-            String key = entry.getKey();
-            writer.writeName(key);
-            if (vv == null) {
-                writer.writeNull();
-            } else {
-                FieldInfo fi = entry.getValue();
-                if (fi.resolvedValueCodec != null) {
-                    vv = fi.resolvedValueCodec.valueToRaw(vv);
-                }
-                writeNode(writer, vv, context);
-            }
+
+        FieldWriter[] fieldWriters = pi.fieldWriters;
+        for (int i = 0, len = fieldWriters.length; i < len; i++) {
+            cnt = fieldWriters[i].write(writer, node, context, cnt);
         }
+
         if (pi.isJojo && pi.writeDynamic) {
             Map<String, Object> dynamicMap = ((JsonObject) node)._dynamicMap();
             if (dynamicMap != null) {
@@ -947,15 +949,10 @@ public final class StreamingIO {
                 }
             }
         }
+
         writer.endObject();
     }
 
-
-    /*
-     * --------------------------------------------------------------
-     * Private helper
-     * --------------------------------------------------------------
-     */
 
 
 }

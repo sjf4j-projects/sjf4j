@@ -86,6 +86,12 @@ public class GsonWriter implements StreamingWriter {
     }
 
     @Override
+    public void writeCharValue(char value) throws IOException {
+        writer.value(Character.toString(value));
+    }
+
+
+    @Override
     public void writeNumberValue(Number value) throws IOException {
         writer.value(value);
     }

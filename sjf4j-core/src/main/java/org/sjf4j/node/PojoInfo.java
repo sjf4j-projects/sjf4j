@@ -5,6 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.PropertyStrategy;
+import org.sjf4j.binding.FieldWriter;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -39,6 +40,7 @@ public class PojoInfo {
     public final boolean hasPropertyCodecNameBinding;
     public final boolean requiresPojoReader;
     public final boolean requiresPojoWriter;
+    public final FieldWriter[] fieldWriters;
 
     /**
      * Creates object binding metadata.
@@ -53,7 +55,8 @@ public class PojoInfo {
                     boolean hasExplicitBinding,
                     boolean hasNonPublicFields,
                     boolean hasNonPublicReaderGap,
-                    boolean hasNonPublicWriterGap) {
+                    boolean hasNonPublicWriterGap,
+                    FieldWriter[] fieldWriters) {
         this.clazz = clazz;
         this.creatorInfo = creatorInfo;
         this.namingStrategy = namingStrategy;
@@ -108,6 +111,8 @@ public class PojoInfo {
                 || hasNonPublicFields || hasNonPublicReaderGap || hasCustomDynamicReader || hasPropertyCodecNameBinding;
         this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicFields || hasNonPublicWriterGap
                 || hasCustomDynamicWriter || hasPropertyCodecNameBinding;
+
+        this.fieldWriters = fieldWriters;
     }
 
 }

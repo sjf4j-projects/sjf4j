@@ -347,10 +347,7 @@ public interface StreamingReader extends Closeable {
 
     /*
      * ----------------------------------------------------------------------
-     * Primitive numeric fast paths
-     *
-     * These methods are intentionally primitive-first because generated
-     * binding should not pay boxing costs for primitive Java properties.
+     * Primitive fast paths
      * ----------------------------------------------------------------------
      */
 
@@ -366,10 +363,13 @@ public interface StreamingReader extends Closeable {
 
     float nextFloatValue() throws IOException;
 
+    boolean nextBooleanValue() throws IOException;
+
+    char nextCharValue() throws IOException;
 
     /*
      * ----------------------------------------------------------------------
-     * Boxed numeric compatibility APIs
+     * Boxed compatibility APIs
      * ----------------------------------------------------------------------
      */
 
@@ -397,6 +397,10 @@ public interface StreamingReader extends Closeable {
         return nextIfNull() ? null : nextFloatValue();
     }
 
+    default Boolean nextBoolean() throws IOException {
+        return nextIfNull() ? null : nextBooleanValue();
+    }
+
 
     /*
      * ----------------------------------------------------------------------
@@ -407,19 +411,6 @@ public interface StreamingReader extends Closeable {
     BigInteger nextBigInteger() throws IOException;
 
     BigDecimal nextBigDecimal() throws IOException;
-
-
-    /*
-     * ----------------------------------------------------------------------
-     * Boolean
-     * ----------------------------------------------------------------------
-     */
-
-    boolean nextBooleanValue() throws IOException;
-
-    default Boolean nextBoolean() throws IOException {
-        return nextIfNull() ? null : nextBooleanValue();
-    }
 
 
     /*

@@ -202,10 +202,9 @@ public final class OneOfIO {
             FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 if (state.isCreated()) {
-                    StreamingIO.bindField(reader, fi, state.pojo(), targetClazz, targetClazz, context);
+                    fi.binder.bind(reader, state.pojo(), targetClazz, targetClazz, context);
                 } else {
                     Object value = StreamingIO.readFieldValue(reader, fi, targetClazz, targetClazz, context);
-
                     state.bufferProperty(fi, value);
                 }
                 continue;

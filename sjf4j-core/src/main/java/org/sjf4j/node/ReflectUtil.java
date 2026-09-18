@@ -8,6 +8,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.FieldBinder;
+import org.sjf4j.binding.FieldWriter;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -287,9 +288,17 @@ public final class ReflectUtil {
             hasNonPublicFields = true;
         }
 
+        List<FieldWriter> fieldWriters = new ArrayList<>(properties.size());
+        for (FieldInfo property : properties.values()) {
+            FieldWriter fieldWriter = FieldWriter.create(property.name, property.type, property.boxed,
+                    property.getterHandle, property.getterLambda, property.resolvedValueCodec, lookup);
+            if (fieldWriter != null) fieldWriters.add(fieldWriter);
+        }
+
         return new PojoInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
                 readDynamic, writeDynamic, properties, aliasProperties,
-                hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap);
+                hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap,
+                fieldWriters.toArray(new FieldWriter[0]));
     }
 
     private static boolean _reserveFieldFamilies(Class<?> root, Field[] fds,

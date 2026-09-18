@@ -9,6 +9,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.BindException;
 import java.util.Objects;
 
 public class GsonReader implements StreamingReader {
@@ -120,6 +121,20 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+    public boolean nextBooleanValue() throws IOException {
+        return reader.nextBoolean();
+    }
+
+    @Override
+    public char nextCharValue() throws IOException {
+        String str = reader.nextString();
+        if (str == null || str.isEmpty()) {
+            throw new BindException("cannot read empty string as char");
+        }
+        return str.charAt(0);
+    }
+
+    @Override
     public BigInteger nextBigInteger() throws IOException {
         return new BigInteger(reader.nextString());
     }
@@ -129,10 +144,6 @@ public class GsonReader implements StreamingReader {
         return new BigDecimal(reader.nextString());
     }
 
-    @Override
-    public boolean nextBooleanValue() throws IOException {
-        return reader.nextBoolean();
-    }
 
     @Override
     public void nextNull() throws IOException {

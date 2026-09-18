@@ -34,6 +34,33 @@ class SimpleJsonReaderTest {
     }
 
     @Test
+    void readsCharValuesAndConsumesFullStrings() throws Exception {
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(
+                "[\"x\",\"\\\\\",\"\\u0041\",\"\\uD83D\\uDE00\",\"multiple\",2]"))) {
+            reader.startArray();
+            assertEquals('x', reader.nextCharValue());
+            assertEquals('\\', reader.nextCharValue());
+            assertEquals('A', reader.nextCharValue());
+            assertEquals('\uD83D', reader.nextCharValue());
+            assertEquals('m', reader.nextCharValue());
+            assertEquals(2, reader.nextIntValue());
+            reader.endArray();
+        }
+    }
+
+    @Test
+    void rejectsEmptyAndMalformedCharStringsAtValuePath() throws Exception {
+        assertThrows(BindingException.class,
+                () -> new SimpleJsonReader(new StringReader("\"\"")).nextCharValue());
+
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"a\":[{\"b\":\"x\\uD83D\"}]}"))) {
+            reader.startObject(); reader.nextName(); reader.startArray(); reader.startObject(); reader.nextName();
+            BindingException error = assertThrows(BindingException.class, reader::nextCharValue);
+            assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
+        }
+    }
+
+    @Test
     void readsNullableBoxedScalars() throws Exception {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("[null,null,null,null,null,null,null]"))) {
             reader.startArray();

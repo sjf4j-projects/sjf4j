@@ -49,6 +49,7 @@ class StreamingIOWriteTest {
         @Override public void writeDoubleValue(double value) {}
         @Override public void writeFloatValue(float value) {}
         @Override public void writeBooleanValue(boolean value) {}
+        @Override public void writeCharValue(char value) {}
         @Override public void writeNumberValue(Number value) {}
         @Override public void separateProperty() { properties++; }
         @Override public void separateElement() { elements++; }

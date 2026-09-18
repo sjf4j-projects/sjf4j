@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
 - Renamed `org.sjf4j.binding.FieldReader` to `FieldBinder`; update streaming binding references accordingly.
 - Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.
 - Renamed `org.sjf4j.node.ObjectInfo` to `PojoInfo`; update imports and public metadata references accordingly.
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
 
 ### Changed
+- Optimized streaming POJO binding and writing with precomputed specialized field accessors.
 - Gson streaming binders now create configured writers and honor the `StreamingContext` null-serialization policy.
 - Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`.
 - Optimized the built-in JSON reader with buffered input and allocation-conscious primitive number parsing.

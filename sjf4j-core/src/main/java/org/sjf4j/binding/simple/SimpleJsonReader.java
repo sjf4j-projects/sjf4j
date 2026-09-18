@@ -224,6 +224,21 @@ public final class SimpleJsonReader implements StreamingReader {
         }
     }
 
+    @Override
+    public char nextCharValue() throws IOException {
+        bufferedToken = null;
+        _prepareValuePath();
+        try {
+            String value = _readString();
+            _checkValueEnd();
+            if (value.isEmpty()) throw new BindingException("cannot read empty string as char", _path());
+            return value.charAt(0);
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
+
     /**
      * Consumes next null token.
      */

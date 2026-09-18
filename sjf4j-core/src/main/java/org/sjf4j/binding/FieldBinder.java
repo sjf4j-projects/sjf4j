@@ -8,6 +8,7 @@ import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.ValueCodecInfo;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -26,7 +27,7 @@ import java.util.function.ObjLongConsumer;
 public interface FieldBinder {
 
     void bind(StreamingReader reader, Object owner, Type ownerType, Class<?> ownerBoxed,
-              StreamingContext context) throws Throwable;
+              StreamingContext context) throws IOException;
 
 
     @FunctionalInterface
@@ -55,7 +56,11 @@ public interface FieldBinder {
     }
 
 
-    /// Create
+    /*
+     * --------------------------------------------------------------
+     * Create
+     * --------------------------------------------------------------
+     */
 
     static FieldBinder create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                               boolean genericDependent, OneOfInfo oneOfInfo,
@@ -96,14 +101,30 @@ public interface FieldBinder {
          * --------------------------------------------------------------
          */
 
-        if (fieldType == int.class) return createForPrimitiveInt(fieldName, setterHandle, lookup);
-        if (fieldType == long.class) return createForPrimitiveLong(fieldName, setterHandle, lookup);
-        if (fieldType == double.class) return createForPrimitiveDouble(fieldName, setterHandle, lookup);
-        if (fieldType == float.class) return createForPrimitiveFloat(fieldName, setterHandle, lookup);
-        if (fieldType == byte.class) return createForPrimitiveByte(fieldName, setterHandle, lookup);
-        if (fieldType == short.class) return createForPrimitiveShort(fieldName, setterHandle, lookup);
-        if (fieldType == boolean.class) return createForPrimitiveBoolean(fieldName, setterHandle, lookup);
-        if (fieldType == char.class) return createForPrimitiveChar(fieldName, setterHandle, lookup);
+        if (fieldType == int.class) {
+            return _createForPrimitiveInt(fieldName, setterHandle, lookup);
+        }
+        if (fieldType == long.class) {
+            return _createForPrimitiveLong(fieldName, setterHandle, lookup);
+        }
+        if (fieldType == double.class) {
+            return _createForPrimitiveDouble(fieldName, setterHandle, lookup);
+        }
+        if (fieldType == float.class) {
+            return _createForPrimitiveFloat(fieldName, setterHandle, lookup);
+        }
+        if (fieldType == byte.class) {
+            return _createForPrimitiveByte(fieldName, setterHandle, lookup);
+        }
+        if (fieldType == short.class) {
+            return _createForPrimitiveShort(fieldName, setterHandle, lookup);
+        }
+        if (fieldType == boolean.class) {
+            return _createForPrimitiveBoolean(fieldName, setterHandle, lookup);
+        }
+        if (fieldType == char.class) {
+            return _createForPrimitiveChar(fieldName, setterHandle, lookup);
+        }
 
         /*
          * --------------------------------------------------------------
@@ -273,14 +294,14 @@ public interface FieldBinder {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    static <T> Class<T> castClass(Class clazz) {
+    static <T> Class<T> _castClass(Class clazz) {
         return (Class<T>) clazz;
     }
 
 
-    static FieldBinder createForPrimitiveInt(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveInt(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjIntConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjIntConsumer.class), int.class);
+                _castClass(ObjIntConsumer.class), int.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 setterLambda.accept(owner, reader.nextIntValue());
@@ -289,13 +310,18 @@ public interface FieldBinder {
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, int.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            setter.invokeExact(receiver, reader.nextIntValue());
+            try {
+                setter.invokeExact(receiver, reader.nextIntValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
+            }
         };
     }
 
-    static FieldBinder createForPrimitiveLong(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveLong(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjLongConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjLongConsumer.class), long.class);
+                _castClass(ObjLongConsumer.class), long.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 setterLambda.accept(owner, reader.nextLongValue());
@@ -304,13 +330,18 @@ public interface FieldBinder {
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, long.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            setter.invokeExact(receiver, reader.nextLongValue());
+            try {
+                setter.invokeExact(receiver, reader.nextLongValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
+            }
         };
     }
 
-    static FieldBinder createForPrimitiveDouble(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveDouble(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjDoubleConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjDoubleConsumer.class), double.class);
+                _castClass(ObjDoubleConsumer.class), double.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 setterLambda.accept(owner, reader.nextDoubleValue());
@@ -319,13 +350,18 @@ public interface FieldBinder {
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, double.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            setter.invokeExact(receiver, reader.nextDoubleValue());
+            try {
+                setter.invokeExact(receiver, reader.nextDoubleValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
+            }
         };
     }
 
-    static FieldBinder createForPrimitiveFloat(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveFloat(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjFloatConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjFloatConsumer.class), float.class);
+                _castClass(ObjFloatConsumer.class), float.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 setterLambda.accept(owner, reader.nextFloatValue());
@@ -334,13 +370,18 @@ public interface FieldBinder {
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, float.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            setter.invokeExact(receiver, reader.nextFloatValue());
+            try {
+                setter.invokeExact(receiver, reader.nextFloatValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
+            }
         };
     }
 
-    static FieldBinder createForPrimitiveShort(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveShort(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjShortConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjShortConsumer.class), short.class);
+                _castClass(ObjShortConsumer.class), short.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 setterLambda.accept(owner, reader.nextShortValue());
@@ -349,13 +390,18 @@ public interface FieldBinder {
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, short.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            setter.invokeExact(receiver, reader.nextShortValue());
+            try {
+                setter.invokeExact(receiver, reader.nextShortValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
+            }
         };
     }
 
-    static FieldBinder createForPrimitiveByte(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveByte(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjByteConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjByteConsumer.class), byte.class);
+                _castClass(ObjByteConsumer.class), byte.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 setterLambda.accept(owner, reader.nextByteValue());
@@ -364,13 +410,18 @@ public interface FieldBinder {
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, byte.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            setter.invokeExact(receiver, reader.nextByteValue());
+            try {
+                setter.invokeExact(receiver, reader.nextByteValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
+            }
         };
     }
 
-    static FieldBinder createForPrimitiveBoolean(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveBoolean(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjBooleanConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjBooleanConsumer.class), boolean.class);
+                _castClass(ObjBooleanConsumer.class), boolean.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 setterLambda.accept(owner, reader.nextBooleanValue());
@@ -379,30 +430,32 @@ public interface FieldBinder {
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, boolean.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            setter.invokeExact(receiver, reader.nextBooleanValue());
+            try {
+                setter.invokeExact(receiver, reader.nextBooleanValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
+            }
         };
     }
 
-    static FieldBinder createForPrimitiveChar(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldBinder _createForPrimitiveChar(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjCharConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
-                castClass(ObjCharConsumer.class), char.class);
+                _castClass(ObjCharConsumer.class), char.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                String str = reader.nextString();
-                if (str.isEmpty()) {
-                    throw new BindingException("cannot bind empty string to primitive char field '" + fieldName + "'");
-                }
-                setterLambda.accept(owner, str.charAt(0));
+                setterLambda.accept(owner, reader.nextCharValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, char.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
-            String str = reader.nextString();
-            if (str.isEmpty()) {
-                throw new BindingException("cannot bind empty string to primitive char field '" + fieldName + "'");
+            try {
+                setter.invokeExact(receiver, reader.nextCharValue());
+            } catch (Throwable e) {
+                throw new BindingException("failed to bind value to field '" + fieldName +
+                        "' of node type '" + Types.name(receiver) + "'", e);
             }
-            setter.invokeExact(receiver, str.charAt(0));
         };
     }
 
