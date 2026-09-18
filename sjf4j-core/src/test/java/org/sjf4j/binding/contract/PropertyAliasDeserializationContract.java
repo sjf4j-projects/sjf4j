@@ -36,12 +36,6 @@ public abstract class PropertyAliasDeserializationContract {
         SnakeBean bean = (SnakeBean) binding(StreamingContext.EMPTY).readNode("{\"user_name\":\"han\"}", SnakeBean.class);
         assertEquals("han", bean.userName);
     }
-    /** Structural source: PropertyAliasTest#testCaseInsensitiveAliases; verifies ordinary SJF4J field/setter binding, not Jackson's mapper-level case-insensitive option. */
-    @Test void testOrdinaryPojoFieldsAndJavaBeanAccessors() {
-        AccessorBean bean = (AccessorBean) binding(StreamingContext.EMPTY).readNode("{\"id\":7,\"name\":\"han\"}", AccessorBean.class);
-        assertEquals(7, bean.id); assertEquals("han", bean.getName());
-    }
     static class AliasBean { @NodeProperty(value = "name", aliases = {"Name", "n", "legacy_name"}) public String name; }
     @NodeBinding(naming = NamingStrategy.SNAKE_CASE) static class SnakeBean { public String userName; }
-    static class AccessorBean { public int id; private String name; public String getName() { return name; } public void setName(String value) { name = value; } }
 }

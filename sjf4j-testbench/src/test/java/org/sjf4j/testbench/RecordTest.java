@@ -28,4 +28,14 @@ public class RecordTest {
     }
 
     public record Person(@NodeProperty(value = "name", aliases = "legacyName") String name, int age) {}
+
+    // Direct source: creators/CreatorNullPrimitivesTest#testRecordAbsentPrimitivesShouldDefault.
+    @Test
+    public void creatorRecordAbsentPrimitivesUseJavaDefaults() {
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
+        PrimitiveRecord record = sjf4j.fromJson("{\"second\":42,\"enabled\":true}", PrimitiveRecord.class);
+        assertEquals(0, record.first()); assertEquals(42, record.second()); assertEquals(true, record.enabled()); assertFalse(record.visible());
+    }
+
+    public record PrimitiveRecord(int first, int second, boolean enabled, boolean visible) {}
 }

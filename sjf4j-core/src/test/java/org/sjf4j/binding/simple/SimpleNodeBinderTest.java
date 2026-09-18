@@ -5,12 +5,17 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueCopy;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.TypeReference;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -49,6 +54,39 @@ class SimpleNodeBinderTest {
     static class TargetUser {
         public String name;
         public int age;
+    }
+
+    static class OrderedGetterSource {
+        static final List<String> events = new ArrayList<>();
+
+        public String getFirst() {
+            events.add("getFirst");
+            return "first";
+        }
+
+        public String getSecond() {
+            events.add("getSecond");
+            return "second";
+        }
+    }
+
+    static class OrderedSetterTarget {
+        String first;
+        String second;
+
+        public OrderedSetterTarget() {
+            OrderedGetterSource.events.add("createTarget");
+        }
+
+        public void setFirst(String first) {
+            OrderedGetterSource.events.add("setFirst");
+            this.first = first;
+        }
+
+        public void setSecond(String second) {
+            OrderedGetterSource.events.add("setSecond");
+            this.second = second;
+        }
     }
 
     enum Status { ACTIVE, DISABLED }
@@ -118,6 +156,45 @@ class SimpleNodeBinderTest {
         public void setCity(String city) { this.city = city; }
     }
 
+    static class CreatedObject extends JsonObject {
+        final String name;
+        String city;
+
+        @NodeCreator CreatedObject(@NodeProperty("name") String name) {
+            this.name = name;
+        }
+
+        public String getCity() { return city; }
+        public void setCity(String city) { this.city = city; }
+    }
+
+    static class ReadOnlyUser {
+        private final List<Integer> values = List.of();
+
+        public List<Integer> getValues() { return values; }
+    }
+
+    @NodeValue
+    static class MutableValue {
+        final List<String> values;
+
+        MutableValue(List<String> values) { this.values = values; }
+
+        @ValueToRaw List<String> encode() { return values; }
+        @RawToValue static MutableValue decode(List<String> values) { return new MutableValue(values); }
+        @ValueCopy MutableValue copy() { return new MutableValue(new java.util.ArrayList<>(values)); }
+    }
+
+    @NodeValue
+    static class IdentityValue {
+        @ValueToRaw String encode() { return "value"; }
+        @RawToValue static IdentityValue decode(String value) { return new IdentityValue(); }
+    }
+
+    static class MutableValueHolder {
+        public MutableValue value;
+    }
+
     static class AnimalContainers {
         public List<Animal> animals;
         public Map<String, Animal> byName;
@@ -162,6 +239,23 @@ class SimpleNodeBinderTest {
         JsonObject object = (JsonObject) binding.readNode(source, JsonObject.class);
         assertEquals("Ann", object.getString("name"));
         assertEquals(7L, object.getLong("age"));
+    }
+
+    @Test
+    void readsAllPojoGettersBeforeTargetConversion() {
+        OrderedGetterSource.events.clear();
+
+        OrderedSetterTarget target = (OrderedSetterTarget) binding.readNode(
+                new OrderedGetterSource(), OrderedSetterTarget.class);
+
+        assertEquals("first", target.first);
+        assertEquals("second", target.second);
+        int firstSetter = Math.min(OrderedGetterSource.events.indexOf("setFirst"),
+                OrderedGetterSource.events.indexOf("setSecond"));
+        assertTrue(OrderedGetterSource.events.indexOf("getFirst") < OrderedGetterSource.events.indexOf("createTarget"));
+        assertTrue(OrderedGetterSource.events.indexOf("getSecond") < OrderedGetterSource.events.indexOf("createTarget"));
+        assertTrue(OrderedGetterSource.events.indexOf("getFirst") < firstSetter);
+        assertTrue(OrderedGetterSource.events.indexOf("getSecond") < firstSetter);
     }
 
     @Test
@@ -258,6 +352,53 @@ class SimpleNodeBinderTest {
         assertInstanceOf(Cat.class, containers.animals.get(0));
         assertInstanceOf(Dog.class, containers.byName.get("rex"));
         assertInstanceOf(Cat.class, containers.array[0]);
+    }
+
+    @Test
+    void creatorStateRejectsDuplicatesAndReplaysDeferredValues() {
+        assertThrows(BindingException.class, () -> binding.readNode(
+                JsonObject.of("name", "Ann", "n", "Ana", "scores", List.of()), CreatedUser.class));
+
+        CreatedObject object = (CreatedObject) binding.readNode(
+                JsonObject.of("city", "Shanghai", "extra", JsonObject.of("v", 1), "name", "Ann"), CreatedObject.class);
+        assertEquals("Shanghai", object.city);
+        assertEquals(1, object.getJsonObject("extra").getInt("v"));
+    }
+
+    @Test
+    void skipsReadOnlyPropertiesWithoutConvertingThem() {
+        ReadOnlyUser user = (ReadOnlyUser) binding.readNode(
+                JsonObject.of("values", JsonArray.of("not-an-integer")), ReadOnlyUser.class);
+        assertEquals(List.of(), user.values);
+    }
+
+    @Test
+    void deepCopiesCompatibleValueCodecValues() {
+        MutableValue value = new MutableValue(new java.util.ArrayList<>(List.of("a")));
+
+        assertSame(value, binding.readNode(value, MutableValue.class, false));
+        MutableValue copy = (MutableValue) binding.readNode(value, MutableValue.class, true);
+        assertNotSame(value, copy);
+        assertNotSame(value.values, copy.values);
+    }
+
+    @Test
+    void deepCopiesAnnotatedValueWithoutCopyMethodByIdentity() {
+        IdentityValue value = new IdentityValue();
+
+        assertSame(value, binding.readNode(value, IdentityValue.class, true));
+    }
+
+    @Test
+    void deepCopiesValueCodecValuesNestedInPojos() {
+        MutableValueHolder source = new MutableValueHolder();
+        source.value = new MutableValue(new java.util.ArrayList<>(List.of("a")));
+
+        MutableValueHolder copy = (MutableValueHolder) binding.readNode(source, MutableValueHolder.class, true);
+
+        assertNotSame(source, copy);
+        assertNotSame(source.value, copy.value);
+        assertNotSame(source.value.values, copy.value.values);
     }
 
     @Test

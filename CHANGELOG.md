@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
 
 ### Changed
+- Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
 - Optimized streaming POJO binding and writing with precomputed specialized field accessors.
 - Gson streaming binders now create configured writers and honor the `StreamingContext` null-serialization policy.
 - Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`.

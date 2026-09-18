@@ -32,6 +32,7 @@ import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.TypeReference;
 import org.sjf4j.testbench.model.User;
@@ -81,6 +82,7 @@ public class JsonWriteBenchmark {
     private static final JSONWriter.Context FASTJSON2_WRITER_CONTEXT =
             JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
+    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
     private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
 
     private static final User USER;
@@ -264,13 +266,7 @@ public class JsonWriteBenchmark {
     }
 
     @Benchmark
-    public Object json_binding_simple_map_native() throws Exception {
-        StringWriter output = new StringWriter();
-        try (org.sjf4j.binding.simple.SimpleJsonWriter writer =
-                     new org.sjf4j.binding.simple.SimpleJsonWriter(output)) {
-            org.sjf4j.binding.StreamingIO.writeNode(writer, MAP_NODE,
-                    org.sjf4j.binding.StreamingContext.EMPTY);
-        }
-        return output.toString();
+    public Object json_binding_simple_map_native() {
+        return SIMPLE_JSON_BINDER.writeNodeAsString(MAP_NODE);
     }
 }

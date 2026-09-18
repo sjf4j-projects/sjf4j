@@ -8,6 +8,7 @@ import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.NodeBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Numbers;
@@ -25,6 +26,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -93,7 +95,15 @@ public final class SimpleNodeBinder implements NodeBinder {
             // generic structure to honor. Parameterized containers/POJOs still need a
             // shallow/deep traversal so their declared element/member types are bound.
             if (rawClazz.isInstance(node) && !Types.hasGenericStructure(type)) {
-                return deepCopy ? _deepNode(node, type, ps) : node;
+                if (!deepCopy) return node;
+
+                TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
+                if (ti.hasValueCodecs()) {
+                    String valueFormat = streamingContext.defaultValueFormat(rawClazz);
+                    ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                    if (vci != null) return vci.valueCopy(node);
+                }
+                return _deepNode(node, type, ps);
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
@@ -229,6 +239,13 @@ public final class SimpleNodeBinder implements NodeBinder {
                 return _readNode(node, type, targetRaw, null, true, ps);
             }
 
+            TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+            if (ti.hasValueCodecs()) {
+                String valueFormat = streamingContext.defaultValueFormat(node.getClass());
+                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                if (vci != null) return vci.valueCopy(node);
+            }
+
             if (node instanceof String || node instanceof Number || node instanceof Boolean) {
                 return node;
             }
@@ -236,7 +253,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Class<?> nodeClazz = node.getClass();
             if (node instanceof Map) {
                 Map<String, Object> srcMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = TypeRegistry.newMapContainer(nodeClazz, true);
+                Map<String, Object> newMap = _newMapContainer(nodeClazz, srcMap.size(), true);
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 srcMap.forEach((k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, k);
@@ -247,7 +264,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
             if (node instanceof List) {
                 List<Object> srcList = (List<Object>) node;
-                List<Object> newList = TypeRegistry.newListContainer(nodeClazz, true);
+                List<Object> newList = _newListContainer(nodeClazz, srcList.size(), true);
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcList.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
@@ -288,7 +305,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                             : pojoInfo.properties.get(key);
                     if (fi != null) {
                         PathSegment cps = new PathSegment.Name(ps, key);
-                        Type fieldType = Types.resolveMemberType(type, targetRaw, fi.type);
+                        Type fieldType = fi.genericDependent ? Types.resolveMemberType(type, targetRaw, fi.type) : fi.type;
                         Object vv = _deepNode(entry.getValue(), fieldType, cps);
                         session.acceptProperty(fi, vv);
                         continue;
@@ -325,7 +342,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             }
             if (node instanceof Set) {
                 Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet = TypeRegistry.newSetContainer(nodeClazz, true);
+                Set<Object> newSet = _newSetContainer(nodeClazz, srcSet.size(), true);
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
@@ -355,7 +372,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
-                    Type fieldType = Types.resolveMemberType(type, targetRaw, fi.type);
+                    Type fieldType = fi.genericDependent ? Types.resolveMemberType(type, targetRaw, fi.type) : fi.type;
                     Object vv = _deepNode(v, fieldType, cps);
                     session.acceptProperty(fi, vv);
                 }
@@ -392,12 +409,18 @@ public final class SimpleNodeBinder implements NodeBinder {
         if (!deepCopy && rawClazz == JsonObject.class) {
             return new JsonObject(oldMap);
         }
-        return _readFromObjectSource(oldMap::entrySet, "Map", rawClazz, type, deepCopy, ps);
+        return _readFromObjectSource(new ObjectSource() {
+            @Override public Iterable<Map.Entry<String, Object>> entries() { return oldMap.entrySet(); }
+            @Override public int size() { return oldMap.size(); }
+        }, "Map", rawClazz, type, deepCopy, ps);
     }
 
     // JsonObject -> Map/JsonObject/JOJO/POJO
     private Object _readFromJsonObject(JsonObject oldJo, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
-        return _readFromObjectSource(oldJo::entrySet, "JsonObject", rawClazz, type, deepCopy, ps);
+        return _readFromObjectSource(new ObjectSource() {
+            @Override public Iterable<Map.Entry<String, Object>> entries() { return oldJo.entrySet(); }
+            @Override public int size() { return oldJo.size(); }
+        }, "JsonObject", rawClazz, type, deepCopy, ps);
     }
 
     private Object _readFromObjectSource(ObjectSource source,
@@ -407,7 +430,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                                          boolean deepCopy,
                                          PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false);
+            Map<String, Object> map = _newMapContainer(rawClazz, source.size(), false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
@@ -440,30 +463,14 @@ public final class SimpleNodeBinder implements NodeBinder {
                                         Type type, Class<?> rawClazz, PojoInfo pi,
                                         boolean deepCopy, PathSegment ps) {
         CreatorInfo ci = pi.creatorInfo;
-        Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
-        Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-        int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-        int pendingSize = 0;
-        FieldInfo[] pendingFields = null;
-        Object[] pendingValues = null;
-        Map<String, Object> dynamicMap = null;
+        CreatorState state = new CreatorState(ci);
 
         for (Map.Entry<String, Object> entry : entries) {
             String key = entry.getKey();
             Object rawValue = entry.getValue();
 
-            int argIdx = -1;
-            if (pojo == null) {
-                argIdx = ci.getArgIndex(key);
-                if (argIdx < 0 && ci.aliasMap != null) {
-                    String origin = ci.aliasMap.get(key); // alias -> origin
-                    if (origin != null) {
-                        argIdx = ci.getArgIndex(origin);
-                    }
-                }
-            }
+            int argIdx = ci.getArgIndexOrAlias(key);
             if (argIdx >= 0) {
-                assert args != null;
                 Type argType = Types.resolveMemberType(type, rawClazz, ci.argTypes[argIdx]);
                 PathSegment cps = new PathSegment.Name(ps, key);
                 Class<?> argRaw = Types.rawBox(argType);
@@ -475,26 +482,21 @@ public final class SimpleNodeBinder implements NodeBinder {
                     argVci = ti.getValueCodecInfo(valueFormat);
                 }
                 if (ti.oneOfInfo == null && argVci != null) {
-                    args[argIdx] = argRaw.isInstance(rawValue) ? argVci.valueCopy(rawValue) : argVci.rawToValue(rawValue);
+                    state.acceptCtorArg(argIdx, argRaw.isInstance(rawValue)
+                            ? argVci.valueCopy(rawValue) : argVci.rawToValue(rawValue));
                 } else {
-                    args[argIdx] = _readNode(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps);
-                }
-                remainingArgs--;
-                if (remainingArgs == 0) {
-                    pojo = ci.newPojoWithArgs(args);
-                    for (int j = 0; j < pendingSize; j++) {
-                        pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
-                    }
-                    pendingSize = 0;
+                    state.acceptCtorArg(argIdx, _readNode(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps));
                 }
                 continue;
             }
 
             FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
+                if (!fi.hasSetter()) continue;
+
                 PathSegment cps = new PathSegment.Name(ps, key);
-                Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
-                Class<?> fieldRaw = Types.rawBox(fieldType);
+                Type fieldType = fi.genericDependent ? Types.resolveMemberType(type, rawClazz, fi.type) : fi.type;
+                Class<?> fieldRaw = fi.genericDependent ? Types.rawBox(fieldType) : fi.boxed;
                 Object vv;
                 if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
                     vv = fieldRaw.isInstance(rawValue) ? fi.resolvedValueCodec.valueCopy(rawValue) :
@@ -503,37 +505,22 @@ public final class SimpleNodeBinder implements NodeBinder {
                     vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
                 }
 
-                if (pojo != null) {
-                    fi.invokeSetterIfPresent(pojo, vv);
+                if (state.isCreated()) {
+                    fi.invokeSetter(state.pojo(), vv);
                 } else {
-                    if (pendingFields == null) {
-                        int cap = pi.propertyCount;
-                        pendingFields = new FieldInfo[cap];
-                        pendingValues = new Object[cap];
-                    }
-                    pendingFields[pendingSize] = fi;
-                    pendingValues[pendingSize] = vv;
-                    pendingSize++;
+                    state.bufferProperty(fi, vv);
                 }
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
-                if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();
                 PathSegment cps = new PathSegment.Name(ps, key);
                 Object vv = _readNode(rawValue, Object.class, Object.class, null, deepCopy, cps);
-                dynamicMap.put(key, vv);
+                state.acceptDynamic(key, vv);
             }
         }
 
-        if (pojo == null) {
-            pojo = ci.newPojoWithArgs(args);
-            for (int j = 0; j < pendingSize; j++) {
-                pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
-            }
-        }
-        if (pi.isJojo) ((JsonObject) pojo)._dynamicMap(dynamicMap);
-        return pojo;
+        return state.finish();
     }
 
     // List -> List/JsonArray/JAJO/Array/Set
@@ -586,12 +573,60 @@ public final class SimpleNodeBinder implements NodeBinder {
 
     // Set -> List/JsonArray/JAJO/Array/Set
     private Object _readFromSet(Set<Object> oldSet, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
-        List<Object> values = new ArrayList<>(oldSet.size());
-        values.addAll(oldSet);
-        return _readFromArraySource(new ArraySource() {
-            @Override public int size() { return values.size(); }
-            @Override public Object get(int i) { return values.get(i); }
-        }, "Set", rawClazz, type, deepCopy, ps);
+        int size = oldSet.size();
+        if (List.class.isAssignableFrom(rawClazz)) {
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
+            List<Object> list = _newListContainer(rawClazz, size, false);
+            int i = 0;
+            for (Object v : oldSet) {
+                list.add(_readNode(v, vt, vc, va, deepCopy, new PathSegment.Index(ps, i++)));
+            }
+            return list;
+        }
+        if (rawClazz == JsonArray.class) {
+            JsonArray ja = new JsonArray();
+            int i = 0;
+            for (Object v : oldSet) {
+                ja.add(_readNode(v, Object.class, Object.class, null, deepCopy, new PathSegment.Index(ps, i++)));
+            }
+            return ja;
+        }
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
+            Class<?> vc = jajo.elementClass();
+            OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
+            int i = 0;
+            for (Object v : oldSet) {
+                jajo.add(_readNode(v, vc, vc, va, deepCopy, new PathSegment.Index(ps, i++)));
+            }
+            return jajo;
+        }
+        if (rawClazz.isArray()) {
+            Class<?> vt = rawClazz.getComponentType();
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
+            Object array = Array.newInstance(vt, size);
+            int i = 0;
+            for (Object v : oldSet) {
+                Array.set(array, i, _readNode(v, vt, vc, va, deepCopy, new PathSegment.Index(ps, i++)));
+            }
+            return array;
+        }
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            Class<?> vc = Types.rawBox(vt);
+            OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
+            Set<Object> set = _newSetContainer(rawClazz, size, false);
+            int i = 0;
+            for (Object v : oldSet) {
+                set.add(_readNode(v, vt, vc, va, deepCopy, new PathSegment.Index(ps, i++)));
+            }
+            return set;
+        }
+        throw new BindingException("cannot convert Set to '" + rawClazz.getName() + "'", ps);
     }
 
     private Object _readFromArraySource(ArraySource source, String sourceName, Class<?> rawClazz, Type type,
@@ -600,8 +635,9 @@ public final class SimpleNodeBinder implements NodeBinder {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            List<Object> list = TypeRegistry.newListContainer(rawClazz, false);
-            for (int i = 0, size = source.size(); i < size; i++) {
+            int size = source.size();
+            List<Object> list = _newListContainer(rawClazz, size, false);
+            for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
@@ -649,8 +685,9 @@ public final class SimpleNodeBinder implements NodeBinder {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, false);
-            for (int i = 0, size = source.size(); i < size; i++) {
+            int size = source.size();
+            Set<Object> set = _newSetContainer(rawClazz, size, false);
+            for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
@@ -665,7 +702,7 @@ public final class SimpleNodeBinder implements NodeBinder {
     private Object _readFromPojo(Object node, PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false);
+            Map<String, Object> map = _newMapContainer(rawClazz, oldPi.readablePropertyCount, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
@@ -693,13 +730,98 @@ public final class SimpleNodeBinder implements NodeBinder {
 
         PojoInfo pi = TypeRegistry.registerTypeInfo(rawClazz).pojoInfo;
         if (pi != null && !pi.isJajo) {
-            Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.readablePropertyCount);
-            for (Map.Entry<String, FieldInfo> entry : oldPi.readableProperties.entrySet()) {
-                sourceValues.put(entry.getKey(), entry.getValue().invokeGetter(node));
-            }
-            return _readPojoFromEntries(sourceValues.entrySet(), type, rawClazz, pi, deepCopy, ps);
+            return _readPojoFromProperties(node, oldPi, type, rawClazz, pi, deepCopy, ps);
         }
         throw new BindingException("cannot convert POJO to '" + rawClazz.getName() + "'", ps);
+    }
+
+    private Object _readPojoFromProperties(Object source, PojoInfo sourceInfo,
+                                           Type type, Class<?> rawClazz, PojoInfo pi,
+                                           boolean deepCopy, PathSegment ps) {
+        Object[] sourceValues = new Object[sourceInfo.readablePropertyCount];
+        int sourceIndex = 0;
+        for (FieldInfo sourceField : sourceInfo.readableProperties.values()) {
+            sourceValues[sourceIndex++] = sourceField.invokeGetter(source);
+        }
+
+        CreatorInfo ci = pi.creatorInfo;
+        CreatorState state = new CreatorState(ci);
+        sourceIndex = 0;
+        for (Map.Entry<String, FieldInfo> entry : sourceInfo.readableProperties.entrySet()) {
+            String key = entry.getKey();
+            Object rawValue = sourceValues[sourceIndex++];
+
+            int argIdx = ci.getArgIndexOrAlias(key);
+            if (argIdx >= 0) {
+                Type argType = Types.resolveMemberType(type, rawClazz, ci.argTypes[argIdx]);
+                PathSegment cps = new PathSegment.Name(ps, key);
+                Class<?> argRaw = Types.rawBox(argType);
+
+                TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
+                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                if (argVci == null && ti.hasValueCodecs()) {
+                    String valueFormat = streamingContext.defaultValueFormat(argRaw);
+                    argVci = ti.getValueCodecInfo(valueFormat);
+                }
+                if (ti.oneOfInfo == null && argVci != null) {
+                    state.acceptCtorArg(argIdx, argRaw.isInstance(rawValue)
+                            ? argVci.valueCopy(rawValue) : argVci.rawToValue(rawValue));
+                } else {
+                    state.acceptCtorArg(argIdx, _readNode(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps));
+                }
+                continue;
+            }
+
+            FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            if (fi != null) {
+                if (!fi.hasSetter()) continue;
+
+                PathSegment cps = new PathSegment.Name(ps, key);
+                Type fieldType = fi.genericDependent ? Types.resolveMemberType(type, rawClazz, fi.type) : fi.type;
+                Class<?> fieldRaw = fi.genericDependent ? Types.rawBox(fieldType) : fi.boxed;
+                Object vv;
+                if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
+                    vv = fieldRaw.isInstance(rawValue) ? fi.resolvedValueCodec.valueCopy(rawValue) :
+                            fi.resolvedValueCodec.rawToValue(rawValue);
+                } else {
+                    vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
+                }
+
+                if (state.isCreated()) {
+                    fi.invokeSetter(state.pojo(), vv);
+                } else {
+                    state.bufferProperty(fi, vv);
+                }
+                continue;
+            }
+
+            if (pi.isJojo && pi.readDynamic) {
+                PathSegment cps = new PathSegment.Name(ps, key);
+                state.acceptDynamic(key, _readNode(rawValue, Object.class, Object.class, null, deepCopy, cps));
+            }
+        }
+        return state.finish();
+    }
+
+    private static <T> Map<String, T> _newMapContainer(Class<?> rawClazz, int size, boolean fallback) {
+        if (rawClazz == Map.class || rawClazz == LinkedHashMap.class) return new LinkedHashMap<>(_linkedHashCapacity(size));
+        return TypeRegistry.newMapContainer(rawClazz, fallback);
+    }
+
+    private static <T> List<T> _newListContainer(Class<?> rawClazz, int size, boolean fallback) {
+        if (rawClazz == List.class || rawClazz == ArrayList.class) return new ArrayList<>(size);
+        return TypeRegistry.newListContainer(rawClazz, fallback);
+    }
+
+    private static <T> Set<T> _newSetContainer(Class<?> rawClazz, int size, boolean fallback) {
+        if (rawClazz == Set.class || rawClazz == LinkedHashSet.class) return new LinkedHashSet<>(_linkedHashCapacity(size));
+        return TypeRegistry.newSetContainer(rawClazz, fallback);
+    }
+
+    private static int _linkedHashCapacity(int size) {
+        if (size <= 12) return 16;
+        long capacity = ((long) size * 4 + 2) / 3;
+        return capacity >= (1 << 30) ? 1 << 30 : (int) capacity;
     }
 
     private interface ArraySource {
@@ -709,6 +831,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
     private interface ObjectSource {
         Iterable<Map.Entry<String, Object>> entries();
+        int size();
     }
 
     /// Write
@@ -743,7 +866,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
             if (node instanceof Map) {
                 Map<String, Object> oldMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = new LinkedHashMap<>(oldMap.size());
+                Map<String, Object> newMap = new LinkedHashMap<>(_linkedHashCapacity(oldMap.size()));
                 for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
                     PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                     Object vv = _writeNode(entry.getValue(), cps);
@@ -766,7 +889,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Class<?> rawClazz = node.getClass();
             if (node instanceof JsonObject) {
                 JsonObject jo = (JsonObject) node;
-                Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
+                Map<String, Object> newMap = new LinkedHashMap<>(_linkedHashCapacity(jo.size()));
                 if (rawClazz != JsonObject.class) {
                     PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
@@ -839,7 +962,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
             PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                Map<String, Object> newMap = new LinkedHashMap<>(pi.readablePropertyCount);
+                Map<String, Object> newMap = new LinkedHashMap<>(_linkedHashCapacity(pi.readablePropertyCount));
                 for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
                     FieldInfo fi = entry.getValue();

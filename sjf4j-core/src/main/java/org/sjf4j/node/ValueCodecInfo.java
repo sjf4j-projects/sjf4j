@@ -108,8 +108,7 @@ public class ValueCodecInfo {
                         " using annotated method " + valueCopyHandle, e);
             }
         }
-        throw new BindingException("no value binding found for type " + valueClazz.getName() +
-                ": missing @" + NodeValue.class.getName() + " annotation and no ValueCodec registered");
+        return value;
     }
 
 }

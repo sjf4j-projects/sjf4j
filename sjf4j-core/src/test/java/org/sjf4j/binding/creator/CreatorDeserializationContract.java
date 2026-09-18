@@ -1,4 +1,4 @@
-package org.sjf4j.binding.contract;
+package org.sjf4j.binding.creator;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeCreator;

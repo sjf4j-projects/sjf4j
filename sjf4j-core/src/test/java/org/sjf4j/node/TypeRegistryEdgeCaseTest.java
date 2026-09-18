@@ -715,7 +715,7 @@ class TypeRegistryEdgeCaseTest {
         ValueCodecInfo none = new ValueCodecInfo("", String.class, String.class, null, null, null, null);
         assertThrows(JsonException.class, () -> none.valueToRaw("x"));
         assertThrows(JsonException.class, () -> none.rawToValue("x"));
-        assertThrows(JsonException.class, () -> none.valueCopy("x"));
+        assertSame("x", none.valueCopy("x"));
 
         ValueCodecInfo throwingHandles = new ValueCodecInfo(
                 "",
