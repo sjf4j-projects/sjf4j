@@ -379,7 +379,7 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Map<String, T>) node;
         }
-        Map<String, T> map = TypeRegistry.newMapContainer(mapType, false);
+        Map<String, T> map = TypeRegistry.newMapContainer(mapType, 0, false);
         forEachObject(node, (k, v) -> {
             T value = to(v, valueClazz);
             map.put(k, value);
@@ -445,7 +445,7 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (List<T>) node;
         }
-        List<T> list = TypeRegistry.newListContainer(listType, false);
+        List<T> list = TypeRegistry.newListContainer(listType, 0, false);
         forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
         return list;
     }
@@ -533,7 +533,7 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Set<T>) node;
         }
-        Set<T> set = TypeRegistry.newSetContainer(setType, false);
+        Set<T> set = TypeRegistry.newSetContainer(setType, 0, false);
         forEachArray(node, (i, v) -> set.add(to(v, valueClazz)));
         return set;
     }
@@ -807,12 +807,12 @@ public final class Nodes {
 
         Class<?> rawClazz = node.getClass();
         if (node instanceof Map) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, true);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, true);
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
         if (node instanceof List) {
-            List<Object> list = TypeRegistry.newListContainer(rawClazz, true);
+            List<Object> list = TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), true);
             list.addAll((List<Object>) node);
             return (T) list;
         }
@@ -853,7 +853,7 @@ public final class Nodes {
             return (T) arr;
         }
         if (node instanceof Set) {
-            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, true);
+            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, 0, true);
             set.addAll((Set<Object>) node);
             return (T) set;
         }
@@ -1838,7 +1838,7 @@ public final class Nodes {
      */
     public static Object createObjectContainer(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || Map.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.newMapContainer(clazz, false);
+            return TypeRegistry.newMapContainer(clazz, 0, false);
         }
         if (clazz == JsonObject.class) {
             return new JsonObject();
@@ -1856,7 +1856,7 @@ public final class Nodes {
      */
     public static Object createArrayContainer(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || List.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.newListContainer(clazz, false);
+            return TypeRegistry.newListContainer(clazz, 0, false);
         }
         if (clazz == JsonArray.class) {
             return new JsonArray();
@@ -1865,7 +1865,7 @@ public final class Nodes {
             return TypeRegistry.registerPojoOrElseThrow(clazz).creatorInfo.forceNewPojo();
         }
         if (Set.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.newSetContainer(clazz, false);
+            return TypeRegistry.newSetContainer(clazz, 0, false);
         }
         throw new JsonException("cannot create array node of type '" + clazz +
                 "'; only List/JsonArray/JAJO/Set are supported");

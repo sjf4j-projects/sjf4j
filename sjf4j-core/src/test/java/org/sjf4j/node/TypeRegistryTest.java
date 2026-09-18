@@ -30,6 +30,7 @@ import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.fixture.JsonObjectPersonFixture;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -96,17 +97,37 @@ public class TypeRegistryTest {
 
     @Test
     public void testContainerFactoryFallback() {
-        assertThrows(JsonException.class, () -> TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), false));
-        Map<String, Object> map = TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), true);
+        assertThrows(JsonException.class, () -> TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), 0, false));
+        Map<String, Object> map = TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), 0, true);
         assertTrue(map.isEmpty());
 
-        assertThrows(JsonException.class, () -> TypeRegistry.newListContainer(Arrays.asList("x").getClass(), false));
-        List<Object> list = TypeRegistry.newListContainer(Arrays.asList("x").getClass(), true);
+        assertThrows(JsonException.class, () -> TypeRegistry.newListContainer(Arrays.asList("x").getClass(), 3, false));
+        List<Object> list = TypeRegistry.newListContainer(Arrays.asList("x").getClass(), 3, true);
         assertTrue(list.isEmpty());
 
-        assertThrows(JsonException.class, () -> TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), false));
-        Set<Object> set = TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), true);
+        assertThrows(JsonException.class, () -> TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), 0, false));
+        Set<Object> set = TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), 0, true);
         assertTrue(set.isEmpty());
+    }
+
+    @Test
+    public void testSizedDefaultContainers() {
+        Map<String, Integer> map = TypeRegistry.newMapContainer(Map.class, 13, false);
+        List<Integer> list = TypeRegistry.newListContainer(List.class, 13, false);
+        List<Integer> arrayList = TypeRegistry.newListContainer(ArrayList.class, 13, false);
+        Set<Integer> set = TypeRegistry.newSetContainer(Set.class, 13, false);
+        for (int i = 0; i < 13; i++) {
+            map.put(Integer.toString(i), i);
+            list.add(i);
+            arrayList.add(i);
+            set.add(i);
+        }
+        assertEquals(13, map.size());
+        assertEquals(13, list.size());
+        assertEquals(13, arrayList.size());
+        assertEquals(13, set.size());
+
+        assertTrue(TypeRegistry.newListContainer(List.class, 0, false).isEmpty());
     }
 
     @Test

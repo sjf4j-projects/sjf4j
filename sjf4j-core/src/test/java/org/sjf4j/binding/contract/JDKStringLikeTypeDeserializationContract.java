@@ -16,8 +16,9 @@ import org.sjf4j.binding.StreamingContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/** Default JDK string-like bindings; unsupported bindings intentionally remain exposed. */
+/** SJF4J-supported JDK string-like bindings and explicit unsupported-type contracts. */
 public abstract class JDKStringLikeTypeDeserializationContract {
     protected abstract JsonBinder<?, ?> binding(StreamingContext context);
     private Object read(String json, Class<?> type) { return binding(StreamingContext.EMPTY).readNode(json, type); }
@@ -29,13 +30,13 @@ public abstract class JDKStringLikeTypeDeserializationContract {
     /** Source: JDKStringLikeTypeDeserTest#testFile. */
     @Test void testFile() { assertEquals(new File("/tmp/sjf4j").getAbsoluteFile(), read("\"/tmp/sjf4j\"", File.class)); }
     /** Source: JDKStringLikeTypeDeserTest#testCharSequence. */
-    @Test void testCharSequence() { assertEquals("abc", read("\"abc\"", CharSequence.class).toString()); }
+    @Test void testCharSequenceIsRejectedWithoutCodec() { assertThrows(RuntimeException.class, () -> read("\"abc\"", CharSequence.class)); }
     /** Source: JDKStringLikeTypeDeserTest#testPattern. */
     @Test void testPattern() { assertEquals("abc:\\s?(\\d+)", ((Pattern) read("\"abc:\\\\s?(\\\\d+)\"", Pattern.class)).pattern()); }
     /** Source: JDKStringLikeTypeDeserTest#testStringBuilder. */
-    @Test void testStringBuilder() { assertEquals("abc", read("\"abc\"", StringBuilder.class).toString()); }
+    @Test void testStringBuilderIsRejectedWithoutCodec() { assertThrows(RuntimeException.class, () -> read("\"abc\"", StringBuilder.class)); }
     /** Source: JDKStringLikeTypeDeserTest#testStringBuffer. */
-    @Test void testStringBuffer() { assertEquals("abc", read("\"abc\"", StringBuffer.class).toString()); }
+    @Test void testStringBufferIsRejectedWithoutCodec() { assertThrows(RuntimeException.class, () -> read("\"abc\"", StringBuffer.class)); }
     /** Source: JDKStringLikeTypeDeserTest#testURI. */
     @Test void testURI() { assertEquals(URI.create("http://foo.com"), read("\"http://foo.com\"", URI.class)); }
     /** Source: JDKStringLikeTypeDeserTest#testURL. */

@@ -8,6 +8,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -129,6 +130,9 @@ public interface ValueCodec<V, R> {
 
     ValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,
             UUID::toString, UUID::fromString);
+
+    ValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,
+            Charset::name, Charset::forName);
 
     ValueCodec<Locale, String> LOCALE = new SimpleValueCodec<>(Locale.class, String.class,
             Locale::toLanguageTag, Locale::forLanguageTag);

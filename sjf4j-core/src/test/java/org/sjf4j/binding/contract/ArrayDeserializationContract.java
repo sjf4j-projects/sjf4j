@@ -35,7 +35,7 @@ public abstract class ArrayDeserializationContract {
     }
 
     /** Source: ArrayDeserializationTest#testCharArray. */
-    @Test void testCharArray() { assertArrayEquals("abc".toCharArray(), (char[]) binding(StreamingContext.EMPTY).readNode("\"abc\"", char[].class)); }
+    @Test void testCharArray() { assertArrayEquals("abc".toCharArray(), (char[]) binding(StreamingContext.EMPTY).readNode("[\"a\",\"b\",\"c\"]", char[].class)); }
 
     /** Source: ArrayDeserializationTest#testByteArrayAsNumbers. */
     @Test void testByteArrayAsNumbers() { assertArrayEquals(new byte[] { -1, 0, 127 }, (byte[]) binding(StreamingContext.EMPTY).readNode("[-1,0,127]", byte[].class)); }

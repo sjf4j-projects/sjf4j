@@ -511,7 +511,7 @@ public final class StreamingIO {
         }
         Map<String, Object> map = mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class
                 ? new LinkedHashMap<>()
-                : TypeRegistry.newMapContainer(mapClazz, false);
+                : TypeRegistry.newMapContainer(mapClazz, 0, false);
         reader.startObject();
         while (!reader.nextIfObjectEnd()) {
             String key = reader.nextName();
@@ -534,7 +534,7 @@ public final class StreamingIO {
         }
         List<Object> list = listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class
                 ? new ArrayList<>()
-                : TypeRegistry.newListContainer(listClazz, false);
+                : TypeRegistry.newListContainer(listClazz, 0, false);
         reader.startArray();
         while (!reader.nextIfArrayEnd()) {
             Object value = _readNode(reader, valueType, valueClazz, valueTi, context);
@@ -556,7 +556,7 @@ public final class StreamingIO {
         }
         Set<Object> set = setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class
                 ? new LinkedHashSet<>()
-                : TypeRegistry.newSetContainer(setClazz, false);
+                : TypeRegistry.newSetContainer(setClazz, 0, false);
         reader.startArray();
         while (!reader.nextIfArrayEnd()) {
             Object value = _readNode(reader, valueType, valueClazz, valueTi, context);

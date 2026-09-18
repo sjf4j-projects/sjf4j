@@ -128,6 +128,7 @@ public final class TypeRegistry {
         registerValueCodec(ValueCodec.URI_CODEC);
         registerValueCodec(ValueCodec.URL_CODEC);
         registerValueCodec(ValueCodec.UUID_CODEC);
+        registerValueCodec(ValueCodec.CHARSET);
         registerValueCodec(ValueCodec.LOCALE);
         registerValueCodec(ValueCodec.CURRENCY);
         registerValueCodec(ValueCodec.ZONE_ID);
@@ -232,6 +233,49 @@ public final class TypeRegistry {
         return vci;
     }
 
+    /**
+     * Resolves a value codec for a runtime value class when writing.
+     * <p>
+     * Unlike {@link #registerTypeInfo(Class)}, this method may use a codec
+     * registered for a parent class or interface. The result is intentionally
+     * not cached as metadata for {@code runtimeClass}, because that would make
+     * write-time polymorphism affect read target classification.
+     */
+    public static ValueCodecInfo resolveValueCodecForRuntimeClass(Class<?> runtimeClass, String valueFormat) {
+        Objects.requireNonNull(runtimeClass, "runtimeClass");
+
+        ValueCodecInfo vci = registerTypeInfo(runtimeClass).getValueCodecInfo(valueFormat);
+        if (vci != null) return vci;
+
+        vci = _resolveInterfaceValueCodec(runtimeClass.getInterfaces(), runtimeClass, valueFormat);
+        if (vci != null) return vci;
+        for (Class<?> type = runtimeClass.getSuperclass(); type != null; type = type.getSuperclass()) {
+            vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
+            if (vci != null) return vci;
+            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
+            if (vci != null) return vci;
+        }
+        return null;
+    }
+
+    private static ValueCodecInfo _resolveRegisteredValueCodec(Class<?> type, Class<?> runtimeClass, String valueFormat) {
+        TypeInfo ti = TYPE_INFO_CACHE.get(type);
+        if (ti == null) return null;
+        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+        return vci != null && vci.valueClazz.isAssignableFrom(runtimeClass) ? vci : null;
+    }
+
+    private static ValueCodecInfo _resolveInterfaceValueCodec(Class<?>[] interfaces, Class<?> runtimeClass,
+                                                               String valueFormat) {
+        for (Class<?> type : interfaces) {
+            ValueCodecInfo vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
+            if (vci != null) return vci;
+            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
+            if (vci != null) return vci;
+        }
+        return null;
+    }
+
     /// POJO
 
     /**
@@ -242,9 +286,17 @@ public final class TypeRegistry {
     }
 
 
+    /**
+     * Returns a map container. For {@link Map} and {@link LinkedHashMap}, a
+     * positive {@code size} preallocates for that many entries; {@code 0} uses
+     * the default allocation.
+     */
     @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> newMapContainer(Class<?> mapClazz, boolean fallback) {
-        if (mapClazz == null || mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class) {
+    public static <T> Map<String, T> newMapContainer(Class<?> mapClazz, int size, boolean fallback) {
+        if (mapClazz == Map.class || mapClazz == LinkedHashMap.class) {
+            return size == 0 ? new LinkedHashMap<>() : new LinkedHashMap<>(_linkedHashCapacity(size));
+        }
+        if (mapClazz == null || mapClazz == Object.class) {
             return new LinkedHashMap<>();
         }
         ContainerInfo ci = registerTypeInfo(mapClazz).containerInfo;
@@ -257,9 +309,17 @@ public final class TypeRegistry {
         return (Map<String, T>) ci.newContainer();
     }
 
+    /**
+     * Returns a list container. For {@link List} and {@link ArrayList}, a
+     * positive {@code size} preallocates for that many entries; {@code 0} uses
+     * the default allocation.
+     */
     @SuppressWarnings("unchecked")
-    public static <T> List<T> newListContainer(Class<?> listClazz, boolean fallback) {
-        if (listClazz == null || listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class) {
+    public static <T> List<T> newListContainer(Class<?> listClazz, int size, boolean fallback) {
+        if (listClazz == List.class || listClazz == ArrayList.class) {
+            return size > 0 ? new ArrayList<>(size) : new ArrayList<>();
+        }
+        if (listClazz == null || listClazz == Object.class) {
             return new ArrayList<>();
         }
         ContainerInfo ci = registerTypeInfo(listClazz).containerInfo;
@@ -272,9 +332,17 @@ public final class TypeRegistry {
         return (List<T>) ci.newContainer();
     }
 
+    /**
+     * Returns a set container. For {@link Set} and {@link LinkedHashSet}, a
+     * positive {@code size} preallocates for that many entries; {@code 0} uses
+     * the default allocation.
+     */
     @SuppressWarnings("unchecked")
-    public static <T> Set<T> newSetContainer(Class<?> setClazz, boolean fallback) {
-        if (setClazz == null || setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class) {
+    public static <T> Set<T> newSetContainer(Class<?> setClazz, int size, boolean fallback) {
+        if (setClazz == Set.class || setClazz == LinkedHashSet.class) {
+            return size == 0 ? new LinkedHashSet<>() : new LinkedHashSet<>(_linkedHashCapacity(size));
+        }
+        if (setClazz == null || setClazz == Object.class) {
             return new LinkedHashSet<>();
         }
         ContainerInfo ci = registerTypeInfo(setClazz).containerInfo;
@@ -285,6 +353,12 @@ public final class TypeRegistry {
             throw new BindingException("unsupported Set target type '" + setClazz.getName() + "'");
         }
         return (Set<T>) ci.newContainer();
+    }
+
+    private static int _linkedHashCapacity(int size) {
+        if (size <= 12) return 16;
+        long capacity = ((long) size * 4 + 2) / 3;
+        return capacity >= (1 << 30) ? 1 << 30 : (int) capacity;
     }
 
 

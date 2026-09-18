@@ -3,13 +3,14 @@ package org.sjf4j.binding.contract;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.exception.BindingException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Portable scalar cases from Jackson's JDKScalarsDeserTest. */
 public abstract class JDKScalarsDeserializationContract {
@@ -26,17 +27,13 @@ public abstract class JDKScalarsDeserializationContract {
         assertEquals(-42, binding(StreamingContext.EMPTY).readNode("-42", Integer.class));
         assertEquals(12345678901L, binding(StreamingContext.EMPTY).readNode("12345678901", Long.class));
     }
-    /** Source: JDKScalarsDeserTest#testNullForPrimitivesDefault. Kept failing until primitive null assignment is fixed. */
-    @Test void testNullForPrimitivesDefault() {
-        Primitives value = (Primitives) binding(StreamingContext.EMPTY).readNode("{\"booleanValue\":null,\"byteValue\":null,\"charValue\":null,\"shortValue\":null,\"intValue\":null,\"longValue\":null,\"floatValue\":null,\"doubleValue\":null}", Primitives.class);
-        assertEquals(false, value.booleanValue); assertEquals((byte) 0, value.byteValue); assertEquals('\0', value.charValue);
-        assertEquals((short) 0, value.shortValue); assertEquals(0, value.intValue); assertEquals(0L, value.longValue);
-        assertEquals(0f, value.floatValue); assertEquals(0d, value.doubleValue);
+    /** Explicit JSON null for a primitive is rejected by SJF4J. */
+    @Test void testNullForPrimitivePropertiesIsRejected() {
+        assertThrows(BindingException.class, () -> binding(StreamingContext.EMPTY).readNode("{\"booleanValue\":null}", Primitives.class));
     }
-    /** Source: JDKScalarsDeserTest#testNullForPrimitiveArrays. Kept failing until primitive null array elements are fixed. */
-    @Test void testNullForPrimitiveArrays() {
-        assertArrayEquals(new int[] {0}, (int[]) binding(StreamingContext.EMPTY).readNode("[null]", int[].class));
-        assertArrayEquals(new boolean[] {false}, (boolean[]) binding(StreamingContext.EMPTY).readNode("[null]", boolean[].class));
+    /** Explicit JSON null for a primitive array element is rejected by SJF4J. */
+    @Test void testNullForPrimitiveArrayElementsIsRejected() {
+        assertThrows(BindingException.class, () -> binding(StreamingContext.EMPTY).readNode("[null]", int[].class));
     }
     /** Source: JDKScalarsDeserTest#testNullForPrimitivesDefault (reference null contrast). */
     @Test void testNullForWrapperProperty() { assertNull(((Wrappers) binding(StreamingContext.EMPTY).readNode("{\"value\":null}", Wrappers.class)).value); }

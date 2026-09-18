@@ -292,7 +292,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             Class<?> nodeClazz = node.getClass();
             if (node instanceof Map) {
                 Map<String, Object> srcMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = TypeRegistry.newMapContainer(nodeClazz, true);
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(nodeClazz, 0, true);
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 srcMap.forEach((k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, k);
@@ -303,7 +303,7 @@ public final class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof List) {
                 List<Object> srcList = (List<Object>) node;
-                List<Object> newList = TypeRegistry.newListContainer(nodeClazz, true);
+                List<Object> newList = TypeRegistry.newListContainer(nodeClazz, srcList.size(), true);
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcList.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
@@ -381,7 +381,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             }
             if (node instanceof Set) {
                 Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet = TypeRegistry.newSetContainer(nodeClazz, true);
+                Set<Object> newSet = TypeRegistry.newSetContainer(nodeClazz, 0, true);
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
@@ -493,7 +493,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                                           boolean deepCopy,
                                           PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
@@ -700,7 +700,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            List<Object> list = TypeRegistry.newListContainer(rawClazz, false);
+            List<Object> list = TypeRegistry.newListContainer(rawClazz, source.size(), false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
@@ -747,7 +747,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, false);
+            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, 0, false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
@@ -763,7 +763,7 @@ public final class SimpleNodeFacade implements NodeFacade {
     private Object _readFromPojo(Object node, PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, false);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;

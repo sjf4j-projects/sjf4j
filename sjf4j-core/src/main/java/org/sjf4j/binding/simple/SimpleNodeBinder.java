@@ -26,7 +26,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -253,7 +252,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Class<?> nodeClazz = node.getClass();
             if (node instanceof Map) {
                 Map<String, Object> srcMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = _newMapContainer(nodeClazz, srcMap.size(), true);
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(nodeClazz, srcMap.size(), true);
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 srcMap.forEach((k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, k);
@@ -264,7 +263,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
             if (node instanceof List) {
                 List<Object> srcList = (List<Object>) node;
-                List<Object> newList = _newListContainer(nodeClazz, srcList.size(), true);
+                List<Object> newList = TypeRegistry.newListContainer(nodeClazz, srcList.size(), true);
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcList.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
@@ -342,7 +341,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             }
             if (node instanceof Set) {
                 Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet = _newSetContainer(nodeClazz, srcSet.size(), true);
+                Set<Object> newSet = TypeRegistry.newSetContainer(nodeClazz, srcSet.size(), true);
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
@@ -430,7 +429,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                                          boolean deepCopy,
                                          PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = _newMapContainer(rawClazz, source.size(), false);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, source.size(), false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
@@ -578,7 +577,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            List<Object> list = _newListContainer(rawClazz, size, false);
+            List<Object> list = TypeRegistry.newListContainer(rawClazz, size, false);
             int i = 0;
             for (Object v : oldSet) {
                 list.add(_readNode(v, vt, vc, va, deepCopy, new PathSegment.Index(ps, i++)));
@@ -619,7 +618,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
-            Set<Object> set = _newSetContainer(rawClazz, size, false);
+            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, size, false);
             int i = 0;
             for (Object v : oldSet) {
                 set.add(_readNode(v, vt, vc, va, deepCopy, new PathSegment.Index(ps, i++)));
@@ -636,7 +635,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
             int size = source.size();
-            List<Object> list = _newListContainer(rawClazz, size, false);
+            List<Object> list = TypeRegistry.newListContainer(rawClazz, size, false);
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
@@ -686,7 +685,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
             int size = source.size();
-            Set<Object> set = _newSetContainer(rawClazz, size, false);
+            Set<Object> set = TypeRegistry.newSetContainer(rawClazz, size, false);
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Object v = source.get(i);
@@ -702,7 +701,7 @@ public final class SimpleNodeBinder implements NodeBinder {
     private Object _readFromPojo(Object node, PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
         if (Map.class.isAssignableFrom(rawClazz)) {
-            Map<String, Object> map = _newMapContainer(rawClazz, oldPi.readablePropertyCount, false);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, oldPi.readablePropertyCount, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             OneOfInfo va = TypeRegistry.registerTypeInfo(vc).oneOfInfo;
@@ -803,27 +802,6 @@ public final class SimpleNodeBinder implements NodeBinder {
         return state.finish();
     }
 
-    private static <T> Map<String, T> _newMapContainer(Class<?> rawClazz, int size, boolean fallback) {
-        if (rawClazz == Map.class || rawClazz == LinkedHashMap.class) return new LinkedHashMap<>(_linkedHashCapacity(size));
-        return TypeRegistry.newMapContainer(rawClazz, fallback);
-    }
-
-    private static <T> List<T> _newListContainer(Class<?> rawClazz, int size, boolean fallback) {
-        if (rawClazz == List.class || rawClazz == ArrayList.class) return new ArrayList<>(size);
-        return TypeRegistry.newListContainer(rawClazz, fallback);
-    }
-
-    private static <T> Set<T> _newSetContainer(Class<?> rawClazz, int size, boolean fallback) {
-        if (rawClazz == Set.class || rawClazz == LinkedHashSet.class) return new LinkedHashSet<>(_linkedHashCapacity(size));
-        return TypeRegistry.newSetContainer(rawClazz, fallback);
-    }
-
-    private static int _linkedHashCapacity(int size) {
-        if (size <= 12) return 16;
-        long capacity = ((long) size * 4 + 2) / 3;
-        return capacity >= (1 << 30) ? 1 << 30 : (int) capacity;
-    }
-
     private interface ArraySource {
         int size();
         Object get(int i);
@@ -866,7 +844,7 @@ public final class SimpleNodeBinder implements NodeBinder {
 
             if (node instanceof Map) {
                 Map<String, Object> oldMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = new LinkedHashMap<>(_linkedHashCapacity(oldMap.size()));
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class, oldMap.size(), false);
                 for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
                     PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                     Object vv = _writeNode(entry.getValue(), cps);
@@ -889,7 +867,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             Class<?> rawClazz = node.getClass();
             if (node instanceof JsonObject) {
                 JsonObject jo = (JsonObject) node;
-                Map<String, Object> newMap = new LinkedHashMap<>(_linkedHashCapacity(jo.size()));
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class, jo.size(), false);
                 if (rawClazz != JsonObject.class) {
                     PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
@@ -962,13 +940,15 @@ public final class SimpleNodeBinder implements NodeBinder {
 
             PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                Map<String, Object> newMap = new LinkedHashMap<>(_linkedHashCapacity(pi.readablePropertyCount));
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class, pi.readablePropertyCount, false);
                 for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
                     FieldInfo fi = entry.getValue();
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
-                    Object vv = _writeFieldValue(v, entry.getValue(), cps);
+                    Object vv = fi.resolvedValueCodec != null
+                            ? fi.resolvedValueCodec.valueToRaw(v)
+                            : _writeNode(v, cps);
                     newMap.put(key, vv);
                 }
                 return newMap;
@@ -982,14 +962,6 @@ public final class SimpleNodeBinder implements NodeBinder {
             throw new BindingException("cannot convert node from '" + Types.name(node) +
                     "' to raw (Map/List/String/Number/Boolean/null)", ps, e);
         }
-    }
-
-    private Object _writeFieldValue(Object value, FieldInfo fi, PathSegment ps) {
-        if (value == null) return null;
-        if (fi.resolvedValueCodec != null) {
-            return fi.resolvedValueCodec.valueToRaw(value);
-        }
-        return _writeNode(value, ps);
     }
 
 }

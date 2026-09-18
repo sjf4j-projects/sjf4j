@@ -17,6 +17,7 @@ import org.sjf4j.node.ValueCodecInfo;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -188,6 +189,7 @@ public final class StreamingIO {
         if (nodeBoxed == Byte.class) return reader.nextByteValue();
         if (nodeBoxed == BigInteger.class) return reader.nextBigInteger();
         if (nodeBoxed == BigDecimal.class) return reader.nextBigDecimal();
+        if (nodeBoxed.isEnum()) return enumByOrdinal(nodeBoxed, reader.nextIntValue());
 
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
@@ -217,7 +219,6 @@ public final class StreamingIO {
             String s = reader.nextString();
             return Enum.valueOf((Class<? extends Enum>) nodeBoxed, s);
         }
-
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
@@ -245,6 +246,10 @@ public final class StreamingIO {
             return new JsonObject(readRawObject(reader));
         }
 
+        if (!nodeBoxed.isInterface() && Modifier.isAbstract(nodeBoxed.getModifiers())) {
+            throw new BindingException("cannot read object value into abstract type '" + nodeBoxed.getName() + "'");
+        }
+
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
@@ -260,6 +265,15 @@ public final class StreamingIO {
         }
 
         throw new BindingException("cannot read object value into type '" + nodeBoxed + "'");
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Object enumByOrdinal(Class<?> enumClass, int ordinal) {
+        Enum[] values = ((Class<? extends Enum>) enumClass).getEnumConstants();
+        if (ordinal < 0 || ordinal >= values.length) {
+            throw new BindingException("enum ordinal '" + ordinal + "' out of range for type '" + enumClass.getName() + "'");
+        }
+        return values[ordinal];
     }
 
 
@@ -606,7 +620,7 @@ public final class StreamingIO {
                                        TypeInfo ti, StreamingContext context) throws IOException {
         Map<String, Object> map = (mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class)
                 ? new LinkedHashMap<>()
-                : TypeRegistry.newMapContainer(mapClazz, false);
+                : TypeRegistry.newMapContainer(mapClazz, 0, false);
         reader.startObject();
         while (!reader.nextIfObjectEnd()) {
             String key = reader.nextName();
@@ -632,7 +646,7 @@ public final class StreamingIO {
                                  TypeInfo ti, StreamingContext context) throws IOException {
         List<Object> list = (listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class)
                 ? new ArrayList<>()
-                : TypeRegistry.newListContainer(listClazz, false);
+                : TypeRegistry.newListContainer(listClazz, 0, false);
         reader.startArray();
         while (!reader.nextIfArrayEnd()) {
             Object value = readNode(reader, elementType, elementBoxed, ti, context);
@@ -657,7 +671,7 @@ public final class StreamingIO {
                                TypeInfo ti, StreamingContext context) throws IOException {
         Set<Object> set = (setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class)
                 ? new LinkedHashSet<>()
-                : TypeRegistry.newSetContainer(setClazz, false);
+                : TypeRegistry.newSetContainer(setClazz, 0, false);
         reader.startArray();
         while (!reader.nextIfArrayEnd()) {
             Object value = readNode(reader, valueType, valueClazz, ti, context);
@@ -902,14 +916,15 @@ public final class StreamingIO {
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-            if (ti.hasValueCodecs()) {
-                String valueFormat = context.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
-                if (vci != null) {
-                    Object raw = vci.valueToRaw(node);
-                    writeNode(writer, raw, context);
-                    return;
-                }
+            String valueFormat = context.defaultValueFormat(rawClazz);
+            ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+            if (vci == null) {
+                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
+            }
+            if (vci != null) {
+                Object raw = vci.valueToRaw(node);
+                writeNode(writer, raw, context);
+                return;
             }
 
             PojoInfo pi = ti.pojoInfo;

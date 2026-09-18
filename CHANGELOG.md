@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `org.sjf4j.node.ObjectInfo` to `PojoInfo`; update imports and public metadata references accordingly.
 - Renamed `JsonArray.elementType()` to `elementClass()`; update typed `JsonArray` subclasses accordingly.
 - Renamed the core Gradle module and published artifact from `sjf4j` to `sjf4j-core`; update project dependencies accordingly.
-- Removed capacity-aware `TypeRegistry` map, list, and set container factory overloads.
+- Replaced `TypeRegistry` map, list, and set container factory overloads accepting `(Class, boolean)` with capacity-aware `(Class, int, boolean)` overloads.
 - Moved compiled mapping annotations (including JDBC annotations) to `org.sjf4j.annotation.mapping`, compiled path annotations to `org.sjf4j.annotation.path`, and their processor generators to `org.sjf4j.processor.mapping` and `org.sjf4j.processor.path`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
 - Renamed `@MapperOptions` to `@MappingOptions`.
@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 - Added a protected `JsonObject(PojoInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
+- Added a built-in `Charset` value codec.
 
 ### Changed
 - Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
@@ -58,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
 - Fixed simple JSON parsing and JSON Schema `contentMediaType: application/json` validation to reject malformed delimiters, literals, numbers, escapes, surrogate pairs, trailing content, and invalid base64-decoded UTF-8.
 - Fixed Jackson 3 discriminator-based `OneOf` binding to preserve the parser cursor for following object properties.
+- Fixed streaming serialization to apply value codecs registered for a value's parent class or interface.
 
 
 

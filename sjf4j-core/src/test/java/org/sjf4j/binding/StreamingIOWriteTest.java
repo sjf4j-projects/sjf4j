@@ -6,6 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -29,6 +30,16 @@ class StreamingIOWriteTest {
         StreamingIO.writeNode(separators, new int[]{1, 2}, StreamingContext.EMPTY);
         assertEquals(0, separators.properties);
         assertEquals(1, separators.elements);
+    }
+
+    @Test
+    void writesCharsetName() throws Exception {
+        StringWriter output = new StringWriter();
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+            StreamingIO.writeNode(writer, StandardCharsets.UTF_8, StreamingContext.EMPTY);
+            writer.flush();
+        }
+        assertEquals("\"UTF-8\"", output.toString());
     }
 
     private static final class SeparatorWriter implements StreamingWriter {

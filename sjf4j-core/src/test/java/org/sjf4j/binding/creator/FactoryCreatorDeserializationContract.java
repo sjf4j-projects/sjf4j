@@ -5,8 +5,10 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.exception.BindingException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class FactoryCreatorDeserializationContract {
     private final SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
@@ -17,10 +19,9 @@ class FactoryCreatorDeserializationContract {
         assertEquals("factory", value.createdBy); assertEquals(12, value.value);
     }
 
-    // Structural source: SingleArgCreatorTest#testExplicitFactory660a; scalar input must select the public static factory over the same-typed constructor.
-    @Test void staticFactoryIsUsedInsteadOfSameTypedConstructor() {
-        FactoryWins value = (FactoryWins) binding.readNode("\"abc\"", FactoryWins.class);
-        assertEquals("abc", value.value);
+    // Structural source: SingleArgCreatorTest#testExplicitFactory660a; scalar NodeCreator factories are not supported.
+    @Test void scalarNodeCreatorFactoryIsRejected() {
+        assertThrows(BindingException.class, () -> binding.readNode("\"abc\"", FactoryWins.class));
     }
 
     static class FactoryValue {
