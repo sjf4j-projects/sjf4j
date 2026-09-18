@@ -8,8 +8,8 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Nodes;
-import org.sjf4j.testsupport.fixture.JsonObjectPersonFixture.Baby;
-import org.sjf4j.testsupport.fixture.JsonObjectPersonFixture.Person;
+import org.sjf4j.fixture.JsonObjectPersonFixture.Baby;
+import org.sjf4j.fixture.JsonObjectPersonFixture.Person;
 
 import java.io.StringReader;
 import java.util.ArrayList;

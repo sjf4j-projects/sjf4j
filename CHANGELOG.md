@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Replaced manual `ExternalNodeRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalNodeProvider` implementations; external node integrations must publish a service provider.
 - Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
 - Renamed `org.sjf4j.binding.FieldReader` to `FieldBinder`; update streaming binding references accordingly.
 - Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `NodeMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
 
 ### Added
+- Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.
 - Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.
 - Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
 - Added JSON, YAML, and node binding interfaces plus a reusable `FastStringReader`.

@@ -1,7 +1,7 @@
 package org.sjf4j.binding.simple;
 
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.testsupport.binding.JsonBindingContract;
+import org.sjf4j.binding.contract.JsonBindingContract;
 import org.sjf4j.binding.StreamingContext;
 
 class SimpleJsonBindingContractTest extends JsonBindingContract {

@@ -1,4 +1,4 @@
-package org.sjf4j.binding;
+package org.sjf4j.binding.creator;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
@@ -66,7 +66,7 @@ public class CreatorPojoBindingTest {
     }
 
     @Test
-    public void testCreatorPojoWithJsonProperty() {
+    public void bindsAnnotatedCreatorParametersByTheirAliases() {
         Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
         String json = "{\"name\":\"Alice\",\"decimal\":12.5,\"anEnum\":\"THIS\"," +
                 "\"list\":[\"a\",\"b\"],\"polymorphicTypes\":[1,2]}";

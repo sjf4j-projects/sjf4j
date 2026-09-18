@@ -1,4 +1,4 @@
-package org.sjf4j.testsupport.facade;
+package org.sjf4j.facade;
 
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;

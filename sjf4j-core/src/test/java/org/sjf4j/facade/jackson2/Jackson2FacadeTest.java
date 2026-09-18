@@ -22,7 +22,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.testsupport.facade.CodecFacadeAssertions;
+import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NamingStrategy;

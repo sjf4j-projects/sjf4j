@@ -1,4 +1,4 @@
-package org.sjf4j.testsupport.fixture;
+package org.sjf4j.fixture;
 
 import org.sjf4j.JsonObject;
 

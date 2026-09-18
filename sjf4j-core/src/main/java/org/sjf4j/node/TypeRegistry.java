@@ -50,8 +50,9 @@ public final class TypeRegistry {
     /**
      * Returns type metadata and optionally requires an object binding.
      * <p>
-     * Resolution order is: cache hit, {@code @NodeValue}/registered codec,
-     * {@code @OneOf}, container analysis, object analysis, then the none marker.
+     * Resolution order is: cache hit, ServiceLoader-discovered external node,
+     * {@code @NodeValue}/registered codec, {@code @OneOf}, container analysis,
+     * object analysis, then the none marker.
      *
      * @param mustPojo when true, results without object binding are rejected
      */

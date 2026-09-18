@@ -27,7 +27,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
-import org.sjf4j.testsupport.fixture.JsonObjectPersonFixture;
+import org.sjf4j.fixture.JsonObjectPersonFixture;
 
 import java.time.LocalDate;
 import java.util.Arrays;

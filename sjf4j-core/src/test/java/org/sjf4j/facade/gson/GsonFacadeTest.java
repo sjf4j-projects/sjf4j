@@ -9,7 +9,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.testsupport.facade.CodecFacadeAssertions;
+import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NamingStrategy;

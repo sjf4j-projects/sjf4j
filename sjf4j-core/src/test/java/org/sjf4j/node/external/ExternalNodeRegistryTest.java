@@ -4,28 +4,20 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.TypeRegistry;
 
-import java.util.ArrayList;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ExternalNodeRegistryTest {
-    private static final TestExternalAdapter ADAPTER = new TestExternalAdapter();
-
-    static {
-        ExternalNodeRegistry.register(ADAPTER);
-    }
-
     @Test
-    void classifiesRegisteredHierarchyWithoutPojoAnalysis() {
+    void classifiesDiscoveredHierarchyWithoutPojoAnalysis() {
         TestExternalNode object = new TestExternalNode(JsonType.OBJECT);
         TestExternalChildNode array = new TestExternalChildNode(JsonType.ARRAY);
 
@@ -35,7 +27,7 @@ class ExternalNodeRegistryTest {
         assertEquals(JsonType.ARRAY, JsonType.of(array));
 
         TypeInfo typeInfo = TypeRegistry.registerTypeInfo(TestExternalChildNode.class);
-        assertSame(ADAPTER, typeInfo.externalNode);
+        assertSame(TestExternalChildNodeProvider.ADAPTER, typeInfo.externalNode);
         assertNull(typeInfo.pojoInfo);
         assertThrows(JsonException.class, () -> TypeRegistry.registerPojoOrElseThrow(TestExternalChildNode.class));
     }
@@ -55,18 +47,22 @@ class ExternalNodeRegistryTest {
     }
 
     @Test
-    void rejectsDuplicateRootRegistration() {
-        assertThrows(JsonException.class, () -> ExternalNodeRegistry.register(new TestExternalAdapter()));
-        assertNotNull(ExternalNodeRegistry.resolve(TestExternalChildNode.class));
+    void resolvesMostSpecificDiscoveredRootType() {
+        assertSame(TestExternalNodeProvider.ADAPTER, ExternalNodeRegistry.resolve(TestExternalNode.class));
+        assertSame(TestExternalChildNodeProvider.ADAPTER, ExternalNodeRegistry.resolve(TestExternalChildNode.class));
     }
 
     @Test
-    void rejectsNativeObntRootTypes() {
-        assertThrows(JsonException.class, () -> ExternalNodeRegistry.register(new ExternalNode<ArrayList<?>>() {
-            @SuppressWarnings("unchecked")
-            @Override public Class<ArrayList<?>> rootType() { return (Class<ArrayList<?>>) (Class<?>) ArrayList.class; }
-            @Override public JsonType jsonType(ArrayList<?> node) { return JsonType.ARRAY; }
-        }));
+    void unavailableProviderDoesNotPreventOtherProviders() {
+        assertSame(TestExternalNodeProvider.ADAPTER, ExternalNodeRegistry.resolve(TestExternalNode.class));
+    }
+
+    @Test
+    void unsupportedOperationsFailFastByDefault() {
+        NodeException exception = assertThrows(NodeException.class,
+                () -> new TestExternalAdapter().getInObject(new TestExternalNode(JsonType.OBJECT), "key"));
+
+        assertEquals("unsupported external node operation 'getInObject'", exception.getMessage());
     }
 
     static class TestExternalNode {
@@ -107,6 +103,18 @@ class ExternalNodeRegistryTest {
         @Override
         public JsonType jsonTypeOfClass(Class<?> nodeType) {
             return TestExternalArrayNode.class.isAssignableFrom(nodeType) ? JsonType.ARRAY : JsonType.UNKNOWN;
+        }
+    }
+
+    static final class TestExternalChildNodeAdapter implements ExternalNode<TestExternalChildNode> {
+        @Override
+        public Class<TestExternalChildNode> rootType() {
+            return TestExternalChildNode.class;
+        }
+
+        @Override
+        public JsonType jsonType(TestExternalChildNode node) {
+            return node.getJsonType();
         }
     }
 }
