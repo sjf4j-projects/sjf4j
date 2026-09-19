@@ -34,4 +34,4 @@ include("sjf4j-schema")
 include("sjf4j-testbench")
 include("sjf4j-processor")
 
-include("sjf4j-integration-gson")
+include("sjf4j-backend-gson")
