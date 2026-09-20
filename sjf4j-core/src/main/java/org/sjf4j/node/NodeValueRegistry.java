@@ -65,10 +65,11 @@ public final class NodeValueRegistry {
                 }
             }
             if (matched != null) {
+                NodeValueInfo[] resolved = new NodeValueInfo[matched.length];
                 for (int i = 0; i < matched.length; i++) {
-                    matched[i] = new NodeValueInfo(runtimeClazz, matched[i]);
+                    resolved[i] = new NodeValueInfo(runtimeClazz, matched[i]);
                 }
-                return matched;
+                return resolved;
             }
         }
         return null;

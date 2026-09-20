@@ -2,13 +2,16 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.simple.SimpleJsonReader;
+import org.sjf4j.binding.simple.SimpleJsonWriter;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeValueRegistry;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.NodeValueCodec;
 
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +44,15 @@ class StreamingIOReadTest {
              SimpleJsonReader charset = new SimpleJsonReader(new StringReader("\"UTF-8\""))) {
             assertEquals(SampleEnum.SECOND, StreamingIO.readNode(number, SampleEnum.class, StreamingContext.EMPTY));
             assertEquals(Charset.forName("UTF-8"), StreamingIO.readNode(charset, Charset.class, StreamingContext.EMPTY));
+        }
+    }
+
+    @Test
+    void readsCharsetAfterWritingRuntimeCharsetSubtype() throws Exception {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, new StringWriter());
+             SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"UTF-8\""))) {
+            StreamingIO.writeNode(writer, StandardCharsets.UTF_8, StreamingContext.EMPTY);
+            assertEquals(StandardCharsets.UTF_8, StreamingIO.readNode(reader, Charset.class, StreamingContext.EMPTY));
         }
     }
 

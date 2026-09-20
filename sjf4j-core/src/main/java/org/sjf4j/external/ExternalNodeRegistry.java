@@ -3,13 +3,9 @@ package org.sjf4j.external;
 import org.sjf4j.NodeKind;
 import org.sjf4j.exception.NodeException;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Setup-time registry for ServiceLoader-discovered external node classifiers.
@@ -41,18 +37,23 @@ public final class ExternalNodeRegistry {
     }
 
     /**
-     * Returns the classifier whose discovered root type accepts {@code nodeType},
-     * or {@code null} when no classifier is available.
+     * Returns the classifier with the most-specific discovered root type that
+     * accepts {@code nodeType}, or {@code null} when no classifier is available.
      */
     public static ExternalNode<?> resolve(Class<?> nodeType) {
+        Class<?> resolvedType = null;
+        ExternalNode<?> resolved = null;
         for (Map.Entry<Class<?>, ExternalNode<?>> entry : EXTERNAL_NODES.entrySet()) {
             Class<?> candidateType = entry.getKey();
             if (!candidateType.isAssignableFrom(nodeType)) {
                 continue;
             }
-            return entry.getValue();
+            if (resolvedType == null || resolvedType.isAssignableFrom(candidateType)) {
+                resolvedType = candidateType;
+                resolved = entry.getValue();
+            }
         }
-        return null;
+        return resolved;
     }
 
 
