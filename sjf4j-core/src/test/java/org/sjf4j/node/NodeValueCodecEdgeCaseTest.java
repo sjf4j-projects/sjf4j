@@ -81,8 +81,8 @@ class NodeValueCodecEdgeCaseTest {
         assertStringCodec(NodeValueCodec.FILE, file, file.toString(), File.class);
 
         Pattern pattern = Pattern.compile("[a-z]+\\d?");
-        assertEquals(Pattern.class, NodeValueCodec.PATTERN.valueClass());
-        assertEquals(String.class, NodeValueCodec.PATTERN.rawClass());
+        assertEquals(Pattern.class, NodeValueCodec.PATTERN.valueClazz());
+        assertEquals(String.class, NodeValueCodec.PATTERN.rawClazz());
         assertNull(NodeValueCodec.PATTERN.valueToRaw(null));
         assertNull(NodeValueCodec.PATTERN.rawToValue(null));
         assertEquals(pattern.pattern(), NodeValueCodec.PATTERN.valueToRaw(pattern));
@@ -95,16 +95,16 @@ class NodeValueCodecEdgeCaseTest {
     @Test
     void convertsNonStringBackedValuesAndRejectsInvalidInput() throws Exception {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
-        assertEquals(Long.class, NodeValueCodec.INSTANT_EPOCH_MILLIS.rawClass());
-        assertEquals(Instant.class, NodeValueCodec.INSTANT_EPOCH_MILLIS.valueClass());
+        assertEquals(Long.class, NodeValueCodec.INSTANT_EPOCH_MILLIS.rawClazz());
+        assertEquals(Instant.class, NodeValueCodec.INSTANT_EPOCH_MILLIS.valueClazz());
         assertNull(NodeValueCodec.INSTANT_EPOCH_MILLIS.valueToRaw(null));
         assertNull(NodeValueCodec.INSTANT_EPOCH_MILLIS.rawToValue(null));
         assertEquals(instant.toEpochMilli(), NodeValueCodec.INSTANT_EPOCH_MILLIS.valueToRaw(instant));
         assertEquals(instant, NodeValueCodec.INSTANT_EPOCH_MILLIS.rawToValue(instant.toEpochMilli()));
 
         InetAddress address = InetAddress.getByName("127.0.0.1");
-        assertEquals(String.class, NodeValueCodec.INET_ADDR.rawClass());
-        assertEquals(InetAddress.class, NodeValueCodec.INET_ADDR.valueClass());
+        assertEquals(String.class, NodeValueCodec.INET_ADDR.rawClazz());
+        assertEquals(InetAddress.class, NodeValueCodec.INET_ADDR.valueClazz());
         assertNull(NodeValueCodec.INET_ADDR.valueToRaw(null));
         assertNull(NodeValueCodec.INET_ADDR.rawToValue(null));
         assertEquals(address.getHostAddress(), NodeValueCodec.INET_ADDR.valueToRaw(address));
@@ -113,8 +113,8 @@ class NodeValueCodecEdgeCaseTest {
 
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Shanghai"));
         calendar.setTimeInMillis(1704103200000L);
-        assertEquals(String.class, NodeValueCodec.CALENDAR.rawClass());
-        assertEquals(Calendar.class, NodeValueCodec.CALENDAR.valueClass());
+        assertEquals(String.class, NodeValueCodec.CALENDAR.rawClazz());
+        assertEquals(Calendar.class, NodeValueCodec.CALENDAR.valueClazz());
         assertNull(NodeValueCodec.CALENDAR.valueToRaw(null));
         assertNull(NodeValueCodec.CALENDAR.rawToValue(null));
         String raw = NodeValueCodec.CALENDAR.valueToRaw(calendar);
@@ -137,8 +137,8 @@ class NodeValueCodecEdgeCaseTest {
     }
 
     private static <T> void assertStringCodec(NodeValueCodec<T, String> codec, T value, String raw, Class<T> valueClass) {
-        assertEquals(valueClass, codec.valueClass());
-        assertEquals(String.class, codec.rawClass());
+        assertEquals(valueClass, codec.valueClazz());
+        assertEquals(String.class, codec.rawClazz());
         assertNull(codec.valueToRaw(null));
         assertNull(codec.rawToValue(null));
         assertEquals(raw, codec.valueToRaw(value));

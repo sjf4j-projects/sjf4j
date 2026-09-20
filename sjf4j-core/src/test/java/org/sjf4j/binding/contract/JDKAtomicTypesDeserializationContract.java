@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Disabled;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.node.NodeValueRegistry;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.NodeValueCodec;
 
@@ -21,12 +22,12 @@ public abstract class JDKAtomicTypesDeserializationContract {
     protected abstract JsonBinder<?, ?> binding(StreamingContext context);
     private static final class AtomicCodecs {
         static {
-            TypeRegistry.registerValueCodec(new NodeValueCodec.SimpleValueCodec<>(
-                    AtomicBoolean.class, Boolean.class, AtomicBoolean::get, AtomicBoolean::new));
-            TypeRegistry.registerValueCodec(new NodeValueCodec.SimpleValueCodec<>(
-                    AtomicInteger.class, Integer.class, AtomicInteger::get, AtomicInteger::new));
-            TypeRegistry.registerValueCodec(new NodeValueCodec.SimpleValueCodec<>(
-                    AtomicLong.class, Long.class, AtomicLong::get, AtomicLong::new));
+            NodeValueRegistry.registerByCodec(new NodeValueCodec.SimpleValueCodec<>(
+                    AtomicBoolean.class, Boolean.class, AtomicBoolean::get, AtomicBoolean::new), null, false);
+            NodeValueRegistry.registerByCodec(new NodeValueCodec.SimpleValueCodec<>(
+                    AtomicInteger.class, Integer.class, AtomicInteger::get, AtomicInteger::new), null, false);
+            NodeValueRegistry.registerByCodec(new NodeValueCodec.SimpleValueCodec<>(
+                    AtomicLong.class, Long.class, AtomicLong::get, AtomicLong::new), null, false);
         }
 
         static void ensureRegistered() { }

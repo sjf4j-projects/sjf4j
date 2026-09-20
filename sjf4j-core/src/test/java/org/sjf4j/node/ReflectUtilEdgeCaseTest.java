@@ -257,21 +257,21 @@ class ReflectUtilEdgeCaseTest {
 
     @Test
     void analyzesNodeValuesAndRejectsInvalidDeclarations() {
-        NodeValueInfo codecInfo = ReflectUtil.analyzeNodeValue(ValidValue.class);
+        NodeValueInfo codecInfo = NodeValueRegistry.analyzeByAnnotation(ValidValue.class);
         assertNotNull(codecInfo);
         assertEquals(String.class, codecInfo.rawClazz);
         assertEquals("x", codecInfo.valueToRaw(new ValidValue("x")));
         assertEquals("y", ((ValidValue) codecInfo.rawToValue("y")).value);
         assertEquals("z", ((ValidValue) codecInfo.valueCopy(new ValidValue("z"))).value);
 
-        assertNull(ReflectUtil.analyzeNodeValue(String.class));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeNodeValue(MissingEncode.class));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeNodeValue(MissingDecode.class));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeNodeValue(StaticEncode.class));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeNodeValue(NonStaticDecode.class));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeNodeValue(WrongDecodeParam.class));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeNodeValue(WrongCopyReturn.class));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeNodeValue(DuplicateEncode.class));
+        assertNull(NodeValueRegistry.analyzeByAnnotation(String.class));
+        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(MissingEncode.class));
+        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(MissingDecode.class));
+        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(StaticEncode.class));
+        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(NonStaticDecode.class));
+        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(WrongDecodeParam.class));
+        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(WrongCopyReturn.class));
+        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(DuplicateEncode.class));
     }
 
     @Test

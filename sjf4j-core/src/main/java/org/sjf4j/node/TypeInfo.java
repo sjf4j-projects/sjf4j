@@ -10,27 +10,24 @@ import org.sjf4j.external.ExternalNode;
  */
 public class TypeInfo {
     public final Class<?> clazz;
-    public final NodeValueInfo nodeValueInfo;
-    public final NodeValueInfo[] namedValueCodecs;
+    public final NodeValueInfo[] nodeValueInfos;
     public final OneOfInfo oneOfInfo;
     public final ContainerInfo containerInfo;
     public final PojoInfo pojoInfo;
     public final ExternalNode<?> externalNode;
 
-    static final NodeValueInfo[] EMPTY_VALUE_CODECS = new NodeValueInfo[0];
-    static final TypeInfo NONE = new TypeInfo(Object.class, null, EMPTY_VALUE_CODECS,
+    static final TypeInfo NONE = new TypeInfo(Object.class, null,
             null, null, null, null);
 
     /**
      * Creates type metadata for the supplied classification, including an
      * external node classifier when applicable.
      */
-    public TypeInfo(Class<?> clazz, NodeValueInfo nodeValueInfo, NodeValueInfo[] namedValueCodecs,
+    public TypeInfo(Class<?> clazz, NodeValueInfo[] nodeValueInfos,
                     OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo,
                     ExternalNode<?> externalNode) {
         this.clazz = clazz;
-        this.nodeValueInfo = nodeValueInfo;
-        this.namedValueCodecs = namedValueCodecs == null ? EMPTY_VALUE_CODECS : namedValueCodecs;
+        this.nodeValueInfos = nodeValueInfos;
         this.oneOfInfo = oneOfInfo;
         this.containerInfo = containerInfo;
         this.pojoInfo = pojoInfo;
@@ -58,18 +55,19 @@ public class TypeInfo {
     }
 
     public boolean hasValueCodecs() {
-        return nodeValueInfo != null || namedValueCodecs.length > 0;
+        return nodeValueInfos != null;
     }
 
     /**
      * Returns the default or named value codec metadata, or {@code null} when
      * no codec is registered for the requested format.
      */
-    public NodeValueInfo getValueCodecInfo(String valueFormat) {
-        if (valueFormat == null || valueFormat.isEmpty()) return nodeValueInfo;
-        for (NodeValueInfo vci : namedValueCodecs) {
-            if (vci.codecName.equals(valueFormat)) {
-                return vci;
+    public NodeValueInfo getNodeValueInfo(String valueFormat) {
+        if (nodeValueInfos == null) return null;
+        if (valueFormat == null) return nodeValueInfos[0];
+        for (NodeValueInfo info : nodeValueInfos) {
+            if (info.valueFormat.equals(valueFormat)) {
+                return info;
             }
         }
         return null;

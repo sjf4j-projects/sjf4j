@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -262,7 +263,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        NodeValueInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).nodeValueInfo;
+        NodeValueInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).nodeValueInfos[0];
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -284,7 +285,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testNodeValue2() {
-        NodeValueInfo vci = TypeRegistry.registerValueCodec(new NodeValueCodec<CodecDay, String>() {
+        NodeValueRegistry.registerByCodec(new NodeValueCodec<CodecDay, String>() {
             @Override
             public String valueToRaw(CodecDay node) {
                 return node.localDate.toString();
@@ -296,15 +297,17 @@ public class TypeRegistryTest {
             }
 
             @Override
-            public Class<CodecDay> valueClass() {
+            public Class<CodecDay> valueClazz() {
                 return CodecDay.class;
             }
 
             @Override
-            public Class<String> rawClass() {
+            public Class<String> rawClazz() {
                 return String.class;
             }
-        });
+        }, null, false);
+
+        NodeValueInfo vci = Objects.requireNonNull(NodeValueRegistry.resolve(CodecDay.class))[0];
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -320,7 +323,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testRegisterValueCodecDuplicateFails() {
-        assertThrows(JsonException.class, () -> TypeRegistry.registerValueCodec(new NodeValueCodec<LocalDate, String>() {
+        assertThrows(JsonException.class, () -> NodeValueRegistry.registerByCodec(new NodeValueCodec<LocalDate, String>() {
             @Override
             public String valueToRaw(LocalDate node) {
                 return node.toString();
@@ -332,15 +335,15 @@ public class TypeRegistryTest {
             }
 
             @Override
-            public Class<LocalDate> valueClass() {
+            public Class<LocalDate> valueClazz() {
                 return LocalDate.class;
             }
 
             @Override
-            public Class<String> rawClass() {
+            public Class<String> rawClazz() {
                 return String.class;
             }
-        }));
+        }, null, false));
     }
 
     /// Creator

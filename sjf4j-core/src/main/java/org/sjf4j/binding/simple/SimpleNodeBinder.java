@@ -17,7 +17,6 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.NodeValueCodec;
 import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
@@ -99,7 +98,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
                 if (ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                    NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+                    NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                     if (vci != null) return vci.valueCopy(node);
                 }
                 return _deepNode(node, type, ps);
@@ -112,7 +111,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -241,7 +240,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(node.getClass());
-                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) return vci.valueCopy(node);
             }
 
@@ -478,7 +477,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
-                    argVci = ti.getValueCodecInfo(valueFormat);
+                    argVci = ti.getNodeValueInfo(valueFormat);
                 }
                 if (ti.oneOfInfo == null && argVci != null) {
                     state.acceptCtorArg(argIdx, argRaw.isInstance(rawValue)
@@ -760,7 +759,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
-                    argVci = ti.getValueCodecInfo(valueFormat);
+                    argVci = ti.getNodeValueInfo(valueFormat);
                 }
                 if (ti.oneOfInfo == null && argVci != null) {
                     state.acceptCtorArg(argIdx, argRaw.isInstance(rawValue)
@@ -932,7 +931,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }

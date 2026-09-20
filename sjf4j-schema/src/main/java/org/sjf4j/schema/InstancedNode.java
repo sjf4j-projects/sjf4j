@@ -116,7 +116,7 @@ public final class InstancedNode {
         boolean encoded = false;
         NodeKind nodeKind = NodeKind.of(node);
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
-            NodeValueInfo vci = TypeRegistry.registerTypeInfo(node.getClass()).nodeValueInfo;
+            NodeValueInfo vci = TypeRegistry.registerTypeInfo(node.getClass()).nodeValueInfos[0];
             if (vci != null) {
                 node = vci.valueToRaw(node);
                 encoded = true;

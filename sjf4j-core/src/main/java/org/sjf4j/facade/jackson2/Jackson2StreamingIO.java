@@ -280,7 +280,7 @@ public class Jackson2StreamingIO {
         }
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
-            NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+            NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
@@ -350,7 +350,7 @@ public class Jackson2StreamingIO {
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
-                    argVci = ti.getValueCodecInfo(valueFormat);
+                    argVci = ti.getNodeValueInfo(valueFormat);
                 }
                 Object argValue;
                 if (ti.oneOfInfo == null && argVci != null) {
@@ -465,7 +465,7 @@ public class Jackson2StreamingIO {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
         NodeValueInfo vci = ti.hasValueCodecs()
-                ? ti.getValueCodecInfo(context.defaultValueFormat(rawClazz))
+                ? ti.getNodeValueInfo(context.defaultValueFormat(rawClazz))
                 : null;
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
@@ -858,7 +858,7 @@ public class Jackson2StreamingIO {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     Object raw = vci.valueToRaw(node);
                     _writeNode(gen, raw, context);

@@ -81,8 +81,8 @@ public interface PatternedValueCodec<V, R> extends NodeValueCodec<V, R> {
             return formatter != null ? parseWith.apply(raw, formatter) : parse.apply(raw);
         }
 
-        @Override public Class<V> valueClass() { return type; }
-        @Override public Class<String> rawClass() { return String.class; }
+        @Override public Class<V> valueClazz() { return type; }
+        @Override public Class<String> rawClazz() { return String.class; }
 
         @Override
         public NodeValueCodec<V, String> withPattern(String pattern) {

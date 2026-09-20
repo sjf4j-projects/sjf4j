@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  * not recursively bind typed map values such as {@code Map<String, SomePojo>}
  * while decoding a codec raw value. This is a contract rather than a
  * registration-time check because generic type arguments are erased from
- * {@link #rawClass()}.
+ * {@link #rawClazz()}.
  */
 public interface NodeValueCodec<V, R> {
 
@@ -60,12 +60,12 @@ public interface NodeValueCodec<V, R> {
     /**
      * Returns the domain value type handled by this codec.
      */
-    Class<V> valueClass();
+    Class<V> valueClazz();
 
     /**
      * Returns the raw node type produced and consumed by this codec.
      */
-    Class<R> rawClass();
+    Class<R> rawClazz();
 
     /**
      * Returns a copy of the value when custom copy semantics are needed.
@@ -84,22 +84,22 @@ public interface NodeValueCodec<V, R> {
      * Simple codec for any (V, R) pair with encoder/decoder functions.
      */
     final class SimpleValueCodec<V, R> implements NodeValueCodec<V, R> {
-        private final Class<V> valueType;
-        private final Class<R> rawType;
+        private final Class<V> valueClazz;
+        private final Class<R> rawClazz;
         private final Function<V, R> encoder;
         private final Function<R, V> decoder;
         private final Function<V, V> copier;
 
-        public SimpleValueCodec(Class<V> valueType, Class<R> rawType,
+        public SimpleValueCodec(Class<V> valueClazz, Class<R> rawClazz,
                                 Function<V, R> encoder, Function<R, V> decoder) {
-            this(valueType, rawType, encoder, decoder, Function.identity());
+            this(valueClazz, rawClazz, encoder, decoder, Function.identity());
         }
 
-        public SimpleValueCodec(Class<V> valueType, Class<R> rawType,
+        public SimpleValueCodec(Class<V> valueClazz, Class<R> rawClazz,
                                 Function<V, R> encoder, Function<R, V> decoder,
                                 Function<V, V> copier) {
-            this.valueType = valueType;
-            this.rawType = rawType;
+            this.valueClazz = valueClazz;
+            this.rawClazz = rawClazz;
             this.encoder = encoder;
             this.decoder = decoder;
             this.copier = copier;
@@ -107,8 +107,8 @@ public interface NodeValueCodec<V, R> {
 
         @Override public R valueToRaw(V value) { return value == null ? null : encoder.apply(value); }
         @Override public V rawToValue(R raw)   { return raw == null ? null : decoder.apply(raw); }
-        @Override public Class<V> valueClass() { return valueType; }
-        @Override public Class<R> rawClass()   { return rawType; }
+        @Override public Class<V> valueClazz() { return valueClazz; }
+        @Override public Class<R> rawClazz()   { return rawClazz; }
         @Override public V valueCopy(V value)  { return copier.apply(value); }
     }
 
@@ -194,8 +194,8 @@ public interface NodeValueCodec<V, R> {
         public Optional<?> rawToValue(Object raw) {
             return raw == null ? Optional.empty() : Optional.of(raw);
         }
-        @Override public Class<Optional<?>> valueClass() { return (Class) Optional.class; }
-        @Override public Class<Object> rawClass() { return Object.class; }
+        @Override public Class<Optional<?>> valueClazz() { return (Class) Optional.class; }
+        @Override public Class<Object> rawClazz() { return Object.class; }
     }
 
     // calendar → string

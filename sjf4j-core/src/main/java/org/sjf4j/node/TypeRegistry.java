@@ -72,25 +72,25 @@ public final class TypeRegistry {
             if (mustPojo) {
                 throw new JsonException("class '" + clazz.getName() + "' is an external node, not a POJO");
             }
-            ti = new TypeInfo(clazz, null, null, null, null, null, externalNode);
+            ti = new TypeInfo(clazz, null, null, null, null, externalNode);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
-        NodeValueInfo vci = ReflectUtil.analyzeNodeValue(clazz);
-        if (vci != null) {
+        NodeValueInfo[] nodeValueInfos = NodeValueRegistry.resolve(clazz);
+        if (nodeValueInfos != null) {
             if (mustPojo) {
-                throw new JsonException("class '" + clazz.getName() + "' is a @NodeValue, not a POJO");
+                throw new JsonException("class '" + clazz.getName() + "' is a NodeValue, not a POJO");
             }
-            ti = new TypeInfo(clazz, vci, null, null, null, null, null);
+            ti = new TypeInfo(clazz, nodeValueInfos, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
         OneOf ann = clazz.getAnnotation(OneOf.class);
         if (ann != null) {
-            OneOfInfo aoi = ReflectUtil.analyzeOneOf(clazz, ann);
-            ti = new TypeInfo(clazz, null, null, aoi, null, null, null);
+            OneOfInfo oneOfInfo = ReflectUtil.analyzeOneOf(clazz, ann);
+            ti = new TypeInfo(clazz, null, oneOfInfo, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -100,14 +100,14 @@ public final class TypeRegistry {
             if (mustPojo) {
                 throw new JsonException("class '" + clazz.getName() + "' is a container, not a POJO");
             }
-            ti = new TypeInfo(clazz, null, null, null, ci, null, null);
+            ti = new TypeInfo(clazz, null, null, ci, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
         PojoInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
         if (pi != null) {
-            ti = new TypeInfo(clazz, null, null, null, null, pi, null);
+            ti = new TypeInfo(clazz, null, null, null, pi, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -122,160 +122,24 @@ public final class TypeRegistry {
                 || clazz == JsonObject.class || clazz == JsonArray.class;
     }
 
+
     /// NodeValue
-
-    // Bootstrap JDK Types
-    static {
-        registerValueCodec(NodeValueCodec.URI_CODEC);
-        registerValueCodec(NodeValueCodec.URL_CODEC);
-        registerValueCodec(NodeValueCodec.UUID_CODEC);
-        registerValueCodec(NodeValueCodec.CHARSET);
-        registerValueCodec(NodeValueCodec.LOCALE);
-        registerValueCodec(NodeValueCodec.CURRENCY);
-        registerValueCodec(NodeValueCodec.ZONE_ID);
-        registerValueCodec(NodeValueCodec.INSTANT_STR);
-        registerValueCodec("iso", NodeValueCodec.INSTANT_STR);
-        registerValueCodec("epochMillis", NodeValueCodec.INSTANT_EPOCH_MILLIS);
-        registerValueCodec(PatternedValueCodec.LOCAL_DATE);
-        registerValueCodec(PatternedValueCodec.LOCAL_TIME);
-        registerValueCodec(PatternedValueCodec.LOCAL_DATE_TIME);
-        registerValueCodec(PatternedValueCodec.OFFSET_DATE_TIME);
-        registerValueCodec(PatternedValueCodec.ZONED_DATE_TIME);
-        registerValueCodec(NodeValueCodec.DURATION);
-        registerValueCodec(NodeValueCodec.PERIOD);
-        registerValueCodec(NodeValueCodec.PATH);
-        registerValueCodec(NodeValueCodec.FILE);
-        registerValueCodec(NodeValueCodec.PATTERN);
-        registerValueCodec(NodeValueCodec.INET_ADDR);
-        registerValueCodec(NodeValueCodec.DATE);
-        registerValueCodec(NodeValueCodec.CALENDAR);
-        registerValueCodec(NodeValueCodec.OPTIONAL);
-    }
-
-    /**
-     * Registers a custom {@link NodeValueCodec} and returns codec metadata.
-     * <p>
-     * The codec raw type must be a supported raw node type (String, Number,
-     * Boolean, Map, List, or Object).
-     */
-    public static <N, R> NodeValueInfo registerValueCodec(NodeValueCodec<N, R> valueCodec) {
-        return registerValueCodec("", valueCodec);
-    }
-
-    /**
-     * Registers a named custom {@link NodeValueCodec} and returns codec metadata.
-     */
-    public static <N, R> NodeValueInfo registerValueCodec(String valueFormat,
-                                                          NodeValueCodec<N, R> valueCodec) {
-        Objects.requireNonNull(valueFormat, "valueFormat");
-        Objects.requireNonNull(valueCodec, "valueCodec");
-        Class<R> rawClazz = valueCodec.rawClass();
-        if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
-            throw new JsonException("invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
-                    rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
-        Class<N> valueClazz = valueCodec.valueClass();
-        Objects.requireNonNull(valueClazz, "valueClazz");
-
-        NodeValueInfo vci = new NodeValueInfo(valueFormat, valueClazz, rawClazz, valueCodec, null, null, null);
-        _putValueCodecInfo(vci);
-        return vci;
-    }
-
-    private static void _putValueCodecInfo(NodeValueInfo vci) {
-        Class<?> valueClazz = vci.valueClazz;
-        TypeInfo oldTi = TYPE_INFO_CACHE.get(valueClazz);
-        if (oldTi == null || oldTi.isNone()) {
-            TYPE_INFO_CACHE.put(valueClazz,
-                    new TypeInfo(valueClazz, vci, null, null, null, null, null));
-            return;
-        }
-        if (oldTi.pojoInfo != null || oldTi.oneOfInfo != null || oldTi.containerInfo != null || oldTi.externalNode != null) {
-            throw new JsonException("type '" + valueClazz.getName() +
-                    "' is already classified as a non-ValueCodec node type");
-        }
-        TYPE_INFO_CACHE.put(valueClazz, _newTypeInfoWithValueCodec(oldTi, vci));
-    }
-
-    private static TypeInfo _newTypeInfoWithValueCodec(TypeInfo ti, NodeValueInfo vci) {
-        if (vci.isDefault()) {
-            if (ti.nodeValueInfo != null) {
-                throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
-                        "' and default format ''");
-            }
-            return new TypeInfo(ti.clazz, vci, ti.namedValueCodecs,
-                    ti.oneOfInfo, ti.containerInfo, ti.pojoInfo, ti.externalNode);
-        }
-
-        for (int i = 0; i < ti.namedValueCodecs.length; i++) {
-            NodeValueInfo cur = ti.namedValueCodecs[i];
-            if (cur.codecName.equals(vci.codecName)) {
-                throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
-                        "' and valueFormat '" + vci.codecName + "'");
-            }
-        }
-        NodeValueInfo[] appended = new NodeValueInfo[ti.namedValueCodecs.length + 1];
-        System.arraycopy(ti.namedValueCodecs, 0, appended, 0, ti.namedValueCodecs.length);
-        appended[ti.namedValueCodecs.length] = vci;
-        return new TypeInfo(ti.clazz, ti.nodeValueInfo, appended,
-                ti.oneOfInfo, ti.containerInfo, ti.pojoInfo, ti.externalNode);
-    }
 
     /**
      * Returns value codec metadata for a class and named format.
      */
-    public static NodeValueInfo resolveValueCodecOrElseThrow(Class<?> clazz, String valueFormat) {
+    public static NodeValueInfo registerNodeValueOrElseThrow(Class<?> clazz, String valueFormat) {
         Objects.requireNonNull(valueFormat, "valueFormat");
+
         TypeInfo ti = registerTypeInfo(clazz);
-        NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
-        if (vci == null) {
+        NodeValueInfo info = ti.getNodeValueInfo(valueFormat);
+        if (info == null) {
             throw new JsonException("no ValueCodec registered for type '" + clazz.getName() +
                     "' with valueFormat '" + valueFormat + "'");
         }
-        return vci;
+        return info;
     }
 
-//    /**
-//     * Resolves a value codec for a runtime value class when writing.
-//     * <p>
-//     * Unlike {@link #registerTypeInfo(Class)}, this method may use a codec
-//     * registered for a parent class or interface. The result is intentionally
-//     * not cached as metadata for {@code runtimeClass}, because that would make
-//     * write-time polymorphism affect read target classification.
-//     */
-//    public static ValueCodecInfo resolveValueCodecForRuntimeClass(Class<?> runtimeClass, String valueFormat) {
-//        Objects.requireNonNull(runtimeClass, "runtimeClass");
-//
-//        ValueCodecInfo vci = registerTypeInfo(runtimeClass).getValueCodecInfo(valueFormat);
-//        if (vci != null) return vci;
-//
-//        vci = _resolveInterfaceValueCodec(runtimeClass.getInterfaces(), runtimeClass, valueFormat);
-//        if (vci != null) return vci;
-//        for (Class<?> type = runtimeClass.getSuperclass(); type != null; type = type.getSuperclass()) {
-//            vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
-//            if (vci != null) return vci;
-//            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
-//            if (vci != null) return vci;
-//        }
-//        return null;
-//    }
-
-//    private static ValueCodecInfo _resolveRegisteredValueCodec(Class<?> type, Class<?> runtimeClass, String valueFormat) {
-//        TypeInfo ti = TYPE_INFO_CACHE.get(type);
-//        if (ti == null) return null;
-//        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
-//        return vci != null && vci.valueClazz.isAssignableFrom(runtimeClass) ? vci : null;
-//    }
-//
-//    private static ValueCodecInfo _resolveInterfaceValueCodec(Class<?>[] interfaces, Class<?> runtimeClass,
-//                                                               String valueFormat) {
-//        for (Class<?> type : interfaces) {
-//            ValueCodecInfo vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
-//            if (vci != null) return vci;
-//            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
-//            if (vci != null) return vci;
-//        }
-//        return null;
-//    }
 
     /// POJO
 

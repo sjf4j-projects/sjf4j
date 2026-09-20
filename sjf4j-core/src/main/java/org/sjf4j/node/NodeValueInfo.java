@@ -10,7 +10,8 @@ import java.lang.invoke.MethodHandle;
  * conversion methods.
  */
 public class NodeValueInfo {
-    public final String codecName;
+    public final Class<?> runtimeClazz;
+    public final String valueFormat;
     public final Class<?> valueClazz;
     public final Class<?> rawClazz;
     public final NodeValueCodec<Object, Object> valueCodec;
@@ -22,9 +23,10 @@ public class NodeValueInfo {
      * Creates value codec metadata.
      */
     @SuppressWarnings("unchecked")
-    public NodeValueInfo(String codecName, Class<?> valueClazz, Class<?> rawClazz, NodeValueCodec<?, ?> valueCodec,
+    public NodeValueInfo(String valueFormat, Class<?> valueClazz, Class<?> rawClazz, NodeValueCodec<?, ?> valueCodec,
                          MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
-        this.codecName = codecName == null ? "" : codecName;
+        this.runtimeClazz = null;
+        this.valueFormat = valueFormat == null ? "" : valueFormat;
         this.valueClazz = valueClazz;
         this.rawClazz = rawClazz;
         this.valueCodec = (NodeValueCodec<Object, Object>) valueCodec;
@@ -33,12 +35,17 @@ public class NodeValueInfo {
         this.valueCopyHandle = valueCopyHandle;
     }
 
-    /**
-     * Returns whether this is the unnamed default codec.
-     */
-    public boolean isDefault() {
-        return codecName.isEmpty();
+    public NodeValueInfo(Class<?> runtimeClazz, NodeValueInfo info) {
+        this.runtimeClazz = runtimeClazz;
+        this.valueFormat = info.valueFormat;
+        this.valueClazz = info.valueClazz;
+        this.rawClazz = info.rawClazz;
+        this.valueCodec = info.valueCodec;
+        this.valueToRawHandle = info.valueToRawHandle;
+        this.rawToValueHandle = info.rawToValueHandle;
+        this.valueCopyHandle = info.rawToValueHandle;
     }
+
 
     /**
      * Encodes a domain value to its raw node representation.
@@ -67,9 +74,14 @@ public class NodeValueInfo {
      * Decodes a raw node representation to its domain value.
      */
     public Object rawToValue(Object raw) {
-        if (raw != null && !rawClazz.isInstance(raw))
+        if (runtimeClazz != null && runtimeClazz != valueClazz) {
+            throw new BindingException("cannot rawToValue() to runtime subtype " + runtimeClazz.getName() +
+                        " from node value type " + valueClazz.getName());
+        }
+        if (raw != null && !rawClazz.isInstance(raw)) {
             throw new BindingException("cannot rawToValue() from raw type " + raw.getClass().getName() +
                     " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
+        }
         if (valueCodec != null) {
             try {
                 return valueCodec.rawToValue(raw);

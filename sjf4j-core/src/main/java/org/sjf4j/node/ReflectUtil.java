@@ -14,10 +14,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.annotation.node.ValueCopy;
-import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.util.Strings;
 
 import java.lang.annotation.Annotation;
@@ -250,7 +246,7 @@ public final class ReflectUtil {
                     PojoAccess.createGetterLambda(lookup, getterHandle, Function.class, Object.class);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
                     PojoAccess.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
-            NodeValueInfo resolvedCodec = _resolveCodec(boxed, family.codecName, family.codecPattern);
+            NodeValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
 
             FieldBinder fieldBinder = FieldBinder.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
                     setterHandle, setterLambda, resolvedCodec, lookup);
@@ -639,21 +635,21 @@ public final class ReflectUtil {
         return vp.isEmpty() ? null : vp;
     }
 
-    static NodeValueInfo _resolveCodec(Class<?> rawType, String codecName, String codecPattern) {
+    static NodeValueInfo _resolvePatternedValueCodec(Class<?> rawType, String codecName, String codecPattern) {
         if (codecPattern != null && !codecPattern.isEmpty()) {
             // codecPattern takes precedence: get the base codec and parameterize it
-            NodeValueInfo base = TypeRegistry.resolveValueCodecOrElseThrow(rawType, "");
+            NodeValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(rawType, "");
             if (base.valueCodec instanceof PatternedValueCodec) {
-                PatternedValueCodec<?, ?> pc = (PatternedValueCodec<?, ?>) base.valueCodec;
-                NodeValueCodec<?, ?> parameterized = pc.withPattern(codecPattern);
-                return new NodeValueInfo(codecPattern, parameterized.valueClass(),
-                        parameterized.rawClass(), parameterized, null, null, null);
+                PatternedValueCodec<?, ?> pvc = (PatternedValueCodec<?, ?>) base.valueCodec;
+                NodeValueCodec<?, ?> codec = pvc.withPattern(codecPattern);
+                return new NodeValueInfo(codecPattern, codec.valueClazz(),
+                        codec.rawClazz(), codec, null, null, null);
             }
             throw new JsonException("type '" + rawType.getName() + "' does not support codecPattern;" +
                     " its ValueCodec does not implement " + PatternedValueCodec.class.getName());
         }
         if (codecName != null) {
-            return TypeRegistry.resolveValueCodecOrElseThrow(rawType, codecName);
+            return TypeRegistry.registerNodeValueOrElseThrow(rawType, codecName);
         }
         return null;
     }
@@ -789,7 +785,7 @@ public final class ReflectUtil {
                 String codecName = getCodecName(params[i]);
                 String codecPattern = getCodecPattern(params[i]);
                 argValueFormats[i] = codecName;
-                argValueCodecs[i] = _resolveCodec(Types.rawBox(argTypes[i]), codecName, codecPattern);
+                argValueCodecs[i] = _resolvePatternedValueCodec(Types.rawBox(argTypes[i]), codecName, codecPattern);
             }
             argIndexes = createArgIndexes(argNames);
         }
@@ -833,145 +829,6 @@ public final class ReflectUtil {
                 argNames, argTypes, argValueFormats, argValueCodecs, argIndexes, aliasMap);
     }
 
-    /// NodeValue
-
-    public static NodeValueInfo analyzeNodeValue(Class<?> clazz) {
-        if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
-
-        MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
-        MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
-
-        Class<?> current = clazz;
-        while (current != null && current != Object.class &&
-                (valueToRawHandle == null || rawToValueHandle == null || valueCopyHandle == null)) {
-            for (Constructor<?> ctor : current.getDeclaredConstructors()) {
-                // Decode
-                if (ctor.isAnnotationPresent(NodeValue.class)) {
-                    if (rawToValueHandle != null)
-                        throw new JsonException("multiple @" + NodeValue.class.getName() +
-                                " definitions found in " + clazz.getName());
-                    try {
-                        rawToValueHandle = lookup.unreflectConstructor(ctor);
-                    } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
-                    }
-                }
-            }
-
-            for (Method m : current.getDeclaredMethods()) {
-                if (m.isBridge()) continue;
-                // Encode
-                if (m.isAnnotationPresent(ValueToRaw.class)) {
-                    if (valueToRawHandle != null)
-                        throw new JsonException("multiple @" + ValueToRaw.class.getName() +
-                                " definitions found in " + clazz.getName());
-                    if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("cannot use @" + ValueToRaw.class.getName() +
-                                " on static methods in " + clazz.getName());
-                    if (current != clazz) {
-                        Method override = _findOverride(m, clazz);
-                        if (override != null) { m = override; }
-                    }
-                    try {
-                        valueToRawHandle = lookup.unreflect(m);
-                        continue;
-                    } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
-                    }
-                }
-                // Decode
-                if (m.isAnnotationPresent(RawToValue.class)) {
-                    if (rawToValueHandle != null)
-                        throw new JsonException("multiple @" + RawToValue.class.getName() +
-                                " definitions found in " + clazz.getName());
-                    if (!Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("must use @" + RawToValue.class.getName() +
-                                " on constructor or static methods in " + clazz.getName());
-                    if (current != clazz) {
-                        Method override = _findOverride(m, clazz);
-                        if (override != null) { m = override; }
-                    }
-                    try {
-                        rawToValueHandle = lookup.unreflect(m);
-                    } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
-                    }
-                }
-                // Copy
-                if (m.isAnnotationPresent(ValueCopy.class)) {
-                    if (valueCopyHandle != null)
-                        throw new JsonException("multiple @" + ValueCopy.class.getName() +
-                                " definitions found in " + clazz.getName());
-                    if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("cannot use @" + ValueCopy.class.getName() +
-                                " on static methods in " + clazz.getName());
-                    if (current != clazz) {
-                        Method override = _findOverride(m, clazz);
-                        if (override != null) { m = override; }
-                    }
-                    try {
-                        valueCopyHandle = lookup.unreflect(m);
-                    } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
-                    }
-                }
-            }// for
-            current = current.getSuperclass();
-        }
-
-        if (valueToRawHandle == null)
-            throw new JsonException("missing @" + ValueToRaw.class.getName() + " method in " + clazz.getName());
-        if (valueToRawHandle.type().parameterCount() != 1) {
-            throw new JsonException("@" + ValueToRaw.class.getName() + " method must have no parameters, but found " +
-                    (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
-        }
-        Class<?> valueToRawReturnBoxed = Types.box(valueToRawHandle.type().returnType());
-        if (!NodeKind.plainOf(valueToRawReturnBoxed).isRaw())
-            throw new JsonException("@" + ValueToRaw.class.getName() + " method return invalid type " +
-                    valueToRawReturnBoxed.getName() + " in " + clazz.getName() +
-                    ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
-
-        if (rawToValueHandle == null)
-            throw new JsonException("missing @" + RawToValue.class.getName() + " method in " + clazz.getName());
-        if (rawToValueHandle.type().parameterCount() != 1)
-            throw new JsonException("@" + RawToValue.class.getName() +
-                    " method must have exactly one parameter, but found " + rawToValueHandle.type().parameterCount());
-        Class<?> rawToValueParamBoxed = Types.box(rawToValueHandle.type().parameterType(0));
-        Class<?> rawToValueReturnClazz = rawToValueHandle.type().returnType();
-        if (rawToValueParamBoxed != valueToRawReturnBoxed)
-            throw new JsonException("@" + RawToValue.class.getName() + " method parameter type must match @" +
-                    ValueToRaw.class.getName() + " return type. " + "Expected: " + valueToRawReturnBoxed.getName() +
-                    ", Found: " + rawToValueParamBoxed.getName());
-        if (rawToValueReturnClazz != clazz)
-            throw new JsonException("@" + RawToValue.class.getName() + " method return type must be " +
-                    clazz.getName() + ", but found " + rawToValueReturnClazz.getName());
-
-        if (valueCopyHandle != null) {
-            if (valueCopyHandle.type().parameterCount() != 1)
-                throw new JsonException("@" + ValueCopy.class.getName() + " method must have no parameters, but found " +
-                        (valueCopyHandle.type().parameterCount() + 1));
-            Class<?> copyReturnClazz = valueCopyHandle.type().returnType();
-            if (copyReturnClazz != clazz)
-                throw new JsonException("@" + ValueCopy.class.getName() + " method return type must be " + clazz.getName() +
-                        ", but found " + copyReturnClazz.getName());
-        }
-
-        return new NodeValueInfo("", clazz, valueToRawReturnBoxed, null,
-                valueToRawHandle, rawToValueHandle, valueCopyHandle);
-    }
-
-    private static Method _findOverride(Method baseMethod, Class<?> clazz) {
-        try {
-            Method m = clazz.getDeclaredMethod(
-                    baseMethod.getName(),
-                    baseMethod.getParameterTypes()
-            );
-            if (m.isBridge()) return null;
-            return m;
-        } catch (NoSuchMethodException e) {
-            return null;
-        }
-    }
 
     /// Third part annotation
     private static final Class<? extends Annotation> CLASS_JACKSON3_JSON_CREATOR;

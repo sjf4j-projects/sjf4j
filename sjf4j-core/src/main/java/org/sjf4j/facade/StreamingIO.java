@@ -227,7 +227,7 @@ public final class StreamingIO {
         }
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
-            NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+            NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
@@ -294,7 +294,7 @@ public final class StreamingIO {
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
-                    argVci = ti.getValueCodecInfo(valueFormat);
+                    argVci = ti.getNodeValueInfo(valueFormat);
                 }
                 Object argValue;
                 if (ti.oneOfInfo == null && argVci != null) {
@@ -411,7 +411,7 @@ public final class StreamingIO {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
         NodeValueInfo vci = ti.hasValueCodecs()
-                ? ti.getValueCodecInfo(context.defaultValueFormat(rawClazz))
+                ? ti.getNodeValueInfo(context.defaultValueFormat(rawClazz))
                 : null;
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
@@ -741,7 +741,7 @@ public final class StreamingIO {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     Object raw = vci.valueToRaw(node);
                     _writeNode(writer, raw, context);
@@ -804,7 +804,7 @@ public final class StreamingIO {
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(clazz);
-            return ti.getValueCodecInfo(valueFormat);
+            return ti.getNodeValueInfo(valueFormat);
         }
         return null;
     }

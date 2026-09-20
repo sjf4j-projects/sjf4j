@@ -3,6 +3,7 @@ package org.sjf4j.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.NodeValueRegistry;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.NodeValueCodec;
 
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -59,13 +61,12 @@ class StreamingIOReadTest {
 
     @Test
     void parentCodecDoesNotClassifyConcreteReadTarget() throws Exception {
-        TypeRegistry.registerValueCodec(new NodeValueCodec.SimpleValueCodec<>(CodecParent.class, String.class,
-                value -> value.value, CodecParent::new));
-        assertNull(TypeRegistry.registerTypeInfo(CodecChild.class).nodeValueInfo);
+        NodeValueRegistry.registerByCodec(new NodeValueCodec.SimpleValueCodec<>(CodecParent.class, String.class,
+                value -> value.value, CodecParent::new),  null, false);
+        assertNotNull(TypeRegistry.registerTypeInfo(CodecChild.class).nodeValueInfos);
 
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"parent\""))) {
-            assertThrows(BindingException.class,
-                    () -> StreamingIO.readNode(reader, CodecChild.class, StreamingContext.EMPTY));
+            assertThrows(BindingException.class, () -> StreamingIO.readNode(reader, CodecChild.class, StreamingContext.EMPTY));
         }
     }
 
