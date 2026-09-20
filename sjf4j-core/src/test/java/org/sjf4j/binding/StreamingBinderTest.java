@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class StreamingBinderTest {
     @Test
     void readsUtf8BytesAndWritesUtf8Bytes() {
-        SimpleJsonBinder binder = new SimpleJsonBinder();
+        SimpleJsonBinder binder = new SimpleJsonBinder(StreamingContext.EMPTY);
 
         assertEquals("héllo", binder.readNode("\"héllo\"".getBytes(StandardCharsets.UTF_8), String.class));
         assertEquals("\"héllo\"", new String(binder.writeNodeAsBytes("héllo"), StandardCharsets.UTF_8));

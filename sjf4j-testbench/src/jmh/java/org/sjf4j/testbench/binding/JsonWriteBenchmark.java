@@ -82,7 +82,7 @@ public class JsonWriteBenchmark {
     private static final JSONWriter.Context FASTJSON2_WRITER_CONTEXT =
             JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
-    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
+    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder(org.sjf4j.binding.StreamingContext.EMPTY);
     private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
 
     private static final User USER;

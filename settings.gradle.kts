@@ -35,3 +35,5 @@ include("sjf4j-testbench")
 include("sjf4j-processor")
 
 include("sjf4j-backend-gson")
+include("sjf4j-backend-jackson2")
+include("sjf4j-backend-fastjson2")

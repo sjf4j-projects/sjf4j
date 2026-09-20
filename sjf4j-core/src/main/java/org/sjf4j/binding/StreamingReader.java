@@ -164,20 +164,6 @@ public interface StreamingReader extends Closeable {
      */
     Token peekToken() throws IOException;
 
-    /**
-     * Integer version of {@link #peekToken()} for hot-path dispatch.
-     *
-     * <p>Implementations may override this method when they can obtain
-     * the token id more cheaply than materializing/mapping {@link Token}.</p>
-     */
-    default int peekTokenId() throws IOException {
-        return peekToken().id();
-    }
-
-    default boolean isEnd() throws IOException {
-        return peekToken() == Token.EOF;
-    }
-
 
     /*
      * ----------------------------------------------------------------------
@@ -185,50 +171,11 @@ public interface StreamingReader extends Closeable {
      * ----------------------------------------------------------------------
      */
 
-    default boolean nextIfNull() throws IOException {
-        if (peekToken() != Token.NULL) {
-            return false;
-        }
+    boolean nextIfNull() throws IOException;
 
-        nextNull();
-        return true;
-    }
+    boolean nextIfObjectEnd() throws IOException;
 
-    default boolean nextIfObjectStart() throws IOException {
-        if (peekToken() != Token.START_OBJECT) {
-            return false;
-        }
-
-        startObject();
-        return true;
-    }
-
-    default boolean nextIfObjectEnd() throws IOException {
-        if (peekToken() != Token.END_OBJECT) {
-            return false;
-        }
-
-        endObject();
-        return true;
-    }
-
-    default boolean nextIfArrayStart() throws IOException {
-        if (peekToken() != Token.START_ARRAY) {
-            return false;
-        }
-
-        startArray();
-        return true;
-    }
-
-    default boolean nextIfArrayEnd() throws IOException {
-        if (peekToken() != Token.END_ARRAY) {
-            return false;
-        }
-
-        endArray();
-        return true;
-    }
+    boolean nextIfArrayEnd() throws IOException;
 
 
     /*

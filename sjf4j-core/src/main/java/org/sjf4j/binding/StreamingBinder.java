@@ -1,6 +1,8 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
@@ -19,21 +21,25 @@ import java.util.Objects;
 /**
  * Base streaming binding for reading and writing structured data.
  */
-public interface StreamingBinder<R extends StreamingReader, W extends StreamingWriter> {
+public abstract class StreamingBinder<R extends StreamingReader, W extends StreamingWriter> {
 
-    StreamingContext streamingContext();
+    protected final StreamingContext context;
+
+    protected StreamingBinder(StreamingContext context) {
+        this.context = Objects.requireNonNull(context, "context");
+    }
 
     /// Reader
 
     /**
      * Creates a streaming reader from java.io.Reader.
      */
-    R createReader(Reader input) throws IOException;
+    public abstract R createReader(Reader input) throws IOException;
 
     /**
      * Creates a streaming reader from InputStream using UTF-8.
      */
-    default R createReader(InputStream input) throws IOException {
+    public R createReader(InputStream input) throws IOException {
         Objects.requireNonNull(input, "input");
         return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
@@ -41,7 +47,7 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Creates a streaming reader from input string.
      */
-    default R createReader(String input) throws IOException {
+    public R createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input");
         return createReader(new FastStringReader(input));
     }
@@ -49,7 +55,7 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Creates a streaming reader from UTF-8 bytes.
      */
-    default R createReader(byte[] input) throws IOException {
+    public R createReader(byte[] input) throws IOException {
         Objects.requireNonNull(input, "input");
         return createReader(new ByteArrayInputStream(input));
     }
@@ -57,12 +63,12 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Reads one node from reader into target type.
      */
-    default Object readNode(Reader input, Type type) {
+    public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext());
+            Object node = StreamingIO.readNode(reader, type, context);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -73,12 +79,12 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Reads one node from input stream into target type.
      */
-    default Object readNode(InputStream input, Type type) {
+    public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext());
+            Object node = StreamingIO.readNode(reader, type, context);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -89,11 +95,11 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Reads one node from string into target type.
      */
-    default Object readNode(String input, Type type) {
+    public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext());
+            Object node = StreamingIO.readNode(reader, type, context);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -104,11 +110,11 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Reads one node from bytes into target type.
      */
-    default Object readNode(byte[] input, Type type) {
+    public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext());
+            Object node = StreamingIO.readNode(reader, type, context);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -122,12 +128,12 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Creates a streaming writer to java.io.Writer.
      */
-    W createWriter(Writer output) throws IOException;
+    public abstract W createWriter(Writer output) throws IOException;
 
     /**
      * Creates a streaming writer to OutputStream using UTF-8.
      */
-    default W createWriter(OutputStream output) throws IOException {
+    public W createWriter(OutputStream output) throws IOException {
         return createWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
     }
 
@@ -135,12 +141,12 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Writes one node to writer.
      */
-    default void writeNode(Writer output, Object node) {
+    public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();
-            StreamingIO.writeNode(writer, node, streamingContext());
+            StreamingIO.writeNode(writer, node, context);
             writer.endDocument();
             writer.flush();
             writer.flushTo(output);
@@ -152,12 +158,12 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Writes one node to output stream.
      */
-    default void writeNode(OutputStream output, Object node) {
+    public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();
-            StreamingIO.writeNode(writer, node, streamingContext());
+            StreamingIO.writeNode(writer, node, context);
             writer.endDocument();
             writer.flush();
             writer.flushTo(output);
@@ -169,7 +175,7 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Serializes one node to string.
      */
-    default String writeNodeAsString(Object node) {
+    public String writeNodeAsString(Object node) {
         try (FastStringWriter output = new FastStringWriter()) {
             writeNode(output, node);
             return output.toString();
@@ -181,7 +187,7 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
     /**
      * Serializes one node to bytes.
      */
-    default byte[] writeNodeAsBytes(Object node) {
+    public byte[] writeNodeAsBytes(Object node) {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             writeNode(output, node);
             return output.toByteArray();
@@ -190,5 +196,35 @@ public interface StreamingBinder<R extends StreamingReader, W extends StreamingW
         }
     }
 
+
+    /*
+     * --------------------------------------------------------------
+     * PreparedName/NameMatcher Cache
+     * --------------------------------------------------------------
+     */
+
+    private final ClassValue<PreparedName[]> preparedNameCache =
+            new ClassValue<PreparedName[]>() {
+                @Override
+                protected PreparedName[] computeValue(Class<?> type) {
+                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(type);
+                    String[] names = pi.fieldNames;
+                    PreparedName[] preparedNames = new PreparedName[names.length];
+                    for (int i = 0; i < names.length; i++) {
+                        preparedNames[i] = createPreparedName(names[i]);
+                    }
+
+                    return preparedNames;
+                }
+            };
+
+
+    public PreparedName createPreparedName(String name) {
+        return new PreparedName.SimplePreparedName(name);
+    }
+
+    public PreparedName[] getPreparedNames(Class<?> type) {
+        return preparedNameCache.get(type);
+    }
 
 }

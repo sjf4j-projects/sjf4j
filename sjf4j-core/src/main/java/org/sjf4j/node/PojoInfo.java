@@ -6,6 +6,7 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.FieldWriter;
+import org.sjf4j.binding.PreparedName;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -40,6 +41,8 @@ public class PojoInfo {
     public final boolean hasPropertyCodecNameBinding;
     public final boolean requiresPojoReader;
     public final boolean requiresPojoWriter;
+
+    public final String[] fieldNames;
     public final FieldWriter[] fieldWriters;
 
     /**
@@ -56,6 +59,7 @@ public class PojoInfo {
                     boolean hasNonPublicFields,
                     boolean hasNonPublicReaderGap,
                     boolean hasNonPublicWriterGap,
+                    String[] fieldNames,
                     FieldWriter[] fieldWriters) {
         this.clazz = clazz;
         this.creatorInfo = creatorInfo;
@@ -112,6 +116,7 @@ public class PojoInfo {
         this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicFields || hasNonPublicWriterGap
                 || hasCustomDynamicWriter || hasPropertyCodecNameBinding;
 
+        this.fieldNames = fieldNames;
         this.fieldWriters = fieldWriters;
     }
 

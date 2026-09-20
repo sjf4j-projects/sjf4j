@@ -54,7 +54,7 @@ class GsonExternalNodeTest {
             ServiceLoader providers = ServiceLoader.load(providerType, loader);
             Object provider = providers.iterator().next();
 
-            assertEquals("org.sjf4j.integration.gson.external.GsonExternalNodeProvider", provider.getClass().getName());
+            assertEquals("org.sjf4j.backend.gson.external.GsonExternalNodeProvider", provider.getClass().getName());
             assertNull(providerType.getMethod("externalNode").invoke(provider));
         }
     }

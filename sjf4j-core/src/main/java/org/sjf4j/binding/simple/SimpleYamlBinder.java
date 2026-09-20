@@ -13,20 +13,10 @@ import java.io.Writer;
 /**
  * Placeholder YAML facade used when SnakeYAML is not available.
  */
-public final class SimpleYamlBinder implements YamlBinder<StreamingReader, StreamingWriter> {
-    private final StreamingContext streamingContext;
+public final class SimpleYamlBinder extends YamlBinder<StreamingReader, StreamingWriter> {
 
-    public SimpleYamlBinder() {
-        this(StreamingContext.EMPTY);
-    }
-
-    public SimpleYamlBinder(StreamingContext streamingContext) {
-        this.streamingContext = streamingContext;
-    }
-
-    @Override
-    public StreamingContext streamingContext() {
-        return streamingContext;
+    public SimpleYamlBinder(StreamingContext context) {
+        super(context);
     }
 
     @Override
@@ -38,5 +28,6 @@ public final class SimpleYamlBinder implements YamlBinder<StreamingReader, Strea
     public StreamingWriter createWriter(Writer output) throws IOException {
         throw new BindingException("YAML writing is unavailable: no supported YAML library detected (SnakeYAML).");
     }
+
 
 }

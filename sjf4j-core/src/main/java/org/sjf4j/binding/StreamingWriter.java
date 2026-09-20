@@ -15,38 +15,25 @@ import java.util.Objects;
  * <p>The interface defines common structural semantics while allowing
  * implementations to provide backend-specific fast paths.</p>
  *
- * <p>Generated binders should prefer prepared {@link PropertyName}s,
+ * <p>Generated binders should prefer prepared {@link PreparedName}s,
  * primitive value methods, and property-value fused methods where possible.</p>
  */
-public interface StreamingWriter extends Closeable, Flushable {
+public abstract class StreamingWriter implements Closeable, Flushable {
 
     /*
      * ----------------------------------------------------------------------
      * Prepared property names
      * ----------------------------------------------------------------------
      */
+    private final StreamingBinder<?, ?> binder;
 
-    /**
-     * Prepared property name used by generated and runtime binders.
-     *
-     * <p>An implementation may carry backend-specific precomputed state,
-     * for example:</p>
-     *
-     * <ul>
-     *   <li>Fastjson2 encoded/raw field name</li>
-     *   <li>Jackson SerializedString</li>
-     *   <li>pre-escaped UTF-8 or UTF-16 representation</li>
-     *   <li>plain String fallback</li>
-     * </ul>
-     */
-    interface PropertyName {
-
-        /**
-         * Canonical property name.
-         */
-        String name();
+    protected StreamingWriter(StreamingBinder<?, ?> binder) {
+        this.binder = binder;
     }
 
+    public final StreamingBinder<?, ?> binder() {
+        return binder;
+    }
 
     /*
      * ----------------------------------------------------------------------
@@ -57,16 +44,14 @@ public interface StreamingWriter extends Closeable, Flushable {
     /**
      * Prepares this writer to write one document.
      */
-    default void startDocument() throws IOException {
-    }
+    public void startDocument() throws IOException {};
 
     /**
      * Completes the current document.
      *
      * <p>This method does not imply {@link #flush()} or {@link #close()}.</p>
      */
-    default void endDocument() throws IOException {
-    }
+    public void endDocument() throws IOException {};
 
     /**
      * Transfers buffered output to {@code output}.
@@ -74,8 +59,8 @@ public interface StreamingWriter extends Closeable, Flushable {
      * <p>For implementations whose native writer is not backed by a
      * {@link Writer} or {@link OutputStream}. The default implementation does nothing.</p>
      */
-    default void flushTo(Writer output) throws IOException {}
-    default void flushTo(OutputStream output) throws IOException {}
+    public void flushTo(Writer output) throws IOException {}
+    public void flushTo(OutputStream output) throws IOException {}
 
 
     /*
@@ -84,17 +69,17 @@ public interface StreamingWriter extends Closeable, Flushable {
      * ----------------------------------------------------------------------
      */
 
-    void startObject() throws IOException;
+    public abstract void startObject() throws IOException;
 
-    void endObject() throws IOException;
+    public abstract void endObject() throws IOException;
 
-    void startArray() throws IOException;
+    public abstract void startArray() throws IOException;
 
-    void endArray() throws IOException;
+    public abstract void endArray() throws IOException;
 
-    default void separateProperty() throws IOException {}
+    public void separateProperty() throws IOException {};
 
-    default void separateElement() throws IOException {}
+    public void separateElement() throws IOException {};
 
     /*
      * ----------------------------------------------------------------------
@@ -105,19 +90,7 @@ public interface StreamingWriter extends Closeable, Flushable {
     /**
      * Writes an object property name.
      */
-    void writeName(String name) throws IOException;
-
-    /**
-     * Writes a prepared object property name.
-     *
-     * <p>This is the preferred API for generated and cached runtime
-     * bindings. Backends should override this method when they can use
-     * the prepared representation directly.</p>
-     */
-    default void writeName(PropertyName name) throws IOException {
-        writeName(name.name());
-    }
-
+    public abstract void writeName(String name) throws IOException;
 
     /*
      * ----------------------------------------------------------------------
@@ -125,7 +98,7 @@ public interface StreamingWriter extends Closeable, Flushable {
      * ----------------------------------------------------------------------
      */
 
-    void writeNull() throws IOException;
+    public abstract void writeNull() throws IOException;
 
 
     /*
@@ -137,12 +110,12 @@ public interface StreamingWriter extends Closeable, Flushable {
     /**
      * Writes a non-null String value.
      */
-    void writeStringValue(String value) throws IOException;
+    public abstract void writeStringValue(String value) throws IOException;
 
     /**
      * Writes a nullable String value.
      */
-    default void writeString(String value) throws IOException {
+    public void writeString(String value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -157,21 +130,21 @@ public interface StreamingWriter extends Closeable, Flushable {
      * ----------------------------------------------------------------------
      */
 
-    void writeLongValue(long value) throws IOException;
+    public abstract void writeLongValue(long value) throws IOException;
 
-    void writeIntValue(int value) throws IOException;
+    public abstract void writeIntValue(int value) throws IOException;
 
-    void writeShortValue(short value) throws IOException;
+    public abstract void writeShortValue(short value) throws IOException;
 
-    void writeByteValue(byte value) throws IOException;
+    public abstract void writeByteValue(byte value) throws IOException;
 
-    void writeDoubleValue(double value) throws IOException;
+    public abstract void writeDoubleValue(double value) throws IOException;
 
-    void writeFloatValue(float value) throws IOException;
+    public abstract void writeFloatValue(float value) throws IOException;
 
-    void writeBooleanValue(boolean value) throws IOException;
+    public abstract void writeBooleanValue(boolean value) throws IOException;
 
-    void writeCharValue(char value) throws IOException;
+    public abstract void writeCharValue(char value) throws IOException;
 
 
     /*
@@ -180,7 +153,7 @@ public interface StreamingWriter extends Closeable, Flushable {
      * ----------------------------------------------------------------------
      */
 
-    default void writeLong(Long value) throws IOException {
+    public void writeLong(Long value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -188,7 +161,7 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeInt(Integer value) throws IOException {
+    public void writeInt(Integer value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -196,7 +169,7 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeShort(Short value) throws IOException {
+    public void writeShort(Short value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -204,7 +177,7 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeByte(Byte value) throws IOException {
+    public void writeByte(Byte value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -212,7 +185,7 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeDouble(Double value) throws IOException {
+    public void writeDouble(Double value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -220,7 +193,7 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeFloat(Float value) throws IOException {
+    public void writeFloat(Float value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -228,7 +201,7 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeBoolean(Boolean value) throws IOException {
+    public void writeBoolean(Boolean value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -250,9 +223,9 @@ public interface StreamingWriter extends Closeable, Flushable {
      * <p>This method is primarily intended for dynamic binding where
      * the exact numeric Java type is not statically known.</p>
      */
-    void writeNumberValue(Number value) throws IOException;
+    public abstract void writeNumberValue(Number value) throws IOException;
 
-    default void writeNumber(Number value) throws IOException {
+    public void writeNumber(Number value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -260,11 +233,11 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeBigIntegerValue(BigInteger value) throws IOException {
+    public void writeBigIntegerValue(BigInteger value) throws IOException {
         writeNumberValue(value);
     }
 
-    default void writeBigInteger(BigInteger value) throws IOException {
+    public void writeBigInteger(BigInteger value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -272,11 +245,11 @@ public interface StreamingWriter extends Closeable, Flushable {
         }
     }
 
-    default void writeBigDecimalValue(BigDecimal value) throws IOException {
+    public void writeBigDecimalValue(BigDecimal value) throws IOException {
         writeNumberValue(value);
     }
 
-    default void writeBigDecimal(BigDecimal value) throws IOException {
+    public void writeBigDecimal(BigDecimal value) throws IOException {
         if (value == null) {
             writeNull();
         } else {
@@ -296,87 +269,17 @@ public interface StreamingWriter extends Closeable, Flushable {
      * ----------------------------------------------------------------------
      */
 
-    default void writeNullProperty(PropertyName name) throws IOException {
-        writeName(name);
-        writeNull();
-    }
-
-    default void writeStringProperty(PropertyName name, String value) throws IOException {
-        writeName(name);
-        writeString(value);
-    }
-
-    default void writeLongProperty(PropertyName name, long value) throws IOException {
-        writeName(name);
-        writeLongValue(value);
-    }
-
-    default void writeIntProperty(PropertyName name, int value) throws IOException {
-        writeName(name);
-        writeIntValue(value);
-    }
-
-    default void writeShortProperty(PropertyName name, short value) throws IOException {
-        writeName(name);
-        writeShortValue(value);
-    }
-
-    default void writeByteProperty(PropertyName name, byte value) throws IOException {
-        writeName(name);
-        writeByteValue(value);
-    }
-
-    default void writeDoubleProperty(PropertyName name, double value) throws IOException {
-        writeName(name);
-        writeDoubleValue(value);
-    }
-
-    default void writeFloatProperty(PropertyName name, float value) throws IOException {
-        writeName(name);
-        writeFloatValue(value);
-    }
-
-    default void writeBooleanProperty(PropertyName name, boolean value) throws IOException {
-        writeName(name);
-        writeBooleanValue(value);
-    }
-
-    default void writeNumberProperty(PropertyName name, Number value) throws IOException {
-        writeName(name);
-        writeNumber(value);
-    }
-
-    default void writeBigIntegerProperty(PropertyName name, BigInteger value) throws IOException {
-        writeName(name);
-        writeBigInteger(value);
-    }
-
-    default void writeBigDecimalProperty(PropertyName name, BigDecimal value) throws IOException {
-        writeName(name);
-        writeBigDecimal(value);
-    }
-
-
-    /*
-     * ----------------------------------------------------------------------
-     * Nested structure property fast paths
-     * ----------------------------------------------------------------------
-     */
-
     /**
-     * Writes a property name followed by an object start.
+     * Writes a prepared object property name.
+     *
+     * <p>This is the preferred API for generated and cached runtime
+     * bindings. Backends should override this method when they can use
+     * the prepared representation directly.</p>
      */
-    default void startObject(PropertyName name) throws IOException {
-        writeName(name);
-        startObject();
+    public void writeName(PreparedName preparedName) throws IOException {
+        PreparedName.SimplePreparedName snw = (PreparedName.SimplePreparedName) preparedName;
+        writeName(snw.name);
     }
 
-    /**
-     * Writes a property name followed by an array start.
-     */
-    default void startArray(PropertyName name) throws IOException {
-        writeName(name);
-        startArray();
-    }
 
 }

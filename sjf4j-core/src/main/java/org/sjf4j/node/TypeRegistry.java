@@ -58,6 +58,7 @@ public final class TypeRegistry {
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
         if (_fastNoneInfo(clazz)) return TypeInfo.NONE;
+
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
             if (mustPojo && ti.pojoInfo == null) {
@@ -79,7 +80,7 @@ public final class TypeRegistry {
         ValueCodecInfo vci = ReflectUtil.analyzeNodeValue(clazz);
         if (vci != null) {
             if (mustPojo) {
-                throw new JsonException("class '" + clazz.getName() + "' is annotated with @NodeValue, not a POJO");
+                throw new JsonException("class '" + clazz.getName() + "' is a @NodeValue, not a POJO");
             }
             ti = new TypeInfo(clazz, vci, null, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -233,48 +234,48 @@ public final class TypeRegistry {
         return vci;
     }
 
-    /**
-     * Resolves a value codec for a runtime value class when writing.
-     * <p>
-     * Unlike {@link #registerTypeInfo(Class)}, this method may use a codec
-     * registered for a parent class or interface. The result is intentionally
-     * not cached as metadata for {@code runtimeClass}, because that would make
-     * write-time polymorphism affect read target classification.
-     */
-    public static ValueCodecInfo resolveValueCodecForRuntimeClass(Class<?> runtimeClass, String valueFormat) {
-        Objects.requireNonNull(runtimeClass, "runtimeClass");
+//    /**
+//     * Resolves a value codec for a runtime value class when writing.
+//     * <p>
+//     * Unlike {@link #registerTypeInfo(Class)}, this method may use a codec
+//     * registered for a parent class or interface. The result is intentionally
+//     * not cached as metadata for {@code runtimeClass}, because that would make
+//     * write-time polymorphism affect read target classification.
+//     */
+//    public static ValueCodecInfo resolveValueCodecForRuntimeClass(Class<?> runtimeClass, String valueFormat) {
+//        Objects.requireNonNull(runtimeClass, "runtimeClass");
+//
+//        ValueCodecInfo vci = registerTypeInfo(runtimeClass).getValueCodecInfo(valueFormat);
+//        if (vci != null) return vci;
+//
+//        vci = _resolveInterfaceValueCodec(runtimeClass.getInterfaces(), runtimeClass, valueFormat);
+//        if (vci != null) return vci;
+//        for (Class<?> type = runtimeClass.getSuperclass(); type != null; type = type.getSuperclass()) {
+//            vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
+//            if (vci != null) return vci;
+//            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
+//            if (vci != null) return vci;
+//        }
+//        return null;
+//    }
 
-        ValueCodecInfo vci = registerTypeInfo(runtimeClass).getValueCodecInfo(valueFormat);
-        if (vci != null) return vci;
-
-        vci = _resolveInterfaceValueCodec(runtimeClass.getInterfaces(), runtimeClass, valueFormat);
-        if (vci != null) return vci;
-        for (Class<?> type = runtimeClass.getSuperclass(); type != null; type = type.getSuperclass()) {
-            vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
-            if (vci != null) return vci;
-            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
-            if (vci != null) return vci;
-        }
-        return null;
-    }
-
-    private static ValueCodecInfo _resolveRegisteredValueCodec(Class<?> type, Class<?> runtimeClass, String valueFormat) {
-        TypeInfo ti = TYPE_INFO_CACHE.get(type);
-        if (ti == null) return null;
-        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
-        return vci != null && vci.valueClazz.isAssignableFrom(runtimeClass) ? vci : null;
-    }
-
-    private static ValueCodecInfo _resolveInterfaceValueCodec(Class<?>[] interfaces, Class<?> runtimeClass,
-                                                               String valueFormat) {
-        for (Class<?> type : interfaces) {
-            ValueCodecInfo vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
-            if (vci != null) return vci;
-            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
-            if (vci != null) return vci;
-        }
-        return null;
-    }
+//    private static ValueCodecInfo _resolveRegisteredValueCodec(Class<?> type, Class<?> runtimeClass, String valueFormat) {
+//        TypeInfo ti = TYPE_INFO_CACHE.get(type);
+//        if (ti == null) return null;
+//        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+//        return vci != null && vci.valueClazz.isAssignableFrom(runtimeClass) ? vci : null;
+//    }
+//
+//    private static ValueCodecInfo _resolveInterfaceValueCodec(Class<?>[] interfaces, Class<?> runtimeClass,
+//                                                               String valueFormat) {
+//        for (Class<?> type : interfaces) {
+//            ValueCodecInfo vci = _resolveRegisteredValueCodec(type, runtimeClass, valueFormat);
+//            if (vci != null) return vci;
+//            vci = _resolveInterfaceValueCodec(type.getInterfaces(), runtimeClass, valueFormat);
+//            if (vci != null) return vci;
+//        }
+//        return null;
+//    }
 
     /// POJO
 

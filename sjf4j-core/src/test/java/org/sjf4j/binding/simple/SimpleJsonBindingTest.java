@@ -19,23 +19,22 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SimpleJsonBindingTest {
 
     @Test
-    void usesDefaultAndCustomStreamingContexts() {
-        assertSame(StreamingContext.EMPTY, new SimpleJsonBinder().streamingContext());
-
+    void requiresAStreamingContext() {
         StreamingContext context = new StreamingContext(false);
-        assertSame(context, new SimpleJsonBinder(context).streamingContext());
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("missing", null);
+        assertEquals("{}", new SimpleJsonBinder(context).writeNodeAsString(source));
         assertThrows(NullPointerException.class, () -> new SimpleJsonBinder(null));
     }
 
     @Test
     void createsConcreteReadersAndWritersForAllFactoryForms() throws Exception {
-        SimpleJsonBinder binding = new SimpleJsonBinder();
+        SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
 
         try (SimpleJsonReader reader = binding.createReader(new StringReader("null"))) {
             assertInstanceOf(SimpleJsonReader.class, reader);
@@ -61,7 +60,7 @@ class SimpleJsonBindingTest {
 
     @Test
     void readsAndWritesNestedNodesThroughConvenienceMethods() {
-        SimpleJsonBinder binding = new SimpleJsonBinder();
+        SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("greeting", "héllo");
         source.put("items", List.of(1, JsonObject.of("nested", JsonArray.of(true, "x"))));
@@ -90,7 +89,7 @@ class SimpleJsonBindingTest {
 
     @Test
     void handlesRootValuesAndRejectsTrailingDocuments() {
-        SimpleJsonBinder binding = new SimpleJsonBinder();
+        SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
 
         assertEquals("null", binding.writeNodeAsString(null));
         assertEquals("true", binding.writeNodeAsString(true));
@@ -114,7 +113,7 @@ class SimpleJsonBindingTest {
 
     @Test
     void readsStringsWhoseEscapesCrossTheInternalBufferBoundary() {
-        SimpleJsonBinder binding = new SimpleJsonBinder();
+        SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
         String prefix = "a".repeat(8190);
         String json = '"' + prefix + "\\n\"";
 
@@ -127,13 +126,13 @@ class SimpleJsonBindingTest {
         source.put("present", 1);
         source.put("missing", null);
 
-        assertEquals("{\"present\":1,\"missing\":null}", new SimpleJsonBinder().writeNodeAsString(source));
+        assertEquals("{\"present\":1,\"missing\":null}", new SimpleJsonBinder(StreamingContext.EMPTY).writeNodeAsString(source));
         assertEquals("{\"present\":1}", new SimpleJsonBinder(new StreamingContext(false)).writeNodeAsString(source));
     }
 
     @Test
     void wrapsMalformedInputAndNonFiniteOutputFailures() {
-        SimpleJsonBinder binding = new SimpleJsonBinder();
+        SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
 
         BindingException readFailure = assertThrows(BindingException.class,
                 () -> binding.readNode("{\"value\":}", Map.class));

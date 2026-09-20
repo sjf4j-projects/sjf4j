@@ -8,22 +8,21 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class StreamingWriterDefaultMethodTest {
-    @Test
-    void preparedStringPropertyDelegatesToNameAndValueMethods() throws Exception {
-        RecordingWriter writer = new RecordingWriter();
-        writer.writeStringProperty(() -> "name", "Ada");
-        assertEquals(List.of("name:name", "string:Ada"), writer.events);
-    }
 
     @Test
     void boxedNullDelegatesToNullWriter() throws Exception {
-        RecordingWriter writer = new RecordingWriter();
+        RecordingWriter writer = new RecordingWriter(null);
         writer.writeInt(null);
         assertEquals(List.of("null"), writer.events);
     }
 
-    private static final class RecordingWriter implements StreamingWriter {
+    private static final class RecordingWriter extends StreamingWriter {
         private final List<String> events = new ArrayList<>();
+
+        RecordingWriter(StreamingBinder<?, ?> binder) {
+            super(binder);
+        }
+
         public void startObject() {} public void endObject() {} public void startArray() {} public void endArray() {}
         public void writeName(String name) { events.add("name:" + name); } public void writeNull() { events.add("null"); }
         public void writeStringValue(String value) { events.add("string:" + value); }

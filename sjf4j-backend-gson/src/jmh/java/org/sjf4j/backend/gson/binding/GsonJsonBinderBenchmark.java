@@ -17,7 +17,9 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -44,8 +46,40 @@ public class GsonJsonBinderBenchmark {
         public void setup() {
             gson = new GsonBuilder().serializeNulls().disableHtmlEscaping().create();
             binder = new GsonJsonBinder(gson);
-            value = new Document(7, "<Ada & Bob>", new Details(true, "nested"), Arrays.asList("one", "two"), null);
+            value = new Document(
+                    7,
+                    20260319L,
+                    "<Ada & Bob>",
+                    Status.ACTIVE,
+                    new Details(true, "nested", Arrays.asList("primary", "visible")),
+                    Arrays.asList("one", "two", "three"),
+                    new int[]{3, 8, 13, 21, 34},
+                    Arrays.asList(
+                            new Section("overview", Arrays.asList(
+                                    new Entry(1, 12.5d, true),
+                                    new Entry(2, 8.75d, false)), attributes("source", "api", "region", "us-east")),
+                            new Section("history", Arrays.asList(
+                                    new Entry(3, 99.99d, true),
+                                    new Entry(4, 0.25d, true),
+                                    new Entry(5, 42.0d, false)), attributes("source", "import", "region", "eu-west"))),
+                    counters(12, 3, 7),
+                    null);
             document = gson.toJson(value);
+        }
+
+        private static Map<String, String> attributes(String key1, String value1, String key2, String value2) {
+            Map<String, String> values = new LinkedHashMap<>();
+            values.put(key1, value1);
+            values.put(key2, value2);
+            return values;
+        }
+
+        private static Map<String, Integer> counters(int created, int updated, int deleted) {
+            Map<String, Integer> values = new LinkedHashMap<>();
+            values.put("created", created);
+            values.put("updated", updated);
+            values.put("deleted", deleted);
+            return values;
         }
     }
 
@@ -71,19 +105,30 @@ public class GsonJsonBinderBenchmark {
 
     public static class Document {
         public int id;
+        public long version;
         public String title;
+        public Status status;
         public Details details;
         public List<String> tags;
+        public int[] scores;
+        public List<Section> sections;
+        public Map<String, Integer> counters;
         public String nullable;
 
         public Document() {
         }
 
-        Document(int id, String title, Details details, List<String> tags, String nullable) {
+        Document(int id, long version, String title, Status status, Details details, List<String> tags,
+                 int[] scores, List<Section> sections, Map<String, Integer> counters, String nullable) {
             this.id = id;
+            this.version = version;
             this.title = title;
+            this.status = status;
             this.details = details;
             this.tags = tags;
+            this.scores = scores;
+            this.sections = sections;
+            this.counters = counters;
             this.nullable = nullable;
         }
     }
@@ -91,13 +136,50 @@ public class GsonJsonBinderBenchmark {
     public static class Details {
         public boolean active;
         public String note;
+        public List<String> labels;
 
         public Details() {
         }
 
-        Details(boolean active, String note) {
+        Details(boolean active, String note, List<String> labels) {
             this.active = active;
             this.note = note;
+            this.labels = labels;
         }
+    }
+
+    public static class Section {
+        public String name;
+        public List<Entry> entries;
+        public Map<String, String> attributes;
+
+        public Section() {
+        }
+
+        Section(String name, List<Entry> entries, Map<String, String> attributes) {
+            this.name = name;
+            this.entries = entries;
+            this.attributes = attributes;
+        }
+    }
+
+    public static class Entry {
+        public int id;
+        public double amount;
+        public boolean enabled;
+
+        public Entry() {
+        }
+
+        Entry(int id, double amount, boolean enabled) {
+            this.id = id;
+            this.amount = amount;
+            this.enabled = enabled;
+        }
+    }
+
+    public enum Status {
+        ACTIVE,
+        ARCHIVED
     }
 }

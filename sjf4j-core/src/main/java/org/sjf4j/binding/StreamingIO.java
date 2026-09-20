@@ -46,7 +46,7 @@ public final class StreamingIO {
     /**
      * Reads one node from streaming reader into target type using streaming context.
      */
-    static Object readNode(StreamingReader reader, Type nodeType, StreamingContext context) {
+    public static Object readNode(StreamingReader reader, Type nodeType, StreamingContext context) {
         Class<?> nodeBoxed = Types.rawBox(nodeType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(nodeBoxed);
         return readNode(reader, nodeType, nodeBoxed, ti, context);
@@ -729,7 +729,7 @@ public final class StreamingIO {
     /**
      * Writes one node to streaming writer using instance-level value formats.
      */
-    static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
+    public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
         try {
             if (node == null) {
                 writer.writeNull();
@@ -918,9 +918,9 @@ public final class StreamingIO {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             String valueFormat = context.defaultValueFormat(rawClazz);
             ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
-            if (vci == null) {
-                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
-            }
+//            if (vci == null) {
+//                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
+//            }
             if (vci != null) {
                 Object raw = vci.valueToRaw(node);
                 writeNode(writer, raw, context);
@@ -948,8 +948,9 @@ public final class StreamingIO {
         int cnt = 0;
 
         FieldWriter[] fieldWriters = pi.fieldWriters;
+        PreparedName[] preparedNames = writer.binder().getPreparedNames(node.getClass());
         for (int i = 0, len = fieldWriters.length; i < len; i++) {
-            cnt = fieldWriters[i].write(writer, node, context, cnt);
+            cnt = fieldWriters[i].write(writer, preparedNames[i], node, context, cnt);
         }
 
         if (pi.isJojo && pi.writeDynamic) {

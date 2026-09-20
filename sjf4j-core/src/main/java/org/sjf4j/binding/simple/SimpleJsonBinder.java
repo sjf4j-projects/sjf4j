@@ -6,26 +6,18 @@ import org.sjf4j.binding.StreamingContext;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Objects;
 
 /**
  * Built-in lightweight JSON binding.
  */
-public final class SimpleJsonBinder implements JsonBinder<SimpleJsonReader, SimpleJsonWriter> {
-    private final StreamingContext streamingContext;
+public final class SimpleJsonBinder extends JsonBinder<SimpleJsonReader, SimpleJsonWriter> {
 
     public SimpleJsonBinder() {
         this(StreamingContext.EMPTY);
     }
 
-    public SimpleJsonBinder(StreamingContext streamingContext) {
-        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
-    }
-
-
-    @Override
-    public StreamingContext streamingContext() {
-        return streamingContext;
+    public SimpleJsonBinder(StreamingContext context) {
+        super(context);
     }
 
     /**
@@ -41,6 +33,8 @@ public final class SimpleJsonBinder implements JsonBinder<SimpleJsonReader, Simp
      */
     @Override
     public SimpleJsonWriter createWriter(Writer output) throws IOException {
-        return new SimpleJsonWriter(output);
+        return new SimpleJsonWriter(this, output);
     }
+
+
 }

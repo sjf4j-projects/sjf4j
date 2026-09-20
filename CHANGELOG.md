@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Converted `JsonBinder`, `YamlBinder`, `StreamingBinder`, and `StreamingWriter` from interfaces to abstract classes; custom backends must extend the new base classes and pass their binder/context through constructors.
+- Replaced `StreamingWriter.PropertyName` with `PreparedName`; custom backends must implement prepared-name writing with the new type.
 - Replaced manual `ExternalNodeRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalNodeProvider` implementations; external node integrations must publish a service provider.
 - Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
 - Renamed `org.sjf4j.binding.FieldReader` to `FieldBinder`; update streaming binding references accordingly.
@@ -31,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
 
 ### Added
+- Added the `sjf4j-backend-jackson2` artifact with Jackson 2 streaming reader and writer bindings.
 - Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.
 - Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.
 - Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
@@ -43,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a built-in `Charset` value codec.
 
 ### Changed
+- Optimized streaming POJO serialization with backend-prepared field names and specialized scalar field writers.
 - Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
 - Optimized streaming POJO binding and writing with precomputed specialized field accessors.
 - Gson streaming binders now create configured writers and honor the `StreamingContext` null-serialization policy.

@@ -44,6 +44,7 @@ public abstract class JDKAtomicTypesDeserializationContract {
     @Test void testAtomicLong() { registerAtomicCodecs(); assertEquals(12345678901L, ((AtomicLong) binding(StreamingContext.EMPTY).readNode("12345678901", AtomicLong.class)).get()); }
     /** ValueCodec cannot recursively bind AtomicReference's generic long[] payload. */
     @Disabled("TODO: design generic payload binding for ValueCodec before supporting AtomicReference<long[]>.")
+    @SuppressWarnings("unchecked")
     @Test void testAtomicReference() {
         AtomicReference<long[]> value = (AtomicReference<long[]>) binding(StreamingContext.EMPTY).readNode("[1,2]", new TypeReference<AtomicReference<long[]>>() {}.getType());
         assertArrayEquals(new long[] { 1, 2 }, value.get());

@@ -1,5 +1,7 @@
 package org.sjf4j.binding.simple;
 
+import org.sjf4j.binding.PreparedName;
+import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.exception.BindingException;
 
@@ -11,7 +13,7 @@ import java.util.Objects;
 /**
  * Minimal JSON writer for the built-in facade.
  */
-public final class SimpleJsonWriter implements StreamingWriter {
+public final class SimpleJsonWriter extends StreamingWriter {
 
     private static final char[] HEX = "0123456789ABCDEF".toCharArray();
 
@@ -20,12 +22,9 @@ public final class SimpleJsonWriter implements StreamingWriter {
     /**
      * Creates writer over output characters.
      */
-    public SimpleJsonWriter(Writer output) {
+    public SimpleJsonWriter(StreamingBinder<?, ?> binder, Writer output) {
+        super(binder);
         Objects.requireNonNull(output, "output");
-
-        if (!(output instanceof BufferedWriter)) {
-            output = new BufferedWriter(output);
-        }
         this.writer = output;
     }
 
@@ -72,14 +71,7 @@ public final class SimpleJsonWriter implements StreamingWriter {
     }
 
     @Override
-    public void writeName(PropertyName name) throws IOException {
-        if (name == null) throw new BindingException("name must not be null");
-        writeName(name.name());
-    }
-
-    @Override
     public void writeStringValue(String value) throws IOException {
-        if (value == null) throw new BindingException("string value must not be null");
         _writeQuoted(value);
     }
 
@@ -122,7 +114,7 @@ public final class SimpleJsonWriter implements StreamingWriter {
 
     @Override
     public void writeCharValue(char value) throws IOException {
-        writer.write(Character.toString(value));
+        _writeQuoted(Character.toString(value));
     }
 
     @Override

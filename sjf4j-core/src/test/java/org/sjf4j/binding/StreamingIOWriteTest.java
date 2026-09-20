@@ -20,13 +20,13 @@ class StreamingIOWriteTest {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("items", new int[]{1, 2});
         map.put("node", JsonObject.of("values", JsonArray.of("a", "b")));
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             StreamingIO.writeNode(writer, map, StreamingContext.EMPTY);
             writer.flush();
         }
         assertEquals("{\"items\":[1,2],\"node\":{\"values\":[\"a\",\"b\"]}}", output.toString());
 
-        SeparatorWriter separators = new SeparatorWriter();
+        SeparatorWriter separators = new SeparatorWriter(null);
         StreamingIO.writeNode(separators, new int[]{1, 2}, StreamingContext.EMPTY);
         assertEquals(0, separators.properties);
         assertEquals(1, separators.elements);
@@ -35,16 +35,20 @@ class StreamingIOWriteTest {
     @Test
     void writesCharsetName() throws Exception {
         StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             StreamingIO.writeNode(writer, StandardCharsets.UTF_8, StreamingContext.EMPTY);
             writer.flush();
         }
         assertEquals("\"UTF-8\"", output.toString());
     }
 
-    private static final class SeparatorWriter implements StreamingWriter {
+    private static final class SeparatorWriter extends StreamingWriter {
         private int properties;
         private int elements;
+
+        SeparatorWriter(StreamingBinder<?, ?> binder) {
+            super(binder);
+        }
 
         @Override public void startObject() {}
         @Override public void endObject() {}

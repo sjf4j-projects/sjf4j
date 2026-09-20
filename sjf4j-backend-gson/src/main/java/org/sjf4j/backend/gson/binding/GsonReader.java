@@ -15,7 +15,12 @@ import java.util.Objects;
 public class GsonReader implements StreamingReader {
 
     private final JsonReader reader;
+    private JsonToken token;
+    private boolean initialized;
 
+    /**
+     * Wraps a reader exclusively owned by this instance.
+     */
     public GsonReader(JsonReader reader) {
         Objects.requireNonNull(reader, "reader");
         this.reader = reader;
@@ -23,12 +28,7 @@ public class GsonReader implements StreamingReader {
 
     @Override
     public Token peekToken() throws IOException {
-        JsonToken token;
-        try {
-            token = reader.peek();
-        } catch (EOFException e) {
-            return Token.EOF;
-        }
+        ensureToken();
         switch (token) {
             case BEGIN_OBJECT:
                 return Token.START_OBJECT;
@@ -55,79 +55,105 @@ public class GsonReader implements StreamingReader {
         }
     }
 
+
     @Override
     public void startObject() throws IOException {
         reader.beginObject();
+        invalidateToken();
     }
 
     @Override
     public void endObject() throws IOException {
         reader.endObject();
+        invalidateToken();
     }
 
     @Override
     public void startArray() throws IOException {
         reader.beginArray();
+        invalidateToken();
     }
 
     @Override
     public void endArray() throws IOException {
         reader.endArray();
+        invalidateToken();
     }
 
     @Override
     public String nextName() throws IOException {
-        return reader.nextName();
+        String value = reader.nextName();
+        invalidateToken();
+        return value;
     }
 
     @Override
     public String nextString() throws IOException {
-        return reader.nextString();
+        String value = reader.nextString();
+        invalidateToken();
+        return value;
     }
 
     @Override
     public Number nextNumber() throws IOException {
-        return Numbers.parseNumber(reader.nextString());
+        String value = reader.nextString();
+        invalidateToken();
+        return Numbers.parseNumber(value);
     }
 
     @Override
     public long nextLongValue() throws IOException {
-        return reader.nextLong();
+        long value = reader.nextLong();
+        invalidateToken();
+        return value;
     }
 
     @Override
     public int nextIntValue() throws IOException {
-        return reader.nextInt();
+        int value = reader.nextInt();
+        invalidateToken();
+        return value;
     }
 
     @Override
     public short nextShortValue() throws IOException {
-        return Numbers.toShort(reader.nextInt());
+        int value = reader.nextInt();
+        invalidateToken();
+        return Numbers.toShort(value);
     }
 
     @Override
     public byte nextByteValue() throws IOException {
-        return Numbers.toByte(reader.nextInt());
+        int value = reader.nextInt();
+        invalidateToken();
+        return Numbers.toByte(value);
     }
 
     @Override
     public double nextDoubleValue() throws IOException {
-        return reader.nextDouble();
+        double value = reader.nextDouble();
+        invalidateToken();
+        return value;
     }
 
     @Override
     public float nextFloatValue() throws IOException {
-        return Numbers.toFloat(reader.nextDouble());
+        double value = reader.nextDouble();
+        invalidateToken();
+        return Numbers.toFloat(value);
     }
 
     @Override
     public boolean nextBooleanValue() throws IOException {
-        return reader.nextBoolean();
+        boolean value = reader.nextBoolean();
+        invalidateToken();
+        return value;
     }
 
     @Override
     public char nextCharValue() throws IOException {
         String str = reader.nextString();
+        invalidateToken();
         if (str == null || str.isEmpty()) {
             throw new BindException("cannot read empty string as char");
         }
@@ -136,27 +162,75 @@ public class GsonReader implements StreamingReader {
 
     @Override
     public BigInteger nextBigInteger() throws IOException {
-        return new BigInteger(reader.nextString());
+        String value = reader.nextString();
+        invalidateToken();
+        return new BigInteger(value);
     }
 
     @Override
     public BigDecimal nextBigDecimal() throws IOException {
-        return new BigDecimal(reader.nextString());
+        String value = reader.nextString();
+        invalidateToken();
+        return new BigDecimal(value);
     }
 
 
     @Override
     public void nextNull() throws IOException {
         reader.nextNull();
+        invalidateToken();
+    }
+
+    @Override
+    public boolean nextIfNull() throws IOException {
+        ensureToken();
+        if (token != JsonToken.NULL) return false;
+        reader.nextNull();
+        invalidateToken();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() throws IOException {
+        ensureToken();
+        if (token != JsonToken.END_OBJECT) return false;
+        reader.endObject();
+        invalidateToken();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() throws IOException {
+        ensureToken();
+        if (token != JsonToken.END_ARRAY) return false;
+        reader.endArray();
+        invalidateToken();
+        return true;
     }
 
     @Override
     public void skipNext() throws IOException {
         reader.skipValue();
+        invalidateToken();
     }
 
     @Override
     public void close() throws IOException {
         reader.close();
+    }
+
+    private void ensureToken() throws IOException {
+        if (!initialized) {
+            initialized = true;
+            try {
+                token = reader.peek();
+            } catch (EOFException e) {
+                token = JsonToken.END_DOCUMENT;
+            }
+        }
+    }
+
+    private void invalidateToken() {
+        initialized = false;
     }
 }

@@ -36,6 +36,7 @@ public abstract class CollectionDeserializationContract {
     }
     /** Source: CollectionDeserializationTest#testJava6Types. */
     @Disabled("TODO: define default container and null policy for Queue/Deque across binding paths.")
+    @SuppressWarnings("unchecked")
     @Test void testDeque() {
         assertEquals(List.of(1, 2), new java.util.ArrayList<>((Deque<Integer>) binding(StreamingContext.EMPTY).readNode("[1,2]", new TypeReference<Deque<Integer>>() {}.getType())));
     }
@@ -49,9 +50,11 @@ public abstract class CollectionDeserializationContract {
     @Test void testList() { assertEquals(List.of("a", "b"), binding(StreamingContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<List<String>>() {}.getType())); }
     /** Retained SJF4J queue-interface coverage; no Jackson source attribution. */
     @Disabled("TODO: define default container and null policy for Queue/Deque across binding paths.")
+    @SuppressWarnings("unchecked")
     @Test void testQueue() { assertEquals(List.of(1, 2), new ArrayList<>((Queue<Integer>) binding(StreamingContext.EMPTY).readNode("[1,2]", new TypeReference<Queue<Integer>>() {}.getType()))); }
 
     /** Retained SJF4J concrete deque coverage; no Jackson source attribution. */
     @Disabled("TODO: define default container and null policy for Queue/Deque across binding paths.")
+    @SuppressWarnings("unchecked")
     @Test void testArrayDeque() { assertEquals(List.of("a", "b"), new java.util.ArrayList<>((ArrayDeque<String>) binding(StreamingContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<ArrayDeque<String>>() {}.getType()))); }
 }

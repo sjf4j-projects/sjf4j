@@ -1,7 +1,8 @@
 package org.sjf4j.binding.simple;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.PreparedName;
+import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.exception.BindingException;
 
 import java.io.BufferedWriter;
@@ -20,7 +21,7 @@ class SimpleJsonWriterTest {
     @Test
     void writesPrimitivesAndEscapesStrings() throws Exception {
         StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             writer.startArray();
             writer.writeLongValue(1L); writer.separateElement();
             writer.writeIntValue(2); writer.separateElement();
@@ -39,7 +40,7 @@ class SimpleJsonWriterTest {
     @Test
     void interfaceBoxedDefaultsWriteNullsAndGenericNumbers() throws Exception {
         StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             writer.writeLong(null); writer.writeInt(null); writer.writeShort(null); writer.writeByte(null);
             writer.writeDouble(null); writer.writeFloat(null); writer.writeBoolean(null); writer.writeString(null);
             writer.writeNumber(null); writer.writeBigInteger(null); writer.writeBigDecimal(null);
@@ -54,12 +55,12 @@ class SimpleJsonWriterTest {
     @Test
     void writesPreparedAndForeignNamesWithPropertyAndElementSeparators() throws Exception {
         StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             writer.startObject();
             writer.writeName("a\n");
             writer.writeInt(1);
             writer.separateProperty();
-            writer.writeName(() -> "foreign");
+            writer.writeName(new PreparedName.SimplePreparedName("foreign"));
             writer.startArray();
             writer.writeStringValue("x");
             writer.separateElement();
@@ -76,12 +77,12 @@ class SimpleJsonWriterTest {
 
     @Test
     void validatesNamesAndSupportsBufferedWriters() throws Exception {
-        assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(null));
-        assertThrows(BindingException.class, () -> new SimpleJsonWriter(new StringWriter()).writeName((String) null));
-        assertThrows(BindingException.class, () -> new SimpleJsonWriter(new StringWriter()).writeName((StreamingWriter.PropertyName) null));
+        assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(null, null));
+        assertThrows(BindingException.class, () -> new SimpleJsonWriter(null, new StringWriter()).writeName((String) null));
+        assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(null, new StringWriter()).writeName((PreparedName) null));
 
         StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(new BufferedWriter(output))) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, new BufferedWriter(output))) {
             writer.writeStringValue("buffered");
             writer.flush();
         }
@@ -91,7 +92,7 @@ class SimpleJsonWriterTest {
     @Test
     void rejectsNonFiniteNumbersDirectlyAndThroughJsonBinder() throws Exception {
         StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             assertThrows(BindingException.class, () -> writer.writeDoubleValue(Double.NaN));
             assertThrows(BindingException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
             assertThrows(BindingException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
@@ -110,7 +111,7 @@ class SimpleJsonWriterTest {
         String[] unpaired = {"before\uD800after", "before\uDC00after"};
         for (String value : unpaired) {
             StringWriter valueOutput = new StringWriter();
-            try (SimpleJsonWriter writer = new SimpleJsonWriter(valueOutput)) {
+            try (SimpleJsonWriter writer = new SimpleJsonWriter(null, valueOutput)) {
                 writer.writeStringValue("valid");
                 assertThrows(BindingException.class, () -> writer.writeStringValue(value));
                 writer.flush();
@@ -118,7 +119,7 @@ class SimpleJsonWriterTest {
             assertEquals("\"valid\"", valueOutput.toString());
 
             StringWriter nameOutput = new StringWriter();
-            try (SimpleJsonWriter writer = new SimpleJsonWriter(nameOutput)) {
+            try (SimpleJsonWriter writer = new SimpleJsonWriter(null, nameOutput)) {
                 assertThrows(BindingException.class, () -> writer.writeName(value));
                 writer.flush();
             }
@@ -129,7 +130,7 @@ class SimpleJsonWriterTest {
     @Test
     void rejectsNullStringValueBeforeWriting() throws Exception {
         StringWriter output = new StringWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             assertThrows(BindingException.class, () -> writer.writeStringValue(null));
             writer.flush();
         }
@@ -139,7 +140,7 @@ class SimpleJsonWriterTest {
     @Test
     void writesOrdinaryStringRunsAsContiguousSpans() throws Exception {
         TrackingBufferedWriter output = new TrackingBufferedWriter();
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(output)) {
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
             writer.writeStringValue("first\nsecond");
             writer.flush();
         }
@@ -149,7 +150,7 @@ class SimpleJsonWriterTest {
 
     private static void assertJsonBinderRejectsNonFiniteNumber(Number value) {
         StringWriter output = new StringWriter();
-        assertThrows(BindingException.class, () -> new SimpleJsonBinder().writeNode(output, value));
+        assertThrows(BindingException.class, () -> new SimpleJsonBinder(StreamingContext.EMPTY).writeNode(output, value));
         assertEquals("", output.toString());
     }
 

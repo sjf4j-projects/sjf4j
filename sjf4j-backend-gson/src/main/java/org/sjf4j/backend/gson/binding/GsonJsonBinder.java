@@ -11,23 +11,17 @@ import java.io.Writer;
 import java.util.Objects;
 
 
-public class GsonJsonBinder implements JsonBinder<GsonReader, GsonWriter> {
+public final class GsonJsonBinder extends JsonBinder<GsonReader, GsonWriter> {
 
     private final Gson gson;
-    private final StreamingContext context;
 
     public GsonJsonBinder(Gson gson) {
         this(gson, StreamingContext.EMPTY);
     }
 
     public GsonJsonBinder(Gson gson, StreamingContext context) {
+        super(context);
         this.gson = Objects.requireNonNull(gson, "gson");
-        this.context = Objects.requireNonNull(context, "context");
-    }
-
-    @Override
-    public StreamingContext streamingContext() {
-        return context;
     }
 
     @Override
@@ -41,6 +35,7 @@ public class GsonJsonBinder implements JsonBinder<GsonReader, GsonWriter> {
         Objects.requireNonNull(output, "output");
         JsonWriter writer = gson.newJsonWriter(output);
         writer.setSerializeNulls(true);
-        return new GsonWriter(writer);
+        return new GsonWriter(this, writer);
     }
+
 }

@@ -9,5 +9,10 @@ package org.sjf4j.binding;
  * read/write paths. The default methods in this interface route reads and writes
  * through the appropriate path and normalize common exception handling.</p>
  */
-public interface JsonBinder<R extends StreamingReader, W extends StreamingWriter> extends StreamingBinder<R, W> {
+public abstract class JsonBinder<R extends StreamingReader, W extends StreamingWriter> extends StreamingBinder<R, W> {
+
+    protected JsonBinder(StreamingContext context) {
+        super(context);
+    }
+
 }

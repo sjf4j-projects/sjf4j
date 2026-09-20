@@ -1,6 +1,7 @@
 package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
+import org.sjf4j.binding.StreamingReader.Token;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
@@ -76,6 +77,15 @@ class GsonReaderTest {
         try (GsonReader reader = reader("{}")) {
             reader.startObject();
             assertTrue(reader.nextIfObjectEnd());
+        }
+    }
+
+    @Test
+    void refreshesPeekedTokenAfterConsumption() throws Exception {
+        try (GsonReader reader = reader("1")) {
+            assertEquals(Token.NUMBER, reader.peekToken());
+            assertEquals(1, reader.nextIntValue());
+            assertEquals(Token.EOF, reader.peekToken());
         }
     }
 

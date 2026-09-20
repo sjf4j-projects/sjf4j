@@ -5,6 +5,7 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.exception.BindingException;
 
 import java.time.LocalDate;
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RecordBindingTest {
-    private final SimpleJsonBinder binding = new SimpleJsonBinder();
+    private final SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
 
     @Test
     void bindsCanonicalArgumentsRegardlessOfJsonOrder() {

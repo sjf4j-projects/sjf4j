@@ -288,16 +288,21 @@ public final class ReflectUtil {
             hasNonPublicFields = true;
         }
 
+        List<String> fieldNames = new ArrayList<>(properties.size());
         List<FieldWriter> fieldWriters = new ArrayList<>(properties.size());
         for (FieldInfo property : properties.values()) {
             FieldWriter fieldWriter = FieldWriter.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.resolvedValueCodec, lookup);
-            if (fieldWriter != null) fieldWriters.add(fieldWriter);
+            if (fieldWriter != null) {
+                fieldNames.add(property.name);
+                fieldWriters.add(fieldWriter);
+            }
         }
 
         return new PojoInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
                 readDynamic, writeDynamic, properties, aliasProperties,
                 hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap,
+                fieldNames.toArray(new String[0]),
                 fieldWriters.toArray(new FieldWriter[0]));
     }
 
