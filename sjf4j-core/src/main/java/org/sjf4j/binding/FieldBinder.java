@@ -1,12 +1,12 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoAccess;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
@@ -65,7 +65,7 @@ public interface FieldBinder {
     static FieldBinder create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                               boolean genericDependent, OneOfInfo oneOfInfo,
                               MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                              ValueCodecInfo resolvedValueCodec,
+                              NodeValueInfo resolvedValueCodec,
                               MethodHandles.Lookup lookup) {
 
         if (setterHandle == null) {

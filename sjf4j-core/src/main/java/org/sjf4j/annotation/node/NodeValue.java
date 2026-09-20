@@ -1,5 +1,7 @@
 package org.sjf4j.annotation.node;
 
+import org.sjf4j.node.NodeValueCodec;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
@@ -9,7 +11,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a type as a value node encoded and decoded through a
- * {@link org.sjf4j.node.ValueCodec}.
+ * {@link NodeValueCodec}.
  * <p>
  * In SJF4J's OBNT model, a {@code @NodeValue} type is treated like a scalar-style
  * domain value rather than a POJO, JOJO, or JAJO. Its JSON-facing form comes

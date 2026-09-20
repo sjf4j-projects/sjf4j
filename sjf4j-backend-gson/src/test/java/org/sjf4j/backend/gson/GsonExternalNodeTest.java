@@ -32,7 +32,7 @@ class GsonExternalNodeTest {
     void providerIsDiscoveredAndClassifiesGsonNodes() {
         ExternalNode<JsonElement> node = node();
 
-        assertSame(JsonElement.class, node.rootType());
+        assertSame(JsonElement.class, node.nodeType());
         assertEquals(JsonType.OBJECT, node.jsonTypeOfClass(JsonObject.class));
         assertEquals(JsonType.ARRAY, node.jsonTypeOfClass(JsonArray.class));
         assertEquals(JsonType.OBJECT, node.jsonType(JsonParser.parseString("{}")));

@@ -17,8 +17,8 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodec;
-import org.sjf4j.node.ValueCodecInfo;
+import org.sjf4j.node.NodeValueCodec;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
 
@@ -79,7 +79,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                              OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
             if (node == null) {
-                if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
+                if (rawClazz == Optional.class) return Optional.empty();
                 return null;
             }
 
@@ -99,7 +99,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
                 if (ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                    ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                    NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                     if (vci != null) return vci.valueCopy(node);
                 }
                 return _deepNode(node, type, ps);
@@ -112,7 +112,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -241,7 +241,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(node.getClass());
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) return vci.valueCopy(node);
             }
 
@@ -475,7 +475,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
                     argVci = ti.getValueCodecInfo(valueFormat);
@@ -757,7 +757,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
                     argVci = ti.getValueCodecInfo(valueFormat);
@@ -932,7 +932,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }

@@ -13,21 +13,21 @@ import java.util.function.BiPredicate;
 /**
  * Direct structural operations for nodes owned by an external JSON model.
  *
- * <p>Only {@link #rootType()} and {@link #jsonType(Object)} are mandatory.
+ * <p>Only {@link #nodeType()} and {@link #jsonType(Object)} are mandatory.
  * All operational defaults fail fast with {@link NodeException}; adapters must
  * override every operation they expose. Defaults never traverse, convert,
  * inspect, allocate, mutate, or infer external nodes.</p>
  *
- * <p>{@code N} is the external root/container type. Native child values are
+ * <p>{@code N} is the external root type. Native child values are
  * exposed as {@link Object}.</p>
  *
- * @param <N> external root/container type handled by this adapter
+ * @param <N> external root type handled by this adapter
  */
 public interface ExternalNode<N> {
     /**
-     * Returns the external root/container class handled by this adapter.
+     * Returns the external root class handled by this adapter.
      */
-    Class<N> rootType();
+    Class<N> nodeType();
 
     /**
      * Returns the JSON-semantic type of {@code node}.

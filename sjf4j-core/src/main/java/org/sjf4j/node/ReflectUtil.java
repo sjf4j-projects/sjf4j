@@ -250,7 +250,7 @@ public final class ReflectUtil {
                     PojoAccess.createGetterLambda(lookup, getterHandle, Function.class, Object.class);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
                     PojoAccess.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
-            ValueCodecInfo resolvedCodec = _resolveCodec(boxed, family.codecName, family.codecPattern);
+            NodeValueInfo resolvedCodec = _resolveCodec(boxed, family.codecName, family.codecPattern);
 
             FieldBinder fieldBinder = FieldBinder.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
                     setterHandle, setterLambda, resolvedCodec, lookup);
@@ -639,14 +639,14 @@ public final class ReflectUtil {
         return vp.isEmpty() ? null : vp;
     }
 
-    static ValueCodecInfo _resolveCodec(Class<?> rawType, String codecName, String codecPattern) {
+    static NodeValueInfo _resolveCodec(Class<?> rawType, String codecName, String codecPattern) {
         if (codecPattern != null && !codecPattern.isEmpty()) {
             // codecPattern takes precedence: get the base codec and parameterize it
-            ValueCodecInfo base = TypeRegistry.resolveValueCodecOrElseThrow(rawType, "");
+            NodeValueInfo base = TypeRegistry.resolveValueCodecOrElseThrow(rawType, "");
             if (base.valueCodec instanceof PatternedValueCodec) {
                 PatternedValueCodec<?, ?> pc = (PatternedValueCodec<?, ?>) base.valueCodec;
-                ValueCodec<?, ?> parameterized = pc.withPattern(codecPattern);
-                return new ValueCodecInfo(codecPattern, parameterized.valueClass(),
+                NodeValueCodec<?, ?> parameterized = pc.withPattern(codecPattern);
+                return new NodeValueInfo(codecPattern, parameterized.valueClass(),
                         parameterized.rawClass(), parameterized, null, null, null);
             }
             throw new JsonException("type '" + rawType.getName() + "' does not support codecPattern;" +
@@ -684,7 +684,7 @@ public final class ReflectUtil {
         MethodHandle noArgsCtor = null;
         Supplier<?> noArgsLambdaCtor = null;
         String[] argValueFormats = null;
-        ValueCodecInfo[] argValueCodecs = null;
+        NodeValueInfo[] argValueCodecs = null;
 
         // 1. Find defined creator
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
@@ -774,7 +774,7 @@ public final class ReflectUtil {
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
             argValueFormats = new String[params.length];
-            argValueCodecs = new ValueCodecInfo[params.length];
+            argValueCodecs = new NodeValueInfo[params.length];
             for (int i = 0; i < params.length; i++) {
                 String name = getExplicitName(params[i]);
                 if (name == null) {
@@ -835,7 +835,7 @@ public final class ReflectUtil {
 
     /// NodeValue
 
-    public static ValueCodecInfo analyzeNodeValue(Class<?> clazz) {
+    public static NodeValueInfo analyzeNodeValue(Class<?> clazz) {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
         MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
@@ -956,7 +956,7 @@ public final class ReflectUtil {
                         ", but found " + copyReturnClazz.getName());
         }
 
-        return new ValueCodecInfo("", clazz, valueToRawReturnBoxed, null,
+        return new NodeValueInfo("", clazz, valueToRawReturnBoxed, null,
                 valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 

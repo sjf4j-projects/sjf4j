@@ -6,12 +6,12 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.FieldInfo;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -189,7 +189,7 @@ public final class OneOfIO {
                 TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
 
                 Object value;
-                ValueCodecInfo codec = ci.argValueCodecs[argIdx];
+                NodeValueInfo codec = ci.argValueCodecs[argIdx];
                 if (codec != null) {
                     value = StreamingIO.readValueWithCodec(reader, argType, argBoxed, codec, context);
                 } else {

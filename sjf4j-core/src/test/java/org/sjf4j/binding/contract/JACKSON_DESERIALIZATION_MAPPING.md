@@ -64,7 +64,7 @@ behavior.
 
 `JDKScalarsDeserializationContract#testBigNumberRoots`,
 `ValueCodecDeserializationContract#testNullValueCodec`, and every method in
-`RetainedValueCodecDeserializationContract` are retained SJF4J coverage with no
+`RetainedNodeValueCodecDeserializationContract` are retained SJF4J coverage with no
 Jackson method attribution. The retained codec class covers Boolean and Number
 `NodeValue` dispatch at roots and fields.
 
@@ -373,7 +373,7 @@ named methods.
 | `StdValueInstantiatorsTest` | `(0,0,9,0)` | all 9 deferred: scalar constructor selection/coercion |
 | `StructuralTypeDeserTest` | `(0,0,8,0)` | all 8 deferred: structural/cyclic/non-static-inner default targets |
 | `UnwrappedCustomDeserCreator6001Test` | `(0,0,0,2)` | unwrapped custom deserializer annotation |
-| `ValueAnnotationsDeserTest` | `(0,3,0,21)` | structural: `testRootInterfaceUsing`, `testRootListAsOld`, `testRootMapAsOld` → existing `ValueCodecDeserializationContract`; remaining `JsonDeserialize` override annotations |
+| `ValueAnnotationsDeserTest` | `(0,3,0,21)` | structural: `testRootInterfaceUsing`, `testRootListAsOld`, `testRootMapAsOld` → existing `NodeValueCodecDeserializationContract`; remaining `JsonDeserialize` override annotations |
 | `WithoutParamNamesModule5314Test` | `(0,0,0,1)` | parameter-names module behavior |
 | `bean/BeanDeserializerModifier4216Test` | `(0,0,0,1)` | module modifier lifecycle |
 | `bean/BeanDeserializerModifier4356Test` | `(0,0,0,2)` | module modifier behavior |

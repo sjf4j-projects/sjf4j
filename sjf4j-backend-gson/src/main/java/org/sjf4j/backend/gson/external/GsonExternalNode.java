@@ -20,7 +20,7 @@ import java.util.function.BiPredicate;
 /** Gson JsonElement implementation of the external node contract. */
 public final class GsonExternalNode implements ExternalNode<JsonElement> {
     @Override
-    public Class<JsonElement> rootType() {
+    public Class<JsonElement> nodeType() {
         return JsonElement.class;
     }
 

@@ -29,7 +29,7 @@ public class CreatorInfo {
     public final String[] argNames;
     public final Type[] argTypes;
     public final String[] argCodecNames;
-    public final ValueCodecInfo[] argValueCodecs;
+    public final NodeValueInfo[] argValueCodecs;
     public final Map<String, Integer> argIndexes;
     public final Map<String, String> aliasMap;
     public final boolean hasCodecNameBinding;
@@ -42,7 +42,7 @@ public class CreatorInfo {
                        TypeRegistry.Func1 argsCreatorLambda1, TypeRegistry.Func2 argsCreatorLambda2,
                        TypeRegistry.Func3 argsCreatorLambda3, TypeRegistry.Func4 argsCreatorLambda4, TypeRegistry.Func5 argsCreatorLambda5,
                        String[] argNames, Type[] argTypes,
-                       String[] argCodecNames, ValueCodecInfo[] argValueCodecs,
+                       String[] argCodecNames, NodeValueInfo[] argValueCodecs,
                        Map<String, Integer> argIndexes,
                        Map<String, String> aliasMap) {
         this.clazz = clazz;
@@ -63,7 +63,7 @@ public class CreatorInfo {
         this.aliasMap = aliasMap;
         boolean hasCodecNameBinding = false;
         if (argValueCodecs != null) {
-            for (ValueCodecInfo vci : argValueCodecs) {
+            for (NodeValueInfo vci : argValueCodecs) {
                 if (vci != null) {
                     hasCodecNameBinding = true;
                     break;

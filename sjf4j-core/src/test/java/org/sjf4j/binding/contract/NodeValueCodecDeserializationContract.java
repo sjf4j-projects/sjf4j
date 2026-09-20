@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** SJF4J NodeValue contracts structurally adapted from Jackson custom-deserializer cases. */
-public abstract class ValueCodecDeserializationContract {
+public abstract class NodeValueCodecDeserializationContract {
     protected abstract JsonBinder<?, ?> binding(StreamingContext context);
     /** Structural source: ValueAnnotationsDeserTest#testRootInterfaceUsing; NodeValue replaces JsonDeserialize(using). */
     @Test void testRootInterfaceUsing() {

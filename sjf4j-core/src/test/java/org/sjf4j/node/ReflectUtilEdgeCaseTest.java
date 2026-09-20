@@ -257,7 +257,7 @@ class ReflectUtilEdgeCaseTest {
 
     @Test
     void analyzesNodeValuesAndRejectsInvalidDeclarations() {
-        ValueCodecInfo codecInfo = ReflectUtil.analyzeNodeValue(ValidValue.class);
+        NodeValueInfo codecInfo = ReflectUtil.analyzeNodeValue(ValidValue.class);
         assertNotNull(codecInfo);
         assertEquals(String.class, codecInfo.rawClazz);
         assertEquals("x", codecInfo.valueToRaw(new ValidValue("x")));

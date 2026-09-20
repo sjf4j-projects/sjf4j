@@ -10,14 +10,14 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodec;
-import org.sjf4j.node.ValueCodecInfo;
+import org.sjf4j.node.NodeValueCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -129,7 +129,7 @@ public class Fastjson2StreamingIO {
     private static Object _readNull(JSONReader reader, Class<?> rawClazz, StreamingContext context)
             throws IOException {
         reader.readNull();
-        if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
+        if (rawClazz == Optional.class) return NodeValueCodec.OPTIONAL.rawToValue(null);
         return null;
     }
 
@@ -139,7 +139,7 @@ public class Fastjson2StreamingIO {
             return reader.readBoolValue();
         }
 
-        ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+        NodeValueInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             boolean b = reader.readBoolValue();
             return vci.rawToValue(b);
@@ -162,7 +162,7 @@ public class Fastjson2StreamingIO {
         if (rawClazz == Byte.class) return reader.readInt8Value();
         if (rawClazz == BigInteger.class) return reader.readBigInteger();
 
-        ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+        NodeValueInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             Number n = reader.readNumber();
             return vci.rawToValue(n);
@@ -186,7 +186,7 @@ public class Fastjson2StreamingIO {
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
 
-        ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+        NodeValueInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             String s = reader.readString();
             return vci.rawToValue(s);
@@ -215,7 +215,7 @@ public class Fastjson2StreamingIO {
         }
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
-            ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+            NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
@@ -283,7 +283,7 @@ public class Fastjson2StreamingIO {
                 Type argType = Types.resolveMemberType(ownerType, ownerRawClazz, ci.argTypes[argIdx]);
                 Class<?> argRaw = Types.rawBox(argType);
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getValueCodecInfo(valueFormat);
@@ -400,7 +400,7 @@ public class Fastjson2StreamingIO {
         if (ti == null) {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
-        ValueCodecInfo vci = ti.hasValueCodecs()
+        NodeValueInfo vci = ti.hasValueCodecs()
                 ? ti.getValueCodecInfo(context.defaultValueFormat(rawClazz))
                 : null;
         if (vci != null) {
@@ -454,32 +454,32 @@ public class Fastjson2StreamingIO {
     private static Object _readValueWithCodec(JSONReader reader,
                                               Type type,
                                               Class<?> rawClazz,
-                                              ValueCodecInfo valueCodecInfo,
+                                              NodeValueInfo nodeValueInfo,
                                               StreamingContext context) throws IOException {
         switch (_peekToken(reader)) {
             case START_OBJECT: {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
-                Map<String, Object> map = _readMap(reader, valueCodecInfo.rawClazz, valueType, valueClazz,
+                Map<String, Object> map = _readMap(reader, nodeValueInfo.rawClazz, valueType, valueClazz,
                         TypeRegistry.registerTypeInfo(valueClazz), context);
-                return valueCodecInfo.rawToValue(map);
+                return nodeValueInfo.rawToValue(map);
             }
             case START_ARRAY: {
                 Type valueType = Types.resolveTypeArgument(type, List.class, 0);
                 Class<?> valueClazz = Types.rawBox(valueType);
-                List<Object> list = _readList(reader, valueCodecInfo.rawClazz, valueType, valueClazz,
+                List<Object> list = _readList(reader, nodeValueInfo.rawClazz, valueType, valueClazz,
                         TypeRegistry.registerTypeInfo(valueClazz), context);
-                return valueCodecInfo.rawToValue(list);
+                return nodeValueInfo.rawToValue(list);
             }
             case STRING:
-                return valueCodecInfo.rawToValue(reader.readString());
+                return nodeValueInfo.rawToValue(reader.readString());
             case NUMBER:
-                return valueCodecInfo.rawToValue(reader.readNumber());
+                return nodeValueInfo.rawToValue(reader.readNumber());
             case BOOLEAN:
-                return valueCodecInfo.rawToValue(reader.readBoolValue());
+                return nodeValueInfo.rawToValue(reader.readBoolValue());
             case NULL:
                 reader.readNull();
-                return valueCodecInfo.rawToValue(null);
+                return nodeValueInfo.rawToValue(null);
             default:
                 throw new BindingException("cannot read value into type '" + rawClazz.getName() + "'");
         }
@@ -715,7 +715,7 @@ public class Fastjson2StreamingIO {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     Object raw = vci.valueToRaw(node);
                     _writeNode(writer, raw, context);

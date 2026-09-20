@@ -10,7 +10,7 @@ import org.sjf4j.binding.StreamingContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Retained SJF4J NodeValue dispatch contract; it is not Jackson-derived. */
-public abstract class RetainedValueCodecDeserializationContract {
+public abstract class RetainedNodeValueCodecDeserializationContract {
     protected abstract JsonBinder<?, ?> binding(StreamingContext context);
 
     @Test void testBooleanCodecAtRoot() {

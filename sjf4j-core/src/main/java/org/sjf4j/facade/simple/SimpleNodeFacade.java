@@ -9,17 +9,17 @@ import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
-import org.sjf4j.node.ValueCodec;
+import org.sjf4j.node.NodeValueCodec;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodecInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
 
@@ -103,7 +103,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                              OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
             if (node == null) {
-                if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
+                if (rawClazz == Optional.class) return NodeValueCodec.OPTIONAL.rawToValue(null);
                 return null;
             }
 
@@ -138,7 +138,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -558,7 +558,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
                     argVci = ti.getValueCodecInfo(valueFormat);
@@ -921,7 +921,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }

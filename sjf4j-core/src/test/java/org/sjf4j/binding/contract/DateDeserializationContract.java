@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ValueCodec;
+import org.sjf4j.node.NodeValueCodec;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -19,9 +19,9 @@ public abstract class DateDeserializationContract {
 
     private static final class EpochMillisCodecs {
         static {
-            TypeRegistry.registerValueCodec("epochMillis", new ValueCodec.SimpleValueCodec<>(
+            TypeRegistry.registerValueCodec("epochMillis", new NodeValueCodec.SimpleValueCodec<>(
                     Date.class, Long.class, Date::getTime, Date::new));
-            TypeRegistry.registerValueCodec("epochMillis", new ValueCodec.SimpleValueCodec<>(
+            TypeRegistry.registerValueCodec("epochMillis", new NodeValueCodec.SimpleValueCodec<>(
                     Calendar.class, Long.class, Calendar::getTimeInMillis, raw -> {
                         Calendar value = Calendar.getInstance();
                         value.setTimeInMillis(raw);

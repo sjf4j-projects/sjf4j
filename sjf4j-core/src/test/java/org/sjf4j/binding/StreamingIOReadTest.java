@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.ValueCodec;
+import org.sjf4j.node.NodeValueCodec;
 
 import java.io.StringReader;
 import java.nio.charset.Charset;
@@ -59,9 +59,9 @@ class StreamingIOReadTest {
 
     @Test
     void parentCodecDoesNotClassifyConcreteReadTarget() throws Exception {
-        TypeRegistry.registerValueCodec(new ValueCodec.SimpleValueCodec<>(CodecParent.class, String.class,
+        TypeRegistry.registerValueCodec(new NodeValueCodec.SimpleValueCodec<>(CodecParent.class, String.class,
                 value -> value.value, CodecParent::new));
-        assertNull(TypeRegistry.registerTypeInfo(CodecChild.class).valueCodecInfo);
+        assertNull(TypeRegistry.registerTypeInfo(CodecChild.class).nodeValueInfo);
 
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"parent\""))) {
             assertThrows(BindingException.class,

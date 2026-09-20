@@ -77,7 +77,7 @@ public final class TypeRegistry {
             return ti;
         }
 
-        ValueCodecInfo vci = ReflectUtil.analyzeNodeValue(clazz);
+        NodeValueInfo vci = ReflectUtil.analyzeNodeValue(clazz);
         if (vci != null) {
             if (mustPojo) {
                 throw new JsonException("class '" + clazz.getName() + "' is a @NodeValue, not a POJO");
@@ -126,47 +126,47 @@ public final class TypeRegistry {
 
     // Bootstrap JDK Types
     static {
-        registerValueCodec(ValueCodec.URI_CODEC);
-        registerValueCodec(ValueCodec.URL_CODEC);
-        registerValueCodec(ValueCodec.UUID_CODEC);
-        registerValueCodec(ValueCodec.CHARSET);
-        registerValueCodec(ValueCodec.LOCALE);
-        registerValueCodec(ValueCodec.CURRENCY);
-        registerValueCodec(ValueCodec.ZONE_ID);
-        registerValueCodec(ValueCodec.INSTANT_STR);
-        registerValueCodec("iso", ValueCodec.INSTANT_STR);
-        registerValueCodec("epochMillis", ValueCodec.INSTANT_EPOCH_MILLIS);
+        registerValueCodec(NodeValueCodec.URI_CODEC);
+        registerValueCodec(NodeValueCodec.URL_CODEC);
+        registerValueCodec(NodeValueCodec.UUID_CODEC);
+        registerValueCodec(NodeValueCodec.CHARSET);
+        registerValueCodec(NodeValueCodec.LOCALE);
+        registerValueCodec(NodeValueCodec.CURRENCY);
+        registerValueCodec(NodeValueCodec.ZONE_ID);
+        registerValueCodec(NodeValueCodec.INSTANT_STR);
+        registerValueCodec("iso", NodeValueCodec.INSTANT_STR);
+        registerValueCodec("epochMillis", NodeValueCodec.INSTANT_EPOCH_MILLIS);
         registerValueCodec(PatternedValueCodec.LOCAL_DATE);
         registerValueCodec(PatternedValueCodec.LOCAL_TIME);
         registerValueCodec(PatternedValueCodec.LOCAL_DATE_TIME);
         registerValueCodec(PatternedValueCodec.OFFSET_DATE_TIME);
         registerValueCodec(PatternedValueCodec.ZONED_DATE_TIME);
-        registerValueCodec(ValueCodec.DURATION);
-        registerValueCodec(ValueCodec.PERIOD);
-        registerValueCodec(ValueCodec.PATH);
-        registerValueCodec(ValueCodec.FILE);
-        registerValueCodec(ValueCodec.PATTERN);
-        registerValueCodec(ValueCodec.INET_ADDR);
-        registerValueCodec(ValueCodec.DATE);
-        registerValueCodec(ValueCodec.CALENDAR);
-        registerValueCodec(ValueCodec.OPTIONAL);
+        registerValueCodec(NodeValueCodec.DURATION);
+        registerValueCodec(NodeValueCodec.PERIOD);
+        registerValueCodec(NodeValueCodec.PATH);
+        registerValueCodec(NodeValueCodec.FILE);
+        registerValueCodec(NodeValueCodec.PATTERN);
+        registerValueCodec(NodeValueCodec.INET_ADDR);
+        registerValueCodec(NodeValueCodec.DATE);
+        registerValueCodec(NodeValueCodec.CALENDAR);
+        registerValueCodec(NodeValueCodec.OPTIONAL);
     }
 
     /**
-     * Registers a custom {@link ValueCodec} and returns codec metadata.
+     * Registers a custom {@link NodeValueCodec} and returns codec metadata.
      * <p>
      * The codec raw type must be a supported raw node type (String, Number,
      * Boolean, Map, List, or Object).
      */
-    public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
+    public static <N, R> NodeValueInfo registerValueCodec(NodeValueCodec<N, R> valueCodec) {
         return registerValueCodec("", valueCodec);
     }
 
     /**
-     * Registers a named custom {@link ValueCodec} and returns codec metadata.
+     * Registers a named custom {@link NodeValueCodec} and returns codec metadata.
      */
-    public static <N, R> ValueCodecInfo registerValueCodec(String valueFormat,
-                                                             ValueCodec<N, R> valueCodec) {
+    public static <N, R> NodeValueInfo registerValueCodec(String valueFormat,
+                                                          NodeValueCodec<N, R> valueCodec) {
         Objects.requireNonNull(valueFormat, "valueFormat");
         Objects.requireNonNull(valueCodec, "valueCodec");
         Class<R> rawClazz = valueCodec.rawClass();
@@ -176,12 +176,12 @@ public final class TypeRegistry {
         Class<N> valueClazz = valueCodec.valueClass();
         Objects.requireNonNull(valueClazz, "valueClazz");
 
-        ValueCodecInfo vci = new ValueCodecInfo(valueFormat, valueClazz, rawClazz, valueCodec, null, null, null);
+        NodeValueInfo vci = new NodeValueInfo(valueFormat, valueClazz, rawClazz, valueCodec, null, null, null);
         _putValueCodecInfo(vci);
         return vci;
     }
 
-    private static void _putValueCodecInfo(ValueCodecInfo vci) {
+    private static void _putValueCodecInfo(NodeValueInfo vci) {
         Class<?> valueClazz = vci.valueClazz;
         TypeInfo oldTi = TYPE_INFO_CACHE.get(valueClazz);
         if (oldTi == null || oldTi.isNone()) {
@@ -196,9 +196,9 @@ public final class TypeRegistry {
         TYPE_INFO_CACHE.put(valueClazz, _newTypeInfoWithValueCodec(oldTi, vci));
     }
 
-    private static TypeInfo _newTypeInfoWithValueCodec(TypeInfo ti, ValueCodecInfo vci) {
+    private static TypeInfo _newTypeInfoWithValueCodec(TypeInfo ti, NodeValueInfo vci) {
         if (vci.isDefault()) {
-            if (ti.valueCodecInfo != null) {
+            if (ti.nodeValueInfo != null) {
                 throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
                         "' and default format ''");
             }
@@ -207,26 +207,26 @@ public final class TypeRegistry {
         }
 
         for (int i = 0; i < ti.namedValueCodecs.length; i++) {
-            ValueCodecInfo cur = ti.namedValueCodecs[i];
+            NodeValueInfo cur = ti.namedValueCodecs[i];
             if (cur.codecName.equals(vci.codecName)) {
                 throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
                         "' and valueFormat '" + vci.codecName + "'");
             }
         }
-        ValueCodecInfo[] appended = new ValueCodecInfo[ti.namedValueCodecs.length + 1];
+        NodeValueInfo[] appended = new NodeValueInfo[ti.namedValueCodecs.length + 1];
         System.arraycopy(ti.namedValueCodecs, 0, appended, 0, ti.namedValueCodecs.length);
         appended[ti.namedValueCodecs.length] = vci;
-        return new TypeInfo(ti.clazz, ti.valueCodecInfo, appended,
+        return new TypeInfo(ti.clazz, ti.nodeValueInfo, appended,
                 ti.oneOfInfo, ti.containerInfo, ti.pojoInfo, ti.externalNode);
     }
 
     /**
      * Returns value codec metadata for a class and named format.
      */
-    public static ValueCodecInfo resolveValueCodecOrElseThrow(Class<?> clazz, String valueFormat) {
+    public static NodeValueInfo resolveValueCodecOrElseThrow(Class<?> clazz, String valueFormat) {
         Objects.requireNonNull(valueFormat, "valueFormat");
         TypeInfo ti = registerTypeInfo(clazz);
-        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+        NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
         if (vci == null) {
             throw new JsonException("no ValueCodec registered for type '" + clazz.getName() +
                     "' with valueFormat '" + valueFormat + "'");

@@ -2,9 +2,9 @@ package org.sjf4j.binding;
 
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.PojoAccess;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
@@ -77,7 +77,7 @@ public interface FieldWriter {
 
     static FieldWriter create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                               MethodHandle getterHandle, Function<Object, Object> getterLambda,
-                              ValueCodecInfo resolvedValueCodec,
+                              NodeValueInfo resolvedValueCodec,
                               MethodHandles.Lookup lookup) {
 
         if (getterHandle == null) {
@@ -574,7 +574,7 @@ public interface FieldWriter {
 
     static FieldWriter _createForValueCodec(String fieldName, MethodHandle getterHandle,
                                             Function<Object, Object> getterLambda,
-                                            ValueCodecInfo valueCodec) {
+                                            NodeValueInfo valueCodec) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {

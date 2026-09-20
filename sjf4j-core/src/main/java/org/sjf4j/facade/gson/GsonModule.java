@@ -12,13 +12,13 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodecInfo;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -59,7 +59,7 @@ public interface GsonModule {
 
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueAdapter<>(gson, vci);
                 }
@@ -215,14 +215,14 @@ public interface GsonModule {
 
     class NodeValueAdapter<T> extends TypeAdapter<T> {
         private final Gson gson;
-        private final ValueCodecInfo valueCodecInfo;
+        private final NodeValueInfo nodeValueInfo;
 
         /**
          * Creates adapter backed by ValueCodec metadata.
          */
-        public NodeValueAdapter(Gson gson, ValueCodecInfo valueCodecInfo) {
+        public NodeValueAdapter(Gson gson, NodeValueInfo nodeValueInfo) {
             this.gson = gson;
-            this.valueCodecInfo = valueCodecInfo;
+            this.nodeValueInfo = nodeValueInfo;
         }
 
         /**
@@ -233,7 +233,7 @@ public interface GsonModule {
         public T read(JsonReader in) throws IOException {
             TypeAdapter<?> adapter = gson.getAdapter(Object.class);
             Object raw = adapter.read(in);
-            return (T) valueCodecInfo.rawToValue(raw);
+            return (T) nodeValueInfo.rawToValue(raw);
         }
 
         /**
@@ -241,7 +241,7 @@ public interface GsonModule {
          */
         @Override
         public void write(JsonWriter out, T node) throws IOException {
-            Object raw = valueCodecInfo.valueToRaw(node);
+            Object raw = nodeValueInfo.valueToRaw(node);
             TypeAdapter<Object> adapter = gson.getAdapter(Object.class);
             adapter.write(out, raw);
         }

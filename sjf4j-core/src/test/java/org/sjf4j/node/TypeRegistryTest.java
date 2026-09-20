@@ -262,7 +262,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        ValueCodecInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).valueCodecInfo;
+        NodeValueInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).nodeValueInfo;
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -284,7 +284,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testNodeValue2() {
-        ValueCodecInfo vci = TypeRegistry.registerValueCodec(new ValueCodec<CodecDay, String>() {
+        NodeValueInfo vci = TypeRegistry.registerValueCodec(new NodeValueCodec<CodecDay, String>() {
             @Override
             public String valueToRaw(CodecDay node) {
                 return node.localDate.toString();
@@ -320,7 +320,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testRegisterValueCodecDuplicateFails() {
-        assertThrows(JsonException.class, () -> TypeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
+        assertThrows(JsonException.class, () -> TypeRegistry.registerValueCodec(new NodeValueCodec<LocalDate, String>() {
             @Override
             public String valueToRaw(LocalDate node) {
                 return node.toString();

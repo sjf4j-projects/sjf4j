@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
  * registration-time check because generic type arguments are erased from
  * {@link #rawClass()}.
  */
-public interface ValueCodec<V, R> {
+public interface NodeValueCodec<V, R> {
 
     /**
      * Encodes a domain value to its raw node representation.
@@ -83,7 +83,7 @@ public interface ValueCodec<V, R> {
     /**
      * Simple codec for any (V, R) pair with encoder/decoder functions.
      */
-    final class SimpleValueCodec<V, R> implements ValueCodec<V, R> {
+    final class SimpleValueCodec<V, R> implements NodeValueCodec<V, R> {
         private final Class<V> valueType;
         private final Class<R> rawType;
         private final Function<V, R> encoder;
@@ -116,10 +116,10 @@ public interface ValueCodec<V, R> {
     //  Built-in codec instances
     // ──────────────────────────────────────────────────────────────
 
-    ValueCodec<URI, String> URI_CODEC = new SimpleValueCodec<>(URI.class, String.class,
+    NodeValueCodec<URI, String> URI_CODEC = new SimpleValueCodec<>(URI.class, String.class,
             URI::toString, URI::create);
 
-    ValueCodec<URL, String> URL_CODEC = new SimpleValueCodec<>(URL.class, String.class,
+    NodeValueCodec<URL, String> URL_CODEC = new SimpleValueCodec<>(URL.class, String.class,
             URL::toString, raw -> {
                 try {
                     return URI.create(raw).toURL();
@@ -128,63 +128,63 @@ public interface ValueCodec<V, R> {
                 }
             });
 
-    ValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,
+    NodeValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,
             UUID::toString, UUID::fromString);
 
-    ValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,
+    NodeValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,
             Charset::name, Charset::forName);
 
-    ValueCodec<Locale, String> LOCALE = new SimpleValueCodec<>(Locale.class, String.class,
+    NodeValueCodec<Locale, String> LOCALE = new SimpleValueCodec<>(Locale.class, String.class,
             Locale::toLanguageTag, Locale::forLanguageTag);
 
-    ValueCodec<Currency, String> CURRENCY = new SimpleValueCodec<>(Currency.class, String.class,
+    NodeValueCodec<Currency, String> CURRENCY = new SimpleValueCodec<>(Currency.class, String.class,
             Currency::getCurrencyCode, Currency::getInstance);
 
-    ValueCodec<ZoneId, String> ZONE_ID = new SimpleValueCodec<>(ZoneId.class, String.class,
+    NodeValueCodec<ZoneId, String> ZONE_ID = new SimpleValueCodec<>(ZoneId.class, String.class,
             ZoneId::getId, ZoneId::of);
 
-    ValueCodec<Instant, String> INSTANT_STR = new SimpleValueCodec<>(Instant.class, String.class,
+    NodeValueCodec<Instant, String> INSTANT_STR = new SimpleValueCodec<>(Instant.class, String.class,
             Instant::toString, Instant::parse);
 
-    ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
+    NodeValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
             Instant::toEpochMilli, Instant::ofEpochMilli);
 
-    ValueCodec<Duration, String> DURATION = new SimpleValueCodec<>(Duration.class, String.class,
+    NodeValueCodec<Duration, String> DURATION = new SimpleValueCodec<>(Duration.class, String.class,
             Duration::toString, Duration::parse);
 
-    ValueCodec<Period, String> PERIOD = new SimpleValueCodec<>(Period.class, String.class,
+    NodeValueCodec<Period, String> PERIOD = new SimpleValueCodec<>(Period.class, String.class,
             Period::toString, Period::parse);
 
-    ValueCodec<Path, String> PATH = new SimpleValueCodec<>(Path.class, String.class,
+    NodeValueCodec<Path, String> PATH = new SimpleValueCodec<>(Path.class, String.class,
             Path::toString, Paths::get);
 
-    ValueCodec<File, String> FILE = new SimpleValueCodec<>(File.class, String.class,
+    NodeValueCodec<File, String> FILE = new SimpleValueCodec<>(File.class, String.class,
             File::toString, File::new);
 
-    ValueCodec<Pattern, String> PATTERN = new SimpleValueCodec<>(Pattern.class, String.class,
+    NodeValueCodec<Pattern, String> PATTERN = new SimpleValueCodec<>(Pattern.class, String.class,
             Pattern::pattern, Pattern::compile);
 
-    ValueCodec<InetAddress, String> INET_ADDR = new SimpleValueCodec<>(InetAddress.class, String.class,
+    NodeValueCodec<InetAddress, String> INET_ADDR = new SimpleValueCodec<>(InetAddress.class, String.class,
             InetAddress::getHostAddress, raw -> {
                 try { return InetAddress.getByName(raw); }
                 catch (UnknownHostException e) { throw new JsonException("invalid InetAddress: " + raw, e); }
             });
 
-    ValueCodec<Date, String> DATE = new SimpleValueCodec<>(Date.class, String.class,
+    NodeValueCodec<Date, String> DATE = new SimpleValueCodec<>(Date.class, String.class,
             v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)));
 
     // ──────────────────────────────────────────────────────────────
     //  Complex codecs → private static methods + method reference
     // ──────────────────────────────────────────────────────────────
 
-    ValueCodec<Calendar, String> CALENDAR = new SimpleValueCodec<>(Calendar.class, String.class,
-            ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw);
+    NodeValueCodec<Calendar, String> CALENDAR = new SimpleValueCodec<>(Calendar.class, String.class,
+            NodeValueCodec::_calendarToRaw, NodeValueCodec::_calendarFromRaw);
 
-    ValueCodec<Optional<?>, Object> OPTIONAL = new OptionalCodec();
+    NodeValueCodec<Optional<?>, Object> OPTIONAL = new OptionalCodec();
 
     /** Dedicated codec for Optional — null maps to Optional.empty(), not null. */
     @SuppressWarnings("unchecked")
-    final class OptionalCodec implements ValueCodec<Optional<?>, Object> {
+    final class OptionalCodec implements NodeValueCodec<Optional<?>, Object> {
         @Override
         public Object valueToRaw(Optional<?> value) {
             if (value == null || !value.isPresent()) return null;

@@ -1,13 +1,11 @@
 package org.sjf4j.node;
 
 import org.sjf4j.binding.FieldBinder;
-import org.sjf4j.exception.BindingException;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +49,7 @@ public class FieldInfo {
 
     public final OneOfInfo oneOfInfo;
     public final String codecName;
-    public final ValueCodecInfo resolvedValueCodec;
+    public final NodeValueInfo resolvedValueCodec;
 
     public final FieldBinder binder;
 
@@ -61,7 +59,7 @@ public class FieldInfo {
     public FieldInfo(String name, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                      Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                      Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                     OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec,
+                     OneOfInfo oneOfInfo, String codecName, NodeValueInfo resolvedValueCodec,
                      FieldBinder binder) {
         this.name = name;
         this.publicField = publicField;

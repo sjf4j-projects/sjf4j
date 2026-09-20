@@ -12,14 +12,14 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodec;
-import org.sjf4j.node.ValueCodecInfo;
+import org.sjf4j.node.NodeValueCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -151,7 +151,7 @@ public class Jackson2StreamingIO {
     private static Object _readNull(JsonParser parser, Class<?> rawClazz, StreamingContext context)
             throws IOException {
         parser.nextToken();
-        if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
+        if (rawClazz == Optional.class) return NodeValueCodec.OPTIONAL.rawToValue(null);
         return null;
     }
 
@@ -163,7 +163,7 @@ public class Jackson2StreamingIO {
             return b;
         }
 
-        ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+        NodeValueInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             boolean b = parser.getBooleanValue();
             parser.nextToken();
@@ -221,7 +221,7 @@ public class Jackson2StreamingIO {
             return n;
         }
 
-        ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+        NodeValueInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             Number n = parser.getNumberValue();
             parser.nextToken();
@@ -250,7 +250,7 @@ public class Jackson2StreamingIO {
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
 
-        ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+        NodeValueInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             String s = parser.getText();
             parser.nextToken();
@@ -280,7 +280,7 @@ public class Jackson2StreamingIO {
         }
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
-            ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+            NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
@@ -347,7 +347,7 @@ public class Jackson2StreamingIO {
                 Type argType = Types.resolveMemberType(ownerType, ownerRawClazz, ci.argTypes[argIdx]);
                 Class<?> argRaw = Types.rawBox(argType);
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
+                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getValueCodecInfo(valueFormat);
@@ -464,7 +464,7 @@ public class Jackson2StreamingIO {
         if (ti == null) {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
-        ValueCodecInfo vci = ti.hasValueCodecs()
+        NodeValueInfo vci = ti.hasValueCodecs()
                 ? ti.getValueCodecInfo(context.defaultValueFormat(rawClazz))
                 : null;
         if (vci != null) {
@@ -518,41 +518,41 @@ public class Jackson2StreamingIO {
     private static Object _readValueWithCodec(JsonParser parser,
                                               Type type,
                                               Class<?> rawClazz,
-                                              ValueCodecInfo valueCodecInfo,
+                                              NodeValueInfo nodeValueInfo,
                                               StreamingContext context) throws IOException {
         switch (_peekToken(parser)) {
             case START_OBJECT: {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
-                Map<String, Object> map = _readMap(parser, valueCodecInfo.rawClazz, valueType, valueClazz,
+                Map<String, Object> map = _readMap(parser, nodeValueInfo.rawClazz, valueType, valueClazz,
                         TypeRegistry.registerTypeInfo(valueClazz), context);
-                return valueCodecInfo.rawToValue(map);
+                return nodeValueInfo.rawToValue(map);
             }
             case START_ARRAY: {
                 Type valueType = Types.resolveTypeArgument(type, List.class, 0);
                 Class<?> valueClazz = Types.rawBox(valueType);
-                List<Object> list = _readList(parser, valueCodecInfo.rawClazz, valueType, valueClazz,
+                List<Object> list = _readList(parser, nodeValueInfo.rawClazz, valueType, valueClazz,
                         TypeRegistry.registerTypeInfo(valueClazz), context);
-                return valueCodecInfo.rawToValue(list);
+                return nodeValueInfo.rawToValue(list);
             }
             case STRING: {
                 String s = parser.getText();
                 parser.nextToken();
-                return valueCodecInfo.rawToValue(s);
+                return nodeValueInfo.rawToValue(s);
             }
             case NUMBER: {
                 Number n = parser.getNumberValue();
                 parser.nextToken();
-                return valueCodecInfo.rawToValue(n);
+                return nodeValueInfo.rawToValue(n);
             }
             case BOOLEAN: {
                 boolean b = parser.getBooleanValue();
                 parser.nextToken();
-                return valueCodecInfo.rawToValue(b);
+                return nodeValueInfo.rawToValue(b);
             }
             case NULL:
                 parser.nextToken();
-                return valueCodecInfo.rawToValue(null);
+                return nodeValueInfo.rawToValue(null);
             default:
                 throw new BindingException("cannot read value into type '" + rawClazz.getName() + "'");
         }
@@ -858,7 +858,7 @@ public class Jackson2StreamingIO {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     Object raw = vci.valueToRaw(node);
                     _writeNode(gen, raw, context);

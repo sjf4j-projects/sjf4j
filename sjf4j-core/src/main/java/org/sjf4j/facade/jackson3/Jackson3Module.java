@@ -7,13 +7,13 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
+import org.sjf4j.node.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueCodecInfo;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
@@ -86,7 +86,7 @@ public interface Jackson3Module {
                     }
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                        NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueDeserializer<>(vci);
                         }
@@ -113,7 +113,7 @@ public interface Jackson3Module {
                     TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
+                        NodeValueInfo vci = ti.getValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueSerializer<>(vci);
                         }
@@ -225,17 +225,17 @@ public interface Jackson3Module {
     }
 
     class NodeValueDeserializer<T> extends ValueDeserializer<T> {
-        private final ValueCodecInfo valueCodecInfo;
+        private final NodeValueInfo nodeValueInfo;
 
-        public NodeValueDeserializer(ValueCodecInfo valueCodecInfo) {
-            this.valueCodecInfo = valueCodecInfo;
+        public NodeValueDeserializer(NodeValueInfo nodeValueInfo) {
+            this.nodeValueInfo = nodeValueInfo;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) {
             Object raw = ctxt.readValue(p, Object.class);
-            return (T) valueCodecInfo.rawToValue(raw);
+            return (T) nodeValueInfo.rawToValue(raw);
         }
     }
 
@@ -310,15 +310,15 @@ public interface Jackson3Module {
     }
 
     class NodeValueSerializer<T> extends ValueSerializer<T> {
-        private final ValueCodecInfo valueCodecInfo;
+        private final NodeValueInfo nodeValueInfo;
 
-        public NodeValueSerializer(ValueCodecInfo valueCodecInfo) {
-            this.valueCodecInfo = valueCodecInfo;
+        public NodeValueSerializer(NodeValueInfo nodeValueInfo) {
+            this.nodeValueInfo = nodeValueInfo;
         }
 
         @Override
         public void serialize(T value, JsonGenerator gen, SerializationContext serializers) {
-            serializers.writeValue(gen, valueCodecInfo.valueToRaw(value));
+            serializers.writeValue(gen, nodeValueInfo.valueToRaw(value));
         }
     }
 

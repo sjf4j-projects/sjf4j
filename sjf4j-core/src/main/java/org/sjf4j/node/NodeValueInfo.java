@@ -6,14 +6,14 @@ import org.sjf4j.exception.BindingException;
 import java.lang.invoke.MethodHandle;
 
 /**
- * Cached binding metadata for a {@link ValueCodec} or {@code @NodeValue}
+ * Cached binding metadata for a {@link NodeValueCodec} or {@code @NodeValue}
  * conversion methods.
  */
-public class ValueCodecInfo {
+public class NodeValueInfo {
     public final String codecName;
     public final Class<?> valueClazz;
     public final Class<?> rawClazz;
-    public final ValueCodec<Object, Object> valueCodec;
+    public final NodeValueCodec<Object, Object> valueCodec;
     public final MethodHandle valueToRawHandle;
     public final MethodHandle rawToValueHandle;
     public final MethodHandle valueCopyHandle;
@@ -22,12 +22,12 @@ public class ValueCodecInfo {
      * Creates value codec metadata.
      */
     @SuppressWarnings("unchecked")
-    public ValueCodecInfo(String codecName, Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
-                          MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
+    public NodeValueInfo(String codecName, Class<?> valueClazz, Class<?> rawClazz, NodeValueCodec<?, ?> valueCodec,
+                         MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
         this.codecName = codecName == null ? "" : codecName;
         this.valueClazz = valueClazz;
         this.rawClazz = rawClazz;
-        this.valueCodec = (ValueCodec<Object, Object>) valueCodec;
+        this.valueCodec = (NodeValueCodec<Object, Object>) valueCodec;
         this.valueToRawHandle = valueToRawHandle;
         this.rawToValueHandle = rawToValueHandle;
         this.valueCopyHandle = valueCopyHandle;

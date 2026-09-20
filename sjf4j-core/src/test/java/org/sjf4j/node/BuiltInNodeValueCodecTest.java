@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class BuiltInValueCodecTest {
+class BuiltInNodeValueCodecTest {
 
     private static final Sjf4j SIMPLE_RUNTIME = Sjf4j.builder()
             .jsonFacadeProvider(SimpleJsonFacade.provider())

@@ -91,7 +91,7 @@ class ExternalNodeRegistryTest {
 
     static final class TestExternalAdapter implements ExternalNode<TestExternalNode> {
         @Override
-        public Class<TestExternalNode> rootType() {
+        public Class<TestExternalNode> nodeType() {
             return TestExternalNode.class;
         }
 
@@ -108,7 +108,7 @@ class ExternalNodeRegistryTest {
 
     static final class TestExternalChildNodeAdapter implements ExternalNode<TestExternalChildNode> {
         @Override
-        public Class<TestExternalChildNode> rootType() {
+        public Class<TestExternalChildNode> nodeType() {
             return TestExternalChildNode.class;
         }
 
