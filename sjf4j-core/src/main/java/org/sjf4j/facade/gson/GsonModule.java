@@ -57,7 +57,7 @@ public interface GsonModule {
                 return new OneOfAdapter<>(ti.oneOfInfo, streamingContext);
             }
 
-            if (ti.hasValueCodecs()) {
+            if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
                 NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {

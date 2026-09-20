@@ -38,7 +38,7 @@ import java.util.Set;
  */
 public final class SimpleNodeBinder implements NodeBinder {
 
-    private final StreamingContext streamingContext;
+    private final StreamingContext context;
 
     /**
      * Creates a binding with the default conversion pipeline.
@@ -50,8 +50,8 @@ public final class SimpleNodeBinder implements NodeBinder {
     /**
      * Creates a binding with the supplied streaming configuration.
      */
-    public SimpleNodeBinder(StreamingContext streamingContext) {
-        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
+    public SimpleNodeBinder(StreamingContext context) {
+        this.context = Objects.requireNonNull(context, "context");
     }
 
 
@@ -96,8 +96,8 @@ public final class SimpleNodeBinder implements NodeBinder {
                 if (!deepCopy) return node;
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-                if (ti.hasValueCodecs()) {
-                    String valueFormat = streamingContext.defaultValueFormat(rawClazz);
+                if (ti.isNodeValue()) {
+                    String valueFormat = context.defaultValueFormat(rawClazz);
                     NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                     if (vci != null) return vci.valueCopy(node);
                 }
@@ -109,8 +109,8 @@ public final class SimpleNodeBinder implements NodeBinder {
             if (anyOfInfo != null) {
                 return _readOneOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
-            if (ti.hasValueCodecs()) {
-                String valueFormat = streamingContext.defaultValueFormat(rawClazz);
+            if (ti.isNodeValue()) {
+                String valueFormat = context.defaultValueFormat(rawClazz);
                 NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
@@ -238,8 +238,8 @@ public final class SimpleNodeBinder implements NodeBinder {
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-            if (ti.hasValueCodecs()) {
-                String valueFormat = streamingContext.defaultValueFormat(node.getClass());
+            if (ti.isNodeValue()) {
+                String valueFormat = context.defaultValueFormat(node.getClass());
                 NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) return vci.valueCopy(node);
             }
@@ -475,8 +475,8 @@ public final class SimpleNodeBinder implements NodeBinder {
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null && ti.hasValueCodecs()) {
-                    String valueFormat = streamingContext.defaultValueFormat(argRaw);
+                if (argVci == null && ti.isNodeValue()) {
+                    String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getNodeValueInfo(valueFormat);
                 }
                 if (ti.oneOfInfo == null && argVci != null) {
@@ -757,8 +757,8 @@ public final class SimpleNodeBinder implements NodeBinder {
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null && ti.hasValueCodecs()) {
-                    String valueFormat = streamingContext.defaultValueFormat(argRaw);
+                if (argVci == null && ti.isNodeValue()) {
+                    String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getNodeValueInfo(valueFormat);
                 }
                 if (ti.oneOfInfo == null && argVci != null) {
@@ -929,8 +929,8 @@ public final class SimpleNodeBinder implements NodeBinder {
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-            if (ti.hasValueCodecs()) {
-                String valueFormat = streamingContext.defaultValueFormat(rawClazz);
+            if (ti.isNodeValue()) {
+                String valueFormat = context.defaultValueFormat(rawClazz);
                 NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);

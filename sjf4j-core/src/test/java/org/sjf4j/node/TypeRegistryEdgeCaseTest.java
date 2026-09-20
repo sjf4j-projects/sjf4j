@@ -303,7 +303,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testLocalTimeCodecRoundTrip() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(LocalTime.class);
-        assertTrue(ti.hasValueCodecs());
+        assertTrue(ti.isNodeValue());
         NodeValueInfo vci = ti.getNodeValueInfo("");
         assertNotNull(vci);
         Object raw = vci.valueToRaw(LocalTime.of(10, 30, 15));
@@ -316,9 +316,9 @@ class TypeRegistryEdgeCaseTest {
     @SuppressWarnings("unchecked")
     void testLocalTimeCodecPattern() {
         NodeValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(LocalTime.class, "");
-        assertTrue(base.valueCodec instanceof PatternedValueCodec);
+        assertTrue(base.codec instanceof PatternedValueCodec);
         // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
-        PatternedValueCodec pc = (PatternedValueCodec) base.valueCodec;
+        PatternedValueCodec pc = (PatternedValueCodec) base.codec;
         NodeValueCodec patterned = pc.withPattern("HH:mm");
         Object raw = patterned.valueToRaw(LocalTime.of(8, 5));
         assertEquals("08:05", raw);
@@ -331,7 +331,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testOptionalCodecPresent() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(Optional.class);
-        assertTrue(ti.hasValueCodecs());
+        assertTrue(ti.isNodeValue());
         NodeValueInfo vci = ti.getNodeValueInfo("");
         assertNotNull(vci);
         assertEquals(Object.class, vci.rawClazz);

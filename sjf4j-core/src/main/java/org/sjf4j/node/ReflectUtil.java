@@ -639,8 +639,8 @@ public final class ReflectUtil {
         if (codecPattern != null && !codecPattern.isEmpty()) {
             // codecPattern takes precedence: get the base codec and parameterize it
             NodeValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(rawType, "");
-            if (base.valueCodec instanceof PatternedValueCodec) {
-                PatternedValueCodec<?, ?> pvc = (PatternedValueCodec<?, ?>) base.valueCodec;
+            if (base.codec instanceof PatternedValueCodec) {
+                PatternedValueCodec<?, ?> pvc = (PatternedValueCodec<?, ?>) base.codec;
                 NodeValueCodec<?, ?> codec = pvc.withPattern(codecPattern);
                 return new NodeValueInfo(codecPattern, codec.valueClazz(),
                         codec.rawClazz(), codec, null, null, null);

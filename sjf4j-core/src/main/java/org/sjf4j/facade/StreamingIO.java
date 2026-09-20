@@ -225,7 +225,7 @@ public final class StreamingIO {
         if (ti == null) {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
             NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
@@ -292,7 +292,7 @@ public final class StreamingIO {
                 Class<?> argRaw = Types.rawBox(argType);
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null && ti.hasValueCodecs()) {
+                if (argVci == null && ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getNodeValueInfo(valueFormat);
                 }
@@ -410,7 +410,7 @@ public final class StreamingIO {
         if (ti == null) {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
-        NodeValueInfo vci = ti.hasValueCodecs()
+        NodeValueInfo vci = ti.isNodeValue()
                 ? ti.getNodeValueInfo(context.defaultValueFormat(rawClazz))
                 : null;
         if (vci != null) {
@@ -739,7 +739,7 @@ public final class StreamingIO {
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-            if (ti.hasValueCodecs()) {
+            if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
                 NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
@@ -802,7 +802,7 @@ public final class StreamingIO {
 
     public static NodeValueInfo resolveValueCodecInfo(Class<?> clazz, StreamingContext context) {
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(clazz);
             return ti.getNodeValueInfo(valueFormat);
         }

@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Refactored the NodeValue module.
+- Renamed public node-value metadata members from `hasValueCodecs()`/`valueCodec` to `isNodeValue()`/`codec` and streamlined shared streaming serialization dispatch.
 - Optimized streaming POJO serialization with backend-prepared field names and specialized scalar field writers.
 - Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
 - Optimized streaming POJO binding and writing with precomputed specialized field accessors.

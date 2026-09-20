@@ -14,7 +14,7 @@ public class NodeValueInfo {
     public final String valueFormat;
     public final Class<?> valueClazz;
     public final Class<?> rawClazz;
-    public final NodeValueCodec<Object, Object> valueCodec;
+    public final NodeValueCodec<Object, Object> codec;
     public final MethodHandle valueToRawHandle;
     public final MethodHandle rawToValueHandle;
     public final MethodHandle valueCopyHandle;
@@ -23,13 +23,13 @@ public class NodeValueInfo {
      * Creates value codec metadata.
      */
     @SuppressWarnings("unchecked")
-    public NodeValueInfo(String valueFormat, Class<?> valueClazz, Class<?> rawClazz, NodeValueCodec<?, ?> valueCodec,
+    public NodeValueInfo(String valueFormat, Class<?> valueClazz, Class<?> rawClazz, NodeValueCodec<?, ?> codec,
                          MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
         this.runtimeClazz = null;
         this.valueFormat = valueFormat == null ? "" : valueFormat;
         this.valueClazz = valueClazz;
         this.rawClazz = rawClazz;
-        this.valueCodec = (NodeValueCodec<Object, Object>) valueCodec;
+        this.codec = (NodeValueCodec<Object, Object>) codec;
         this.valueToRawHandle = valueToRawHandle;
         this.rawToValueHandle = rawToValueHandle;
         this.valueCopyHandle = valueCopyHandle;
@@ -40,7 +40,7 @@ public class NodeValueInfo {
         this.valueFormat = info.valueFormat;
         this.valueClazz = info.valueClazz;
         this.rawClazz = info.rawClazz;
-        this.valueCodec = info.valueCodec;
+        this.codec = info.codec;
         this.valueToRawHandle = info.valueToRawHandle;
         this.rawToValueHandle = info.rawToValueHandle;
         this.valueCopyHandle = info.rawToValueHandle;
@@ -51,12 +51,12 @@ public class NodeValueInfo {
      * Encodes a domain value to its raw node representation.
      */
     public Object valueToRaw(Object value) {
-        if (valueCodec != null) {
+        if (codec != null) {
             try {
-                return valueCodec.valueToRaw(value);
+                return codec.valueToRaw(value);
             } catch (Exception e) {
                 throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
-                        " using ValueCodec " + valueCodec.getClass().getName(), e);
+                        " using ValueCodec " + codec.getClass().getName(), e);
             }
         } else if (valueToRawHandle != null) {
             try {
@@ -82,12 +82,12 @@ public class NodeValueInfo {
             throw new BindingException("cannot rawToValue() from raw type " + raw.getClass().getName() +
                     " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
         }
-        if (valueCodec != null) {
+        if (codec != null) {
             try {
-                return valueCodec.rawToValue(raw);
+                return codec.rawToValue(raw);
             } catch (Exception e) {
                 throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
-                        " using ValueCodec " + valueCodec.getClass().getName(), e);
+                        " using ValueCodec " + codec.getClass().getName(), e);
             }
         } else if (rawToValueHandle != null) {
             try {
@@ -105,12 +105,12 @@ public class NodeValueInfo {
      * Copies value using codec-defined semantics.
      */
     public Object valueCopy(Object value) {
-        if (valueCodec != null) {
+        if (codec != null) {
             try {
-                return valueCodec.valueCopy(value);
+                return codec.valueCopy(value);
             } catch (Exception e) {
                 throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
-                        " using ValueCodec " + valueCodec.getClass().getName(), e);
+                        " using ValueCodec " + codec.getClass().getName(), e);
             }
         } else if (valueCopyHandle != null) {
             try {

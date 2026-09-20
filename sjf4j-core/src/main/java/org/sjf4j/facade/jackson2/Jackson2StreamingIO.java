@@ -278,7 +278,7 @@ public class Jackson2StreamingIO {
         if (ti == null) {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
             NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
@@ -348,7 +348,7 @@ public class Jackson2StreamingIO {
                 Class<?> argRaw = Types.rawBox(argType);
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null && ti.hasValueCodecs()) {
+                if (argVci == null && ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getNodeValueInfo(valueFormat);
                 }
@@ -464,7 +464,7 @@ public class Jackson2StreamingIO {
         if (ti == null) {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
-        NodeValueInfo vci = ti.hasValueCodecs()
+        NodeValueInfo vci = ti.isNodeValue()
                 ? ti.getNodeValueInfo(context.defaultValueFormat(rawClazz))
                 : null;
         if (vci != null) {
@@ -856,7 +856,7 @@ public class Jackson2StreamingIO {
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-            if (ti.hasValueCodecs()) {
+            if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
                 NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {

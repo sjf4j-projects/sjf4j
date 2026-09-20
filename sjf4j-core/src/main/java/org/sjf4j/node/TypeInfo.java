@@ -54,7 +54,7 @@ public class TypeInfo {
         return pojoInfo != null && pojoInfo.requiresPojoWriter;
     }
 
-    public boolean hasValueCodecs() {
+    public boolean isNodeValue() {
         return nodeValueInfos != null;
     }
 

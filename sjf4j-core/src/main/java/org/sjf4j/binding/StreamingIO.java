@@ -64,7 +64,7 @@ public final class StreamingIO {
             if (nodeBoxed == Object.class) {
                 return readRawNode(reader);
             }
-            if (ti.hasValueCodecs()) {
+            if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(nodeBoxed);
                 NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci == null) {
@@ -162,7 +162,7 @@ public final class StreamingIO {
             return reader.nextBooleanValue();
         }
 
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
@@ -191,7 +191,7 @@ public final class StreamingIO {
         if (nodeBoxed == BigDecimal.class) return reader.nextBigDecimal();
         if (nodeBoxed.isEnum()) return enumByOrdinal(nodeBoxed, reader.nextIntValue());
 
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
@@ -219,7 +219,7 @@ public final class StreamingIO {
             String s = reader.nextString();
             return Enum.valueOf((Class<? extends Enum>) nodeBoxed, s);
         }
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
@@ -250,7 +250,7 @@ public final class StreamingIO {
             throw new BindingException("cannot read object value into abstract type '" + nodeBoxed.getName() + "'");
         }
 
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
@@ -334,7 +334,7 @@ public final class StreamingIO {
 
                 TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
                 NodeValueInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null && argTi.hasValueCodecs()) {
+                if (argVci == null && argTi.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argBoxed);
                     argVci = argTi.getNodeValueInfo(valueFormat);
                 }
@@ -537,7 +537,7 @@ public final class StreamingIO {
             return ja;
         }
 
-        if (ti.hasValueCodecs()) {
+        if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
             if (vci != null) {
@@ -726,9 +726,222 @@ public final class StreamingIO {
      */
 
 
-    /**
-     * Writes one node to streaming writer using instance-level value formats.
-     */
+//    /**
+//     * Writes one node to streaming writer using instance-level value formats.
+//     */
+//    public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
+//        try {
+//            if (node == null) {
+//                writer.writeNull();
+//                return;
+//            }
+//
+//            if (node instanceof String) {
+//                writer.writeStringValue((String) node);
+//                return;
+//            }
+//            if (node instanceof Number) {
+//                writer.writeNumberValue((Number) node);
+//                return;
+//            }
+//            if (node instanceof Boolean) {
+//                writer.writeBooleanValue((Boolean) node);
+//                return;
+//            }
+//
+//            if (node instanceof Map) {
+//                writer.startObject();
+//                int cnt = 0;
+//                for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+//                    Object value = entry.getValue();
+//                    if (value == null && !context.includeNulls) continue;
+//                    if (cnt++ > 0) writer.separateProperty();
+//                    String key = entry.getKey().toString();
+//                    writer.writeName(key);
+//                    writeNode(writer, value, context);
+//                }
+//                writer.endObject();
+//                return;
+//            }
+//
+//            if (node instanceof List) {
+//                writer.startArray();
+//                List<?> list = (List<?>) node;
+//                if (list instanceof RandomAccess) {
+//                    for (int i = 0, size = list.size(); i < size; i++) {
+//                        if (i > 0) writer.separateElement();
+//                        writeNode(writer, list.get(i), context);
+//                    }
+//                } else {
+//                    boolean first = true;
+//                    for (Object value : list) {
+//                        if (first) {
+//                            first = false;
+//                        } else {
+//                            writer.separateElement();
+//                        }
+//                        writeNode(writer, value, context);
+//                    }
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//
+//            Class<?> rawClazz = node.getClass();
+//            if (rawClazz == JsonObject.class) {
+//                writer.startObject();
+//                int cnt = 0;
+//                for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
+//                    Object value = entry.getValue();
+//                    if (value == null && !context.includeNulls) continue;
+//                    if (cnt++ > 0) writer.separateProperty();
+//                    writer.writeName(entry.getKey());
+//                    writeNode(writer, value, context);
+//                }
+//                writer.endObject();
+//                return;
+//            }
+//
+//            if (node instanceof JsonArray) {
+//                writer.startArray();
+//                JsonArray ja = (JsonArray) node;
+//                for (int i = 0, len = ja.size(); i < len; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writeNode(writer, ja.getNode(i), context);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//
+//            if (rawClazz == boolean[].class) {
+//                writer.startArray();
+//                boolean[] array = (boolean[]) node;
+//                for (int i = 0; i < array.length; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writer.writeBooleanValue(array[i]);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//            if (rawClazz == byte[].class) {
+//                writer.startArray();
+//                byte[] array = (byte[]) node;
+//                for (int i = 0; i < array.length; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writer.writeByteValue(array[i]);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//            if (rawClazz == short[].class) {
+//                writer.startArray();
+//                short[] array = (short[]) node;
+//                for (int i = 0; i < array.length; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writer.writeShortValue(array[i]);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//            if (rawClazz == int[].class) {
+//                writer.startArray();
+//                int[] array = (int[]) node;
+//                for (int i = 0; i < array.length; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writer.writeIntValue(array[i]);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//            if (rawClazz == long[].class) {
+//                writer.startArray();
+//                long[] array = (long[]) node;
+//                for (int i = 0; i < array.length; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writer.writeLongValue(array[i]);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//            if (rawClazz == float[].class) {
+//                writer.startArray();
+//                float[] array = (float[]) node;
+//                for (int i = 0; i < array.length; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writer.writeFloatValue(array[i]);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//            if (rawClazz == double[].class) {
+//                writer.startArray();
+//                double[] array = (double[]) node;
+//                for (int i = 0; i < array.length; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writer.writeDoubleValue(array[i]);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//            if (node instanceof Object[]) {
+//                Object[] array = (Object[]) node;
+//                writer.startArray();
+//                for (int i = 0, len = array.length; i < len; i++) {
+//                    if (i > 0) writer.separateElement();
+//                    writeNode(writer, array[i], context);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//
+//            if (node instanceof Set) {
+//                writer.startArray();
+//                boolean veryStart = true;
+//                for (Object v : (Set<?>) node) {
+//                    if (veryStart) veryStart = false;
+//                    else writer.separateElement();
+//                    writeNode(writer, v, context);
+//                }
+//                writer.endArray();
+//                return;
+//            }
+//
+//            if (node instanceof Character) {
+//                writer.writeCharValue((Character) node);
+//                return;
+//            }
+//            if (node instanceof Enum) {
+//                writer.writeStringValue(((Enum<?>) node).name());
+//                return;
+//            }
+//
+//            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
+//            String valueFormat = context.defaultValueFormat(rawClazz);
+//            NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+////            if (vci == null) {
+////                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
+////            }
+//            if (vci != null) {
+//                Object raw = vci.valueToRaw(node);
+//                writeNode(writer, raw, context);
+//                return;
+//            }
+//
+//            PojoInfo pi = ti.pojoInfo;
+//            if (pi != null) {
+//                writePojo(writer, node, pi, context);
+//                return;
+//            }
+//            throw new BindingException("unsupported node type '" + Types.name(node) + "'");
+//
+//        } catch (BindingException e) {
+//            throw e;
+//        } catch (Exception e) {
+//            throw new BindingException("failed to write node of type '" + Types.name(node) + "'", null, e);
+//        }
+//    }
+
+
     public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
         try {
             if (node == null) {
@@ -736,6 +949,7 @@ public final class StreamingIO {
                 return;
             }
 
+            // scalar
             if (node instanceof String) {
                 writer.writeStringValue((String) node);
                 return;
@@ -748,164 +962,6 @@ public final class StreamingIO {
                 writer.writeBooleanValue((Boolean) node);
                 return;
             }
-
-            if (node instanceof Map) {
-                writer.startObject();
-                int cnt = 0;
-                for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                    Object value = entry.getValue();
-                    if (value == null && !context.includeNulls) continue;
-                    if (cnt++ > 0) writer.separateProperty();
-                    String key = entry.getKey().toString();
-                    writer.writeName(key);
-                    writeNode(writer, value, context);
-                }
-                writer.endObject();
-                return;
-            }
-
-            if (node instanceof List) {
-                writer.startArray();
-                List<?> list = (List<?>) node;
-                if (list instanceof RandomAccess) {
-                    for (int i = 0, size = list.size(); i < size; i++) {
-                        if (i > 0) writer.separateElement();
-                        writeNode(writer, list.get(i), context);
-                    }
-                } else {
-                    boolean first = true;
-                    for (Object value : list) {
-                        if (first) {
-                            first = false;
-                        } else {
-                            writer.separateElement();
-                        }
-                        writeNode(writer, value, context);
-                    }
-                }
-                writer.endArray();
-                return;
-            }
-
-            Class<?> rawClazz = node.getClass();
-            if (rawClazz == JsonObject.class) {
-                writer.startObject();
-                int cnt = 0;
-                for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
-                    Object value = entry.getValue();
-                    if (value == null && !context.includeNulls) continue;
-                    if (cnt++ > 0) writer.separateProperty();
-                    writer.writeName(entry.getKey());
-                    writeNode(writer, value, context);
-                }
-                writer.endObject();
-                return;
-            }
-
-            if (node instanceof JsonArray) {
-                writer.startArray();
-                JsonArray ja = (JsonArray) node;
-                for (int i = 0, len = ja.size(); i < len; i++) {
-                    if (i > 0) writer.separateElement();
-                    writeNode(writer, ja.getNode(i), context);
-                }
-                writer.endArray();
-                return;
-            }
-
-            if (rawClazz == boolean[].class) {
-                writer.startArray();
-                boolean[] array = (boolean[]) node;
-                for (int i = 0; i < array.length; i++) {
-                    if (i > 0) writer.separateElement();
-                    writer.writeBooleanValue(array[i]);
-                }
-                writer.endArray();
-                return;
-            }
-            if (rawClazz == byte[].class) {
-                writer.startArray();
-                byte[] array = (byte[]) node;
-                for (int i = 0; i < array.length; i++) {
-                    if (i > 0) writer.separateElement();
-                    writer.writeByteValue(array[i]);
-                }
-                writer.endArray();
-                return;
-            }
-            if (rawClazz == short[].class) {
-                writer.startArray();
-                short[] array = (short[]) node;
-                for (int i = 0; i < array.length; i++) {
-                    if (i > 0) writer.separateElement();
-                    writer.writeShortValue(array[i]);
-                }
-                writer.endArray();
-                return;
-            }
-            if (rawClazz == int[].class) {
-                writer.startArray();
-                int[] array = (int[]) node;
-                for (int i = 0; i < array.length; i++) {
-                    if (i > 0) writer.separateElement();
-                    writer.writeIntValue(array[i]);
-                }
-                writer.endArray();
-                return;
-            }
-            if (rawClazz == long[].class) {
-                writer.startArray();
-                long[] array = (long[]) node;
-                for (int i = 0; i < array.length; i++) {
-                    if (i > 0) writer.separateElement();
-                    writer.writeLongValue(array[i]);
-                }
-                writer.endArray();
-                return;
-            }
-            if (rawClazz == float[].class) {
-                writer.startArray();
-                float[] array = (float[]) node;
-                for (int i = 0; i < array.length; i++) {
-                    if (i > 0) writer.separateElement();
-                    writer.writeFloatValue(array[i]);
-                }
-                writer.endArray();
-                return;
-            }
-            if (rawClazz == double[].class) {
-                writer.startArray();
-                double[] array = (double[]) node;
-                for (int i = 0; i < array.length; i++) {
-                    if (i > 0) writer.separateElement();
-                    writer.writeDoubleValue(array[i]);
-                }
-                writer.endArray();
-                return;
-            }
-            if (node instanceof Object[]) {
-                Object[] array = (Object[]) node;
-                writer.startArray();
-                for (int i = 0, len = array.length; i < len; i++) {
-                    if (i > 0) writer.separateElement();
-                    writeNode(writer, array[i], context);
-                }
-                writer.endArray();
-                return;
-            }
-
-            if (node instanceof Set) {
-                writer.startArray();
-                boolean veryStart = true;
-                for (Object v : (Set<?>) node) {
-                    if (veryStart) veryStart = false;
-                    else writer.separateElement();
-                    writeNode(writer, v, context);
-                }
-                writer.endArray();
-                return;
-            }
-
             if (node instanceof Character) {
                 writer.writeCharValue((Character) node);
                 return;
@@ -915,16 +971,46 @@ public final class StreamingIO {
                 return;
             }
 
-            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-            String valueFormat = context.defaultValueFormat(rawClazz);
-            NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
-//            if (vci == null) {
-//                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
-//            }
-            if (vci != null) {
-                Object raw = vci.valueToRaw(node);
-                writeNode(writer, raw, context);
+            // containers
+            if (node instanceof Map) {
+                writeMap(writer, (Map<?, ?>) node, context);
                 return;
+            }
+            if (node instanceof List) {
+                writeList(writer, (List<?>) node, context);
+                return;
+            }
+
+            Class<?> rawClazz = node.getClass();
+
+            if (rawClazz == JsonObject.class) {
+                writeJsonObject(writer, (JsonObject) node, context);
+                return;
+            }
+            if (node instanceof JsonArray) {
+                writeJsonArray(writer, (JsonArray) node, context);
+                return;
+            }
+            if (node instanceof Set) {
+                writeSet(writer, (Set<?>) node, context);
+                return;
+            }
+
+            // arrays
+            if (rawClazz.isArray() && writeArray(writer, node, rawClazz, context)) {
+                return;
+            }
+
+            // registered types
+            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
+
+            if (ti.isNodeValue()) {
+                String valueFormat = context.defaultValueFormat(rawClazz);
+                NodeValueInfo info = ti.getNodeValueInfo(valueFormat);
+                if (info != null) {
+                    writeNode(writer, info.valueToRaw(node), context);
+                    return;
+                }
             }
 
             PojoInfo pi = ti.pojoInfo;
@@ -932,13 +1018,206 @@ public final class StreamingIO {
                 writePojo(writer, node, pi, context);
                 return;
             }
+
             throw new BindingException("unsupported node type '" + Types.name(node) + "'");
 
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("failed to write node of type '" + Types.name(node) + "'", null, e);
+            throw new BindingException(
+                    "failed to write node of type '" + Types.name(node) + "'", null, e);
         }
+    }
+
+    private static void writeMap(StreamingWriter writer, Map<?, ?> map,
+                                 StreamingContext context) throws IOException {
+        writer.startObject();
+        int count = 0;
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object value = entry.getValue();
+            if (value == null && !context.includeNulls) {
+                continue;
+            }
+            if (count++ > 0) {
+                writer.separateProperty();
+            }
+            writer.writeName(entry.getKey().toString());
+            writeNode(writer, value, context);
+        }
+        writer.endObject();
+    }
+
+    private static void writeList(StreamingWriter writer, List<?> list,
+                                  StreamingContext context) throws IOException {
+        writer.startArray();
+        if (list instanceof RandomAccess) {
+            for (int i = 0, size = list.size(); i < size; i++) {
+                if (i > 0) {
+                    writer.separateElement();
+                }
+                writeNode(writer, list.get(i), context);
+            }
+        } else {
+            boolean first = true;
+            for (Object value : list) {
+                if (first) {
+                    first = false;
+                } else {
+                    writer.separateElement();
+                }
+                writeNode(writer, value, context);
+            }
+        }
+        writer.endArray();
+    }
+
+    private static void writeJsonObject(StreamingWriter writer, JsonObject object,
+                                        StreamingContext context) throws IOException {
+        writer.startObject();
+        int count = 0;
+        for (Map.Entry<String, Object> entry : object.entrySet()) {
+            Object value = entry.getValue();
+            if (value == null && !context.includeNulls) {
+                continue;
+            }
+            if (count++ > 0) {
+                writer.separateProperty();
+            }
+            writer.writeName(entry.getKey());
+            writeNode(writer, value, context);
+        }
+        writer.endObject();
+    }
+
+    private static void writeJsonArray(StreamingWriter writer, JsonArray array,
+                                       StreamingContext context) throws IOException {
+        writer.startArray();
+        for (int i = 0, size = array.size(); i < size; i++) {
+            if (i > 0) {
+                writer.separateElement();
+            }
+            writeNode(writer, array.getNode(i), context);
+        }
+        writer.endArray();
+    }
+
+    private static void writeSet(StreamingWriter writer, Set<?> set,
+                                 StreamingContext context) throws IOException {
+        writer.startArray();
+        boolean first = true;
+        for (Object value : set) {
+            if (first) {
+                first = false;
+            } else {
+                writer.separateElement();
+            }
+            writeNode(writer, value, context);
+        }
+        writer.endArray();
+    }
+
+    private static boolean writeArray(StreamingWriter writer, Object node, Class<?> rawClazz,
+                                      StreamingContext context) throws IOException {
+        if (rawClazz == boolean[].class) {
+            boolean[] array = (boolean[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeBooleanValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (rawClazz == int[].class) {
+            int[] array = (int[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeIntValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (rawClazz == long[].class) {
+            long[] array = (long[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeLongValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (rawClazz == double[].class) {
+            double[] array = (double[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeDoubleValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (rawClazz == float[].class) {
+            float[] array = (float[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeFloatValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (rawClazz == byte[].class) {
+            byte[] array = (byte[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeByteValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (rawClazz == short[].class) {
+            short[] array = (short[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeShortValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (rawClazz == char[].class) {
+            char[] array = (char[]) node;
+            writer.startArray();
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeCharValue(array[i]);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        if (node instanceof Object[]) {
+            Object[] array = (Object[]) node;
+            writer.startArray();
+            for (int i = 0, len = array.length; i < len; i++) {
+                if (i > 0) writer.separateElement();
+                writeNode(writer, array[i], context);
+            }
+            writer.endArray();
+            return true;
+        }
+
+        return false;
     }
 
 
@@ -946,7 +1225,6 @@ public final class StreamingIO {
                           StreamingContext context) throws IOException {
         writer.startObject();
         int cnt = 0;
-
         FieldWriter[] fieldWriters = pi.fieldWriters;
         PreparedName[] preparedNames = writer.binder().getPreparedNames(node.getClass());
         for (int i = 0, len = fieldWriters.length; i < len; i++) {
@@ -965,10 +1243,7 @@ public final class StreamingIO {
                 }
             }
         }
-
         writer.endObject();
     }
-
-
 
 }
