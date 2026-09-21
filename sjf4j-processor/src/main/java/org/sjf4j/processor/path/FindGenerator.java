@@ -55,8 +55,8 @@ public final class FindGenerator {
 
         // 2. Validate return type is List
         TypeMirror returnType = method.getReturnType();
-        if (!GeneratorUtil.isAssignableErasure(ctx, returnType, ctx.listType)) {
-            _error(method, target, "@FindByPath return type must be List<T>, but was " + returnType);
+        if (!GeneratorUtil.isSameErasure(ctx, returnType, ctx.listType)) {
+            _error(method, target, "@FindByPath return type must be List<T> (java.util.List only), but was " + returnType);
             return;
         }
 

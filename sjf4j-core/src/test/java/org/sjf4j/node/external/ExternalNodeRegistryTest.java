@@ -96,13 +96,11 @@ class ExternalNodeRegistryTest {
         }
 
         @Override
-
         public JsonType jsonType(TestExternalNode node) {
             return node.getJsonType();
         }
 
         @Override
-
         public JsonType jsonTypeOfClass(Class<?> nodeType) {
             return TestExternalArrayNode.class.isAssignableFrom(nodeType) ? JsonType.ARRAY : JsonType.UNKNOWN;
         }
@@ -115,7 +113,6 @@ class ExternalNodeRegistryTest {
         }
 
         @Override
-
         public JsonType jsonType(TestExternalChildNode node) {
             return node.getJsonType();
         }

@@ -1,0 +1,44 @@
+package org.sjf4j.backend.snake.binding;
+
+import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.binding.YamlBinder;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.emitter.Emitter;
+import org.yaml.snakeyaml.parser.ParserImpl;
+import org.yaml.snakeyaml.reader.StreamReader;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Objects;
+
+/** YAML binder backed by SnakeYAML's event parser and emitter. */
+public final class SnakeBinder extends YamlBinder<SnakeReader, SnakeWriter> {
+    private final LoaderOptions loaderOptions;
+    private final DumperOptions dumperOptions;
+
+    public SnakeBinder() {
+        this(new LoaderOptions(), new DumperOptions(), StreamingContext.EMPTY);
+    }
+
+    public SnakeBinder(LoaderOptions loaderOptions, DumperOptions dumperOptions,
+                       StreamingContext context) {
+        super(context);
+        this.loaderOptions = Objects.requireNonNull(loaderOptions, "loaderOptions");
+        this.dumperOptions = Objects.requireNonNull(dumperOptions, "dumperOptions");
+    }
+
+    @Override
+    public SnakeReader createReader(Reader input) throws IOException {
+        Objects.requireNonNull(input, "input");
+        return new SnakeReader(new ParserImpl(new StreamReader(input), loaderOptions));
+    }
+
+    @Override
+    public SnakeWriter createWriter(Writer output) throws IOException {
+        Objects.requireNonNull(output, "output");
+        return new SnakeWriter(this, new Emitter(output, dumperOptions));
+    }
+
+}

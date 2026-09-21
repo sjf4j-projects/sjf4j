@@ -85,6 +85,7 @@ class Fastjson2BinderTest {
         }
         Fastjson2Writer writer = binder.createWriter(text);
         writer.writeStringValue("héllo");
+        writer.flushTo(text);
         writer.close();
         assertEquals("\"héllo\"", text.toString());
 
@@ -92,6 +93,7 @@ class Fastjson2BinderTest {
         try (Fastjson2Writer byteWriter = binder.createWriter(bytes)) {
             byteWriter.writeStringValue("héllo");
             byteWriter.flush();
+            byteWriter.flushTo(bytes);
         }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
     }
@@ -111,20 +113,22 @@ class Fastjson2BinderTest {
     }
 
     @Test
-    void closingWriterClosesCallerOwnedOutput() throws Exception {
+    void closingWriterDoesNotCloseCallerOwnedOutput() throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder();
         TrackingWriter text = new TrackingWriter();
         TrackingOutputStream bytes = new TrackingOutputStream();
 
         try (Fastjson2Writer writer = binder.createWriter(text)) {
             writer.writeNull();
+            writer.flushTo(text);
         }
         try (Fastjson2Writer writer = binder.createWriter(bytes)) {
             writer.writeNull();
+            writer.flushTo(bytes);
         }
 
-        assertTrue(text.closed);
-        assertTrue(bytes.closed);
+        assertFalse(text.closed);
+        assertFalse(bytes.closed);
         assertEquals("null", text.toString());
         assertEquals("null", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
     }
@@ -133,7 +137,6 @@ class Fastjson2BinderTest {
         boolean closed;
 
         @Override
-
         public void close() {
             closed = true;
         }
@@ -143,7 +146,6 @@ class Fastjson2BinderTest {
         boolean closed;
 
         @Override
-
         public void close() throws IOException {
             closed = true;
             super.close();

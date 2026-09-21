@@ -51,7 +51,7 @@ mavenPublishing {
     coordinates(group.toString(), name, version.toString())
 
     pom {
-        name.set("SJF4J Fastjson2 Backend")
+        name.set("Fastjson2 Backend for SJF4J")
         description.set("Fastjson2 Backend for SJF4J")
         inceptionYear.set("2025")
         url.set("https://sjf4j.org")

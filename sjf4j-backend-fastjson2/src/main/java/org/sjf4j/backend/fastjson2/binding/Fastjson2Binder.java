@@ -53,7 +53,6 @@ public final class Fastjson2Binder extends JsonBinder<Fastjson2Reader, Fastjson2
     }
 
     @Override
-
     public Fastjson2Reader createReader(Reader input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new Fastjson2Reader(JSONReader.of(input, readerContext));

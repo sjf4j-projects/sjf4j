@@ -17,38 +17,32 @@ public final class StringBuilderWriter extends Writer {
     }
 
     @Override
-
     public void write(int c) {
         builder.append((char) c);
     }
 
     @Override
-
     public void write(char[] cbuf, int off, int len) {
         builder.append(cbuf, off, len);
     }
 
     @Override
-
     public void write(String str) {
         str.length();
         builder.append(str);
     }
 
     @Override
-
     public void write(String str, int off, int len) {
         str.length();
         builder.append(str, off, off + len);
     }
 
     @Override
-
     public void flush() {
     }
 
     @Override
-
     public void close() {
     }
 

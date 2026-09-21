@@ -18,7 +18,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /** Gson JsonElement implementation of the external node contract. */
-public final class GsonExternalNode implements ExternalNode<JsonElement> {
+public final class GsonNode implements ExternalNode<JsonElement> {
     @Override
     public Class<JsonElement> nodeType() {
         return JsonElement.class;
@@ -51,7 +51,7 @@ public final class GsonExternalNode implements ExternalNode<JsonElement> {
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isString()) {
             return node.getAsString();
         }
-        throw expected("JsonPrimitive(String)", node);
+        throw _expected("JsonPrimitive(String)", node);
     }
 
     @Override
@@ -64,7 +64,7 @@ public final class GsonExternalNode implements ExternalNode<JsonElement> {
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isNumber()) {
             return node.getAsNumber();
         }
-        throw expected("JsonPrimitive(Number)", node);
+        throw _expected("JsonPrimitive(Number)", node);
     }
 
     @Override
@@ -83,7 +83,7 @@ public final class GsonExternalNode implements ExternalNode<JsonElement> {
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isBoolean()) {
             return node.getAsBoolean();
         }
-        throw expected("JsonPrimitive(Boolean)", node);
+        throw _expected("JsonPrimitive(Boolean)", node);
     }
 
     @Override
@@ -227,15 +227,15 @@ public final class GsonExternalNode implements ExternalNode<JsonElement> {
 
     private static JsonObject object(JsonElement node) {
         if (node instanceof JsonObject) return (JsonObject) node;
-        throw expected("JsonObject", node);
+        throw _expected("JsonObject", node);
     }
 
     private static JsonArray array(JsonElement node) {
         if (node instanceof JsonArray) return (JsonArray) node;
-        throw expected("JsonArray", node);
+        throw _expected("JsonArray", node);
     }
 
-    private static NodeException expected(String expected, Object node) {
+    private static NodeException _expected(String expected, Object node) {
         return new NodeException("expected " + expected + ", but was " + Types.name(node));
     }
 }

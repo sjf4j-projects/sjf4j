@@ -38,7 +38,6 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
     }
 
     @Override
-
     public Jackson2Reader createReader(Reader input) throws IOException {
         return new Jackson2Reader(factory.createParser(Objects.requireNonNull(input, "input")));
     }
@@ -49,14 +48,12 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
     }
 
     @Override
-
     public Jackson2Reader createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new Jackson2Reader(factory.createParser(input));
     }
 
     @Override
-
     public Jackson2Reader createReader(byte[] input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new Jackson2Reader(factory.createParser(input));
@@ -66,10 +63,6 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
 
 
     @Override
-
-
-
-
     public Jackson2Writer createWriter(Writer output) throws IOException {
         return new Jackson2Writer(this, factory.createGenerator(Objects.requireNonNull(output, "output")));
     }
@@ -80,13 +73,11 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
     }
 
     @Override
-
     public Jackson2Writer createWriter(OutputStream output) throws IOException {
         return new Jackson2Writer(this, factory.createGenerator(Objects.requireNonNull(output, "output"), JsonEncoding.UTF8));
     }
 
     @Override
-
     public String writeNodeAsString(Object node) {
         final BufferRecycler br = factory._getBufferRecycler();
         try (SegmentedStringWriter sw = new SegmentedStringWriter(br)) {
@@ -112,8 +103,6 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
 
 
     @Override
-
-
     public PreparedName createPreparedName(String name) {
         return new Jackson2PreparedName(name);
     }

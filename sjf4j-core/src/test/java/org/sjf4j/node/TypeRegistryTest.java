@@ -299,19 +299,16 @@ public class TypeRegistryTest {
             }
 
             @Override
-
             public CodecDay rawToValue(String raw) {
                 return new CodecDay(LocalDate.parse(raw));
             }
 
             @Override
-
             public Class<CodecDay> valueClazz() {
                 return CodecDay.class;
             }
 
             @Override
-
             public Class<String> rawClazz() {
                 return String.class;
             }
@@ -340,19 +337,16 @@ public class TypeRegistryTest {
             }
 
             @Override
-
             public LocalDate rawToValue(String raw) {
                 return LocalDate.parse(raw);
             }
 
             @Override
-
             public Class<LocalDate> valueClazz() {
                 return LocalDate.class;
             }
 
             @Override
-
             public Class<String> rawClazz() {
                 return String.class;
             }

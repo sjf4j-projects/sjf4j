@@ -108,7 +108,6 @@ class Jackson3FacadeTest {
         }
 
         @Override
-
         public PropertyName findNameForDeserialization(MapperConfig<?> config, Annotated ann) {
             if (ann instanceof AnnotatedField) {
                 LegacyName legacyName = ((AnnotatedField) ann)

@@ -27,6 +27,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.WildcardType;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,6 +69,17 @@ public final class NavigatorGenerator {
         if (!iface.getTypeParameters().isEmpty()) {
             ctx.error(iface, "@CompiledNavigator interfaces cannot declare type parameters");
             return;
+        }
+        for (Element member : ctx.elements.getAllMembers(iface)) {
+            if (member.getKind() != ElementKind.METHOD || member.getEnclosingElement().equals(iface)) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            Set<Modifier> modifiers = method.getModifiers();
+            if (modifiers.contains(Modifier.ABSTRACT) && !modifiers.contains(Modifier.DEFAULT) &&
+                    !modifiers.contains(Modifier.STATIC)) {
+                ctx.error(iface, "@CompiledNavigator cannot inherit abstract instance method '" +
+                        method.getSimpleName() + "' from " + method.getEnclosingElement());
+                return;
+            }
         }
 
         GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
@@ -155,7 +167,7 @@ public final class NavigatorGenerator {
                 return;
             }
         }
-        target.emit();
+        if (target.isValid()) target.emit();
     }
 
 
@@ -309,6 +321,10 @@ public final class NavigatorGenerator {
                 return;
             }
             if (current == null) return;
+            if (_canEnsurePutBack(parent, segment, pathParams) &&
+                    !_validatePutContainerWrite(method, target, parent, segment, pathParams, current, annotation)) {
+                return;
+            }
             if (!current.getKind().isPrimitive() && _canEnsurePutBack(parent, segment, pathParams) &&
                     _createContainerExpr(current, segments[i + 1], pathParams, method, target) == null) {
                 return;
@@ -318,6 +334,8 @@ public final class NavigatorGenerator {
 
         TypeMirror valueType = _resolvePutValueType(finalParentType, segments[segments.length - 1], pathParams, method, target, annotation);
         if (valueType == null) return;
+        if (!_validatePutContainerWrite(method, target, finalParentType, segments[segments.length - 1], pathParams,
+                value.asType(), annotation)) return;
         if (ifAbsent && segments[segments.length - 1] instanceof PathSegment.Name &&
                 !_validateReadableNameIfPojo(finalParentType, ((PathSegment.Name) segments[segments.length - 1]).name, method, target)) {
             return;
@@ -386,6 +404,8 @@ public final class NavigatorGenerator {
 
         TypeMirror valueType = _resolvePutValueType(finalParentType, segments[segments.length - 1], pathParams, method, target, annotation);
         if (valueType == null) return;
+        if (!_validatePutContainerWrite(method, target, finalParentType, segments[segments.length - 1], pathParams,
+                value.asType(), annotation)) return;
 
         if (!_validateAssignable(method, target, value.asType(), valueType, annotation + " value type")) return;
         TypeMirror oldType = _resolvePutOldType(finalParentType, segments[segments.length - 1], pathParams);
@@ -420,7 +440,68 @@ public final class NavigatorGenerator {
     }
 
     private void _error(Element element, GeneratedClass target, String message) {
+        target.invalidate();
         ctx.error(element, target.originName() + ": " + message);
+    }
+
+    /**
+     * Checks writes that javac cannot type-check through wildcarded Java containers.
+     * Reads may use a container's extends bound, but writes must target its declared
+     * key or element type directly.
+     */
+    private boolean _validatePutContainerWrite(ExecutableElement method, GeneratedClass target, TypeMirror parent,
+                                               PathSegment segment, Map<String, VariableElement> pathParams,
+                                               TypeMirror value, String annotation) {
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType) &&
+                (segment instanceof PathSegment.Name ||
+                        (segment instanceof PathSegment.Param &&
+                                _isString(pathParams.get(((PathSegment.Param) segment).param).asType())))) {
+            List<? extends TypeMirror> args = _containerArguments(parent, ctx.mapType);
+            if (args.size() == 2) {
+                if (!_canWrite(value, args.get(1))) {
+                    _error(method, target, annotation + " cannot write " + value + " to Map value type " + args.get(1));
+                    return false;
+                }
+                TypeMirror string = ctx.elements.getTypeElement(String.class.getName()).asType();
+                if (!_canWrite(string, args.get(0))) {
+                    _error(method, target, annotation + " cannot use a String path key with Map key type " + args.get(0));
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.listType) &&
+                (segment instanceof PathSegment.Index || segment instanceof PathSegment.Append ||
+                        (segment instanceof PathSegment.Param &&
+                                _isInt(pathParams.get(((PathSegment.Param) segment).param).asType())))) {
+            List<? extends TypeMirror> args = _containerArguments(parent, ctx.listType);
+            if (args.size() == 1 && !_canWrite(value, args.get(0))) {
+                _error(method, target, annotation + " cannot write " + value + " to List element type " + args.get(0));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private List<? extends TypeMirror> _containerArguments(TypeMirror type, TypeMirror container) {
+        if (GeneratorUtil.isSameErasure(ctx, type, container) && type instanceof DeclaredType) {
+            return ((DeclaredType) type).getTypeArguments();
+        }
+        for (TypeMirror parent : ctx.types.directSupertypes(type)) {
+            List<? extends TypeMirror> args = _containerArguments(parent, container);
+            if (!args.isEmpty()) return args;
+        }
+        return java.util.Collections.emptyList();
+    }
+
+    private boolean _canWrite(TypeMirror value, TypeMirror target) {
+        if (target.getKind() == TypeKind.WILDCARD) {
+            WildcardType wildcard = (WildcardType) target;
+            return wildcard.getSuperBound() != null &&
+                    GeneratorUtil.isAssignableBoxedGeneric(ctx, value, wildcard.getSuperBound());
+        }
+        if (target.getKind() == TypeKind.TYPEVAR) return false;
+        return GeneratorUtil.isAssignableBoxedGeneric(ctx, value, target);
     }
 
     /**

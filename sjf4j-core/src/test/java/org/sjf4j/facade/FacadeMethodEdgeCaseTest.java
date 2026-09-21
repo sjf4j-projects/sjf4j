@@ -38,7 +38,6 @@ class FacadeMethodEdgeCaseTest {
             }
 
             @Override
-
             public StreamingWriter createWriter(Writer output) {
                 throw new UnsupportedOperationException();
             }

@@ -44,11 +44,6 @@ public final class Fastjson2Writer extends StreamingWriter {
     // JSONWriter.writeName inserts the object-property separator itself.
 
     @Override
-    public void separateProperty() {
-        writer.writeComma();
-    }
-
-    @Override
     public void separateElement() {
         writer.writeComma();
     }

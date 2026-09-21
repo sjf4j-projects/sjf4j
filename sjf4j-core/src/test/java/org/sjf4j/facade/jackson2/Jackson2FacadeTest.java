@@ -174,13 +174,11 @@ public class Jackson2FacadeTest {
         JsonParser bytesParser;
 
         @Override
-
         public JsonParser createParser(String content) throws IOException {
             return stringParser = super.createParser(content);
         }
 
         @Override
-
         public JsonParser createParser(byte[] data) throws IOException {
             return bytesParser = super.createParser(data);
         }
@@ -194,7 +192,6 @@ public class Jackson2FacadeTest {
         }
 
         @Override
-
         public void close() {
             closed = true;
             super.close();
@@ -209,7 +206,6 @@ public class Jackson2FacadeTest {
         }
 
         @Override
-
         public void close() throws IOException {
             closed = true;
             super.close();
@@ -316,7 +312,6 @@ public class Jackson2FacadeTest {
         }
 
         @Override
-
         public PropertyName findNameForDeserialization(Annotated ann) {
             if (ann instanceof AnnotatedField) {
                 LegacyName legacyName = ((AnnotatedField) ann).getAnnotated().getAnnotation(LegacyName.class);

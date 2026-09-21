@@ -10,7 +10,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
-import org.sjf4j.backend.gson.external.GsonExternalNodeProvider;
+import org.sjf4j.backend.gson.external.GsonNodeProvider;
 
 import java.io.File;
 import java.net.URL;
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class GsonExternalNodeTest {
+class GsonNodeTest {
     @Test
     void providerIsDiscoveredAndClassifiesGsonNodes() {
         ExternalNode<JsonElement> node = node();
@@ -42,8 +42,8 @@ class GsonExternalNodeTest {
     @SuppressWarnings({"rawtypes", "unchecked"})
     void providerIsDiscoverableWithoutGson() throws Exception {
         URL coreClasses = ExternalNode.class.getProtectionDomain().getCodeSource().getLocation();
-        URL integrationClasses = GsonExternalNodeProvider.class.getProtectionDomain().getCodeSource().getLocation();
-        URL integrationResources = resourceRoot(GsonExternalNodeProvider.class.getResource(
+        URL integrationClasses = GsonNodeProvider.class.getProtectionDomain().getCodeSource().getLocation();
+        URL integrationResources = resourceRoot(GsonNodeProvider.class.getResource(
                 "/META-INF/services/org.sjf4j.external.ExternalNodeProvider"));
 
         try (URLClassLoader loader = new URLClassLoader(
@@ -54,7 +54,7 @@ class GsonExternalNodeTest {
             ServiceLoader providers = ServiceLoader.load(providerType, loader);
             Object provider = providers.iterator().next();
 
-            assertEquals("org.sjf4j.backend.gson.external.GsonExternalNodeProvider", provider.getClass().getName());
+            assertEquals("org.sjf4j.backend.gson.external.GsonNodeProvider", provider.getClass().getName());
             assertNull(providerType.getMethod("externalNode").invoke(provider));
         }
     }

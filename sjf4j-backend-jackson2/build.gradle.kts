@@ -51,8 +51,8 @@ mavenPublishing {
     coordinates(group.toString(), name, version.toString())
 
     pom {
-        name.set("SJF4J Gson Backend")
-        description.set("Gson Backend for SJF4J")
+        name.set("Jackson 2.x Backend for SJF4J")
+        description.set("Jackson 2.x Backend for SJF4J")
         inceptionYear.set("2025")
         url.set("https://sjf4j.org")
         licenses {

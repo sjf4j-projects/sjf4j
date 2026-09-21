@@ -51,7 +51,6 @@ class StreamingIOWriteTest {
         }
 
         @Override
-
         public void startObject() {}
         @Override
         public void endObject() {}

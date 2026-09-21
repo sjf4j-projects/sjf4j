@@ -584,7 +584,8 @@ public final class GeneratorUtil {
             ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, method);
             TypeMirror returnType = mt.getReturnType();
             if (returnType.getKind() == TypeKind.BOOLEAN ||
-                    ctx.types.isSameType(ctx.types.erasure(returnType), ctx.types.erasure(ctx.elements.getTypeElement("java.lang.Boolean").asType()))) {
+                    ctx.types.isSameType(ctx.types.erasure(returnType),
+                            ctx.types.erasure(ctx.elements.getTypeElement("java.lang.Boolean").asType()))) {
                 return decap(methodName.substring(2));
             }
             return null;
