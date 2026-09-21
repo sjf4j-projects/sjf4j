@@ -2,7 +2,7 @@ package org.sjf4j.testbench.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NamingStrategy;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.binding.StreamingContext;
@@ -109,7 +109,7 @@ class RecordBindingTest {
     record Defaults(int count, boolean enabled, String label, Integer boxed) {}
     record Child(String name) {}
     record Envelope(Child child, List<Child> children, @NodeProperty("by_id") Map<String, Child> byId, int[] scores) {}
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE) record Snake(String firstName, int accountId) {}
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE) record Snake(String firstName, int accountId) {}
     enum State { ACTIVE, INACTIVE }
     record Typed(State state, LocalDate date) {}
 }

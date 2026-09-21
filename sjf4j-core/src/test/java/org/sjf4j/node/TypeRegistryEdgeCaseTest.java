@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
@@ -416,12 +416,12 @@ class TypeRegistryEdgeCaseTest {
         public final String readOnly = "ro";
     }
 
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE)
     static class NamingPojo {
         public String userName;
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBasedPrivatePojo {
         private String userName;
     }

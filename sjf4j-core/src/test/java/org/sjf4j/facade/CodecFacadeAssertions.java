@@ -8,7 +8,6 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.TypeReference;
-import org.sjf4j.facade.JsonFacade;
 
 import java.time.Instant;
 import java.time.LocalDate;

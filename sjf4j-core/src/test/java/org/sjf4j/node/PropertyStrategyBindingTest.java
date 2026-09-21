@@ -2,13 +2,11 @@ package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.node.PojoInfo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,7 +23,7 @@ class PropertyStrategyBindingTest {
         public void setName(String name) { this.name = name; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
     static class BeanOnlyPojo {
         public String fieldOnly;
         private String beanName;
@@ -33,27 +31,27 @@ class PropertyStrategyBindingTest {
         public void setBeanName(String beanName) { this.beanName = beanName; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldOnlyPojo {
         private String name;
         public String getName() { return "getter"; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_FIELD)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class GetterOnlyWithFieldFallbackPojo {
         @NodeProperty("name")
         private String name;
         public String getName() { return name; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
     static class SetterOnlyPojo {
         private String name;
         public void setName(String name) { this.name = name; }
         String peek() { return name; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_BEAN)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanPojo {
         private String name;
         public String getName() { return name; }

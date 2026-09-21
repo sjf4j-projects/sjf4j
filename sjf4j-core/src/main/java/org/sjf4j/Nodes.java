@@ -1,6 +1,7 @@
 package org.sjf4j;
 
 
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.TypeRegistry;
@@ -544,7 +545,7 @@ public final class Nodes {
      * A JOJO is any concrete {@link JsonObject} subclass other than
      * {@link JsonObject} itself. During conversion, declared properties are bound by
      * normal POJO rules. Unknown object members are retained as dynamic
-     * properties unless {@link org.sjf4j.annotation.node.NodeBinding#readDynamic()}
+     * properties unless {@link NodeObject#readDynamic()}
      * disables that behavior.
      * <p>
      * This is a binding conversion, not a forced deep copy. Nested containers may

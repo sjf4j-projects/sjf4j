@@ -11,15 +11,15 @@ import java.io.Writer;
 import java.util.Objects;
 
 
-public final class GsonJsonBinder extends JsonBinder<GsonReader, GsonWriter> {
+public final class GsonBinder extends JsonBinder<GsonReader, GsonWriter> {
 
     private final Gson gson;
 
-    public GsonJsonBinder(Gson gson) {
+    public GsonBinder(Gson gson) {
         this(gson, StreamingContext.EMPTY);
     }
 
-    public GsonJsonBinder(Gson gson, StreamingContext context) {
+    public GsonBinder(Gson gson, StreamingContext context) {
         super(context);
         this.gson = Objects.requireNonNull(gson, "gson");
     }

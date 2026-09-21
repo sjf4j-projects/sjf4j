@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class Jackson2JsonBinderTest {
+class Jackson2BinderTest {
 
     @Test
     void readsPojoWithNestedCollectionsAndMaps() {
@@ -36,7 +36,7 @@ class Jackson2JsonBinderTest {
                 + "\"tags\":[\"one\",\"two\"],\"related\":{\"first\":{\"active\":false}},"
                 + "\"nullable\":null,\"unknown\":\"ignored\"}";
 
-        Document value = (Document) new Jackson2JsonBinder(new JsonFactory()).readNode(json, Document.class);
+        Document value = (Document) new Jackson2Binder(new JsonFactory()).readNode(json, Document.class);
 
         assertEquals(7, value.id);
         assertEquals("Ada", value.title);
@@ -50,9 +50,9 @@ class Jackson2JsonBinderTest {
     void writesPojoWithNestedCollectionsAndMapsAndHonorsNullContext() {
         Document value = document();
 
-        String includingNulls = new Jackson2JsonBinder(new JsonFactory())
+        String includingNulls = new Jackson2Binder(new JsonFactory())
                 .writeNodeAsString(value);
-        String omittingNulls = new Jackson2JsonBinder(new JsonFactory(), new StreamingContext(false))
+        String omittingNulls = new Jackson2Binder(new JsonFactory(), new StreamingContext(false))
                 .writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
@@ -63,7 +63,7 @@ class Jackson2JsonBinderTest {
     @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
         StreamingContext context = new StreamingContext(false);
-        Jackson2JsonBinder binder = new Jackson2JsonBinder(new JsonFactory(), context);
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), context);
         StringWriter output = new StringWriter();
 
         try (Jackson2Reader reader = binder.createReader(new StringReader("null"))) {
@@ -79,7 +79,7 @@ class Jackson2JsonBinderTest {
     @Test
     void usesSuppliedFactoryConfiguration() {
         JsonFactory factory = new JsonFactory().enable(JsonParser.Feature.ALLOW_COMMENTS);
-        Document value = (Document) new Jackson2JsonBinder(factory)
+        Document value = (Document) new Jackson2Binder(factory)
                 .readNode("/* configured parser */ {\"id\":7}", Document.class);
 
         assertEquals(7, value.id);
@@ -89,7 +89,7 @@ class Jackson2JsonBinderTest {
     void writeNodeFlushesWithoutClosingCallerWriter() {
         TrackingWriter output = new TrackingWriter();
 
-        new Jackson2JsonBinder(new JsonFactory()).writeNode(output, document());
+        new Jackson2Binder(new JsonFactory()).writeNode(output, document());
 
         assertFalse(output.closed);
         assertTrue(output.toString().contains("\"id\":7"));
@@ -98,7 +98,7 @@ class Jackson2JsonBinderTest {
     @Test
     void usesNativeFactoryOverloadsForStringAndOutput() throws Exception {
         TrackingFactory factory = new TrackingFactory();
-        Jackson2JsonBinder binder = new Jackson2JsonBinder(factory);
+        Jackson2Binder binder = new Jackson2Binder(factory);
 
         try (Jackson2Reader reader = binder.createReader("null")) {
             reader.nextNull();
@@ -115,7 +115,7 @@ class Jackson2JsonBinderTest {
 
     @Test
     void byteAndStreamInputRemainUtf8() throws Exception {
-        Jackson2JsonBinder binder = new Jackson2JsonBinder(new JsonFactory());
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
         byte[] utf8 = "{\"title\":\"héllo\"}".getBytes(StandardCharsets.UTF_8);
 
         Document fromBytes = (Document) binder.readNode(utf8, Document.class);
@@ -131,14 +131,14 @@ class Jackson2JsonBinderTest {
     @Test
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
         JsonParser parser = new JsonFactory().createParser("null");
-        try (Jackson2Reader reader = new Jackson2JsonBinder(new JsonFactory()).createReader(parser)) {
+        try (Jackson2Reader reader = new Jackson2Binder(new JsonFactory()).createReader(parser)) {
             reader.nextNull();
         }
         assertTrue(parser.isClosed());
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         JsonGenerator generator = new JsonFactory().createGenerator(output);
-        try (Jackson2Writer writer = new Jackson2JsonBinder(new JsonFactory()).createWriter(generator)) {
+        try (Jackson2Writer writer = new Jackson2Binder(new JsonFactory()).createWriter(generator)) {
             writer.writeNull();
         }
         assertTrue(generator.isClosed());
@@ -147,10 +147,10 @@ class Jackson2JsonBinderTest {
 
     @Test
     void rejectsNullDependenciesAndIo() {
-        assertThrows(NullPointerException.class, () -> new Jackson2JsonBinder((JsonFactory) null));
-        assertThrows(NullPointerException.class, () -> new Jackson2JsonBinder(new JsonFactory(), null));
+        assertThrows(NullPointerException.class, () -> new Jackson2Binder((JsonFactory) null));
+        assertThrows(NullPointerException.class, () -> new Jackson2Binder(new JsonFactory(), null));
 
-        Jackson2JsonBinder binder = new Jackson2JsonBinder(new JsonFactory());
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
         assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
         assertThrows(NullPointerException.class, () -> binder.createReader((JsonParser) null));
         assertThrows(NullPointerException.class, () -> binder.createReader((String) null));

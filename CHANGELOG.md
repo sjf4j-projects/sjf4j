@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Moved node binding annotations from `org.sjf4j.annotation.binding` to `org.sjf4j.annotation.node` and renamed `@NodeBinding` to `@NodeObject`.
 - Moved `ValueCodec`, `ValueInfo`, `ValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
 - Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
 - Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
@@ -36,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
 
 ### Added
+- Added the `@CompiledBinder` annotation marker.
 - Added the `sjf4j-backend-fastjson2` artifact with Fastjson2 streaming reader and writer bindings.
 - Added the `sjf4j-backend-jackson2` artifact with Jackson 2 streaming reader and writer bindings.
 - Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.

@@ -13,21 +13,21 @@ import java.io.Writer;
 import java.util.Objects;
 
 /** JSON binder backed directly by Fastjson2's streaming reader and writer. */
-public final class Fastjson2JsonBinder extends JsonBinder<Fastjson2Reader, Fastjson2Writer> {
+public final class Fastjson2Binder extends JsonBinder<Fastjson2Reader, Fastjson2Writer> {
 
     private final JSONReader.Context readerContext;
     private final JSONWriter.Context writerContext;
 
-    public Fastjson2JsonBinder() {
+    public Fastjson2Binder() {
         this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), StreamingContext.EMPTY);
     }
 
-    public Fastjson2JsonBinder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
+    public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
         this(readerContext, writerContext, StreamingContext.EMPTY);
     }
 
-    public Fastjson2JsonBinder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
-                               StreamingContext context) {
+    public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
+                           StreamingContext context) {
         super(context);
         this.readerContext = Objects.requireNonNull(readerContext, "readerContext");
         this.writerContext = Objects.requireNonNull(writerContext, "writerContext");

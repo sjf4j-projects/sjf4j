@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class GsonJsonBinderTest {
+class GsonBinderTest {
 
     @Test
     void readsPojoLikeNativeGsonAndIgnoresUnknownProperties() {
@@ -26,7 +26,7 @@ class GsonJsonBinderTest {
         Gson gson = new Gson();
 
         Document nativeValue = gson.fromJson(json, Document.class);
-        Document binderValue = (Document) new GsonJsonBinder(gson).readNode(json, Document.class);
+        Document binderValue = (Document) new GsonBinder(gson).readNode(json, Document.class);
 
         assertDocumentEquals(nativeValue, binderValue);
         assertEquals(null, binderValue.nullable);
@@ -38,7 +38,7 @@ class GsonJsonBinderTest {
         Document value = document();
 
         JsonObject nativeJson = JsonParser.parseString(gson.toJson(value)).getAsJsonObject();
-        String binderOutput = new GsonJsonBinder(gson).writeNodeAsString(value);
+        String binderOutput = new GsonBinder(gson).writeNodeAsString(value);
         JsonObject binderJson = JsonParser.parseString(binderOutput).getAsJsonObject();
 
         assertEquals(nativeJson, binderJson);
@@ -53,9 +53,9 @@ class GsonJsonBinderTest {
         Gson gson = new Gson();
 
         JsonObject nativeJson = JsonParser.parseString(gson.toJson(value)).getAsJsonObject();
-        JsonObject binderJson = JsonParser.parseString(new GsonJsonBinder(gson).writeNodeAsString(value)).getAsJsonObject();
+        JsonObject binderJson = JsonParser.parseString(new GsonBinder(gson).writeNodeAsString(value)).getAsJsonObject();
         JsonObject omitNullsJson = JsonParser.parseString(
-                new GsonJsonBinder(gson, new StreamingContext(false)).writeNodeAsString(value)).getAsJsonObject();
+                new GsonBinder(gson, new StreamingContext(false)).writeNodeAsString(value)).getAsJsonObject();
 
         assertFalse(nativeJson.has("nullable"));
         assertTrue(binderJson.get("nullable").isJsonNull());
@@ -64,10 +64,10 @@ class GsonJsonBinderTest {
 
     @Test
     void rejectsNullDependenciesAndIo() {
-        assertThrows(NullPointerException.class, () -> new GsonJsonBinder(null));
-        assertThrows(NullPointerException.class, () -> new GsonJsonBinder(new Gson(), null));
+        assertThrows(NullPointerException.class, () -> new GsonBinder(null));
+        assertThrows(NullPointerException.class, () -> new GsonBinder(new Gson(), null));
 
-        GsonJsonBinder binder = new GsonJsonBinder(new Gson());
+        GsonBinder binder = new GsonBinder(new Gson());
         assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
         assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
     }

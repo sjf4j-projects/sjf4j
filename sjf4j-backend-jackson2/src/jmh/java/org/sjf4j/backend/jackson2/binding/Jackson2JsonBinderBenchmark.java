@@ -38,7 +38,7 @@ public class Jackson2JsonBinderBenchmark {
     @State(Scope.Thread)
     public static class BenchmarkState {
         ObjectMapper mapper;
-        Jackson2JsonBinder binder;
+        Jackson2Binder binder;
         String document;
         Document value;
 
@@ -46,7 +46,7 @@ public class Jackson2JsonBinderBenchmark {
         public void setup() throws Exception {
             JsonFactory factory = new JsonFactory();
             mapper = new ObjectMapper(factory);
-            binder = new Jackson2JsonBinder(factory);
+            binder = new Jackson2Binder(factory);
             value = new Document(
                     7,
                     20260319L,

@@ -2,7 +2,7 @@ package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.JsonBinder;
 
@@ -41,6 +41,6 @@ public abstract class DynamicPropertyDeserializationContract {
         Map<?, ?> output = (Map<?, ?>) binder.readNode(binder.writeNodeAsString(value), Map.class);
         assertEquals(1, output.size()); assertEquals(1, ((Number) output.get("keep")).intValue());
     }
-    @NodeBinding(readDynamic = false) static class StaticRead extends JsonObject { public int id; }
-    @NodeBinding(writeDynamic = false) static class StaticWrite extends JsonObject { public int id; }
+    @NodeObject(readDynamic = false) static class StaticRead extends JsonObject { public int id; }
+    @NodeObject(writeDynamic = false) static class StaticWrite extends JsonObject { public int id; }
 }

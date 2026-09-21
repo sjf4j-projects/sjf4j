@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.PropertyStrategy;
@@ -63,7 +63,7 @@ class PropertyDiscoveryTest {
         public void setInfo(IgnoredType info) { this.info = info; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_FIELD)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class BeanFieldTypePriorityPojo {
         private Object value;
 
@@ -72,7 +72,7 @@ class PropertyDiscoveryTest {
         public void setValue(String value) { this.value = value; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_BEAN)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanTypePriorityPojo {
         private Object value;
 
@@ -90,12 +90,12 @@ class PropertyDiscoveryTest {
         public void setName(String name) { this.name = name; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class AccessCompatPojo {
         private String name;
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
     static class BeanOnlyPojo {
         public String fieldOnly;
         private String name;
@@ -103,20 +103,20 @@ class PropertyDiscoveryTest {
         public void setName(String name) { this.name = name; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldOnlyPojo {
         private String name;
         public String getName() { return "getter"; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_FIELD)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class BeanFieldPojo {
         String hidden;
         public String publicField;
         public String getHidden() { return hidden; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_BEAN)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanPojo {
         private String name;
         public String getName() { return name; }

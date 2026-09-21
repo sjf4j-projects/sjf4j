@@ -10,7 +10,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
@@ -102,13 +102,13 @@ public class Fastjson2FacadeTest {
         private String name;
     }
 
-    @NodeBinding(readDynamic = false)
+    @NodeObject(readDynamic = false)
     public static class ReadDisabledBook extends JsonObject {
         public int id;
         public String name;
     }
 
-    @NodeBinding(writeDynamic = false)
+    @NodeObject(writeDynamic = false)
     public static class WriteDisabledBook extends JsonObject {
         public int id;
         public String name;
@@ -131,7 +131,7 @@ public class Fastjson2FacadeTest {
         }
     }
 
-    @NodeBinding(writeDynamic = false)
+    @NodeObject(writeDynamic = false)
     static class WriteOnlyJojo extends JsonObject {
         private String name;
         private String secret;
@@ -221,13 +221,13 @@ public class Fastjson2FacadeTest {
         CodecFacadeAssertions.assertConfiguredInstantValueFormat(configured);
     }
 
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE)
     public static class SnakeBook extends JsonObject {
         public String userName;
         public int loginCount;
     }
 
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE)
     public static class SnakePlainBook {
         public String userName;
         public int loginCount;
@@ -322,13 +322,13 @@ public class Fastjson2FacadeTest {
         int loginCount;
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBasedPrivateBook {
         String userName;
         int loginCount;
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class IsolatedFieldBasedPrivateBook {
         String userName;
         int loginCount;

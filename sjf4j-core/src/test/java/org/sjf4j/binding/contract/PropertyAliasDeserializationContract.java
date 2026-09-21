@@ -3,7 +3,7 @@ package org.sjf4j.binding.contract;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NamingStrategy;
 
@@ -37,5 +37,5 @@ public abstract class PropertyAliasDeserializationContract {
         assertEquals("han", bean.userName);
     }
     static class AliasBean { @NodeProperty(value = "name", aliases = {"Name", "n", "legacy_name"}) public String name; }
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE) static class SnakeBean { public String userName; }
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE) static class SnakeBean { public String userName; }
 }

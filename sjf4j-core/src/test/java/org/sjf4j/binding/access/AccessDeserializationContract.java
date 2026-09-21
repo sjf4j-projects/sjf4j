@@ -2,7 +2,7 @@ package org.sjf4j.binding.access;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -72,6 +72,6 @@ public abstract class AccessDeserializationContract {
     static class BeanAndField { public String name = "field"; private String setterValue; public String getName() { return setterValue; } public void setName(String value) { setterValue = "setter:" + value; } }
     static class FieldOnly { public String name; }
     static class AliasBean { @NodeProperty(value = "name", aliases = "oldName") public String name; }
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_FIELD, readDynamic = false)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD, readDynamic = false)
     static class DynamicBean extends JsonObject { public int id; }
 }

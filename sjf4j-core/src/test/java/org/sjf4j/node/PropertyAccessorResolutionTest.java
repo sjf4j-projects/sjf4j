@@ -1,13 +1,10 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.node.FieldInfo;
-import org.sjf4j.node.Types;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -59,14 +56,14 @@ class PropertyAccessorResolutionTest {
         public void setValue(String value) {}
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_FIELD)
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class BeanFieldTypePriorityPojo {
         private Object value;
         public String getValue() { return (String) value; }
         public void setValue(String value) { this.value = value; }
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_BEAN)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanTypePriorityPojo {
         private Object value;
         public String getValue() { return (String) value; }

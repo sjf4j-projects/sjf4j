@@ -21,16 +21,16 @@ import java.io.Writer;
 import java.util.Objects;
 
 /** JSON binder backed directly by a Jackson 2 {@link JsonFactory}. */
-public class Jackson2JsonBinder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
+public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
 
     private final JsonFactory factory;
 
-    public Jackson2JsonBinder(JsonFactory factory) {
+    public Jackson2Binder(JsonFactory factory) {
         this(factory, StreamingContext.EMPTY);
     }
 
     @SuppressWarnings("deprecation")
-    public Jackson2JsonBinder(JsonFactory factory, StreamingContext context) {
+    public Jackson2Binder(JsonFactory factory, StreamingContext context) {
         super(context);
         Objects.requireNonNull(factory, "factory");
         this.factory = factory;

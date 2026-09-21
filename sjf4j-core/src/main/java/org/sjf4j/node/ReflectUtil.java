@@ -5,7 +5,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.FieldReader;
 import org.sjf4j.binding.FieldWriter;
@@ -132,19 +132,19 @@ public final class ReflectUtil {
             else return null;
         }
 
-        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
+        NodeObject nodeObject = clazz.getAnnotation(NodeObject.class);
         NamingStrategy namingStrategy = null;
         PropertyStrategy propertyStrategy = PropertyStrategy.BEAN_FIELD;
         boolean readDynamic = true;
         boolean writeDynamic = true;
-        if (nodeBinding != null) {
-            namingStrategy = nodeBinding.naming();
+        if (nodeObject != null) {
+            namingStrategy = nodeObject.naming();
             if (namingStrategy == NamingStrategy.IDENTITY) {
                 namingStrategy = null;
             }
-            propertyStrategy = nodeBinding.propertyStrategy();
-            readDynamic = nodeBinding.readDynamic();
-            writeDynamic = nodeBinding.writeDynamic();
+            propertyStrategy = nodeObject.propertyStrategy();
+            readDynamic = nodeObject.readDynamic();
+            writeDynamic = nodeObject.writeDynamic();
         }
 
         Map<String, PropertyFamily> families = new LinkedHashMap<>();
@@ -591,9 +591,9 @@ public final class ReflectUtil {
 
     public static NamingStrategy getNamingStrategy(Class<?> clazz) {
         if (clazz == null) return NamingStrategy.IDENTITY;
-        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
-        if (nodeBinding == null) return NamingStrategy.IDENTITY;
-        return nodeBinding.naming();
+        NodeObject nodeObject = clazz.getAnnotation(NodeObject.class);
+        if (nodeObject == null) return NamingStrategy.IDENTITY;
+        return nodeObject.naming();
     }
 
     public static String getExplicitName(AnnotatedElement element) {

@@ -38,14 +38,14 @@ public class GsonJsonBinderBenchmark {
     @State(Scope.Thread)
     public static class BenchmarkState {
         Gson gson;
-        GsonJsonBinder binder;
+        GsonBinder binder;
         String document;
         Document value;
 
         @Setup(Level.Trial)
         public void setup() {
             gson = new GsonBuilder().serializeNulls().disableHtmlEscaping().create();
-            binder = new GsonJsonBinder(gson);
+            binder = new GsonBinder(gson);
             value = new Document(
                     7,
                     20260319L,

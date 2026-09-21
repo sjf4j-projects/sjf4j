@@ -23,14 +23,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class Fastjson2JsonBinderTest {
+class Fastjson2BinderTest {
 
     @Test
     void readsPojoWithNestedCollectionsAndIgnoresUnknownProperties() {
         String json = "{\"id\":7,\"title\":\"Ada\",\"details\":{\"active\":true},"
                 + "\"tags\":[\"one\",\"two\"],\"nullable\":null,\"unknown\":\"ignored\"}";
 
-        Document value = (Document) new Fastjson2JsonBinder().readNode(json, Document.class);
+        Document value = (Document) new Fastjson2Binder().readNode(json, Document.class);
 
         assertEquals(7, value.id);
         assertEquals("Ada", value.title);
@@ -43,8 +43,8 @@ class Fastjson2JsonBinderTest {
     void writesPojoAndHonorsNullContext() {
         Document value = new Document(7, "Ada", new Details(true), Arrays.asList("one", "two"), null);
 
-        String includingNulls = new Fastjson2JsonBinder().writeNodeAsString(value);
-        String omittingNulls = new Fastjson2JsonBinder(JSONFactory.createReadContext(),
+        String includingNulls = new Fastjson2Binder().writeNodeAsString(value);
+        String omittingNulls = new Fastjson2Binder(JSONFactory.createReadContext(),
                 JSONFactory.createWriteContext(), new StreamingContext(false)).writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
@@ -53,7 +53,7 @@ class Fastjson2JsonBinderTest {
 
     @Test
     void writesSeparatorsForMultipleElementsAndProperties() {
-        Fastjson2JsonBinder binder = new Fastjson2JsonBinder();
+        Fastjson2Binder binder = new Fastjson2Binder();
         Map<String, Integer> map = new LinkedHashMap<>();
         map.put("a", 1);
         map.put("b", 2);
@@ -64,7 +64,7 @@ class Fastjson2JsonBinderTest {
 
     @Test
     void createsNativeReadersWritersAndFlushesToSuppliedOutputs() throws Exception {
-        Fastjson2JsonBinder binder = new Fastjson2JsonBinder();
+        Fastjson2Binder binder = new Fastjson2Binder();
         StringWriter text = new StringWriter();
 
         try (Fastjson2Reader reader = binder.createReader(new StringReader("null"))) {
@@ -86,12 +86,12 @@ class Fastjson2JsonBinderTest {
 
     @Test
     void wrapsSuppliedNativeStreamsAndRejectsNullDependencies() throws Exception {
-        Fastjson2JsonBinder binder = new Fastjson2JsonBinder();
+        Fastjson2Binder binder = new Fastjson2Binder();
         try (Fastjson2Reader reader = binder.createReader(JSONReader.of("null"))) {
             reader.nextNull();
         }
-        assertThrows(NullPointerException.class, () -> new Fastjson2JsonBinder(null, JSONFactory.createWriteContext()));
-        assertThrows(NullPointerException.class, () -> new Fastjson2JsonBinder(JSONFactory.createReadContext(), null));
+        assertThrows(NullPointerException.class, () -> new Fastjson2Binder(null, JSONFactory.createWriteContext()));
+        assertThrows(NullPointerException.class, () -> new Fastjson2Binder(JSONFactory.createReadContext(), null));
         assertThrows(NullPointerException.class, () -> binder.createReader((StringReader) null));
         assertThrows(NullPointerException.class, () -> binder.createWriter((StringWriter) null));
         assertThrows(NullPointerException.class, () -> binder.createReader((JSONReader) null));
@@ -100,7 +100,7 @@ class Fastjson2JsonBinderTest {
 
     @Test
     void closingWriterClosesCallerOwnedOutput() throws Exception {
-        Fastjson2JsonBinder binder = new Fastjson2JsonBinder();
+        Fastjson2Binder binder = new Fastjson2Binder();
         TrackingWriter text = new TrackingWriter();
         TrackingOutputStream bytes = new TrackingOutputStream();
 

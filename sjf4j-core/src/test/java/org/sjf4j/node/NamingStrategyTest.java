@@ -6,7 +6,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.NamingStrategy;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.path.JsonPath;
@@ -20,14 +20,14 @@ class NamingStrategyTest {
 
     private final Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
 
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE)
     static class SnakeUser extends JsonObject {
         public String userName;
         public int loginCount;
         public String _internalId;
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBoundUser {
         private String userName;
         private int loginCount;

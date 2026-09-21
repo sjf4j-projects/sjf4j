@@ -2,7 +2,6 @@ package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingWriter;
 
 import java.io.StringWriter;
 import java.math.BigDecimal;
@@ -16,7 +15,7 @@ class Jackson2WriterTest {
     @Test
     void writesValuesAndNullableDefaults() throws Exception {
         StringWriter output = new StringWriter();
-        Jackson2JsonBinder binder = new Jackson2JsonBinder(new JsonFactory());
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
         Jackson2Writer writer = binder.createWriter(output);
         writer.startArray();
         writer.writeString("text");
@@ -45,7 +44,7 @@ class Jackson2WriterTest {
     @Test
     void writesPreparedNamesAndFusedProperties() throws Exception {
         StringWriter output = new StringWriter();
-        Jackson2JsonBinder binder = new Jackson2JsonBinder(new JsonFactory());
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
         Jackson2Writer writer = binder.createWriter(output);
         Jackson2PreparedName text = new Jackson2PreparedName("te\"xt");
         Jackson2PreparedName number = new Jackson2PreparedName("number");

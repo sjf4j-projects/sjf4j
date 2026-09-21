@@ -5,7 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
@@ -176,10 +176,10 @@ class ReflectUtilEdgeCaseTest {
 
     static class MissingWhenSubtype extends JsonObject implements MissingWhenOneOf {}
 
-    @NodeBinding(naming = NamingStrategy.IDENTITY)
+    @NodeObject(naming = NamingStrategy.IDENTITY)
     static class IdentityNamingPojo {}
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBindingPojo {}
 
     static class TransientNodePropertyPojo {

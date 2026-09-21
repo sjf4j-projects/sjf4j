@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.NodeBinding;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
@@ -76,13 +76,13 @@ class Jackson3FacadeTest {
         String userName;
     }
 
-    @NodeBinding(readDynamic = false)
+    @NodeObject(readDynamic = false)
     static class ReadDisabledBook extends JsonObject {
         public int id;
         public String name;
     }
 
-    @NodeBinding(writeDynamic = false)
+    @NodeObject(writeDynamic = false)
     static class WriteDisabledBook extends JsonObject {
         public int id;
         public String name;
@@ -203,19 +203,19 @@ class Jackson3FacadeTest {
         }
     }
 
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE)
     static class SnakeBook extends JsonObject {
         public String userName;
         public int loginCount;
     }
 
-    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
+    @NodeObject(naming = NamingStrategy.SNAKE_CASE)
     static class SnakePlainBook {
         public String userName;
         public int loginCount;
     }
 
-    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBasedPrivateBook {
         String userName;
         int loginCount;

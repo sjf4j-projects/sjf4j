@@ -33,7 +33,7 @@ behavior.
 | `PropertyAliasDeserializationContract#testSimpleAliases` | `deser/PropertyAliasTest#testSimpleAliases` | Structural: `NodeProperty` aliases replace `JsonAlias` |
 | `#testAliasDeserializedToLastMatchingKeyAscendingKeys` | `deser/PropertyAliasTest#testAliasDeserializedToLastMatchingKey_ascendingKeys` | Structural: SJF4J aliases retain input-order overwrite |
 | `#testNoAliasNameInSerialization` | `deser/PropertyAliasTest#testNoAliasNameInSerialization` | Structural: tests SJF4J primary output name, not Jackson's ignored-getter interaction |
-| `#testSnakeCaseWithOneArg` | `creators/CreatorWithNamingStrategyTest#testSnakeCaseWithOneArg` | Structural: SJF4J applies `NodeBinding` naming to a field, not a creator parameter |
+| `#testSnakeCaseWithOneArg` | `creators/CreatorWithNamingStrategyTest#testSnakeCaseWithOneArg` | Structural: SJF4J applies `NodeObject` naming to a field, not a creator parameter |
 | `creator/CreatorDeserializationContract#testRequiredAnnotatedParam` | `creators/CreatorPropertyConstraintsTest#testRequiredAnnotatedParam` | Structural: missing primitive gets its Java default because `NodeProperty` has no required flag |
 | `creator/CreatorDeserializationContract#testCreatorArgumentsInJsonOrder` | `creators/CreatorPropertyConstraintsTest#testRequiredAnnotatedParam` | Structural: SJF4J out-of-order creator arguments |
 | `creator/CreatorDeserializationContract#testCreatorParameterAlias` | `deser/PropertyAliasTest#testSimpleAliases` | Structural: `NodeProperty` creator alias |

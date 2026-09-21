@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
 @Inherited
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NodeBinding {
+public @interface NodeObject {
     /**
      * Naming strategy applied when no explicit {@link NodeProperty} name is present.
      */
