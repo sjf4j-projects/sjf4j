@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.binding.FieldBinder;
+import org.sjf4j.value.NodeValueInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;

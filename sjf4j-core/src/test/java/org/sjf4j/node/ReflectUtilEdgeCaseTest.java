@@ -15,6 +15,8 @@ import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.util.Strings;
+import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.NodeValueRegistry;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

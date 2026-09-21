@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.NodeValueRegistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

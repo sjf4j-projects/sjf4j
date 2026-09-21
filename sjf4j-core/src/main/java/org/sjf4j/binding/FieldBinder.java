@@ -1,7 +1,7 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.NodeValueInfo;
+import org.sjf4j.value.NodeValueInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoAccess;
 import org.sjf4j.node.TypeInfo;

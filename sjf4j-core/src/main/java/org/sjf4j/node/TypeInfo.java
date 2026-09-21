@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.external.ExternalNode;
+import org.sjf4j.value.NodeValueInfo;
 
 /**
  * Cached classification and metadata for a Java type.

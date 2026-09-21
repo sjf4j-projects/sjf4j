@@ -3819,7 +3819,7 @@ public final class MapperGenerator {
         String field = "_sjf4j_codec_" + generation.nextCodec++;
         generation.helpers.put(key, field);
         String raw = GeneratorUtil.classLiteral(ctx, type);
-        target.addField(out -> out.line("private static final org.sjf4j.node.NodeValueInfo " + field + " = org.sjf4j.node.TypeRegistry.registerNodeValueOrElseThrow(" + raw + ", \"\");"));
+        target.addField(out -> out.line("private static final org.sjf4j.value.NodeValueInfo " + field + " = org.sjf4j.node.TypeRegistry.registerNodeValueOrElseThrow(" + raw + ", \"\");"));
         return field;
     }
 

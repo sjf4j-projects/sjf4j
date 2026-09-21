@@ -6,7 +6,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.FieldInfo;
-import org.sjf4j.node.NodeValueInfo;
+import org.sjf4j.value.NodeValueInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeInfo;

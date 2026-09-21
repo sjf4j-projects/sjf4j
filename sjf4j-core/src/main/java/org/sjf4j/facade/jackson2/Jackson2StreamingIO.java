@@ -12,14 +12,14 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.CreatorInfo;
-import org.sjf4j.node.NodeValueInfo;
+import org.sjf4j.value.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.NodeValueCodec;
+import org.sjf4j.value.NodeValueCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;

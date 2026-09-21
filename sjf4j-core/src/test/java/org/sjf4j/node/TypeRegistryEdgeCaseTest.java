@@ -18,6 +18,9 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.simple.SimpleJsonReader;
+import org.sjf4j.value.NodeValueCodec;
+import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.PatternedValueCodec;
 
 import java.io.StringReader;
 import java.lang.invoke.MethodHandles;

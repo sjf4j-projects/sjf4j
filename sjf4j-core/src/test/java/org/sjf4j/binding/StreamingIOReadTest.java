@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.NodeValueRegistry;
+import org.sjf4j.value.NodeValueRegistry;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.NodeValueCodec;
+import org.sjf4j.value.NodeValueCodec;
 
 import java.io.StringReader;
 import java.io.StringWriter;

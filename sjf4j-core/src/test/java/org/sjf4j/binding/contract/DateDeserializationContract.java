@@ -6,9 +6,8 @@ import java.util.Date;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
-import org.sjf4j.node.NodeValueRegistry;
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.NodeValueCodec;
+import org.sjf4j.value.NodeValueRegistry;
+import org.sjf4j.value.NodeValueCodec;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

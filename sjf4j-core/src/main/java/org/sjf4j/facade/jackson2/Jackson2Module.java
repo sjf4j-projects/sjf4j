@@ -31,7 +31,7 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.NodeValueInfo;
+import org.sjf4j.value.NodeValueInfo;
 
 import java.io.IOException;
 import java.lang.reflect.Executable;

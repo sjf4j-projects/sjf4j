@@ -1,6 +1,6 @@
 package org.sjf4j.annotation.node;
 
-import org.sjf4j.node.NodeValueCodec;
+import org.sjf4j.value.NodeValueCodec;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;

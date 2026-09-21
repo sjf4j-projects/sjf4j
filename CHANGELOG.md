@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Moved `NodeValueCodec`, `NodeValueInfo`, `NodeValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
 - Renamed `ValueCodec` and `ValueCodecInfo` to `NodeValueCodec` and `NodeValueInfo`; update codec imports and public metadata references accordingly.
 - Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
 - Converted `JsonBinder`, `YamlBinder`, `StreamingBinder`, and `StreamingWriter` from interfaces to abstract classes; custom backends must extend the new base classes and pass their binder/context through constructors.
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
 
 ### Added
+- Added the `sjf4j-backend-fastjson2` artifact with Fastjson2 streaming reader and writer bindings.
 - Added the `sjf4j-backend-jackson2` artifact with Jackson 2 streaming reader and writer bindings.
 - Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.
 - Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.

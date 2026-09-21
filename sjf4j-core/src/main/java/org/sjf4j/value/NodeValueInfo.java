@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.value;
 
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.exception.BindingException;

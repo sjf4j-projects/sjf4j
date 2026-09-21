@@ -1,6 +1,8 @@
 package org.sjf4j.annotation.node;
 
 
+import org.sjf4j.value.PatternedValueCodec;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -52,7 +54,7 @@ public @interface NodeProperty {
      * Date/time format pattern for this property or creator parameter.
      * <p>
      * Only applies to types whose value codec implements
-     * {@link org.sjf4j.node.PatternedValueCodec}.
+     * {@link PatternedValueCodec}.
      * When specified, takes precedence over {@link #codecName()}.
      */
     String codecPattern() default "";

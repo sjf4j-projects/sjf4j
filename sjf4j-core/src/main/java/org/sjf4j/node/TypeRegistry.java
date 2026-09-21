@@ -9,6 +9,8 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
+import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.NodeValueRegistry;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

@@ -14,3 +14,5 @@
  * not needed for ordinary JSON reads and writes.</p>
  */
 package org.sjf4j.node;
+
+import org.sjf4j.value.NodeValueCodec;

@@ -3,7 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.NodeKind;
-import org.sjf4j.node.NodeValueInfo;
+import org.sjf4j.value.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 

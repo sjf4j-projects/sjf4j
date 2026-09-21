@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.value;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeValue;
@@ -6,6 +6,8 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.PojoAccess;
+import org.sjf4j.node.Types;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

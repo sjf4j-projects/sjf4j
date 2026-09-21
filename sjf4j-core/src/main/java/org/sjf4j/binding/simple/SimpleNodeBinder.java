@@ -17,7 +17,7 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.NodeValueInfo;
+import org.sjf4j.value.NodeValueInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
 
@@ -779,8 +779,9 @@ public final class SimpleNodeBinder implements NodeBinder {
                 Class<?> fieldRaw = fi.genericDependent ? Types.rawBox(fieldType) : fi.boxed;
                 Object vv;
                 if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
-                    vv = fieldRaw.isInstance(rawValue) ? fi.resolvedValueCodec.valueCopy(rawValue) :
-                            fi.resolvedValueCodec.rawToValue(rawValue);
+                    vv = fieldRaw.isInstance(rawValue)
+                            ? fi.resolvedValueCodec.valueCopy(rawValue)
+                            : fi.resolvedValueCodec.rawToValue(rawValue);
                 } else {
                     vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
                 }

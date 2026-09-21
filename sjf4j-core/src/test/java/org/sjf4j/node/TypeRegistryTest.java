@@ -28,6 +28,9 @@ import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.fixture.JsonObjectPersonFixture;
+import org.sjf4j.value.NodeValueCodec;
+import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.NodeValueRegistry;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

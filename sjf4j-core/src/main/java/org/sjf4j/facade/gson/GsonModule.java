@@ -12,7 +12,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
-import org.sjf4j.node.NodeValueInfo;
+import org.sjf4j.value.NodeValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.PojoInfo;
