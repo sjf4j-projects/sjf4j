@@ -47,7 +47,9 @@ public interface FilterExpr {
         }
 
         @Override
-        public Object eval(Object rootNode, Object currentNode) { return value; }
+        public Object eval(Object rootNode, Object currentNode) {
+            return value;
+        }
 
         /**
          * Returns source-like literal rendering.
@@ -328,8 +330,13 @@ public interface FilterExpr {
         LT("<"), LE("<="), AND("&&"), OR("||"), MATCH("=~"), IN("in"), NIN("nin");
 
         private final String symbol;
-        Op(String symbol) { this.symbol = symbol; }
-        @Override public String toString() { return symbol; }
+        Op(String symbol) {
+            this.symbol = symbol;
+        }
+        @Override
+        public String toString() {
+            return symbol;
+        }
     }
 
     /**

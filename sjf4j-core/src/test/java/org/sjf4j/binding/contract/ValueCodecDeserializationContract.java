@@ -27,13 +27,49 @@ public abstract class ValueCodecDeserializationContract {
         assertEquals("beta", value.code.value);
     }
     /** Structural source: ValueAnnotationsDeserTest#testRootMapAsOld; its list root becomes a NodeValue list codec. */
-    @Test void testValueCodecList() { assertEquals(List.of("a", "b"), ((ListCode) binding(StreamingContext.EMPTY).readNode("[\"a\",\"b\"]", ListCode.class)).value); }
+    @Test void testValueCodecList() {
+            assertEquals(List.of("a", "b"), ((ListCode) binding(StreamingContext.EMPTY).readNode("[\"a\",\"b\"]", ListCode.class)).value);
+        }
     /** Structural source: ValueAnnotationsDeserTest#testRootListAsOld; its map root becomes a NodeValue map codec. */
-    @Test void testValueCodecMap() { assertEquals(Map.of("x", 3), ((MapCode) binding(StreamingContext.EMPTY).readNode("{\"x\":3}", MapCode.class)).value); }
+    @Test void testValueCodecMap() {
+            assertEquals(Map.of("x", 3), ((MapCode) binding(StreamingContext.EMPTY).readNode("{\"x\":3}", MapCode.class)).value);
+        }
     /** Retained SJF4J NodeValue null contract; no Jackson method mapping. */
-    @Test void testNullValueCodec() { assertNull(binding(StreamingContext.EMPTY).readNode("null", Code.class)); }
-    @NodeValue static class Code { final String value; Code(String value) { this.value = value; } @ValueToRaw String encode() { return value; } @RawToValue static Code decode(String raw) { return new Code(raw); } }
+    @Test void testNullValueCodec() {
+            assertNull(binding(StreamingContext.EMPTY).readNode("null", Code.class));
+        }
+    @NodeValue static class Code { final String value;
+         Code(String value) {
+            this.value = value;
+        }
+         @ValueToRaw String encode() {
+            return value;
+        }
+         @RawToValue static Code decode(String raw) {
+            return new Code(raw);
+        }
+     }
     static class CodeHolder { public Code code; }
-    @NodeValue static class ListCode { final List<String> value; ListCode(List<String> value) { this.value = value; } @ValueToRaw List<String> encode() { return value; } @RawToValue static ListCode decode(List<String> raw) { return new ListCode(raw); } }
-    @NodeValue static class MapCode { final Map<String, Integer> value; MapCode(Map<String, Integer> value) { this.value = value; } @ValueToRaw Map<String, Integer> encode() { return value; } @RawToValue static MapCode decode(Map<String, Integer> raw) { return new MapCode(raw); } }
+    @NodeValue static class ListCode { final List<String> value;
+         ListCode(List<String> value) {
+            this.value = value;
+        }
+         @ValueToRaw List<String> encode() {
+            return value;
+        }
+         @RawToValue static ListCode decode(List<String> raw) {
+            return new ListCode(raw);
+        }
+     }
+    @NodeValue static class MapCode { final Map<String, Integer> value;
+         MapCode(Map<String, Integer> value) {
+            this.value = value;
+        }
+         @ValueToRaw Map<String, Integer> encode() {
+            return value;
+        }
+         @RawToValue static MapCode decode(Map<String, Integer> raw) {
+            return new MapCode(raw);
+        }
+     }
 }

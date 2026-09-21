@@ -807,7 +807,9 @@ class JsonObjectTest {
     public static class Note {
         @NodeProperty("no")
         private String yes;
-        public String getYes() {return yes;}
+        public String getYes() {
+                return yes;
+            }
     }
 
     @Test public void testNodeField2() {

@@ -177,7 +177,9 @@ public class CompiledValidatorUsageTest {
         @NodeProperty("name") public String name;
         @NodeProperty("user_age") public int age;
         StrictPerson() {}
-        StrictPerson(String name, int age) { this.name = name; this.age = age; }
+        StrictPerson(String name, int age) {
+                this.name = name; this.age = age;
+            }
     }
 
     @CompiledValidator

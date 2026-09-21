@@ -39,12 +39,16 @@ public class ValidationContext {
     /**
      * Returns true when validation stops at first non-ignored error.
      */
-    public boolean isFailFast() {return failFast;}
+    public boolean isFailFast() {
+        return failFast;
+    }
 
     /**
      * Returns true when format validators should be enforced as assertions.
      */
-    public boolean isStrictFormat() {return strictFormat;}
+    public boolean isStrictFormat() {
+        return strictFormat;
+    }
 
     /**
      * Builds a result snapshot from current context state.
@@ -79,11 +83,15 @@ public class ValidationContext {
      * Errors added while ignore-depth is positive are suppressed. Calls must be
      * balanced with {@link #popIgnoreError()}.
      */
-    public void pushIgnoreError() {ignoreErrorAdding++;}
+    public void pushIgnoreError() {
+        ignoreErrorAdding++;
+    }
     /**
      * Pops an error-ignore frame started by {@link #pushIgnoreError()}.
      */
-    public void popIgnoreError() {ignoreErrorAdding--;}
+    public void popIgnoreError() {
+        ignoreErrorAdding--;
+    }
 
     // PlanStack
     public void pushPlan(SchemaPlan plan) {

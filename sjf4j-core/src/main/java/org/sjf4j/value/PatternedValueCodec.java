@@ -71,18 +71,26 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
             this.parseWith = parseWith;
         }
 
-        @Override public String valueToRaw(V value) {
+        @Override
+        public String valueToRaw(V value) {
             if (value == null) return null;
             return formatter != null ? format.apply(value, formatter) : toString.apply(value);
         }
 
-        @Override public V rawToValue(String raw) {
+        @Override
+        public V rawToValue(String raw) {
             if (raw == null) return null;
             return formatter != null ? parseWith.apply(raw, formatter) : parse.apply(raw);
         }
 
-        @Override public Class<V> valueClazz() { return type; }
-        @Override public Class<String> rawClazz() { return String.class; }
+        @Override
+        public Class<V> valueClazz() {
+            return type;
+        }
+        @Override
+        public Class<String> rawClazz() {
+            return String.class;
+        }
 
         @Override
         public ValueCodec<V, String> withPattern(String pattern) {

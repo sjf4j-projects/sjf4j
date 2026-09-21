@@ -21,7 +21,9 @@ public abstract class JDKScalarsDeserializationContract {
         assertEquals(Boolean.FALSE, binding(StreamingContext.EMPTY).readNode("false", Boolean.class));
     }
     /** Source: JDKScalarsDeserTest#testCharacterWrapper (one-character-string case). */
-    @Test void testCharacterWrapper() { assertEquals('x', binding(StreamingContext.EMPTY).readNode("\"x\"", Character.class)); }
+    @Test void testCharacterWrapper() {
+            assertEquals('x', binding(StreamingContext.EMPTY).readNode("\"x\"", Character.class));
+        }
     /** Source: JDKScalarsDeserTest#testIntWrapper and #testLongWrapper (native numeric input). */
     @Test void testIntegerAndLongWrapper() {
         assertEquals(-42, binding(StreamingContext.EMPTY).readNode("-42", Integer.class));
@@ -36,7 +38,9 @@ public abstract class JDKScalarsDeserializationContract {
         assertThrows(BindingException.class, () -> binding(StreamingContext.EMPTY).readNode("[null]", int[].class));
     }
     /** Source: JDKScalarsDeserTest#testNullForPrimitivesDefault (reference null contrast). */
-    @Test void testNullForWrapperProperty() { assertNull(((Wrappers) binding(StreamingContext.EMPTY).readNode("{\"value\":null}", Wrappers.class)).value); }
+    @Test void testNullForWrapperProperty() {
+            assertNull(((Wrappers) binding(StreamingContext.EMPTY).readNode("{\"value\":null}", Wrappers.class)).value);
+        }
     /** Retained SJF4J scalar-root coverage; JDKScalarsDeserTest has no successful BigInteger/BigDecimal root counterpart. */
     @Test void testBigNumberRoots() {
         assertEquals(new BigInteger("7"), binding(StreamingContext.EMPTY).readNode("7", BigInteger.class));

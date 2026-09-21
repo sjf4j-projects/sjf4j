@@ -41,7 +41,9 @@ public abstract class DateDeserializationContract {
     }
 
     /** Source: DateDeserializationTest#testDateUtil, expressed through opt-in valueFormat. */
-    @Test void testDateUtil() { assertEquals(new Date(123456789L), binding(epochMillisContext()).readNode("123456789", Date.class)); }
+    @Test void testDateUtil() {
+            assertEquals(new Date(123456789L), binding(epochMillisContext()).readNode("123456789", Date.class));
+        }
     /** Source: DateDeserializationTest#testCalendar, expressed through opt-in valueFormat. */
     @Test void testCalendarAsNumber() {
         Calendar value = (Calendar) binding(epochMillisContext()).readNode("123456789", Calendar.class);

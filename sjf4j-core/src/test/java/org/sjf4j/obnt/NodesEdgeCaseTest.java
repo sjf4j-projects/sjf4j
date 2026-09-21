@@ -119,6 +119,7 @@ class NodesEdgeCaseTest {
         }
 
         @Override
+
         public boolean equals(Object obj) {
             if (this == obj) {
                 return true;
@@ -130,6 +131,7 @@ class NodesEdgeCaseTest {
         }
 
         @Override
+
         public int hashCode() {
             return value.hashCode();
         }

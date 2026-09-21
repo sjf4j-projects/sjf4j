@@ -5,5 +5,8 @@ import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.access.AccessDeserializationContract;
 
 class SimpleAccessDeserializationContractTest extends AccessDeserializationContract {
-    @Override protected JsonBinder<?, ?> binding(StreamingContext context) { return new SimpleJsonBinder(context); }
+    @Override
+    protected JsonBinder<?, ?> binding(StreamingContext context) {
+            return new SimpleJsonBinder(context);
+        }
 }

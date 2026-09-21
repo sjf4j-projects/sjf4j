@@ -170,9 +170,13 @@ public class TypeRegistryTest {
     }
 
     public static class BigDay extends Day {
-        public BigDay(LocalDate localDate) {super(localDate);}
+        public BigDay(LocalDate localDate) {
+                super(localDate);
+            }
 
-        public static BigDay decode(String raw) { return new BigDay(LocalDate.parse(raw));}
+        public static BigDay decode(String raw) {
+                return new BigDay(LocalDate.parse(raw));
+            }
 
         public BigDay copy() {
             return new BigDay(localDate);
@@ -295,16 +299,19 @@ public class TypeRegistryTest {
             }
 
             @Override
+
             public CodecDay rawToValue(String raw) {
                 return new CodecDay(LocalDate.parse(raw));
             }
 
             @Override
+
             public Class<CodecDay> valueClazz() {
                 return CodecDay.class;
             }
 
             @Override
+
             public Class<String> rawClazz() {
                 return String.class;
             }
@@ -333,16 +340,19 @@ public class TypeRegistryTest {
             }
 
             @Override
+
             public LocalDate rawToValue(String raw) {
                 return LocalDate.parse(raw);
             }
 
             @Override
+
             public Class<LocalDate> valueClazz() {
                 return LocalDate.class;
             }
 
             @Override
+
             public Class<String> rawClazz() {
                 return String.class;
             }

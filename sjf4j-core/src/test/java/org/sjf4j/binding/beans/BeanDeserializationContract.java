@@ -84,19 +84,31 @@ public abstract class BeanDeserializationContract {
         public List<Point> points;
         public int[] numbers;
         public Map<String, String> attributes;
-        public String getText() { return text; }
-        public void setText(String text) { this.text = text; }
+        public String getText() {
+            return text;
+        }
+        public void setText(String text) {
+            this.text = text;
+        }
     }
     static class AccessorBean {
         public int id;
         private String name;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
     static class AgeBean {
         private int age;
-        public int getAge() { return age; }
-        public void setAge(int age) { this.age = age; }
+        public int getAge() {
+            return age;
+        }
+        public void setAge(int age) {
+            this.age = age;
+        }
     }
     abstract static class AbstractBean { public int x; }
 }

@@ -21,6 +21,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public Token peekToken() throws IOException {
         if (!initialized) {
             initialized = true;
@@ -33,30 +34,35 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public void startObject() throws IOException {
         require(JsonToken.START_OBJECT);
         advance();
     }
 
     @Override
+
     public void endObject() throws IOException {
         require(JsonToken.END_OBJECT);
         advance();
     }
 
     @Override
+
     public void startArray() throws IOException {
         require(JsonToken.START_ARRAY);
         advance();
     }
 
     @Override
+
     public void endArray() throws IOException {
         require(JsonToken.END_ARRAY);
         advance();
     }
 
     @Override
+
     public String nextName() throws IOException {
         require(JsonToken.FIELD_NAME);
         String name = parser.currentName();
@@ -65,6 +71,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public String nextString() throws IOException {
         require(JsonToken.VALUE_STRING);
         String value = parser.getText();
@@ -73,6 +80,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public Number nextNumber() throws IOException {
         requireNumber();
         Number value = parser.getNumberValue();
@@ -81,6 +89,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public long nextLongValue() throws IOException {
         requireInteger();
         long value = parser.getLongValue();
@@ -89,6 +98,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public int nextIntValue() throws IOException {
         requireInteger();
         int value = parser.getIntValue();
@@ -97,6 +107,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public short nextShortValue() throws IOException {
         requireInteger();
         short value = parser.getShortValue();
@@ -105,6 +116,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public byte nextByteValue() throws IOException {
         requireInteger();
         byte value = parser.getByteValue();
@@ -113,6 +125,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public double nextDoubleValue() throws IOException {
         requireNumber();
         double value = parser.getDoubleValue();
@@ -121,6 +134,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public float nextFloatValue() throws IOException {
         requireNumber();
         float value = parser.getFloatValue();
@@ -129,6 +143,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public boolean nextBooleanValue() throws IOException {
         ensureToken();
         if (token != JsonToken.VALUE_TRUE && token != JsonToken.VALUE_FALSE) {
@@ -140,6 +155,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public char nextCharValue() throws IOException {
         requireString();
         String value = parser.getText();
@@ -151,6 +167,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public BigInteger nextBigInteger() throws IOException {
         requireInteger();
         BigInteger value = parser.getBigIntegerValue();
@@ -159,6 +176,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public BigDecimal nextBigDecimal() throws IOException {
         requireNumber();
         BigDecimal value = parser.getDecimalValue();
@@ -167,12 +185,14 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public void nextNull() throws IOException {
         require(JsonToken.VALUE_NULL);
         advance();
     }
 
     @Override
+
     public boolean nextIfNull() throws IOException {
         ensureToken();
         if (token != JsonToken.VALUE_NULL) return false;
@@ -181,6 +201,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public boolean nextIfObjectEnd() throws IOException {
         ensureToken();
         if (token != JsonToken.END_OBJECT) return false;
@@ -189,6 +210,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public boolean nextIfArrayEnd() throws IOException {
         ensureToken();
         if (token != JsonToken.END_ARRAY) return false;
@@ -197,6 +219,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public void skipNext() throws IOException {
         ensureToken();
         if (token != JsonToken.START_OBJECT && token != JsonToken.START_ARRAY &&
@@ -210,6 +233,7 @@ public class Jackson2Reader implements StreamingReader {
     }
 
     @Override
+
     public void close() throws IOException {
         parser.close();
     }

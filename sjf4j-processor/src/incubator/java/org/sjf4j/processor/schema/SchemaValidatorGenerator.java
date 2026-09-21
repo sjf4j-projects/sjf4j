@@ -1047,7 +1047,9 @@ public final class SchemaValidatorGenerator {
         boolean strictFormat;
         boolean strictValidatorField;
         boolean lenientValidatorField;
-        State(GeneratedClass t) { target = t; }
+        State(GeneratedClass t) {
+            target = t;
+        }
     }
 
     private static final class Read {
@@ -1055,8 +1057,18 @@ public final class SchemaValidatorGenerator {
         final String methodName;
         final String field;
         final TypeMirror type;
-        Read(ExecutableElement m, String f, TypeMirror t) { method = m; methodName = null; field = f; type = t; }
-        Read(String m, TypeMirror t) { method = null; methodName = m; field = null; type = t; }
+        Read(ExecutableElement m, String f, TypeMirror t) {
+            method = m;
+            methodName = null;
+            field = f;
+            type = t;
+        }
+        Read(String m, TypeMirror t) {
+            method = null;
+            methodName = m;
+            field = null;
+            type = t;
+        }
         String code(String root) {
             if (method != null) return root + "." + method.getSimpleName() + "()";
             if (methodName != null) return root + "." + methodName + "()";
@@ -1079,14 +1091,23 @@ public final class SchemaValidatorGenerator {
         final boolean supported;
         final String methodName;
         final String reason;
-        PlanResult(boolean s, String m, String r) { supported = s; methodName = m; reason = r; }
+        PlanResult(boolean s, String m, String r) {
+            supported = s;
+            methodName = m;
+            reason = r;
+        }
     }
 
     private static final class CompileResult {
         static final CompileResult OK = new CompileResult(true, null);
         final boolean supported;
         final String reason;
-        CompileResult(boolean s, String r) { supported = s; reason = r; }
-        static CompileResult unsupported(String reason) { return new CompileResult(false, reason); }
+        CompileResult(boolean s, String r) {
+            supported = s;
+            reason = r;
+        }
+        static CompileResult unsupported(String reason) {
+            return new CompileResult(false, reason);
+        }
     }
 }

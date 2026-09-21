@@ -64,14 +64,46 @@ public abstract class AccessDeserializationContract {
     static class CreatorBean {
         final String name;
         String city;
-        @NodeCreator CreatorBean(@NodeProperty("name") String name) { this.name = name; }
-        public void setCity(String city) { this.city = city; }
+        @NodeCreator
+        CreatorBean(@NodeProperty("name") String name) {
+            this.name = name;
+        }
+        public void setCity(String city) {
+            this.city = city;
+        }
     }
-    static class IgnoredBean { @NodeIgnore public String userId; public String firstName; }
-    static class GetterOnly { private final List<Integer> values = List.of(); public String name; public List<Integer> getValues() { return values; } }
-    static class BeanAndField { public String name = "field"; private String setterValue; public String getName() { return setterValue; } public void setName(String value) { setterValue = "setter:" + value; } }
-    static class FieldOnly { public String name; }
-    static class AliasBean { @NodeProperty(value = "name", aliases = "oldName") public String name; }
+    static class IgnoredBean {
+        @NodeIgnore
+        public String userId;
+        public String firstName;
+    }
+
+    static class GetterOnly {
+        private final List<Integer> values = List.of();
+        public String name;
+        public List<Integer> getValues() {
+            return values;
+        }
+     }
+    static class BeanAndField {
+        public String name = "field";
+        private String setterValue;
+        public String getName() {
+            return setterValue;
+        }
+        public void setName(String value) {
+            setterValue = "setter:" + value;
+        }
+     }
+    static class FieldOnly {
+        public String name;
+    }
+    static class AliasBean {
+        @NodeProperty(value = "name", aliases = "oldName")
+        public String name;
+    }
     @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD, readDynamic = false)
-    static class DynamicBean extends JsonObject { public int id; }
+    static class DynamicBean extends JsonObject {
+        public int id;
+    }
 }

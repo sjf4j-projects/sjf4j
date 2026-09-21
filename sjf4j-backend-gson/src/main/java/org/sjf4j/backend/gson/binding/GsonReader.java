@@ -57,30 +57,36 @@ public class GsonReader implements StreamingReader {
 
 
     @Override
+
+
     public void startObject() throws IOException {
         reader.beginObject();
         invalidateToken();
     }
 
     @Override
+
     public void endObject() throws IOException {
         reader.endObject();
         invalidateToken();
     }
 
     @Override
+
     public void startArray() throws IOException {
         reader.beginArray();
         invalidateToken();
     }
 
     @Override
+
     public void endArray() throws IOException {
         reader.endArray();
         invalidateToken();
     }
 
     @Override
+
     public String nextName() throws IOException {
         String value = reader.nextName();
         invalidateToken();
@@ -88,6 +94,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public String nextString() throws IOException {
         String value = reader.nextString();
         invalidateToken();
@@ -95,6 +102,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public Number nextNumber() throws IOException {
         String value = reader.nextString();
         invalidateToken();
@@ -102,6 +110,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public long nextLongValue() throws IOException {
         long value = reader.nextLong();
         invalidateToken();
@@ -109,6 +118,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public int nextIntValue() throws IOException {
         int value = reader.nextInt();
         invalidateToken();
@@ -116,6 +126,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public short nextShortValue() throws IOException {
         int value = reader.nextInt();
         invalidateToken();
@@ -123,6 +134,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public byte nextByteValue() throws IOException {
         int value = reader.nextInt();
         invalidateToken();
@@ -130,6 +142,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public double nextDoubleValue() throws IOException {
         double value = reader.nextDouble();
         invalidateToken();
@@ -137,6 +150,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public float nextFloatValue() throws IOException {
         double value = reader.nextDouble();
         invalidateToken();
@@ -144,6 +158,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public boolean nextBooleanValue() throws IOException {
         boolean value = reader.nextBoolean();
         invalidateToken();
@@ -151,6 +166,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public char nextCharValue() throws IOException {
         String str = reader.nextString();
         invalidateToken();
@@ -161,6 +177,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public BigInteger nextBigInteger() throws IOException {
         String value = reader.nextString();
         invalidateToken();
@@ -168,6 +185,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public BigDecimal nextBigDecimal() throws IOException {
         String value = reader.nextString();
         invalidateToken();
@@ -176,12 +194,15 @@ public class GsonReader implements StreamingReader {
 
 
     @Override
+
+
     public void nextNull() throws IOException {
         reader.nextNull();
         invalidateToken();
     }
 
     @Override
+
     public boolean nextIfNull() throws IOException {
         ensureToken();
         if (token != JsonToken.NULL) return false;
@@ -191,6 +212,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public boolean nextIfObjectEnd() throws IOException {
         ensureToken();
         if (token != JsonToken.END_OBJECT) return false;
@@ -200,6 +222,7 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public boolean nextIfArrayEnd() throws IOException {
         ensureToken();
         if (token != JsonToken.END_ARRAY) return false;
@@ -209,12 +232,14 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
+
     public void skipNext() throws IOException {
         reader.skipValue();
         invalidateToken();
     }
 
     @Override
+
     public void close() throws IOException {
         reader.close();
     }

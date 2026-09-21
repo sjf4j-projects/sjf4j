@@ -73,7 +73,9 @@ public interface ValueCodec<V, R> {
      * Override this for mutable value types. The default implementation returns
      * the input reference unchanged.
      */
-    default V valueCopy(V value) {return value;}
+    default V valueCopy(V value) {
+        return value;
+    }
 
 
     // ──────────────────────────────────────────────────────────────
@@ -105,11 +107,26 @@ public interface ValueCodec<V, R> {
             this.copier = copier;
         }
 
-        @Override public R valueToRaw(V value) { return value == null ? null : encoder.apply(value); }
-        @Override public V rawToValue(R raw)   { return raw == null ? null : decoder.apply(raw); }
-        @Override public Class<V> valueClazz() { return valueClazz; }
-        @Override public Class<R> rawClazz()   { return rawClazz; }
-        @Override public V valueCopy(V value)  { return copier.apply(value); }
+        @Override
+        public R valueToRaw(V value) {
+            return value == null ? null : encoder.apply(value);
+        }
+        @Override
+        public V rawToValue(R raw) {
+            return raw == null ? null : decoder.apply(raw);
+        }
+        @Override
+        public Class<V> valueClazz() {
+            return valueClazz;
+        }
+        @Override
+        public Class<R> rawClazz() {
+            return rawClazz;
+        }
+        @Override
+        public V valueCopy(V value) {
+            return copier.apply(value);
+        }
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -194,8 +211,14 @@ public interface ValueCodec<V, R> {
         public Optional<?> rawToValue(Object raw) {
             return raw == null ? Optional.empty() : Optional.of(raw);
         }
-        @Override public Class<Optional<?>> valueClazz() { return (Class) Optional.class; }
-        @Override public Class<Object> rawClazz() { return Object.class; }
+        @Override
+        public Class<Optional<?>> valueClazz() {
+            return (Class) Optional.class;
+        }
+        @Override
+        public Class<Object> rawClazz() {
+            return Object.class;
+        }
     }
 
     // calendar → string

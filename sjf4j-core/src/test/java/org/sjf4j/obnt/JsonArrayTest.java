@@ -168,7 +168,9 @@ class JsonArrayTest {
     }
 
     private static final class InspectableJsonArray extends JsonArray {
-        private List<Object> backingList() { return dynamicList; }
+        private List<Object> backingList() {
+                return dynamicList;
+            }
     }
 
     @Test public void testSupplier1() {

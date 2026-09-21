@@ -13,24 +13,38 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PropertyAccessorResolutionTest {
 
     static class BooleanAccessorPojo {
-        public boolean getActive() { return false; }
-        public boolean isActive() { return true; }
+        public boolean getActive() {
+                return false;
+            }
+        public boolean isActive() {
+                return true;
+            }
     }
 
     static class ParentGetterPojo {
-        public String getName() { return "parent"; }
+        public String getName() {
+                return "parent";
+            }
     }
 
     static class ChildGetterPojo extends ParentGetterPojo {
         @Override
-        public String getName() { return "child"; }
+        public String getName() {
+                return "child";
+            }
     }
 
     static class SetterAnchorPojo {
         private String value;
-        public String getValue() { return value; }
-        public void setValue(Object value) { this.value = String.valueOf(value); }
-        public void setValue(String value) { this.value = value; }
+        public String getValue() {
+                return value;
+            }
+        public void setValue(Object value) {
+                this.value = String.valueOf(value);
+            }
+        public void setValue(String value) {
+                this.value = value;
+            }
     }
 
     static class AmbiguousSetterPojo {
@@ -40,12 +54,16 @@ class PropertyAccessorResolutionTest {
 
     static class ParentIgnoredGetterPojo {
         @NodeIgnore
-        public String getName() { return "parent"; }
+        public String getName() {
+                return "parent";
+            }
     }
 
     static class ChildVisibleGetterPojo extends ParentIgnoredGetterPojo {
         @Override
-        public String getName() { return "child"; }
+        public String getName() {
+                return "child";
+            }
     }
 
     static class ParentSetterOverloadPojo {
@@ -59,19 +77,29 @@ class PropertyAccessorResolutionTest {
     @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class BeanFieldTypePriorityPojo {
         private Object value;
-        public String getValue() { return (String) value; }
-        public void setValue(String value) { this.value = value; }
+        public String getValue() {
+                return (String) value;
+            }
+        public void setValue(String value) {
+                this.value = value;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanTypePriorityPojo {
         private Object value;
-        public String getValue() { return (String) value; }
-        public void setValue(String value) { this.value = value; }
+        public String getValue() {
+                return (String) value;
+            }
+        public void setValue(String value) {
+                this.value = value;
+            }
     }
 
     static class IncompatibleAccessorPojo {
-        public String getValue() { return "x"; }
+        public String getValue() {
+                return "x";
+            }
         public void setValue(Integer value) {}
     }
 

@@ -20,6 +20,7 @@ public final class Fast2ByteArrayOutputStream extends OutputStream {
     }
 
     @Override
+
     public void write(int b) {
         if (count == buffer.length) {
             grow(count + 1);
@@ -28,6 +29,7 @@ public final class Fast2ByteArrayOutputStream extends OutputStream {
     }
 
     @Override
+
     public void write(byte[] b, int off, int len) {
         if ((off | len | (off + len) | (b.length - off - len)) < 0) {
             throw new IndexOutOfBoundsException();
@@ -56,10 +58,12 @@ public final class Fast2ByteArrayOutputStream extends OutputStream {
     }
 
     @Override
+
     public void flush() {
     }
 
     @Override
+
     public void close() {
     }
 

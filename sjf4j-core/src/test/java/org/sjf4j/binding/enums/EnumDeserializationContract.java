@@ -126,8 +126,14 @@ public abstract class EnumDeserializationContract {
     @org.sjf4j.annotation.node.NodeValue
     static class EnumCode {
         final String value;
-        EnumCode(String value) { this.value = value; }
-        @org.sjf4j.annotation.node.RawToValue static EnumCode decode(String raw) { return new EnumCode(raw); }
-        @org.sjf4j.annotation.node.ValueToRaw String encode() { return value; }
+        EnumCode(String value) {
+                this.value = value;
+            }
+        @org.sjf4j.annotation.node.RawToValue static EnumCode decode(String raw) {
+                return new EnumCode(raw);
+            }
+        @org.sjf4j.annotation.node.ValueToRaw String encode() {
+                return value;
+            }
     }
 }

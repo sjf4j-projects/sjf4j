@@ -7,6 +7,7 @@ public final class TestExternalNodeProvider implements ExternalNodeProvider {
     static final ExternalNode<?> ADAPTER = new ExternalNodeRegistryTest.TestExternalAdapter();
 
     @Override
+
     public ExternalNode<?> externalNode() {
         return ADAPTER;
     }

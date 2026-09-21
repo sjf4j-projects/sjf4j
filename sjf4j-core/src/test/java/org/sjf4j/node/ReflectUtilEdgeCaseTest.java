@@ -198,17 +198,23 @@ class ReflectUtilEdgeCaseTest {
 
     static class GetterPojo {
         private String name = "han";
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     static class BooleanPojo {
         private boolean active = true;
-        public boolean isActive() { return active; }
+        public boolean isActive() {
+                return active;
+            }
     }
 
     static class BooleanGetterPojo {
         private Boolean active = Boolean.TRUE;
-        public Boolean getActive() { return active; }
+        public Boolean getActive() {
+                return active;
+            }
     }
 
     static class NoGetterPojo {

@@ -39,17 +39,23 @@ public final class NameAllocator {
     /**
      * Allocates a local variable name from a preferred human-readable hint.
      */
-    public String local(String preferred) { return allocate(clean(preferred, "v")); }
+    public String local(String preferred) {
+        return allocate(clean(preferred, "v"));
+    }
 
     /**
      * Allocates a local variable name with a stable prefix and sanitized hint.
      */
-    public String prefixed(String prefix, String hint) { return allocate(prefix + "_" + clean(hint, "value")); }
+    public String prefixed(String prefix, String hint) {
+        return allocate(prefix + "_" + clean(hint, "value"));
+    }
 
     /**
      * Allocates a private helper method name used by generated mapper code.
      */
-    public String helper(String hint) { return allocate("_map" + upper(clean(hint, "Value"))); }
+    public String helper(String hint) {
+        return allocate("_map" + upper(clean(hint, "Value")));
+    }
 
     private String allocate(String base) {
         if (used.add(base)) return base;

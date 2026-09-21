@@ -287,14 +287,20 @@ public class MapperArrayTest {
         @MappingOptions(using = {"upper"})
         UserDto[] userDtoArray(User[] source);
 
-        default UserDto upper(User user) { return new UserDto(user.name().toUpperCase()); }
+        default UserDto upper(User user) {
+                return new UserDto(user.name().toUpperCase());
+            }
 
-        default UserDto lower(User user) { return new UserDto(user.name().toLowerCase()); }
+        default UserDto lower(User user) {
+                return new UserDto(user.name().toLowerCase());
+            }
     }
 
     @CompiledMapper
     public interface ImportedArrayLeafMapper {
-        default UserDto toDto(User user) { return user == null ? null : new UserDto(user.name().toUpperCase()); }
+        default UserDto toDto(User user) {
+                return user == null ? null : new UserDto(user.name().toUpperCase());
+            }
     }
 
     @CompiledMapper(importing = {ImportedArrayLeafMapper.class})

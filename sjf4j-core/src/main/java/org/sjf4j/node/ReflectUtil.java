@@ -550,7 +550,9 @@ public final class ReflectUtil {
         List<String> aliases;
         OneOfInfo oneOfInfo;
 
-        PropertyFamily(String implicitName) { this.implicitName = implicitName; }
+        PropertyFamily(String implicitName) {
+            this.implicitName = implicitName;
+        }
         void addExplicitName(String name, Class<?> owner) {
             if (name == null || name.isEmpty()) return;
             if (explicitName == null) explicitName = name;
@@ -571,8 +573,12 @@ public final class ReflectUtil {
             if (codecPattern == null) codecPattern = cp;
             else if (!codecPattern.equals(cp)) throw new JsonException("conflicting codecPattern for property '" + implicitName + "' in " + owner.getName());
         }
-        boolean canUseGetter() { return getterMethod != null && !ignoreGetter; }
-        boolean canUseSetter() { return setterMethod != null && !ignoreSetter; }
+        boolean canUseGetter() {
+            return getterMethod != null && !ignoreGetter;
+        }
+        boolean canUseSetter() {
+            return setterMethod != null && !ignoreSetter;
+        }
         Type resolveType(PropertyStrategy strategy) {
             if (strategy == PropertyStrategy.BEAN_ONLY || strategy == PropertyStrategy.BEAN_FIELD) {
                 if (getterType != null) return getterType;

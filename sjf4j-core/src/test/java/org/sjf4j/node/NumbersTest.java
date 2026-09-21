@@ -178,21 +178,25 @@ class NumbersTest {
             }
 
             @Override
+
             public long longValue() {
                 return 3L;
             }
 
             @Override
+
             public float floatValue() {
                 return 3.5f;
             }
 
             @Override
+
             public double doubleValue() {
                 return 3.5d;
             }
 
             @Override
+
             public String toString() {
                 return "3.5";
             }

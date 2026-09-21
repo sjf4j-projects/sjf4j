@@ -150,9 +150,13 @@ public class PutByPathTest {
     static final class Account {
         private final Profile profile;
 
-        Account(Profile profile) { this.profile = profile; }
+        Account(Profile profile) {
+                this.profile = profile;
+            }
 
-        public Profile getProfile() { return profile; }
+        public Profile getProfile() {
+                return profile;
+            }
     }
 
     record Profile(Organization organization) {}
@@ -165,11 +169,17 @@ public class PutByPathTest {
     static final class Contact {
         private String email;
 
-        Contact(String email) { this.email = email; }
+        Contact(String email) {
+                this.email = email;
+            }
 
-        public String getEmail() { return email; }
+        public String getEmail() {
+                return email;
+            }
 
-        public void setEmail(String email) { this.email = email; }
+        public void setEmail(String email) {
+                this.email = email;
+            }
     }
 
     record Address(City city) {}
@@ -182,7 +192,9 @@ public class PutByPathTest {
             this.district = district;
         }
 
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     static final class MutableBean {
@@ -194,9 +206,13 @@ public class PutByPathTest {
             this.field = field;
         }
 
-        public String getValue() { return value; }
+        public String getValue() {
+                return value;
+            }
 
-        public void setValue(String value) { this.value = value; }
+        public void setValue(String value) {
+                this.value = value;
+            }
     }
 
     static final class ThirdPartyMutableBean {
@@ -211,10 +227,14 @@ public class PutByPathTest {
         }
 
         @com.fasterxml.jackson.annotation.JsonProperty("first_name")
-        public String getFirstName() { return firstName; }
+        public String getFirstName() {
+                return firstName;
+            }
 
         @com.fasterxml.jackson.annotation.JsonProperty("first_name")
-        public void setFirstName(String firstName) { this.firstName = firstName; }
+        public void setFirstName(String firstName) {
+                this.firstName = firstName;
+            }
     }
 
     @CompiledNavigator

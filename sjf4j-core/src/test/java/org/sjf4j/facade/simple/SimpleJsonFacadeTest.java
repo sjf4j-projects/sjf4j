@@ -202,7 +202,9 @@ public class SimpleJsonFacadeTest {
             this.name = name;
             this.age = age;
         }
-        public void setCity(String city) { this.city = city; }
+        public void setCity(String city) {
+                this.city = city;
+            }
     }
 
     @Test

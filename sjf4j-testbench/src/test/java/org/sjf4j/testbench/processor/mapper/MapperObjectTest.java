@@ -397,9 +397,13 @@ public class MapperObjectTest {
         public CustomerDto customer;
 
         @com.alibaba.fastjson2.annotation.JSONField(name = "last_name")
-        public String getLastName() { return lastName; }
+        public String getLastName() {
+                return lastName;
+            }
 
-        public void setLastName(String lastName) { this.lastName = lastName; }
+        public void setLastName(String lastName) {
+                this.lastName = lastName;
+            }
     }
 
     public static final class MutableOrder {
@@ -419,9 +423,13 @@ public class MapperObjectTest {
     public static final class CtorJojo extends JsonObject {
         private final Long id;
 
-        public CtorJojo(@NodeProperty("id") Long id) { this.id = id; }
+        public CtorJojo(@NodeProperty("id") Long id) {
+                this.id = id;
+            }
 
-        public Long id() { return id; }
+        public Long id() {
+                return id;
+            }
     }
 
     public interface CreatorView {}

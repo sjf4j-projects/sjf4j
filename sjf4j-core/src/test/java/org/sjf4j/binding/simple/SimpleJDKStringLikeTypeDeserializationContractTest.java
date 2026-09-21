@@ -6,6 +6,7 @@ import org.sjf4j.binding.contract.JDKStringLikeTypeDeserializationContract;
 class SimpleJDKStringLikeTypeDeserializationContractTest extends JDKStringLikeTypeDeserializationContract {
 
     @Override
+
     protected JsonBinder<?, ?> binding(StreamingContext context) {
         return new SimpleJsonBinder(context);
     }

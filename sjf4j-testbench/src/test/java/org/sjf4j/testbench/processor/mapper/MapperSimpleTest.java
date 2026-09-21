@@ -393,9 +393,15 @@ public class MapperSimpleTest {
 
         public ReferenceDefaultsDto() {}
 
-        public void setName(String name) { this.name = name; }
-        public void setTags(List<String> tags) { this.tags = tags; }
-        public void setNestedAge(Integer nestedAge) { this.nestedAge = nestedAge; }
+        public void setName(String name) {
+                this.name = name;
+            }
+        public void setTags(List<String> tags) {
+                this.tags = tags;
+            }
+        public void setNestedAge(Integer nestedAge) {
+                this.nestedAge = nestedAge;
+            }
     }
 
     public static final class GroupedDefaultsDto {
@@ -416,9 +422,15 @@ public class MapperSimpleTest {
             this.profileName = profileName;
         }
 
-        public String name() { return name; }
-        public String city() { return city; }
-        public String profileName() { return profileName; }
+        public String name() {
+                return name;
+            }
+        public String city() {
+                return city;
+            }
+        public String profileName() {
+                return profileName;
+            }
     }
 
     public static final class NameCtor {
@@ -430,8 +442,12 @@ public class MapperSimpleTest {
             this.surname = surname;
         }
 
-        public String first() { return first; }
-        public String surname() { return surname; }
+        public String first() {
+                return first;
+            }
+        public String surname() {
+                return surname;
+            }
     }
 
     public static final class UserDto {
@@ -442,14 +458,26 @@ public class MapperSimpleTest {
 
         public UserDto() {}
 
-        public String getFirst() { return first; }
-        public void setFirst(String first) { this.first = first; }
+        public String getFirst() {
+                return first;
+            }
+        public void setFirst(String first) {
+                this.first = first;
+            }
 
-        public String getSurname() { return surname; }
-        public void setSurname(String surname) { this.surname = surname; }
+        public String getSurname() {
+                return surname;
+            }
+        public void setSurname(String surname) {
+                this.surname = surname;
+            }
 
-        public String getFullName() { return fullName; }
-        public void setFullName(String fullName) { this.fullName = fullName; }
+        public String getFullName() {
+                return fullName;
+            }
+        public void setFullName(String fullName) {
+                this.fullName = fullName;
+            }
     }
 
     public static final class MultiDto {

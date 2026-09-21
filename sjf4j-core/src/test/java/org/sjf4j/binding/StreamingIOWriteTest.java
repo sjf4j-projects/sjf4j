@@ -50,25 +50,50 @@ class StreamingIOWriteTest {
             super(binder);
         }
 
-        @Override public void startObject() {}
-        @Override public void endObject() {}
-        @Override public void startArray() {}
-        @Override public void endArray() {}
-        @Override public void writeName(String name) {}
-        @Override public void writeNull() {}
-        @Override public void writeStringValue(String value) {}
-        @Override public void writeLongValue(long value) {}
-        @Override public void writeIntValue(int value) {}
-        @Override public void writeShortValue(short value) {}
-        @Override public void writeByteValue(byte value) {}
-        @Override public void writeDoubleValue(double value) {}
-        @Override public void writeFloatValue(float value) {}
-        @Override public void writeBooleanValue(boolean value) {}
-        @Override public void writeCharValue(char value) {}
-        @Override public void writeNumberValue(Number value) {}
-        @Override public void separateProperty() { properties++; }
-        @Override public void separateElement() { elements++; }
-        @Override public void flush() {}
-        @Override public void close() {}
+        @Override
+
+        public void startObject() {}
+        @Override
+        public void endObject() {}
+        @Override
+        public void startArray() {}
+        @Override
+        public void endArray() {}
+        @Override
+        public void writeName(String name) {}
+        @Override
+        public void writeNull() {}
+        @Override
+        public void writeStringValue(String value) {}
+        @Override
+        public void writeLongValue(long value) {}
+        @Override
+        public void writeIntValue(int value) {}
+        @Override
+        public void writeShortValue(short value) {}
+        @Override
+        public void writeByteValue(byte value) {}
+        @Override
+        public void writeDoubleValue(double value) {}
+        @Override
+        public void writeFloatValue(float value) {}
+        @Override
+        public void writeBooleanValue(boolean value) {}
+        @Override
+        public void writeCharValue(char value) {}
+        @Override
+        public void writeNumberValue(Number value) {}
+        @Override
+        public void separateProperty() {
+                properties++;
+            }
+        @Override
+        public void separateElement() {
+                elements++;
+            }
+        @Override
+        public void flush() {}
+        @Override
+        public void close() {}
     }
 }

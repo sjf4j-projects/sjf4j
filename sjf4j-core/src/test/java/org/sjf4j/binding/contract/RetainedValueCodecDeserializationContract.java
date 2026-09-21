@@ -31,16 +31,28 @@ public abstract class RetainedValueCodecDeserializationContract {
 
     @NodeValue static class BooleanCode {
         final boolean value;
-        BooleanCode(boolean value) { this.value = value; }
-        @ValueToRaw Boolean encode() { return value; }
-        @RawToValue static BooleanCode decode(Boolean raw) { return new BooleanCode(raw); }
+        BooleanCode(boolean value) {
+                this.value = value;
+            }
+        @ValueToRaw Boolean encode() {
+                return value;
+            }
+        @RawToValue static BooleanCode decode(Boolean raw) {
+                return new BooleanCode(raw);
+            }
     }
 
     @NodeValue static class NumberCode {
         final Number value;
-        NumberCode(Number value) { this.value = value; }
-        @ValueToRaw Number encode() { return value; }
-        @RawToValue static NumberCode decode(Number raw) { return new NumberCode(raw); }
+        NumberCode(Number value) {
+                this.value = value;
+            }
+        @ValueToRaw Number encode() {
+                return value;
+            }
+        @RawToValue static NumberCode decode(Number raw) {
+                return new NumberCode(raw);
+            }
     }
 
     static class CodecHolder { public BooleanCode booleanCode; public NumberCode numberCode; }

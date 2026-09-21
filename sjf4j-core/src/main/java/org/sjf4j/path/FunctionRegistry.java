@@ -56,7 +56,9 @@ public class FunctionRegistry {
         /**
          * Returns the function name.
          */
-        public String getName() { return name; }
+        public String getName() {
+            return name;
+        }
     }
 
     /// Register

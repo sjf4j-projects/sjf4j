@@ -43,22 +43,30 @@ public final class GeneratedClass {
     /**
      * Returns the fully qualified source interface name implemented by this class.
      */
-    public String originName() { return originName; }
+    public String originName() {
+        return originName;
+    }
 
     /**
      * Adds a field emitter to the generated class body.
      */
-    public void addField(GeneratedMember member) { fields.add(member); }
+    public void addField(GeneratedMember member) {
+        fields.add(member);
+    }
 
     /**
      * Adds a method emitter to the generated class body.
      */
-    public void addMethod(GeneratedMember member) { methods.add(member); }
+    public void addMethod(GeneratedMember member) {
+        methods.add(member);
+    }
 
     /**
      * Adds a helper-member emitter after generated methods.
      */
-    public void addHelper(GeneratedMember member) { helpers.add(member); }
+    public void addHelper(GeneratedMember member) {
+        helpers.add(member);
+    }
 
     /**
      * Returns true when no members have been contributed.

@@ -143,11 +143,13 @@ public final class NodeMapperBuilder<S, T> {
             }
 
             @Override
+
             public Class<T> targetType() {
                 return targetType;
             }
 
             @Override
+
             public T map(S source) {
                 if (source == null) return null;
                 T target = targetType.cast(facade.readNode(source, targetType, true));
@@ -180,11 +182,13 @@ public final class NodeMapperBuilder<S, T> {
             }
 
             @Override
+
             public Class<T> targetType() {
                 return targetType;
             }
 
             @Override
+
             public T map(S source) {
                 if (source == null) return null;
                 T target = targetType.cast(facade.readNode(source, targetType, true));
@@ -270,11 +274,13 @@ public final class NodeMapperBuilder<S, T> {
             }
 
             @Override
+
             public Class<Object> targetType() {
                 return mapper.targetType();
             }
 
             @Override
+
             public Object convert(Object source) {
                 return mapper.map(source);
             }
@@ -348,6 +354,7 @@ public final class NodeMapperBuilder<S, T> {
         }
 
         @Override
+
         public void apply(S source, T target) {
             Object value = sourcePath.getNode(source);
             if (ensure) targetPath.ensurePut(target, value);
@@ -367,6 +374,7 @@ public final class NodeMapperBuilder<S, T> {
         }
 
         @Override
+
         public void apply(S source, T target) {
             if (ensure) targetPath.ensurePut(target, value);
             else targetPath.put(target, value);
@@ -390,6 +398,7 @@ public final class NodeMapperBuilder<S, T> {
         }
 
         @Override
+
         public void apply(S source, T target) {
             if (targetPath.isSinglePut()) {
                 Object parent = parentPath == null ? null : parentPath.getNode(target);

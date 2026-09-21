@@ -149,20 +149,30 @@ public class MapperJsonObjectDynamicTest {
         public long id;
         public String name;
         public Child() {}
-        Child(long id, String name) { this.id = id; this.name = name; }
-        @Override public boolean equals(Object other) {
+        Child(long id, String name) {
+                this.id = id; this.name = name;
+            }
+        @Override
+        public boolean equals(Object other) {
             if (!(other instanceof Child)) return false;
             Child child = (Child) other;
             return id == child.id && (name == null ? child.name == null : name.equals(child.name));
         }
-        @Override public int hashCode() { return (int) (31 * id + (name == null ? 0 : name.hashCode())); }
+        @Override
+        public int hashCode() {
+                return (int) (31 * id + (name == null ? 0 : name.hashCode()));
+            }
     }
 
     @NodeValue
     public static final class Value {
         public String value;
-        @RawToValue public static Value fromRaw(String raw) { Value value = new Value(); value.value = raw; return value; }
-        @ValueToRaw public String toRaw() { return value; }
+        @RawToValue public static Value fromRaw(String raw) {
+                Value value = new Value(); value.value = raw; return value;
+            }
+        @ValueToRaw public String toRaw() {
+                return value;
+            }
     }
 
     @OneOf(key = "type", value = {

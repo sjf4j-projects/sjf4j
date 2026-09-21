@@ -33,13 +33,17 @@ public class CreatorArityBenchmark {
 
     public static class P1 extends JsonObject {
         public final String a1;
-        public P1(@NodeProperty("a1") String a1) { this.a1 = a1; }
+        public P1(@NodeProperty("a1") String a1) {
+                this.a1 = a1;
+            }
     }
 
     public static class P2 extends JsonObject {
         public final String a1;
         public final Object a2;
-        public P2(@NodeProperty("a1") String a1, @NodeProperty("a2") Object a2) { this.a1 = a1; this.a2 = a2; }
+        public P2(@NodeProperty("a1") String a1, @NodeProperty("a2") Object a2) {
+                this.a1 = a1; this.a2 = a2;
+            }
     }
 
     public static class P3 extends JsonObject {
@@ -105,38 +109,74 @@ public class CreatorArityBenchmark {
 
     @State(Scope.Thread)
     public static class S1 extends BaseState {
-        @Override protected Class<?> modelClass() { return P1.class; }
-        @Override protected Object[] initArgs() { return new Object[]{"a1"}; }
+        @Override
+        protected Class<?> modelClass() {
+                return P1.class;
+            }
+        @Override
+        protected Object[] initArgs() {
+                return new Object[]{"a1"};
+            }
     }
 
     @State(Scope.Thread)
     public static class S2 extends BaseState {
-        @Override protected Class<?> modelClass() { return P2.class; }
-        @Override protected Object[] initArgs() { return new Object[]{"a1", 2}; }
+        @Override
+        protected Class<?> modelClass() {
+                return P2.class;
+            }
+        @Override
+        protected Object[] initArgs() {
+                return new Object[]{"a1", 2};
+            }
     }
 
     @State(Scope.Thread)
     public static class S3 extends BaseState {
-        @Override protected Class<?> modelClass() { return P3.class; }
-        @Override protected Object[] initArgs() { return new Object[]{"a1", 2, 3L}; }
+        @Override
+        protected Class<?> modelClass() {
+                return P3.class;
+            }
+        @Override
+        protected Object[] initArgs() {
+                return new Object[]{"a1", 2, 3L};
+            }
     }
 
     @State(Scope.Thread)
     public static class S4 extends BaseState {
-        @Override protected Class<?> modelClass() { return P4.class; }
-        @Override protected Object[] initArgs() { return new Object[]{"a1", 2, 3L, true}; }
+        @Override
+        protected Class<?> modelClass() {
+                return P4.class;
+            }
+        @Override
+        protected Object[] initArgs() {
+                return new Object[]{"a1", 2, 3L, true};
+            }
     }
 
     @State(Scope.Thread)
     public static class S5 extends BaseState {
-        @Override protected Class<?> modelClass() { return P5.class; }
-        @Override protected Object[] initArgs() { return new Object[]{"a1", 2, 3L, true, 5.0d}; }
+        @Override
+        protected Class<?> modelClass() {
+                return P5.class;
+            }
+        @Override
+        protected Object[] initArgs() {
+                return new Object[]{"a1", 2, 3L, true, 5.0d};
+            }
     }
 
     @State(Scope.Thread)
     public static class S6 extends BaseState {
-        @Override protected Class<?> modelClass() { return P6.class; }
-        @Override protected Object[] initArgs() { return new Object[]{"a1", 2, 3L, true, 5.0d, "a6"}; }
+        @Override
+        protected Class<?> modelClass() {
+                return P6.class;
+            }
+        @Override
+        protected Object[] initArgs() {
+                return new Object[]{"a1", 2, 3L, true, 5.0d, "a6"};
+            }
     }
 
     private static Object invokeMethodHandle(CreatorInfo ci, Object[] args) {
@@ -180,26 +220,60 @@ public class CreatorArityBenchmark {
         }
     }
 
-    @Benchmark public Object creator_native_1(S1 s) { return invokeNative(s.args); }
-    @Benchmark public Object creator_methodHandle_1(S1 s) { return invokeMethodHandle(s.ci, s.args); }
-    @Benchmark public Object creator_lambdaDirect_1(S1 s) { return invokeLambdaDirect(s.ci, s.args); }
+    @Benchmark public Object creator_native_1(S1 s) {
+            return invokeNative(s.args);
+        }
+    @Benchmark public Object creator_methodHandle_1(S1 s) {
+            return invokeMethodHandle(s.ci, s.args);
+        }
+    @Benchmark public Object creator_lambdaDirect_1(S1 s) {
+            return invokeLambdaDirect(s.ci, s.args);
+        }
 
-    @Benchmark public Object creator_native_2(S2 s) { return invokeNative(s.args); }
-    @Benchmark public Object creator_methodHandle_2(S2 s) { return invokeMethodHandle(s.ci, s.args); }
-    @Benchmark public Object creator_lambdaDirect_2(S2 s) { return invokeLambdaDirect(s.ci, s.args); }
+    @Benchmark public Object creator_native_2(S2 s) {
+            return invokeNative(s.args);
+        }
+    @Benchmark public Object creator_methodHandle_2(S2 s) {
+            return invokeMethodHandle(s.ci, s.args);
+        }
+    @Benchmark public Object creator_lambdaDirect_2(S2 s) {
+            return invokeLambdaDirect(s.ci, s.args);
+        }
 
-    @Benchmark public Object creator_native_3(S3 s) { return invokeNative(s.args); }
-    @Benchmark public Object creator_methodHandle_3(S3 s) { return invokeMethodHandle(s.ci, s.args); }
-    @Benchmark public Object creator_lambdaDirect_3(S3 s) { return invokeLambdaDirect(s.ci, s.args); }
+    @Benchmark public Object creator_native_3(S3 s) {
+            return invokeNative(s.args);
+        }
+    @Benchmark public Object creator_methodHandle_3(S3 s) {
+            return invokeMethodHandle(s.ci, s.args);
+        }
+    @Benchmark public Object creator_lambdaDirect_3(S3 s) {
+            return invokeLambdaDirect(s.ci, s.args);
+        }
 
-    @Benchmark public Object creator_native_4(S4 s) { return invokeNative(s.args); }
-    @Benchmark public Object creator_methodHandle_4(S4 s) { return invokeMethodHandle(s.ci, s.args); }
-    @Benchmark public Object creator_lambdaDirect_4(S4 s) { return invokeLambdaDirect(s.ci, s.args); }
+    @Benchmark public Object creator_native_4(S4 s) {
+            return invokeNative(s.args);
+        }
+    @Benchmark public Object creator_methodHandle_4(S4 s) {
+            return invokeMethodHandle(s.ci, s.args);
+        }
+    @Benchmark public Object creator_lambdaDirect_4(S4 s) {
+            return invokeLambdaDirect(s.ci, s.args);
+        }
 
-    @Benchmark public Object creator_native_5(S5 s) { return invokeNative(s.args); }
-    @Benchmark public Object creator_methodHandle_5(S5 s) { return invokeMethodHandle(s.ci, s.args); }
-    @Benchmark public Object creator_lambdaDirect_5(S5 s) { return invokeLambdaDirect(s.ci, s.args); }
+    @Benchmark public Object creator_native_5(S5 s) {
+            return invokeNative(s.args);
+        }
+    @Benchmark public Object creator_methodHandle_5(S5 s) {
+            return invokeMethodHandle(s.ci, s.args);
+        }
+    @Benchmark public Object creator_lambdaDirect_5(S5 s) {
+            return invokeLambdaDirect(s.ci, s.args);
+        }
 
-    @Benchmark public Object creator_native_6(S6 s) { return invokeNative(s.args); }
-    @Benchmark public Object creator_methodHandle_6(S6 s) { return invokeMethodHandle(s.ci, s.args); }
+    @Benchmark public Object creator_native_6(S6 s) {
+            return invokeNative(s.args);
+        }
+    @Benchmark public Object creator_methodHandle_6(S6 s) {
+            return invokeMethodHandle(s.ci, s.args);
+        }
 }

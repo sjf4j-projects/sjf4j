@@ -100,8 +100,12 @@ public class MapperComplexTest {
             this.active = active;
         }
 
-        public String getLastName() { return lastName; }
-        public boolean isActive() { return active; }
+        public String getLastName() {
+                return lastName;
+            }
+        public boolean isActive() {
+                return active;
+            }
     }
 
     public static final class Account {
@@ -127,16 +131,36 @@ public class MapperComplexTest {
             this.note = note;
         }
 
-        public String getId() { return id.value(); }
-        public String getFirstName() { return profile.firstName; }
-        public String getLastName() { return profile.getLastName(); }
-        public boolean isActive() { return profile.isActive(); }
-        public int getScore() { return stats.score(); }
-        public long version() { return stats.version(); }
-        public List<String> getTags() { return tags; }
-        public Map<String, Integer> getMetrics() { return metrics; }
-        public String[] getAliases() { return aliases; }
-        public Object getPayload() { return payload; }
+        public String getId() {
+                return id.value();
+            }
+        public String getFirstName() {
+                return profile.firstName;
+            }
+        public String getLastName() {
+                return profile.getLastName();
+            }
+        public boolean isActive() {
+                return profile.isActive();
+            }
+        public int getScore() {
+                return stats.score();
+            }
+        public long version() {
+                return stats.version();
+            }
+        public List<String> getTags() {
+                return tags;
+            }
+        public Map<String, Integer> getMetrics() {
+                return metrics;
+            }
+        public String[] getAliases() {
+                return aliases;
+            }
+        public Object getPayload() {
+                return payload;
+            }
     }
 
     public static final class AccountDto {
@@ -155,22 +179,44 @@ public class MapperComplexTest {
 
         public AccountDto() {}
 
-        public String getFirstName() { return firstName; }
-        public void setFirstName(String firstName) { this.firstName = firstName; }
+        public String getFirstName() {
+                return firstName;
+            }
+        public void setFirstName(String firstName) {
+                this.firstName = firstName;
+            }
 
-        public String getLastName() { return lastName; }
-        public void setLastName(String lastName) { this.lastName = lastName; }
+        public String getLastName() {
+                return lastName;
+            }
+        public void setLastName(String lastName) {
+                this.lastName = lastName;
+            }
 
-        public String getDisplayName() { return displayName; }
-        public void setDisplayName(String displayName) { this.displayName = displayName; }
+        public String getDisplayName() {
+                return displayName;
+            }
+        public void setDisplayName(String displayName) {
+                this.displayName = displayName;
+            }
 
-        public String getLabel() { return label; }
-        public void setLabel(String label) { this.label = label; }
+        public String getLabel() {
+                return label;
+            }
+        public void setLabel(String label) {
+                this.label = label;
+            }
 
-        public String getContainerSummary() { return containerSummary; }
-        public void setContainerSummary(String containerSummary) { this.containerSummary = containerSummary; }
+        public String getContainerSummary() {
+                return containerSummary;
+            }
+        public void setContainerSummary(String containerSummary) {
+                this.containerSummary = containerSummary;
+            }
 
-        public long version() { return auditVersion; }
+        public long version() {
+                return auditVersion;
+            }
     }
 
     public record AccountSummary(String id, String displayName, int score, boolean active) {}
@@ -186,9 +232,15 @@ public class MapperComplexTest {
             this.score = score;
         }
 
-        public String id() { return id; }
-        public String displayName() { return displayName; }
-        public int score() { return score; }
+        public String id() {
+                return id;
+            }
+        public String displayName() {
+                return displayName;
+            }
+        public int score() {
+                return score;
+            }
     }
 
     @CompiledMapper

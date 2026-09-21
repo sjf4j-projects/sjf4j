@@ -25,8 +25,13 @@ class JsonArrayApiSurfaceTest {
 
     static class TypedIntegerArray extends JsonArray {
         TypedIntegerArray() {}
-        TypedIntegerArray(Object node) { addAll(node); }
-        @Override public Class<?> elementClass() { return Integer.class; }
+        TypedIntegerArray(Object node) {
+                addAll(node);
+            }
+        @Override
+        public Class<?> elementClass() {
+                return Integer.class;
+            }
     }
 
     @Test

@@ -12,7 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class FieldWriterTest {
     static class Person {
         private final String name = "Ada";
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     @Test

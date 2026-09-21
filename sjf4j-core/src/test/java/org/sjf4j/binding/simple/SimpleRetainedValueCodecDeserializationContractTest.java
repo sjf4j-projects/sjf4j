@@ -5,5 +5,8 @@ import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.contract.RetainedValueCodecDeserializationContract;
 
 class SimpleRetainedValueCodecDeserializationContractTest extends RetainedValueCodecDeserializationContract {
-    @Override protected JsonBinder<?, ?> binding(StreamingContext context) { return new SimpleJsonBinder(context); }
+    @Override
+    protected JsonBinder<?, ?> binding(StreamingContext context) {
+            return new SimpleJsonBinder(context);
+        }
 }

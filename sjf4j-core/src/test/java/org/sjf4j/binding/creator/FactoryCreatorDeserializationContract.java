@@ -26,13 +26,23 @@ class FactoryCreatorDeserializationContract {
 
     static class FactoryValue {
         final String createdBy; final int value;
-        private FactoryValue(String createdBy, int value) { this.createdBy = createdBy; this.value = value; }
-        @NodeCreator static FactoryValue create(@NodeProperty("value") int value) { return new FactoryValue("factory", value); }
+        private FactoryValue(String createdBy, int value) {
+                this.createdBy = createdBy; this.value = value;
+            }
+        @NodeCreator static FactoryValue create(@NodeProperty("value") int value) {
+                return new FactoryValue("factory", value);
+            }
     }
     static class FactoryWins {
         final String value;
-        private FactoryWins(String value) { throw new IllegalStateException("Should not get called!"); }
-        @NodeCreator public static FactoryWins create(String value) { return new FactoryWins(value, true); }
-        private FactoryWins(String value, boolean factory) { this.value = value; }
+        private FactoryWins(String value) {
+                throw new IllegalStateException("Should not get called!");
+            }
+        @NodeCreator public static FactoryWins create(String value) {
+                return new FactoryWins(value, true);
+            }
+        private FactoryWins(String value, boolean factory) {
+                this.value = value;
+            }
     }
 }

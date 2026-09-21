@@ -122,7 +122,9 @@ public final class GeneratorUtil {
     /**
      * Returns the generated-source type name for a mirror.
      */
-    public static String typeName(TypeMirror type) { return type.toString(); }
+    public static String typeName(TypeMirror type) {
+        return type.toString();
+    }
 
     /**
      * Returns a local variable type name, boxing primitives and resolving wildcards.

@@ -38,17 +38,29 @@ class PropertyBasedCreatorDeserializationContract {
 
     static class ConstructorAndSetter {
         final String name; final int age; boolean enabled;
-        @NodeCreator ConstructorAndSetter(@NodeProperty("name") String name, @NodeProperty("age") int age) { this.name = name; this.age = age; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        @NodeCreator ConstructorAndSetter(@NodeProperty("name") String name, @NodeProperty("age") int age) {
+                this.name = name; this.age = age;
+            }
+        public void setEnabled(boolean enabled) {
+                this.enabled = enabled;
+            }
     }
     static class ConstructorAndSetters {
         final boolean[] a; int b; int c;
-        @NodeCreator ConstructorAndSetters(@NodeProperty("a") boolean[] a) { this.a = a; }
-        public void setB(int b) { this.b = b; }
-        public void setC(int c) { this.c = c; }
+        @NodeCreator ConstructorAndSetters(@NodeProperty("a") boolean[] a) {
+                this.a = a;
+            }
+        public void setB(int b) {
+                this.b = b;
+            }
+        public void setC(int c) {
+                this.c = c;
+            }
     }
     static class NullDefaults {
         final String name; final int age; final String city;
-        @NodeCreator NullDefaults(@NodeProperty("name") String name, @NodeProperty("age") int age, @NodeProperty("city") String city) { this.name = name; this.age = age; this.city = city; }
+        @NodeCreator NullDefaults(@NodeProperty("name") String name, @NodeProperty("age") int age, @NodeProperty("city") String city) {
+                this.name = name; this.age = age; this.city = city;
+            }
     }
 }

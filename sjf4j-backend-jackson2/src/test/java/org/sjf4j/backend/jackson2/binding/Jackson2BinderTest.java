@@ -201,6 +201,7 @@ class Jackson2BinderTest {
         boolean closed;
 
         @Override
+
         public void close() {
             closed = true;
         }
@@ -211,12 +212,14 @@ class Jackson2BinderTest {
         JsonEncoding generatorEncoding;
 
         @Override
+
         public JsonParser createParser(String input) throws java.io.IOException {
             parserSource = "string";
             return super.createParser(input);
         }
 
         @Override
+
         public JsonGenerator createGenerator(OutputStream output, JsonEncoding encoding) throws java.io.IOException {
             generatorEncoding = encoding;
             return super.createGenerator(output, encoding);

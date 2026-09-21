@@ -292,9 +292,18 @@ public final class Jackson2Nodes {
         if (node instanceof ArrayNode) {
             final Iterator<JsonNode> it = ((ArrayNode) node).elements();
             return new Iterator<Object>() {
-                @Override public boolean hasNext() { return it.hasNext(); }
-                @Override public Object next() { return it.next(); }
-                @Override public void remove() { it.remove(); }
+                @Override
+                public boolean hasNext() {
+                    return it.hasNext();
+                }
+                @Override
+                public Object next() {
+                    return it.next();
+                }
+                @Override
+                public void remove() {
+                    it.remove();
+                }
             };
         }
         throw _expected("ArrayNode", node);

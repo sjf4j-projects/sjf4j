@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingContext;
 
 import java.io.ByteArrayOutputStream;
@@ -24,6 +25,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Fastjson2BinderTest {
+
+    @Test
+    void peekDoesNotDistinguishFieldNamesFromStringValues() {
+        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of("{\"id\":7}"))) {
+            reader.startObject();
+            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
+            assertEquals("id", reader.nextName());
+            assertEquals(7, reader.nextIntValue());
+            assertTrue(reader.nextIfObjectEnd());
+        }
+    }
 
     @Test
     void readsPojoWithNestedCollectionsAndIgnoresUnknownProperties() {
@@ -121,6 +133,7 @@ class Fastjson2BinderTest {
         boolean closed;
 
         @Override
+
         public void close() {
             closed = true;
         }
@@ -130,6 +143,7 @@ class Fastjson2BinderTest {
         boolean closed;
 
         @Override
+
         public void close() throws IOException {
             closed = true;
             super.close();

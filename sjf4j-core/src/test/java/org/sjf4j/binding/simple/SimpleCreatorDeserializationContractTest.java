@@ -2,4 +2,9 @@ package org.sjf4j.binding.simple;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.creator.CreatorDeserializationContract;
-class SimpleCreatorDeserializationContractTest extends CreatorDeserializationContract { @Override protected JsonBinder<?, ?> binding(StreamingContext context) { return new SimpleJsonBinder(context); } }
+class SimpleCreatorDeserializationContractTest extends CreatorDeserializationContract {
+     @Override
+     protected JsonBinder<?, ?> binding(StreamingContext context) {
+        return new SimpleJsonBinder(context);
+    }
+ }

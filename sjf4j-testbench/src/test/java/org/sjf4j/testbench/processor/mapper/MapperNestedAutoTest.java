@@ -153,7 +153,9 @@ public class MapperNestedAutoTest {
             this.name = name;
         }
 
-        public String name() { return name; }
+        public String name() {
+                return name;
+            }
     }
 
     public static final class UpdateTarget {

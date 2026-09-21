@@ -92,7 +92,9 @@ public interface StreamingWriter extends Closeable {
     void writeNull() throws IOException;
 
 
-    default void writeArrayComma() throws IOException {/* Only or Fastjson2 */}
+    default void writeArrayComma() throws IOException {
+        /* Only or Fastjson2 */
+    }
 
     default void writeObjectComma() throws IOException {}
 

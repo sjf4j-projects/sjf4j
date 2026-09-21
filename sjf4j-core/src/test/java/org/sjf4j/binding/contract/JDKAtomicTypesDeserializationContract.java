@@ -37,11 +37,17 @@ public abstract class JDKAtomicTypesDeserializationContract {
     }
 
     /** Source: JDKAtomicTypesDeserTest#testAtomicBoolean. */
-    @Test void testAtomicBoolean() { registerAtomicCodecs(); assertEquals(true, ((AtomicBoolean) binding(StreamingContext.EMPTY).readNode("true", AtomicBoolean.class)).get()); }
+    @Test void testAtomicBoolean() {
+            registerAtomicCodecs(); assertEquals(true, ((AtomicBoolean) binding(StreamingContext.EMPTY).readNode("true", AtomicBoolean.class)).get());
+        }
     /** Source: JDKAtomicTypesDeserTest#testAtomicInt. */
-    @Test void testAtomicInt() { registerAtomicCodecs(); assertEquals(13, ((AtomicInteger) binding(StreamingContext.EMPTY).readNode("13", AtomicInteger.class)).get()); }
+    @Test void testAtomicInt() {
+            registerAtomicCodecs(); assertEquals(13, ((AtomicInteger) binding(StreamingContext.EMPTY).readNode("13", AtomicInteger.class)).get());
+        }
     /** Source: JDKAtomicTypesDeserTest#testAtomicLong. */
-    @Test void testAtomicLong() { registerAtomicCodecs(); assertEquals(12345678901L, ((AtomicLong) binding(StreamingContext.EMPTY).readNode("12345678901", AtomicLong.class)).get()); }
+    @Test void testAtomicLong() {
+            registerAtomicCodecs(); assertEquals(12345678901L, ((AtomicLong) binding(StreamingContext.EMPTY).readNode("12345678901", AtomicLong.class)).get());
+        }
     /** ValueCodec cannot recursively bind AtomicReference's generic long[] payload. */
     @Disabled("TODO: design generic payload binding for ValueCodec before supporting AtomicReference<long[]>.")
     @SuppressWarnings("unchecked")

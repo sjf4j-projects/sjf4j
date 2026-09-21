@@ -73,35 +73,70 @@ class TypeRegistryEdgeCaseTest {
     }
 
     static class InvalidRawCodec implements ValueCodec<String, Instant> {
-        @Override public Instant valueToRaw(String value) { return Instant.now(); }
-        @Override public String rawToValue(Instant raw) { return raw.toString(); }
-        @Override public Class<String> valueClazz() { return String.class; }
-        @Override public Class<Instant> rawClazz() { return Instant.class; }
+        @Override
+        public Instant valueToRaw(String value) {
+                return Instant.now();
+            }
+        @Override
+        public String rawToValue(Instant raw) {
+                return raw.toString();
+            }
+        @Override
+        public Class<String> valueClazz() {
+                return String.class;
+            }
+        @Override
+        public Class<Instant> rawClazz() {
+                return Instant.class;
+            }
     }
 
     @NodeValue
     static class AnotherMiniValue {
-        @ValueToRaw String valueToRaw() { return "x"; }
-        @RawToValue static AnotherMiniValue rawToValue(String raw) { return new AnotherMiniValue(); }
+        @ValueToRaw String valueToRaw() {
+                return "x";
+            }
+        @RawToValue static AnotherMiniValue rawToValue(String raw) {
+                return new AnotherMiniValue();
+            }
     }
 
     static class ThrowingCodec implements ValueCodec<String, String> {
-        @Override public String valueToRaw(String value) { throw new IllegalStateException("boom"); }
-        @Override public String rawToValue(String raw) { throw new IllegalStateException("boom"); }
-        @Override public Class<String> valueClazz() { return String.class; }
-        @Override public Class<String> rawClazz() { return String.class; }
-        @Override public String valueCopy(String value) { throw new IllegalStateException("boom"); }
+        @Override
+        public String valueToRaw(String value) {
+                throw new IllegalStateException("boom");
+            }
+        @Override
+        public String rawToValue(String raw) {
+                throw new IllegalStateException("boom");
+            }
+        @Override
+        public Class<String> valueClazz() {
+                return String.class;
+            }
+        @Override
+        public Class<String> rawClazz() {
+                return String.class;
+            }
+        @Override
+        public String valueCopy(String value) {
+                throw new IllegalStateException("boom");
+            }
     }
 
     static class OneArg {
         final String a;
-        @NodeCreator OneArg(@NodeProperty("a") String a) { this.a = a; }
+        @NodeCreator OneArg(@NodeProperty("a") String a) {
+                this.a = a;
+            }
     }
 
     static class TwoArg {
         final String a;
         final String b;
-        @NodeCreator TwoArg(@NodeProperty("a") String a, @NodeProperty("b") String b) { this.a = a; this.b = b; }
+        @NodeCreator TwoArg(@NodeProperty("a") String a, @NodeProperty("b") String b) {
+                this.a = a; this.b = b;
+            }
     }
 
     static class ThreeArg {

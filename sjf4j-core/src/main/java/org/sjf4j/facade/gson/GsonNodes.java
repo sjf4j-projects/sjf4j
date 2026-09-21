@@ -288,9 +288,18 @@ public final class GsonNodes {
         if (node instanceof JsonArray) {
             final Iterator<JsonElement> it = ((JsonArray) node).iterator();
             return new Iterator<Object>() {
-                @Override public boolean hasNext() { return it.hasNext(); }
-                @Override public Object next() { return it.next(); }
-                @Override public void remove() { it.remove(); }
+                @Override
+                public boolean hasNext() {
+                    return it.hasNext();
+                }
+                @Override
+                public Object next() {
+                    return it.next();
+                }
+                @Override
+                public void remove() {
+                    it.remove();
+                }
             };
         }
         throw expected("JsonArray", node);

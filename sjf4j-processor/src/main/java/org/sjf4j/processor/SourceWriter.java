@@ -50,12 +50,16 @@ public final class SourceWriter implements Closeable {
     /**
      * Increases indentation for subsequent lines.
      */
-    public void indent() { indent++; }
+    public void indent() {
+        indent++;
+    }
 
     /**
      * Decreases indentation for subsequent lines.
      */
-    public void dedent() { indent--; }
+    public void dedent() {
+        indent--;
+    }
 
     /**
      * Writes one source line using the current indentation level.

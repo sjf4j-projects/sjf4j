@@ -15,27 +15,10 @@ import java.util.Objects;
 public final class Fastjson2Writer extends StreamingWriter {
 
     private final JSONWriter writer;
-    private final Writer output;
-    private final OutputStream outputStream;
 
-    Fastjson2Writer(StreamingBinder<?, ?> binder, JSONWriter writer) {
-        this(binder, writer, null, null);
-    }
-
-    Fastjson2Writer(StreamingBinder<?, ?> binder, JSONWriter writer, Writer output) {
-        this(binder, writer, output, null);
-    }
-
-    Fastjson2Writer(StreamingBinder<?, ?> binder, JSONWriter writer, OutputStream output) {
-        this(binder, writer, null, output);
-    }
-
-    private Fastjson2Writer(StreamingBinder<?, ?> binder, JSONWriter writer, Writer output,
-                            OutputStream outputStream) {
+    public Fastjson2Writer(StreamingBinder<?, ?> binder, JSONWriter writer) {
         super(binder);
         this.writer = Objects.requireNonNull(writer, "writer");
-        this.output = output;
-        this.outputStream = outputStream;
     }
 
     @Override
@@ -62,6 +45,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void separateProperty() {
+        writer.writeComma();
     }
 
     @Override
@@ -132,18 +116,18 @@ public final class Fastjson2Writer extends StreamingWriter {
             writer.writeInt32(value.intValue());
         } else if (value instanceof Long) {
             writer.writeInt64(value.longValue());
+        } else if (value instanceof Double) {
+            writer.writeDouble(value.doubleValue());
+        } else if (value instanceof Float) {
+            writer.writeFloat(value.floatValue());
         } else if (value instanceof Short) {
             writer.writeInt16(value.shortValue());
         } else if (value instanceof Byte) {
             writer.writeInt8(value.byteValue());
-        } else if (value instanceof Float) {
-            writer.writeFloat(value.floatValue());
-        } else if (value instanceof Double) {
-            writer.writeDouble(value.doubleValue());
-        } else if (value instanceof BigInteger) {
-            writer.writeBigInt((BigInteger) value);
         } else if (value instanceof BigDecimal) {
             writer.writeDecimal((BigDecimal) value);
+        } else if (value instanceof BigInteger) {
+            writer.writeBigInt((BigInteger) value);
         } else {
             writer.writeRaw(value.toString());
         }
@@ -160,24 +144,21 @@ public final class Fastjson2Writer extends StreamingWriter {
     }
 
     @Override
-    public void flush() throws IOException {
-        if (output != null) {
-            writer.flushTo(output);
-            output.flush();
-        } else if (outputStream != null) {
-            writer.flushTo(outputStream);
-            outputStream.flush();
-        }
-    }
+    public void flush() throws IOException {}
 
     @Override
     public void close() throws IOException {
-        flush();
-        try {
-            writer.close();
-        } finally {
-            if (output != null) output.close();
-            else if (outputStream != null) outputStream.close();
-        }
+        writer.close();
     }
+
+    @Override
+    public void flushTo(Writer output) throws IOException {
+        writer.flushTo(output);
+    }
+
+    @Override
+    public void flushTo(OutputStream output) throws IOException {
+        writer.flushTo(output);
+    }
+
 }

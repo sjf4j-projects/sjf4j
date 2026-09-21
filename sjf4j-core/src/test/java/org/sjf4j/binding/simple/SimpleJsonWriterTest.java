@@ -168,6 +168,7 @@ class SimpleJsonWriterTest {
         }
 
         @Override
+
         public void write(String value, int offset, int length) throws IOException {
             stringWrites.add(value.substring(offset, offset + length));
             super.write(value, offset, length);

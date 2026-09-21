@@ -90,6 +90,7 @@ public final class FastByteArrayOutputStream extends OutputStream {
     }
 
     @Override
+
     public void write(int b) {
         ensureOpen();
 
@@ -101,6 +102,7 @@ public final class FastByteArrayOutputStream extends OutputStream {
     }
 
     @Override
+
     public void write(byte[] b, int off, int len) {
         ensureOpen();
 
@@ -131,6 +133,7 @@ public final class FastByteArrayOutputStream extends OutputStream {
     }
 
     @Override
+
     public void write(byte[] b) {
         write(b, 0, b.length);
     }
@@ -218,6 +221,7 @@ public final class FastByteArrayOutputStream extends OutputStream {
     }
 
     @Override
+
     public void flush() {
         // no-op
     }

@@ -609,11 +609,13 @@ public class SimpleNodeFacadeTest {
             }
 
             @Override
+
             public Class<MapperNameTarget> targetType() {
                 return MapperNameTarget.class;
             }
 
             @Override
+
             public MapperNameTarget convert(MapperNameSource source) {
                 MapperNameTarget target = new MapperNameTarget();
                 target.text = source.value == null ? null : source.value.toUpperCase();
@@ -639,11 +641,13 @@ public class SimpleNodeFacadeTest {
             }
 
             @Override
+
             public Class<MapperNameTarget> targetType() {
                 return MapperNameTarget.class;
             }
 
             @Override
+
             public MapperNameTarget convert(MapperNameSource source) {
                 MapperNameTarget target = new MapperNameTarget();
                 target.text = "mapped:" + source.value;

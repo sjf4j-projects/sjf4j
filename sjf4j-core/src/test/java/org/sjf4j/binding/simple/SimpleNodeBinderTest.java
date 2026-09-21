@@ -152,8 +152,12 @@ class SimpleNodeBinderTest {
             this.scores = scores;
         }
 
-        public String getCity() { return city; }
-        public void setCity(String city) { this.city = city; }
+        public String getCity() {
+                return city;
+            }
+        public void setCity(String city) {
+                this.city = city;
+            }
     }
 
     static class CreatedObject extends JsonObject {
@@ -164,31 +168,49 @@ class SimpleNodeBinderTest {
             this.name = name;
         }
 
-        public String getCity() { return city; }
-        public void setCity(String city) { this.city = city; }
+        public String getCity() {
+                return city;
+            }
+        public void setCity(String city) {
+                this.city = city;
+            }
     }
 
     static class ReadOnlyUser {
         private final List<Integer> values = List.of();
 
-        public List<Integer> getValues() { return values; }
+        public List<Integer> getValues() {
+                return values;
+            }
     }
 
     @NodeValue
     static class MutableValue {
         final List<String> values;
 
-        MutableValue(List<String> values) { this.values = values; }
+        MutableValue(List<String> values) {
+                this.values = values;
+            }
 
-        @ValueToRaw List<String> encode() { return values; }
-        @RawToValue static MutableValue decode(List<String> values) { return new MutableValue(values); }
-        @ValueCopy MutableValue copy() { return new MutableValue(new java.util.ArrayList<>(values)); }
+        @ValueToRaw List<String> encode() {
+                return values;
+            }
+        @RawToValue static MutableValue decode(List<String> values) {
+                return new MutableValue(values);
+            }
+        @ValueCopy MutableValue copy() {
+                return new MutableValue(new java.util.ArrayList<>(values));
+            }
     }
 
     @NodeValue
     static class IdentityValue {
-        @ValueToRaw String encode() { return "value"; }
-        @RawToValue static IdentityValue decode(String value) { return new IdentityValue(); }
+        @ValueToRaw String encode() {
+                return "value";
+            }
+        @RawToValue static IdentityValue decode(String value) {
+                return new IdentityValue();
+            }
     }
 
     static class MutableValueHolder {

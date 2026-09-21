@@ -19,64 +19,96 @@ class PropertyStrategyBindingTest {
 
     static class DefaultBeanFieldPojo {
         private String name;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
     static class BeanOnlyPojo {
         public String fieldOnly;
         private String beanName;
-        public String getBeanName() { return beanName; }
-        public void setBeanName(String beanName) { this.beanName = beanName; }
+        public String getBeanName() {
+                return beanName;
+            }
+        public void setBeanName(String beanName) {
+                this.beanName = beanName;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldOnlyPojo {
         private String name;
-        public String getName() { return "getter"; }
+        public String getName() {
+                return "getter";
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class GetterOnlyWithFieldFallbackPojo {
         @NodeProperty("name")
         private String name;
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
     static class SetterOnlyPojo {
         private String name;
-        public void setName(String name) { this.name = name; }
-        String peek() { return name; }
+        public void setName(String name) {
+                this.name = name;
+            }
+        String peek() {
+                return name;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanPojo {
         private String name;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     static class MethodRenamePojo {
         private String name;
         @NodeProperty("nick")
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     static class MethodRenameCreatorPojo {
         private final String name;
-        MethodRenameCreatorPojo(@NodeProperty("name") String name) { this.name = name; }
+        MethodRenameCreatorPojo(@NodeProperty("name") String name) {
+                this.name = name;
+            }
         @NodeProperty("nick")
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     static class MethodRenameAlignedCreatorPojo {
         private final String name;
-        MethodRenameAlignedCreatorPojo(@NodeProperty("nick") String name) { this.name = name; }
+        MethodRenameAlignedCreatorPojo(@NodeProperty("nick") String name) {
+                this.name = name;
+            }
         @NodeProperty("nick")
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     static class IgnorePojo {
@@ -84,8 +116,12 @@ class PropertyStrategyBindingTest {
         public String ignoredField;
         private String name;
         @NodeIgnore
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     @Test

@@ -19,8 +19,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 
@@ -442,32 +442,24 @@ public class JsonObject extends JsonContainer {
 
 
     /// Getter
+
     /**
      * Strict getter helper. When {@code containerType} is non-null the message
      * includes the container name; for plain scalar types pass {@code null}.
      */
-    private <T> T _getStrict(String key, Function<Object, T> fn, Class<?> elementType, Class<?> containerType) {
-        try {
-            return fn.apply(getNode(key));
-        } catch (Exception e) {
-            if (containerType == null) {
-                throw new JsonException("cannot get " + elementType.getSimpleName() + " at '" + key + "'", e);
-            } else {
-                throw new JsonException("cannot get " + containerType.getSimpleName() + " with element type " +
-                        elementType.getSimpleName() + " at '" + key + "'", e);
-            }
+    private JsonException _strict(String key, Class<?> type, Class<?> containerType, Exception cause) {
+        if (containerType == null) {
+            return new JsonException("cannot get " + type.getName() + " at '" + key + "'", cause);
         }
+        return new JsonException("cannot get " + containerType.getName() + " with element type " +
+                type.getName() + " at '" + key + "'", cause);
     }
 
     /**
      * Lenient getter helper with location context.
      */
-    private <T> T _getLenient(String key, Function<Object, T> fn, Class<?> type) {
-        try {
-            return fn.apply(getNode(key));
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + type.getSimpleName() + " at '" + key + "'", e);
-        }
+    private JsonException _lenient(String key, Class<?> type, Exception cause) {
+        return new JsonException("cannot coerce to " + type.getName() + " at '" + key + "'", cause);
     }
 
     /**
@@ -502,7 +494,13 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a String value using strict conversion.
      */
-    public String getString(String key) { return _getStrict(key, Nodes::toString, String.class, null); }
+    public String getString(String key) {
+        try {
+            return Nodes.toString(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, String.class, null, e);
+        }
+    }
 
     /**
      * Returns a String value or the default value when missing.
@@ -523,7 +521,13 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Number value using strict conversion.
      */
-    public Number getNumber(String key) { return _getStrict(key, Nodes::toNumber, Number.class, null); }
+    public Number getNumber(String key) {
+        try {
+            return Nodes.toNumber(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Number.class, null, e);
+        }
+    }
     
     /**
      * Returns a Number value or the default value when missing.
@@ -536,12 +540,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Number value using lenient conversion.
      */
-    public Number getAsNumber(String key) { return _getLenient(key, Nodes::asNumber, Number.class); }
+    public Number getAsNumber(String key) {
+        try {
+            return Nodes.asNumber(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Number.class, e);
+        }
+    }
 
     /**
      * Returns a Long value using strict conversion.
      */
-    public Long getLong(String key) { return _getStrict(key, Nodes::toLong, Long.class, null); }
+    public Long getLong(String key) {
+        try {
+            return Nodes.toLong(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Long.class, null, e);
+        }
+    }
     
     /**
      * Returns a Long value or the default value when missing.
@@ -554,12 +570,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Long value using lenient conversion.
      */
-    public Long getAsLong(String key) { return _getLenient(key, Nodes::asLong, Long.class); }
+    public Long getAsLong(String key) {
+        try {
+            return Nodes.asLong(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Long.class, e);
+        }
+    }
 
     /**
      * Returns an Integer value using strict conversion.
      */
-    public Integer getInt(String key) { return _getStrict(key, Nodes::toInt, Integer.class, null); }
+    public Integer getInt(String key) {
+        try {
+            return Nodes.toInt(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Integer.class, null, e);
+        }
+    }
     
     /**
      * Returns an Integer value or the default value when missing.
@@ -572,12 +600,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns an Integer value using lenient conversion.
      */
-    public Integer getAsInt(String key) { return _getLenient(key, Nodes::asInt, Integer.class); }
+    public Integer getAsInt(String key) {
+        try {
+            return Nodes.asInt(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Integer.class, e);
+        }
+    }
 
     /**
      * Returns a Short value using strict conversion.
      */
-    public Short getShort(String key) { return _getStrict(key, Nodes::toShort, Short.class, null); }
+    public Short getShort(String key) {
+        try {
+            return Nodes.toShort(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Short.class, null, e);
+        }
+    }
     
     /**
      * Returns a Short value or the default value when missing.
@@ -590,12 +630,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Short value using lenient conversion.
      */
-    public Short getAsShort(String key) { return _getLenient(key, Nodes::asShort, Short.class); }
+    public Short getAsShort(String key) {
+        try {
+            return Nodes.asShort(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Short.class, e);
+        }
+    }
 
     /**
      * Returns a Byte value using strict conversion.
      */
-    public Byte getByte(String key) { return _getStrict(key, Nodes::toByte, Byte.class, null); }
+    public Byte getByte(String key) {
+        try {
+            return Nodes.toByte(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Byte.class, null, e);
+        }
+    }
     
     /**
      * Returns a Byte value or the default value when missing.
@@ -608,12 +660,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Byte value using lenient conversion.
      */
-    public Byte getAsByte(String key) { return _getLenient(key, Nodes::asByte, Byte.class); }
+    public Byte getAsByte(String key) {
+        try {
+            return Nodes.asByte(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Byte.class, e);
+        }
+    }
 
     /**
      * Returns a Double value using strict conversion.
      */
-    public Double getDouble(String key) { return _getStrict(key, Nodes::toDouble, Double.class, null); }
+    public Double getDouble(String key) {
+        try {
+            return Nodes.toDouble(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Double.class, null, e);
+        }
+    }
     
     /**
      * Returns a Double value or the default value when missing.
@@ -626,12 +690,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Double value using lenient conversion.
      */
-    public Double getAsDouble(String key) { return _getLenient(key, Nodes::asDouble, Double.class); }
+    public Double getAsDouble(String key) {
+        try {
+            return Nodes.asDouble(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Double.class, e);
+        }
+    }
 
     /**
      * Returns a Float value using strict conversion.
      */
-    public Float getFloat(String key) { return _getStrict(key, Nodes::toFloat, Float.class, null); }
+    public Float getFloat(String key) {
+        try {
+            return Nodes.toFloat(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Float.class, null, e);
+        }
+    }
     
     /**
      * Returns a Float value or the default value when missing.
@@ -644,12 +720,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Float value using lenient conversion.
      */
-    public Float getAsFloat(String key) { return _getLenient(key, Nodes::asFloat, Float.class); }
+    public Float getAsFloat(String key) {
+        try {
+            return Nodes.asFloat(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Float.class, e);
+        }
+    }
 
     /**
      * Returns a BigInteger value using strict conversion.
      */
-    public BigInteger getBigInteger(String key) { return _getStrict(key, Nodes::toBigInteger, BigInteger.class, null); }
+    public BigInteger getBigInteger(String key) {
+        try {
+            return Nodes.toBigInteger(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, BigInteger.class, null, e);
+        }
+    }
     
     /**
      * Returns a BigInteger value or the default value when missing.
@@ -662,12 +750,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a BigInteger value using lenient conversion.
      */
-    public BigInteger getAsBigInteger(String key) { return _getLenient(key, Nodes::asBigInteger, BigInteger.class); }
+    public BigInteger getAsBigInteger(String key) {
+        try {
+            return Nodes.asBigInteger(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, BigInteger.class, e);
+        }
+    }
 
     /**
      * Returns a BigDecimal value using strict conversion.
      */
-    public BigDecimal getBigDecimal(String key) { return _getStrict(key, Nodes::toBigDecimal, BigDecimal.class, null); }
+    public BigDecimal getBigDecimal(String key) {
+        try {
+            return Nodes.toBigDecimal(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, BigDecimal.class, null, e);
+        }
+    }
     
     /**
      * Returns a BigDecimal value or the default value when missing.
@@ -680,12 +780,24 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a BigDecimal value using lenient conversion.
      */
-    public BigDecimal getAsBigDecimal(String key) { return _getLenient(key, Nodes::asBigDecimal, BigDecimal.class); }
+    public BigDecimal getAsBigDecimal(String key) {
+        try {
+            return Nodes.asBigDecimal(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, BigDecimal.class, e);
+        }
+    }
 
     /**
      * Returns a Boolean value using strict conversion.
      */
-    public Boolean getBoolean(String key) { return _getStrict(key, Nodes::toBoolean, Boolean.class, null); }
+    public Boolean getBoolean(String key) {
+        try {
+            return Nodes.toBoolean(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Boolean.class, null, e);
+        }
+    }
     
     /**
      * Returns a Boolean value or the default value when missing.
@@ -698,52 +810,112 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Boolean value using lenient conversion.
      */
-    public Boolean getAsBoolean(String key) { return _getLenient(key, Nodes::asBoolean, Boolean.class); }
+    public Boolean getAsBoolean(String key) {
+        try {
+            return Nodes.asBoolean(getNode(key));
+        } catch (Exception e) {
+            throw _lenient(key, Boolean.class, e);
+        }
+    }
 
     /**
      * Returns a JsonObject value using strict conversion.
      */
-    public JsonObject getJsonObject(String key) { return _getStrict(key, Nodes::toJsonObject, JsonObject.class, null); }
+    public JsonObject getJsonObject(String key) {
+        try {
+            return Nodes.toJsonObject(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, JsonObject.class, null, e);
+        }
+    }
 
     /**
      * Returns a Map value using strict conversion.
      */
-    public Map<String, Object> getMap(String key) { return _getStrict(key, Nodes::toMap, Map.class, null); }
+    public Map<String, Object> getMap(String key) {
+        try {
+            return Nodes.toMap(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Map.class, null, e);
+        }
+    }
 
     /**
      * Returns a typed Map value using strict conversion.
      */
-    public <T> Map<String, T> getMap(String key, Class<T> clazz) { return _getStrict(key, v -> Nodes.toMap(v, clazz), clazz, Map.class); }
+    public <T> Map<String, T> getMap(String key, Class<T> clazz) {
+        try {
+            return Nodes.toMap(getNode(key), clazz);
+        } catch (Exception e) {
+            throw _strict(key, clazz, Map.class, e);
+        }
+    }
 
     /**
      * Returns a JsonArray value using strict conversion.
      */
-    public JsonArray getJsonArray(String key) { return _getStrict(key, Nodes::toJsonArray, JsonArray.class, null); }
+    public JsonArray getJsonArray(String key) {
+        try {
+            return Nodes.toJsonArray(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, JsonArray.class, null, e);
+        }
+    }
 
     /**
      * Returns a List value using strict conversion.
      */
-    public List<Object> getList(String key) { return _getStrict(key, Nodes::toList, List.class, null); }
+    public List<Object> getList(String key) {
+        try {
+            return Nodes.toList(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, List.class, null, e);
+        }
+    }
 
     /**
      * Returns a typed List value using strict conversion.
      */
-    public <T> List<T> getList(String key, Class<T> clazz) { return _getStrict(key, v -> Nodes.toList(v, clazz), clazz, List.class); }
+    public <T> List<T> getList(String key, Class<T> clazz) {
+        try {
+            return Nodes.toList(getNode(key), clazz);
+        } catch (Exception e) {
+            throw _strict(key, clazz, List.class, e);
+        }
+    }
 
     /**
      * Returns an Object array using strict conversion.
      */
-    public Object[] getArray(String key) { return _getStrict(key, Nodes::toArray, Object[].class, null); }
+    public Object[] getArray(String key) {
+        try {
+            return Nodes.toArray(getNode(key));
+        } catch (Exception e) {
+            throw _strict(key, Object[].class, null, e);
+        }
+    }
 
     /**
      * Returns a typed array using strict conversion.
      */
-    public <T> T[] getArray(String key, Class<T> clazz) { return _getStrict(key, v -> Nodes.toArray(v, clazz), clazz, Object[].class); }
+    public <T> T[] getArray(String key, Class<T> clazz) {
+        try {
+            return Nodes.toArray(getNode(key), clazz);
+        } catch (Exception e) {
+            throw _strict(key, clazz, Object[].class, e);
+        }
+    }
 
     /**
      * Returns a value converted to the given type.
      */
-    public <T> T get(String key, Class<T> clazz) { return _getStrict(key, v -> Nodes.to(v, clazz), clazz, null); }
+    public <T> T get(String key, Class<T> clazz) {
+        try {
+            return Nodes.to(getNode(key), clazz);
+        } catch (Exception e) {
+            throw _strict(key, clazz, null, e);
+        }
+    }
     
     /**
      * Returns a value converted to the inferred type.
@@ -758,7 +930,13 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a value using lenient conversion.
      */
-    public <T> T getAs(String key, Class<T> clazz) { return _getLenient(key, v -> Nodes.as(v, clazz), clazz); }
+    public <T> T getAs(String key, Class<T> clazz) {
+        try {
+            return Nodes.as(getNode(key), clazz);
+        } catch (Exception e) {
+            throw _lenient(key, clazz, e);
+        }
+    }
     
     /**
      * Returns a value using lenient conversion with inferred type.

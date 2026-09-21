@@ -101,8 +101,12 @@ public class PutIfParentPresentByPathTest {
 
     static final class Account {
         final Profile profile;
-        Account(Profile profile) { this.profile = profile; }
-        public Profile getProfile() { return profile; }
+        Account(Profile profile) {
+                this.profile = profile;
+            }
+        public Profile getProfile() {
+                return profile;
+            }
     }
 
     record Profile(Organization organization) {}
@@ -112,22 +116,36 @@ public class PutIfParentPresentByPathTest {
 
     static final class Contact {
         private String email;
-        Contact(String email) { this.email = email; }
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
+        Contact(String email) {
+                this.email = email;
+            }
+        public String getEmail() {
+                return email;
+            }
+        public void setEmail(String email) {
+                this.email = email;
+            }
     }
 
     static final class City {
         public String district;
-        City(String district) { this.district = district; }
+        City(String district) {
+                this.district = district;
+            }
     }
 
     static final class Bean {
         private String value;
         public String field;
-        Bean(String value, String field) { this.value = value; this.field = field; }
-        public String getValue() { return value; }
-        public void setValue(String value) { this.value = value; }
+        Bean(String value, String field) {
+                this.value = value; this.field = field;
+            }
+        public String getValue() {
+                return value;
+            }
+        public void setValue(String value) {
+                this.value = value;
+            }
     }
 
     @CompiledNavigator

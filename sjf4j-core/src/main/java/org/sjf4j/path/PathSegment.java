@@ -26,16 +26,22 @@ public abstract class PathSegment {
     /**
      * Returns the parent segment in the chain.
      */
-    public PathSegment parent() {return parent;}
+    public PathSegment parent() {
+        return parent;
+    }
 
     /**
      * Returns true if this segment matches the given object key.
      */
-    public boolean matchKey(String key) { return false; }
+    public boolean matchKey(String key) {
+        return false;
+    }
     /**
      * Returns true if this segment matches the given array index.
      */
-    public boolean matchIndex(int idx, int size) { return false; }
+    public boolean matchIndex(int idx, int size) {
+        return false;
+    }
 
 
     /**
@@ -58,9 +64,14 @@ public abstract class PathSegment {
      * Represents the root token ($) in a JSON path expression.
      */
     public static final class Root extends PathSegment {
-        private Root() {super(null);}
+        private Root() {
+            super(null);
+        }
         public static final Root INSTANCE = new Root();
-        @Override public String toString() { return "$"; }
+        @Override
+        public String toString() {
+            return "$";
+        }
     }
 
 
@@ -69,9 +80,14 @@ public abstract class PathSegment {
      * This token is used only inside filter expressions.
      */
     public static final class Current extends PathSegment {
-        private Current() {super(null);}
+        private Current() {
+            super(null);
+        }
         public static final Current INSTANCE = new Current();
-        @Override public String toString() { return "@"; }
+        @Override
+        public String toString() {
+            return "@";
+        }
     }
 
     /**
@@ -87,9 +103,16 @@ public abstract class PathSegment {
             super(parent);
             this.name = name;
         }
-        @Override public boolean matchKey(String key) { return name.equals(key); }
-        public boolean needQuoted() { return shouldArrayStyle(name); }
-        public String toQuoted() { return quoteName(name); }
+        @Override
+        public boolean matchKey(String key) {
+            return name.equals(key);
+        }
+        public boolean needQuoted() {
+            return shouldArrayStyle(name);
+        }
+        public String toQuoted() {
+            return quoteName(name);
+        }
         @Override public String toString() {
             if (shouldArrayStyle(name)) {
                 return "[" + quoteName(name) + "]";
@@ -164,9 +187,18 @@ public abstract class PathSegment {
         public Wildcard(PathSegment parent) {
             super(parent);
         }
-        @Override public boolean matchKey(String key) { return true; }
-        @Override public boolean matchIndex(int index, int size) { return true; }
-        @Override public String toString() { return "[*]"; }
+        @Override
+        public boolean matchKey(String key) {
+            return true;
+        }
+        @Override
+        public boolean matchIndex(int index, int size) {
+            return true;
+        }
+        @Override
+        public String toString() {
+            return "[*]";
+        }
     }
 
     /**
@@ -351,7 +383,9 @@ public abstract class PathSegment {
             super(parent);
             this.filterExpr = filterExpr;
         }
-        public String toString() { return "[?" + filterExpr + "]"; }
+        public String toString() {
+            return "[?" + filterExpr + "]";
+        }
     }
 
     /**

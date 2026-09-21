@@ -233,21 +233,37 @@ public class OrderMapperBenchmark {
             this.metadata = metadata;
         }
 
-        public Customer getCustomer() { return customer; }
+        public Customer getCustomer() {
+                return customer;
+            }
 
-        public void setCustomer(Customer customer) { this.customer = customer; }
+        public void setCustomer(Customer customer) {
+                this.customer = customer;
+            }
 
-        public List<Product> getProducts() { return products; }
+        public List<Product> getProducts() {
+                return products;
+            }
 
-        public void setProducts(List<Product> products) { this.products = products; }
+        public void setProducts(List<Product> products) {
+                this.products = products;
+            }
 
-        public Map<String, String> getAttributes() { return attributes; }
+        public Map<String, String> getAttributes() {
+                return attributes;
+            }
 
-        public void setAttributes(Map<String, String> attributes) { this.attributes = attributes; }
+        public void setAttributes(Map<String, String> attributes) {
+                this.attributes = attributes;
+            }
 
-        public JsonObject getMetadata() { return metadata; }
+        public JsonObject getMetadata() {
+                return metadata;
+            }
 
-        public void setMetadata(JsonObject metadata) { this.metadata = metadata; }
+        public void setMetadata(JsonObject metadata) {
+                this.metadata = metadata;
+            }
     }
 
     public static final class Customer {
@@ -263,13 +279,25 @@ public class OrderMapperBenchmark {
             this.shippingAddress = shippingAddress;
         }
 
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
 
-        public void setName(String name) { this.name = name; }
-        public Address getBillingAddress() { return billingAddress; }
-        public void setBillingAddress(Address billingAddress) { this.billingAddress = billingAddress; }
-        public Address getShippingAddress() { return shippingAddress; }
-        public void setShippingAddress(Address shippingAddress) { this.shippingAddress = shippingAddress; }
+        public void setName(String name) {
+                this.name = name;
+            }
+        public Address getBillingAddress() {
+                return billingAddress;
+            }
+        public void setBillingAddress(Address billingAddress) {
+                this.billingAddress = billingAddress;
+            }
+        public Address getShippingAddress() {
+                return shippingAddress;
+            }
+        public void setShippingAddress(Address shippingAddress) {
+                this.shippingAddress = shippingAddress;
+            }
     }
 
     public static final class Address {
@@ -282,20 +310,34 @@ public class OrderMapperBenchmark {
             this.city = city;
         }
 
-        public String getStreet() { return street; }
-        public void setStreet(String street) { this.street = street; }
-        public String getCity() { return city; }
-        public void setCity(String city) { this.city = city; }
+        public String getStreet() {
+                return street;
+            }
+        public void setStreet(String street) {
+                this.street = street;
+            }
+        public String getCity() {
+                return city;
+            }
+        public void setCity(String city) {
+                this.city = city;
+            }
     }
 
     public static final class Product {
         private String name;
 
         public Product() {}
-        public Product(String name) { this.name = name; }
+        public Product(String name) {
+                this.name = name;
+            }
 
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     public static final class OrderDTO {
@@ -309,34 +351,76 @@ public class OrderMapperBenchmark {
         private Map<String, String> attributes;
         private List<ProductDTO> products;
 
-        public String getCustomerName() { return customerName; }
-        public void setCustomerName(String customerName) { this.customerName = customerName; }
-        public String getBillingStreetAddress() { return billingStreetAddress; }
-        public void setBillingStreetAddress(String billingStreetAddress) { this.billingStreetAddress = billingStreetAddress; }
-        public String getBillingCity() { return billingCity; }
-        public void setBillingCity(String billingCity) { this.billingCity = billingCity; }
-        public String getShippingStreetAddress() { return shippingStreetAddress; }
-        public void setShippingStreetAddress(String shippingStreetAddress) { this.shippingStreetAddress = shippingStreetAddress; }
-        public String getShippingCity() { return shippingCity; }
-        public void setShippingCity(String shippingCity) { this.shippingCity = shippingCity; }
-        public String getPriority() { return priority; }
-        public void setPriority(String priority) { this.priority = priority; }
-        public Object getSalesChannel() { return salesChannel; }
-        public void setSalesChannel(Object salesChannel) { this.salesChannel = salesChannel; }
-        public Map<String, String> getAttributes() { return attributes; }
-        public void setAttributes(Map<String, String> attributes) { this.attributes = attributes; }
-        public List<ProductDTO> getProducts() { return products; }
-        public void setProducts(List<ProductDTO> products) { this.products = products; }
+        public String getCustomerName() {
+                return customerName;
+            }
+        public void setCustomerName(String customerName) {
+                this.customerName = customerName;
+            }
+        public String getBillingStreetAddress() {
+                return billingStreetAddress;
+            }
+        public void setBillingStreetAddress(String billingStreetAddress) {
+                this.billingStreetAddress = billingStreetAddress;
+            }
+        public String getBillingCity() {
+                return billingCity;
+            }
+        public void setBillingCity(String billingCity) {
+                this.billingCity = billingCity;
+            }
+        public String getShippingStreetAddress() {
+                return shippingStreetAddress;
+            }
+        public void setShippingStreetAddress(String shippingStreetAddress) {
+                this.shippingStreetAddress = shippingStreetAddress;
+            }
+        public String getShippingCity() {
+                return shippingCity;
+            }
+        public void setShippingCity(String shippingCity) {
+                this.shippingCity = shippingCity;
+            }
+        public String getPriority() {
+                return priority;
+            }
+        public void setPriority(String priority) {
+                this.priority = priority;
+            }
+        public Object getSalesChannel() {
+                return salesChannel;
+            }
+        public void setSalesChannel(Object salesChannel) {
+                this.salesChannel = salesChannel;
+            }
+        public Map<String, String> getAttributes() {
+                return attributes;
+            }
+        public void setAttributes(Map<String, String> attributes) {
+                this.attributes = attributes;
+            }
+        public List<ProductDTO> getProducts() {
+                return products;
+            }
+        public void setProducts(List<ProductDTO> products) {
+                this.products = products;
+            }
     }
 
     public static final class ProductDTO {
         private String name;
 
         public ProductDTO() {}
-        public ProductDTO(String name) { this.name = name; }
+        public ProductDTO(String name) {
+                this.name = name;
+            }
 
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     private static List<Product> products(String... names) {

@@ -267,7 +267,9 @@ public class Fastjson2FacadeTest {
             this.name = name;
             this.age = age;
         }
-        public void setCity(String city) { this.city = city; }
+        public void setCity(String city) {
+            this.city = city;
+        }
     }
 
     private static void assertCreatorExtraField(Fastjson2JsonFacade facade) {
@@ -311,10 +313,18 @@ public class Fastjson2FacadeTest {
         private String userName;
         private int loginCount;
 
-        public String getUserName() { return userName; }
-        public void setUserName(String userName) { this.userName = userName; }
-        public int getLoginCount() { return loginCount; }
-        public void setLoginCount(int loginCount) { this.loginCount = loginCount; }
+        public String getUserName() {
+            return userName;
+        }
+        public void setUserName(String userName) {
+            this.userName = userName;
+        }
+        public int getLoginCount() {
+            return loginCount;
+        }
+        public void setLoginCount(int loginCount) {
+            this.loginCount = loginCount;
+        }
     }
 
     static class PlainPrivateBook {

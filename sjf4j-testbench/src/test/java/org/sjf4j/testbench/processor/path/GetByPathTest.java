@@ -144,17 +144,23 @@ public class GetByPathTest {
     static final class RenamedGetterBean {
         private final String value;
 
-        RenamedGetterBean(String value) { this.value = value; }
+        RenamedGetterBean(String value) {
+            this.value = value;
+        }
 
         @NodeProperty("display_name")
-        public String getName() { return value; }
+        public String getName() {
+            return value;
+        }
     }
 
     static final class RenamedFieldBean {
         @NodeProperty("external_id")
         public String id;
 
-        RenamedFieldBean(String id) { this.id = id; }
+        RenamedFieldBean(String id) {
+            this.id = id;
+        }
     }
 
     record ThirdPartyRoot(@com.fasterxml.jackson.annotation.JsonProperty("profile_data") ThirdPartyProfile profileData,
@@ -166,17 +172,23 @@ public class GetByPathTest {
     static final class ThirdPartyGetterBean {
         private final String value;
 
-        ThirdPartyGetterBean(String value) { this.value = value; }
+        ThirdPartyGetterBean(String value) {
+            this.value = value;
+        }
 
         @com.fasterxml.jackson.annotation.JsonProperty("display_name")
-        public String getName() { return value; }
+        public String getName() {
+            return value;
+        }
     }
 
     static final class ThirdPartyFieldBean {
         @com.alibaba.fastjson2.annotation.JSONField(name = "external_id")
         public String id;
 
-        ThirdPartyFieldBean(String id) { this.id = id; }
+        ThirdPartyFieldBean(String id) {
+                this.id = id;
+            }
     }
 
     record FieldBean(String value) {}
@@ -184,9 +196,13 @@ public class GetByPathTest {
     static final class FlagBean {
         private final boolean active;
 
-        FlagBean(boolean active) { this.active = active; }
+        FlagBean(boolean active) {
+                this.active = active;
+            }
 
-        public boolean isActive() { return active; }
+        public boolean isActive() {
+                return active;
+            }
     }
 
     @CompiledNavigator

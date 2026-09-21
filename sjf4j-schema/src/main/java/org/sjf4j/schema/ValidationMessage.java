@@ -54,7 +54,9 @@ public class ValidationMessage {
      * May be {@code null} when the caller requested fail-fast validation and no
      * path materialization was needed yet.
      */
-    public PathSegment getInstancePs() { return instancePs; }
+    public PathSegment getInstancePs() {
+        return instancePs;
+    }
 
     /**
      * Returns the keyword path segment chain.
@@ -62,17 +64,23 @@ public class ValidationMessage {
      * May be {@code null} for ad-hoc messages that are not tied to a concrete
      * schema keyword location.
      */
-    public PathSegment getKeywordPs() { return keywordPs; }
+    public PathSegment getKeywordPs() {
+        return keywordPs;
+    }
 
     /**
      * Returns the schema resource URI that owns {@link #getKeywordPs()}.
      */
-    public URI getSchemaUri() { return schemaUri; }
+    public URI getSchemaUri() {
+        return schemaUri;
+    }
 
     /**
      * Returns the schema resource URI as a display string.
      */
-    public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
+    public String getSchemaUriText() {
+        return SchemaUtil.displaySchemaUri(schemaUri);
+    }
 
     /**
      * Returns the schema keyword that produced this message.

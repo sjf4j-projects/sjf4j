@@ -37,7 +37,22 @@ public abstract class CreatorDeserializationContract {
         ReferenceBean bean = (ReferenceBean) binding(StreamingContext.EMPTY).readNode("{\"name\":\"han\"}", ReferenceBean.class);
         assertEquals("han", bean.name); assertNull(bean.city);
     }
-    static class ConstructorBean { final String name; final int age; @NodeCreator ConstructorBean(@NodeProperty(value = "name", aliases = "n") String name, @NodeProperty("age") int age) { this.name = name; this.age = age; } }
-    static class FactoryBean { final int id; final String label; private FactoryBean(int id, String label) { this.id = id; this.label = label; } @NodeCreator static FactoryBean create(@NodeProperty(value = "id", aliases = "userId") int id, @NodeProperty("label") String label) { return new FactoryBean(id, label); } }
-    static class ReferenceBean { final String name; final String city; @NodeCreator ReferenceBean(@NodeProperty("name") String name, @NodeProperty("city") String city) { this.name = name; this.city = city; } }
+    static class ConstructorBean { final String name; final int age;
+         @NodeCreator ConstructorBean(@NodeProperty(value = "name", aliases = "n") String name, @NodeProperty("age") int age) {
+            this.name = name; this.age = age;
+        }
+     }
+    static class FactoryBean { final int id; final String label;
+         private FactoryBean(int id, String label) {
+            this.id = id; this.label = label;
+        }
+         @NodeCreator static FactoryBean create(@NodeProperty(value = "id", aliases = "userId") int id, @NodeProperty("label") String label) {
+            return new FactoryBean(id, label);
+        }
+     }
+    static class ReferenceBean { final String name; final String city;
+         @NodeCreator ReferenceBean(@NodeProperty("name") String name, @NodeProperty("city") String city) {
+            this.name = name; this.city = city;
+        }
+     }
 }

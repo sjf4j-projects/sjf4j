@@ -87,8 +87,12 @@ public class WithArgsCreatorTest {
         private int age;
 
         public NoArgsSetterPojo() {}
-        public void setName(String name) { this.name = name; }
-        public void setAge(int age) { this.age = age; }
+        public void setName(String name) {
+                this.name = name;
+            }
+        public void setAge(int age) {
+                this.age = age;
+            }
     }
 
     static class PublicFieldPojo {
@@ -297,7 +301,9 @@ public class WithArgsCreatorTest {
         final int age;
 
         @NodeCreator
-        MultiCreatorPojo(@NodeProperty("name") String name) { this.name = name; this.age = 0; }
+        MultiCreatorPojo(@NodeProperty("name") String name) {
+                this.name = name; this.age = 0;
+            }
 
         @NodeCreator
         MultiCreatorPojo(@NodeProperty("name") String name, @NodeProperty("age") int age) {

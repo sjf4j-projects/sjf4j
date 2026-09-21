@@ -14,15 +14,23 @@ class PropertyDiscoveryTest {
 
     static class DefaultBeanFieldPojo {
         private String name;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     static class MethodRenamePojo {
         private String name;
         @NodeProperty("nick")
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     static class MethodRenameCreatorPojo {
@@ -33,7 +41,9 @@ class PropertyDiscoveryTest {
         }
 
         @NodeProperty("nick")
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     static class MethodRenameAlignedCreatorPojo {
@@ -44,7 +54,9 @@ class PropertyDiscoveryTest {
         }
 
         @NodeProperty("nick")
-        public String getName() { return name; }
+        public String getName() {
+                return name;
+            }
     }
 
     @NodeIgnore
@@ -59,26 +71,38 @@ class PropertyDiscoveryTest {
 
     static class TypeIgnoreBeanContainer {
         private IgnoredType info;
-        public IgnoredType getInfo() { return info; }
-        public void setInfo(IgnoredType info) { this.info = info; }
+        public IgnoredType getInfo() {
+                return info;
+            }
+        public void setInfo(IgnoredType info) {
+                this.info = info;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class BeanFieldTypePriorityPojo {
         private Object value;
 
-        public String getValue() { return (String) value; }
+        public String getValue() {
+                return (String) value;
+            }
 
-        public void setValue(String value) { this.value = value; }
+        public void setValue(String value) {
+                this.value = value;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanTypePriorityPojo {
         private Object value;
 
-        public String getValue() { return (String) value; }
+        public String getValue() {
+                return (String) value;
+            }
 
-        public void setValue(String value) { this.value = value; }
+        public void setValue(String value) {
+                this.value = value;
+            }
     }
 
     static class IgnorePojo {
@@ -86,8 +110,12 @@ class PropertyDiscoveryTest {
         public String ignoredField;
         private String name;
         @NodeIgnore
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
@@ -99,33 +127,47 @@ class PropertyDiscoveryTest {
     static class BeanOnlyPojo {
         public String fieldOnly;
         private String name;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldOnlyPojo {
         private String name;
-        public String getName() { return "getter"; }
+        public String getName() {
+                return "getter";
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class BeanFieldPojo {
         String hidden;
         public String publicField;
-        public String getHidden() { return hidden; }
+        public String getHidden() {
+                return hidden;
+            }
     }
 
     @NodeObject(propertyStrategy = PropertyStrategy.FIELD_BEAN)
     static class FieldBeanPojo {
         private String name;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
     }
 
     static class PrivateBeanMethodPojo {
         private String hidden = "x";
-        private String getHidden() { return hidden; }
+        private String getHidden() {
+                return hidden;
+            }
     }
 
     static class CollidingRenamePojo {
@@ -133,21 +175,31 @@ class PropertyDiscoveryTest {
         private String second;
 
         @NodeProperty("same")
-        public String getFirst() { return first; }
+        public String getFirst() {
+                return first;
+            }
 
-        public void setFirst(String first) { this.first = first; }
+        public void setFirst(String first) {
+                this.first = first;
+            }
 
         @NodeProperty("same")
-        public String getSecond() { return second; }
+        public String getSecond() {
+                return second;
+            }
 
-        public void setSecond(String second) { this.second = second; }
+        public void setSecond(String second) {
+                this.second = second;
+            }
     }
 
     static class FieldRenameToBeanImplicitPojo {
         @NodeProperty("name")
         private String userName;
 
-        public String getName() { return userName; }
+        public String getName() {
+                return userName;
+            }
     }
 
     @Test

@@ -78,9 +78,18 @@ class SimpleJsonReaderTest {
     @Test
     void reportsNameTokensAndMatchesNames() throws Exception {
         StreamingReader.NameMatcher matcher = new StreamingReader.NameMatcher() {
-            @Override public int size() { return 1; }
-            @Override public String name(int index) { return "known"; }
-            @Override public int match(String name) { return "known".equals(name) ? 0 : UNKNOWN; }
+            @Override
+            public int size() {
+                    return 1;
+                }
+            @Override
+            public String name(int index) {
+                    return "known";
+                }
+            @Override
+            public int match(String name) {
+                    return "known".equals(name) ? 0 : UNKNOWN;
+                }
         };
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"known\":1,\"other\":2}"))) {
             reader.startObject();
@@ -170,7 +179,8 @@ class SimpleJsonReaderTest {
     void toleratesAZeroLengthReaderRead() throws Exception {
         Reader zeroThenData = new Reader() {
             private int reads;
-            @Override public int read(char[] cbuf, int off, int len) {
+            @Override
+            public int read(char[] cbuf, int off, int len) {
                 if (reads++ == 0) return 0;
                 if (reads == 2) {
                     cbuf[off] = '1';
@@ -178,7 +188,8 @@ class SimpleJsonReaderTest {
                 }
                 return -1;
             }
-            @Override public void close() { }
+            @Override
+            public void close() { }
         };
         try (SimpleJsonReader reader = new SimpleJsonReader(zeroThenData)) {
             assertEquals(1, reader.nextIntValue());
@@ -289,8 +300,12 @@ class SimpleJsonReaderTest {
     @Test
     void propagatesReaderIoFailures() {
         Reader failing = new Reader() {
-            @Override public int read(char[] cbuf, int off, int len) throws IOException { throw new IOException("broken"); }
-            @Override public void close() { }
+            @Override
+            public int read(char[] cbuf, int off, int len) throws IOException {
+                    throw new IOException("broken");
+                }
+            @Override
+            public void close() { }
         };
         assertThrows(IOException.class, () -> new SimpleJsonReader(failing).peekToken());
     }
@@ -299,13 +314,15 @@ class SimpleJsonReaderTest {
     void propagatesReaderIoFailuresMidDocument() throws Exception {
         Reader failing = new Reader() {
             private boolean delivered;
-            @Override public int read(char[] cbuf, int off, int len) throws IOException {
+            @Override
+            public int read(char[] cbuf, int off, int len) throws IOException {
                 if (delivered) throw new IOException("broken mid-document");
                 delivered = true;
                 cbuf[off] = '[';
                 return 1;
             }
-            @Override public void close() { }
+            @Override
+            public void close() { }
         };
         try (SimpleJsonReader reader = new SimpleJsonReader(failing)) {
             reader.startArray();

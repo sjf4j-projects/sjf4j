@@ -408,16 +408,28 @@ public final class SimpleNodeBinder implements NodeBinder {
             return new JsonObject(oldMap);
         }
         return _readFromObjectSource(new ObjectSource() {
-            @Override public Iterable<Map.Entry<String, Object>> entries() { return oldMap.entrySet(); }
-            @Override public int size() { return oldMap.size(); }
+            @Override
+            public Iterable<Map.Entry<String, Object>> entries() {
+                return oldMap.entrySet();
+            }
+            @Override
+            public int size() {
+                return oldMap.size();
+            }
         }, "Map", rawClazz, type, deepCopy, ps);
     }
 
     // JsonObject -> Map/JsonObject/JOJO/POJO
     private Object _readFromJsonObject(JsonObject oldJo, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
         return _readFromObjectSource(new ObjectSource() {
-            @Override public Iterable<Map.Entry<String, Object>> entries() { return oldJo.entrySet(); }
-            @Override public int size() { return oldJo.size(); }
+            @Override
+            public Iterable<Map.Entry<String, Object>> entries() {
+                return oldJo.entrySet();
+            }
+            @Override
+            public int size() {
+                return oldJo.size();
+            }
         }, "JsonObject", rawClazz, type, deepCopy, ps);
     }
 

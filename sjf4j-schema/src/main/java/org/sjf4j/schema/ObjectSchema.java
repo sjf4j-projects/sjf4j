@@ -18,11 +18,16 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     /**
      * Returns the raw {@code $id} keyword value, or {@code null} when absent.
      */
-    String getId() {return getString("$id");}
+    String getId() {
+        return getString("$id");
+    }
+
     /**
      * Returns declared {@code $vocabulary} entries from this schema object.
      */
-    Map<String, Boolean> getVocabulary() {return getMap("$vocabulary", Boolean.class);}
+    Map<String, Boolean> getVocabulary() {
+        return getMap("$vocabulary", Boolean.class);
+    }
 
     /**
      * Original retrieval URI used to load the root schema document.

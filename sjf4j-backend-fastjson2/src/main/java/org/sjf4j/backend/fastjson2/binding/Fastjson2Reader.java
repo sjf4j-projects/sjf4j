@@ -15,9 +15,6 @@ public final class Fastjson2Reader implements StreamingReader {
 
     private final JSONReader reader;
     private Token peeked;
-    private int[] scopes = new int[8];
-    private int depth;
-    private boolean objectEndConsumed;
 
     public Fastjson2Reader(JSONReader reader) {
         this.reader = Objects.requireNonNull(reader, "reader");
@@ -27,7 +24,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public Token peekToken() {
         if (peeked == null) {
             peeked = reader.isEnd() ? Token.EOF
-                    : expectsName() && reader.current() == '"' ? Token.NAME : token(reader.current());
+                    : token(reader.current());
         }
         return peeked;
     }
@@ -41,122 +38,94 @@ public final class Fastjson2Reader implements StreamingReader {
 
     @Override
     public void startObject() {
-        clearPeek();
+        peeked = null;
         if (!reader.nextIfObjectStart()) {
             throw expected("START_OBJECT");
         }
-        push(1);
     }
 
     @Override
     public void endObject() {
-        clearPeek();
-        if (objectEndConsumed) {
-            objectEndConsumed = false;
-            popValueDone();
-            return;
-        }
+        peeked = null;
         if (!reader.nextIfObjectEnd()) {
             throw expected("END_OBJECT");
         }
-        popValueDone();
     }
 
     @Override
     public void startArray() {
-        clearPeek();
+        peeked = null;
         if (!reader.nextIfArrayStart()) {
             throw expected("START_ARRAY");
         }
-        push(0);
     }
 
     @Override
     public void endArray() {
-        clearPeek();
+        peeked = null;
         if (!reader.nextIfArrayEnd()) {
             throw expected("END_ARRAY");
         }
-        popValueDone();
     }
 
     @Override
     public String nextName() {
-        clearPeek();
-        scopes[depth - 1] = 2;
+        peeked = null;
         return reader.readFieldName();
     }
 
     @Override
     public String nextString() {
-        clearPeek();
-        String value = reader.readString();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readString();
     }
 
     @Override
     public Number nextNumber() {
-        clearPeek();
-        Number value = reader.readNumber();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readNumber();
     }
 
     @Override
     public long nextLongValue() {
-        clearPeek();
-        long value = reader.readInt64Value();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readInt64Value();
     }
 
     @Override
     public int nextIntValue() {
-        clearPeek();
-        int value = reader.readInt32Value();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readInt32Value();
     }
 
     @Override
     public short nextShortValue() {
-        clearPeek();
-        short value = reader.readInt16Value();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readInt16Value();
     }
 
     @Override
     public byte nextByteValue() {
-        clearPeek();
-        byte value = reader.readInt8Value();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readInt8Value();
     }
 
     @Override
     public double nextDoubleValue() {
-        clearPeek();
-        double value = reader.readDoubleValue();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readDoubleValue();
     }
 
     @Override
     public float nextFloatValue() {
-        clearPeek();
-        float value = reader.readFloatValue();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readFloatValue();
     }
 
     @Override
     public boolean nextBooleanValue() {
-        clearPeek();
-        boolean value = reader.readBoolValue();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readBoolValue();
     }
 
     @Override
@@ -170,25 +139,20 @@ public final class Fastjson2Reader implements StreamingReader {
 
     @Override
     public BigInteger nextBigInteger() {
-        clearPeek();
-        BigInteger value = reader.readBigInteger();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readBigInteger();
     }
 
     @Override
     public BigDecimal nextBigDecimal() {
-        clearPeek();
-        BigDecimal value = reader.readBigDecimal();
-        valueDone();
-        return value;
+        peeked = null;
+        return reader.readBigDecimal();
     }
 
     @Override
     public void nextNull() {
-        clearPeek();
+        peeked = null;
         reader.readNull();
-        valueDone();
     }
 
     @Override
@@ -196,8 +160,7 @@ public final class Fastjson2Reader implements StreamingReader {
         if (!reader.nextIfNull()) {
             return false;
         }
-        clearPeek();
-        valueDone();
+        peeked = null;
         return true;
     }
 
@@ -206,8 +169,7 @@ public final class Fastjson2Reader implements StreamingReader {
         if (!reader.nextIfObjectEnd()) {
             return false;
         }
-        clearPeek();
-        popValueDone();
+        peeked = null;
         return true;
     }
 
@@ -216,8 +178,7 @@ public final class Fastjson2Reader implements StreamingReader {
         if (!reader.nextIfArrayEnd()) {
             return false;
         }
-        clearPeek();
-        popValueDone();
+        peeked = null;
         return true;
     }
 
@@ -226,9 +187,8 @@ public final class Fastjson2Reader implements StreamingReader {
         if (peekToken().jsonType() == org.sjf4j.JsonType.UNKNOWN) {
             throw new IOException("Expected value");
         }
-        clearPeek();
+        peeked = null;
         reader.skipValue();
-        valueDone();
     }
 
     @Override
@@ -272,34 +232,5 @@ public final class Fastjson2Reader implements StreamingReader {
 
     private BindingException expected(String token) {
         return new BindingException("expected token '" + token + "', but got " + reader.current());
-    }
-    private void clearPeek() {
-        peeked = null;
-    }
-
-    private boolean expectsName() {
-        return depth > 0 && scopes[depth - 1] == 1;
-    }
-
-    private void push(int scope) {
-        if (depth == scopes.length) {
-            int[] next = new int[depth << 1];
-            System.arraycopy(scopes, 0, next, 0, depth);
-            scopes = next;
-        }
-        scopes[depth++] = scope;
-    }
-
-    private void popValueDone() {
-        if (depth > 0) {
-            depth--;
-        }
-        valueDone();
-    }
-
-    private void valueDone() {
-        if (depth > 0 && scopes[depth - 1] == 2) {
-            scopes[depth - 1] = 1;
-        }
     }
 }

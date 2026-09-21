@@ -776,7 +776,9 @@ public final class NavigatorGenerator {
         return names.prefixed(_prefix(type), hint);
     }
 
-    private String _indexName(NameAllocator names) { return names.prefixed("n", "index"); }
+    private String _indexName(NameAllocator names) {
+        return names.prefixed("n", "index");
+    }
 
     private String _segmentHint(PathSegment segment) {
         if (segment instanceof PathSegment.Name) return ((PathSegment.Name) segment).name;

@@ -33,19 +33,31 @@ class DelegatingCreatorDeserializationContract {
         assertThrows(BindingException.class, () -> binding.readNode("{\"A\":12}", MapValue.class));
     }
 
-    static class IntegerValue { final int value; @NodeCreator IntegerValue(int value) { this.value = value; } }
+    static class IntegerValue { final int value;
+         @NodeCreator IntegerValue(int value) {
+            this.value = value;
+        }
+     }
 
     @NodeValue
     abstract static class ListValue {
         final List<Integer> value;
-        ListValue(List<Integer> value) { this.value = value; }
+        ListValue(List<Integer> value) {
+                this.value = value;
+            }
         @RawToValue
-        static ListValue of(List<Integer> value) { return new ListValue(value) { }; }
+        static ListValue of(List<Integer> value) {
+                return new ListValue(value) { };
+            }
 
         @ValueToRaw
         List<Integer> toRaw() {
             return value;
         }
     }
-    static class MapValue { final Map<String, Long> value; @NodeCreator MapValue(Map<String, Long> value) { this.value = value; } }
+    static class MapValue { final Map<String, Long> value;
+         @NodeCreator MapValue(Map<String, Long> value) {
+            this.value = value;
+        }
+     }
 }

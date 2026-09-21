@@ -24,9 +24,19 @@ class StreamingWriterDefaultMethodTest {
         }
 
         public void startObject() {} public void endObject() {} public void startArray() {} public void endArray() {}
-        public void writeName(String name) { events.add("name:" + name); } public void writeNull() { events.add("null"); }
-        public void writeStringValue(String value) { events.add("string:" + value); }
-        public void writeLongValue(long value) {} public void writeIntValue(int value) { events.add("int:" + value); }
+        public void writeName(String name) {
+                events.add("name:" + name);
+            }
+             public void writeNull() {
+                events.add("null");
+            }
+        public void writeStringValue(String value) {
+                events.add("string:" + value);
+            }
+        public void writeLongValue(long value) {}
+             public void writeIntValue(int value) {
+                events.add("int:" + value);
+            }
         public void writeShortValue(short value) {} public void writeByteValue(byte value) {}
         public void writeDoubleValue(double value) {} public void writeFloatValue(float value) {}
         public void writeBooleanValue(boolean value) {} public void writeCharValue(char value) {}
