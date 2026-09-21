@@ -1,7 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Executable;
@@ -30,7 +30,7 @@ public class CreatorInfo {
     public final String[] argNames;
     public final Type[] argTypes;
     public final String[] argCodecNames;
-    public final NodeValueInfo[] argValueCodecs;
+    public final ValueInfo[] argValueCodecs;
     public final Map<String, Integer> argIndexes;
     public final Map<String, String> aliasMap;
     public final boolean hasCodecNameBinding;
@@ -43,7 +43,7 @@ public class CreatorInfo {
                        TypeRegistry.Func1 argsCreatorLambda1, TypeRegistry.Func2 argsCreatorLambda2,
                        TypeRegistry.Func3 argsCreatorLambda3, TypeRegistry.Func4 argsCreatorLambda4, TypeRegistry.Func5 argsCreatorLambda5,
                        String[] argNames, Type[] argTypes,
-                       String[] argCodecNames, NodeValueInfo[] argValueCodecs,
+                       String[] argCodecNames, ValueInfo[] argValueCodecs,
                        Map<String, Integer> argIndexes,
                        Map<String, String> aliasMap) {
         this.clazz = clazz;
@@ -64,7 +64,7 @@ public class CreatorInfo {
         this.aliasMap = aliasMap;
         boolean hasCodecNameBinding = false;
         if (argValueCodecs != null) {
-            for (NodeValueInfo vci : argValueCodecs) {
+            for (ValueInfo vci : argValueCodecs) {
                 if (vci != null) {
                     hasCodecNameBinding = true;
                     break;

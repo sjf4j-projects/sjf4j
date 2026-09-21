@@ -7,7 +7,7 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.binding.FieldBinder;
+import org.sjf4j.binding.FieldReader;
 import org.sjf4j.binding.FieldWriter;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
@@ -15,8 +15,8 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.util.Strings;
-import org.sjf4j.value.NodeValueCodec;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueCodec;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.PatternedValueCodec;
 
 import java.lang.annotation.Annotation;
@@ -249,16 +249,16 @@ public final class ReflectUtil {
                     PojoAccess.createGetterLambda(lookup, getterHandle, Function.class, Object.class);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
                     PojoAccess.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
-            NodeValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
+            ValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
 
-            FieldBinder fieldBinder = FieldBinder.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
+            FieldReader fieldReader = FieldReader.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
                     setterHandle, setterLambda, resolvedCodec, lookup);
             FieldInfo pi = new FieldInfo(finalName, publicField, type, genericDependent, boxed,
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
                     family.codecName, resolvedCodec,
-                    fieldBinder);
+                    fieldReader);
             FieldInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new JsonException("multiple property families resolve to JSON property '" + pi.name +
@@ -291,7 +291,7 @@ public final class ReflectUtil {
         List<FieldWriter> fieldWriters = new ArrayList<>(properties.size());
         for (FieldInfo property : properties.values()) {
             FieldWriter fieldWriter = FieldWriter.create(property.name, property.type, property.boxed,
-                    property.getterHandle, property.getterLambda, property.resolvedValueCodec, lookup);
+                    property.getterHandle, property.getterLambda, property.valueInfo, lookup);
             if (fieldWriter != null) {
                 fieldNames.add(property.name);
                 fieldWriters.add(fieldWriter);
@@ -638,14 +638,14 @@ public final class ReflectUtil {
         return vp.isEmpty() ? null : vp;
     }
 
-    static NodeValueInfo _resolvePatternedValueCodec(Class<?> rawType, String codecName, String codecPattern) {
+    static ValueInfo _resolvePatternedValueCodec(Class<?> rawType, String codecName, String codecPattern) {
         if (codecPattern != null && !codecPattern.isEmpty()) {
             // codecPattern takes precedence: get the base codec and parameterize it
-            NodeValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(rawType, "");
+            ValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(rawType, "");
             if (base.codec instanceof PatternedValueCodec) {
                 PatternedValueCodec<?, ?> pvc = (PatternedValueCodec<?, ?>) base.codec;
-                NodeValueCodec<?, ?> codec = pvc.withPattern(codecPattern);
-                return new NodeValueInfo(codecPattern, codec.valueClazz(),
+                ValueCodec<?, ?> codec = pvc.withPattern(codecPattern);
+                return new ValueInfo(codecPattern, codec.valueClazz(),
                         codec.rawClazz(), codec, null, null, null);
             }
             throw new JsonException("type '" + rawType.getName() + "' does not support codecPattern;" +
@@ -683,7 +683,7 @@ public final class ReflectUtil {
         MethodHandle noArgsCtor = null;
         Supplier<?> noArgsLambdaCtor = null;
         String[] argValueFormats = null;
-        NodeValueInfo[] argValueCodecs = null;
+        ValueInfo[] argValueCodecs = null;
 
         // 1. Find defined creator
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
@@ -773,7 +773,7 @@ public final class ReflectUtil {
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
             argValueFormats = new String[params.length];
-            argValueCodecs = new NodeValueInfo[params.length];
+            argValueCodecs = new ValueInfo[params.length];
             for (int i = 0; i < params.length; i++) {
                 String name = getExplicitName(params[i]);
                 if (name == null) {

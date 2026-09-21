@@ -72,7 +72,7 @@ public enum NodeKind {
         if (kind != NodeKind.UNKNOWN) return kind;
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.nodeValueInfos != null) {
+        if (ti.valueInfos != null) {
             return NodeKind.VALUE_NODE_VALUE;
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;

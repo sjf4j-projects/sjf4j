@@ -1,7 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -28,13 +28,13 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class NodeValueCodecTest {
+public class ValueCodecTest {
 
     @Test
     public void testJdkValueCodecsPart1() throws Exception {
-        NodeValueInfo uriCodec = TypeRegistry.registerTypeInfo(URI.class).nodeValueInfos[0];
-        NodeValueInfo urlCodec = TypeRegistry.registerTypeInfo(URL.class).nodeValueInfos[0];
-        NodeValueInfo uuidCodec = TypeRegistry.registerTypeInfo(UUID.class).nodeValueInfos[0];
+        ValueInfo uriCodec = TypeRegistry.registerTypeInfo(URI.class).valueInfos[0];
+        ValueInfo urlCodec = TypeRegistry.registerTypeInfo(URL.class).valueInfos[0];
+        ValueInfo uuidCodec = TypeRegistry.registerTypeInfo(UUID.class).valueInfos[0];
 
         assertNotNull(uriCodec);
         assertNotNull(urlCodec);
@@ -58,9 +58,9 @@ public class NodeValueCodecTest {
 
     @Test
     public void testJdkValueCodecsPart2() {
-        NodeValueInfo localeCodec = TypeRegistry.registerTypeInfo(Locale.class).nodeValueInfos[0];
-        NodeValueInfo currencyCodec = TypeRegistry.registerTypeInfo(Currency.class).nodeValueInfos[0];
-        NodeValueInfo zoneIdCodec = TypeRegistry.registerTypeInfo(ZoneId.class).nodeValueInfos[0];
+        ValueInfo localeCodec = TypeRegistry.registerTypeInfo(Locale.class).valueInfos[0];
+        ValueInfo currencyCodec = TypeRegistry.registerTypeInfo(Currency.class).valueInfos[0];
+        ValueInfo zoneIdCodec = TypeRegistry.registerTypeInfo(ZoneId.class).valueInfos[0];
 
         assertNotNull(localeCodec);
         assertNotNull(currencyCodec);
@@ -84,13 +84,13 @@ public class NodeValueCodecTest {
 
     @Test
     public void testJdkValueCodecsTime() {
-        NodeValueInfo instantCodec = TypeRegistry.registerTypeInfo(Instant.class).nodeValueInfos[0];
-        NodeValueInfo localDateCodec = TypeRegistry.registerTypeInfo(LocalDate.class).nodeValueInfos[0];
-        NodeValueInfo localDateTimeCodec = TypeRegistry.registerTypeInfo(LocalDateTime.class).nodeValueInfos[0];
-        NodeValueInfo offsetDateTimeCodec = TypeRegistry.registerTypeInfo(OffsetDateTime.class).nodeValueInfos[0];
-        NodeValueInfo zonedDateTimeCodec = TypeRegistry.registerTypeInfo(ZonedDateTime.class).nodeValueInfos[0];
-        NodeValueInfo durationCodec = TypeRegistry.registerTypeInfo(Duration.class).nodeValueInfos[0];
-        NodeValueInfo periodCodec = TypeRegistry.registerTypeInfo(Period.class).nodeValueInfos[0];
+        ValueInfo instantCodec = TypeRegistry.registerTypeInfo(Instant.class).valueInfos[0];
+        ValueInfo localDateCodec = TypeRegistry.registerTypeInfo(LocalDate.class).valueInfos[0];
+        ValueInfo localDateTimeCodec = TypeRegistry.registerTypeInfo(LocalDateTime.class).valueInfos[0];
+        ValueInfo offsetDateTimeCodec = TypeRegistry.registerTypeInfo(OffsetDateTime.class).valueInfos[0];
+        ValueInfo zonedDateTimeCodec = TypeRegistry.registerTypeInfo(ZonedDateTime.class).valueInfos[0];
+        ValueInfo durationCodec = TypeRegistry.registerTypeInfo(Duration.class).valueInfos[0];
+        ValueInfo periodCodec = TypeRegistry.registerTypeInfo(Period.class).valueInfos[0];
 
         assertNotNull(instantCodec);
         assertNotNull(localDateCodec);
@@ -137,10 +137,10 @@ public class NodeValueCodecTest {
 
     @Test
     public void testJdkValueCodecsPathPatternInet() throws Exception {
-        NodeValueInfo pathCodec = TypeRegistry.registerTypeInfo(Path.class).nodeValueInfos[0];
-        NodeValueInfo fileCodec = TypeRegistry.registerTypeInfo(File.class).nodeValueInfos[0];
-        NodeValueInfo patternCodec = TypeRegistry.registerTypeInfo(Pattern.class).nodeValueInfos[0];
-        NodeValueInfo inetAddressCodec = TypeRegistry.registerTypeInfo(InetAddress.class).nodeValueInfos[0];
+        ValueInfo pathCodec = TypeRegistry.registerTypeInfo(Path.class).valueInfos[0];
+        ValueInfo fileCodec = TypeRegistry.registerTypeInfo(File.class).valueInfos[0];
+        ValueInfo patternCodec = TypeRegistry.registerTypeInfo(Pattern.class).valueInfos[0];
+        ValueInfo inetAddressCodec = TypeRegistry.registerTypeInfo(InetAddress.class).valueInfos[0];
 
         assertNotNull(pathCodec);
         assertNotNull(fileCodec);
@@ -170,8 +170,8 @@ public class NodeValueCodecTest {
 
     @Test
     public void testJdkValueCodecsDateCalendar() {
-        NodeValueInfo dateCodec = TypeRegistry.registerTypeInfo(Date.class).nodeValueInfos[0];
-        NodeValueInfo calendarCodec = TypeRegistry.registerTypeInfo(Calendar.class).nodeValueInfos[0];
+        ValueInfo dateCodec = TypeRegistry.registerTypeInfo(Date.class).valueInfos[0];
+        ValueInfo calendarCodec = TypeRegistry.registerTypeInfo(Calendar.class).valueInfos[0];
 
         assertNotNull(dateCodec);
         assertNotNull(calendarCodec);

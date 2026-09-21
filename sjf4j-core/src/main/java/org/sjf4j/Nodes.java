@@ -859,8 +859,8 @@ public final class Nodes {
         }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-        if (ti.nodeValueInfos != null) {
-            return (T) ti.nodeValueInfos[0].valueCopy(node);
+        if (ti.valueInfos != null) {
+            return (T) ti.valueInfos[0].valueCopy(node);
         } else if (ti.pojoInfo != null) {
             PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(node.getClass());
             TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
@@ -1027,8 +1027,8 @@ public final class Nodes {
         }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-        if (ti.nodeValueInfos != null) {
-            Object raw = ti.nodeValueInfos[0].valueToRaw(node);
+        if (ti.valueInfos != null) {
+            Object raw = ti.valueInfos[0].valueToRaw(node);
             sb.append("@").append(rawClazz.getSimpleName()).append("#");
             _inspect(raw, sb, shapeOnly);
             return;

@@ -3,7 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.NodeKind;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 
@@ -116,7 +116,7 @@ public final class InstancedNode {
         boolean encoded = false;
         NodeKind nodeKind = NodeKind.of(node);
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
-            NodeValueInfo vci = TypeRegistry.registerTypeInfo(node.getClass()).nodeValueInfos[0];
+            ValueInfo vci = TypeRegistry.registerTypeInfo(node.getClass()).valueInfos[0];
             if (vci != null) {
                 node = vci.valueToRaw(node);
                 encoded = true;

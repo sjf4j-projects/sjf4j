@@ -1,7 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 
 /**
  * Cached classification and metadata for a Java type.
@@ -11,7 +11,7 @@ import org.sjf4j.value.NodeValueInfo;
  */
 public class TypeInfo {
     public final Class<?> clazz;
-    public final NodeValueInfo[] nodeValueInfos;
+    public final ValueInfo[] valueInfos;
     public final OneOfInfo oneOfInfo;
     public final ContainerInfo containerInfo;
     public final PojoInfo pojoInfo;
@@ -24,11 +24,11 @@ public class TypeInfo {
      * Creates type metadata for the supplied classification, including an
      * external node classifier when applicable.
      */
-    public TypeInfo(Class<?> clazz, NodeValueInfo[] nodeValueInfos,
+    public TypeInfo(Class<?> clazz, ValueInfo[] valueInfos,
                     OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo,
                     ExternalNode<?> externalNode) {
         this.clazz = clazz;
-        this.nodeValueInfos = nodeValueInfos;
+        this.valueInfos = valueInfos;
         this.oneOfInfo = oneOfInfo;
         this.containerInfo = containerInfo;
         this.pojoInfo = pojoInfo;
@@ -56,17 +56,17 @@ public class TypeInfo {
     }
 
     public boolean isNodeValue() {
-        return nodeValueInfos != null;
+        return valueInfos != null;
     }
 
     /**
      * Returns the default or named value codec metadata, or {@code null} when
      * no codec is registered for the requested format.
      */
-    public NodeValueInfo getNodeValueInfo(String valueFormat) {
-        if (nodeValueInfos == null) return null;
-        if (valueFormat == null) return nodeValueInfos[0];
-        for (NodeValueInfo info : nodeValueInfos) {
+    public ValueInfo getNodeValueInfo(String valueFormat) {
+        if (valueInfos == null) return null;
+        if (valueFormat == null) return valueInfos[0];
+        for (ValueInfo info : valueInfos) {
             if (info.valueFormat.equals(valueFormat)) {
                 return info;
             }

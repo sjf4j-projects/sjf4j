@@ -9,14 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
-- Moved `NodeValueCodec`, `NodeValueInfo`, `NodeValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
-- Renamed `ValueCodec` and `ValueCodecInfo` to `NodeValueCodec` and `NodeValueInfo`; update codec imports and public metadata references accordingly.
+- Moved `ValueCodec`, `ValueInfo`, `ValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
+- Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
 - Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
 - Converted `JsonBinder`, `YamlBinder`, `StreamingBinder`, and `StreamingWriter` from interfaces to abstract classes; custom backends must extend the new base classes and pass their binder/context through constructors.
 - Replaced `StreamingWriter.PropertyName` with `PreparedName`; custom backends must implement prepared-name writing with the new type.
 - Replaced manual `ExternalNodeRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalNodeProvider` implementations; external node integrations must publish a service provider.
 - Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
-- Renamed `org.sjf4j.binding.FieldReader` to `FieldBinder`; update streaming binding references accordingly.
+- Renamed `org.sjf4j.binding.FieldReader` to `FieldReader`; update streaming binding references accordingly.
 - Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.
 - Renamed `org.sjf4j.node.ObjectInfo` to `PojoInfo`; update imports and public metadata references accordingly.
 - Renamed `JsonArray.elementType()` to `elementClass()`; update typed `JsonArray` subclasses accordingly.
@@ -164,7 +164,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `PropertyStrategy` with modes: `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, `FIELD_BEAN`; `BEAN_FIELD` is default.
 - `@NodeIgnore` supports class, field, getter, setter exclusions.
-- `PatternedValueCodec<V,R>` interface and `NodeValueCodec` for `LocalTime` and `Optional`.
+- `PatternedValueCodec<V,R>` interface and `ValueCodec` for `LocalTime` and `Optional`.
 - `@NodeProperty.codecPattern` for DateTimeFormatter patterns, supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, `ZonedDateTime`.
 - `Nodes.putInArray(node, idx, value)` for explicit replace-or-append.
 - Compiled-path APIs in `org.sjf4j.asm` with ASM accelerator.
@@ -238,7 +238,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
 - Added `@NodeBinding(readDynamic = ... , writeDynamic = ...)` for JOJO types so unknown-field retention on read and dynamic-property emission on write can be controlled per type.
 - Added instance-scoped `StreamingContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
-- Added `ValueFormatMapping`, named `NodeValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
+- Added `ValueFormatMapping`, named `ValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
 - Added `Sjf4j.Builder.includeNulls(...)` so each runtime can choose whether JSON serialization keeps or omits `null` properties across Gson, Jackson 2, Jackson 3, and Fastjson2 facades.
 
 ### Changed
@@ -257,7 +257,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed backend-native Jackson/Fastjson2 streaming and module paths to skip formatted value-codec resolution when a type has no registered codecs, reducing unnecessary metadata work and avoiding null-driven fallback drift.
 - Fixed `JsonObject` writable traversal so dynamic entries honor `writeDynamic` during backend-native object serialization.
 - Fixed `Types` generic substitution and resolution for parameterized types so raw-type preservation no longer depends on unsafe `Class` casts.
-- Fixed `Nodes.to(...)` so `@NodeValue` and registered `NodeValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
+- Fixed `Nodes.to(...)` so `@NodeValue` and registered `ValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
 - Fixed `JsonPath.ensurePut(...)` so single paths containing append segments (`/-` or `[+]`) can auto-create nested containers while appending new array elements.
 - Fixed shared/simple/Jackson/Fastjson2 readable-member serialization and POJO projection paths so write-only bindings no longer leak into object traversal or output.

@@ -9,14 +9,14 @@ import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.CreatorInfo;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
-import org.sjf4j.value.NodeValueCodec;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
@@ -103,7 +103,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                              OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
             if (node == null) {
-                if (rawClazz == Optional.class) return NodeValueCodec.OPTIONAL.rawToValue(null);
+                if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
                 return null;
             }
 
@@ -138,7 +138,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -558,7 +558,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
+                ValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.isNodeValue()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
                     argVci = ti.getNodeValueInfo(valueFormat);
@@ -585,9 +585,9 @@ public final class SimpleNodeFacade implements NodeFacade {
                 Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
                 Class<?> fieldRaw = Types.rawBox(fieldType);
                 Object vv;
-                if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
-                    vv = fieldRaw.isInstance(rawValue) ? fi.resolvedValueCodec.valueCopy(rawValue) :
-                            fi.resolvedValueCodec.rawToValue(rawValue);
+                if (fi.oneOfInfo == null && fi.valueInfo != null) {
+                    vv = fieldRaw.isInstance(rawValue) ? fi.valueInfo.valueCopy(rawValue) :
+                            fi.valueInfo.rawToValue(rawValue);
                 } else {
                     vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
                 }
@@ -921,7 +921,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }
@@ -953,8 +953,8 @@ public final class SimpleNodeFacade implements NodeFacade {
 
     private Object _writeFieldValue(Object value, FieldInfo fi, PathSegment ps) {
         if (value == null) return null;
-        if (fi.resolvedValueCodec != null) {
-            return fi.resolvedValueCodec.valueToRaw(value);
+        if (fi.valueInfo != null) {
+            return fi.valueInfo.valueToRaw(value);
         }
         return _writeNode(value, ps);
     }

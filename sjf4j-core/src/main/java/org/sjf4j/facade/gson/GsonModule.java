@@ -12,7 +12,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.PojoInfo;
@@ -59,7 +59,7 @@ public interface GsonModule {
 
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueAdapter<>(gson, vci);
                 }
@@ -215,14 +215,14 @@ public interface GsonModule {
 
     class NodeValueAdapter<T> extends TypeAdapter<T> {
         private final Gson gson;
-        private final NodeValueInfo nodeValueInfo;
+        private final ValueInfo valueInfo;
 
         /**
          * Creates adapter backed by ValueCodec metadata.
          */
-        public NodeValueAdapter(Gson gson, NodeValueInfo nodeValueInfo) {
+        public NodeValueAdapter(Gson gson, ValueInfo valueInfo) {
             this.gson = gson;
-            this.nodeValueInfo = nodeValueInfo;
+            this.valueInfo = valueInfo;
         }
 
         /**
@@ -233,7 +233,7 @@ public interface GsonModule {
         public T read(JsonReader in) throws IOException {
             TypeAdapter<?> adapter = gson.getAdapter(Object.class);
             Object raw = adapter.read(in);
-            return (T) nodeValueInfo.rawToValue(raw);
+            return (T) valueInfo.rawToValue(raw);
         }
 
         /**
@@ -241,7 +241,7 @@ public interface GsonModule {
          */
         @Override
         public void write(JsonWriter out, T node) throws IOException {
-            Object raw = nodeValueInfo.valueToRaw(node);
+            Object raw = valueInfo.valueToRaw(node);
             TypeAdapter<Object> adapter = gson.getAdapter(Object.class);
             adapter.write(out, raw);
         }

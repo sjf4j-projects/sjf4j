@@ -17,7 +17,7 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
 
@@ -98,7 +98,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
                 if (ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(rawClazz);
-                    NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                    ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                     if (vci != null) return vci.valueCopy(node);
                 }
                 return _deepNode(node, type, ps);
@@ -111,7 +111,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -240,7 +240,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(node.getClass());
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) return vci.valueCopy(node);
             }
 
@@ -474,7 +474,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
+                ValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getNodeValueInfo(valueFormat);
@@ -496,9 +496,9 @@ public final class SimpleNodeBinder implements NodeBinder {
                 Type fieldType = fi.genericDependent ? Types.resolveMemberType(type, rawClazz, fi.type) : fi.type;
                 Class<?> fieldRaw = fi.genericDependent ? Types.rawBox(fieldType) : fi.boxed;
                 Object vv;
-                if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
-                    vv = fieldRaw.isInstance(rawValue) ? fi.resolvedValueCodec.valueCopy(rawValue) :
-                            fi.resolvedValueCodec.rawToValue(rawValue);
+                if (fi.oneOfInfo == null && fi.valueInfo != null) {
+                    vv = fieldRaw.isInstance(rawValue) ? fi.valueInfo.valueCopy(rawValue) :
+                            fi.valueInfo.rawToValue(rawValue);
                 } else {
                     vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
                 }
@@ -756,7 +756,7 @@ public final class SimpleNodeBinder implements NodeBinder {
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                NodeValueInfo argVci = ci.argValueCodecs[argIdx];
+                ValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getNodeValueInfo(valueFormat);
@@ -778,10 +778,10 @@ public final class SimpleNodeBinder implements NodeBinder {
                 Type fieldType = fi.genericDependent ? Types.resolveMemberType(type, rawClazz, fi.type) : fi.type;
                 Class<?> fieldRaw = fi.genericDependent ? Types.rawBox(fieldType) : fi.boxed;
                 Object vv;
-                if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
+                if (fi.oneOfInfo == null && fi.valueInfo != null) {
                     vv = fieldRaw.isInstance(rawValue)
-                            ? fi.resolvedValueCodec.valueCopy(rawValue)
-                            : fi.resolvedValueCodec.rawToValue(rawValue);
+                            ? fi.valueInfo.valueCopy(rawValue)
+                            : fi.valueInfo.rawToValue(rawValue);
                 } else {
                     vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
                 }
@@ -932,7 +932,7 @@ public final class SimpleNodeBinder implements NodeBinder {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }
@@ -946,8 +946,8 @@ public final class SimpleNodeBinder implements NodeBinder {
                     FieldInfo fi = entry.getValue();
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
-                    Object vv = fi.resolvedValueCodec != null
-                            ? fi.resolvedValueCodec.valueToRaw(v)
+                    Object vv = fi.valueInfo != null
+                            ? fi.valueInfo.valueToRaw(v)
                             : _writeNode(v, cps);
                     newMap.put(key, vv);
                 }

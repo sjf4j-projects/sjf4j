@@ -15,8 +15,8 @@ import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.util.Strings;
-import org.sjf4j.value.NodeValueInfo;
-import org.sjf4j.value.NodeValueRegistry;
+import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueRegistry;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -259,21 +259,21 @@ class ReflectUtilEdgeCaseTest {
 
     @Test
     void analyzesNodeValuesAndRejectsInvalidDeclarations() {
-        NodeValueInfo codecInfo = NodeValueRegistry.analyzeByAnnotation(ValidValue.class);
+        ValueInfo codecInfo = ValueRegistry.analyzeByAnnotation(ValidValue.class);
         assertNotNull(codecInfo);
         assertEquals(String.class, codecInfo.rawClazz);
         assertEquals("x", codecInfo.valueToRaw(new ValidValue("x")));
         assertEquals("y", ((ValidValue) codecInfo.rawToValue("y")).value);
         assertEquals("z", ((ValidValue) codecInfo.valueCopy(new ValidValue("z"))).value);
 
-        assertNull(NodeValueRegistry.analyzeByAnnotation(String.class));
-        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(MissingEncode.class));
-        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(MissingDecode.class));
-        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(StaticEncode.class));
-        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(NonStaticDecode.class));
-        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(WrongDecodeParam.class));
-        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(WrongCopyReturn.class));
-        assertThrows(JsonException.class, () -> NodeValueRegistry.analyzeByAnnotation(DuplicateEncode.class));
+        assertNull(ValueRegistry.analyzeByAnnotation(String.class));
+        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(MissingEncode.class));
+        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(MissingDecode.class));
+        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(StaticEncode.class));
+        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(NonStaticDecode.class));
+        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(WrongDecodeParam.class));
+        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(WrongCopyReturn.class));
+        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(DuplicateEncode.class));
     }
 
     @Test

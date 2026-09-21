@@ -6,15 +6,15 @@ import org.sjf4j.exception.BindingException;
 import java.lang.invoke.MethodHandle;
 
 /**
- * Cached binding metadata for a {@link NodeValueCodec} or {@code @NodeValue}
+ * Cached binding metadata for a {@link ValueCodec} or {@code @NodeValue}
  * conversion methods.
  */
-public class NodeValueInfo {
+public class ValueInfo {
     public final Class<?> runtimeClazz;
     public final String valueFormat;
     public final Class<?> valueClazz;
     public final Class<?> rawClazz;
-    public final NodeValueCodec<Object, Object> codec;
+    public final ValueCodec<Object, Object> codec;
     public final MethodHandle valueToRawHandle;
     public final MethodHandle rawToValueHandle;
     public final MethodHandle valueCopyHandle;
@@ -23,19 +23,19 @@ public class NodeValueInfo {
      * Creates value codec metadata.
      */
     @SuppressWarnings("unchecked")
-    public NodeValueInfo(String valueFormat, Class<?> valueClazz, Class<?> rawClazz, NodeValueCodec<?, ?> codec,
-                         MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
+    public ValueInfo(String valueFormat, Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> codec,
+                     MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
         this.runtimeClazz = null;
         this.valueFormat = valueFormat == null ? "" : valueFormat;
         this.valueClazz = valueClazz;
         this.rawClazz = rawClazz;
-        this.codec = (NodeValueCodec<Object, Object>) codec;
+        this.codec = (ValueCodec<Object, Object>) codec;
         this.valueToRawHandle = valueToRawHandle;
         this.rawToValueHandle = rawToValueHandle;
         this.valueCopyHandle = valueCopyHandle;
     }
 
-    public NodeValueInfo(Class<?> runtimeClazz, NodeValueInfo info) {
+    public ValueInfo(Class<?> runtimeClazz, ValueInfo info) {
         this.runtimeClazz = runtimeClazz;
         this.valueFormat = info.valueFormat;
         this.valueClazz = info.valueClazz;

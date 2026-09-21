@@ -6,7 +6,6 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.FieldWriter;
-import org.sjf4j.binding.PreparedName;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -100,7 +99,7 @@ public class PojoInfo {
         this.hasNonPublicWriterGap = hasNonPublicWriterGap;
         boolean hasPropertyCodecNameBinding = false;
         for (FieldInfo fi : properties.values()) {
-            if (fi.resolvedValueCodec != null) {
+            if (fi.valueInfo != null) {
                 hasPropertyCodecNameBinding = true;
                 break;
             }

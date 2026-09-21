@@ -20,32 +20,32 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class NodeValueRegistry {
-    private NodeValueRegistry() {}
+public final class ValueRegistry {
+    private ValueRegistry() {}
 
     /* Index zero is always the default codec. */
-    private static final ConcurrentHashMap<Class<?>, NodeValueInfo[]> NODE_VALUE_INFOS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<?>, ValueInfo[]> NODE_VALUE_INFOS = new ConcurrentHashMap<>();
 
     /**
      * Resolves codecs registered directly for a class or declared through {@code @NodeValue}.
      * Index zero is the default codec. Returns {@code null} when no codec set matches.
      * The returned array is registry-owned and must not be modified.
      */
-    public static NodeValueInfo[] resolve(Class<?> runtimeClazz) {
+    public static ValueInfo[] resolve(Class<?> runtimeClazz) {
         Objects.requireNonNull(runtimeClazz, "runtimeClazz");
 
-        NodeValueInfo[] infos = NODE_VALUE_INFOS.get(runtimeClazz);
+        ValueInfo[] infos = NODE_VALUE_INFOS.get(runtimeClazz);
         if (infos != null) return infos;
 
-        NodeValueInfo info = analyzeByAnnotation(runtimeClazz);
-        if (info != null) return new NodeValueInfo[]{info};
+        ValueInfo info = analyzeByAnnotation(runtimeClazz);
+        if (info != null) return new ValueInfo[]{info};
 
         ArrayDeque<Class<?>> types = new ArrayDeque<>();
         Set<Class<?>> visited = new HashSet<>();
         types.add(runtimeClazz);
         visited.add(runtimeClazz);
         for (int distance = 0; !types.isEmpty(); distance++) {
-            NodeValueInfo[] matched = null;
+            ValueInfo[] matched = null;
             Class<?> matchType = null;
             for (int count = types.size(); count > 0; count--) {
                 Class<?> type = types.remove();
@@ -67,9 +67,9 @@ public final class NodeValueRegistry {
                 }
             }
             if (matched != null) {
-                NodeValueInfo[] resolved = new NodeValueInfo[matched.length];
+                ValueInfo[] resolved = new ValueInfo[matched.length];
                 for (int i = 0; i < matched.length; i++) {
-                    resolved[i] = new NodeValueInfo(runtimeClazz, matched[i]);
+                    resolved[i] = new ValueInfo(runtimeClazz, matched[i]);
                 }
                 return resolved;
             }
@@ -81,34 +81,34 @@ public final class NodeValueRegistry {
     /**
      * Registers value codec metadata. Published arrays are immutable snapshots.
      */
-    public static void register(NodeValueInfo nodeValueInfo, boolean forceDefault) {
-        Objects.requireNonNull(nodeValueInfo, "nodeValueInfo");
+    public static void register(ValueInfo valueInfo, boolean forceDefault) {
+        Objects.requireNonNull(valueInfo, "nodeValueInfo");
 
-        NODE_VALUE_INFOS.compute(nodeValueInfo.valueClazz, (valueClazz, oldInfos) -> {
+        NODE_VALUE_INFOS.compute(valueInfo.valueClazz, (valueClazz, oldInfos) -> {
             if (oldInfos == null) {
-                return new NodeValueInfo[]{nodeValueInfo};
+                return new ValueInfo[]{valueInfo};
             }
 
-            for (NodeValueInfo oldInfo : oldInfos) {
-                if (oldInfo != null && nodeValueInfo.valueFormat.equals(oldInfo.valueFormat)) {
+            for (ValueInfo oldInfo : oldInfos) {
+                if (oldInfo != null && valueInfo.valueFormat.equals(oldInfo.valueFormat)) {
                     throw new JsonException("valueCodec already registered for type '" + valueClazz.getName() +
-                            "' and valueFormat '" + nodeValueInfo.valueFormat + "'");
+                            "' and valueFormat '" + valueInfo.valueFormat + "'");
                 }
             }
 
-            NodeValueInfo[] infos = new NodeValueInfo[oldInfos.length + 1];
+            ValueInfo[] infos = new ValueInfo[oldInfos.length + 1];
             if (forceDefault) {
-                infos[0] = nodeValueInfo;
+                infos[0] = valueInfo;
                 System.arraycopy(oldInfos, 0, infos, 1, oldInfos.length);
             } else {
                 System.arraycopy(oldInfos, 0, infos, 0, oldInfos.length);
-                infos[oldInfos.length] = nodeValueInfo;
+                infos[oldInfos.length] = valueInfo;
             }
             return infos;
         });
     }
 
-    public static <N, R> void registerByCodec(NodeValueCodec<N, R> codec, String valueFormat, boolean forceDefault) {
+    public static <N, R> void registerByCodec(ValueCodec<N, R> codec, String valueFormat, boolean forceDefault) {
         Objects.requireNonNull(codec, "codec");
 
         Class<R> rawClazz = codec.rawClazz();
@@ -118,42 +118,42 @@ public final class NodeValueRegistry {
         Class<N> valueClazz = codec.valueClazz();
         Objects.requireNonNull(valueClazz, "valueClazz");
 
-        NodeValueInfo info = new NodeValueInfo(valueFormat, valueClazz, rawClazz, codec, null, null, null);
+        ValueInfo info = new ValueInfo(valueFormat, valueClazz, rawClazz, codec, null, null, null);
         register(info, forceDefault);
     }
 
 
     // Bootstrap JDK Types
     static {
-        registerByCodec(NodeValueCodec.URI_CODEC, null, false);
-        registerByCodec(NodeValueCodec.URL_CODEC, null, false);
-        registerByCodec(NodeValueCodec.UUID_CODEC, null, false);
-        registerByCodec(NodeValueCodec.CHARSET, null, false);
-        registerByCodec(NodeValueCodec.LOCALE, null, false);
-        registerByCodec(NodeValueCodec.CURRENCY, null, false);
-        registerByCodec(NodeValueCodec.ZONE_ID, null, false);
-        registerByCodec(NodeValueCodec.INSTANT_STR, null, false);
-        registerByCodec(NodeValueCodec.INSTANT_STR, "iso", false);
-        registerByCodec(NodeValueCodec.INSTANT_EPOCH_MILLIS, "epochMillis", false);
+        registerByCodec(ValueCodec.URI_CODEC, null, false);
+        registerByCodec(ValueCodec.URL_CODEC, null, false);
+        registerByCodec(ValueCodec.UUID_CODEC, null, false);
+        registerByCodec(ValueCodec.CHARSET, null, false);
+        registerByCodec(ValueCodec.LOCALE, null, false);
+        registerByCodec(ValueCodec.CURRENCY, null, false);
+        registerByCodec(ValueCodec.ZONE_ID, null, false);
+        registerByCodec(ValueCodec.INSTANT_STR, null, false);
+        registerByCodec(ValueCodec.INSTANT_STR, "iso", false);
+        registerByCodec(ValueCodec.INSTANT_EPOCH_MILLIS, "epochMillis", false);
         registerByCodec(PatternedValueCodec.LOCAL_DATE, null, false);
         registerByCodec(PatternedValueCodec.LOCAL_TIME, null, false);
         registerByCodec(PatternedValueCodec.LOCAL_DATE_TIME, null, false);
         registerByCodec(PatternedValueCodec.OFFSET_DATE_TIME, null, false);
         registerByCodec(PatternedValueCodec.ZONED_DATE_TIME, null, false);
-        registerByCodec(NodeValueCodec.DURATION, null, false);
-        registerByCodec(NodeValueCodec.PERIOD, null, false);
-        registerByCodec(NodeValueCodec.PATH, null, false);
-        registerByCodec(NodeValueCodec.FILE, null, false);
-        registerByCodec(NodeValueCodec.PATTERN, null, false);
-        registerByCodec(NodeValueCodec.INET_ADDR, null, false);
-        registerByCodec(NodeValueCodec.DATE, null, false);
-        registerByCodec(NodeValueCodec.CALENDAR, null, false);
-        registerByCodec(NodeValueCodec.OPTIONAL, null, false);
+        registerByCodec(ValueCodec.DURATION, null, false);
+        registerByCodec(ValueCodec.PERIOD, null, false);
+        registerByCodec(ValueCodec.PATH, null, false);
+        registerByCodec(ValueCodec.FILE, null, false);
+        registerByCodec(ValueCodec.PATTERN, null, false);
+        registerByCodec(ValueCodec.INET_ADDR, null, false);
+        registerByCodec(ValueCodec.DATE, null, false);
+        registerByCodec(ValueCodec.CALENDAR, null, false);
+        registerByCodec(ValueCodec.OPTIONAL, null, false);
     }
 
 
 
-    public static NodeValueInfo analyzeByAnnotation(Class<?> clazz) {
+    public static ValueInfo analyzeByAnnotation(Class<?> clazz) {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
         MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
@@ -274,7 +274,7 @@ public final class NodeValueRegistry {
                         ", but found " + copyReturnClazz.getName());
         }
 
-        return new NodeValueInfo("", clazz, valueToRawReturnBoxed, null,
+        return new ValueInfo("", clazz, valueToRawReturnBoxed, null,
                 valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 

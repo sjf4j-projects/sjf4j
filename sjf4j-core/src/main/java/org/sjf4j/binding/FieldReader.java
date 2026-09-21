@@ -1,7 +1,7 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoAccess;
 import org.sjf4j.node.TypeInfo;
@@ -24,7 +24,7 @@ import java.util.function.ObjIntConsumer;
 import java.util.function.ObjLongConsumer;
 
 @FunctionalInterface
-public interface FieldBinder {
+public interface FieldReader {
 
     void bind(StreamingReader reader, Object owner, Type ownerType, Class<?> ownerBoxed,
               StreamingContext context) throws IOException;
@@ -62,10 +62,10 @@ public interface FieldBinder {
      * --------------------------------------------------------------
      */
 
-    static FieldBinder create(String fieldName, Type fieldType, Class<?> fieldBoxed,
+    static FieldReader create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                               boolean genericDependent, OneOfInfo oneOfInfo,
                               MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                              NodeValueInfo resolvedValueCodec,
+                              ValueInfo resolvedValueCodec,
                               MethodHandles.Lookup lookup) {
 
         if (setterHandle == null) {
@@ -299,7 +299,7 @@ public interface FieldBinder {
     }
 
 
-    static FieldBinder _createForPrimitiveInt(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveInt(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjIntConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjIntConsumer.class), int.class);
         if (setterLambda != null) {
@@ -319,7 +319,7 @@ public interface FieldBinder {
         };
     }
 
-    static FieldBinder _createForPrimitiveLong(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveLong(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjLongConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjLongConsumer.class), long.class);
         if (setterLambda != null) {
@@ -339,7 +339,7 @@ public interface FieldBinder {
         };
     }
 
-    static FieldBinder _createForPrimitiveDouble(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveDouble(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjDoubleConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjDoubleConsumer.class), double.class);
         if (setterLambda != null) {
@@ -359,7 +359,7 @@ public interface FieldBinder {
         };
     }
 
-    static FieldBinder _createForPrimitiveFloat(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveFloat(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjFloatConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjFloatConsumer.class), float.class);
         if (setterLambda != null) {
@@ -379,7 +379,7 @@ public interface FieldBinder {
         };
     }
 
-    static FieldBinder _createForPrimitiveShort(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveShort(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjShortConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjShortConsumer.class), short.class);
         if (setterLambda != null) {
@@ -399,7 +399,7 @@ public interface FieldBinder {
         };
     }
 
-    static FieldBinder _createForPrimitiveByte(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveByte(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjByteConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjByteConsumer.class), byte.class);
         if (setterLambda != null) {
@@ -419,7 +419,7 @@ public interface FieldBinder {
         };
     }
 
-    static FieldBinder _createForPrimitiveBoolean(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveBoolean(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjBooleanConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjBooleanConsumer.class), boolean.class);
         if (setterLambda != null) {
@@ -439,7 +439,7 @@ public interface FieldBinder {
         };
     }
 
-    static FieldBinder _createForPrimitiveChar(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static FieldReader _createForPrimitiveChar(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjCharConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjCharConsumer.class), char.class);
         if (setterLambda != null) {

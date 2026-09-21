@@ -9,8 +9,8 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
-import org.sjf4j.value.NodeValueInfo;
-import org.sjf4j.value.NodeValueRegistry;
+import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueRegistry;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -79,12 +79,12 @@ public final class TypeRegistry {
             return ti;
         }
 
-        NodeValueInfo[] nodeValueInfos = NodeValueRegistry.resolve(clazz);
-        if (nodeValueInfos != null) {
+        ValueInfo[] valueInfos = ValueRegistry.resolve(clazz);
+        if (valueInfos != null) {
             if (mustPojo) {
                 throw new JsonException("class '" + clazz.getName() + "' is a NodeValue, not a POJO");
             }
-            ti = new TypeInfo(clazz, nodeValueInfos, null, null, null, null);
+            ti = new TypeInfo(clazz, valueInfos, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -130,11 +130,11 @@ public final class TypeRegistry {
     /**
      * Returns value codec metadata for a class and named format.
      */
-    public static NodeValueInfo registerNodeValueOrElseThrow(Class<?> clazz, String valueFormat) {
+    public static ValueInfo registerNodeValueOrElseThrow(Class<?> clazz, String valueFormat) {
         Objects.requireNonNull(valueFormat, "valueFormat");
 
         TypeInfo ti = registerTypeInfo(clazz);
-        NodeValueInfo info = ti.getNodeValueInfo(valueFormat);
+        ValueInfo info = ti.getNodeValueInfo(valueFormat);
         if (info == null) {
             throw new JsonException("no ValueCodec registered for type '" + clazz.getName() +
                     "' with valueFormat '" + valueFormat + "'");

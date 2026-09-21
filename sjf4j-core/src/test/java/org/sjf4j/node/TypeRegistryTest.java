@@ -28,9 +28,9 @@ import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.fixture.JsonObjectPersonFixture;
-import org.sjf4j.value.NodeValueCodec;
-import org.sjf4j.value.NodeValueInfo;
-import org.sjf4j.value.NodeValueRegistry;
+import org.sjf4j.value.ValueCodec;
+import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueRegistry;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -266,7 +266,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        NodeValueInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).nodeValueInfos[0];
+        ValueInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).valueInfos[0];
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -288,7 +288,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testNodeValue2() {
-        NodeValueRegistry.registerByCodec(new NodeValueCodec<CodecDay, String>() {
+        ValueRegistry.registerByCodec(new ValueCodec<CodecDay, String>() {
             @Override
             public String valueToRaw(CodecDay node) {
                 return node.localDate.toString();
@@ -310,7 +310,7 @@ public class TypeRegistryTest {
             }
         }, null, false);
 
-        NodeValueInfo vci = Objects.requireNonNull(NodeValueRegistry.resolve(CodecDay.class))[0];
+        ValueInfo vci = Objects.requireNonNull(ValueRegistry.resolve(CodecDay.class))[0];
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -326,7 +326,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testRegisterValueCodecDuplicateFails() {
-        assertThrows(JsonException.class, () -> NodeValueRegistry.registerByCodec(new NodeValueCodec<LocalDate, String>() {
+        assertThrows(JsonException.class, () -> ValueRegistry.registerByCodec(new ValueCodec<LocalDate, String>() {
             @Override
             public String valueToRaw(LocalDate node) {
                 return node.toString();

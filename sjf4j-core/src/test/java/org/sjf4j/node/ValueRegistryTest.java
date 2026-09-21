@@ -4,13 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.value.NodeValueInfo;
-import org.sjf4j.value.NodeValueRegistry;
+import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueRegistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class NodeValueRegistryTest {
+class ValueRegistryTest {
 
     @NodeValue
     static class ConstructorValue {
@@ -29,7 +29,7 @@ class NodeValueRegistryTest {
 
     @Test
     void resolvesRawToValueConstructor() {
-        NodeValueInfo[] infos = NodeValueRegistry.resolve(ConstructorValue.class);
+        ValueInfo[] infos = ValueRegistry.resolve(ConstructorValue.class);
 
         assertNotNull(infos);
         assertEquals(1, infos.length);

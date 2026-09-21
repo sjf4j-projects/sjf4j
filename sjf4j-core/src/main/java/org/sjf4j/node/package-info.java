@@ -8,11 +8,11 @@
  * value-codec metadata. {@link TypeRegistry} creates and caches that metadata
  * for framework readers, writers, conversion, copying, and traversal.</p>
  *
- * <p>{@link NodeValueCodec codecs} map domain values to raw JSON-compatible values;
+ * <p>{@link ValueCodec codecs} map domain values to raw JSON-compatible values;
  * object metadata describes structural binding for other classes. These APIs
  * support the framework's metadata and extension mechanisms and are generally
  * not needed for ordinary JSON reads and writes.</p>
  */
 package org.sjf4j.node;
 
-import org.sjf4j.value.NodeValueCodec;
+import org.sjf4j.value.ValueCodec;

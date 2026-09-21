@@ -1,7 +1,7 @@
 package org.sjf4j.node;
 
-import org.sjf4j.binding.FieldBinder;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.binding.FieldReader;
+import org.sjf4j.value.ValueInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
@@ -49,10 +49,10 @@ public class FieldInfo {
     public final BiConsumer<Object, Object> setterLambda;
 
     public final OneOfInfo oneOfInfo;
-    public final String codecName;
-    public final NodeValueInfo resolvedValueCodec;
+    public final String valueFormat;
+    public final ValueInfo valueInfo;
 
-    public final FieldBinder binder;
+    public final FieldReader binder;
 
     /**
      * Creates property binding metadata and resolves its container element type.
@@ -60,8 +60,8 @@ public class FieldInfo {
     public FieldInfo(String name, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                      Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                      Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                     OneOfInfo oneOfInfo, String codecName, NodeValueInfo resolvedValueCodec,
-                     FieldBinder binder) {
+                     OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo,
+                     FieldReader binder) {
         this.name = name;
         this.publicField = publicField;
         this.type = type;
@@ -103,8 +103,8 @@ public class FieldInfo {
         this.setterLambda = setterLambda;
 
         this.oneOfInfo = oneOfInfo;
-        this.codecName = codecName;
-        this.resolvedValueCodec = resolvedValueCodec;
+        this.valueFormat = valueFormat;
+        this.valueInfo = valueInfo;
         this.binder = binder;
     }
 

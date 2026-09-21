@@ -18,8 +18,8 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.simple.SimpleJsonReader;
-import org.sjf4j.value.NodeValueCodec;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueCodec;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.PatternedValueCodec;
 
 import java.io.StringReader;
@@ -72,7 +72,7 @@ class TypeRegistryEdgeCaseTest {
         }
     }
 
-    static class InvalidRawCodec implements NodeValueCodec<String, Instant> {
+    static class InvalidRawCodec implements ValueCodec<String, Instant> {
         @Override public Instant valueToRaw(String value) { return Instant.now(); }
         @Override public String rawToValue(Instant raw) { return raw.toString(); }
         @Override public Class<String> valueClazz() { return String.class; }
@@ -85,7 +85,7 @@ class TypeRegistryEdgeCaseTest {
         @RawToValue static AnotherMiniValue rawToValue(String raw) { return new AnotherMiniValue(); }
     }
 
-    static class ThrowingCodec implements NodeValueCodec<String, String> {
+    static class ThrowingCodec implements ValueCodec<String, String> {
         @Override public String valueToRaw(String value) { throw new IllegalStateException("boom"); }
         @Override public String rawToValue(String raw) { throw new IllegalStateException("boom"); }
         @Override public Class<String> valueClazz() { return String.class; }
@@ -230,9 +230,9 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testNamedValueCodecsAndValueFormatMetadata() {
-        NodeValueInfo defaultCodec = TypeRegistry.registerTypeInfo(Instant.class).nodeValueInfos[0];
-        NodeValueInfo isoCodec = TypeRegistry.registerNodeValueOrElseThrow(Instant.class, "iso");
-        NodeValueInfo epochCodec = TypeRegistry.registerNodeValueOrElseThrow(Instant.class, "epochMillis");
+        ValueInfo defaultCodec = TypeRegistry.registerTypeInfo(Instant.class).valueInfos[0];
+        ValueInfo isoCodec = TypeRegistry.registerNodeValueOrElseThrow(Instant.class, "iso");
+        ValueInfo epochCodec = TypeRegistry.registerNodeValueOrElseThrow(Instant.class, "epochMillis");
 
         assertEquals("", defaultCodec.valueFormat);
         assertEquals("iso", isoCodec.valueFormat);
@@ -241,9 +241,9 @@ class TypeRegistryEdgeCaseTest {
         assertEquals(Long.class, epochCodec.rawClazz);
 
         FieldInfo fi = TypeRegistry.registerPojoOrElseThrow(InstantFieldPojo.class).properties.get("createdAt");
-        assertEquals("epochMillis", fi.codecName);
-        assertNotNull(fi.resolvedValueCodec);
-        assertEquals(Long.class, fi.resolvedValueCodec.rawClazz);
+        assertEquals("epochMillis", fi.valueFormat);
+        assertNotNull(fi.valueInfo);
+        assertEquals(Long.class, fi.valueInfo.rawClazz);
 
         CreatorInfo creatorInfo = TypeRegistry.registerPojoOrElseThrow(InstantCreatorPojo.class).creatorInfo;
         assertEquals("epochMillis", creatorInfo.argCodecNames[0]);
@@ -257,12 +257,12 @@ class TypeRegistryEdgeCaseTest {
         FieldInfo fi = pi.properties.get("date");
         assertNotNull(fi);
         // codecName is null when only codecPattern is specified (separate attributes)
-        assertNull(fi.codecName);
-        assertNotNull(fi.resolvedValueCodec);
+        assertNull(fi.valueFormat);
+        assertNotNull(fi.valueInfo);
         // Round-trip through the patterned codec
-        Object raw = fi.resolvedValueCodec.valueToRaw(LocalDate.of(2024, 1, 15));
+        Object raw = fi.valueInfo.valueToRaw(LocalDate.of(2024, 1, 15));
         assertEquals("2024-01-15", raw);
-        Object decoded = fi.resolvedValueCodec.rawToValue(raw);
+        Object decoded = fi.valueInfo.rawToValue(raw);
         assertEquals(LocalDate.of(2024, 1, 15), decoded);
     }
 
@@ -307,7 +307,7 @@ class TypeRegistryEdgeCaseTest {
     void testLocalTimeCodecRoundTrip() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(LocalTime.class);
         assertTrue(ti.isNodeValue());
-        NodeValueInfo vci = ti.getNodeValueInfo("");
+        ValueInfo vci = ti.getNodeValueInfo("");
         assertNotNull(vci);
         Object raw = vci.valueToRaw(LocalTime.of(10, 30, 15));
         assertEquals("10:30:15", raw);
@@ -318,11 +318,11 @@ class TypeRegistryEdgeCaseTest {
     @Test
     @SuppressWarnings("unchecked")
     void testLocalTimeCodecPattern() {
-        NodeValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(LocalTime.class, "");
+        ValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(LocalTime.class, "");
         assertTrue(base.codec instanceof PatternedValueCodec);
         // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
         PatternedValueCodec pc = (PatternedValueCodec) base.codec;
-        NodeValueCodec patterned = pc.withPattern("HH:mm");
+        ValueCodec patterned = pc.withPattern("HH:mm");
         Object raw = patterned.valueToRaw(LocalTime.of(8, 5));
         assertEquals("08:05", raw);
         Object decoded = patterned.rawToValue(raw);
@@ -335,7 +335,7 @@ class TypeRegistryEdgeCaseTest {
     void testOptionalCodecPresent() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(Optional.class);
         assertTrue(ti.isNodeValue());
-        NodeValueInfo vci = ti.getNodeValueInfo("");
+        ValueInfo vci = ti.getNodeValueInfo("");
         assertNotNull(vci);
         assertEquals(Object.class, vci.rawClazz);
 
@@ -349,7 +349,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testOptionalCodecEmpty() {
-        NodeValueInfo vci = TypeRegistry.registerNodeValueOrElseThrow(Optional.class, "");
+        ValueInfo vci = TypeRegistry.registerNodeValueOrElseThrow(Optional.class, "");
         assertNull(vci.valueToRaw(Optional.empty()));
         assertSame(Optional.empty(), vci.rawToValue(null));
     }
@@ -364,9 +364,9 @@ class TypeRegistryEdgeCaseTest {
         PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalTimeFieldPojo.class);
         FieldInfo fi = pi.properties.get("time");
         assertNotNull(fi);
-        assertNull(fi.codecName);
-        assertNotNull(fi.resolvedValueCodec);
-        Object raw = fi.resolvedValueCodec.valueToRaw(LocalTime.of(14, 30, 0));
+        assertNull(fi.valueFormat);
+        assertNotNull(fi.valueInfo);
+        Object raw = fi.valueInfo.valueToRaw(LocalTime.of(14, 30, 0));
         assertEquals("14:30:00", raw);
     }
 
@@ -380,12 +380,12 @@ class TypeRegistryEdgeCaseTest {
         PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(OptionalFieldPojo.class);
         FieldInfo fi = pi.properties.get("name");
         assertNotNull(fi);
-        assertNotNull(fi.resolvedValueCodec);
+        assertNotNull(fi.valueInfo);
         // Present
-        Object raw = fi.resolvedValueCodec.valueToRaw(Optional.of("Alice"));
+        Object raw = fi.valueInfo.valueToRaw(Optional.of("Alice"));
         assertEquals("Alice", raw);
         // Empty
-        assertNull(fi.resolvedValueCodec.valueToRaw(Optional.empty()));
+        assertNull(fi.valueInfo.valueToRaw(Optional.empty()));
     }
 
     static class ThrowingHandleValue {
@@ -703,24 +703,24 @@ class TypeRegistryEdgeCaseTest {
         assertThrows(JsonException.class, () -> throwingField.invokeGetter(accessor));
         assertThrows(JsonException.class, () -> throwingField.invokeSetter(accessor, "x"));
 
-        NodeValueInfo codecInfo = TypeRegistry.registerTypeInfo(MiniValue.class).nodeValueInfos[0];
+        ValueInfo codecInfo = TypeRegistry.registerTypeInfo(MiniValue.class).valueInfos[0];
         MiniValue value = new MiniValue("v");
         assertEquals("v", codecInfo.valueToRaw(value));
         assertEquals("v", ((MiniValue) codecInfo.rawToValue("v")).value);
         assertEquals("v", ((MiniValue) codecInfo.valueCopy(value)).value);
 
-        NodeValueInfo throwing = new NodeValueInfo("", String.class, String.class, new ThrowingCodec(), null, null, null);
+        ValueInfo throwing = new ValueInfo("", String.class, String.class, new ThrowingCodec(), null, null, null);
         assertThrows(JsonException.class, () -> throwing.valueToRaw("x"));
         assertThrows(JsonException.class, () -> throwing.rawToValue("x"));
         assertThrows(JsonException.class, () -> throwing.valueCopy("x"));
         assertThrows(JsonException.class, () -> throwing.rawToValue(1));
 
-        NodeValueInfo none = new NodeValueInfo("", String.class, String.class, null, null, null, null);
+        ValueInfo none = new ValueInfo("", String.class, String.class, null, null, null, null);
         assertThrows(JsonException.class, () -> none.valueToRaw("x"));
         assertThrows(JsonException.class, () -> none.rawToValue("x"));
         assertSame("x", none.valueCopy("x"));
 
-        NodeValueInfo throwingHandles = new NodeValueInfo(
+        ValueInfo throwingHandles = new ValueInfo(
                 "",
                 ThrowingHandleValue.class,
                 String.class,

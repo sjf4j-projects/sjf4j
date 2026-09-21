@@ -15,7 +15,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.value.NodeValueInfo;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
@@ -71,7 +71,7 @@ public interface Fastjson2Module {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueReader<>(vci);
                 }
@@ -219,12 +219,12 @@ public interface Fastjson2Module {
     }
 
     class NodeValueReader<T> implements ObjectReader<T> {
-        private final NodeValueInfo nodeValueInfo;
+        private final ValueInfo valueInfo;
         /**
          * Creates reader backed by ValueCodec metadata.
          */
-        public NodeValueReader(NodeValueInfo nodeValueInfo) {
-            this.nodeValueInfo = nodeValueInfo;
+        public NodeValueReader(ValueInfo valueInfo) {
+            this.valueInfo = valueInfo;
         }
 
         /**
@@ -234,7 +234,7 @@ public interface Fastjson2Module {
         @Override
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             Object raw = reader.readAny();
-            return (T) nodeValueInfo.rawToValue(raw);
+            return (T) valueInfo.rawToValue(raw);
         }
     }
 
@@ -324,7 +324,7 @@ public interface Fastjson2Module {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(objectClass);
-                NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueWriter<>(vci);
                 }
@@ -402,12 +402,12 @@ public interface Fastjson2Module {
     }
 
     class NodeValueWriter<T> implements ObjectWriter<T> {
-        private final NodeValueInfo nodeValueInfo;
+        private final ValueInfo valueInfo;
         /**
          * Creates writer backed by ValueCodec metadata.
          */
-        public NodeValueWriter(NodeValueInfo nodeValueInfo) {
-            this.nodeValueInfo = nodeValueInfo;
+        public NodeValueWriter(ValueInfo valueInfo) {
+            this.valueInfo = valueInfo;
         }
 
         /**
@@ -415,7 +415,7 @@ public interface Fastjson2Module {
          */
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName, Type fieldType, long features) {
-            Object raw = nodeValueInfo.valueToRaw(object);
+            Object raw = valueInfo.valueToRaw(object);
             writer.writeAny(raw);
         }
     }

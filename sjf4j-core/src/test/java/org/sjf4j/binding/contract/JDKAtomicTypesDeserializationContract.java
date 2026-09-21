@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Disabled;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
-import org.sjf4j.value.NodeValueRegistry;
-import org.sjf4j.value.NodeValueCodec;
+import org.sjf4j.value.ValueRegistry;
+import org.sjf4j.value.ValueCodec;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,11 +21,11 @@ public abstract class JDKAtomicTypesDeserializationContract {
     protected abstract JsonBinder<?, ?> binding(StreamingContext context);
     private static final class AtomicCodecs {
         static {
-            NodeValueRegistry.registerByCodec(new NodeValueCodec.SimpleValueCodec<>(
+            ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(
                     AtomicBoolean.class, Boolean.class, AtomicBoolean::get, AtomicBoolean::new), null, false);
-            NodeValueRegistry.registerByCodec(new NodeValueCodec.SimpleValueCodec<>(
+            ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(
                     AtomicInteger.class, Integer.class, AtomicInteger::get, AtomicInteger::new), null, false);
-            NodeValueRegistry.registerByCodec(new NodeValueCodec.SimpleValueCodec<>(
+            ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(
                     AtomicLong.class, Long.class, AtomicLong::get, AtomicLong::new), null, false);
         }
 

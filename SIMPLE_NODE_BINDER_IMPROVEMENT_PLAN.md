@@ -6,7 +6,7 @@ Improve in-memory tree binding performance while preserving binding semantics an
 aligning it with `StreamingIO` where both APIs represent the same operation.
 
 Do not introduce a `TreeStreamingReader`/`TreeStreamingWriter` adapter or a new
-generic `NodeFieldBinder` layer. `FieldBinder` and `FieldWriter` are specialized
+generic `NodeFieldBinder` layer. `FieldReader` and `FieldWriter` are specialized
 for token streams; adapting an existing tree to that protocol would add dispatch,
 state, and allocation on the hot path.
 
@@ -15,7 +15,7 @@ Reuse shared metadata and state instead:
 - `FieldInfo` for precomputed types, codecs, polymorphism, and accessor metadata.
 - `CreatorState` for creator argument, pending property, and dynamic-property
   semantics shared with `StreamingIO`.
-- The `FieldBinder` rule that properties without a setter are skipped.
+- The `FieldReader` rule that properties without a setter are skipped.
 
 ## Phase 0: baseline
 
@@ -38,7 +38,7 @@ Reuse shared metadata and state instead:
    This makes duplicate canonical-name/alias constructor assignments fail
    consistently with streaming binding and centralizes replay behavior.
 2. For a recognized POJO property without a setter, skip its source value before
-   converting it. This matches `FieldBinder` and avoids both unnecessary work and
+   converting it. This matches `FieldReader` and avoids both unnecessary work and
    divergent failures for invalid values targeting read-only properties.
 3. In the raw-compatible deep-copy fast path, resolve a configured value codec and
    invoke `ValueCodecInfo.valueCopy` before falling back to generic deep-copy.
