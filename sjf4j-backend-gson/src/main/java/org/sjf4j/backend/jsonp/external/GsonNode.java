@@ -1,4 +1,4 @@
-package org.sjf4j.backend.gson.external;
+package org.sjf4j.backend.jsonp.external;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

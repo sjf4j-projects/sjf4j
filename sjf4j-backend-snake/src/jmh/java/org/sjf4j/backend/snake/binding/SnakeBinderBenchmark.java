@@ -40,6 +40,7 @@ public class SnakeBinderBenchmark {
         SnakeBinder binder;
         String document;
         Document value;
+        Map<String, Object> mapValue;
 
         @Setup(Level.Trial)
         public void setup() {
@@ -64,6 +65,54 @@ public class SnakeBinderBenchmark {
                     counters(12, 3, 7),
                     null);
             document = binder.writeNodeAsString(value);
+
+            mapValue = new LinkedHashMap<>();
+            mapValue.put("id", 7);
+            mapValue.put("version", 20260319L);
+            mapValue.put("title", "<Ada & Bob>");
+            mapValue.put("status", "ACTIVE");
+
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("active", true);
+            details.put("note", "nested");
+            details.put("labels", Arrays.asList("primary", "visible"));
+            mapValue.put("details", details);
+            mapValue.put("tags", Arrays.asList("one", "two", "three"));
+            mapValue.put("scores", Arrays.asList(3, 8, 13, 21, 34));
+
+            Map<String, Object> overviewEntry1 = new LinkedHashMap<>();
+            overviewEntry1.put("id", 1);
+            overviewEntry1.put("amount", 12.5d);
+            overviewEntry1.put("enabled", true);
+            Map<String, Object> overviewEntry2 = new LinkedHashMap<>();
+            overviewEntry2.put("id", 2);
+            overviewEntry2.put("amount", 8.75d);
+            overviewEntry2.put("enabled", false);
+            Map<String, Object> overview = new LinkedHashMap<>();
+            overview.put("name", "overview");
+            overview.put("entries", Arrays.asList(overviewEntry1, overviewEntry2));
+            overview.put("attributes", attributes("source", "api", "region", "us-east"));
+
+            Map<String, Object> historyEntry1 = new LinkedHashMap<>();
+            historyEntry1.put("id", 3);
+            historyEntry1.put("amount", 99.99d);
+            historyEntry1.put("enabled", true);
+            Map<String, Object> historyEntry2 = new LinkedHashMap<>();
+            historyEntry2.put("id", 4);
+            historyEntry2.put("amount", 0.25d);
+            historyEntry2.put("enabled", true);
+            Map<String, Object> historyEntry3 = new LinkedHashMap<>();
+            historyEntry3.put("id", 5);
+            historyEntry3.put("amount", 42.0d);
+            historyEntry3.put("enabled", false);
+            Map<String, Object> history = new LinkedHashMap<>();
+            history.put("name", "history");
+            history.put("entries", Arrays.asList(historyEntry1, historyEntry2, historyEntry3));
+            history.put("attributes", attributes("source", "import", "region", "eu-west"));
+
+            mapValue.put("sections", Arrays.asList(overview, history));
+            mapValue.put("counters", counters(12, 3, 7));
+            mapValue.put("nullable", null);
         }
 
         private static Map<String, String> attributes(String key1, String value1, String key2, String value2) {
@@ -83,23 +132,43 @@ public class SnakeBinderBenchmark {
     }
 
     @Benchmark
-    public Document readNative(BenchmarkState state) {
+    public Document pojo_read_native(BenchmarkState state) {
         return state.yaml.loadAs(state.document, Document.class);
     }
 
     @Benchmark
-    public Document readBinder(BenchmarkState state) {
+    public Document pojo_read_binder(BenchmarkState state) {
         return (Document) state.binder.readNode(state.document, Document.class);
     }
 
     @Benchmark
-    public String writeNative(BenchmarkState state) {
+    public String pojo_write_native(BenchmarkState state) {
         return state.yaml.dump(state.value);
     }
 
     @Benchmark
-    public String writeBinder(BenchmarkState state) {
+    public String pojo_write_binder(BenchmarkState state) {
         return state.binder.writeNodeAsString(state.value);
+    }
+
+    @Benchmark
+    public Map map_read_native(BenchmarkState state) {
+        return state.yaml.load(state.document);
+    }
+
+    @Benchmark
+    public Map map_read_binder(BenchmarkState state) {
+        return (Map) state.binder.readNode(state.document, Map.class);
+    }
+
+    @Benchmark
+    public String map_write_native(BenchmarkState state) {
+        return state.yaml.dump(state.mapValue);
+    }
+
+    @Benchmark
+    public String map_write_binder(BenchmarkState state) {
+        return state.binder.writeNodeAsString(state.mapValue);
     }
 
     public static class Document {

@@ -128,7 +128,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kept generated schema-validator annotations incubator-only; `@CompiledSchemaValidator` and `@ValidatorOptions` are no longer published from the main source set.
 
 ### Added
-- Added the `sjf4j-processor` annotation processor module for generated path and mapper implementations, loaded through `org.sjf4j.compiled.CompiledNodes.of(...)`.
 - Added `@CompiledPath` generation for typed path reads, multi-target finds, strict writes, parent-present writes, ensure writes, and ensure-if-absent writes without runtime path evaluation.
 - Added `@CompiledMapper` generation for bean, field, record, constructor, and in-place update mappings, including JSONPath/JSON Pointer sources, computed values, multi-source mapping, target paths, nested mapper conversion, and collection/map update policies.
 - Added `Nodes.Access.present` so read paths can distinguish present `null` values from missing locations across simple and facade-backed nodes.

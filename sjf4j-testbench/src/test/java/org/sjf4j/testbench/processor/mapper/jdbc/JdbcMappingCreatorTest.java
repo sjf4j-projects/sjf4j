@@ -98,23 +98,8 @@ class JdbcMappingCreatorTest {
         }
     }
 
-    @MappingCreator(targetType = View.class, implementation = ViewImpl.class)
-    interface CreatorParent {
-    }
-
-    @MappingCreator(targetType = StaticTarget.class, creator = "this::newStatic")
-    interface StaticCreatorParent {
-        static StaticView newStatic() {
-            return new StaticView();
-        }
-    }
-
-    @MappingCreator(targetType = DefaultTarget.class, creator = "this::newDefault")
-    interface DefaultCreatorParent {
-    }
-
     @CompiledJdbcMapper
-    interface Mapper extends CreatorParent, StaticCreatorParent, DefaultCreatorParent {
+    interface Mapper {
         View view(ResultSet rs);
 
         @MappingCreator(targetType = View.class, creator = "this::newView")

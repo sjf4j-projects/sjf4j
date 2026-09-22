@@ -1,4 +1,4 @@
-package org.sjf4j.backend.gson;
+package org.sjf4j.backend.jsonp;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -10,7 +10,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
-import org.sjf4j.backend.gson.external.GsonNodeProvider;
+import org.sjf4j.backend.jsonp.external.GsonNodeProvider;
 
 import java.io.File;
 import java.net.URL;

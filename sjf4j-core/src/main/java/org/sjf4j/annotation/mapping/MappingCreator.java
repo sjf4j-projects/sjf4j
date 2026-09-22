@@ -47,7 +47,7 @@ import java.lang.annotation.Target;
  * reflection.</p>
  */
 @Retention(RetentionPolicy.CLASS)
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Target(ElementType.METHOD)
 @Repeatable(MappingCreators.class)
 public @interface MappingCreator {
     /**

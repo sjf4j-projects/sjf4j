@@ -279,7 +279,7 @@ public class PutByPathTest {
         void putBeanField(MutableBean root, String value);
 
         @PutByPath("$.value")
-        int putPrimitiveOld(Map<String, Integer> root, int value);
+        Integer putPrimitiveOld(Map<String, Integer> root, int value);
 
         @PutByPath("$.first_name")
         String putThirdPartyFirstName(ThirdPartyMutableBean root, String value);

@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  * uses this annotation as the repeatable container.</p>
  */
 @Retention(RetentionPolicy.CLASS)
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Target(ElementType.METHOD)
 public @interface MappingCreators {
     /** Creator declarations for one mapper interface. */
     MappingCreator[] value();

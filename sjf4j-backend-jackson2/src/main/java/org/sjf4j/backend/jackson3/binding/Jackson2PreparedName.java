@@ -1,4 +1,4 @@
-package org.sjf4j.backend.jackson2.binding;
+package org.sjf4j.backend.jackson3.binding;
 
 import com.fasterxml.jackson.core.io.SerializedString;
 import org.sjf4j.binding.PreparedName;
