@@ -719,26 +719,9 @@ public final class MappingEmitter {
         List<MappingCompiler.Read> inputs =
                 value.inputs();
 
-        String[] expressions =
-                new String[inputs.size()];
-
-        for (int i = 0;
-             i < inputs.size();
-             i++) {
-
-            expressions[i] =
-                    emitRead(
-                            out,
-                            names,
-                            inputs.get(i));
-        }
-
         String compute =
                 value.compute()
                         .trim();
-
-        String result =
-                names.newName("computed");
 
         String targetType =
                 localType(
@@ -748,6 +731,15 @@ public final class MappingEmitter {
             String method =
                     compute.substring(6)
                             .trim();
+
+            String[] expressions =
+                    emitComputeInputs(
+                            out,
+                            names,
+                            inputs);
+
+            String result =
+                    names.newName("computed");
 
             StringBuilder call =
                     new StringBuilder();
@@ -815,11 +807,35 @@ public final class MappingEmitter {
                         : parameters.split("\\s*,\\s*");
 
         if (parameterNames.length !=
-                expressions.length) {
+                inputs.size()) {
 
             throw new IllegalStateException(
                     "compute parameter count does not match sources");
         }
+
+        for (String parameterName :
+                parameterNames) {
+
+            names.reserve(
+                    parameterName.trim());
+        }
+
+        String result =
+                names.newName("computed");
+
+        out.line(
+                targetType +
+                        " " +
+                        result +
+                        " = null;");
+        out.line("{");
+        out.indent();
+
+        String[] expressions =
+                emitComputeInputs(
+                        out,
+                        names,
+                        inputs);
 
         for (int i = 0;
              i < parameterNames.length;
@@ -841,14 +857,38 @@ public final class MappingEmitter {
         }
 
         out.line(
-                targetType +
-                        " " +
-                        result +
+                result +
                         " = " +
                         expression +
                         ";");
 
+        out.dedent();
+        out.line("}");
+
         return result;
+    }
+
+
+    private String[] emitComputeInputs(
+            JavaWriter out,
+            NameAllocator names,
+            List<MappingCompiler.Read> inputs) {
+
+        String[] expressions =
+                new String[inputs.size()];
+
+        for (int i = 0;
+             i < inputs.size();
+             i++) {
+
+            expressions[i] =
+                    emitRead(
+                            out,
+                            names,
+                            inputs.get(i));
+        }
+
+        return expressions;
     }
 
 
@@ -1534,7 +1574,7 @@ public final class MappingEmitter {
                     names.newName("entry");
 
             out.line(
-                    "for (java.util.Map.Entry " +
+                    "for (Object " +
                             entry +
                             " : ((java.util.Map) " +
                             value +
@@ -1546,22 +1586,26 @@ public final class MappingEmitter {
                     "if (!((java.util.Map) " +
                             existing +
                             ").containsKey(" +
+                            "((java.util.Map.Entry) " +
                             entry +
-                            ".getKey()) || " +
+                            ").getKey()) || " +
                             "((java.util.Map) " +
                             existing +
                             ").get(" +
+                            "((java.util.Map.Entry) " +
                             entry +
-                            ".getKey()) == null)");
+                            ").getKey()) == null)");
 
             out.line(
                     "((java.util.Map) " +
                             existing +
                             ").put(" +
+                            "((java.util.Map.Entry) " +
                             entry +
-                            ".getKey(), " +
+                            ").getKey(), " +
+                            "((java.util.Map.Entry) " +
                             entry +
-                            ".getValue());");
+                            ").getValue());");
 
             out.endBlock();
 
