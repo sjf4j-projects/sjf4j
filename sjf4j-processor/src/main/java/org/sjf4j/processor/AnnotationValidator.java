@@ -111,59 +111,30 @@ final class AnnotationValidator {
     }
 
 
-    private void validate(
-            String annotationName,
-            String annotationSimpleName,
-            Element element) {
+    private void validate(String annotationName, String annotationSimpleName, Element element) {
 
-        if (PATH_METHOD_ANNOTATIONS.contains(
-                annotationName)) {
-
-            validateAbstractMethod(
-                    element,
-                    annotationSimpleName,
-                    Owner.NAVIGATOR);
-
+        if (PATH_METHOD_ANNOTATIONS.contains(annotationName)) {
+            validateAbstractMethod(element, annotationSimpleName, Owner.NAVIGATOR);
             return;
         }
 
-        if (MAPPING_METHOD_ANNOTATIONS.contains(
-                annotationName)) {
-
-            validateAbstractMethod(
-                    element,
-                    annotationSimpleName,
-                    Owner.MAPPER);
-
+        if (MAPPING_METHOD_ANNOTATIONS.contains(annotationName)) {
+            validateAbstractMethod(element, annotationSimpleName, Owner.MAPPER);
             return;
         }
 
-        if (MappingOptions.class
-                .getName()
-                .equals(annotationName)) {
-
-            validateMappingOptions(
-                    element);
-
+        if (MappingOptions.class.getName().equals(annotationName)) {
+            validateMappingOptions(element);
             return;
         }
 
-        if (JdbcMappingOptions.class
-                .getName()
-                .equals(annotationName)) {
-
-            validateJdbcMappingOptions(
-                    element);
-
+        if (JdbcMappingOptions.class.getName().equals(annotationName)) {
+            validateJdbcMappingOptions(element);
             return;
         }
 
-        if (CREATOR_ANNOTATIONS.contains(
-                annotationName)) {
-
-            validateCreator(
-                    element,
-                    annotationSimpleName);
+        if (CREATOR_ANNOTATIONS.contains(annotationName)) {
+            validateCreator(element, annotationSimpleName);
         }
     }
 
@@ -172,75 +143,41 @@ final class AnnotationValidator {
     // Path / mapping operations
     // -------------------------------------------------------------------------
 
-    private void validateAbstractMethod(
-            Element element,
-            String annotation,
-            Owner owner) {
+    private void validateAbstractMethod(Element element, String annotation, Owner owner) {
 
-        if (element.getKind() !=
-                ElementKind.METHOD) {
-
-            context.error(
-                    element,
-                    "@" +
-                            annotation +
-                            " can be applied only to methods");
-
+        if (element.getKind() != ElementKind.METHOD) {
+            context.error(element, "@" + annotation + " can be applied only to methods");
             return;
         }
 
-        if (!element.getModifiers()
-                .contains(Modifier.ABSTRACT)) {
-
-            context.error(
-                    element,
-                    "@" +
-                            annotation +
-                            " can be applied only to abstract methods");
-
+        if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
+            context.error(element, "@" + annotation + " can be applied only to abstract methods");
             return;
         }
 
-        Element enclosing =
-                element.getEnclosingElement();
-
-        if (enclosing.getKind() !=
-                ElementKind.INTERFACE) {
-
-            context.error(
-                    element,
-                    "@" +
-                            annotation +
-                            " method must be declared in a compiled interface");
-
+        Element enclosing = element.getEnclosingElement();
+        if (enclosing.getKind() != ElementKind.INTERFACE) {
+            context.error(element, "@" + annotation + " method must be declared in a compiled interface");
             return;
         }
 
-        TypeElement type =
-                (TypeElement) enclosing;
+        if (Mapping.class.getName().equals(annotation) || Mappings.class.getName().equals(annotation)) {
+            return;
+        }
 
+        TypeElement type = (TypeElement) enclosing;
         switch (owner) {
             case NAVIGATOR:
-                if (type.getAnnotation(
-                        CompiledNavigator.class) == null) {
-
-                    context.error(
-                            element,
-                            "@" +
-                                    annotation +
-                                    " method must be declared in an " +
-                                    "@CompiledNavigator interface");
+                if (type.getAnnotation(CompiledNavigator.class) == null) {
+                    context.error(element, "@" + annotation +
+                            " method must be declared in an @CompiledNavigator interface");
                 }
                 return;
 
             case MAPPER:
                 if (!isMapper(type)) {
-                    context.error(
-                            element,
-                            "@" +
-                                    annotation +
-                                    " method must be declared in an " +
-                                    "@CompiledMapper or @CompiledJdbcMapper interface");
+                    context.error(element, "@" + annotation +
+                            " method must be declared in an @CompiledMapper or @CompiledJdbcMapper interface");
                 }
                 return;
 

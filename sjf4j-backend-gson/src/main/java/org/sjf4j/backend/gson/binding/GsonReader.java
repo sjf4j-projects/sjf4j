@@ -1,4 +1,4 @@
-package org.sjf4j.backend.jsonp.binding;
+package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;

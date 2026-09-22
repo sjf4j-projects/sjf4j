@@ -1050,12 +1050,14 @@ public final class ConverterResolver {
         target =
                 types.concrete(target);
 
-        if (types.isObject(source)) {
-            return isScalar(target);
-        }
-
         NodeKind sourceKind =
                 types.nodeKind(source);
+
+        if (sourceKind ==
+                NodeKind.COMPILE_TIME_UNKNOWN) {
+
+            return isScalar(target);
+        }
 
         NodeKind targetKind =
                 types.nodeKind(target);
@@ -1185,7 +1187,8 @@ public final class ConverterResolver {
         NodeKind targetKind =
                 types.nodeKind(target);
 
-        if (isArrayLike(sourceKind) &&
+        if ((isArrayLike(sourceKind) ||
+                sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) &&
                 isArrayLike(targetKind)) {
 
             return true;
@@ -1223,10 +1226,15 @@ public final class ConverterResolver {
             TypeMirror source,
             TypeMirror target) {
 
-        return isObjectLike(
-                types.nodeKind(source))
-                && isObjectLike(
-                types.nodeKind(target));
+        NodeKind sourceKind =
+                types.nodeKind(source);
+
+        NodeKind targetKind =
+                types.nodeKind(target);
+
+        return (isObjectLike(sourceKind) ||
+                sourceKind == NodeKind.COMPILE_TIME_UNKNOWN)
+                && isObjectLike(targetKind);
     }
 
 

@@ -1,4 +1,4 @@
-package org.sjf4j.backend.jsonp.binding;
+package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

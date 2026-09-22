@@ -12,9 +12,12 @@ import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -112,18 +115,6 @@ public final class MappingCompiler {
 
             targetType =
                     creation.targetType();
-        }
-
-        if (plan.update() &&
-                types.nodeKind(targetType) ==
-                        NodeKind.OBJECT_JOJO) {
-
-            error(
-                    plan.method(),
-                    generated,
-                    "JOJO update targets are not supported");
-
-            return null;
         }
 
         Map<String, MappingPlan.Rule> explicit =
@@ -303,12 +294,260 @@ public final class MappingCompiler {
                             null));
         }
 
+        List<DynamicSource> dynamicSources =
+                compileDynamicSources(
+                        plan,
+                        targetType,
+                        constructorArguments,
+                        assignments);
+
         return CompiledMethod.object(
                 plan,
                 targetType,
                 creation,
                 constructorArguments,
-                assignments);
+                assignments,
+                dynamicSources);
+    }
+
+
+    // -------------------------------------------------------------------------
+    // JOJO dynamic remainder
+    // -------------------------------------------------------------------------
+
+    private List<DynamicSource> compileDynamicSources(
+            MappingPlan plan,
+            TypeMirror targetType,
+            List<ConstructorArgument> constructorArguments,
+            List<Assignment> assignments) {
+
+        if (types.nodeKind(targetType) !=
+                NodeKind.OBJECT_JOJO) {
+
+            return Collections.emptyList();
+        }
+
+        Map<VariableElement, Set<String>> excluded =
+                new LinkedHashMap<VariableElement, Set<String>>();
+
+        Set<String> declaredTargets =
+                context.properties
+                        .resolve(targetType)
+                        .keySet();
+
+        for (VariableElement source :
+                plan.sources()) {
+
+            LinkedHashSet<String> names =
+                    new LinkedHashSet<String>();
+
+            names.addAll(declaredTargets);
+
+            excluded.put(
+                    source,
+                    names);
+        }
+
+        for (ConstructorArgument argument :
+                constructorArguments) {
+
+            consumeValue(
+                    excluded,
+                    argument.value());
+        }
+
+        for (Assignment assignment :
+                assignments) {
+
+            consumeValue(
+                    excluded,
+                    assignment.value());
+        }
+
+        /*
+         * Ignored mappings do not produce Value instances, but their selected
+         * source member is still consumed and must not fall through into the
+         * JOJO dynamic namespace.
+         */
+        for (MappingPlan.Rule rule :
+                plan.rules()) {
+
+            if (!rule.ignore()) {
+                continue;
+            }
+
+            String selector =
+                    rule.explicitSource()
+                            ? rule.source()
+                            : defaultSourceName(rule);
+
+            consumeSelector(
+                    plan,
+                    excluded,
+                    selector);
+        }
+
+        List<DynamicSource> result =
+                new ArrayList<DynamicSource>();
+
+        for (VariableElement source :
+                plan.sources()) {
+
+            NodeKind kind =
+                    types.nodeKind(
+                            source.asType());
+
+            switch (kind) {
+                case OBJECT_MAP:
+                case OBJECT_JSON_OBJECT:
+                case OBJECT_JOJO:
+                case OBJECT_EXTERNAL:
+                case COMPILE_TIME_UNKNOWN:
+                    result.add(
+                            new DynamicSource(
+                                    source,
+                                    kind,
+                                    excluded.get(source)));
+                    break;
+
+                default:
+                    /*
+                     * A POJO contributes only statically selected properties.
+                     * JOJO is intentionally different: only its dynamic backing
+                     * entries participate in the remainder copy.
+                     */
+                    break;
+            }
+        }
+
+        return result;
+    }
+
+
+    private void consumeValue(
+            Map<VariableElement, Set<String>> excluded,
+            Value value) {
+
+        if (value == null) {
+            return;
+        }
+
+        if (value.kind() ==
+                Value.Kind.READ) {
+
+            consumeRead(
+                    excluded,
+                    value.read());
+
+            return;
+        }
+
+        for (Read read :
+                value.inputs()) {
+
+            consumeRead(
+                    excluded,
+                    read);
+        }
+    }
+
+
+    private void consumeRead(
+            Map<VariableElement, Set<String>> excluded,
+            Read read) {
+
+        if (read == null ||
+                read.steps().isEmpty()) {
+
+            return;
+        }
+
+        PathSegment segment =
+                read.steps()
+                        .get(0)
+                        .segment();
+
+        if (!(segment instanceof
+                PathSegment.Name)) {
+
+            return;
+        }
+
+        Set<String> names =
+                excluded.get(
+                        read.root());
+
+        if (names != null) {
+            names.add(
+                    ((PathSegment.Name) segment)
+                            .name);
+        }
+    }
+
+
+    private void consumeSelector(
+            MappingPlan plan,
+            Map<VariableElement, Set<String>> excluded,
+            String selector) {
+
+        if (selector == null ||
+                selector.isEmpty()) {
+
+            return;
+        }
+
+        SourceSelector selected =
+                sourceSelector(
+                        plan,
+                        selector);
+
+        String expression =
+                selected.expression;
+
+        String name = null;
+
+        if (expression.isEmpty() ||
+                "$".equals(expression)) {
+
+            return;
+        }
+
+        if (!isPath(expression)) {
+            name = expression;
+
+        } else {
+            try {
+                PathSegment[] segments =
+                        JsonPath.parse(expression)
+                                .segments();
+
+                if (segments.length > 1 &&
+                        segments[1] instanceof
+                                PathSegment.Name) {
+
+                    name =
+                            ((PathSegment.Name) segments[1])
+                                    .name;
+                }
+
+            } catch (JsonException ignored) {
+                return;
+            }
+        }
+
+        if (name == null ||
+                name.isEmpty()) {
+
+            return;
+        }
+
+        Set<String> names =
+                excluded.get(
+                        selected.root);
+
+        if (names != null) {
+            names.add(name);
+        }
     }
 
 
@@ -392,7 +631,8 @@ public final class MappingCompiler {
         NodeKind targetKind =
                 types.nodeKind(target);
 
-        if (isArrayLike(sourceKind) &&
+        if ((isArrayLike(sourceKind) ||
+                sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) &&
                 isArrayLike(targetKind)) {
 
             return ConverterResolver.Conversion
@@ -410,7 +650,8 @@ public final class MappingCompiler {
                             target);
         }
 
-        if (isObjectLike(sourceKind) &&
+        if ((isObjectLike(sourceKind) ||
+                sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) &&
                 isObjectLike(targetKind)) {
 
             return ConverterResolver.Conversion
@@ -622,26 +863,74 @@ public final class MappingCompiler {
         List<String> selectors =
                 new ArrayList<String>();
 
-        if (!rule.sources()
+        String compute =
+                rule.compute()
+                        .trim();
+
+        if (compute.contains("::") &&
+                !compute.startsWith("this::")) {
+
+            error(
+                    plan.method(),
+                    generated,
+                    "compute method references support only this::defaultMethod: " +
+                            compute);
+
+            return null;
+        }
+
+        if (compute.startsWith("this::")) {
+            ExecutableElement helper =
+                    resolveComputeHelper(
+                            plan,
+                            compute.substring(6)
+                                    .trim(),
+                            generated);
+
+            if (helper == null) {
+                return null;
+            }
+
+            if (rule.sources()
+                    .isEmpty() &&
+                    rule.source()
+                            .isEmpty()) {
+
+                for (VariableElement parameter :
+                        helper.getParameters()) {
+
+                    selectors.add(
+                            parameter.getSimpleName()
+                                    .toString());
+                }
+            }
+        }
+
+        if (selectors.isEmpty() &&
+                !rule.sources()
                 .isEmpty()) {
 
             selectors.addAll(
                     rule.sources());
 
-        } else if (!rule.source()
+        } else if (selectors.isEmpty() &&
+                !rule.source()
                 .isEmpty()) {
 
             selectors.add(
                     rule.source());
 
-        } else if (fallbackSource != null &&
+        } else if (selectors.isEmpty() &&
+                !compute.startsWith("this::") &&
+                fallbackSource != null &&
                 !fallbackSource.isEmpty()) {
 
             selectors.add(
                     fallbackSource);
         }
 
-        if (selectors.isEmpty()) {
+        if (selectors.isEmpty() &&
+                !compute.startsWith("this::")) {
             error(
                     plan.method(),
                     generated,
@@ -676,6 +965,76 @@ public final class MappingCompiler {
                 targetType,
                 reads,
                 rule.compute());
+    }
+
+
+    private ExecutableElement resolveComputeHelper(
+            MappingPlan plan,
+            String name,
+            GeneratedClass generated) {
+
+        if (name.isEmpty()) {
+            error(
+                    plan.method(),
+                    generated,
+                    "compute method reference must use the form this::defaultMethod");
+
+            return null;
+        }
+
+        ExecutableElement result =
+                null;
+
+        for (Element member :
+                mapper.getEnclosedElements()) {
+
+            if (member.getKind() !=
+                    ElementKind.METHOD ||
+                    !member.getSimpleName()
+                            .contentEquals(name)) {
+
+                continue;
+            }
+
+            ExecutableElement method =
+                    (ExecutableElement) member;
+
+            if (!method.getModifiers()
+                    .contains(Modifier.DEFAULT) ||
+                    method.getReturnType()
+                            .getKind() ==
+                            TypeKind.VOID ||
+                    !method.getTypeParameters()
+                            .isEmpty()) {
+
+                continue;
+            }
+
+            if (result != null) {
+                error(
+                        plan.method(),
+                        generated,
+                        "compute helper method '" +
+                                name +
+                                "' is ambiguous");
+
+                return null;
+            }
+
+            result =
+                    method;
+        }
+
+        if (result == null) {
+            error(
+                    plan.method(),
+                    generated,
+                    "compute helper method '" +
+                            name +
+                            "' must be a current-interface default method");
+        }
+
+        return result;
     }
 
 
@@ -1379,6 +1738,8 @@ public final class MappingCompiler {
 
         private final List<Assignment> assignments;
 
+        private final List<DynamicSource> dynamicSources;
+
         private final Read rootSource;
 
         private final ConverterResolver.Conversion
@@ -1392,6 +1753,7 @@ public final class MappingCompiler {
                 CreatorResolver.Creation creation,
                 List<ConstructorArgument> constructorArguments,
                 List<Assignment> assignments,
+                List<DynamicSource> dynamicSources,
                 Read rootSource,
                 ConverterResolver.Conversion rootConversion) {
 
@@ -1414,6 +1776,13 @@ public final class MappingCompiler {
                             new ArrayList<Assignment>(
                                     assignments));
 
+            this.dynamicSources =
+                    dynamicSources == null
+                            ? Collections.<DynamicSource>emptyList()
+                            : Collections.unmodifiableList(
+                            new ArrayList<DynamicSource>(
+                                    dynamicSources));
+
             this.rootSource = rootSource;
             this.rootConversion =
                     rootConversion;
@@ -1425,7 +1794,8 @@ public final class MappingCompiler {
                 TypeMirror targetType,
                 CreatorResolver.Creation creation,
                 List<ConstructorArgument> constructorArguments,
-                List<Assignment> assignments) {
+                List<Assignment> assignments,
+                List<DynamicSource> dynamicSources) {
 
             return new CompiledMethod(
                     Kind.OBJECT,
@@ -1434,6 +1804,7 @@ public final class MappingCompiler {
                     creation,
                     constructorArguments,
                     assignments,
+                    dynamicSources,
                     null,
                     null);
         }
@@ -1448,6 +1819,7 @@ public final class MappingCompiler {
                     Kind.ROOT,
                     plan,
                     plan.targetType(),
+                    null,
                     null,
                     null,
                     null,
@@ -1479,6 +1851,10 @@ public final class MappingCompiler {
 
         List<Assignment> assignments() {
             return assignments;
+        }
+
+        List<DynamicSource> dynamicSources() {
+            return dynamicSources;
         }
 
         Read rootSource() {
@@ -1553,6 +1929,47 @@ public final class MappingCompiler {
 
         MappingPlan.Rule rule() {
             return rule;
+        }
+    }
+
+
+    static final class DynamicSource {
+
+        private final VariableElement source;
+        private final NodeKind kind;
+        private final Set<String> excludedNames;
+
+
+        DynamicSource(
+                VariableElement source,
+                NodeKind kind,
+                Set<String> excludedNames) {
+
+            this.source =
+                    source;
+
+            this.kind =
+                    kind;
+
+            this.excludedNames =
+                    excludedNames == null
+                            ? Collections.<String>emptySet()
+                            : Collections.unmodifiableSet(
+                            new LinkedHashSet<String>(
+                                    excludedNames));
+        }
+
+
+        VariableElement source() {
+            return source;
+        }
+
+        NodeKind kind() {
+            return kind;
+        }
+
+        Set<String> excludedNames() {
+            return excludedNames;
         }
     }
 

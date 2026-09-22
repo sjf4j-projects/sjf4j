@@ -258,7 +258,9 @@ public final class ConversionCompiler {
         }
 
         TypeMirror sourceElement =
-                types.readElementType(
+                sourceKind == NodeKind.COMPILE_TIME_UNKNOWN
+                        ? types.objectType()
+                        : types.readElementType(
                         sourceType);
 
         if (sourceElement == null) {
@@ -372,14 +374,28 @@ public final class ConversionCompiler {
                             targetType);
 
             /*
-             * Dynamic object -> dynamic object.
-             *
-             * There is no finite property set to compile, so emit a runtime
-             * entry iteration whose value conversion is still statically
-             * selected.
+             * JOJO is a hybrid target: declared properties are compiled like a
+             * POJO and the unconsumed source object members are copied into its
+             * dynamic namespace.
              */
-            if (isDynamicObject(sourceKind) &&
-                    isDynamicObject(targetKind)) {
+            if (targetKind ==
+                    NodeKind.OBJECT_JOJO) {
+
+                return compileToTypedObject(
+                        parentPlan,
+                        sourceType,
+                        targetType,
+                        generated,
+                        stack);
+            }
+
+            /*
+             * Dynamic/open object source -> dynamic target. Runtime Object is
+             * included deliberately; only that source kind needs runtime OBNT
+             * dispatch through Nodes.
+             */
+            if (isDynamicObjectSource(sourceKind) &&
+                    isDynamicObjectTarget(targetKind)) {
 
                 return compileDynamicObject(
                         parentPlan,
@@ -390,10 +406,10 @@ public final class ConversionCompiler {
             }
 
             /*
-             * Java properties -> Map / JsonObject.
+             * Plain Java properties -> Map / JsonObject.
              */
             if (isPojoLike(sourceKind) &&
-                    isDynamicObject(targetKind)) {
+                    isDynamicObjectTarget(targetKind)) {
 
                 return compilePojoToDynamic(
                         parentPlan,
@@ -404,7 +420,9 @@ public final class ConversionCompiler {
             }
 
             /*
-             * Map / JsonObject -> typed object, or typed object -> typed object.
+             * Any statically/dynamically readable object -> ordinary typed
+             * object. COMPILE_TIME_UNKNOWN is resolved through NodeAccess using
+             * Nodes.getInObject at generated-code runtime.
              */
             if (isTypedObject(targetKind)) {
                 return compileToTypedObject(
@@ -611,6 +629,17 @@ public final class ConversionCompiler {
                             conversion));
         }
 
+        DynamicObjectPlan dynamicObject =
+                types.nodeKind(workingTarget) ==
+                        NodeKind.OBJECT_JOJO
+                        ? compileJojoRemainder(
+                        parentPlan,
+                        sourceType,
+                        targetProperties.keySet(),
+                        generated,
+                        stack)
+                        : null;
+
         return CompiledConversion.structural(
                 sourceType,
                 targetType,
@@ -618,7 +647,7 @@ public final class ConversionCompiler {
                 creation,
                 arguments,
                 properties,
-                null);
+                dynamicObject);
     }
 
 
@@ -705,9 +734,11 @@ public final class ConversionCompiler {
                 null,
                 new DynamicObjectPlan(
                         DynamicObjectPlan.Kind.STATIC_PROPERTIES,
+                        types.nodeKind(sourceType),
                         targetValue,
                         properties,
-                        null));
+                        null,
+                        Collections.<String>emptySet()));
     }
 
 
@@ -764,10 +795,99 @@ public final class ConversionCompiler {
                 null,
                 null,
                 new DynamicObjectPlan(
-                        DynamicObjectPlan.Kind.ENTRIES,
+                        dynamicKind(sourceType, false),
+                        types.nodeKind(sourceType),
                         targetValue,
                         null,
-                        valueConversion));
+                        valueConversion,
+                        Collections.<String>emptySet()));
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Structural: JOJO dynamic remainder
+    // -------------------------------------------------------------------------
+
+    private DynamicObjectPlan compileJojoRemainder(
+            MappingPlan plan,
+            TypeMirror sourceType,
+            Set<String> excludedNames,
+            GeneratedClass generated,
+            Set<String> stack) {
+
+        NodeKind sourceKind =
+                types.nodeKind(sourceType);
+
+        switch (sourceKind) {
+            case OBJECT_MAP:
+            case OBJECT_JSON_OBJECT:
+            case OBJECT_JOJO:
+            case OBJECT_EXTERNAL:
+            case COMPILE_TIME_UNKNOWN:
+                break;
+
+            default:
+                return null;
+        }
+
+        TypeMirror sourceValue =
+                dynamicObjectReadType(
+                        sourceType);
+
+        if (sourceValue == null) {
+            return null;
+        }
+
+        CompiledConversion valueConversion =
+                compileNested(
+                        plan,
+                        sourceValue,
+                        types.objectType(),
+                        generated,
+                        stack);
+
+        if (valueConversion == null) {
+            return null;
+        }
+
+        return new DynamicObjectPlan(
+                dynamicKind(sourceType, true),
+                sourceKind,
+                types.objectType(),
+                null,
+                valueConversion,
+                excludedNames);
+    }
+
+
+    private DynamicObjectPlan.Kind dynamicKind(
+            TypeMirror sourceType,
+            boolean remainder) {
+
+        NodeKind kind =
+                types.nodeKind(sourceType);
+
+        if (remainder &&
+                kind == NodeKind.OBJECT_JOJO) {
+
+            return DynamicObjectPlan.Kind.DYNAMIC_ENTRIES;
+        }
+
+        switch (kind) {
+            case OBJECT_MAP:
+            case OBJECT_JSON_OBJECT:
+            case OBJECT_JOJO:
+                return DynamicObjectPlan.Kind.ENTRIES;
+
+            case OBJECT_EXTERNAL:
+            case COMPILE_TIME_UNKNOWN:
+                return DynamicObjectPlan.Kind.RUNTIME_ENTRIES;
+
+            default:
+                throw new IllegalStateException(
+                        "unsupported dynamic object source " +
+                                sourceType);
+        }
     }
 
 
@@ -819,6 +939,8 @@ public final class ConversionCompiler {
 
             case OBJECT_JSON_OBJECT:
             case OBJECT_JOJO:
+            case OBJECT_EXTERNAL:
+            case COMPILE_TIME_UNKNOWN:
                 return types.objectType();
 
             default:
@@ -874,8 +996,7 @@ public final class ConversionCompiler {
     private boolean isPojoLike(
             NodeKind kind) {
 
-        return kind == NodeKind.OBJECT_POJO ||
-                kind == NodeKind.OBJECT_JOJO;
+        return kind == NodeKind.OBJECT_POJO;
     }
 
 
@@ -887,7 +1008,18 @@ public final class ConversionCompiler {
     }
 
 
-    private boolean isDynamicObject(
+    private boolean isDynamicObjectSource(
+            NodeKind kind) {
+
+        return kind == NodeKind.OBJECT_MAP ||
+                kind == NodeKind.OBJECT_JSON_OBJECT ||
+                kind == NodeKind.OBJECT_JOJO ||
+                kind == NodeKind.OBJECT_EXTERNAL ||
+                kind == NodeKind.COMPILE_TIME_UNKNOWN;
+    }
+
+
+    private boolean isDynamicObjectTarget(
             NodeKind kind) {
 
         return kind == NodeKind.OBJECT_MAP ||
@@ -1433,11 +1565,14 @@ public final class ConversionCompiler {
 
         enum Kind {
             STATIC_PROPERTIES,
-            ENTRIES
+            ENTRIES,
+            DYNAMIC_ENTRIES,
+            RUNTIME_ENTRIES
         }
 
 
         private final Kind kind;
+        private final NodeKind sourceKind;
 
         private final TypeMirror targetValueType;
 
@@ -1445,14 +1580,19 @@ public final class ConversionCompiler {
 
         private final CompiledConversion valueConversion;
 
+        private final Set<String> excludedNames;
+
 
         DynamicObjectPlan(
                 Kind kind,
+                NodeKind sourceKind,
                 TypeMirror targetValueType,
                 List<DynamicProperty> properties,
-                CompiledConversion valueConversion) {
+                CompiledConversion valueConversion,
+                Set<String> excludedNames) {
 
             this.kind = kind;
+            this.sourceKind = sourceKind;
             this.targetValueType =
                     targetValueType;
 
@@ -1465,11 +1605,22 @@ public final class ConversionCompiler {
 
             this.valueConversion =
                     valueConversion;
+
+            this.excludedNames =
+                    excludedNames == null
+                            ? Collections.<String>emptySet()
+                            : Collections.unmodifiableSet(
+                            new LinkedHashSet<String>(
+                                    excludedNames));
         }
 
 
         Kind kind() {
             return kind;
+        }
+
+        NodeKind sourceKind() {
+            return sourceKind;
         }
 
         TypeMirror targetValueType() {
@@ -1482,6 +1633,10 @@ public final class ConversionCompiler {
 
         CompiledConversion valueConversion() {
             return valueConversion;
+        }
+
+        Set<String> excludedNames() {
+            return excludedNames;
         }
     }
 }

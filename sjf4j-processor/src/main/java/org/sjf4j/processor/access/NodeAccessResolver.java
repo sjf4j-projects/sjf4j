@@ -88,6 +88,9 @@ public final class NodeAccessResolver {
             case OBJECT_EXTERNAL:
                 return external(owner);
 
+            case COMPILE_TIME_UNKNOWN:
+                return dynamic(owner);
+
             case UNKNOWN:
                 return unknown(owner);
 
@@ -126,6 +129,9 @@ public final class NodeAccessResolver {
 
             case OBJECT_EXTERNAL:
                 return external(owner);
+
+            case COMPILE_TIME_UNKNOWN:
+                return dynamic(owner);
 
             case UNKNOWN:
                 return unknown(owner);
@@ -168,6 +174,9 @@ public final class NodeAccessResolver {
             case ARRAY_EXTERNAL:
                 return external(owner);
 
+            case COMPILE_TIME_UNKNOWN:
+                return dynamic(owner);
+
             case UNKNOWN:
                 return unknown(owner);
 
@@ -205,6 +214,9 @@ public final class NodeAccessResolver {
 
             case ARRAY_EXTERNAL:
                 return external(owner);
+
+            case COMPILE_TIME_UNKNOWN:
+                return dynamic(owner);
 
             case UNKNOWN:
                 return unknown(owner);
@@ -391,10 +403,6 @@ public final class NodeAccessResolver {
 
     private NodeAccess unknown(
             TypeMirror owner) {
-
-        if (types.isObject(owner)) {
-            return dynamic(owner);
-        }
 
         if (types.isExternalNode(owner)) {
             return external(owner);

@@ -62,7 +62,13 @@ public enum NodeKind {
     ARRAY_EXTERNAL,
 
     /** Represents an unknown node type. */
-    UNKNOWN;
+    UNKNOWN,
+
+    /**
+     * The concrete node kind is not known statically and must be
+     * resolved from the runtime value.
+     */
+    COMPILE_TIME_UNKNOWN;
 
     @SuppressWarnings("unchecked")
     public static NodeKind of(Object node) {

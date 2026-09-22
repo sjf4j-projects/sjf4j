@@ -1,4 +1,4 @@
-package org.sjf4j.backend.jsonp.external;
+package org.sjf4j.backend.gson.external;
 
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeProvider;

@@ -504,6 +504,34 @@ public final class ConversionEmitter
                 rawName(targetType);
 
         /*
+         * A value declared as Object has no compile-time NodeKind. Keep the
+         * generated fallback inside the OBNT layer instead of routing through
+         * a binder: Nodes performs the runtime value-kind check/conversion.
+         */
+        if (types.nodeKind(
+                conversion.sourceType()) ==
+                NodeKind.COMPILE_TIME_UNKNOWN) {
+
+            String value =
+                    names.newName(
+                            "converted");
+
+            out.line(
+                    localType(targetType) +
+                            " " +
+                            value +
+                            " = (" +
+                            localType(targetType) +
+                            ") org.sjf4j.Nodes.to(" +
+                            source +
+                            ", " +
+                            classLiteral(targetType) +
+                            ");");
+
+            return value;
+        }
+
+        /*
          * Number -> Number
          */
         if (isNumber(sourceName) &&
@@ -955,13 +983,7 @@ public final class ConversionEmitter
                         "entry");
 
         out.line(
-                "for (java.util.Map.Entry<" +
-                        localType(
-                                conversion.sourceKeyType()) +
-                        ", " +
-                        localType(
-                                conversion.sourceValueType()) +
-                        "> " +
+                "for (java.util.Map.Entry<?, ?> " +
                         entry +
                         " : " +
                         source +
@@ -969,21 +991,49 @@ public final class ConversionEmitter
 
         out.indent();
 
+        String rawKey =
+                names.newName(
+                        "key");
+
+        out.line(
+                localType(
+                        conversion.sourceKeyType()) +
+                        " " +
+                        rawKey +
+                        " = " +
+                        cast(
+                                conversion.sourceKeyType(),
+                                entry + ".getKey()") +
+                        ";");
+
+        String rawValue =
+                names.newName(
+                        "value");
+
+        out.line(
+                localType(
+                        conversion.sourceValueType()) +
+                        " " +
+                        rawValue +
+                        " = " +
+                        cast(
+                                conversion.sourceValueType(),
+                                entry + ".getValue()") +
+                        ";");
+
         String key =
                 emit(
                         out,
                         names,
                         conversion.keyConversion(),
-                        entry +
-                                ".getKey()");
+                        rawKey);
 
         String value =
                 emit(
                         out,
                         names,
                         conversion.valueConversion(),
-                        entry +
-                                ".getValue()");
+                        rawValue);
 
         out.line(
                 result +
@@ -1015,6 +1065,14 @@ public final class ConversionEmitter
         ConversionCompiler.DynamicObjectPlan dynamic =
                 conversion.dynamicObject();
 
+        if (conversion.creation() != null) {
+            return emitTypedObject(
+                    out,
+                    names,
+                    conversion,
+                    source);
+        }
+
         if (dynamic != null) {
             return emitDynamicObject(
                     out,
@@ -1024,11 +1082,8 @@ public final class ConversionEmitter
                     source);
         }
 
-        return emitTypedObject(
-                out,
-                names,
-                conversion,
-                source);
+        throw new IllegalStateException(
+                "structural conversion has neither creator nor dynamic plan");
     }
 
 
@@ -1060,6 +1115,31 @@ public final class ConversionEmitter
                 "if (" +
                         source +
                         " != null)");
+
+        boolean runtimeSource =
+                types.nodeKind(
+                        conversion.sourceType()) ==
+                        NodeKind.COMPILE_TIME_UNKNOWN;
+
+        if (runtimeSource) {
+            out.beginBlock(
+                    "if (" +
+                            source +
+                            " instanceof " +
+                            rawName(workingType) +
+                            ")");
+
+            out.line(
+                    result +
+                            " = (" +
+                            localType(workingType) +
+                            ") " +
+                            source +
+                            ";");
+
+            out.endBlock();
+            out.beginBlock("else");
+        }
 
         CreatorResolver.Creation creation =
                 conversion.creation();
@@ -1125,6 +1205,19 @@ public final class ConversionEmitter
                     property.name(),
                     property.target(),
                     value);
+        }
+
+        if (conversion.dynamicObject() != null) {
+            emitDynamicEntries(
+                    out,
+                    names,
+                    conversion.dynamicObject(),
+                    source,
+                    result);
+        }
+
+        if (runtimeSource) {
+            out.endBlock();
         }
 
         out.endBlock();
@@ -1284,37 +1377,229 @@ public final class ConversionEmitter
             String source,
             String result) {
 
+        switch (dynamic.kind()) {
+            case ENTRIES:
+                emitDirectDynamicEntries(
+                        out,
+                        names,
+                        dynamic,
+                        source,
+                        result);
+                return;
+
+            case DYNAMIC_ENTRIES:
+                emitJojoDynamicEntries(
+                        out,
+                        names,
+                        dynamic,
+                        source,
+                        result);
+                return;
+
+            case RUNTIME_ENTRIES:
+                emitRuntimeDynamicEntries(
+                        out,
+                        names,
+                        dynamic,
+                        source,
+                        result);
+                return;
+
+            default:
+                throw new IllegalStateException(
+                        "unsupported dynamic entry plan " +
+                                dynamic.kind());
+        }
+    }
+
+
+    private void emitDirectDynamicEntries(
+            JavaWriter out,
+            NameAllocator names,
+            ConversionCompiler.DynamicObjectPlan dynamic,
+            String source,
+            String result) {
+
+        String entry =
+                names.newName(
+                        "entry");
+
+        if (dynamic.sourceKind() ==
+                NodeKind.OBJECT_MAP) {
+
+            out.line(
+                    "for (java.util.Map.Entry<?, ?> " +
+                            entry +
+                            " : " +
+                            source +
+                            ".entrySet()) {");
+
+        } else {
+            out.line(
+                    "for (java.util.Map.Entry<String, Object> " +
+                            entry +
+                            " : " +
+                            source +
+                            ".entrySet()) {");
+        }
+
+        out.indent();
+
+        emitDynamicEntry(
+                out,
+                names,
+                dynamic,
+                dynamic.sourceKind() ==
+                        NodeKind.OBJECT_MAP
+                        ? "(String) " + entry + ".getKey()"
+                        : entry + ".getKey()",
+                dynamic.sourceKind() ==
+                        NodeKind.OBJECT_MAP
+                        ? cast(
+                        dynamic.valueConversion()
+                                .sourceType(),
+                        entry + ".getValue()")
+                        : entry + ".getValue()",
+                result);
+
+        out.dedent();
+        out.line("}");
+    }
+
+
+    private void emitJojoDynamicEntries(
+            JavaWriter out,
+            NameAllocator names,
+            ConversionCompiler.DynamicObjectPlan dynamic,
+            String source,
+            String result) {
+
+        out.beginBlock(
+                "if (" +
+                        source +
+                        "._dynamicMap() != null)");
+
         String entry =
                 names.newName(
                         "entry");
 
         out.line(
-                "for (java.util.Map.Entry<String, ?> " +
+                "for (java.util.Map.Entry<String, Object> " +
                         entry +
-                        " : ((java.util.Map<String, ?>) " +
+                        " : " +
                         source +
-                        ").entrySet()) {");
+                        "._dynamicMap().entrySet()) {");
 
         out.indent();
+
+        emitDynamicEntry(
+                out,
+                names,
+                dynamic,
+                entry + ".getKey()",
+                entry + ".getValue()",
+                result);
+
+        out.dedent();
+        out.line("}");
+
+        out.endBlock();
+    }
+
+
+    private void emitRuntimeDynamicEntries(
+            JavaWriter out,
+            NameAllocator names,
+            ConversionCompiler.DynamicObjectPlan dynamic,
+            String source,
+            String result) {
+
+        String entry =
+                names.newName(
+                        "entry");
+
+        out.line(
+                "for (java.util.Map.Entry<String, Object> " +
+                        entry +
+                        " : org.sjf4j.Nodes.entrySetInObject(" +
+                        source +
+                        ")) {");
+
+        out.indent();
+
+        emitDynamicEntry(
+                out,
+                names,
+                dynamic,
+                entry + ".getKey()",
+                entry + ".getValue()",
+                result);
+
+        out.dedent();
+        out.line("}");
+    }
+
+
+    private void emitDynamicEntry(
+            JavaWriter out,
+            NameAllocator names,
+            ConversionCompiler.DynamicObjectPlan dynamic,
+            String keyExpression,
+            String valueExpression,
+            String result) {
+
+        String key =
+                names.newName(
+                        "key");
+
+        out.line(
+                "String " +
+                        key +
+                        " = " +
+                        keyExpression +
+                        ";");
+
+        if (!dynamic.excludedNames()
+                .isEmpty()) {
+
+            StringBuilder condition =
+                    new StringBuilder();
+
+            for (String excluded :
+                    dynamic.excludedNames()) {
+
+                if (condition.length() != 0) {
+                    condition.append(" || ");
+                }
+
+                condition.append(
+                                JavaWriter.stringLiteral(
+                                        excluded))
+                        .append(".equals(")
+                        .append(key)
+                        .append(')');
+            }
+
+            out.line(
+                    "if (" +
+                            condition +
+                            ") continue;");
+        }
 
         String value =
                 emit(
                         out,
                         names,
                         dynamic.valueConversion(),
-                        entry +
-                                ".getValue()");
+                        valueExpression);
 
         out.line(
                 result +
                         ".put(" +
-                        entry +
-                        ".getKey(), " +
+                        key +
+                        ", " +
                         value +
                         ");");
-
-        out.dedent();
-        out.line("}");
     }
 
 
@@ -1546,6 +1831,15 @@ public final class ConversionEmitter
                                 index +
                                 ")");
 
+            case COMPILE_TIME_UNKNOWN:
+                return cast(
+                        elementType,
+                        "org.sjf4j.Nodes.getInArray(" +
+                                source +
+                                ", " +
+                                index +
+                                ")");
+
             default:
                 throw new IllegalStateException(
                         "unsupported indexed source container " +
@@ -1569,6 +1863,11 @@ public final class ConversionEmitter
             case ARRAY_JAJO:
                 return source +
                         ".size()";
+
+            case COMPILE_TIME_UNKNOWN:
+                return "org.sjf4j.Nodes.sizeInArray(" +
+                        source +
+                        ")";
 
             default:
                 throw new IllegalStateException(

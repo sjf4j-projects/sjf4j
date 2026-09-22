@@ -214,12 +214,264 @@ public final class MappingEmitter {
                     generated);
         }
 
+        emitDynamicSources(
+                out,
+                names,
+                compiled,
+                target);
+
         if (plan.create()) {
             out.line(
                     "return " +
                             target +
                             ";");
         }
+    }
+
+
+    // -------------------------------------------------------------------------
+    // JOJO dynamic remainder
+    // -------------------------------------------------------------------------
+
+    private void emitDynamicSources(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.CompiledMethod compiled,
+            String target) {
+
+        for (MappingCompiler.DynamicSource dynamic :
+                compiled.dynamicSources()) {
+
+            String source =
+                    dynamic.source()
+                            .getSimpleName()
+                            .toString();
+
+            out.beginBlock(
+                    "if (" +
+                            source +
+                            " != null)");
+
+            switch (dynamic.kind()) {
+                case OBJECT_MAP:
+                    emitMapDynamicSource(
+                            out,
+                            names,
+                            dynamic,
+                            source,
+                            target);
+                    break;
+
+                case OBJECT_JSON_OBJECT:
+                    emitJsonObjectDynamicSource(
+                            out,
+                            names,
+                            dynamic,
+                            source,
+                            target,
+                            false);
+                    break;
+
+                case OBJECT_JOJO:
+                    emitJsonObjectDynamicSource(
+                            out,
+                            names,
+                            dynamic,
+                            source,
+                            target,
+                            true);
+                    break;
+
+                case OBJECT_EXTERNAL:
+                case COMPILE_TIME_UNKNOWN:
+                    emitRuntimeDynamicSource(
+                            out,
+                            names,
+                            dynamic,
+                            source,
+                            target);
+                    break;
+
+                default:
+                    throw new IllegalStateException(
+                            "unsupported JOJO dynamic source " +
+                                    dynamic.kind());
+            }
+
+            out.endBlock();
+        }
+    }
+
+
+    private void emitMapDynamicSource(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.DynamicSource dynamic,
+            String source,
+            String target) {
+
+        String entry =
+                names.newName(
+                        "entry");
+
+        out.line(
+                "for (java.util.Map.Entry<?, ?> " +
+                        entry +
+                        " : " +
+                        source +
+                        ".entrySet()) {");
+
+        out.indent();
+
+        emitDynamicPut(
+                out,
+                names,
+                dynamic,
+                target,
+                "(String) " + entry + ".getKey()",
+                entry + ".getValue()");
+
+        out.dedent();
+        out.line("}");
+    }
+
+
+    private void emitJsonObjectDynamicSource(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.DynamicSource dynamic,
+            String source,
+            String target,
+            boolean dynamicOnly) {
+
+        if (dynamicOnly) {
+            out.beginBlock(
+                    "if (" +
+                            source +
+                            "._dynamicMap() != null)");
+        }
+
+        String entry =
+                names.newName(
+                        "entry");
+
+        String entries =
+                dynamicOnly
+                        ? source + "._dynamicMap().entrySet()"
+                        : source + ".entrySet()";
+
+        out.line(
+                "for (java.util.Map.Entry<String, Object> " +
+                        entry +
+                        " : " +
+                        entries +
+                        ") {");
+
+        out.indent();
+
+        emitDynamicPut(
+                out,
+                names,
+                dynamic,
+                target,
+                entry + ".getKey()",
+                entry + ".getValue()");
+
+        out.dedent();
+        out.line("}");
+
+        if (dynamicOnly) {
+            out.endBlock();
+        }
+    }
+
+
+    private void emitRuntimeDynamicSource(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.DynamicSource dynamic,
+            String source,
+            String target) {
+
+        String entry =
+                names.newName(
+                        "entry");
+
+        out.line(
+                "for (java.util.Map.Entry<String, Object> " +
+                        entry +
+                        " : org.sjf4j.Nodes.entrySetInObject(" +
+                        source +
+                        ")) {");
+
+        out.indent();
+
+        emitDynamicPut(
+                out,
+                names,
+                dynamic,
+                target,
+                entry + ".getKey()",
+                entry + ".getValue()");
+
+        out.dedent();
+        out.line("}");
+    }
+
+
+    private void emitDynamicPut(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.DynamicSource dynamic,
+            String target,
+            String keyExpression,
+            String valueExpression) {
+
+        String key =
+                names.newName(
+                        "key");
+
+        out.line(
+                "String " +
+                        key +
+                        " = " +
+                        keyExpression +
+                        ";");
+
+        if (!dynamic.excludedNames()
+                .isEmpty()) {
+
+            StringBuilder condition =
+                    new StringBuilder();
+
+            for (String excluded :
+                    dynamic.excludedNames()) {
+
+                if (condition.length() != 0) {
+                    condition.append(" || ");
+                }
+
+                condition.append(
+                                JavaWriter.stringLiteral(
+                                        excluded))
+                        .append(".equals(")
+                        .append(key)
+                        .append(')');
+            }
+
+            out.line(
+                    "if (" +
+                            condition +
+                            ") continue;");
+        }
+
+        out.line(
+                target +
+                        ".put(" +
+                        key +
+                        ", " +
+                        valueExpression +
+                        ");");
     }
 
 

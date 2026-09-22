@@ -175,8 +175,11 @@ public final class TypeSystem {
     /**
      * Resolves the compile-time OBNT kind of a Java type.
      *
-     * <p>Returns {@link NodeKind#UNKNOWN} when the static Java type does not
-     * determine a concrete JSON structure.</p>
+     * <p>{@link Object} is classified as
+     * {@link NodeKind#COMPILE_TIME_UNKNOWN}: it may hold any OBNT node at
+     * runtime, but its concrete node kind is not known statically.
+     * {@link NodeKind#UNKNOWN} is reserved for types that cannot be classified
+     * by the compile-time type system.</p>
      */
     public NodeKind nodeKind(TypeMirror type) {
         if (type == null) {
@@ -340,10 +343,12 @@ public final class TypeSystem {
         }
 
         /*
-         * Object may contain any JSON-compatible structure at runtime.
+         * Object may contain any OBNT node at runtime. Keep this distinct from
+         * UNKNOWN so generated code may deliberately use Nodes for runtime
+         * dispatch only when the declared Java type is Object.
          */
         if (isObject(type)) {
-            return NodeKind.UNKNOWN;
+            return NodeKind.COMPILE_TIME_UNKNOWN;
         }
 
         return NodeKind.OBJECT_POJO;

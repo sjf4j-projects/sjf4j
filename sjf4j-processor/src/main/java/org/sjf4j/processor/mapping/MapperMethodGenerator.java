@@ -446,15 +446,14 @@ public final class MapperMethodGenerator {
                 return false;
             }
 
-            if (!rule.source().isEmpty() ||
-                    !rule.sources().isEmpty() ||
+            if (!rule.sources().isEmpty() ||
                     !rule.compute().isEmpty() ||
                     !rule.nestedMapper().isEmpty()) {
 
                 error(
                         method,
                         generated,
-                        "@Mapping(ignore = true) cannot declare source, sources, compute or nestedMapper");
+                        "@Mapping(ignore = true) cannot declare sources, compute or nestedMapper");
 
                 return false;
             }
