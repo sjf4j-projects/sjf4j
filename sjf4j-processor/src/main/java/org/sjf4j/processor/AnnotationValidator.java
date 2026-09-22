@@ -161,7 +161,7 @@ final class AnnotationValidator {
             return;
         }
 
-        if (Mapping.class.getName().equals(annotation) || Mappings.class.getName().equals(annotation)) {
+        if (Mapping.class.getSimpleName().equals(annotation) || Mappings.class.getSimpleName().equals(annotation)) {
             return;
         }
 

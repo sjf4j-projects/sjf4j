@@ -20,9 +20,9 @@ public @interface MappingOptions {
     /**
      * Preferred converter methods for automatic conversion points in this method.
      *
-     * <p>References use the same forms as mapper method references elsewhere:
-     * {@code "method"}, {@code "this::method"},
-     * {@code "ImportedMapper::method"}, or a qualified imported mapper name.
+     * <p>References use the form {@code "Mapper::method"}. Use
+     * {@code "this::method"} for a method declared by the current mapper, or
+     * the simple or qualified name of an imported mapper.
      * These are preferences, not forced conversions. If a source value is already
      * assignable to the target type, it is assigned directly. Otherwise the
      * processor tries these references in array order before normal automatic

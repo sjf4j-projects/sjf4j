@@ -358,7 +358,9 @@ public final class JavaWriter implements Closeable {
 
             if (Character.isUpperCase(first)
                     || first == '$'
-                    || first == '_') {
+                    || (first == '_' &&
+                    part.length() > 1 &&
+                    Character.isUpperCase(part.charAt(1)))) {
 
                 classIndex = i;
                 break;

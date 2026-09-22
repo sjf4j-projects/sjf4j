@@ -119,17 +119,6 @@ public final class JdbcMapperGenerator {
                 new JdbcEmitter(
                         context);
 
-        /*
-         * Register fields/helpers before any generated member starts writing.
-         */
-        emitter.prepare(
-                compiled,
-                generated);
-
-        if (!generated.isValid()) {
-            return;
-        }
-
         for (JdbcCompiler.CompiledMethod method :
                 compiled) {
 

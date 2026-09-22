@@ -284,7 +284,7 @@ public class MapperArrayTest {
 
     @CompiledMapper
     public interface NamedArrayMapper {
-        @MappingOptions(using = {"upper"})
+        @MappingOptions(using = {"this::upper"})
         UserDto[] userDtoArray(User[] source);
 
         default UserDto upper(User user) {

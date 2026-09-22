@@ -572,9 +572,8 @@ public final class MappingCompiler {
                 plan.primarySource();
 
         ConverterResolver.Conversion conversion =
-                converters.resolve(
+                converters.resolveRoot(
                         plan,
-                        null,
                         source.asType(),
                         plan.targetType(),
                         generated);

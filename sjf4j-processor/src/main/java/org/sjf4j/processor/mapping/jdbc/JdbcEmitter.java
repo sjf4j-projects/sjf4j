@@ -28,13 +28,8 @@ import java.util.List;
  */
 public final class JdbcEmitter {
 
-    private static final String NODE_BINDER_FIELD =
-            "_sjf4j_node_binder";
-
     private final ProcessorContext context;
     private final TypeSystem types;
-
-    private boolean nodeBinderRegistered;
 
 
     public JdbcEmitter(
@@ -42,70 +37,6 @@ public final class JdbcEmitter {
 
         this.context = context;
         this.types = context.types;
-    }
-
-
-    // -------------------------------------------------------------------------
-    // Prepare
-    // -------------------------------------------------------------------------
-
-    /**
-     * Registers runtime support fields required by compiled JDBC methods.
-     *
-     * <p>This is intentionally separated from method emission so generated
-     * class members are never added while another member is being written.</p>
-     */
-    public void prepare(
-            List<JdbcCompiler.CompiledMethod> methods,
-            GeneratedClass generated) {
-
-        if (nodeBinderRegistered) {
-            return;
-        }
-
-        for (JdbcCompiler.CompiledMethod method :
-                methods) {
-
-            if (requiresNodeBinder(method)) {
-
-                generated.addField(out ->
-                        out.line(
-                                "private static final " +
-                                        "org.sjf4j.binding.SimpleNodeBinder " +
-                                        NODE_BINDER_FIELD +
-                                        " = new org.sjf4j.binding.SimpleNodeBinder();"));
-
-                nodeBinderRegistered = true;
-                return;
-            }
-        }
-    }
-
-
-    private boolean requiresNodeBinder(
-            JdbcCompiler.CompiledMethod method) {
-
-        for (JdbcCompiler.ConstructorArgument argument :
-                method.constructorArguments()) {
-
-            if (argument.read().kind() ==
-                    JdbcCompiler.ReadKind.NODE_VALUE) {
-
-                return true;
-            }
-        }
-
-        for (JdbcCompiler.Assignment assignment :
-                method.assignments()) {
-
-            if (assignment.read().kind() ==
-                    JdbcCompiler.ReadKind.NODE_VALUE) {
-
-                return true;
-            }
-        }
-
-        return false;
     }
 
 
@@ -1199,14 +1130,12 @@ public final class JdbcEmitter {
                         value +
                         " = (" +
                         read.targetType() +
-                        ") " +
-                        NODE_BINDER_FIELD +
-                        ".readNode(" +
+                        ") org.sjf4j.Nodes.to(" +
                         raw +
                         ", " +
                         classLiteral(
                                 read.targetType()) +
-                        ", false);");
+                        ");");
 
         return value;
     }

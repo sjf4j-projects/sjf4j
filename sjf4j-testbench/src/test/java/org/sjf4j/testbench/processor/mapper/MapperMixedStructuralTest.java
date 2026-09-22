@@ -141,7 +141,7 @@ public class MapperMixedStructuralTest {
         @Mapping(target = "arrayFirst", source = "$.array[0]")
         @Mapping(target = "firstItemName", source = "$.items[0].name")
         @Mapping(target = "secondArrayItemName", source = "$.itemArray[1].name")
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         @Mapping(target = "set", source = "set")
         @Mapping(target = "itemDtos", source = "items")
         @Mapping(target = "itemDtoMap", source = "itemMap")
@@ -156,7 +156,7 @@ public class MapperMixedStructuralTest {
         @Mapping(target = "$.arrayOut[0]", source = "$.array[0]")
         PathTarget toPathTarget(MixedSource source);
 
-        @MappingOptions(nulls = NullValuePolicy.IGNORE, using = {"toDto"})
+        @MappingOptions(nulls = NullValuePolicy.IGNORE, using = {"this::toDto"})
         @Mapping(target = "metadataName", source = "$.metadata.name")
         @Mapping(target = "childDto", source = "child")
         void updateIgnoreNulls(DefaultsTarget target, MixedSource source);

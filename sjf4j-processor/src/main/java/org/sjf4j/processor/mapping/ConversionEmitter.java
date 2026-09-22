@@ -31,9 +31,6 @@ import java.util.Map;
 public final class ConversionEmitter
         implements MappingEmitter.ConversionWriter {
 
-    private static final String BINDER_FIELD =
-            "_sjf4j_node_binder";
-
     private final ProcessorContext context;
     private final TypeSystem types;
 
@@ -46,9 +43,6 @@ public final class ConversionEmitter
 
     private final Map<String, String> importedMapperFields =
             new LinkedHashMap<>();
-
-    private boolean binderRequired;
-
 
     public ConversionEmitter(
             ProcessorContext context,
@@ -205,11 +199,6 @@ public final class ConversionEmitter
 
             case SCALAR:
             case ONE_OF:
-                /*
-                 * Built-in scalar fast paths are emitted directly, but scalar
-                 * @NodeValue and OneOf may need the normal runtime binder.
-                 */
-                binderRequired = true;
                 return;
 
             case CONTAINER:
@@ -323,18 +312,11 @@ public final class ConversionEmitter
                                     type +
                                     " " +
                                     field +
-                                    " = org.sjf4j.CompiledNodes.of(" +
+                                    " = org.sjf4j.CompiledInstances.of(" +
                                     type +
                                     ".class);"));
         }
 
-        if (binderRequired) {
-            generated.addField(out ->
-                    out.line(
-                            "private static final org.sjf4j.binding.SimpleNodeBinder " +
-                                    BINDER_FIELD +
-                                    " = new org.sjf4j.binding.SimpleNodeBinder();"));
-        }
     }
 
 
@@ -400,7 +382,7 @@ public final class ConversionEmitter
                         source);
 
             case ONE_OF:
-                return emitRuntimeBinding(
+                return emitNodesTo(
                         out,
                         names,
                         conversion.targetType(),
@@ -669,7 +651,7 @@ public final class ConversionEmitter
         /*
          * @NodeValue / registered scalar codecs.
          */
-        return emitRuntimeBinding(
+        return emitNodesTo(
                 out,
                 names,
                 conversion.targetType(),
@@ -1604,10 +1586,10 @@ public final class ConversionEmitter
 
 
     // -------------------------------------------------------------------------
-    // Runtime fallback
+    // Runtime conversion
     // -------------------------------------------------------------------------
 
-    private String emitRuntimeBinding(
+    private String emitNodesTo(
             JavaWriter out,
             NameAllocator names,
             TypeMirror targetType,
@@ -1626,14 +1608,12 @@ public final class ConversionEmitter
                         " = (" +
                         localType(
                                 targetType) +
-                        ") " +
-                        BINDER_FIELD +
-                        ".readNode(" +
+                        ") org.sjf4j.Nodes.to(" +
                         source +
                         ", " +
                         classLiteral(
                                 targetType) +
-                        ", false);");
+                        ");");
 
         return result;
     }

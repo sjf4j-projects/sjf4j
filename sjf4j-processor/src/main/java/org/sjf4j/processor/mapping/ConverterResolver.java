@@ -97,7 +97,91 @@ public final class ConverterResolver {
             }
         }
 
+        for (MappingPlan plan :
+                plans) {
+
+            if (!validateReferences(
+                    plan,
+                    generated)) {
+
+                valid = false;
+            }
+        }
+
         return valid;
+    }
+
+
+    private boolean validateReferences(
+            MappingPlan plan,
+            GeneratedClass generated) {
+
+        boolean valid = true;
+
+        for (String reference :
+                using(plan)) {
+
+            if (!validateReference(
+                    plan,
+                    reference,
+                    "using",
+                    generated)) {
+
+                valid = false;
+            }
+        }
+
+        for (MappingPlan.Rule rule :
+                plan.rules()) {
+
+            if (!rule.nestedMapper()
+                    .isEmpty() &&
+                    !validateReference(
+                            plan,
+                            rule.nestedMapper(),
+                            "nestedMapper",
+                            generated)) {
+
+                valid = false;
+            }
+        }
+
+        return valid;
+    }
+
+
+    private boolean validateReference(
+            MappingPlan plan,
+            String reference,
+            String member,
+            GeneratedClass generated) {
+
+        String[] names =
+                qualifiedReference(
+                        plan,
+                        reference,
+                        member,
+                        generated);
+
+        if (names == null) {
+            return false;
+        }
+
+        if (!referencedMethods(
+                names[0],
+                names[1]).isEmpty()) {
+
+            return true;
+        }
+
+        error(
+                plan.method(),
+                generated,
+                member + " reference '" +
+                        reference +
+                        "' cannot be resolved");
+
+        return false;
     }
 
 
@@ -121,6 +205,44 @@ public final class ConverterResolver {
             TypeMirror sourceType,
             TypeMirror targetType,
             GeneratedClass generated) {
+
+        return resolve(
+                plan,
+                rule,
+                sourceType,
+                targetType,
+                generated,
+                false);
+    }
+
+
+    /**
+     * Resolves a root conversion. The root method itself wins over other
+     * automatic local candidates so MappingCompiler can expand it structurally.
+     */
+    public Conversion resolveRoot(
+            MappingPlan plan,
+            TypeMirror sourceType,
+            TypeMirror targetType,
+            GeneratedClass generated) {
+
+        return resolve(
+                plan,
+                null,
+                sourceType,
+                targetType,
+                generated,
+                true);
+    }
+
+
+    private Conversion resolve(
+            MappingPlan plan,
+            MappingPlan.Rule rule,
+            TypeMirror sourceType,
+            TypeMirror targetType,
+            GeneratedClass generated,
+            boolean root) {
 
         if (sourceType == null ||
                 targetType == null) {
@@ -178,7 +300,7 @@ public final class ConverterResolver {
                 !rule.nestedMapper()
                         .isEmpty()) {
 
-            return resolveExplicitLocalMethod(
+            return resolveExplicitMethod(
                     plan,
                     rule.nestedMapper(),
                     sourceType,
@@ -200,6 +322,10 @@ public final class ConverterResolver {
                         plan,
                         generated);
 
+        if (!generated.isValid()) {
+            return null;
+        }
+
         if (preferred != null) {
             return preferred;
         }
@@ -217,6 +343,25 @@ public final class ConverterResolver {
         /*
          * Local mapper methods.
          */
+        if (root) {
+            for (MethodCandidate candidate :
+                    localMethods) {
+
+                if (candidate.method == plan.method() &&
+                        compatible(
+                                candidate,
+                                sourceType,
+                                targetType)) {
+
+                    return Conversion.method(
+                            sourceType,
+                            targetType,
+                            candidate.method,
+                            null);
+                }
+            }
+        }
+
         MethodCandidate local =
                 selectBestMethod(
                         localMethods,
@@ -341,41 +486,51 @@ public final class ConverterResolver {
     // Explicit nested mapper
     // -------------------------------------------------------------------------
 
-    private Conversion resolveExplicitLocalMethod(
+    private Conversion resolveExplicitMethod(
             MappingPlan plan,
-            String methodName,
+            String reference,
             TypeMirror sourceType,
             TypeMirror targetType,
             GeneratedClass generated) {
 
-        List<MethodCandidate> candidates =
-                new ArrayList<MethodCandidate>();
+        String[] names =
+                qualifiedReference(
+                        plan,
+                        reference,
+                        "nestedMapper",
+                        generated);
 
-        for (MethodCandidate candidate :
-                localMethods) {
-
-            if (!candidate.method
-                    .getSimpleName()
-                    .contentEquals(methodName)) {
-
-                continue;
-            }
-
-            if (compatible(
-                    candidate,
-                    sourceType,
-                    targetType)) {
-
-                candidates.add(candidate);
-            }
+        if (names == null) {
+            return null;
         }
+
+        List<MethodCandidate> candidates =
+                referencedMethods(
+                        names[0],
+                        names[1]);
 
         if (candidates.isEmpty()) {
             error(
                     plan.method(),
                     generated,
                     "nestedMapper '" +
-                            methodName +
+                            reference +
+                            "' cannot be resolved");
+
+            return null;
+        }
+
+        candidates = compatibleMethods(
+                candidates,
+                sourceType,
+                targetType);
+
+        if (candidates.isEmpty()) {
+            error(
+                    plan.method(),
+                    generated,
+                    "nestedMapper '" +
+                            reference +
                             "' cannot map " +
                             sourceType +
                             " to " +
@@ -392,7 +547,7 @@ public final class ConverterResolver {
                         plan,
                         generated,
                         "nestedMapper '" +
-                                methodName +
+                                reference +
                                 "'");
 
         if (candidate == null ||
@@ -405,7 +560,7 @@ public final class ConverterResolver {
                 sourceType,
                 targetType,
                 candidate.method,
-                null);
+                candidate.owner);
     }
 
 
@@ -423,109 +578,37 @@ public final class ConverterResolver {
         for (String reference :
                 using) {
 
-            if (reference == null ||
-                    reference.isEmpty()) {
+            String[] names =
+                    qualifiedReference(
+                            plan,
+                            reference,
+                            "using",
+                            generated);
 
-                continue;
+            if (names == null) {
+                return null;
             }
-
-            int separator =
-                    reference.indexOf("::");
-
-            if (separator < 0) {
-                List<MethodCandidate> candidates =
-                        new ArrayList<MethodCandidate>();
-
-                for (MethodCandidate candidate :
-                        localMethods) {
-
-                    if (!candidate.method
-                            .getSimpleName()
-                            .contentEquals(reference)) {
-
-                        continue;
-                    }
-
-                    if (compatible(
-                            candidate,
-                            sourceType,
-                            targetType)) {
-
-                        candidates.add(candidate);
-                    }
-                }
-
-                if (candidates.isEmpty()) {
-                    continue;
-                }
-
-                MethodCandidate candidate =
-                        selectBestMethod(
-                                candidates,
-                                sourceType,
-                                targetType,
-                                plan,
-                                generated,
-                                "preferred mapper '" +
-                                        reference +
-                                        "'");
-
-                if (candidate == INVALID_METHOD) {
-                    return null;
-                }
-
-                if (candidate != null) {
-                    return Conversion.method(
-                            sourceType,
-                            targetType,
-                            candidate.method,
-                            null);
-                }
-
-                continue;
-            }
-
-            String mapperName =
-                    reference.substring(
-                            0,
-                            separator);
-
-            String methodName =
-                    reference.substring(
-                            separator + 2);
 
             List<MethodCandidate> candidates =
-                    new ArrayList<MethodCandidate>();
+                    referencedMethods(
+                            names[0],
+                            names[1]);
 
-            for (ImportedMapper imported :
-                    importedMappers) {
+            if (candidates.isEmpty()) {
+                error(
+                        plan.method(),
+                        generated,
+                        "preferred mapper '" +
+                                reference +
+                                "' cannot be resolved");
 
-                if (!matchesMapperName(
-                        imported.type,
-                        mapperName)) {
-
-                    continue;
-                }
-
-                for (MethodCandidate candidate :
-                        imported.methods) {
-
-                    if (!candidate.method
-                            .getSimpleName()
-                            .contentEquals(methodName)) {
-
-                        continue;
-                    }
-
-                    if (compatible(
-                            candidate,
-                            sourceType,
-                            targetType)) {
-
-                        candidates.add(candidate);
-                    }
-                }
+                return null;
             }
+
+            candidates = compatibleMethods(
+                    candidates,
+                    sourceType,
+                    targetType);
 
             if (candidates.isEmpty()) {
                 continue;
@@ -560,6 +643,120 @@ public final class ConverterResolver {
          * particular source/target pair, normal conversion resolution continues.
          */
         return null;
+    }
+
+
+    private String[] qualifiedReference(
+            MappingPlan plan,
+            String reference,
+            String member,
+            GeneratedClass generated) {
+
+        if (reference == null) {
+            error(
+                    plan.method(),
+                    generated,
+                    member + " reference must use mapper::method");
+
+            return null;
+        }
+
+        int separator =
+                reference.indexOf("::");
+
+        if (separator <= 0 ||
+                separator != reference.lastIndexOf("::") ||
+                separator + 2 >= reference.length()) {
+
+            error(
+                    plan.method(),
+                    generated,
+                    member + " reference '" +
+                            reference +
+                            "' must use mapper::method");
+
+            return null;
+        }
+
+        return new String[]{
+                reference.substring(0, separator),
+                reference.substring(separator + 2)};
+    }
+
+
+    private List<MethodCandidate> referencedMethods(
+            String mapperName,
+            String methodName) {
+
+        List<MethodCandidate> result =
+                new ArrayList<MethodCandidate>();
+
+        if ("this".equals(mapperName)) {
+            addNamedMethods(
+                    result,
+                    localMethods,
+                    methodName);
+
+            return result;
+        }
+
+        for (ImportedMapper imported :
+                importedMappers) {
+
+            if (matchesMapperName(
+                    imported.type,
+                    mapperName)) {
+
+                addNamedMethods(
+                        result,
+                        imported.methods,
+                        methodName);
+            }
+        }
+
+        return result;
+    }
+
+
+    private void addNamedMethods(
+            List<MethodCandidate> result,
+            List<MethodCandidate> methods,
+            String methodName) {
+
+        for (MethodCandidate candidate :
+                methods) {
+
+            if (candidate.method
+                    .getSimpleName()
+                    .contentEquals(methodName)) {
+
+                result.add(candidate);
+            }
+        }
+    }
+
+
+    private List<MethodCandidate> compatibleMethods(
+            List<MethodCandidate> candidates,
+            TypeMirror sourceType,
+            TypeMirror targetType) {
+
+        List<MethodCandidate> result =
+                new ArrayList<MethodCandidate>();
+
+        for (MethodCandidate candidate :
+                candidates) {
+
+            if (compatible(
+                    candidate,
+                    sourceType,
+                    targetType)) {
+
+                result.add(candidate);
+            }
+        }
+
+        return result;
     }
 
 

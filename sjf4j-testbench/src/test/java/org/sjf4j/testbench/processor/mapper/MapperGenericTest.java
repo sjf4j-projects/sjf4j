@@ -272,27 +272,27 @@ public class MapperGenericTest {
 
     @CompiledMapper
     public interface GenericMapper {
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         List<UserDto> users(List<? extends User> source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         Set<UserDto> userSet(Set<? extends User> source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         void updateUsers(List<UserDto> target, List<? extends User> source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         Map<String, UserDto> userMap(Map<? extends String, ? extends User> source);
 
-        @MappingOptions(objects = ObjectPolicy.CLEAR_PUT, using = {"toDto"})
+        @MappingOptions(objects = ObjectPolicy.CLEAR_PUT, using = {"this::toDto"})
         void updateUserMap(
                 Map<String, UserDto> target,
                 Map<? extends String, ? extends User> source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         List<List<UserDto>> nestedUsers(List<? extends List<? extends User>> source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         Map<String, List<UserDto>> groupedUsers(
                 Map<? extends String, ? extends List<? extends User>> source);
 
@@ -302,16 +302,16 @@ public class MapperGenericTest {
 
         Map<String, Object> objectMap(Map<String, ?> source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         List<UserDto> inheritedUsers(Users source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         Map<String, UserDto> inheritedMap(UsersByName source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         UserDtoValueBox inheritedBox(UserValueBox source);
 
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         DtoBox box(WildcardBox source);
 
         List<? extends User> covariantList(List<User> source);

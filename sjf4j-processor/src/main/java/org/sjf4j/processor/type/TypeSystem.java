@@ -36,42 +36,12 @@ public final class TypeSystem {
 
     private static final String JACKSON2_NODE =
             "com.fasterxml.jackson.databind.JsonNode";
-    private static final String JACKSON2_OBJECT =
-            "com.fasterxml.jackson.databind.node.ObjectNode";
-    private static final String JACKSON2_ARRAY =
-            "com.fasterxml.jackson.databind.node.ArrayNode";
-    private static final String JACKSON2_STRING =
-            "com.fasterxml.jackson.databind.node.TextNode";
-    private static final String JACKSON2_NUMBER =
-            "com.fasterxml.jackson.databind.node.NumericNode";
-    private static final String JACKSON2_BOOLEAN =
-            "com.fasterxml.jackson.databind.node.BooleanNode";
-    private static final String JACKSON2_NULL =
-            "com.fasterxml.jackson.databind.node.NullNode";
-
     private static final String JACKSON3_NODE =
             "tools.jackson.databind.JsonNode";
-    private static final String JACKSON3_OBJECT =
-            "tools.jackson.databind.node.ObjectNode";
-    private static final String JACKSON3_ARRAY =
-            "tools.jackson.databind.node.ArrayNode";
-    private static final String JACKSON3_STRING =
-            "tools.jackson.databind.node.TextNode";
-    private static final String JACKSON3_NUMBER =
-            "tools.jackson.databind.node.NumericNode";
-    private static final String JACKSON3_BOOLEAN =
-            "tools.jackson.databind.node.BooleanNode";
-    private static final String JACKSON3_NULL =
-            "tools.jackson.databind.node.NullNode";
-
     private static final String GSON_NODE =
             "com.google.gson.JsonElement";
-    private static final String GSON_OBJECT =
-            "com.google.gson.JsonObject";
-    private static final String GSON_ARRAY =
-            "com.google.gson.JsonArray";
-    private static final String GSON_NULL =
-            "com.google.gson.JsonNull";
+    private static final String JSONP_NODE =
+            "jakarta.json.JsonValue";
 
 
     private final Types typeUtils;
@@ -94,6 +64,7 @@ public final class TypeSystem {
     private final TypeMirror jackson2NodeType;
     private final TypeMirror jackson3NodeType;
     private final TypeMirror gsonNodeType;
+    private final TypeMirror jsonpNodeType;
 
 
     public TypeSystem(
@@ -154,17 +125,10 @@ public final class TypeSystem {
                 requiredType(
                         JsonArray.class.getName());
 
-        this.jackson2NodeType =
-                optionalType(
-                        JACKSON2_NODE);
-
-        this.jackson3NodeType =
-                optionalType(
-                        JACKSON3_NODE);
-
-        this.gsonNodeType =
-                optionalType(
-                        GSON_NODE);
+        this.jackson3NodeType = optionalType(JACKSON3_NODE);
+        this.jackson2NodeType = optionalType(JACKSON2_NODE);
+        this.gsonNodeType = optionalType(GSON_NODE);
+        this.jsonpNodeType = optionalType(JSONP_NODE);
     }
 
 
@@ -187,9 +151,7 @@ public final class TypeSystem {
         }
 
         type = concrete(type);
-
-        TypeKind kind =
-                type.getKind();
+        TypeKind kind = type.getKind();
 
         if (kind == TypeKind.NULL) {
             return NodeKind.VALUE_NULL;
@@ -203,120 +165,68 @@ public final class TypeSystem {
             if (kind == TypeKind.BOOLEAN) {
                 return NodeKind.VALUE_BOOLEAN;
             }
-
             if (kind == TypeKind.CHAR) {
                 return NodeKind.VALUE_STRING_CHARACTER;
             }
-
             if (kind == TypeKind.VOID) {
                 return NodeKind.UNKNOWN;
             }
-
             return NodeKind.VALUE_NUMBER;
         }
 
-        TypeElement element =
-                typeElement(type);
-
+        TypeElement element = typeElement(type);
         if (element == null) {
             return NodeKind.UNKNOWN;
         }
 
         // SJF4J object nodes
 
-        if (isSameErasure(
-                type,
-                jsonObjectType)) {
-
+        if (isSameErasure(type, jsonObjectType)) {
             return NodeKind.OBJECT_JSON_OBJECT;
         }
-
-        if (isAssignableErasure(
-                type,
-                jsonObjectType)) {
-
+        if (isAssignableErasure(type, jsonObjectType)) {
             return NodeKind.OBJECT_JOJO;
         }
 
         // SJF4J array nodes
 
-        if (isSameErasure(
-                type,
-                jsonArrayType)) {
-
+        if (isSameErasure(type, jsonArrayType)) {
             return NodeKind.ARRAY_JSON_ARRAY;
         }
-
-        if (isAssignableErasure(
-                type,
-                jsonArrayType)) {
-
+        if (isAssignableErasure(type, jsonArrayType)) {
             return NodeKind.ARRAY_JAJO;
         }
 
         // Java containers
 
-        if (isAssignableErasure(
-                type,
-                mapType)) {
-
+        if (isAssignableErasure(type, mapType)) {
             return NodeKind.OBJECT_MAP;
         }
-
-        if (isAssignableErasure(
-                type,
-                listType)) {
-
+        if (isAssignableErasure(type, listType)) {
             return NodeKind.ARRAY_LIST;
         }
-
-        if (isAssignableErasure(
-                type,
-                setType)) {
-
+        if (isAssignableErasure(type, setType)) {
             return NodeKind.ARRAY_SET;
         }
 
         // Java values
 
-        if (isSameErasure(
-                type,
-                stringType)) {
-
+        if (isSameErasure(type, stringType)) {
             return NodeKind.VALUE_STRING;
         }
-
-        if (isSameErasure(
-                type,
-                characterType)) {
-
+        if (isSameErasure(type, characterType)) {
             return NodeKind.VALUE_STRING_CHARACTER;
         }
-
-        if (element.getKind() ==
-                ElementKind.ENUM) {
-
+        if (element.getKind() == ElementKind.ENUM) {
             return NodeKind.VALUE_STRING_ENUM;
         }
-
-        if (isSameErasure(
-                type,
-                booleanType)) {
-
+        if (isSameErasure(type, booleanType)) {
             return NodeKind.VALUE_BOOLEAN;
         }
-
-        if (isAssignableErasure(
-                type,
-                numberType)) {
-
+        if (isAssignableErasure(type, numberType)) {
             return NodeKind.VALUE_NUMBER;
         }
-
-        if (isSameErasure(
-                type,
-                voidType)) {
-
+        if (isSameErasure(type, voidType)) {
             return NodeKind.VALUE_NULL;
         }
 
@@ -326,28 +236,12 @@ public final class TypeSystem {
             return nodeValueKind(type);
         }
 
-        // External tree nodes
-
-        NodeKind externalKind =
-                externalNodeKind(type);
-
-        if (externalKind != null) {
-            return externalKind;
-        }
-
         /*
-         * JsonNode / JsonElement itself may represent object, array or value.
-         */
-        if (isExternalNode(type)) {
-            return NodeKind.UNKNOWN;
-        }
-
-        /*
-         * Object may contain any OBNT node at runtime. Keep this distinct from
+         * Object and ExternalNode may contain any OBNT node at runtime. Keep this distinct from
          * UNKNOWN so generated code may deliberately use Nodes for runtime
          * dispatch only when the declared Java type is Object.
          */
-        if (isObject(type)) {
+        if (isObject(type) || isExternalNode(type)) {
             return NodeKind.COMPILE_TIME_UNKNOWN;
         }
 
@@ -356,8 +250,7 @@ public final class TypeSystem {
 
 
     public JsonType jsonType(TypeMirror type) {
-        return JsonType.of(
-                nodeKind(type));
+        return JsonType.of(nodeKind(type));
     }
 
 
@@ -432,21 +325,14 @@ public final class TypeSystem {
     // -------------------------------------------------------------------------
 
     public boolean isObject(TypeMirror type) {
-        return isSameErasure(
-                type,
-                objectType);
+        return isSameErasure(type, objectType);
     }
 
 
     public boolean isBoolean(TypeMirror type) {
         type = concrete(type);
-
-        return type != null
-                && (type.getKind() ==
-                TypeKind.BOOLEAN
-                || isSameErasure(
-                type,
-                booleanType));
+        return type != null &&
+                (type.getKind() == TypeKind.BOOLEAN || isSameErasure(type, booleanType));
     }
 
 
@@ -467,15 +353,10 @@ public final class TypeSystem {
      * external node even though its precise NodeKind is unknown.</p>
      */
     public boolean isExternalNode(TypeMirror type) {
-        return isAssignableErasure(
-                type,
-                jackson2NodeType)
-                || isAssignableErasure(
-                type,
-                jackson3NodeType)
-                || isAssignableErasure(
-                type,
-                gsonNodeType);
+        return isAssignableErasure(type, jackson3NodeType)
+                || isAssignableErasure(type, jackson2NodeType)
+                || isAssignableErasure(type, gsonNodeType)
+                || isAssignableErasure(type, jsonpNodeType);
     }
 
 
@@ -1277,98 +1158,8 @@ public final class TypeSystem {
     // External node models
     // -------------------------------------------------------------------------
 
-    /**
-     * Resolves statically known external tree-node shapes.
-     *
-     * <p>Generic roots such as JsonNode and JsonElement intentionally return
-     * null because their runtime shape is not known from the Java type.</p>
-     */
-    private NodeKind externalNodeKind(
-            TypeMirror type) {
-
-        if (isAssignableTo(
-                type,
-                JACKSON2_OBJECT)
-                || isAssignableTo(
-                type,
-                JACKSON3_OBJECT)
-                || isAssignableTo(
-                type,
-                GSON_OBJECT)) {
-
-            return NodeKind.OBJECT_EXTERNAL;
-        }
-
-        if (isAssignableTo(
-                type,
-                JACKSON2_ARRAY)
-                || isAssignableTo(
-                type,
-                JACKSON3_ARRAY)
-                || isAssignableTo(
-                type,
-                GSON_ARRAY)) {
-
-            return NodeKind.ARRAY_EXTERNAL;
-        }
-
-        if (isAssignableTo(
-                type,
-                JACKSON2_STRING)
-                || isAssignableTo(
-                type,
-                JACKSON3_STRING)) {
-
-            return NodeKind.VALUE_STRING_EXTERNAL;
-        }
-
-        if (isAssignableTo(
-                type,
-                JACKSON2_NUMBER)
-                || isAssignableTo(
-                type,
-                JACKSON3_NUMBER)) {
-
-            return NodeKind.VALUE_NUMBER_EXTERNAL;
-        }
-
-        if (isAssignableTo(
-                type,
-                JACKSON2_BOOLEAN)
-                || isAssignableTo(
-                type,
-                JACKSON3_BOOLEAN)) {
-
-            return NodeKind.VALUE_BOOLEAN_EXTERNAL;
-        }
-
-        if (isAssignableTo(
-                type,
-                JACKSON2_NULL)
-                || isAssignableTo(
-                type,
-                JACKSON3_NULL)
-                || isAssignableTo(
-                type,
-                GSON_NULL)) {
-
-            return NodeKind.VALUE_NULL;
-        }
-
-        /*
-         * Gson JsonPrimitive may represent string, number or boolean.
-         */
-        return null;
-    }
-
-
-    private boolean isAssignableTo(
-            TypeMirror type,
-            String targetName) {
-
-        return isAssignableErasure(
-                type,
-                optionalType(targetName));
+    public boolean isCompileTimeUnknown(TypeMirror type) {
+        return isObject(type) || isExternalNode(type);
     }
 
 
@@ -1391,12 +1182,8 @@ public final class TypeSystem {
 
 
     private TypeMirror optionalType(String name) {
-        TypeElement element =
-                elements.getTypeElement(name);
-
-        return element == null
-                ? null
-                : element.asType();
+        TypeElement element = elements.getTypeElement(name);
+        return element == null ? null : element.asType();
     }
 
     private DeclaredType declaringType(

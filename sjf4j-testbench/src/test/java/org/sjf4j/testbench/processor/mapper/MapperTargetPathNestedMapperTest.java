@@ -48,6 +48,17 @@ public class MapperTargetPathNestedMapperTest {
         assertEquals("dto:Grace", ensured.map.get("one").name);
     }
 
+    @Test
+    public void targetPathNestedMapperSupportsImportedMapperReference() {
+        ImportedNestedPathMapper mapper =
+                CompiledInstances.of(ImportedNestedPathMapper.class);
+        OptionalTarget target = new OptionalTarget();
+
+        mapper.ensureMap(target, new Source(new Child("Ada")));
+
+        assertEquals("imported:Ada", target.map.get("one").name);
+    }
+
     public record Source(Child child) {}
     public record Child(String name) {}
 
@@ -68,16 +79,16 @@ public class MapperTargetPathNestedMapperTest {
 
     @CompiledMapper
     public interface NestedPathMapper {
-        @MappingOptions(using = {"toDto"})
+        @MappingOptions(using = {"this::toDto"})
         @Mapping(target = "$.child", source = "child")
         @Mapping(target = "$.items[0]", source = "child")
         @Mapping(target = "$.map.one", source = "child")
         Target create(Source source);
 
-        @MappingIfParentPresent(target = "$.items[0]", source = "child", nestedMapper = "toDto")
+        @MappingIfParentPresent(target = "$.items[0]", source = "child", nestedMapper = "this::toDto")
         void ifParentPresent(OptionalTarget target, Source source);
 
-        @EnsureMapping(target = "$.map.one", source = "child", nestedMapper = "toDto")
+        @EnsureMapping(target = "$.map.one", source = "child", nestedMapper = "this::toDto")
         void ensureMap(OptionalTarget target, Source source);
 
         default ChildDto toDto(Child child) {
@@ -85,5 +96,20 @@ public class MapperTargetPathNestedMapperTest {
             dto.name = "dto:" + child.name();
             return dto;
         }
+    }
+
+    @CompiledMapper
+    public interface ImportedChildMapper {
+        default ChildDto toDto(Child child) {
+            ChildDto dto = new ChildDto();
+            dto.name = "imported:" + child.name();
+            return dto;
+        }
+    }
+
+    @CompiledMapper(importing = {ImportedChildMapper.class})
+    public interface ImportedNestedPathMapper {
+        @EnsureMapping(target = "$.map.one", source = "child", nestedMapper = "ImportedChildMapper::toDto")
+        void ensureMap(OptionalTarget target, Source source);
     }
 }

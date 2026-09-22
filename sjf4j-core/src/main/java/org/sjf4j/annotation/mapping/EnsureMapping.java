@@ -34,11 +34,13 @@ public @interface EnsureMapping {
     String compute() default "";
 
     /**
-     * Explicit local mapper method for the path value.
+     * Explicit mapper method for the path value.
      *
      * <p>This path-specific hook is kept separate from method-level
-     * {@link MappingOptions#using()} preferences. It supports a simple method
-     * name on the current mapper and cannot be combined with {@link #compute()}.</p>
+     * {@link MappingOptions#using()} preferences. References use
+     * {@code "this::method"} for the current mapper or
+     * {@code "ImportedMapper::method"} for an imported mapper. It cannot be
+     * combined with {@link #compute()}.</p>
      */
     String nestedMapper() default "";
 

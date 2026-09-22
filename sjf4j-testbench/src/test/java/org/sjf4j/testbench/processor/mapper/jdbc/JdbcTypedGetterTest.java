@@ -3,6 +3,8 @@ package org.sjf4j.testbench.processor.mapper.jdbc;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapping.Mapping;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 
@@ -57,6 +59,16 @@ class JdbcTypedGetterTest {
                 "getFloat#", "getBoolean#"), getters);
     }
 
+    @Test
+    void readsNodeValueColumnsThroughNodes() {
+        Mapper mapper = CompiledInstances.of(Mapper.class);
+
+        NodeValueRow row = mapper.nodeValue(
+                result(new String[]{"code"}, new Object[]{"A-1"}));
+
+        assertEquals(new Code("A-1"), row.code);
+    }
+
     @CompiledJdbcMapper
     interface Mapper {
         @Mapping(target = "name", source = "full_name")
@@ -67,6 +79,8 @@ class JdbcTypedGetterTest {
         PrimitiveValues primitives(ResultSet rs);
 
         List<PrimitiveValues> primitiveValues(ResultSet rs);
+
+        NodeValueRow nodeValue(ResultSet rs);
     }
 
     public static final class User {
@@ -90,6 +104,18 @@ class JdbcTypedGetterTest {
         public boolean booleanValue;
 
         public PrimitiveValues() {
+        }
+    }
+
+    public static final class NodeValueRow {
+        public Code code;
+    }
+
+    @NodeValue
+    public record Code(String value) {
+        @RawToValue
+        public static Code fromRaw(String raw) {
+            return new Code(raw);
         }
     }
 

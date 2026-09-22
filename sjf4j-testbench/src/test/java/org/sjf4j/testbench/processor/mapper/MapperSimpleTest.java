@@ -572,7 +572,7 @@ public class MapperSimpleTest {
 
         JacksonAddressBook jacksonAddressBook(JsonNode source);
 
-        @MappingOptions(using = {"mapJacksonAddress"})
+        @MappingOptions(using = {"this::mapJacksonAddress"})
         @Mapping(target = "address", source = "address")
         JacksonExplicitAddressDto jacksonExplicitAddress(JsonNode source);
 

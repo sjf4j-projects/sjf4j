@@ -100,11 +100,14 @@ class JdbcMappingCreatorTest {
 
     @CompiledJdbcMapper
     interface Mapper {
+
+        @MappingCreator(targetType = View.class, implementation = ViewImpl.class)
         View view(ResultSet rs);
 
         @MappingCreator(targetType = View.class, creator = "this::newView")
         View factory(ResultSet rs);
 
+        @MappingCreator(targetType = View.class, implementation = ViewImpl.class)
         List<View> views(ResultSet rs);
 
         @MappingCreator(targetType = View.class, creator = "this::newPath")
@@ -117,8 +120,10 @@ class JdbcMappingCreatorTest {
         @MappingCreator(targetType = SingleTarget.class, implementation = SingleView.class)
         SingleTarget single(ResultSet rs);
 
+        @MappingCreator(targetType = StaticTarget.class, implementation = StaticView.class)
         StaticTarget inheritedStatic(ResultSet rs);
 
+        @MappingCreator(targetType = DefaultTarget.class, creator = "this::newDefault")
         DefaultTarget inheritedDefault(ResultSet rs);
 
         default FactoryView newView() {

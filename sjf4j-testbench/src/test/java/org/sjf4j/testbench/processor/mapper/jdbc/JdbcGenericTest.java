@@ -65,7 +65,6 @@ class JdbcGenericTest {
     }
 
 
-    @CompiledJdbcMapper
     interface BaseMapper<T> {
         @Mapping(target = "name", source = "full_name")
         T row(ResultSet rs);
