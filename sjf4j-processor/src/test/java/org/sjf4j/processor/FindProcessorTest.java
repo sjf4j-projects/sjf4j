@@ -73,7 +73,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -147,7 +147,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -208,7 +208,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("BadNodes.java").toFile()
         ))).call();
@@ -243,7 +243,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("BadNodes.java").toFile()
         ))).call();
@@ -297,7 +297,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -319,7 +319,7 @@ public class FindProcessorTest {
         assertFalse(source.contains(".find("),
                 "Should not contain .find( fallback for simple wildcard; " +
                 "current source:\n" + source);
-        assertEquals(1, count(source, "if (v == null) return out;"),
+        assertEquals(1, count(source, " == null) return result;"),
                 "Wildcard container null check should be emitted once; source:\n" + source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
@@ -377,7 +377,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("DeepNode.java").toFile(),
                 src.resolve("FindComplex.java").toFile()
@@ -430,7 +430,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("DeepNode.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -442,6 +442,10 @@ public class FindProcessorTest {
         assertTrue(source.contains("JsonPath.parse(\"$.child..name\")"), source);
         assertTrue(source.contains("JsonPath.parse(\"$..name\")"), source);
         assertTrue(source.contains(".find("), source);
+        assertTrue(source.contains("ArrayList<String>"), source);
+        assertTrue(source.contains("for (Object"), source);
+        assertTrue(source.contains(".add((String)"), source);
+        assertFalse(source.contains(") (java.util.List)"), source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> nodeClass = Class.forName("testcase.DeepNode", true, loader);
@@ -512,7 +516,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("FilterRoot.java").toFile(),
@@ -602,7 +606,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -618,7 +622,7 @@ public class FindProcessorTest {
                 "Union path should not fall back to JsonPath.parse; source:\n" + source);
         assertFalse(source.contains(".find("),
                 "Union path should not fall back to .find(; source:\n" + source);
-        assertEquals(1, count(source, "if (v == null) return out;"),
+        assertEquals(1, count(source, " == null) return result;"),
                 "Prefix null check should be emitted once; source:\n" + source);
 
         // ---- behavioral assertion ----
@@ -651,6 +655,52 @@ public class FindProcessorTest {
         @SuppressWarnings("unchecked")
         List<String> shortResult = (List<String>) names.invoke(nodes, root);
         assertEquals(Arrays.asList("beta", "alpha", "beta", "alpha", "alpha"), shortResult);
+    }
+
+    @Test
+    public void rejectIntegerMapKeyAfterIndexUnion() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-find-index-union-map-key");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("Root.java"),
+                "package testcase;\n" +
+                "import java.util.List;\n" +
+                "import java.util.Map;\n" +
+                "public class Root {\n" +
+                "  private List<Map<Integer,String>> items;\n" +
+                "  public List<Map<Integer,String>> getItems() { return items; }\n" +
+                "}\n");
+        write(src.resolve("BadFind.java"),
+                "package testcase;\n" +
+                "import java.util.List;\n" +
+                "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
+                "import org.sjf4j.annotation.path.FindByPath;\n" +
+                "@CompiledNavigator\n" +
+                "public interface BadFind {\n" +
+                "  @FindByPath(\"$.items[0,1].name\")\n" +
+                "  List<String> names(Root root);\n" +
+                "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", TestNavigatorProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Root.java").toFile(),
+                src.resolve("BadFind.java").toFile()
+        ))).call();
+
+        assertFalse(ok, "Integer Map keys must reject String path names after an index union");
+        assertTrue(diagnosticsToString(diagnostics).contains(
+                "@FindByPath cannot use a String path key with Map key type java.lang.Integer"));
     }
 
     @Test
@@ -692,7 +742,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Root.java").toFile(),
                 src.resolve("FindUnionName.java").toFile()
@@ -782,7 +832,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -858,7 +908,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -926,7 +976,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Root.java").toFile(),
                 src.resolve("FindRoot.java").toFile()
@@ -1000,7 +1050,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
@@ -1101,7 +1151,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Child.java").toFile(),
                 src.resolve("Item.java").toFile(),
@@ -1173,7 +1223,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Root.java").toFile(),
                 src.resolve("FindMixedUnion.java").toFile()
@@ -1229,7 +1279,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Model.java").toFile(),
                 src.resolve("FindGenericNodes.java").toFile()
@@ -1288,7 +1338,7 @@ public class FindProcessorTest {
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Root.java").toFile(),
                 src.resolve("BadFindGenericNodes.java").toFile()

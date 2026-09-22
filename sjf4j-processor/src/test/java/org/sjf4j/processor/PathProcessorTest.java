@@ -79,7 +79,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
         assertTrue(ok);
         assertTrue(Files.exists(out.resolve("testcase/MyNodes_Impl.class")));
@@ -139,7 +139,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
 
         assertTrue(!ok);
@@ -183,12 +183,12 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
 
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@CompiledNavigator abstract methods must be annotated"), messages);
+        assertTrue(messages.contains("@CompiledNavigator abstract method must declare a path operation annotation"), messages);
     }
 
     @Test
@@ -228,7 +228,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
 
         assertTrue(!ok);
@@ -236,8 +236,8 @@ public class PathProcessorTest {
         assertTrue(messages.contains("has no matching method parameter"), messages);
         assertTrue(messages.contains("is not used by the path"), messages);
         assertTrue(messages.contains("must be String or int"), messages);
-        assertTrue(messages.contains("Cannot resolve dynamic key parameter '{name}' on java.util.List<java.lang.String>"), messages);
-        assertTrue(messages.contains("Cannot resolve dynamic index parameter '{idx}' on java.util.Map<java.lang.String,java.lang.String>"), messages);
+        assertTrue(messages.contains("Cannot resolve readable dynamic property '{name}' on java.util.List<java.lang.String>"), messages);
+        assertTrue(messages.contains("Cannot resolve readable dynamic index '{idx}' on java.util.Map<java.lang.String,java.lang.String>"), messages);
     }
 
     @Test
@@ -283,7 +283,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
 
         assertTrue(!ok);
@@ -291,12 +291,12 @@ public class PathProcessorTest {
         assertTrue(messages.contains("@PutByPath path parameter '{idx}' has no matching method parameter"), messages);
         assertTrue(messages.contains("@PutByPath method parameter 'idx' is not used by the path"), messages);
         assertTrue(messages.contains("@PutByPath path parameter 'idx' must be String or int"), messages);
-        assertTrue(messages.contains("Cannot resolve dynamic key parameter '{name}' on java.util.List<java.lang.String>"), messages);
-        assertTrue(messages.contains("Cannot resolve dynamic index parameter '{idx}' on java.util.Map<java.lang.String,java.lang.String>"), messages);
+        assertTrue(messages.contains("Cannot resolve writable dynamic property '{name}' on java.util.List<java.lang.String>"), messages);
+        assertTrue(messages.contains("Cannot resolve writable dynamic index '{idx}' on java.util.Map<java.lang.String,java.lang.String>"), messages);
         assertTrue(messages.contains("@PutByPath append segment must be the final path segment"), messages);
-        assertTrue(messages.contains("Cannot append on Java array java.lang.String[]"), messages);
+        assertTrue(messages.contains("Cannot append on java.lang.String[]"), messages);
         assertTrue(messages.contains("@PutByPath value type mismatch"), messages);
-        assertTrue(messages.contains("Cannot resolve dynamic key parameter '{name}' on testcase.Bean"), messages);
+        assertTrue(messages.contains("Cannot resolve writable dynamic property '{name}' on testcase.Bean"), messages);
     }
 
     @Test
@@ -332,7 +332,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
 
         assertTrue(!ok);
@@ -340,7 +340,7 @@ public class PathProcessorTest {
         assertTrue(messages.contains("@PutIfParentPresentByPath path parameter '{idx}' has no matching method parameter"), messages);
         assertTrue(messages.contains("@PutIfParentPresentByPath method parameter 'idx' is not used by the path"), messages);
         assertTrue(messages.contains("@PutIfParentPresentByPath path parameter 'idx' must be String or int"), messages);
-        assertTrue(messages.contains("@PutIfParentPresentByPath return type mismatch: missing parent returns null"), messages);
+        assertTrue(messages.contains("@PutIfParentPresentByPath return type mismatch: append returns null"), messages);
         assertTrue(messages.contains("Path operation annotations cannot be used together"), messages);
     }
 
@@ -377,7 +377,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
 
         assertTrue(!ok);
@@ -482,7 +482,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
         assertTrue(ok, diagnosticsToString(diagnostics));
         String source = new String(Files.readAllBytes(generated.resolve("testcase/PathNodes_Impl.java")), StandardCharsets.UTF_8);
@@ -490,8 +490,8 @@ public class PathProcessorTest {
         assertTrue(source.contains("package testcase;"), source);
         assertTrue(!source.contains("INSTANCE"), source);
         assertTrue(!source.contains("Nodes.putInArray"), source);
-        assertTrue(source.contains("s_old = a_list.set(n_index, value)"), source);
-        assertTrue(source.contains("s_old = a_array[n_index]"), source);
+        assertTrue(source.contains("oldValue = (String) list.set(index, value)"), source);
+        assertTrue(source.contains("String oldValue = array[index]"), source);
         assertTrue(!source.contains("Nodes.to"), source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
@@ -632,7 +632,7 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
         assertTrue(ok, diagnosticsToString(diagnostics));
         String source = new String(Files.readAllBytes(generated.resolve("testcase/JojoPathNodes_Impl.java")), StandardCharsets.UTF_8);
@@ -714,7 +714,7 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadJojoPaths.java").toFile()))).call();
 
         assertTrue(!ok);
@@ -750,7 +750,7 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("ExplicitJojoPaths.java").toFile()))).call();
 
         assertTrue(ok, diagnosticsToString(diagnostics));
@@ -791,7 +791,7 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("ExplicitAccessorJojoPaths.java").toFile()))).call();
 
         assertTrue(ok, diagnosticsToString(diagnostics));
@@ -845,7 +845,7 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Model.java").toFile(),
                 src.resolve("GenericNodes.java").toFile()))).call();
@@ -896,14 +896,14 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("BadGenericNodes.java").toFile()))).call();
 
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@CompiledNavigator interfaces cannot declare type parameters"), messages);
-        assertTrue(messages.contains("@CompiledNavigator methods cannot declare type parameters"), messages);
+        assertTrue(messages.contains("@CompiledNavigator interface cannot declare type parameters"), messages);
+        assertTrue(messages.contains("@CompiledNavigator method cannot declare type parameters"), messages);
     }
 
     @Test
@@ -935,7 +935,7 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Model.java").toFile(),
                 src.resolve("BadGenericTypeNodes.java").toFile()))).call();
@@ -984,7 +984,7 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("com/fasterxml/jackson/annotation/JsonProperty.java").toFile(),
                 src.resolve("com/alibaba/fastjson2/annotation/JSONField.java").toFile(),
@@ -1064,15 +1064,15 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
         assertTrue(ok, diagnosticsToString(diagnostics));
         String source = new String(Files.readAllBytes(generated.resolve("testcase/EnsureNodes_Impl.java")), StandardCharsets.UTF_8);
         assertTrue(!source.contains("createObjectContainer"), source);
         assertTrue(!source.contains("createArrayContainer"), source);
-        assertTrue(source.contains("HashMap<String,Object> o_a = o_hash.get(\"a\");"), source);
-        assertTrue(!source.contains("HashMap<String,Object> o_a = (HashMap<String,Object>)"), source);
-        assertTrue(source.contains("s_old = n_index < 0 || n_index >= a_strings.size() ? null : a_strings.get(n_index)"), source);
+        assertTrue(source.contains("HashMap<String,Object> a = hash.get(\"a\");"), source);
+        assertTrue(!source.contains("HashMap<String,Object> a = (HashMap<String,Object>)"), source);
+        assertTrue(source.contains("String oldValue = (index < 0 || index >= strings.size()) ? null : strings.get(index)"), source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> rootClass = Class.forName("testcase.Model$Root", true, loader);
@@ -1165,14 +1165,14 @@ public class PathProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", Sjf4jProcessor.class.getName()
+                "-processor", TestNavigatorProcessor.class.getName()
         ), null, units).call();
 
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@EnsurePutIfAbsentByPath return type mismatch: absent write returns null"), messages);
+        assertTrue(messages.contains("@EnsurePutIfAbsentByPath return type mismatch: cannot assign java.lang.String to int"), messages);
         assertTrue(messages.contains("@EnsurePutByPath return type mismatch: append returns null"), messages);
-        assertTrue(messages.contains("Ensure intermediate container type testcase.Model.NoDefault must have an accessible no-arg constructor"), messages);
+        assertTrue(messages.contains("Ensure intermediate type testcase.Model.NoDefault must have an accessible no-arg constructor"), messages);
         assertTrue(messages.contains("Path operation annotations cannot be used together"), messages);
     }
 
@@ -1198,7 +1198,7 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
-                "-classpath", System.getProperty("java.class.path"), "-processor", Sjf4jProcessor.class.getName()
+                "-classpath", System.getProperty("java.class.path"), "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("DefaultNodes.java").toFile()))).call();
 
         assertTrue(ok, diagnosticsToString(diagnostics));
@@ -1208,7 +1208,45 @@ public class PathProcessorTest {
     }
 
     @Test
-    public void rejectsInheritedAbstractNavigatorMethodButAcceptsDefaultAndStaticMethods() throws Exception {
+    public void deduplicatesIdenticalInheritedAbstractMethods() throws Exception {
+        Map<String, String> sources = new HashMap<>();
+        sources.put("testcase/First.java",
+                "package testcase;\n" +
+                        "import java.util.Map;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
+                        "public interface First {\n" +
+                        "  @GetByPath(\"$.value\") String value(Map<String,String> root);\n" +
+                        "}\n");
+        sources.put("testcase/Second.java",
+                "package testcase;\n" +
+                        "import java.util.Map;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
+                        "public interface Second {\n" +
+                        "  @GetByPath(\"$.value\") String value(Map<String,String> root);\n" +
+                        "}\n");
+        sources.put("testcase/Nodes.java",
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
+                        "@CompiledNavigator\n" +
+                        "public interface Nodes extends First, Second {}\n");
+
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources);
+        assertTrue(result.success, result.diagnostics());
+
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> nodesClass = Class.forName("testcase.Nodes_Impl", true, loader);
+            Object nodes = nodesClass.getConstructor().newInstance();
+            Map<String, String> root = new HashMap<>();
+            root.put("value", "once");
+
+            assertEquals("once", nodesClass.getMethod("value", Map.class)
+                    .invoke(nodes, root));
+        }
+    }
+
+    @Test
+    public void rejectsGenericInheritedAbstractNavigatorMethodsButSupportsNonGenericOnes() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-inherited-method-test");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
@@ -1217,11 +1255,18 @@ public class PathProcessorTest {
         Files.createDirectories(out);
         Files.createDirectories(generated);
         write(src.resolve("Parent.java"),
-                "package testcase; public interface Parent { String inherited(Object root); }\n");
+                "package testcase;\n"
+                        + "import java.util.Map;\n"
+                        + "import org.sjf4j.annotation.path.GetByPath;\n"
+                        + "import org.sjf4j.annotation.path.PutByPath;\n"
+                        + "public interface Parent<T> {\n"
+                        + "  @GetByPath(\"$.value\") T inherited(Map<String,T> root);\n"
+                        + "  @PutByPath(\"$.value\") T replace(Map<String,T> root, T value);\n"
+                        + "}\n");
         write(src.resolve("BadNodes.java"),
                 "package testcase;\n" +
                         "import java.util.Map; import org.sjf4j.annotation.path.*;\n" +
-                        "@CompiledNavigator public interface BadNodes extends Parent {\n" +
+                        "@CompiledNavigator public interface BadNodes extends Parent<String> {\n" +
                         "  @GetByPath(\"$.value\") String value(Map<String,String> root);\n" +
                         "}\n");
 
@@ -1231,26 +1276,32 @@ public class PathProcessorTest {
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
-                "-classpath", System.getProperty("java.class.path"), "-processor", Sjf4jProcessor.class.getName()
+                "-classpath", System.getProperty("java.class.path"), "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Parent.java").toFile(), src.resolve("BadNodes.java").toFile()
         ))).call();
 
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("cannot inherit abstract instance method 'inherited' from testcase.Parent"), messages);
+        assertTrue(messages.contains("cannot inherit abstract method 'inherited' from generic interface testcase.Parent"), messages);
         assertTrue(!Files.exists(generated.resolve("testcase/BadNodes_Impl.java")));
 
         Path validDir = Files.createTempDirectory("sjf4j-processor-inherited-default-test");
         Path validSrc = validDir.resolve("src/testcase");
         Path validOut = validDir.resolve("classes");
+        Path validGenerated = validDir.resolve("generated");
         Files.createDirectories(validSrc);
         Files.createDirectories(validOut);
+        Files.createDirectories(validGenerated);
         write(validSrc.resolve("Support.java"),
-                "package testcase; public interface Support {\n" +
-                        "  default String inheritedDefault() { return \"ok\"; }\n" +
-                        "  static String inheritedStatic() { return \"ok\"; }\n" +
-                        "}\n");
+                "package testcase;\n"
+                        + "import java.util.Map;\n"
+                        + "import org.sjf4j.annotation.path.GetByPath;\n"
+                        + "public interface Support {\n"
+                        + "  @GetByPath(\"$.value\") String inherited(Map<String,String> root);\n"
+                        + "  default String inheritedDefault() { return \"ok\"; }\n"
+                        + "  static String inheritedStatic() { return \"ok\"; }\n"
+                        + "}\n");
         write(validSrc.resolve("GoodNodes.java"),
                 "package testcase;\n" +
                         "import java.util.Map; import org.sjf4j.annotation.path.*;\n" +
@@ -1260,12 +1311,14 @@ public class PathProcessorTest {
         DiagnosticCollector<JavaFileObject> validDiagnostics = new DiagnosticCollector<>();
         StandardJavaFileManager validFiles = compiler.getStandardFileManager(validDiagnostics, null, StandardCharsets.UTF_8);
         validFiles.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(validOut.toFile()));
+        validFiles.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(validGenerated.toFile()));
         Boolean valid = compiler.getTask(null, validFiles, validDiagnostics, Arrays.asList(
-                "-classpath", System.getProperty("java.class.path"), "-processor", Sjf4jProcessor.class.getName()
+                "-classpath", System.getProperty("java.class.path"), "-processor", TestNavigatorProcessor.class.getName()
         ), null, validFiles.getJavaFileObjectsFromFiles(Arrays.asList(
                 validSrc.resolve("Support.java").toFile(), validSrc.resolve("GoodNodes.java").toFile()
         ))).call();
         assertTrue(valid, diagnosticsToString(validDiagnostics));
+        assertTrue(Files.exists(validGenerated.resolve("testcase/GoodNodes_Impl.java")));
     }
 
     @Test
@@ -1290,14 +1343,14 @@ public class PathProcessorTest {
         StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
-                "-classpath", System.getProperty("java.class.path"), "-processor", Sjf4jProcessor.class.getName()
+                "-classpath", System.getProperty("java.class.path"), "-processor", TestNavigatorProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadWrites.java").toFile()))).call();
 
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("String path key with Map key type java.lang.Integer"), messages);
-        assertTrue(messages.contains("List element type ? extends java.lang.Number"), messages);
-        assertTrue(messages.contains("Map value type ? extends java.lang.Number"), messages);
+        assertTrue(messages.contains("Cannot resolve writable index [0]"), messages);
+        assertTrue(messages.contains("Cannot resolve writable property 'name'"), messages);
         for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
             if (diagnostic.getMessage(null).contains("@PutByPath cannot")) {
                 assertTrue(diagnostic.getSource().getName().endsWith("BadWrites.java"));
@@ -1323,9 +1376,58 @@ public class PathProcessorTest {
         StandardJavaFileManager validFiles = compiler.getStandardFileManager(validDiagnostics, null, StandardCharsets.UTF_8);
         validFiles.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(validOut.toFile()));
         Boolean valid = compiler.getTask(null, validFiles, validDiagnostics, Arrays.asList(
-                "-classpath", System.getProperty("java.class.path"), "-processor", Sjf4jProcessor.class.getName()
+                "-classpath", System.getProperty("java.class.path"), "-processor", TestNavigatorProcessor.class.getName()
         ), null, validFiles.getJavaFileObjectsFromFiles(Arrays.asList(validSrc.resolve("ValidWrites.java").toFile()))).call();
         assertTrue(valid, diagnosticsToString(validDiagnostics));
+    }
+
+    @Test
+    public void compiledPathEscapesQuotedAndBackslashMapKeys() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-escaped-key-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(generated);
+
+        write(src.resolve("EscapedNodes.java"),
+                "package testcase;\n" +
+                        "import java.util.Map;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledNavigator public interface EscapedNodes {\n" +
+                        "  @GetByPath(\"$['a\\\\'b\\\\\\\\c']\") String get(Map<String,String> value);\n" +
+                        "  @PutByPath(\"$['a\\\\'b\\\\\\\\c']\") String put(Map<String,String> value, String next);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", TestNavigatorProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("EscapedNodes.java").toFile()))).call();
+        assertTrue(ok, diagnosticsToString(diagnostics));
+
+        String source = Files.readString(generated.resolve("testcase/EscapedNodes_Impl.java"));
+        assertTrue(source.contains("get(\"a'b\\\\c\")"), source);
+        assertTrue(!source.contains("String value ="), source);
+
+        URLClassLoader loader = new URLClassLoader(
+                new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> nodesClass = Class.forName("testcase.EscapedNodes_Impl", true, loader);
+        Object nodes = nodesClass.getConstructor().newInstance();
+        Map<String, String> values = new HashMap<>();
+        values.put("a'b\\c", "old");
+
+        assertEquals("old", nodesClass.getMethod("get", Map.class).invoke(nodes, values));
+        assertEquals("old", nodesClass.getMethod("put", Map.class, String.class)
+                .invoke(nodes, values, "new"));
+        assertEquals("new", values.get("a'b\\c"));
     }
 
     private static void write(Path path, String text) throws Exception {

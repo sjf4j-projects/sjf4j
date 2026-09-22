@@ -1,595 +1,2507 @@
 package org.sjf4j.processor.path;
 
+import org.sjf4j.NodeKind;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.GeneratedClass;
-import org.sjf4j.processor.GeneratorUtil;
-import org.sjf4j.processor.NameAllocator;
 import org.sjf4j.processor.ProcessorContext;
-import org.sjf4j.processor.SourceWriter;
+import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.NameAllocator;
+import org.sjf4j.processor.property.PropertyAccess;
+import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
 
+
 /**
  * Generates implementations for {@code @FindByPath} methods.
  *
- * <p>Supported multi-target paths are emitted as direct loops that append typed
- * values to the returned {@code List}.  Root, wildcard, slice, filter, and one
- * static union shape are recognized explicitly.  Descendant and filter-heavy
- * cases can fall back to runtime {@link JsonPath#find(Object)} only when the
- * annotation opts into that cost.</p>
+ * <p>Supported multi-target paths are emitted as direct Java loops. Filters
+ * keep their parsed expression as a generated static field and evaluate only
+ * the filter condition at runtime. Descendant paths fall back to JsonPath when
+ * explicitly enabled by the annotation.</p>
  */
 public final class FindGenerator {
 
-    private final ProcessorContext ctx;
+    private final ProcessorContext context;
+    private final TypeSystem types;
+
     private int filterSeq;
     private int fallbackSeq;
 
-    public FindGenerator(ProcessorContext ctx) {
-        this.ctx = ctx;
+
+    public FindGenerator(ProcessorContext context) {
+        this.context = context;
+        this.types = context.types;
     }
+
 
     /**
-     * Validates and emits a generated implementation for one {@code @FindByPath} method.
+     * Validates and generates one @FindByPath method.
      */
-    public void genFind(ExecutableElement method, GeneratedClass target, String expr, boolean allowFallback) {
-        // 1. Validate root parameter
-        if (method.getParameters().isEmpty()) {
-            _error(method, target, "@FindByPath method must have a root parameter");
-            return;
-        }
-        if (method.getParameters().size() != 1) {
-            _error(method, target, "@FindByPath does not support path parameters");
+    public void generate(
+            ExecutableElement method,
+            GeneratedClass generated,
+            String expression,
+            boolean allowFallback) {
+
+        List<? extends VariableElement> parameters =
+                method.getParameters();
+
+        if (parameters.isEmpty()) {
+            error(
+                    method,
+                    generated,
+                    "@FindByPath method must have a root parameter");
             return;
         }
 
-        // 2. Validate return type is List
-        TypeMirror returnType = method.getReturnType();
-        if (!GeneratorUtil.isSameErasure(ctx, returnType, ctx.listType)) {
-            _error(method, target, "@FindByPath return type must be List<T> (java.util.List only), but was " + returnType);
+        if (parameters.size() != 1) {
+            error(
+                    method,
+                    generated,
+                    "@FindByPath does not support path parameters");
             return;
         }
 
-        // 3. Parse path
+        TypeMirror returnType =
+                method.getReturnType();
+
+        /*
+         * Find is intentionally defined as List<T>, rather than arbitrary
+         * List implementations. Generated methods internally use ArrayList.
+         */
+        if (!types.isSameErasure(
+                returnType,
+                types.listType())) {
+
+            error(
+                    method,
+                    generated,
+                    "@FindByPath return type must be List<T>, but was " +
+                            returnType);
+            return;
+        }
+
         JsonPath path;
+
         try {
-            path = JsonPath.parse(expr);
+            path =
+                    JsonPath.parse(
+                            expression);
         } catch (JsonException e) {
-            _error(method, target, "Invalid JSON Path value: " + e.getMessage());
+            error(
+                    method,
+                    generated,
+                    "Invalid JSON Path value: " +
+                            e.getMessage());
             return;
         }
-        // Note: root-only "$" is allowed for find (unlike get/put which require length >= 2)
 
-        PathSegment[] segments = path.segments();
+        PathSegment[] segments =
+                path.segments();
+
         boolean hasFilter = false;
         boolean hasDescendant = false;
+
         for (int i = 1; i < segments.length; i++) {
-            if (segments[i] instanceof PathSegment.Filter) hasFilter = true;
-            else if (segments[i] instanceof PathSegment.Descendant) hasDescendant = true;
+            PathSegment segment =
+                    segments[i];
+
+            if (segment instanceof PathSegment.Param) {
+                error(
+                        method,
+                        generated,
+                        "@FindByPath does not support path parameters");
+                return;
+            }
+
+            if (segment instanceof PathSegment.Append) {
+                error(
+                        method,
+                        generated,
+                        "@FindByPath does not support append segments");
+                return;
+            }
+
+            if (segment instanceof PathSegment.Filter) {
+                hasFilter = true;
+            } else if (segment instanceof PathSegment.Descendant) {
+                hasDescendant = true;
+            }
         }
+
         if (hasFilter && !allowFallback) {
-            _error(method, target, "@FindByPath path '" + expr + "' requires allowFallback=true because filter expressions use runtime evaluation");
+            error(
+                    method,
+                    generated,
+                    "@FindByPath path '" +
+                            expression +
+                            "' requires allowFallback=true because filter expressions use runtime evaluation");
             return;
         }
+
         if (hasDescendant && !allowFallback) {
-            _error(method, target, "@FindByPath path '" + expr + "' requires allowFallback=true because descendant is not fully compiled");
+            error(
+                    method,
+                    generated,
+                    "@FindByPath path '" +
+                            expression +
+                            "' requires allowFallback=true because descendant is not fully compiled");
             return;
         }
 
-        // 4. Extract element type from List<T>
-        TypeMirror elementType = GeneratorUtil.listValueType(ctx, returnType);
+        TypeMirror elementType =
+                types.listWriteElementType(
+                        returnType);
 
-        VariableElement root = method.getParameters().get(0);
-        if (tryEmitRootFind(method, target, path, returnType, elementType, root)) {
-            return;
-        }
-        if (hasDescendant && tryEmitDescendantFind(method, target, path, returnType, elementType, root)) {
-            return;
-        }
-        if (tryEmitWildcardFind(method, target, path, returnType, elementType, root)) {
-            return;
-        }
-        if (tryEmitUnionFind(method, target, path, returnType, elementType, root)) {
+        if (elementType == null) {
+            error(
+                    method,
+                    generated,
+                    "@FindByPath return List element type is not writable: " +
+                            returnType);
             return;
         }
 
-        _error(method, target, "@FindByPath unsupported path '" + expr + "': only root, wildcard/slice/filter, or one name/index union with static name/index segments is supported");
+        VariableElement root =
+                parameters.get(0);
+
+        if (!validateMapPathKeys(
+                method,
+                generated,
+                root.asType(),
+                segments)) {
+
+            return;
+        }
+
+        if (tryRoot(
+                method,
+                generated,
+                path,
+                returnType,
+                elementType,
+                root)) {
+            return;
+        }
+
+        if (hasDescendant) {
+            emitFallback(
+                    method,
+                    generated,
+                    expression,
+                    elementType,
+                    root);
+            return;
+        }
+
+        if (tryWildcard(
+                method,
+                generated,
+                expression,
+                path,
+                returnType,
+                elementType,
+                root)) {
+            return;
+        }
+
+        if (tryUnion(
+                method,
+                generated,
+                path,
+                returnType,
+                elementType,
+                root)) {
+            return;
+        }
+
+        error(
+                method,
+                generated,
+                "@FindByPath unsupported path '" +
+                        expression +
+                        "': only root, wildcard/slice/filter, or one name/index union with static name/index segments is supported");
     }
 
-    private boolean tryEmitRootFind(ExecutableElement method, GeneratedClass target, JsonPath path,
-                                    TypeMirror returnType, TypeMirror elementType, VariableElement root) {
-        if (path.segments().length != 1) return false;
-        if (!canAddToResult(root.asType(), elementType)) return false;
-        target.addMethod(out -> {
-            out.line("");
+
+    // -------------------------------------------------------------------------
+    // Root
+    // -------------------------------------------------------------------------
+
+    private boolean tryRoot(
+            ExecutableElement method,
+            GeneratedClass generated,
+            JsonPath path,
+            TypeMirror returnType,
+            TypeMirror elementType,
+            VariableElement root) {
+
+        if (path.segments().length != 1) {
+            return false;
+        }
+
+        if (!canAddToResult(
+                root.asType(),
+                elementType)) {
+
+            error(
+                    method,
+                    generated,
+                    "@FindByPath result type mismatch: cannot add " +
+                            root.asType() +
+                            " to List<" +
+                            elementType +
+                            ">");
+            return true;
+        }
+
+        generated.addMethod(out -> {
+            NameAllocator names =
+                    names(root);
+
+            String result =
+                    names.newName("result");
+
             out.line("@Override");
-            out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
-                    "(" + GeneratorUtil.typeName(root.asType()) + " " + root.getSimpleName() + ") {");
-            out.indent();
-            if (!root.asType().getKind().isPrimitive()) out.line(root.getSimpleName() + ".getClass();");
-            out.line("return java.util.Collections.singletonList(" + root.getSimpleName() + ");");
-            out.dedent();
-            out.line("}");
+            out.beginBlock(
+                    methodHeader(
+                            method,
+                            root));
+
+            if (!root.asType()
+                    .getKind()
+                    .isPrimitive()) {
+
+                out.line(
+                        "java.util.Objects.requireNonNull(" +
+                                root.getSimpleName() +
+                                ", " +
+                                JavaWriter.stringLiteral(
+                                        root.getSimpleName()
+                                                .toString()) +
+                                ");");
+            }
+
+            out.line(
+                    "java.util.ArrayList<" +
+                            localType(elementType) +
+                            "> " +
+                            result +
+                            " = new java.util.ArrayList<>(1);");
+
+            out.line(
+                    result +
+                            ".add(" +
+                            root.getSimpleName() +
+                            ");");
+
+            out.line(
+                    "return " +
+                            result +
+                            ";");
+
+            out.endBlock();
         });
+
         return true;
     }
 
-    private boolean tryEmitWildcardFind(ExecutableElement method, GeneratedClass target, JsonPath path,
-                                        TypeMirror returnType, TypeMirror elementType, VariableElement root) {
-        PathSegment[] segments = path.segments();
+
+    // -------------------------------------------------------------------------
+    // Wildcard / slice / filter
+    // -------------------------------------------------------------------------
+
+    private boolean tryWildcard(
+            ExecutableElement method,
+            GeneratedClass generated,
+            String rawExpression,
+            JsonPath path,
+            TypeMirror returnType,
+            TypeMirror elementType,
+            VariableElement root) {
+
+        PathSegment[] segments =
+                path.segments();
+
         boolean hasMulti = false;
+
+        TypeMirror current =
+                root.asType();
+
         for (int i = 1; i < segments.length; i++) {
-            PathSegment segment = segments[i];
-            if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice || segment instanceof PathSegment.Filter) {
+            PathSegment segment =
+                    segments[i];
+
+            if (segment instanceof PathSegment.Wildcard ||
+                    segment instanceof PathSegment.Slice) {
+
                 hasMulti = true;
-            } else if (!(segment instanceof PathSegment.Name || segment instanceof PathSegment.Index)) {
-                return false;
+
+                if (segment instanceof PathSegment.Wildcard &&
+                        isMap(current)) {
+
+                    current =
+                            types.mapReadValueType(
+                                    current);
+                } else {
+                    if (!isSequence(current)) {
+                        return false;
+                    }
+
+                    current =
+                            sequenceElementType(
+                                    current);
+                }
+
+                if (current == null) {
+                    return false;
+                }
+
+                continue;
             }
-        }
-        if (!hasMulti) return false;
 
-        TypeMirror current = root.asType();
-        for (int i = 1; i < segments.length; i++) {
-            if (segments[i] instanceof PathSegment.Wildcard || segments[i] instanceof PathSegment.Slice) {
-                if (!isList(current) && current.getKind() != TypeKind.ARRAY) return false;
-                current = current.getKind() == TypeKind.ARRAY
-                        ? ((ArrayType) current).getComponentType()
-                        : GeneratorUtil.listValueType(ctx, current);
-            } else if (segments[i] instanceof PathSegment.Filter) {
-                if (!isList(current) && current.getKind() != TypeKind.ARRAY && !isMap(current)) return false;
-                current = current.getKind() == TypeKind.ARRAY
-                        ? ((ArrayType) current).getComponentType()
-                        : isList(current) ? GeneratorUtil.listValueType(ctx, current) : GeneratorUtil.mapValueType(ctx, current);
-            } else {
-                current = resolveDirectType(current, segments[i]);
-                if (current == null) return false;
+            if (segment instanceof PathSegment.Filter) {
+                hasMulti = true;
+
+                if (isSequence(current)) {
+                    current =
+                            sequenceElementType(
+                                    current);
+
+                } else if (isMap(current)) {
+                    current =
+                            types.mapReadValueType(
+                                    current);
+
+                } else {
+                    return false;
+                }
+
+                if (current == null) {
+                    return false;
+                }
+
+                continue;
             }
+
+            if (segment instanceof PathSegment.Name ||
+                    segment instanceof PathSegment.Index) {
+
+                current =
+                        resolveDirectType(
+                                current,
+                                segment);
+
+                if (current == null) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            return false;
         }
-        if (!canAddToResult(current, elementType)) return false;
 
-        String[] filterFields = addFilterFields(target, path.toString(), segments);
+        if (!hasMulti) {
+            return false;
+        }
 
-        target.addMethod(out -> {
-            NameAllocator names = names(root);
-            String outVar = names.local("out");
-            String rootVar = root.getSimpleName().toString();
-            out.line("");
+        if (!canAddToResult(
+                current,
+                elementType)) {
+
+            return false;
+        }
+
+        /*
+         * Ensure every static segment can actually be emitted before fields or
+         * methods are contributed.
+         */
+        if (!canEmitWildcardPath(
+                root.asType(),
+                segments,
+                1)) {
+
+            return false;
+        }
+
+        String[] filterFields =
+                addFilterFields(
+                        generated,
+                        rawExpression,
+                        segments);
+
+        generated.addMethod(out -> {
+            NameAllocator names =
+                    names(root);
+
+            String result =
+                    names.newName("result");
+
+            String rootName =
+                    root.getSimpleName()
+                            .toString();
+
             out.line("@Override");
-            out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
-                    "(" + GeneratorUtil.typeName(root.asType()) + " " + rootVar + ") {");
-            out.indent();
-            out.line("java.util.ArrayList<" + GeneratorUtil.localTypeName(ctx, elementType) + "> " + outVar + " = new java.util.ArrayList<>();");
-            if (!root.asType().getKind().isPrimitive()) out.line(rootVar + ".getClass();");
-            emitWildcardSegments(out, names, outVar, filterFields, segments, 1, rootVar, rootVar, root.asType(), true, true);
-            out.line("return " + outVar + ";");
-            out.dedent();
-            out.line("}");
+            out.beginBlock(
+                    methodHeader(
+                            method,
+                            root));
+
+            out.line(
+                    "java.util.ArrayList<" +
+                            localType(elementType) +
+                            "> " +
+                            result +
+                            " = new java.util.ArrayList<>();");
+
+            if (!root.asType()
+                    .getKind()
+                    .isPrimitive()) {
+
+                out.line(
+                        "java.util.Objects.requireNonNull(" +
+                                rootName +
+                                ", " +
+                                JavaWriter.stringLiteral(
+                                        rootName) +
+                                ");");
+            }
+
+            emitWildcardSegments(
+                    out,
+                    names,
+                    result,
+                    filterFields,
+                    segments,
+                    1,
+                    rootName,
+                    rootName,
+                    root.asType(),
+                    true,
+                    true);
+
+            out.line(
+                    "return " +
+                            result +
+                            ";");
+
+            out.endBlock();
         });
+
         return true;
     }
 
-    private boolean tryEmitDescendantFind(ExecutableElement method, GeneratedClass target, JsonPath path,
-                                          TypeMirror returnType, TypeMirror elementType, VariableElement root) {
-        PathSegment[] segments = path.segments();
-        for (int i = 1; i < segments.length; i++) {
-            if (segments[i] instanceof PathSegment.Descendant) {
-                String fallbackField = "_sjf4j_find_fallback_" + fallbackSeq++;
-                String fallbackExpr = path.toString();
-                target.addField(out -> out.line("private static final org.sjf4j.path.JsonPath " + fallbackField +
-                        " = org.sjf4j.path.JsonPath.parse(\"" + GeneratorUtil.escape(fallbackExpr) + "\");"));
 
-                target.addMethod(out -> {
-                    String rootVar = root.getSimpleName().toString();
-                    out.line("");
-                    out.line("@SuppressWarnings({\"unchecked\", \"rawtypes\"})");
-                    out.line("@Override");
-                    out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
-                            "(" + GeneratorUtil.typeName(root.asType()) + " " + rootVar + ") {");
-                    out.indent();
-                    if (!root.asType().getKind().isPrimitive()) out.line(rootVar + ".getClass();");
-                    out.line("return (" + GeneratorUtil.typeName(returnType) + ") (java.util.List) " + fallbackField + ".find(" + rootVar + ");");
-                    out.dedent();
-                    out.line("}");
-                });
-                return true;
+    /**
+     * Verifies that all non-multi segments can be emitted with compile-time
+     * access information.
+     */
+    private boolean canEmitWildcardPath(
+            TypeMirror start,
+            PathSegment[] segments,
+            int index) {
+
+        TypeMirror current =
+                start;
+
+        for (int i = index; i < segments.length; i++) {
+            PathSegment segment =
+                    segments[i];
+
+            if (segment instanceof PathSegment.Wildcard ||
+                    segment instanceof PathSegment.Slice) {
+
+                if (segment instanceof PathSegment.Wildcard &&
+                        isMap(current)) {
+
+                    current =
+                            types.mapReadValueType(
+                                    current);
+                } else {
+                    if (!isSequence(current)) {
+                        return false;
+                    }
+
+                    current =
+                            sequenceElementType(
+                                    current);
+                }
+
+                continue;
             }
+
+            if (segment instanceof PathSegment.Filter) {
+                if (isSequence(current)) {
+                    current =
+                            sequenceElementType(
+                                    current);
+
+                } else if (isMap(current)) {
+                    current =
+                            types.mapReadValueType(
+                                    current);
+
+                } else {
+                    return false;
+                }
+
+                continue;
+            }
+
+            Access access =
+                    access(
+                            current,
+                            "value",
+                            segment);
+
+            if (access == null) {
+                return false;
+            }
+
+            current =
+                    access.type;
         }
-        return false;
+
+        return true;
     }
 
-    private boolean tryEmitUnionFind(ExecutableElement method, GeneratedClass target, JsonPath path,
-                                     TypeMirror returnType, TypeMirror elementType, VariableElement root) {
-        PathSegment[] segments = path.segments();
+
+    private void emitWildcardSegments(
+            JavaWriter out,
+            NameAllocator names,
+            String result,
+            String[] filterFields,
+            PathSegment[] segments,
+            int index,
+            String rootExpression,
+            String expression,
+            TypeMirror expressionType,
+            boolean topLevel,
+            boolean expressionKnownNonNull) {
+
+        if (index == segments.length) {
+            out.line(
+                    result +
+                            ".add(" +
+                            expression +
+                            ");");
+            return;
+        }
+
+        PathSegment segment =
+                segments[index];
+
+        if (segment instanceof PathSegment.Wildcard ||
+                segment instanceof PathSegment.Slice ||
+                segment instanceof PathSegment.Filter) {
+
+            if (!expressionKnownNonNull &&
+                    !expressionType
+                            .getKind()
+                            .isPrimitive()) {
+
+                out.line(
+                        "if (" +
+                                expression +
+                                " == null) " +
+                                (topLevel
+                                        ? "return " + result + ";"
+                                        : "continue;"));
+            }
+
+            boolean mapValues =
+                    isMap(expressionType) &&
+                            (segment instanceof PathSegment.Filter ||
+                                    segment instanceof PathSegment.Wildcard);
+
+            TypeMirror itemType =
+                    mapValues
+                            ? types.mapReadValueType(
+                            expressionType)
+                            : sequenceElementType(
+                            expressionType);
+
+            String item =
+                    names.newName("item");
+
+            String itemTypeName =
+                    localType(itemType);
+
+            if (expressionType.getKind() ==
+                    TypeKind.ARRAY) {
+
+                String size =
+                        expression +
+                                ".length";
+
+                String loopIndex;
+
+                if (segment instanceof PathSegment.Slice) {
+                    loopIndex =
+                            emitSliceLoop(
+                                    out,
+                                    names,
+                                    (PathSegment.Slice) segment,
+                                    size);
+                } else {
+                    loopIndex =
+                            names.newName("i");
+
+                    out.line(
+                            "for (int " +
+                                    loopIndex +
+                                    " = 0; " +
+                                    loopIndex +
+                                    " < " +
+                                    size +
+                                    "; " +
+                                    loopIndex +
+                                    "++) {");
+
+                    out.indent();
+                }
+
+                out.line(
+                        itemTypeName +
+                                " " +
+                                item +
+                                " = " +
+                                expression +
+                                "[" +
+                                loopIndex +
+                                "];");
+
+            } else if (mapValues) {
+                out.line(
+                        "for (" +
+                                itemTypeName +
+                                " " +
+                                item +
+                                " : " +
+                                expression +
+                                ".values()) {");
+
+                out.indent();
+
+            } else if (isJsonArray(expressionType)) {
+                String size =
+                        names.newName("size");
+
+                out.line(
+                        "int " +
+                                size +
+                                " = " +
+                                expression +
+                                ".size();");
+
+                String loopIndex;
+
+                if (segment instanceof PathSegment.Slice) {
+                    loopIndex =
+                            emitSliceLoop(
+                                    out,
+                                    names,
+                                    (PathSegment.Slice) segment,
+                                    size);
+                } else {
+                    loopIndex =
+                            names.newName("i");
+
+                    out.line(
+                            "for (int " +
+                                    loopIndex +
+                                    " = 0; " +
+                                    loopIndex +
+                                    " < " +
+                                    size +
+                                    "; " +
+                                    loopIndex +
+                                    "++) {");
+
+                    out.indent();
+                }
+
+                out.line(
+                        itemTypeName +
+                                " " +
+                                item +
+                                " = (" +
+                                itemTypeName +
+                                ") " +
+                                expression +
+                                ".getNode(" +
+                                loopIndex +
+                                ");");
+
+            } else {
+                /*
+                 * List
+                 */
+                String size =
+                        names.newName("size");
+
+                out.line(
+                        "int " +
+                                size +
+                                " = " +
+                                expression +
+                                ".size();");
+
+                String loopIndex;
+
+                if (segment instanceof PathSegment.Slice) {
+                    loopIndex =
+                            emitSliceLoop(
+                                    out,
+                                    names,
+                                    (PathSegment.Slice) segment,
+                                    size);
+                } else {
+                    loopIndex =
+                            names.newName("i");
+
+                    out.line(
+                            "for (int " +
+                                    loopIndex +
+                                    " = 0; " +
+                                    loopIndex +
+                                    " < " +
+                                    size +
+                                    "; " +
+                                    loopIndex +
+                                    "++) {");
+
+                    out.indent();
+                }
+
+                out.line(
+                        itemTypeName +
+                                " " +
+                                item +
+                                " = " +
+                                expression +
+                                ".get(" +
+                                loopIndex +
+                                ");");
+            }
+
+            emitFilterCheck(
+                    out,
+                    filterFields,
+                    index,
+                    rootExpression,
+                    item);
+
+            emitWildcardSegments(
+                    out,
+                    names,
+                    result,
+                    filterFields,
+                    segments,
+                    index + 1,
+                    rootExpression,
+                    item,
+                    itemType,
+                    false,
+                    false);
+
+            out.dedent();
+            out.line("}");
+
+            return;
+        }
+
+        Access access =
+                access(
+                        expressionType,
+                        expression,
+                        segment);
+
+        if (access == null) {
+            throw new AssertionError(
+                    "Unresolved find access at emit time");
+        }
+
+        boolean last =
+                index ==
+                        segments.length - 1;
+
+        String miss =
+                topLevel
+                        ? "return " + result + ";"
+                        : "continue;";
+
+        if (!expressionKnownNonNull &&
+                access.needsReceiverNonNull) {
+
+            out.line(
+                    "if (" +
+                            expression +
+                            " == null) " +
+                            miss);
+        }
+
+        if (access.boundsCheck != null) {
+            out.line(
+                    "if (!(" +
+                            access.boundsCheck +
+                            ")) " +
+                            miss);
+        }
+
+        if (access.presentCheck != null) {
+            out.line(
+                    "if (!(" +
+                            access.presentCheck +
+                            ")) " +
+                            miss);
+        }
+
+        String value =
+                names.newName("value");
+
+        out.line(
+                localType(access.type) +
+                        " " +
+                        value +
+                        " = " +
+                        access.expression +
+                        ";");
+
+        if (!last &&
+                !access.type
+                        .getKind()
+                        .isPrimitive()) {
+
+            out.line(
+                    "if (" +
+                            value +
+                            " == null) " +
+                            miss);
+        }
+
+        emitWildcardSegments(
+                out,
+                names,
+                result,
+                filterFields,
+                segments,
+                index + 1,
+                rootExpression,
+                value,
+                access.type,
+                topLevel,
+                !last);
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Descendant fallback
+    // -------------------------------------------------------------------------
+
+    private void emitFallback(
+            ExecutableElement method,
+            GeneratedClass generated,
+            String expression,
+            TypeMirror elementType,
+            VariableElement root) {
+
+        String field =
+                "_sjf4j_find_path_" +
+                        fallbackSeq++;
+
+        generated.addField(out ->
+                out.line(
+                        "private static final org.sjf4j.path.JsonPath " +
+                                field +
+                                " = org.sjf4j.path.JsonPath.parse(" +
+                                JavaWriter.stringLiteral(
+                                        expression) +
+                                ");"));
+
+        generated.addMethod(out -> {
+            String rootName =
+                    root.getSimpleName()
+                            .toString();
+
+            NameAllocator names =
+                    names(root);
+
+            String result =
+                    names.newName("result");
+
+            String value =
+                    names.newName("value");
+
+            out.line("@Override");
+
+            out.beginBlock(
+                    methodHeader(
+                            method,
+                            root));
+
+            if (!root.asType()
+                    .getKind()
+                    .isPrimitive()) {
+
+                out.line(
+                        "java.util.Objects.requireNonNull(" +
+                                rootName +
+                                ", " +
+                                JavaWriter.stringLiteral(
+                                        rootName) +
+                                ");");
+            }
+
+            out.line(
+                    "java.util.ArrayList<" +
+                            localType(elementType) +
+                            "> " +
+                            result +
+                            " = new java.util.ArrayList<>();");
+
+            out.beginBlock(
+                    "for (Object " +
+                            value +
+                            " : " +
+                            field +
+                            ".find(" +
+                            rootName +
+                            "))");
+
+            out.line(
+                    result +
+                            ".add(" +
+                            objectExpression(
+                                    elementType,
+                                    value) +
+                            ");");
+
+            out.endBlock();
+            out.line("return " + result + ";");
+
+            out.endBlock();
+        });
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Union
+    // -------------------------------------------------------------------------
+
+    private boolean tryUnion(
+            ExecutableElement method,
+            GeneratedClass generated,
+            JsonPath path,
+            TypeMirror returnType,
+            TypeMirror elementType,
+            VariableElement root) {
+
+        PathSegment[] segments =
+                path.segments();
+
         int unionIndex = -1;
+
         for (int i = 1; i < segments.length; i++) {
-            PathSegment segment = segments[i];
+            PathSegment segment =
+                    segments[i];
+
             if (segment instanceof PathSegment.Union) {
-                if (unionIndex >= 0) return false;
+                if (unionIndex >= 0) {
+                    return false;
+                }
+
                 unionIndex = i;
-            } else if (!(segment instanceof PathSegment.Name || segment instanceof PathSegment.Index)) {
+
+            } else if (!(segment instanceof PathSegment.Name) &&
+                    !(segment instanceof PathSegment.Index)) {
+
                 return false;
             }
         }
-        if (unionIndex < 0) return false;
 
-        PathSegment.Union union = (PathSegment.Union) segments[unionIndex];
-        if (union.union.length == 0) return false;
+        if (unionIndex < 0) {
+            return false;
+        }
+
+        PathSegment.Union union =
+                (PathSegment.Union)
+                        segments[unionIndex];
+
+        if (union.union.length == 0) {
+            return false;
+        }
+
         boolean indexUnion = true;
         boolean nameUnion = true;
-        for (PathSegment token : union.union) {
-            if (!(token instanceof PathSegment.Index || token instanceof PathSegment.Slice)) indexUnion = false;
-            if (!(token instanceof PathSegment.Name)) nameUnion = false;
-        }
-        if (!indexUnion && !nameUnion) return false;
 
-        TypeMirror prefixType = root.asType();
+        for (PathSegment token :
+                union.union) {
+
+            if (!(token instanceof PathSegment.Index) &&
+                    !(token instanceof PathSegment.Slice)) {
+
+                indexUnion = false;
+            }
+
+            if (!(token instanceof PathSegment.Name)) {
+                nameUnion = false;
+            }
+        }
+
+        if (!indexUnion &&
+                !nameUnion) {
+
+            return false;
+        }
+
+        TypeMirror prefixType =
+                root.asType();
+
         for (int i = 1; i < unionIndex; i++) {
-            prefixType = resolveDirectType(prefixType, segments[i]);
-            if (prefixType == null) return false;
+            prefixType =
+                    resolveDirectType(
+                            prefixType,
+                            segments[i]);
+
+            if (prefixType == null) {
+                return false;
+            }
         }
 
         TypeMirror tokenValueType;
+
         if (indexUnion) {
-            if (!isList(prefixType) && prefixType.getKind() != TypeKind.ARRAY) return false;
-            tokenValueType = prefixType.getKind() == TypeKind.ARRAY
-                    ? ((ArrayType) prefixType).getComponentType()
-                    : GeneratorUtil.listValueType(ctx, prefixType);
+            if (!isSequence(prefixType)) {
+                return false;
+            }
+
+            tokenValueType =
+                    sequenceElementType(
+                            prefixType);
+
         } else {
-            if (!isStringKeyMap(prefixType)) return false;
-            tokenValueType = GeneratorUtil.mapValueType(ctx, prefixType);
+            if (!isStringKeyMap(
+                    prefixType)) {
+
+                return false;
+            }
+
+            tokenValueType =
+                    types.mapReadValueType(
+                            prefixType);
         }
 
-        TypeMirror current = tokenValueType;
-        for (int i = unionIndex + 1; i < segments.length; i++) {
-            current = resolveDirectType(current, segments[i]);
-            if (current == null) return false;
+        if (tokenValueType == null) {
+            return false;
         }
-        if (!canAddToResult(current, elementType)) return false;
-        if (!canEmitAccesses(root.asType(), segments, 1, unionIndex)) return false;
-        if (!canEmitAccesses(tokenValueType, segments, unionIndex + 1, segments.length)) return false;
 
-        int u = unionIndex;
-        TypeMirror containerType = prefixType;
-        TypeMirror valueType = tokenValueType;
-        boolean byIndex = indexUnion;
-        target.addMethod(out -> {
-            NameAllocator names = names(root);
-            String outVar = names.local("out");
-            String itemVar = names.local("item");
-            out.line("");
+        TypeMirror finalType =
+                tokenValueType;
+
+        for (int i = unionIndex + 1;
+             i < segments.length;
+             i++) {
+
+            finalType =
+                    resolveDirectType(
+                            finalType,
+                            segments[i]);
+
+            if (finalType == null) {
+                return false;
+            }
+        }
+
+        if (!canAddToResult(
+                finalType,
+                elementType)) {
+
+            return false;
+        }
+
+        if (!canEmitAccesses(
+                root.asType(),
+                segments,
+                1,
+                unionIndex)) {
+
+            return false;
+        }
+
+        if (!canEmitAccesses(
+                tokenValueType,
+                segments,
+                unionIndex + 1,
+                segments.length)) {
+
+            return false;
+        }
+
+        final int unionAt =
+                unionIndex;
+
+        final TypeMirror containerType =
+                prefixType;
+
+        final TypeMirror valueType =
+                tokenValueType;
+
+        final boolean byIndex =
+                indexUnion;
+
+        generated.addMethod(out -> {
+            NameAllocator names =
+                    names(root);
+
+            String result =
+                    names.newName("result");
+
+            String item =
+                    names.newName("item");
+
+            String rootName =
+                    root.getSimpleName()
+                            .toString();
+
             out.line("@Override");
-            out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
-                    "(" + GeneratorUtil.typeName(root.asType()) + " " + root.getSimpleName() + ") {");
-            out.indent();
-            out.line("java.util.ArrayList<" + GeneratorUtil.localTypeName(ctx, elementType) + "> " + outVar + " = new java.util.ArrayList<>();");
-            if (!root.asType().getKind().isPrimitive()) out.line(root.getSimpleName() + ".getClass();");
+            out.beginBlock(
+                    methodHeader(
+                            method,
+                            root));
 
-            String expr = root.getSimpleName().toString();
-            TypeMirror exprType = root.asType();
-            for (int i = 1; i < u; i++) {
-                Access access = access(exprType, expr, segments[i]);
-                if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) return " + outVar + ";");
-                if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) return " + outVar + ";");
-                String name = names.local("v");
-                out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
-                out.line("if (" + name + " == null) return " + outVar + ";");
-                expr = name;
-                exprType = access.type;
+            out.line(
+                    "java.util.ArrayList<" +
+                            localType(elementType) +
+                            "> " +
+                            result +
+                            " = new java.util.ArrayList<>();");
+
+            if (!root.asType()
+                    .getKind()
+                    .isPrimitive()) {
+
+                out.line(
+                        "java.util.Objects.requireNonNull(" +
+                                rootName +
+                                ", " +
+                                JavaWriter.stringLiteral(
+                                        rootName) +
+                                ");");
             }
+
+            String expression =
+                    rootName;
+
+            TypeMirror expressionType =
+                    root.asType();
+
+            /*
+             * Static prefix before the union.
+             */
+            for (int i = 1;
+                 i < unionAt;
+                 i++) {
+
+                Access access =
+                        access(
+                                expressionType,
+                                expression,
+                                segments[i]);
+
+                if (access.boundsCheck != null) {
+                    out.line(
+                            "if (!(" +
+                                    access.boundsCheck +
+                                    ")) return " +
+                                    result +
+                                    ";");
+                }
+
+                if (access.presentCheck != null) {
+                    out.line(
+                            "if (!(" +
+                                    access.presentCheck +
+                                    ")) return " +
+                                    result +
+                                    ";");
+                }
+
+                String value =
+                        names.newName("value");
+
+                out.line(
+                        localType(access.type) +
+                                " " +
+                                value +
+                                " = " +
+                                access.expression +
+                                ";");
+
+                if (!access.type
+                        .getKind()
+                        .isPrimitive()) {
+
+                    out.line(
+                            "if (" +
+                                    value +
+                                    " == null) return " +
+                                    result +
+                                    ";");
+                }
+
+                expression =
+                        value;
+
+                expressionType =
+                        access.type;
+            }
+
             if (byIndex) {
-                String itemTypeName = GeneratorUtil.localTypeName(ctx, valueType);
-                String limit = containerType.getKind() == TypeKind.ARRAY ? expr + ".length" : names.local("n");
-                if (containerType.getKind() != TypeKind.ARRAY) out.line("int " + limit + " = " + expr + ".size();");
-                for (PathSegment token : union.union) {
-                    if (token instanceof PathSegment.Index) {
-                        int index = ((PathSegment.Index) token).index;
-                        String normalized = names.local("index");
-                        out.line("int " + normalized + " = " + index + ";");
-                        out.line("if (" + normalized + " < 0) " + normalized + " += " + limit + ";");
-                        out.line("if (" + normalized + " >= 0 && " + normalized + " < " + limit + ") {");
-                        out.indent();
-                        out.line("do {");
-                        out.indent();
-                        if (containerType.getKind() == TypeKind.ARRAY) out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + normalized + "];");
-                        else out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + normalized + ");");
-                        emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "break", false);
-                        out.dedent();
-                        out.line("} while (false);");
-                        out.dedent();
-                        out.line("}");
-                    } else {
-                        String index = emitSliceLoop(out, names, (PathSegment.Slice) token, limit);
-                        out.indent();
-                        if (containerType.getKind() == TypeKind.ARRAY) out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + index + "];");
-                        else out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + index + ");");
-                        emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "continue", false);
-                        out.dedent();
-                        out.line("}");
-                    }
-                }
+                emitIndexUnion(
+                        out,
+                        names,
+                        result,
+                        item,
+                        union,
+                        segments,
+                        unionAt,
+                        expression,
+                        containerType,
+                        valueType);
+
             } else {
-                String itemTypeName = GeneratorUtil.localTypeName(ctx, valueType);
-                for (PathSegment token : union.union) {
-                    String key = GeneratorUtil.escape(((PathSegment.Name) token).name);
-                    out.line("{");
-                    out.indent();
-                    out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(\"" + key + "\");");
-                    out.line("if (" + itemVar + " != null || " + expr + ".containsKey(\"" + key + "\")) {");
-                    out.indent();
-                    out.line("do {");
-                    out.indent();
-                    emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "break", false);
-                    out.dedent();
-                    out.line("} while (false);");
-                    out.dedent();
-                    out.line("}");
-                    out.dedent();
-                    out.line("}");
-                }
+                emitNameUnion(
+                        out,
+                        names,
+                        result,
+                        item,
+                        union,
+                        segments,
+                        unionAt,
+                        expression,
+                        valueType);
             }
-            out.line("return " + outVar + ";");
-            out.dedent();
-            out.line("}");
+
+            out.line(
+                    "return " +
+                            result +
+                            ";");
+
+            out.endBlock();
         });
+
         return true;
     }
 
-    private void emitWildcardSegments(SourceWriter out, NameAllocator names, String outVar,
-                                      String[] filterFields, PathSegment[] segments, int index,
-                                      String rootExpr, String expr,
-                                      TypeMirror exprType, boolean topLevel, boolean exprKnownNonNull) {
-        if (index == segments.length) {
-            out.line(outVar + ".add(" + expr + ");");
-            return;
+
+    private void emitIndexUnion(
+            JavaWriter out,
+            NameAllocator names,
+            String result,
+            String item,
+            PathSegment.Union union,
+            PathSegment[] segments,
+            int unionIndex,
+            String expression,
+            TypeMirror containerType,
+            TypeMirror valueType) {
+
+        String itemType =
+                localType(
+                        valueType);
+
+        String size;
+
+        if (containerType.getKind() ==
+                TypeKind.ARRAY) {
+
+            size =
+                    expression +
+                            ".length";
+
+        } else {
+            size =
+                    names.newName("size");
+
+            out.line(
+                    "int " +
+                            size +
+                            " = " +
+                            expression +
+                            ".size();");
         }
 
-        PathSegment segment = segments[index];
-        if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice || segment instanceof PathSegment.Filter) {
-            if (!exprKnownNonNull && !exprType.getKind().isPrimitive()) {
-                out.line("if (" + expr + " == null) " + (topLevel ? "return " + outVar : "continue") + ";");
-            }
-            boolean filterMap = segment instanceof PathSegment.Filter && isMap(exprType);
-            TypeMirror itemType = exprType.getKind() == TypeKind.ARRAY
-                    ? ((ArrayType) exprType).getComponentType()
-                    : filterMap ? GeneratorUtil.mapValueType(ctx, exprType) : GeneratorUtil.listValueType(ctx, exprType);
-            String itemVar = names.local("item");
-            String itemTypeName = GeneratorUtil.localTypeName(ctx, itemType);
-            if (exprType.getKind() == TypeKind.ARRAY) {
-                String sizeExpr = expr + ".length";
-                String indexVar;
-                if (segment instanceof PathSegment.Slice) {
-                    indexVar = emitSliceLoop(out, names, (PathSegment.Slice) segment, sizeExpr);
-                } else {
-                    indexVar = names.local("i");
-                    out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + sizeExpr + "; " + indexVar + "++) {");
-                }
+        for (PathSegment token :
+                union.union) {
+
+            if (token instanceof PathSegment.Index) {
+                int rawIndex =
+                        ((PathSegment.Index) token)
+                                .index;
+
+                String index =
+                        names.newName("index");
+
+                out.line(
+                        "int " +
+                                index +
+                                " = " +
+                                rawIndex +
+                                ";");
+
+                out.line(
+                        "if (" +
+                                index +
+                                " < 0) " +
+                                index +
+                                " += " +
+                                size +
+                                ";");
+
+                out.beginBlock(
+                        "if (" +
+                                index +
+                                " >= 0 && " +
+                                index +
+                                " < " +
+                                size +
+                                ")");
+
+                out.line("do {");
                 out.indent();
-                out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + indexVar + "];");
-            } else if (filterMap) {
-                out.line("for (" + itemTypeName + " " + itemVar + " : " + expr + ".values()) {");
-                out.indent();
+
+                out.line(
+                        itemType +
+                                " " +
+                                item +
+                                " = " +
+                                sequenceReadExpression(
+                                        containerType,
+                                        expression,
+                                        index,
+                                        valueType) +
+                                ";");
+
+                emitStaticSuffix(
+                        out,
+                        names,
+                        result,
+                        segments,
+                        unionIndex + 1,
+                        item,
+                        valueType,
+                        "break",
+                        false);
+
+                out.dedent();
+                out.line("} while (false);");
+
+                out.endBlock();
+
             } else {
-                String sizeVar = names.local("n");
-                out.line("int " + sizeVar + " = " + expr + ".size();");
-                String indexVar;
-                if (segment instanceof PathSegment.Slice) {
-                    indexVar = emitSliceLoop(out, names, (PathSegment.Slice) segment, sizeVar);
-                } else {
-                    indexVar = names.local("i");
-                    out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + sizeVar + "; " + indexVar + "++) {");
-                }
-                out.indent();
-                out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + indexVar + ");");
+                String index =
+                        emitSliceLoop(
+                                out,
+                                names,
+                                (PathSegment.Slice) token,
+                                size);
+
+                out.line(
+                        itemType +
+                                " " +
+                                item +
+                                " = " +
+                                sequenceReadExpression(
+                                        containerType,
+                                        expression,
+                                        index,
+                                        valueType) +
+                                ";");
+
+                emitStaticSuffix(
+                        out,
+                        names,
+                        result,
+                        segments,
+                        unionIndex + 1,
+                        item,
+                        valueType,
+                        "continue",
+                        false);
+
+                out.dedent();
+                out.line("}");
             }
-            emitFilterCheck(out, filterFields, index, rootExpr, itemVar);
-            emitWildcardSegments(out, names, outVar, filterFields, segments, index + 1, rootExpr, itemVar, itemType, false, false);
+        }
+    }
+
+
+    private void emitNameUnion(
+            JavaWriter out,
+            NameAllocator names,
+            String result,
+            String item,
+            PathSegment.Union union,
+            PathSegment[] segments,
+            int unionIndex,
+            String expression,
+            TypeMirror valueType) {
+
+        String itemType =
+                localType(
+                        valueType);
+
+        for (PathSegment token :
+                union.union) {
+
+            String key =
+                    ((PathSegment.Name) token)
+                            .name;
+
+            String keyLiteral =
+                    JavaWriter.stringLiteral(
+                            key);
+
+            out.line("{");
+            out.indent();
+
+            out.line(
+                    itemType +
+                            " " +
+                            item +
+                            " = " +
+                            expression +
+                            ".get(" +
+                            keyLiteral +
+                            ");");
+
+            out.beginBlock(
+                    "if (" +
+                            item +
+                            " != null || " +
+                            expression +
+                            ".containsKey(" +
+                            keyLiteral +
+                            "))");
+
+            out.line("do {");
+            out.indent();
+
+            emitStaticSuffix(
+                    out,
+                    names,
+                    result,
+                    segments,
+                    unionIndex + 1,
+                    item,
+                    valueType,
+                    "break",
+                    false);
+
+            out.dedent();
+            out.line("} while (false);");
+
+            out.endBlock();
+
             out.dedent();
             out.line("}");
-            return;
         }
-
-        Access access = access(exprType, expr, segment);
-        boolean last = index == segments.length - 1;
-        String miss = topLevel ? "return " + outVar : "continue";
-        if (!exprKnownNonNull && access.needsReceiverNonNull) out.line("if (" + expr + " == null) " + miss + ";");
-        if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) " + miss + ";");
-        if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) " + miss + ";");
-        String name = names.local("v");
-        out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
-        if (!last) out.line("if (" + name + " == null) " + miss + ";");
-        emitWildcardSegments(out, names, outVar, filterFields, segments, index + 1, rootExpr, name, access.type, topLevel, !last);
     }
 
-    private String[] addFilterFields(GeneratedClass target, String rawExpr, PathSegment[] segments) {
-        String[] filterFields = new String[segments.length];
-        for (int i = 1; i < segments.length; i++) {
-            if (segments[i] instanceof PathSegment.Filter) {
-                String field = "_sjf4j_find_filter_" + filterSeq++;
-                int filterIndex = i;
-                filterFields[i] = field;
-                target.addField(out -> out.line("private static final org.sjf4j.path.FilterExpr " + field +
-                        " = ((org.sjf4j.path.PathSegment.Filter) org.sjf4j.path.JsonPath.parse(\"" +
-                        GeneratorUtil.escape(rawExpr) + "\").segments()[" + filterIndex + "]).filterExpr;"));
+
+    // -------------------------------------------------------------------------
+    // Filter fields
+    // -------------------------------------------------------------------------
+
+    private String[] addFilterFields(
+            GeneratedClass generated,
+            String expression,
+            PathSegment[] segments) {
+
+        String[] fields =
+                new String[segments.length];
+
+        for (int i = 1;
+             i < segments.length;
+             i++) {
+
+            if (!(segments[i] instanceof
+                    PathSegment.Filter)) {
+
+                continue;
             }
+
+            String field =
+                    "_sjf4j_find_filter_" +
+                            filterSeq++;
+
+            int filterIndex =
+                    i;
+
+            fields[i] =
+                    field;
+
+            generated.addField(out ->
+                    out.line(
+                            "private static final org.sjf4j.path.FilterExpr " +
+                                    field +
+                                    " = ((org.sjf4j.path.PathSegment.Filter) " +
+                                    "org.sjf4j.path.JsonPath.parse(" +
+                                    JavaWriter.stringLiteral(
+                                            expression) +
+                                    ").segments()[" +
+                                    filterIndex +
+                                    "]).filterExpr;"));
         }
-        return filterFields;
+
+        return fields;
     }
 
-    private void emitFilterCheck(SourceWriter out, String[] filterFields, int index, String rootExpr, String itemVar) {
-        String field = filterFields[index];
-        if (field != null) out.line("if (!" + field + ".evalTruth(" + rootExpr + ", " + itemVar + ")) continue;");
+
+    private void emitFilterCheck(
+            JavaWriter out,
+            String[] filterFields,
+            int index,
+            String root,
+            String item) {
+
+        String field =
+                filterFields[index];
+
+        if (field != null) {
+            out.line(
+                    "if (!" +
+                            field +
+                            ".evalTruth(" +
+                            root +
+                            ", " +
+                            item +
+                            ")) continue;");
+        }
     }
 
-    private String emitSliceLoop(SourceWriter out, NameAllocator names, PathSegment.Slice slice, String sizeExpr) {
-        long step = slice.step == null ? 1L : slice.step;
-        String start = names.local("sliceStart");
-        String end = names.local("sliceEnd");
-        String position = names.local("slicePos");
-        String index = names.local("i");
+
+    // -------------------------------------------------------------------------
+    // Slice
+    // -------------------------------------------------------------------------
+
+    /**
+     * Emits a slice loop and leaves its body indented.
+     */
+    private String emitSliceLoop(
+            JavaWriter out,
+            NameAllocator names,
+            PathSegment.Slice slice,
+            String sizeExpression) {
+
+        long step =
+                slice.step == null
+                        ? 1L
+                        : slice.step;
+
+        String start =
+                names.newName(
+                        "sliceStart");
+
+        String end =
+                names.newName(
+                        "sliceEnd");
+
+        String position =
+                names.newName(
+                        "slicePosition");
+
+        String index =
+                names.newName(
+                        "i");
+
         if (step < 0) {
-            out.line("long " + start + " = " + (slice.start == null ? "(" + sizeExpr + " - 1L)" : slice.start + "L") + ";");
-            out.line("long " + end + " = " + (slice.end == null ? "-1L" : slice.end + "L") + ";");
-            if (slice.start != null && slice.start < 0) out.line(start + " += " + sizeExpr + ";");
-            if (slice.end != null && slice.end < 0) out.line(end + " += " + sizeExpr + ";");
-            out.line(start + " = Math.min(Math.max(" + start + ", -1L), " + sizeExpr + " - 1L);");
-            out.line(end + " = Math.min(Math.max(" + end + ", -1L), " + sizeExpr + " - 1L);");
-            out.line("for (long " + position + " = " + start + "; " + position + " > " + end + "; " + position + " += " + step + "L) {");
+            out.line(
+                    "long " +
+                            start +
+                            " = " +
+                            (slice.start == null
+                                    ? "(" + sizeExpression + " - 1L)"
+                                    : slice.start + "L") +
+                            ";");
+
+            out.line(
+                    "long " +
+                            end +
+                            " = " +
+                            (slice.end == null
+                                    ? "-1L"
+                                    : slice.end + "L") +
+                            ";");
+
+            if (slice.start != null &&
+                    slice.start < 0) {
+
+                out.line(
+                        start +
+                                " += " +
+                                sizeExpression +
+                                ";");
+            }
+
+            if (slice.end != null &&
+                    slice.end < 0) {
+
+                out.line(
+                        end +
+                                " += " +
+                                sizeExpression +
+                                ";");
+            }
+
+            out.line(
+                    start +
+                            " = Math.min(Math.max(" +
+                            start +
+                            ", -1L), " +
+                            sizeExpression +
+                            " - 1L);");
+
+            out.line(
+                    end +
+                            " = Math.min(Math.max(" +
+                            end +
+                            ", -1L), " +
+                            sizeExpression +
+                            " - 1L);");
+
+            out.line(
+                    "for (long " +
+                            position +
+                            " = " +
+                            start +
+                            "; " +
+                            position +
+                            " > " +
+                            end +
+                            "; " +
+                            position +
+                            " += " +
+                            step +
+                            "L) {");
+
         } else {
-            out.line("long " + start + " = " + (slice.start == null ? "0L" : slice.start + "L") + ";");
-            out.line("long " + end + " = " + (slice.end == null ? sizeExpr : slice.end + "L") + ";");
-            if (slice.start != null && slice.start < 0) out.line(start + " += " + sizeExpr + ";");
-            if (slice.end != null && slice.end < 0) out.line(end + " += " + sizeExpr + ";");
-            out.line(start + " = Math.min(Math.max(" + start + ", 0L), " + sizeExpr + ");");
-            out.line(end + " = Math.min(Math.max(" + end + ", 0L), " + sizeExpr + ");");
-            out.line("for (long " + position + " = " + start + "; " + position + " < " + end + "; " + position + " += " + step + "L) {");
+            out.line(
+                    "long " +
+                            start +
+                            " = " +
+                            (slice.start == null
+                                    ? "0L"
+                                    : slice.start + "L") +
+                            ";");
+
+            out.line(
+                    "long " +
+                            end +
+                            " = " +
+                            (slice.end == null
+                                    ? sizeExpression
+                                    : slice.end + "L") +
+                            ";");
+
+            if (slice.start != null &&
+                    slice.start < 0) {
+
+                out.line(
+                        start +
+                                " += " +
+                                sizeExpression +
+                                ";");
+            }
+
+            if (slice.end != null &&
+                    slice.end < 0) {
+
+                out.line(
+                        end +
+                                " += " +
+                                sizeExpression +
+                                ";");
+            }
+
+            out.line(
+                    start +
+                            " = Math.min(Math.max(" +
+                            start +
+                            ", 0L), " +
+                            sizeExpression +
+                            ");");
+
+            out.line(
+                    end +
+                            " = Math.min(Math.max(" +
+                            end +
+                            ", 0L), " +
+                            sizeExpression +
+                            ");");
+
+            out.line(
+                    "for (long " +
+                            position +
+                            " = " +
+                            start +
+                            "; " +
+                            position +
+                            " < " +
+                            end +
+                            "; " +
+                            position +
+                            " += " +
+                            step +
+                            "L) {");
         }
+
         out.indent();
-        out.line("int " + index + " = (int) " + position + ";");
-        out.dedent();
+
+        out.line(
+                "int " +
+                        index +
+                        " = (int) " +
+                        position +
+                        ";");
+
         return index;
     }
 
-    private void emitStaticSuffix(SourceWriter out, NameAllocator names, String outVar,
-                                  PathSegment[] segments, int index, String expr, TypeMirror exprType,
-                                  String miss, boolean exprKnownNonNull) {
-        for (int i = index; i < segments.length; i++) {
-            Access access = access(exprType, expr, segments[i]);
-            boolean last = i == segments.length - 1;
-            if (!exprKnownNonNull && access.needsReceiverNonNull) out.line("if (" + expr + " == null) " + miss + ";");
-            if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) " + miss + ";");
-            if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) " + miss + ";");
-            String name = names.local("v");
-            out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
-            if (!last) out.line("if (" + name + " == null) " + miss + ";");
-            expr = name;
-            exprType = access.type;
-            exprKnownNonNull = !last;
+
+    // -------------------------------------------------------------------------
+    // Static suffix
+    // -------------------------------------------------------------------------
+
+    private void emitStaticSuffix(
+            JavaWriter out,
+            NameAllocator names,
+            String result,
+            PathSegment[] segments,
+            int index,
+            String expression,
+            TypeMirror expressionType,
+            String miss,
+            boolean expressionKnownNonNull) {
+
+        for (int i = index;
+             i < segments.length;
+             i++) {
+
+            Access access =
+                    access(
+                            expressionType,
+                            expression,
+                            segments[i]);
+
+            if (access == null) {
+                throw new AssertionError(
+                        "Unresolved static find suffix");
+            }
+
+            boolean last =
+                    i ==
+                            segments.length - 1;
+
+            if (!expressionKnownNonNull &&
+                    access.needsReceiverNonNull) {
+
+                out.line(
+                        "if (" +
+                                expression +
+                                " == null) " +
+                                miss +
+                                ";");
+            }
+
+            if (access.boundsCheck != null) {
+                out.line(
+                        "if (!(" +
+                                access.boundsCheck +
+                                ")) " +
+                                miss +
+                                ";");
+            }
+
+            if (access.presentCheck != null) {
+                out.line(
+                        "if (!(" +
+                                access.presentCheck +
+                                ")) " +
+                                miss +
+                                ";");
+            }
+
+            String value =
+                    names.newName("value");
+
+            out.line(
+                    localType(access.type) +
+                            " " +
+                            value +
+                            " = " +
+                            access.expression +
+                            ";");
+
+            if (!last &&
+                    !access.type
+                            .getKind()
+                            .isPrimitive()) {
+
+                out.line(
+                        "if (" +
+                                value +
+                                " == null) " +
+                                miss +
+                                ";");
+            }
+
+            expression =
+                    value;
+
+            expressionType =
+                    access.type;
+
+            expressionKnownNonNull =
+                    !last;
         }
-        out.line(outVar + ".add(" + expr + ");");
+
+        out.line(
+                result +
+                        ".add(" +
+                        expression +
+                        ");");
     }
 
-    private TypeMirror resolveDirectType(TypeMirror current, PathSegment segment) {
-        if (segment instanceof PathSegment.Name) {
-            TypeElement type = GeneratorUtil.asTypeElement(current);
-            if (type == null) return null;
-            return GeneratorUtil.resolveNameType(ctx, current, ((PathSegment.Name) segment).name);
-        }
-        if (segment instanceof PathSegment.Index) {
-            return GeneratorUtil.resolveIndexType(ctx, current, ((PathSegment.Index) segment).index);
-        }
-        return null;
+
+    // -------------------------------------------------------------------------
+    // Static access resolution
+    // -------------------------------------------------------------------------
+
+    private TypeMirror resolveDirectType(
+            TypeMirror owner,
+            PathSegment segment) {
+
+        NodeAccess access =
+                resolveAccess(
+                        owner,
+                        segment);
+
+        return access == null ||
+                !access.readable()
+                ? null
+                : access.readType();
     }
 
-    private Access access(TypeMirror owner, String receiver, PathSegment segment) {
-        if (segment instanceof PathSegment.Name) {
-            if (GeneratorUtil.isAssignableErasure(ctx, owner, ctx.mapType)) {
-                TypeMirror type = GeneratorUtil.mapValueType(ctx, owner);
-                String key = GeneratorUtil.escape(((PathSegment.Name) segment).name);
-                return new Access(type, receiver + ".get(\"" + key + "\")", true, null,
-                        receiver + ".containsKey(\"" + key + "\")");
-            }
-            TypeElement type = GeneratorUtil.asTypeElement(owner);
-            if (type == null) return null;
-            String name = ((PathSegment.Name) segment).name;
-            ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, owner, name);
-            if (getter != null) {
-                ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, getter);
-                return new Access(mt.getReturnType(), receiver + "." + getter.getSimpleName() + "()", true, null, null);
-            }
-            VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
-            if (field != null) {
-                return new Access(ctx.types.asMemberOf((DeclaredType) owner, field), receiver + "." + field.getSimpleName(), true, null, null);
-            }
+
+    private Access access(
+            TypeMirror owner,
+            String receiver,
+            PathSegment segment) {
+
+        NodeAccess resolved =
+                resolveAccess(
+                        owner,
+                        segment);
+
+        if (resolved == null ||
+                !resolved.readable()) {
+
             return null;
         }
-        if (segment instanceof PathSegment.Index) {
-            int index = ((PathSegment.Index) segment).index;
-            if (index < 0) return null;
-            if (owner.getKind() == TypeKind.ARRAY) {
-                TypeMirror type = ((ArrayType) owner).getComponentType();
-                return new Access(type, receiver + "[" + index + "]", true, index + " < " + receiver + ".length", null);
-            }
-            if (isList(owner)) {
-                TypeMirror type = GeneratorUtil.listValueType(ctx, owner);
-                return new Access(type, receiver + ".get(" + index + ")", true, index + " < " + receiver + ".size()", null);
+
+        TypeMirror valueType =
+                resolved.readType();
+
+        if (segment instanceof PathSegment.Name) {
+            String name =
+                    ((PathSegment.Name) segment)
+                            .name;
+
+            String key =
+                    JavaWriter.stringLiteral(
+                            name);
+
+            switch (resolved.kind()) {
+                case PROPERTY: {
+                    PropertyAccess read =
+                            resolved.property()
+                                    .read();
+
+                    String expression =
+                            read.isMethod()
+                                    ? receiver +
+                                    "." +
+                                    read.memberName() +
+                                    "()"
+                                    : receiver +
+                                    "." +
+                                    read.memberName();
+
+                    return new Access(
+                            valueType,
+                            expression,
+                            true,
+                            null,
+                            null);
+                }
+
+                case MAP:
+                    return new Access(
+                            valueType,
+                            receiver +
+                                    ".get(" +
+                                    key +
+                                    ")",
+                            true,
+                            null,
+                            receiver +
+                                    ".containsKey(" +
+                                    key +
+                                    ")");
+
+                case JSON_OBJECT:
+                    return new Access(
+                            valueType,
+                            objectExpression(
+                                    valueType,
+                                    receiver +
+                                            ".getNode(" +
+                                            key +
+                                            ")"),
+                            true,
+                            null,
+                            receiver +
+                                    ".containsKey(" +
+                                    key +
+                                    ")");
+
+                default:
+                    /*
+                     * DYNAMIC / EXTERNAL accesses depend on runtime node shape
+                     * and are intentionally not treated as directly compiled
+                     * find accesses.
+                     */
+                    return null;
             }
         }
+
+        if (segment instanceof PathSegment.Index) {
+            int index =
+                    ((PathSegment.Index) segment)
+                            .index;
+
+            switch (resolved.kind()) {
+                case ARRAY: {
+                    String size =
+                            receiver +
+                                    ".length";
+
+                    String normalized =
+                            staticIndex(
+                                    index,
+                                    size);
+
+                    return new Access(
+                            valueType,
+                            receiver +
+                                    "[" +
+                                    normalized +
+                                    "]",
+                            true,
+                            normalized +
+                                    " >= 0 && " +
+                                    normalized +
+                                    " < " +
+                                    size,
+                            null);
+                }
+
+                case LIST: {
+                    String size =
+                            receiver +
+                                    ".size()";
+
+                    String normalized =
+                            staticIndex(
+                                    index,
+                                    size);
+
+                    return new Access(
+                            valueType,
+                            receiver +
+                                    ".get(" +
+                                    normalized +
+                                    ")",
+                            true,
+                            normalized +
+                                    " >= 0 && " +
+                                    normalized +
+                                    " < " +
+                                    size,
+                            null);
+                }
+
+                case JSON_ARRAY: {
+                    String size =
+                            receiver +
+                                    ".size()";
+
+                    String normalized =
+                            staticIndex(
+                                    index,
+                                    size);
+
+                    return new Access(
+                            valueType,
+                            objectExpression(
+                                    valueType,
+                                    receiver +
+                                            ".getNode(" +
+                                            normalized +
+                                            ")"),
+                            true,
+                            normalized +
+                                    " >= 0 && " +
+                                    normalized +
+                                    " < " +
+                                    size,
+                            null);
+                }
+
+                default:
+                    return null;
+            }
+        }
+
         return null;
     }
 
-    private boolean canEmitAccesses(TypeMirror start, PathSegment[] segments, int from, int to) {
-        TypeMirror current = start;
-        for (int i = from; i < to; i++) {
-            Access access = access(current, "x", segments[i]);
-            if (access == null) return false;
-            current = access.type;
+
+    private NodeAccess resolveAccess(
+            TypeMirror owner,
+            PathSegment segment) {
+
+        if (segment instanceof PathSegment.Name) {
+            return context.access.resolveName(
+                    owner,
+                    ((PathSegment.Name) segment)
+                            .name);
         }
+
+        if (segment instanceof PathSegment.Index) {
+            return context.access.resolveIndex(
+                    owner);
+        }
+
+        return null;
+    }
+
+
+    private boolean canEmitAccesses(
+            TypeMirror start,
+            PathSegment[] segments,
+            int from,
+            int to) {
+
+        TypeMirror current =
+                start;
+
+        for (int i = from;
+             i < to;
+             i++) {
+
+            Access access =
+                    access(
+                            current,
+                            "value",
+                            segments[i]);
+
+            if (access == null) {
+                return false;
+            }
+
+            current =
+                    access.type;
+        }
+
         return true;
     }
 
-    private boolean isStringKeyMap(TypeMirror type) {
-        if (!GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType)) return false;
-        if (type.getKind() != TypeKind.DECLARED) return false;
-        List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
-        if (args.size() != 2) return false;
-        TypeMirror stringType = ctx.elements.getTypeElement(String.class.getName()).asType();
-        return ctx.types.isSameType(ctx.types.erasure(args.get(0)), ctx.types.erasure(stringType));
+
+    // -------------------------------------------------------------------------
+    // Container type helpers
+    // -------------------------------------------------------------------------
+
+    private boolean isSequence(
+            TypeMirror type) {
+
+        if (type == null) {
+            return false;
+        }
+
+        if (type.getKind() ==
+                TypeKind.ARRAY) {
+
+            return true;
+        }
+
+        NodeKind kind =
+                types.nodeKind(type);
+
+        return kind == NodeKind.ARRAY_LIST
+                || kind == NodeKind.ARRAY_JSON_ARRAY
+                || kind == NodeKind.ARRAY_JAJO;
     }
 
-    private boolean isList(TypeMirror type) {
-        return GeneratorUtil.isAssignableErasure(ctx, type, ctx.listType);
+
+    private boolean isJsonArray(
+            TypeMirror type) {
+
+        NodeKind kind =
+                types.nodeKind(type);
+
+        return kind == NodeKind.ARRAY_JSON_ARRAY
+                || kind == NodeKind.ARRAY_JAJO;
     }
 
-    private boolean isMap(TypeMirror type) {
-        return GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType);
+
+    private boolean isMap(
+            TypeMirror type) {
+
+        return types.nodeKind(type) ==
+                NodeKind.OBJECT_MAP;
     }
 
-    private NameAllocator names(VariableElement root) {
-        NameAllocator names = new NameAllocator();
-        names.reserve(root.getSimpleName().toString());
+
+    private TypeMirror sequenceElementType(
+            TypeMirror type) {
+
+        type =
+                types.concrete(type);
+
+        if (type.getKind() ==
+                TypeKind.ARRAY) {
+
+            return types.concrete(
+                    ((ArrayType) type)
+                            .getComponentType());
+        }
+
+        NodeKind kind =
+                types.nodeKind(type);
+
+        if (kind == NodeKind.ARRAY_LIST) {
+            return types.listReadElementType(
+                    type);
+        }
+
+        if (kind == NodeKind.ARRAY_JSON_ARRAY ||
+                kind == NodeKind.ARRAY_JAJO) {
+
+            return types.objectType();
+        }
+
+        return null;
+    }
+
+
+    private boolean isStringKeyMap(
+            TypeMirror type) {
+
+        if (!isMap(type)) {
+            return false;
+        }
+
+        return types.hasSafeStringPathKey(type);
+    }
+
+
+    private boolean validateMapPathKeys(
+            ExecutableElement method,
+            GeneratedClass generated,
+            TypeMirror start,
+            PathSegment[] segments) {
+
+        TypeMirror current = start;
+
+        for (int i = 1; i < segments.length; i++) {
+            PathSegment segment = segments[i];
+
+            if (segment instanceof PathSegment.Name) {
+                NodeAccess access = resolveAccess(current, segment);
+
+                if (access != null &&
+                        access.kind() == NodeAccess.Kind.MAP &&
+                        !types.hasSafeStringPathKey(current)) {
+
+                    error(
+                            method,
+                            generated,
+                            "@FindByPath cannot use a String path key with Map key type " +
+                                    types.mapDeclaredKeyType(current));
+                    return false;
+                }
+
+                current = access == null || !access.readable()
+                        ? null
+                        : access.readType();
+            } else if (segment instanceof PathSegment.Union) {
+                PathSegment.Union union =
+                        (PathSegment.Union) segment;
+
+                if (isMap(current) &&
+                        containsName(union) &&
+                        !types.hasSafeStringPathKey(current)) {
+
+                    error(
+                            method,
+                            generated,
+                            "@FindByPath cannot use a String path key with Map key type " +
+                                    types.mapDeclaredKeyType(current));
+                    return false;
+                }
+
+                current = isMap(current)
+                        ? types.mapReadValueType(current)
+                        : isIndexOrSliceUnion(union)
+                        ? sequenceElementType(current)
+                        : null;
+            } else if (segment instanceof PathSegment.Wildcard ||
+                    segment instanceof PathSegment.Filter) {
+
+                current = isMap(current)
+                        ? types.mapReadValueType(current)
+                        : sequenceElementType(current);
+            } else if (segment instanceof PathSegment.Slice) {
+                current = sequenceElementType(current);
+            } else if (segment instanceof PathSegment.Index) {
+                current = resolveDirectType(current, segment);
+            }
+
+            if (current == null) {
+                return true;
+            }
+        }
+
+        return true;
+    }
+
+
+    private boolean containsName(PathSegment.Union union) {
+        for (PathSegment segment : union.union) {
+            if (segment instanceof PathSegment.Name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    private boolean isIndexOrSliceUnion(PathSegment.Union union) {
+        for (PathSegment segment : union.union) {
+            if (!(segment instanceof PathSegment.Index) &&
+                    !(segment instanceof PathSegment.Slice)) {
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Expressions
+    // -------------------------------------------------------------------------
+
+    private String sequenceReadExpression(
+            TypeMirror containerType,
+            String receiver,
+            String index,
+            TypeMirror valueType) {
+
+        if (containerType.getKind() ==
+                TypeKind.ARRAY) {
+
+            return receiver +
+                    "[" +
+                    index +
+                    "]";
+        }
+
+        if (isJsonArray(containerType)) {
+            return objectExpression(
+                    valueType,
+                    receiver +
+                            ".getNode(" +
+                            index +
+                            ")");
+        }
+
+        return receiver +
+                ".get(" +
+                index +
+                ")";
+    }
+
+
+    private String objectExpression(
+            TypeMirror type,
+            String expression) {
+
+        if (types.isObject(type)) {
+            return expression;
+        }
+
+        return "(" +
+                localType(type) +
+                ") " +
+                expression;
+    }
+
+
+    private static String staticIndex(
+            int index,
+            String sizeExpression) {
+
+        if (index >= 0) {
+            return Integer.toString(
+                    index);
+        }
+
+        if (index == Integer.MIN_VALUE) {
+            return sizeExpression +
+                    " + " +
+                    index;
+        }
+
+        return sizeExpression +
+                " - " +
+                (-index);
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Method/type helpers
+    // -------------------------------------------------------------------------
+
+    private String methodHeader(
+            ExecutableElement method,
+            VariableElement root) {
+
+        return "public " +
+                method.getReturnType() +
+                " " +
+                method.getSimpleName() +
+                "(" +
+                root.asType() +
+                " " +
+                root.getSimpleName() +
+                ")";
+    }
+
+
+    private NameAllocator names(
+            VariableElement root) {
+
+        NameAllocator names =
+                new NameAllocator();
+
+        names.reserve(
+                root.getSimpleName()
+                        .toString());
+
         return names;
     }
 
-    private boolean canAddToResult(TypeMirror valueType, TypeMirror elementType) {
-        if (GeneratorUtil.isObject(ctx, elementType)) return true;
-        TypeMirror value = boxed(valueType);
-        TypeMirror element = boxed(elementType);
-        return ctx.types.isAssignable(value, element);
+
+    private String localType(
+            TypeMirror type) {
+
+        return types.boxed(
+                        types.concrete(type))
+                .toString();
     }
 
-    private TypeMirror boxed(TypeMirror type) {
-        return type.getKind().isPrimitive()
-                ? ctx.types.boxedClass((javax.lang.model.type.PrimitiveType) type).asType()
-                : GeneratorUtil.concrete(ctx, type);
+
+    private boolean canAddToResult(
+            TypeMirror valueType,
+            TypeMirror elementType) {
+
+        if (types.isObject(
+                elementType)) {
+
+            return true;
+        }
+
+        return types.isAssignableBoxedGeneric(
+                valueType,
+                elementType);
     }
+
+
+    // -------------------------------------------------------------------------
+    // Diagnostic
+    // -------------------------------------------------------------------------
+
+    private void error(
+            Element element,
+            GeneratedClass generated,
+            String message) {
+
+        generated.invalidate();
+
+        context.error(
+                element,
+                generated.originName() +
+                        ": " +
+                        message);
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Resolved access
+    // -------------------------------------------------------------------------
 
     private static final class Access {
+
         final TypeMirror type;
-        final String expr;
+        final String expression;
+
         final boolean needsReceiverNonNull;
+
         final String boundsCheck;
         final String presentCheck;
 
-        Access(TypeMirror type, String expr, boolean needsReceiverNonNull, String boundsCheck, String presentCheck) {
+
+        Access(
+                TypeMirror type,
+                String expression,
+                boolean needsReceiverNonNull,
+                String boundsCheck,
+                String presentCheck) {
+
             this.type = type;
-            this.expr = expr;
-            this.needsReceiverNonNull = needsReceiverNonNull;
+            this.expression = expression;
+            this.needsReceiverNonNull =
+                    needsReceiverNonNull;
             this.boundsCheck = boundsCheck;
             this.presentCheck = presentCheck;
         }
-    }
-
-    private void _error(Element element, GeneratedClass target, String message) {
-        ctx.error(element, target.originName() + ": " + message);
     }
 }

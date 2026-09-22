@@ -1,7 +1,6 @@
 package org.sjf4j.processor.schema;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.processor.Sjf4jProcessor;
 import org.sjf4j.schema.SchemaException;
 import org.sjf4j.schema.ValidationResult;
 

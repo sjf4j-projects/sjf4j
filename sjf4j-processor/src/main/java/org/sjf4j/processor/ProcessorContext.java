@@ -1,61 +1,60 @@
 package org.sjf4j.processor;
 
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
+import org.sjf4j.processor.access.NodeAccessResolver;
+import org.sjf4j.processor.annotation.NodeAnnotations;
+import org.sjf4j.processor.property.PropertyResolver;
+import org.sjf4j.processor.type.TypeSystem;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 
-/**
- * Shared processing state and frequently used type mirrors for code generation.
- *
- * <p>The generator keeps these handles in one small context to avoid repeated
- * environment lookups and to keep diagnostic reporting consistent.</p>
- */
 public final class ProcessorContext {
 
-    public final Types types;
+    public final Types typeUtils;
     public final Elements elements;
     public final Messager messager;
     public final Filer filer;
 
-    public final TypeMirror mapType;
-    public final TypeMirror listType;
-    public final TypeMirror setType;
-    public final TypeMirror jsonObjectType;
-    public final TypeMirror jsonArrayType;
-    public final TypeMirror objectType;
+    public final TypeSystem types;
+    public final NodeAnnotations annotations;
+    public final PropertyResolver properties;
+    public final NodeAccessResolver access;
 
-    /**
-     * Captures compiler services and resolves common type mirrors once.
-     */
-    public ProcessorContext(ProcessingEnvironment env) {
-        this.types = env.getTypeUtils();
-        this.elements = env.getElementUtils();
-        this.messager = env.getMessager();
-        this.filer = env.getFiler();
-        this.mapType = elements.getTypeElement(Map.class.getName()).asType();
-        this.listType = elements.getTypeElement(List.class.getName()).asType();
-        this.setType = elements.getTypeElement(Set.class.getName()).asType();
-        this.objectType = elements.getTypeElement(Object.class.getName()).asType();
-        this.jsonObjectType = elements.getTypeElement(JsonObject.class.getName()).asType();
-        this.jsonArrayType = elements.getTypeElement(JsonArray.class.getName()).asType();
+    public ProcessorContext(ProcessingEnvironment environment) {
+        Objects.requireNonNull(environment, "environment");
+
+        this.typeUtils = environment.getTypeUtils();
+        this.elements = environment.getElementUtils();
+        this.messager = environment.getMessager();
+        this.filer = environment.getFiler();
+
+        this.types =
+                new TypeSystem(typeUtils, elements);
+
+        this.annotations =
+                new NodeAnnotations();
+
+        this.properties =
+                new PropertyResolver(
+                        typeUtils,
+                        elements,
+                        types,
+                        annotations);
+
+        this.access =
+                new NodeAccessResolver(
+                        types,
+                        properties);
     }
 
-    /**
-     * Reports a compile error attached to the supplied source element.
-     */
     public void error(Element element, String message) {
         messager.printMessage(Diagnostic.Kind.ERROR, message, element);
     }
+
 }

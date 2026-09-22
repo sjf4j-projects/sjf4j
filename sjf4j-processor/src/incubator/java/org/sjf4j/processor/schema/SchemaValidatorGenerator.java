@@ -2,10 +2,7 @@ package org.sjf4j.processor.schema;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatingOptions;
-import org.sjf4j.processor.GeneratedClass;
-import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.ProcessorContext;
-import org.sjf4j.processor.SourceWriter;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.schema.SchemaPlan;
