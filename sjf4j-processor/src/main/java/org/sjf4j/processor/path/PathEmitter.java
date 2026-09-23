@@ -1082,7 +1082,6 @@ final class PathEmitter {
                 break;
 
             case DYNAMIC:
-            case EXTERNAL:
                 if (isIndexStep(step)) {
                     emitObjectResult(
                             out,
@@ -1370,8 +1369,7 @@ final class PathEmitter {
                         names);
                 return;
 
-            case DYNAMIC:
-            case EXTERNAL: {
+            case DYNAMIC: {
                 String expression;
 
                 if (isIndexStep(step)) {
@@ -1701,7 +1699,6 @@ final class PathEmitter {
                 return;
 
             case DYNAMIC:
-            case EXTERNAL:
                 out.line(
                         "org.sjf4j.Nodes.addInArray(" +
                                 owner +

@@ -483,7 +483,7 @@ SJF4J gives you:
 
 ## Contributing
 
-SJF4J is still relatively new to production use, 
+SJF4J is relatively new to production use,
 and broader adoption will help uncover issues and edge cases that are difficult to anticipate in advance.  
 If you encounter any problems or unexpected behavior, please feel free to [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
 

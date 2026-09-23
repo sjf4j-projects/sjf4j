@@ -85,7 +85,7 @@ public final class MappingEmitter {
         out.line("@Override");
 
         out.beginBlock(
-                methodHeader(method));
+                methodHeader(plan));
 
         emitNullRootGuard(
                 out,
@@ -171,7 +171,7 @@ public final class MappingEmitter {
                             compiled.plan()
                                     .targetType());
 
-            if (isArrayLike(targetKind)) {
+            if (types.isArrayNode(targetKind)) {
                 if (types.writeElementType(
                         compiled.plan()
                                 .targetType()) == null) {
@@ -390,7 +390,6 @@ public final class MappingEmitter {
                 break;
 
             case DYNAMIC:
-            case EXTERNAL:
                 present = "org.sjf4j.Nodes.containsInObject(" +
                         source + ", " + key + ")";
                 break;
@@ -623,7 +622,6 @@ public final class MappingEmitter {
                             true);
                     break;
 
-                case OBJECT_EXTERNAL:
                 case COMPILE_TIME_UNKNOWN:
                     emitRuntimeDynamicSource(
                             out,
@@ -833,7 +831,7 @@ public final class MappingEmitter {
         for (VariableElement source :
                 plan.sources()) {
 
-            if (source.asType()
+            if (plan.sourceType(source)
                     .getKind()
                     .isPrimitive()) {
 
@@ -1263,8 +1261,7 @@ public final class MappingEmitter {
         }
 
         TypeMirror currentType =
-                read.root()
-                        .asType();
+                read.rootType();
 
         boolean first = true;
 
@@ -1501,7 +1498,6 @@ public final class MappingEmitter {
                                     ")");
 
                 case DYNAMIC:
-                case EXTERNAL:
                     return cast(
                             valueType,
                             "org.sjf4j.Nodes.getInObject(" +
@@ -1563,7 +1559,6 @@ public final class MappingEmitter {
                                 ")");
 
             case DYNAMIC:
-            case EXTERNAL:
                 return cast(
                         valueType,
                         "org.sjf4j.Nodes.getInArray(" +
@@ -1659,7 +1654,7 @@ public final class MappingEmitter {
                         targetType);
 
         if (plan.update() &&
-                isArrayLike(kind)) {
+                types.isArrayNode(kind)) {
 
             String arrayPolicy =
                     rule != null &&
@@ -2670,7 +2665,6 @@ public final class MappingEmitter {
                     return;
 
                 case DYNAMIC:
-                case EXTERNAL:
                     out.line(
                             "org.sjf4j.Nodes.putInObject(" +
                                     owner +
@@ -2702,7 +2696,6 @@ public final class MappingEmitter {
                     return;
 
                 case DYNAMIC:
-                case EXTERNAL:
                     out.line(
                             "org.sjf4j.Nodes.addInArray(" +
                                     owner +
@@ -2796,7 +2789,6 @@ public final class MappingEmitter {
                     return;
 
                 case DYNAMIC:
-                case EXTERNAL:
                     out.line(
                             "org.sjf4j.Nodes.putInArray(" +
                                     owner +
@@ -2887,7 +2879,6 @@ public final class MappingEmitter {
                                     ")");
 
                 case DYNAMIC:
-                case EXTERNAL:
                     return cast(
                             access.readType(),
                             "org.sjf4j.Nodes.getInObject(" +
@@ -3059,19 +3050,25 @@ public final class MappingEmitter {
     // -------------------------------------------------------------------------
 
     private String methodHeader(
-            ExecutableElement method) {
+            MappingPlan plan) {
+
+        ExecutableElement method =
+                plan.method();
 
         StringBuilder result =
                 new StringBuilder();
 
         result.append("public ")
-                .append(method.getReturnType())
+                .append(plan.methodType().getReturnType())
                 .append(' ')
                 .append(method.getSimpleName())
                 .append('(');
 
         List<? extends VariableElement> parameters =
                 method.getParameters();
+
+        List<? extends TypeMirror> parameterTypes =
+                plan.methodType().getParameterTypes();
 
         for (int i = 0;
              i < parameters.size();
@@ -3085,7 +3082,7 @@ public final class MappingEmitter {
                     parameters.get(i);
 
             result.append(
-                            parameter.asType())
+                            parameterTypes.get(i))
                     .append(' ')
                     .append(
                             parameter.getSimpleName());
@@ -3094,7 +3091,7 @@ public final class MappingEmitter {
         result.append(')');
 
         List<? extends TypeMirror> thrown =
-                method.getThrownTypes();
+                plan.methodType().getThrownTypes();
 
         if (!thrown.isEmpty()) {
             result.append(" throws ");
@@ -3177,23 +3174,6 @@ public final class MappingEmitter {
 
             default:
                 return null;
-        }
-    }
-
-
-    private boolean isArrayLike(
-            NodeKind kind) {
-
-        switch (kind) {
-            case ARRAY_ARRAY:
-            case ARRAY_LIST:
-            case ARRAY_SET:
-            case ARRAY_JSON_ARRAY:
-            case ARRAY_JAJO:
-                return true;
-
-            default:
-                return false;
         }
     }
 

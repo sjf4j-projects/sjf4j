@@ -21,8 +21,7 @@ public final class NodeAccess {
         LIST,
         ARRAY,
         JSON_ARRAY,
-        DYNAMIC,
-        EXTERNAL
+        DYNAMIC
     }
 
 

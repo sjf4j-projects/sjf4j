@@ -412,14 +412,13 @@ public final class MappingCompiler {
 
             NodeKind kind =
                     types.nodeKind(
-                            source.asType());
+                            plan.sourceType(source));
 
             switch (kind) {
                 case OBJECT_MAP:
                 case OBJECT_JSON_OBJECT:
                 case OBJECT_JOJO:
-                case OBJECT_EXTERNAL:
-                case COMPILE_TIME_UNKNOWN:
+                    case COMPILE_TIME_UNKNOWN:
                     result.add(
                             new DynamicSource(
                                     source,
@@ -588,12 +587,15 @@ public final class MappingCompiler {
         VariableElement source =
                 plan.primarySource();
 
+        TypeMirror sourceType =
+                plan.primarySourceType();
+
         if (plan.update() &&
                 types.nodeKind(
                         plan.targetType()) ==
                         NodeKind.OBJECT_MAP &&
                 types.nodeKind(
-                        source.asType()) !=
+                        sourceType) !=
                         NodeKind.OBJECT_MAP) {
 
             error(
@@ -608,7 +610,7 @@ public final class MappingCompiler {
 
         if (plan.update() &&
                 types.nodeKind(
-                        source.asType()) ==
+                        sourceType) ==
                         NodeKind.OBJECT_MAP &&
                 types.nodeKind(
                         plan.targetType()) ==
@@ -617,14 +619,14 @@ public final class MappingCompiler {
             conversion =
                     ConverterResolver.Conversion
                             .container(
-                                    source.asType(),
+                                    sourceType,
                                     plan.targetType());
 
         } else {
             conversion =
                     converters.resolveRoot(
                             plan,
-                            source.asType(),
+                            sourceType,
                             plan.targetType(),
                             generated);
         }
@@ -645,7 +647,7 @@ public final class MappingCompiler {
 
             conversion =
                     rootFallbackConversion(
-                            source.asType(),
+                            sourceType,
                             plan.targetType());
 
             if (conversion == null) {
@@ -653,7 +655,7 @@ public final class MappingCompiler {
                         plan.method(),
                         generated,
                         "cannot resolve root mapping from " +
-                                source.asType() +
+                                sourceType +
                                 " to " +
                                 plan.targetType());
 
@@ -665,8 +667,9 @@ public final class MappingCompiler {
                 plan,
                 new Read(
                         source,
+                        sourceType,
                         Collections.<ReadStep>emptyList(),
-                        source.asType()),
+                        sourceType),
                 conversion);
     }
 
@@ -681,9 +684,9 @@ public final class MappingCompiler {
         NodeKind targetKind =
                 types.nodeKind(target);
 
-        if ((isArrayLike(sourceKind) ||
+        if ((types.isArrayNode(sourceKind) ||
                 sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) &&
-                isArrayLike(targetKind)) {
+                types.isArrayNode(targetKind)) {
 
             return ConverterResolver.Conversion
                     .container(
@@ -700,9 +703,9 @@ public final class MappingCompiler {
                             target);
         }
 
-        if ((isObjectLike(sourceKind) ||
+        if ((types.isObjectNode(sourceKind) ||
                 sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) &&
-                isObjectLike(targetKind)) {
+                types.isObjectNode(targetKind)) {
 
             return ConverterResolver.Conversion
                     .structural(
@@ -737,8 +740,9 @@ public final class MappingCompiler {
                 return true;
 
             default:
-                return hasOneOf(
-                        plan.targetType());
+                return context.annotations.hasOneOf(
+                        types.concrete(
+                                plan.targetType()));
         }
     }
 
@@ -1138,10 +1142,14 @@ public final class MappingCompiler {
         if (expression.isEmpty() ||
                 "$".equals(expression)) {
 
+            TypeMirror rootType =
+                    plan.sourceType(root);
+
             return new Read(
                     root,
+                    rootType,
                     Collections.<ReadStep>emptyList(),
-                    root.asType());
+                    rootType);
         }
 
         if (isPath(expression)) {
@@ -1153,10 +1161,13 @@ public final class MappingCompiler {
                     generated);
         }
 
+        TypeMirror rootType =
+                plan.sourceType(root);
+
         NodeAccess access =
                 context.access
                         .resolveName(
-                                root.asType(),
+                                rootType,
                                 expression);
 
         if (access == null ||
@@ -1186,6 +1197,7 @@ public final class MappingCompiler {
 
         return new Read(
                 root,
+                rootType,
                 steps,
                 access.readType());
     }
@@ -1222,8 +1234,11 @@ public final class MappingCompiler {
         PathSegment[] segments =
                 path.segments();
 
+        TypeMirror rootType =
+                plan.sourceType(root);
+
         TypeMirror current =
-                root.asType();
+                rootType;
 
         List<ReadStep> steps =
                 new ArrayList<ReadStep>();
@@ -1295,6 +1310,7 @@ public final class MappingCompiler {
 
         return new Read(
                 root,
+                rootType,
                 steps,
                 current);
     }
@@ -1660,86 +1676,6 @@ public final class MappingCompiler {
                 (value.charAt(0) == '$' ||
                         value.charAt(0) == '/');
     }
-
-
-    // -------------------------------------------------------------------------
-    // Node categories
-    // -------------------------------------------------------------------------
-
-    private boolean isArrayLike(
-            NodeKind kind) {
-
-        switch (kind) {
-            case ARRAY_ARRAY:
-            case ARRAY_LIST:
-            case ARRAY_SET:
-            case ARRAY_JSON_ARRAY:
-            case ARRAY_JAJO:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-
-    private boolean isObjectLike(
-            NodeKind kind) {
-
-        switch (kind) {
-            case OBJECT_POJO:
-            case OBJECT_MAP:
-            case OBJECT_JSON_OBJECT:
-            case OBJECT_JOJO:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-
-    private boolean hasOneOf(
-            TypeMirror type) {
-
-        TypeElement element =
-                types.typeElement(
-                        types.concrete(type));
-
-        if (element == null) {
-            return false;
-        }
-
-        for (AnnotationMirror annotation :
-                element.getAnnotationMirrors()) {
-
-            Element annotationType =
-                    annotation.getAnnotationType()
-                            .asElement();
-
-            if (!(annotationType instanceof
-                    TypeElement)) {
-
-                continue;
-            }
-
-            String name =
-                    ((TypeElement) annotationType)
-                            .getQualifiedName()
-                            .toString();
-
-            if (name.startsWith(
-                    "org.sjf4j.annotation.") &&
-                    name.endsWith(
-                            ".OneOf")) {
-
-                return true;
-            }
-        }
-
-        return false;
-    }
-
 
     // -------------------------------------------------------------------------
     // Diagnostics
@@ -2265,6 +2201,7 @@ public final class MappingCompiler {
     static final class Read {
 
         private final VariableElement root;
+        private final TypeMirror rootType;
         private final List<ReadStep> steps;
 
         private final TypeMirror type;
@@ -2272,10 +2209,12 @@ public final class MappingCompiler {
 
         Read(
                 VariableElement root,
+                TypeMirror rootType,
                 List<ReadStep> steps,
                 TypeMirror type) {
 
             this.root = root;
+            this.rootType = rootType;
 
             this.steps =
                     Collections.unmodifiableList(
@@ -2288,6 +2227,10 @@ public final class MappingCompiler {
 
         VariableElement root() {
             return root;
+        }
+
+        TypeMirror rootType() {
+            return rootType;
         }
 
         List<ReadStep> steps() {

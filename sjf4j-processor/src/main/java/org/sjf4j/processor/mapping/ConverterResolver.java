@@ -337,7 +337,7 @@ public final class ConverterResolver {
          * Type-level @OneOf is a structural dispatch strategy rather than an
          * ordinary mapper method.
          */
-        if (hasOneOf(targetType)) {
+        if (context.annotations.hasOneOf(types.concrete(targetType))) {
             return Conversion.oneOf(
                     sourceType,
                     targetType);
@@ -1029,8 +1029,7 @@ public final class ConverterResolver {
                     new MethodCandidate(
                             null,
                             method,
-                            plan.primarySource()
-                                    .asType(),
+                            plan.primarySourceType(),
                             plan.targetType()));
         }
 
@@ -1175,16 +1174,22 @@ public final class ConverterResolver {
                 continue;
             }
 
-            VariableElement source =
-                    method.getParameters()
-                            .get(0);
+            javax.lang.model.type.ExecutableType methodType =
+                    types.resolveMethodType(
+                            imported.asType(),
+                            method);
+
+            if (methodType == null) {
+                continue;
+            }
 
             result.add(
                     new MethodCandidate(
                             imported,
                             method,
-                            source.asType(),
-                            method.getReturnType()));
+                            methodType.getParameterTypes()
+                                    .get(0),
+                            methodType.getReturnType()));
         }
 
         return result;
@@ -1387,9 +1392,9 @@ public final class ConverterResolver {
         NodeKind targetKind =
                 types.nodeKind(target);
 
-        if ((isArrayLike(sourceKind) ||
+        if ((types.isArrayNode(sourceKind) ||
                 sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) &&
-                isArrayLike(targetKind)) {
+                types.isArrayNode(targetKind)) {
 
             return true;
         }
@@ -1420,8 +1425,8 @@ public final class ConverterResolver {
         NodeKind targetKind =
                 types.nodeKind(target);
 
-        if (isArrayLike(sourceKind) &&
-                isArrayLike(targetKind)) {
+        if (types.isArrayNode(sourceKind) &&
+                types.isArrayNode(targetKind)) {
 
             return requiresRuntimeMemberConversion(
                     types.readElementType(source),
@@ -1454,23 +1459,6 @@ public final class ConverterResolver {
     }
 
 
-    private boolean isArrayLike(
-            NodeKind kind) {
-
-        switch (kind) {
-            case ARRAY_ARRAY:
-            case ARRAY_LIST:
-            case ARRAY_SET:
-            case ARRAY_JSON_ARRAY:
-            case ARRAY_JAJO:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-
     private boolean isStructuralConversion(
             TypeMirror source,
             TypeMirror target) {
@@ -1481,78 +1469,10 @@ public final class ConverterResolver {
         NodeKind targetKind =
                 types.nodeKind(target);
 
-        return (isObjectLike(sourceKind) ||
+        return (types.isObjectNode(sourceKind) ||
                 sourceKind == NodeKind.COMPILE_TIME_UNKNOWN)
-                && isObjectLike(targetKind);
+                && types.isObjectNode(targetKind);
     }
-
-
-    private boolean isObjectLike(
-            NodeKind kind) {
-
-        switch (kind) {
-            case OBJECT_POJO:
-            case OBJECT_MAP:
-            case OBJECT_JSON_OBJECT:
-            case OBJECT_JOJO:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-
-    // -------------------------------------------------------------------------
-    // OneOf
-    // -------------------------------------------------------------------------
-
-    private boolean hasOneOf(
-            TypeMirror type) {
-
-        TypeElement element =
-                types.typeElement(
-                        types.concrete(type));
-
-        if (element == null) {
-            return false;
-        }
-
-        for (AnnotationMirror annotation :
-                element.getAnnotationMirrors()) {
-
-            Element annotationType =
-                    annotation.getAnnotationType()
-                            .asElement();
-
-            if (!(annotationType instanceof
-                    TypeElement)) {
-
-                continue;
-            }
-
-            String name =
-                    ((TypeElement) annotationType)
-                            .getQualifiedName()
-                            .toString();
-
-            /*
-             * Keep this independent from a compile-time annotation import.
-             * OneOf has moved with the node annotation package before and the
-             * mapper only needs to recognize SJF4J's annotation.
-             */
-            if (name.startsWith(
-                    "org.sjf4j.annotation.") &&
-                    name.endsWith(
-                            ".OneOf")) {
-
-                return true;
-            }
-        }
-
-        return false;
-    }
-
 
     // -------------------------------------------------------------------------
     // Annotation helpers

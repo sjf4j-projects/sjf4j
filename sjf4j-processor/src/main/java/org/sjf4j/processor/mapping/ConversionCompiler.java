@@ -822,7 +822,6 @@ public final class ConversionCompiler {
             case OBJECT_MAP:
             case OBJECT_JSON_OBJECT:
             case OBJECT_JOJO:
-            case OBJECT_EXTERNAL:
             case COMPILE_TIME_UNKNOWN:
                 break;
 
@@ -879,7 +878,6 @@ public final class ConversionCompiler {
             case OBJECT_JOJO:
                 return DynamicObjectPlan.Kind.ENTRIES;
 
-            case OBJECT_EXTERNAL:
             case COMPILE_TIME_UNKNOWN:
                 return DynamicObjectPlan.Kind.RUNTIME_ENTRIES;
 
@@ -939,7 +937,6 @@ public final class ConversionCompiler {
 
             case OBJECT_JSON_OBJECT:
             case OBJECT_JOJO:
-            case OBJECT_EXTERNAL:
             case COMPILE_TIME_UNKNOWN:
                 return types.objectType();
 
@@ -980,10 +977,12 @@ public final class ConversionCompiler {
 
         return new MappingPlan(
                 parent.method(),
+                parent.methodType(),
                 MappingPlan.Kind.CREATE,
                 targetType,
                 null,
                 parent.sources(),
+                parent.sourceTypes(),
                 Collections.<MappingPlan.Rule>emptyList(),
                 parent.options());
     }
@@ -1014,7 +1013,6 @@ public final class ConversionCompiler {
         return kind == NodeKind.OBJECT_MAP ||
                 kind == NodeKind.OBJECT_JSON_OBJECT ||
                 kind == NodeKind.OBJECT_JOJO ||
-                kind == NodeKind.OBJECT_EXTERNAL ||
                 kind == NodeKind.COMPILE_TIME_UNKNOWN;
     }
 

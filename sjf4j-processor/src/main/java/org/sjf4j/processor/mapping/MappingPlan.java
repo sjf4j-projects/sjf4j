@@ -3,6 +3,7 @@ package org.sjf4j.processor.mapping;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,12 +30,14 @@ final class MappingPlan {
 
 
     private final ExecutableElement method;
+    private final ExecutableType methodType;
     private final Kind kind;
 
     private final TypeMirror targetType;
     private final VariableElement targetParameter;
 
     private final List<VariableElement> sources;
+    private final List<TypeMirror> sourceTypes;
     private final List<Rule> rules;
 
     private final AnnotationMirror options;
@@ -42,10 +45,12 @@ final class MappingPlan {
 
     MappingPlan(
             ExecutableElement method,
+            ExecutableType methodType,
             Kind kind,
             TypeMirror targetType,
             VariableElement targetParameter,
             List<VariableElement> sources,
+            List<TypeMirror> sourceTypes,
             List<Rule> rules,
             AnnotationMirror options) {
 
@@ -53,6 +58,11 @@ final class MappingPlan {
                 Objects.requireNonNull(
                         method,
                         "method");
+
+        this.methodType =
+                Objects.requireNonNull(
+                        methodType,
+                        "methodType");
 
         this.kind =
                 Objects.requireNonNull(
@@ -72,6 +82,17 @@ final class MappingPlan {
                         new ArrayList<VariableElement>(
                                 sources));
 
+        this.sourceTypes =
+                Collections.unmodifiableList(
+                        new ArrayList<TypeMirror>(
+                                sourceTypes));
+
+        if (this.sources.size() !=
+                this.sourceTypes.size()) {
+            throw new IllegalArgumentException(
+                    "sources and sourceTypes must have the same size");
+        }
+
         this.rules =
                 Collections.unmodifiableList(
                         new ArrayList<Rule>(
@@ -84,6 +105,10 @@ final class MappingPlan {
 
     ExecutableElement method() {
         return method;
+    }
+
+    ExecutableType methodType() {
+        return methodType;
     }
 
     Kind kind() {
@@ -110,8 +135,27 @@ final class MappingPlan {
         return sources;
     }
 
+    List<TypeMirror> sourceTypes() {
+        return sourceTypes;
+    }
+
+    TypeMirror sourceType(VariableElement source) {
+        for (int i = 0; i < sources.size(); i++) {
+            if (sources.get(i).equals(source)) {
+                return sourceTypes.get(i);
+            }
+        }
+
+        throw new IllegalArgumentException(
+                "unknown source parameter: " + source);
+    }
+
     VariableElement primarySource() {
         return sources.get(0);
+    }
+
+    TypeMirror primarySourceType() {
+        return sourceTypes.get(0);
     }
 
     List<Rule> rules() {

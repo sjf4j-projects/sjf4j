@@ -2,18 +2,14 @@ package org.sjf4j.processor.mapping;
 
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.method.ResolvedMethod;
 
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 
 /**
@@ -164,23 +160,21 @@ public final class MapperGenerator {
             TypeElement type,
             GeneratedClass generated) {
 
-        List<ExecutableElement> methods =
-                abstractMethods(type);
+        List<ResolvedMethod> methods =
+                context.methods.abstractMethods(type);
 
         List<MappingPlan> plans =
                 new ArrayList<MappingPlan>(
                         methods.size());
 
-        for (ExecutableElement method :
-                methods) {
-
-            if (hasGenericOwner(
-                    type,
-                    method)) {
+        for (ResolvedMethod resolved : methods) {
+            if (!isResolvedSignature(resolved)) {
+                ExecutableElement method = resolved.declaration();
 
                 context.error(
                         method,
-                        "Inherited mapper methods from generic interfaces are not supported");
+                        "Mapper method contains unresolved type variables after interface specialization: " +
+                                resolved.type());
 
                 generated.invalidate();
                 continue;
@@ -188,7 +182,7 @@ public final class MapperGenerator {
 
             MappingPlan plan =
                     methodGenerator.analyze(
-                            method,
+                            resolved,
                             generated);
 
             if (plan != null) {
@@ -200,190 +194,37 @@ public final class MapperGenerator {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Abstract mapper methods
-    // -------------------------------------------------------------------------
+    private boolean isResolvedSignature(
+            ResolvedMethod method) {
 
-    /**
-     * Returns effective abstract mapper methods including inherited methods.
-     *
-     * <p>Methods are de-duplicated by erased Java signature so an overridden
-     * parent method is generated only once.</p>
-     */
-    private List<ExecutableElement> abstractMethods(
-            TypeElement type) {
+        ExecutableType type =
+                method.type();
 
-        Map<String, ExecutableElement> methods =
-                new LinkedHashMap<String, ExecutableElement>();
-
-        for (Element member :
-                context.elements
-                        .getAllMembers(type)) {
-
-            if (member.getKind() !=
-                    ElementKind.METHOD) {
-
-                continue;
-            }
-
-            ExecutableElement method =
-                    (ExecutableElement) member;
-
-            if (!method.getModifiers()
-                    .contains(Modifier.ABSTRACT)) {
-
-                continue;
-            }
-
-            if (method.getModifiers()
-                    .contains(Modifier.STATIC) ||
-                    method.getModifiers()
-                            .contains(Modifier.PRIVATE)) {
-
-                continue;
-            }
-
-            String key =
-                    signatureKey(method);
-
-            ExecutableElement previous =
-                    methods.get(key);
-
-            if (previous == null ||
-                    prefer(
-                            type,
-                            method,
-                            previous)) {
-
-                methods.put(
-                        key,
-                        method);
-            }
+        if (!context.types.isFullyResolved(
+                type.getReturnType())) {
+            return false;
         }
 
-        return new ArrayList<ExecutableElement>(
-                methods.values());
-    }
+        for (TypeMirror parameter :
+                type.getParameterTypes()) {
 
-
-    /**
-     * Chooses the more specific declaration when the same erased signature is
-     * inherited through multiple mapper interfaces.
-     */
-    private boolean prefer(
-            TypeElement mapper,
-            ExecutableElement candidate,
-            ExecutableElement current) {
-
-        try {
-            if (context.elements
-                    .overrides(
-                            candidate,
-                            current,
-                            mapper)) {
-
-                return true;
-            }
-
-            if (context.elements
-                    .overrides(
-                            current,
-                            candidate,
-                            mapper)) {
-
+            if (!context.types.isFullyResolved(
+                    parameter)) {
                 return false;
             }
-
-        } catch (IllegalArgumentException ignored) {
-            /*
-             * Some compiler implementations are conservative for inherited
-             * interface members. Return-type specificity below is sufficient
-             * for our de-duplication fallback.
-             */
         }
 
-        TypeMirror candidateReturn =
-                candidate.getReturnType();
+        for (TypeMirror thrown :
+                type.getThrownTypes()) {
 
-        TypeMirror currentReturn =
-                current.getReturnType();
-
-        if (candidateReturn.getKind()
-                .isPrimitive() ||
-                currentReturn.getKind()
-                        .isPrimitive()) {
-
-            return false;
+            if (!context.types.isFullyResolved(
+                    thrown)) {
+                return false;
+            }
         }
 
-        return context.typeUtils
-                .isSubtype(
-                        candidateReturn,
-                        currentReturn);
+        return true;
     }
 
 
-    /**
-     * Creates a Java signature key ignoring return type.
-     */
-    private String signatureKey(
-            ExecutableElement method) {
-
-        StringBuilder key =
-                new StringBuilder();
-
-        key.append(
-                        method.getSimpleName())
-                .append('(');
-
-        for (VariableElement parameter :
-                method.getParameters()) {
-
-            key.append(
-                            context.typeUtils
-                                    .erasure(
-                                            parameter.asType()))
-                    .append(';');
-        }
-
-        key.append(')');
-
-        return key.toString();
-    }
-
-
-    // -------------------------------------------------------------------------
-    // Generic inherited interfaces
-    // -------------------------------------------------------------------------
-
-    /**
-     * The current mapping model stores source variables directly as
-     * {@link VariableElement}s. Generic inherited members would require
-     * resolving every member through {@code Types.asMemberOf}; reject that
-     * shape explicitly rather than silently compiling unresolved type variables.
-     */
-    private boolean hasGenericOwner(
-            TypeElement mapper,
-            ExecutableElement method) {
-
-        Element owner =
-                method.getEnclosingElement();
-
-        if (!(owner instanceof
-                TypeElement)) {
-
-            return false;
-        }
-
-        TypeElement ownerType =
-                (TypeElement) owner;
-
-        if (ownerType.equals(mapper)) {
-            return false;
-        }
-
-        return !ownerType
-                .getTypeParameters()
-                .isEmpty();
-    }
 }

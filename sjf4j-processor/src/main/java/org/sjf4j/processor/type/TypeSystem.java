@@ -139,9 +139,9 @@ public final class TypeSystem {
     /**
      * Resolves the compile-time OBNT kind of a Java type.
      *
-     * <p>{@link Object} is classified as
-     * {@link NodeKind#COMPILE_TIME_UNKNOWN}: it may hold any OBNT node at
-     * runtime, but its concrete node kind is not known statically.
+     * <p>{@link Object} and supported external tree-node root types are
+     * classified as {@link NodeKind#COMPILE_TIME_UNKNOWN}: they may hold any
+     * OBNT node at runtime, but their concrete node kind is not known statically.
      * {@link NodeKind#UNKNOWN} is reserved for types that cannot be classified
      * by the compile-time type system.</p>
      */
@@ -237,9 +237,10 @@ public final class TypeSystem {
         }
 
         /*
-         * Object and ExternalNode may contain any OBNT node at runtime. Keep this distinct from
-         * UNKNOWN so generated code may deliberately use Nodes for runtime
-         * dispatch only when the declared Java type is Object.
+         * Object and supported external tree nodes may contain any OBNT node at
+         * runtime. Keep this distinct from UNKNOWN so generated code can
+         * deliberately use Nodes for runtime dispatch when static shape is not
+         * available.
          */
         if (isCompileTimeUnknown(type)) {
             return NodeKind.COMPILE_TIME_UNKNOWN;
@@ -251,6 +252,41 @@ public final class TypeSystem {
 
     public JsonType jsonType(TypeMirror type) {
         return JsonType.of(nodeKind(type));
+    }
+
+
+    /**
+     * Returns whether kind is a statically known OBNT object shape.
+     */
+    public boolean isObjectNode(NodeKind kind) {
+        switch (kind) {
+            case OBJECT_POJO:
+            case OBJECT_MAP:
+            case OBJECT_JSON_OBJECT:
+            case OBJECT_JOJO:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+
+    /**
+     * Returns whether kind is a statically known OBNT array shape.
+     */
+    public boolean isArrayNode(NodeKind kind) {
+        switch (kind) {
+            case ARRAY_ARRAY:
+            case ARRAY_LIST:
+            case ARRAY_SET:
+            case ARRAY_JSON_ARRAY:
+            case ARRAY_JAJO:
+                return true;
+
+            default:
+                return false;
+        }
     }
 
 
@@ -658,7 +694,7 @@ public final class TypeSystem {
 
     /**
      * Resolves the readable element type of Java arrays, List, Set and dynamic
-     * SJF4J/external arrays.
+     * SJF4J arrays.
      */
     public TypeMirror readElementType(TypeMirror type) {
         type = concrete(type);
@@ -693,8 +729,7 @@ public final class TypeSystem {
                 nodeKind(type);
 
         if (kind == NodeKind.ARRAY_JSON_ARRAY
-                || kind == NodeKind.ARRAY_JAJO
-                || kind == NodeKind.ARRAY_EXTERNAL) {
+                || kind == NodeKind.ARRAY_JAJO) {
 
             return objectType;
         }
@@ -705,7 +740,7 @@ public final class TypeSystem {
 
     /**
      * Resolves the writable element type of Java arrays, List, Set and dynamic
-     * SJF4J/external arrays.
+     * SJF4J arrays.
      *
      * <p>{@code ? extends T} contributes only a readable element type and is
      * therefore rejected here.</p>
@@ -742,8 +777,7 @@ public final class TypeSystem {
                 nodeKind(type);
 
         if (kind == NodeKind.ARRAY_JSON_ARRAY
-                || kind == NodeKind.ARRAY_JAJO
-                || kind == NodeKind.ARRAY_EXTERNAL) {
+                || kind == NodeKind.ARRAY_JAJO) {
 
             return objectType;
         }
@@ -751,6 +785,70 @@ public final class TypeSystem {
         return null;
     }
 
+    public boolean isFullyResolved(TypeMirror type) {
+        if (type == null) {
+            return false;
+        }
+
+        switch (type.getKind()) {
+            case TYPEVAR:
+                return false;
+
+            case ARRAY:
+                return isFullyResolved(
+                        ((ArrayType) type)
+                                .getComponentType());
+
+            case DECLARED: {
+                DeclaredType declared =
+                        (DeclaredType) type;
+
+                TypeMirror enclosing =
+                        declared.getEnclosingType();
+
+                if (enclosing != null &&
+                        enclosing.getKind() != TypeKind.NONE &&
+                        !isFullyResolved(enclosing)) {
+                    return false;
+                }
+
+                for (TypeMirror arg :
+                        declared.getTypeArguments()) {
+
+                    if (!isFullyResolved(arg)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            case WILDCARD: {
+                WildcardType wildcard =
+                        (WildcardType) type;
+
+                TypeMirror extendsBound =
+                        wildcard.getExtendsBound();
+
+                if (extendsBound != null &&
+                        !isFullyResolved(extendsBound)) {
+                    return false;
+                }
+
+                TypeMirror superBound =
+                        wildcard.getSuperBound();
+
+                return superBound == null ||
+                        isFullyResolved(superBound);
+            }
+
+            case ERROR:
+                return false;
+
+            default:
+                return true;
+        }
+    }
 
     public boolean isFullyConcrete(TypeMirror type) {
         if (type == null) {
@@ -809,6 +907,7 @@ public final class TypeSystem {
                 return true;
         }
     }
+
     public TypeMirror resolveFieldType(
             TypeMirror owner,
             VariableElement field) {

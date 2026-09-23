@@ -2,6 +2,7 @@ package org.sjf4j.processor;
 
 import org.sjf4j.processor.access.NodeAccessResolver;
 import org.sjf4j.processor.annotation.NodeAnnotations;
+import org.sjf4j.processor.method.InterfaceMethodResolver;
 import org.sjf4j.processor.property.PropertyResolver;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -25,6 +26,7 @@ public final class ProcessorContext {
     public final NodeAnnotations annotations;
     public final PropertyResolver properties;
     public final NodeAccessResolver access;
+    public final InterfaceMethodResolver methods;
 
     public ProcessorContext(ProcessingEnvironment environment) {
         Objects.requireNonNull(environment, "environment");
@@ -44,6 +46,7 @@ public final class ProcessorContext {
                 new PropertyResolver(
                         typeUtils,
                         elements,
+                        messager,
                         types,
                         annotations);
 
@@ -51,6 +54,12 @@ public final class ProcessorContext {
                 new NodeAccessResolver(
                         types,
                         properties);
+
+        this.methods =
+                new InterfaceMethodResolver(
+                        typeUtils,
+                        elements,
+                        types);
     }
 
     public void error(Element element, String message) {

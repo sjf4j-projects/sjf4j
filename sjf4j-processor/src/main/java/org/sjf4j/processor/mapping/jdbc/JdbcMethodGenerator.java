@@ -5,6 +5,7 @@ import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingIfParentPresent;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.method.ResolvedMethod;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.ExecutableElement;
@@ -56,9 +57,11 @@ public final class JdbcMethodGenerator {
      * Analyzes one effective abstract mapper method.
      */
     public JdbcPlan analyze(
-            TypeElement mapper,
-            ExecutableElement method,
+            ResolvedMethod resolvedMethod,
             GeneratedClass generated) {
+
+        ExecutableElement method =
+                resolvedMethod.declaration();
 
         if (!method.getModifiers()
                 .contains(Modifier.ABSTRACT)) {
@@ -102,18 +105,7 @@ public final class JdbcMethodGenerator {
          * User map(ResultSet rs)
          */
         ExecutableType methodType =
-                types.resolveMethodType(
-                        mapper.asType(),
-                        method);
-
-        if (methodType == null) {
-            error(
-                    method,
-                    generated,
-                    "Cannot resolve JDBC mapper method type");
-
-            return null;
-        }
+                resolvedMethod.type();
 
         if (!validateConcreteSignature(
                 method,

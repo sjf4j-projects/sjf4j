@@ -85,8 +85,6 @@ public final class NodeAccessResolver {
             case OBJECT_JSON_OBJECT:
                 return jsonObject(owner);
 
-            case OBJECT_EXTERNAL:
-                return external(owner);
 
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
@@ -127,8 +125,6 @@ public final class NodeAccessResolver {
             case OBJECT_MAP:
                 return map(owner);
 
-            case OBJECT_EXTERNAL:
-                return external(owner);
 
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
@@ -171,8 +167,6 @@ public final class NodeAccessResolver {
             case ARRAY_JAJO:
                 return jsonArray(owner);
 
-            case ARRAY_EXTERNAL:
-                return external(owner);
 
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
@@ -212,8 +206,6 @@ public final class NodeAccessResolver {
             case ARRAY_JAJO:
                 return jsonArray(owner);
 
-            case ARRAY_EXTERNAL:
-                return external(owner);
 
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
@@ -379,34 +371,11 @@ public final class NodeAccessResolver {
 
 
     // -------------------------------------------------------------------------
-    // External node
-    // -------------------------------------------------------------------------
-
-    private NodeAccess external(
-            TypeMirror owner) {
-
-        TypeMirror valueType =
-                types.objectType();
-
-        return new NodeAccess(
-                NodeAccess.Kind.EXTERNAL,
-                owner,
-                valueType,
-                valueType,
-                null);
-    }
-
-
-    // -------------------------------------------------------------------------
     // Unknown static shape
     // -------------------------------------------------------------------------
 
     private NodeAccess unknown(
             TypeMirror owner) {
-
-        if (types.isExternalNode(owner)) {
-            return external(owner);
-        }
 
         return null;
     }

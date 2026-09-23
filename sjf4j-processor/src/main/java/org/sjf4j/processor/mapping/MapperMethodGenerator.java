@@ -5,6 +5,7 @@ import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.method.ResolvedMethod;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -12,6 +13,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -60,8 +62,14 @@ public final class MapperMethodGenerator {
      * @return resolved method plan, or {@code null} after a diagnostic
      */
     public MappingPlan analyze(
-            ExecutableElement method,
+            ResolvedMethod resolvedMethod,
             GeneratedClass generated) {
+
+        ExecutableElement method =
+                resolvedMethod.declaration();
+
+        ExecutableType methodType =
+                resolvedMethod.type();
 
         if (!method.getTypeParameters().isEmpty()) {
             error(
@@ -74,6 +82,9 @@ public final class MapperMethodGenerator {
 
         List<? extends VariableElement> parameters =
                 method.getParameters();
+
+        List<? extends TypeMirror> parameterTypes =
+                methodType.getParameterTypes();
 
         if (parameters.isEmpty()) {
             error(
@@ -90,7 +101,10 @@ public final class MapperMethodGenerator {
         List<VariableElement> sources =
                 new ArrayList<VariableElement>();
 
-        if (method.getReturnType().getKind() ==
+        List<TypeMirror> sourceTypes =
+                new ArrayList<TypeMirror>();
+
+        if (methodType.getReturnType().getKind() ==
                 TypeKind.VOID) {
 
             kind =
@@ -109,7 +123,7 @@ public final class MapperMethodGenerator {
                     parameters.get(0);
 
             targetType =
-                    targetParameter.asType();
+                    parameterTypes.get(0);
 
             if (targetType.getKind().isPrimitive()) {
                 error(
@@ -126,6 +140,9 @@ public final class MapperMethodGenerator {
 
                 sources.add(
                         parameters.get(i));
+
+                sourceTypes.add(
+                        parameterTypes.get(i));
             }
 
         } else {
@@ -135,10 +152,13 @@ public final class MapperMethodGenerator {
             targetParameter = null;
 
             targetType =
-                    method.getReturnType();
+                    methodType.getReturnType();
 
             sources.addAll(
                     parameters);
+
+            sourceTypes.addAll(
+                    parameterTypes);
         }
 
         List<MappingPlan.Rule> rules =
@@ -158,10 +178,12 @@ public final class MapperMethodGenerator {
 
         return new MappingPlan(
                 method,
+                methodType,
                 kind,
                 targetType,
                 targetParameter,
                 sources,
+                sourceTypes,
                 rules,
                 options);
     }

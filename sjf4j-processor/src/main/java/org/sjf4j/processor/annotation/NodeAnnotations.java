@@ -7,6 +7,8 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import java.util.Map;
 
 /**
@@ -54,6 +56,52 @@ public final class NodeAnnotations {
     public String propertyName(Element element, String fallback) {
         String name = explicitPropertyName(element);
         return name == null ? fallback : name;
+    }
+
+
+    /**
+     * Returns whether the declared type uses SJF4J's OneOf node semantics.
+     *
+     * <p>The annotation has moved between node annotation packages before, so
+     * recognition deliberately follows the SJF4J annotation namespace and
+     * simple name instead of importing one concrete annotation class.</p>
+     */
+    public boolean hasOneOf(TypeMirror type) {
+        if (!(type instanceof DeclaredType)) {
+            return false;
+        }
+
+        Element element =
+                ((DeclaredType) type)
+                        .asElement();
+
+        if (!(element instanceof TypeElement)) {
+            return false;
+        }
+
+        for (AnnotationMirror annotation :
+                element.getAnnotationMirrors()) {
+
+            Element annotationType =
+                    annotation.getAnnotationType()
+                            .asElement();
+
+            if (!(annotationType instanceof TypeElement)) {
+                continue;
+            }
+
+            String name =
+                    ((TypeElement) annotationType)
+                            .getQualifiedName()
+                            .toString();
+
+            if (name.startsWith("org.sjf4j.annotation.") &&
+                    name.endsWith(".OneOf")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private String stringValue(

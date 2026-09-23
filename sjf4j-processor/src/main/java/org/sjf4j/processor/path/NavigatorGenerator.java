@@ -2,15 +2,12 @@ package org.sjf4j.processor.path;
 
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.method.ResolvedMethod;
 
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 /**
  * Generates implementations for @CompiledNavigator interfaces.
@@ -41,77 +38,57 @@ public final class NavigatorGenerator {
             return;
         }
 
-        if (hasGenericInheritedAbstractMethod(type)) {
+        List<ResolvedMethod> methods =
+                context.methods.abstractMethods(type);
+
+        if (hasGenericInheritedAbstractMethod(
+                type,
+                methods)) {
             return;
         }
 
         GeneratedClass generated =
                 GeneratedClass.forInterface(context, type);
 
-        Set<String> inheritedSignatures =
-                new HashSet<>();
-
-        for (Element element : context.elements.getAllMembers(type)) {
-            if (element.getKind() != ElementKind.METHOD) {
-                continue;
-            }
-
-            ExecutableElement method =
-                    (ExecutableElement) element;
-
-            if (!method.getModifiers().contains(Modifier.ABSTRACT) ||
-                    method.getModifiers().contains(Modifier.STATIC)) {
-                continue;
-            }
-
-            if (!method.getEnclosingElement().equals(type) &&
-                    !inheritedSignatures.add(erasedSignature(method))) {
-
-                continue;
-            }
-
-            methodGenerator.generate(method, generated);
+        for (ResolvedMethod method : methods) {
+            methodGenerator.generate(
+                    method.declaration(),
+                    generated);
         }
 
         generated.write();
     }
 
 
-    private String erasedSignature(ExecutableElement method) {
-        StringBuilder signature =
-                new StringBuilder(method.getSimpleName())
-                        .append('(');
+    private boolean hasGenericInheritedAbstractMethod(
+            TypeElement type,
+            List<ResolvedMethod> methods) {
 
-        for (VariableElement parameter : method.getParameters()) {
-            signature.append(context.typeUtils.erasure(parameter.asType()))
-                    .append(';');
-        }
+        for (ResolvedMethod resolved : methods) {
+            ExecutableElement method =
+                    resolved.declaration();
 
-        return signature.append(')').toString();
-    }
+            Element owner =
+                    method.getEnclosingElement();
 
-
-    private boolean hasGenericInheritedAbstractMethod(TypeElement type) {
-        for (Element element : context.elements.getAllMembers(type)) {
-            if (element.getKind() != ElementKind.METHOD ||
-                    element.getEnclosingElement().equals(type) ||
-                    !element.getModifiers().contains(Modifier.ABSTRACT) ||
-                    element.getModifiers().contains(Modifier.STATIC)) {
-
+            if (!(owner instanceof TypeElement) ||
+                    owner.equals(type)) {
                 continue;
             }
 
-            TypeElement owner = (TypeElement) element.getEnclosingElement();
+            TypeElement ownerType =
+                    (TypeElement) owner;
 
-            if (owner.getTypeParameters().isEmpty()) {
+            if (ownerType.getTypeParameters().isEmpty()) {
                 continue;
             }
 
             context.error(
-                    element,
+                    method,
                     "@CompiledNavigator cannot inherit abstract method '" +
-                            ((ExecutableElement) element).getSimpleName() +
-                            "' from generic interface " + owner.getQualifiedName());
+                            method.getSimpleName() +
+                            "' from generic interface " +
+                            ownerType.getQualifiedName());
             return true;
         }
 

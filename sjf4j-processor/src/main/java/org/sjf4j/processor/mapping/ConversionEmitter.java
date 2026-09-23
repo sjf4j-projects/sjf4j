@@ -1901,7 +1901,6 @@ public final class ConversionEmitter
                                 ")");
 
             case DYNAMIC:
-            case EXTERNAL:
                 return cast(
                         access.readType(),
                         "org.sjf4j.Nodes.getInObject(" +
@@ -1969,7 +1968,6 @@ public final class ConversionEmitter
                 return;
 
             case DYNAMIC:
-            case EXTERNAL:
                 out.line(
                         "org.sjf4j.Nodes.putInObject(" +
                                 owner +

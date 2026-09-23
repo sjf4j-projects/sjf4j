@@ -1502,7 +1502,6 @@ public final class JdbcCompiler {
                 return true;
 
             case DYNAMIC:
-            case EXTERNAL:
             default:
                 return false;
         }

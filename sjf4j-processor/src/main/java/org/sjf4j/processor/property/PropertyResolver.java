@@ -8,6 +8,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.annotation.processing.Messager;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
@@ -16,7 +17,9 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import javax.tools.Diagnostic;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -36,17 +39,23 @@ public final class PropertyResolver {
 
     private final Types typeUtils;
     private final Elements elements;
+    private final Messager messager;
     private final TypeSystem types;
     private final NodeAnnotations annotations;
+
+    private final Map<String, Map<String, Property>> cache =
+            new HashMap<String, Map<String, Property>>();
 
     public PropertyResolver(
             Types typeUtils,
             Elements elements,
+            Messager messager,
             TypeSystem types,
             NodeAnnotations annotations) {
 
         this.typeUtils = Objects.requireNonNull(typeUtils, "typeUtils");
         this.elements = Objects.requireNonNull(elements, "elements");
+        this.messager = Objects.requireNonNull(messager, "messager");
         this.types = Objects.requireNonNull(types, "types");
         this.annotations = Objects.requireNonNull(annotations, "annotations");
     }
@@ -74,6 +83,15 @@ public final class PropertyResolver {
             return Collections.emptyMap();
         }
 
+        String cacheKey = owner.toString();
+
+        Map<String, Property> cached =
+                cache.get(cacheKey);
+
+        if (cached != null) {
+            return cached;
+        }
+
         DeclaredType declaredOwner = (DeclaredType) owner;
         boolean jojo = kind == NodeKind.OBJECT_JOJO;
 
@@ -95,6 +113,7 @@ public final class PropertyResolver {
             if (member.getKind() == ElementKind.FIELD) {
                 addField(
                         builders,
+                        type,
                         declaredOwner,
                         (VariableElement) member);
             } else if (member.getKind() == ElementKind.METHOD) {
@@ -126,7 +145,14 @@ public final class PropertyResolver {
                                     : builder.write.access));
         }
 
-        return Collections.unmodifiableMap(result);
+        Map<String, Property> resolved =
+                Collections.unmodifiableMap(result);
+
+        cache.put(
+                cacheKey,
+                resolved);
+
+        return resolved;
     }
 
     /**
@@ -142,6 +168,7 @@ public final class PropertyResolver {
 
     private void addField(
             Map<String, Builder> builders,
+            TypeElement type,
             DeclaredType owner,
             VariableElement field) {
 
@@ -165,11 +192,11 @@ public final class PropertyResolver {
         PropertyAccess access =
                 new PropertyAccess(field, fieldType);
 
-        builder(builders, propertyName)
+        builder(builders, propertyName, type)
                 .offerRead(access, priority);
 
         if (!field.getModifiers().contains(Modifier.FINAL)) {
-            builder(builders, propertyName)
+            builder(builders, propertyName, type)
                     .offerWrite(access, priority);
         }
     }
@@ -217,7 +244,7 @@ public final class PropertyResolver {
                                 explicitName != null,
                                 true);
 
-                builder(builders, propertyName)
+                builder(builders, propertyName, type)
                         .offerRead(
                                 new PropertyAccess(
                                         method,
@@ -252,7 +279,7 @@ public final class PropertyResolver {
                                 explicitName != null,
                                 true);
 
-                builder(builders, propertyName)
+                builder(builders, propertyName, type)
                         .offerWrite(
                                 new PropertyAccess(
                                         method,
@@ -363,12 +390,13 @@ public final class PropertyResolver {
 
     private Builder builder(
             Map<String, Builder> builders,
-            String name) {
+            String name,
+            TypeElement owner) {
 
         Builder builder = builders.get(name);
 
         if (builder == null) {
-            builder = new Builder();
+            builder = new Builder(owner, name);
             builders.put(name, builder);
         }
 
@@ -403,29 +431,372 @@ public final class PropertyResolver {
         }
     }
 
-    private static final class Builder {
+
+    private final class Builder {
+
+        private final TypeElement owner;
+        private final String name;
 
         Candidate read;
         Candidate write;
+
+
+        Builder(
+                TypeElement owner,
+                String name) {
+
+            this.owner = owner;
+            this.name = name;
+        }
+
 
         void offerRead(
                 PropertyAccess access,
                 int priority) {
 
-            if (read == null
-                    || priority > read.priority) {
-                read = new Candidate(access, priority);
-            }
+            read = offer(
+                    read,
+                    access,
+                    priority,
+                    true);
         }
+
 
         void offerWrite(
                 PropertyAccess access,
                 int priority) {
 
-            if (write == null
-                    || priority > write.priority) {
-                write = new Candidate(access, priority);
+            write = offer(
+                    write,
+                    access,
+                    priority,
+                    false);
+        }
+
+
+        private Candidate offer(
+                Candidate current,
+                PropertyAccess candidate,
+                int priority,
+                boolean readable) {
+
+            if (current == null ||
+                    priority > current.priority) {
+
+                return new Candidate(
+                        candidate,
+                        priority);
             }
+
+            if (priority < current.priority) {
+                return current;
+            }
+
+            int specificity =
+                    compareSpecificity(
+                            owner,
+                            current.access,
+                            candidate,
+                            readable);
+
+            if (specificity < 0) {
+                return current;
+            }
+
+            if (specificity > 0) {
+                return new Candidate(
+                        candidate,
+                        priority);
+            }
+
+            reportAmbiguous(
+                    name,
+                    readable,
+                    current.access,
+                    candidate);
+
+            return candidateKey(candidate)
+                    .compareTo(
+                            candidateKey(
+                                    current.access)) < 0
+                    ? new Candidate(
+                    candidate,
+                    priority)
+                    : current;
         }
     }
+
+
+    /**
+     * Returns -1 for current, +1 for candidate and 0 for a real ambiguity.
+     */
+    private int compareSpecificity(
+            TypeElement owner,
+            PropertyAccess current,
+            PropertyAccess candidate,
+            boolean readable) {
+
+        if (current.member().equals(
+                candidate.member())) {
+            return -1;
+        }
+
+        if (current.isMethod() &&
+                candidate.isMethod()) {
+
+            ExecutableElement currentMethod =
+                    (ExecutableElement) current.member();
+
+            ExecutableElement candidateMethod =
+                    (ExecutableElement) candidate.member();
+
+            try {
+                if (elements.overrides(
+                        candidateMethod,
+                        currentMethod,
+                        owner)) {
+                    return 1;
+                }
+
+                if (elements.overrides(
+                        currentMethod,
+                        candidateMethod,
+                        owner)) {
+                    return -1;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Fall through to signature/type comparison.
+            }
+
+            if (readable) {
+                int booleanGetter =
+                        compareBooleanGetter(
+                                currentMethod,
+                                candidateMethod);
+
+                if (booleanGetter != 0) {
+                    return booleanGetter;
+                }
+            }
+
+            if (sameMethodSignature(
+                    current,
+                    candidate)) {
+
+                if (readable) {
+                    boolean candidateToCurrent =
+                            typeUtils.isAssignable(
+                                    candidate.type(),
+                                    current.type());
+
+                    boolean currentToCandidate =
+                            typeUtils.isAssignable(
+                                    current.type(),
+                                    candidate.type());
+
+                    if (candidateToCurrent &&
+                            !currentToCandidate) {
+                        return 1;
+                    }
+
+                    if (currentToCandidate &&
+                            !candidateToCurrent) {
+                        return -1;
+                    }
+                }
+
+                /*
+                 * Equivalent diamond declarations represent one Java member
+                 * contract and are not an ambiguous node property.
+                 */
+                return candidateKey(candidate)
+                        .compareTo(
+                                candidateKey(current)) < 0
+                        ? 1
+                        : -1;
+            }
+
+            return 0;
+        }
+
+        if (current.isField() &&
+                candidate.isField()) {
+
+            TypeElement currentOwner =
+                    memberOwner(current.member());
+
+            TypeElement candidateOwner =
+                    memberOwner(candidate.member());
+
+            if (currentOwner != null &&
+                    candidateOwner != null) {
+
+                boolean candidateToCurrent =
+                        typeUtils.isSubtype(
+                                candidateOwner.asType(),
+                                currentOwner.asType());
+
+                boolean currentToCandidate =
+                        typeUtils.isSubtype(
+                                currentOwner.asType(),
+                                candidateOwner.asType());
+
+                if (candidateToCurrent &&
+                        !currentToCandidate) {
+                    return 1;
+                }
+
+                if (currentToCandidate &&
+                        !candidateToCurrent) {
+                    return -1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+
+    private int compareBooleanGetter(
+            ExecutableElement current,
+            ExecutableElement candidate) {
+
+        String currentName =
+                current.getSimpleName()
+                        .toString();
+
+        String candidateName =
+                candidate.getSimpleName()
+                        .toString();
+
+        boolean currentIs =
+                isBooleanGetterName(currentName);
+
+        boolean candidateIs =
+                isBooleanGetterName(candidateName);
+
+        if (currentIs == candidateIs) {
+            return 0;
+        }
+
+        String isName =
+                currentIs
+                        ? currentName
+                        : candidateName;
+
+        String otherName =
+                currentIs
+                        ? candidateName
+                        : currentName;
+
+        if (!otherName.startsWith("get") ||
+                otherName.length() <= 3 ||
+                !isName.substring(2)
+                        .equals(otherName.substring(3))) {
+            return 0;
+        }
+
+        return candidateIs ? 1 : -1;
+    }
+
+
+    private boolean isBooleanGetterName(
+            String name) {
+
+        return name.startsWith("is") &&
+                name.length() > 2;
+    }
+
+
+    private boolean sameMethodSignature(
+            PropertyAccess first,
+            PropertyAccess second) {
+
+        ExecutableElement firstMethod =
+                (ExecutableElement) first.member();
+
+        ExecutableElement secondMethod =
+                (ExecutableElement) second.member();
+
+        if (!firstMethod.getSimpleName()
+                .contentEquals(
+                        secondMethod.getSimpleName())) {
+            return false;
+        }
+
+        int parameters =
+                firstMethod.getParameters().size();
+
+        if (parameters !=
+                secondMethod.getParameters().size()) {
+            return false;
+        }
+
+        if (parameters == 0) {
+            return true;
+        }
+
+        if (parameters == 1) {
+            return typeUtils.isSameType(
+                    typeUtils.erasure(first.type()),
+                    typeUtils.erasure(second.type()));
+        }
+
+        return false;
+    }
+
+
+    private TypeElement memberOwner(
+            Element member) {
+
+        Element owner =
+                member.getEnclosingElement();
+
+        return owner instanceof TypeElement
+                ? (TypeElement) owner
+                : null;
+    }
+
+
+    private void reportAmbiguous(
+            String name,
+            boolean readable,
+            PropertyAccess first,
+            PropertyAccess second) {
+
+        messager.printMessage(
+                Diagnostic.Kind.ERROR,
+                "Ambiguous " +
+                        (readable ? "readable" : "writable") +
+                        " node property '" +
+                        name +
+                        "': " +
+                        memberDescription(first) +
+                        " and " +
+                        memberDescription(second),
+                second.member());
+    }
+
+
+    private String memberDescription(
+            PropertyAccess access) {
+
+        TypeElement owner =
+                memberOwner(access.member());
+
+        return (owner == null
+                ? ""
+                : owner.getQualifiedName() + "#") +
+                access.member().toString();
+    }
+
+
+    private String candidateKey(
+            PropertyAccess access) {
+
+        return memberDescription(access) +
+                ':' +
+                access.type();
+    }
+
 }

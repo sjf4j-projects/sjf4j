@@ -1991,7 +1991,7 @@ public final class FindGenerator {
 
                 default:
                     /*
-                     * DYNAMIC / EXTERNAL accesses depend on runtime node shape
+                     * DYNAMIC accesses depend on runtime node shape
                      * and are intentionally not treated as directly compiled
                      * find accesses.
                      */
