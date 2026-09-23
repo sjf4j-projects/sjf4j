@@ -37,7 +37,11 @@ public final class StreamingIO {
 
     private static final Object UNSET = new Object();
 
-    /// Read
+    /*
+     * --------------------------------------------------------------
+     * Read
+     * --------------------------------------------------------------
+     */
 
     /**
      * Reads one node from streaming reader into target type using streaming context.
@@ -622,7 +626,11 @@ public final class StreamingIO {
         return _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, context);
     }
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
 
     /**
      * Writes one node to streaming writer using instance-level value formats.
@@ -799,7 +807,11 @@ public final class StreamingIO {
         writer.endObject();
     }
 
-    /// Support
+    /*
+     * --------------------------------------------------------------
+     * Support
+     * --------------------------------------------------------------
+     */
 
     public static ValueInfo resolveValueCodecInfo(Class<?> clazz, StreamingContext context) {
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);

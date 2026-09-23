@@ -802,7 +802,11 @@ public final class SimpleNodeFacade implements NodeFacade {
     }
 
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
 
     /**
      * Converts runtime object into writable node tree.

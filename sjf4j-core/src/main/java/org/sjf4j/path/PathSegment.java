@@ -11,7 +11,8 @@ import java.util.List;
  * Immutable segment in a JSONPath/JSON Pointer token chain.
  *
  * <p>Each segment points to its parent to allow reconstructing the full path
- * when formatting errors or converting to expressions.
+ * when formatting errors or converting to expressions. Segments describe syntax;
+ * {@link JsonPath} defines read and mutation behavior.
  */
 public abstract class PathSegment {
     protected final PathSegment parent;
@@ -58,10 +59,14 @@ public abstract class PathSegment {
         return PathSyntax.rootedPathExpr(this);
     }
 
-    /// Subclasses: Root, Name, Index, Param, Wildcard, Slice, Union, Descendant, Function, Filter, Append
+    /*
+     * --------------------------------------------------------------
+     * Subclasses: Root, Name, Index, Param, Wildcard, Slice, Union, Descendant, Function, Filter, Append
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Represents the root token ($) in a JSON path expression.
+     * Represents the root token ({@code $}) in a JSONPath expression.
      */
     public static final class Root extends PathSegment {
         private Root() {
@@ -76,8 +81,7 @@ public abstract class PathSegment {
 
 
     /**
-     * Represents the current token (@) in a JSON path expression.
-     * This token is used only inside filter expressions.
+     * Represents the current token ({@code @}) in a JSONPath expression.
      */
     public static final class Current extends PathSegment {
         private Current() {
@@ -123,7 +127,10 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents an index token in a JSON path expression.
+     * Represents an index token in a JSONPath expression.
+     * <p>
+     * A pointer-origin token can address an object key when its runtime parent is
+     * an object node; otherwise it addresses an array index.
      */
     public static final class Index extends PathSegment {
         public final int index;
@@ -160,6 +167,8 @@ public abstract class PathSegment {
 
     /**
      * Represents a dynamic bracket path parameter token, e.g. {@code [{idx}]}.
+     * Parameters are resolved only by annotation-based path binding, not public
+     * {@link JsonPath} evaluation methods.
      */
     public static final class Param extends PathSegment {
         public final String param;
@@ -389,7 +398,8 @@ public abstract class PathSegment {
     }
 
     /**
-     * Append token used by JSON Pointer ("-") and JSONPath ("[+]").
+     * Append token used by JSON Pointer ({@code -}) and JSONPath ({@code [+]}).
+     * It is meaningful only for writes to an appendable array node.
      */
     public static final class Append extends PathSegment {
         /**
@@ -403,7 +413,11 @@ public abstract class PathSegment {
         }
     }
 
-    /// protected
+    /*
+     * --------------------------------------------------------------
+     * Protected Helpers
+     * --------------------------------------------------------------
+     */
 
     protected boolean shouldArrayStyle(String name) {
         if (name.isEmpty()) {

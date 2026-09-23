@@ -125,7 +125,11 @@ public final class TypeRegistry {
     }
 
 
-    /// NodeValue
+    /*
+     * --------------------------------------------------------------
+     * NodeValue
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns value codec metadata for a class and named format.
@@ -143,7 +147,11 @@ public final class TypeRegistry {
     }
 
 
-    /// POJO
+    /*
+     * --------------------------------------------------------------
+     * POJO
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns object binding metadata or throws when the class cannot be bound as an object.

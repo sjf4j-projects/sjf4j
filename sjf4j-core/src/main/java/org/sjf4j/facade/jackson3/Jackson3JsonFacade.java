@@ -77,7 +77,11 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
     }
 
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     @Override
     public Jackson3Reader createReader(Reader input) throws IOException {
@@ -140,7 +144,11 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
     }
 
 
-    /// Writer
+    /*
+     * --------------------------------------------------------------
+     * Writer
+     * --------------------------------------------------------------
+     */
 
     @Override
     public Jackson3Writer createWriter(Writer output) {

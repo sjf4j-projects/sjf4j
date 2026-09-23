@@ -14,11 +14,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Runtime wrapper around a validating node with cached type metadata.
+ * Runtime wrapper around the representation validated by a schema, with cached
+ * type metadata.
  * <p>
  * Also carries mutable per-validation state such as evaluated-location marks
  * and recursion-detection stack. Instances are validation-scoped and not
- * thread-safe.
+ * thread-safe. A {@code @NodeValue} domain instance is encoded through its value
+ * binding before this wrapper is created, so evaluators inspect the raw OBNT
+ * representation rather than the domain instance.
  */
 public final class InstancedNode {
     private Object node;
@@ -107,8 +110,9 @@ public final class InstancedNode {
     /**
      * Infers node metadata and wraps it as an InstancedNode.
      * <p>
-     * Registered value-node types are first encoded to raw values for schema
-     * validation against JSON-compatible representation. Child wrappers created
+     * Registered logical value node types are first encoded to raw values for
+     * schema validation. The raw value is not recursively rebound or copied
+     * before evaluation. Child wrappers created
      * later from converted values can be cached and reused within the same
      * validation traversal.
      */
@@ -206,7 +210,7 @@ public final class InstancedNode {
     /**
      * Returns child instance for an object key.
      * <p>
-     * Encoded children are cached by key to avoid repeated value-codec encoding.
+     * Encoded children are cached by key to avoid repeated value-binding encoding.
      */
     InstancedNode inferSubByKey(String key, Object subNode, InstancedNode reusedLeaf) {
         if (jsonType != JsonType.OBJECT)

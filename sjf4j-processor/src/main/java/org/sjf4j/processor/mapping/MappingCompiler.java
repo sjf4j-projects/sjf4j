@@ -65,7 +65,6 @@ public final class MappingCompiler {
                         plans);
     }
 
-
     /**
      * Validates mapper-wide dependencies such as imported mappers.
      */
@@ -76,6 +75,12 @@ public final class MappingCompiler {
                 generated);
     }
 
+
+    /*
+     * --------------------------------------------------------------
+     * Compile
+     * --------------------------------------------------------------
+     */
 
     /**
      * Compiles one mapper method.
@@ -296,7 +301,7 @@ public final class MappingCompiler {
 
             /*
              * Auto mapping silently skips a property when the primary source
-             * does not expose the same node-facing name.
+             * does not expose the same name through OBNT.
              */
             if (value == null) {
                 continue;
@@ -328,9 +333,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // JOJO dynamic remainder
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Dynamic Sources
+     * --------------------------------------------------------------
+     */
 
     private List<DynamicSource> compileDynamicSources(
             MappingPlan plan,
@@ -567,9 +574,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Root mapping
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Root Mapping
+     * --------------------------------------------------------------
+     */
 
     private CompiledMethod compileRoot(
             MappingPlan plan,
@@ -747,9 +756,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Constructor
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Create
+     * --------------------------------------------------------------
+     */
 
     private boolean compileConstructorArguments(
             MappingPlan plan,
@@ -847,9 +858,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Value
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Resolve Value
+     * --------------------------------------------------------------
+     */
 
     private Value resolveValue(
             MappingPlan plan,
@@ -1092,9 +1105,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Source read
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Source Read
+     * --------------------------------------------------------------
+     */
 
     private Read resolveRead(
             MappingPlan plan,
@@ -1363,9 +1378,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Target
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Target Write
+     * --------------------------------------------------------------
+     */
 
     private Target resolveTarget(
             TypeMirror rootType,
@@ -1548,7 +1565,7 @@ public final class MappingCompiler {
 
                 /*
                  * Ensure may need to create and assign a missing intermediate
-                 * node, so read-only intermediate access is insufficient.
+                 * OBNT node, so read-only intermediate access is insufficient.
                  */
                 if (rule.mode() ==
                         MappingPlan.WriteMode.ENSURE &&
@@ -1588,9 +1605,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Rule helpers
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Rule Helpers
+     * --------------------------------------------------------------
+     */
 
     private Map<String, MappingPlan.Rule> explicitRules(
             List<MappingPlan.Rule> rules) {
@@ -1677,10 +1696,6 @@ public final class MappingCompiler {
                         value.charAt(0) == '/');
     }
 
-    // -------------------------------------------------------------------------
-    // Diagnostics
-    // -------------------------------------------------------------------------
-
     private void error(
             Element element,
             GeneratedClass generated,
@@ -1696,9 +1711,11 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Compiled model
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Compiled Model
+     * --------------------------------------------------------------
+     */
 
     /**
      * Fully validated mapper-method model.
@@ -1960,10 +1977,6 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Target model
-    // -------------------------------------------------------------------------
-
     static final class Target {
 
         enum Kind {
@@ -2088,10 +2101,6 @@ public final class MappingCompiler {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Value model
-    // -------------------------------------------------------------------------
-
     static final class Value {
 
         enum Kind {
@@ -2193,10 +2202,6 @@ public final class MappingCompiler {
         }
     }
 
-
-    // -------------------------------------------------------------------------
-    // Read model
-    // -------------------------------------------------------------------------
 
     static final class Read {
 

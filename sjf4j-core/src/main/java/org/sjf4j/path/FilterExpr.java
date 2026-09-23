@@ -31,7 +31,11 @@ public interface FilterExpr {
         return truth(v);
     }
 
-    /// Implements: LiteralExpr, PathExpr, UnaryExpr, FunctionExpr
+    /*
+     * --------------------------------------------------------------
+     * Implementations: LiteralExpr, PathExpr, UnaryExpr, FunctionExpr
+     * --------------------------------------------------------------
+     */
 
     /**
      * Filter expression for a constant literal value.
@@ -320,7 +324,11 @@ public interface FilterExpr {
 
     }
 
-    /// Default
+    /*
+     * --------------------------------------------------------------
+     * Default
+     * --------------------------------------------------------------
+     */
 
     /**
      * Supported binary operators for filter expressions.

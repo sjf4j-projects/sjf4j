@@ -28,9 +28,12 @@ import java.util.regex.Pattern;
  * Per-keyword evaluator used by compiled schemas.
  * <p>
  * Implementations validate one keyword (or tightly related keyword group)
- * against the current instance node and report messages via context. They are
+ * against the current instance representation and report messages via context.
+ * For {@code @NodeValue} inputs this is the raw OBNT representation encoded by
+ * the configured value binding, not the domain instance. They are
  * runtime-only executors: parsing, resource registration, and reference binding
- * happen earlier in {@link SchemaPlanner}.
+ * happen earlier in {@link SchemaPlanner}. Evaluators do not write the input graph,
+ * but getters, value bindings, and user extensions they invoke can have side effects.
  */
 public interface Evaluator {
 
@@ -42,7 +45,11 @@ public interface Evaluator {
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
 
 
-    /// Built-in evaluators
+    /*
+     * --------------------------------------------------------------
+     * Built-In Evaluators
+     * --------------------------------------------------------------
+     */
 
     // $ref
     final class RefEvaluator implements Evaluator {

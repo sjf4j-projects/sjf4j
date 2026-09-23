@@ -21,9 +21,9 @@ import java.util.Objects;
 public abstract class StreamingWriter implements Closeable, Flushable {
 
     /*
-     * ----------------------------------------------------------------------
-     * Prepared property names
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
+     * Prepared Property Names
+     * --------------------------------------------------------------
      */
     private final StreamingBinder<?, ?> binder;
 
@@ -36,9 +36,9 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     }
 
     /*
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      * Document
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      */
 
     /**
@@ -64,9 +64,9 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
 
     /*
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      * Structure
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      */
 
     public abstract void startObject() throws IOException;
@@ -82,9 +82,9 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     public void separateElement() throws IOException {};
 
     /*
-     * ----------------------------------------------------------------------
-     * Property names
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
+     * Property Names
+     * --------------------------------------------------------------
      */
 
     /**
@@ -93,18 +93,18 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     public abstract void writeName(String name) throws IOException;
 
     /*
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      * Null
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      */
 
     public abstract void writeNull() throws IOException;
 
 
     /*
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      * String
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
      */
 
     /**
@@ -125,9 +125,9 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
 
     /*
-     * ----------------------------------------------------------------------
-     * Primitive values
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
+     * Primitive Values
+     * --------------------------------------------------------------
      */
 
     public abstract void writeLongValue(long value) throws IOException;
@@ -148,9 +148,9 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
 
     /*
-     * ----------------------------------------------------------------------
-     * Boxed values
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
+     * Boxed Values
+     * --------------------------------------------------------------
      */
 
     public void writeLong(Long value) throws IOException {
@@ -211,9 +211,9 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
 
     /*
-     * ----------------------------------------------------------------------
-     * Generic / arbitrary precision numbers
-     * ----------------------------------------------------------------------
+     * --------------------------------------------------------------
+     * Generic / Arbitrary Precision Numbers
+     * --------------------------------------------------------------
      */
 
     /**
@@ -259,14 +259,15 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
 
     /*
-     * ----------------------------------------------------------------------
-     * Fused property-value fast paths
-     *
+     * --------------------------------------------------------------
+     * Fused Property-Value Fast Paths
+     * --------------------------------------------------------------
+     */
+
+    /*
      * Generated binders should prefer these methods for object properties.
-     *
      * Default implementations preserve correctness. Backends may override
      * individual methods when their native API provides a faster path.
-     * ----------------------------------------------------------------------
      */
 
     /**

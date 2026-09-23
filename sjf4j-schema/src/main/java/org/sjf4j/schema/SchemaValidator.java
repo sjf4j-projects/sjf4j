@@ -16,7 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * The validator resolves one or more compiled plans for a class hierarchy and
  * reuses them from an internal cache. Resolution may come from inline schema
  * text, explicit refs, or filename conventions under the configured base
- * directory.
+ * directory. The framework does not write the input graph during validation.
+ * Invoked getters, value bindings, and user extensions can have side effects.
+ * Nested {@code @NodeValue} properties are encoded by their configured value
+ * binding before evaluation.
  */
 public final class SchemaValidator {
     private static final String SCHEMA_FILE_SUFFIX_2 = ".json";
@@ -54,8 +57,16 @@ public final class SchemaValidator {
         return SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR.resolve(baseDir);
     }
 
-    /// Validate
+    /*
+     * --------------------------------------------------------------
+     * Validate
+     * --------------------------------------------------------------
+     */
 
+    /**
+     * Validates an annotated POJO and throws when its first resolved plan fails.
+     * Null and a hierarchy with no {@link ValidJsonSchema} annotation are accepted.
+     */
     public void requireValid(Object pojo) {
         ValidationResult result = validate(pojo);
         if (!result.isValid()) {
@@ -66,10 +77,13 @@ public final class SchemaValidator {
     /**
      * Validates a POJO annotated with {@link ValidJsonSchema}.
      * <p>
-     * Unannotated types are treated as valid and skipped. When a class extends
-     * another annotated class, plans are resolved for the full superclass chain
-     * and evaluated in parent-to-child order. Resolved plans are cached per
-     * concrete POJO class.
+     * Null and classes whose full superclass chain has no {@link ValidJsonSchema}
+     * annotation are valid and skipped. Plans from annotated superclasses are
+     * resolved and evaluated in parent-to-child order, including when the concrete
+     * subclass is unannotated. Resolved plans are cached per concrete POJO class.
+     * The framework does not write the POJO, but invoked getters, value bindings,
+     * and user extensions can have side effects. Nested {@code @NodeValue}
+     * properties are encoded before validation.
      */
     public ValidationResult validate(Object pojo) {
         if (pojo == null) return ValidationResult.SUCCESS;

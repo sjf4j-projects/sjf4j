@@ -1,7 +1,7 @@
 package org.sjf4j.exception;
 
 /**
- * Exception for JSON node processing errors.
+ * Exception for OBNT processing errors.
  */
 public class NodeException extends JsonException {
 

@@ -291,7 +291,11 @@ public interface Jackson2Module {
     }
 
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
     /**
      * Serializer for JsonObject preserving framework semantics.
      */
@@ -346,7 +350,11 @@ public interface Jackson2Module {
         }
     }
 
-    /// NodeProperty
+    /*
+     * --------------------------------------------------------------
+     * NodeProperty
+     * --------------------------------------------------------------
+     */
     /**
      * Annotation introspector mapping NodeProperty/NodeCreator to Jackson2 metadata.
      */

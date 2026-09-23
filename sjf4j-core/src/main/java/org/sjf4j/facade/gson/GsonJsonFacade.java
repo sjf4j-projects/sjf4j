@@ -74,7 +74,11 @@ public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> 
         return mode;
     }
 
-    /// Read
+    /*
+     * --------------------------------------------------------------
+     * Read
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming reader from java.io.Reader.
@@ -104,7 +108,11 @@ public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> 
     }
 
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming writer to java.io.Writer.

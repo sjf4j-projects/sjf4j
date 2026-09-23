@@ -29,7 +29,11 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
         this.context = Objects.requireNonNull(context, "context");
     }
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming reader from java.io.Reader.
@@ -123,7 +127,11 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
     }
 
 
-    /// Writer
+    /*
+     * --------------------------------------------------------------
+     * Writer
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming writer to java.io.Writer.

@@ -8,8 +8,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Setup-time registry for ServiceLoader-discovered external node classifiers.
- *
+ * Setup-time registry for ServiceLoader-discovered external representation adapters.
  */
 public final class ExternalNodeRegistry {
 
@@ -37,8 +36,8 @@ public final class ExternalNodeRegistry {
     }
 
     /**
-     * Returns the classifier with the most-specific discovered root type that
-     * accepts {@code nodeType}, or {@code null} when no classifier is available.
+     * Returns the adapter with the most-specific discovered root type that accepts
+     * {@code nodeType}, or {@code null} when no adapter is available.
      */
     public static ExternalNode<?> resolve(Class<?> nodeType) {
         Class<?> resolvedType = null;

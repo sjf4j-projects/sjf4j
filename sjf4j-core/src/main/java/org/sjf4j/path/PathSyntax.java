@@ -35,7 +35,11 @@ public final class PathSyntax {
         return toPointerExpr(linearize(lastSegment));
     }
 
-    /// Inspect
+    /*
+     * --------------------------------------------------------------
+     * Inspect
+     * --------------------------------------------------------------
+     */
     /**
      * Linearizes a segment chain into an ordered array.
      */
@@ -51,7 +55,11 @@ public final class PathSyntax {
         return segments;
     }
 
-    /// JSON Pointer
+    /*
+     * --------------------------------------------------------------
+     * JSON Pointer
+     * --------------------------------------------------------------
+     */
 
     /**
      * Parses a JSON Pointer expression into path segments.
@@ -165,7 +173,11 @@ public final class PathSyntax {
     }
 
 
-    ///  JSON Path
+    /*
+     * --------------------------------------------------------------
+     * JSON Path
+     * --------------------------------------------------------------
+     */
 
     /**
      * Formats segments as a JSONPath expression.
@@ -464,7 +476,11 @@ public final class PathSyntax {
     }
 
 
-    /// private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns true if the char can continue a dot-name token.
@@ -803,7 +819,11 @@ public final class PathSyntax {
     }
 
 
-    /// Path Filter
+    /*
+     * --------------------------------------------------------------
+     * Path Filter
+     * --------------------------------------------------------------
+     */
 
     /**
      * Parses a filter expression into an AST.

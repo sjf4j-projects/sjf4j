@@ -6,10 +6,16 @@ import org.sjf4j.path.JsonPointer;
 
 
 /**
- * Single JSON Patch operation.
+ * Single JSON Patch operation over an OBNT document.
  *
  * <p>Fields follow RFC 6902 ({@code op}, {@code path}, optional {@code from}/{@code value})
- * with a few SJF4J extensions.
+ * with a few SJF4J extensions. The constructor retains the {@code value} reference.
+ * {@code add}, {@code replace}, and {@code ensurePut} write that reference without copying it,
+ * so a mutable target can alias the operation payload. Operations produced by
+ * {@link Patches#diff(Object, Object)} likewise retain values from the target graph, which can
+ * also be reachable from the source graph when the inputs alias. {@code copy} calls
+ * {@code Sjf4j.global().deepNode}; its copy boundary for custom representations is defined by
+ * the global node facade.
  */
 public final class PatchOperation {
 
@@ -74,7 +80,12 @@ public final class PatchOperation {
     }
 
     /**
-     * Applies this operation to target node via {@link OperationRegistry}.
+     * Applies this operation via {@link OperationRegistry}.
+     * <p>
+     * Mutating non-root operations write the addressed target container; {@code test}
+     * and {@code exist} are read-only. Root add and replace return the operation
+     * value; root remove returns {@code null}. The operation itself is not directly
+     * modified.
      */
     public Object apply(Object target) {
         return OperationRegistry.apply(target, this);

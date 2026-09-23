@@ -53,7 +53,11 @@ public interface BytecodePath<R, V> {
     }
 
 
-    /// static
+    /*
+     * --------------------------------------------------------------
+     * Static
+     * --------------------------------------------------------------
+     */
 
     @SuppressWarnings("unchecked")
     static <R, V> BytecodePath<R, V> compile(String pathExpr, Class<R> rootClazz, Class<V> valueClazz) {

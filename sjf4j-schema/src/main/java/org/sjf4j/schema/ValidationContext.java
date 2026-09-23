@@ -13,7 +13,9 @@ import java.util.List;
  * <p>
  * Holds message aggregation, fail-fast control, temporary ignore-error scopes,
  * and dynamic-anchor resolution stack for nested schema evaluation. One context
- * instance is created per validation call and is not thread-safe.
+ * instance is created per validation call and is not thread-safe. It records
+ * validation failures; it does not itself write the supplied instance. Evaluator
+ * reads can invoke getters, value bindings, and user extensions with side effects.
  */
 public class ValidationContext {
     private final boolean failFast;

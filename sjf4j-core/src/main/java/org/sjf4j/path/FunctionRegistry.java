@@ -61,7 +61,11 @@ public class FunctionRegistry {
         }
     }
 
-    /// Register
+    /*
+     * --------------------------------------------------------------
+     * Register
+     * --------------------------------------------------------------
+     */
 
     private static final Map<String, FunctionDescriptor> FUNCTION_CACHE = new ConcurrentHashMap<>();
 

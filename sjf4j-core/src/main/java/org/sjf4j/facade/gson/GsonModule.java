@@ -247,7 +247,11 @@ public interface GsonModule {
         }
     }
 
-    /// To Number
+    /*
+     * --------------------------------------------------------------
+     * To Number
+     * --------------------------------------------------------------
+     */
     /**
      * Number strategy that preserves integer/decimal intent.
      */

@@ -68,7 +68,11 @@ public final class SimplePropertiesBinder implements PropertiesBinder {
     }
 
 
-    /// private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     private static PathSegment[] _parsePath(String key) {
         try {

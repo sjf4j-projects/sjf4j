@@ -132,14 +132,16 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Node type
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Node Kind
+     * --------------------------------------------------------------
+     */
 
     /**
      * Resolves the compile-time OBNT kind of a Java type.
      *
-     * <p>{@link Object} and supported external tree-node root types are
+     * <p>{@link Object} and supported external JSON representation root types are
      * classified as {@link NodeKind#COMPILE_TIME_UNKNOWN}: they may hold any
      * OBNT node at runtime, but their concrete node kind is not known statically.
      * {@link NodeKind#UNKNOWN} is reserved for types that cannot be classified
@@ -237,8 +239,8 @@ public final class TypeSystem {
         }
 
         /*
-         * Object and supported external tree nodes may contain any OBNT node at
-         * runtime. Keep this distinct from UNKNOWN so generated code can
+         * Object and supported external JSON representations may contain any OBNT
+         * node at runtime. Keep this distinct from UNKNOWN so generated code can
          * deliberately use Nodes for runtime dispatch when static shape is not
          * available.
          */
@@ -290,9 +292,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Assignability
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Assignability
+     * --------------------------------------------------------------
+     */
 
     public boolean isAssignable(
             TypeMirror from,
@@ -356,9 +360,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Common type checks
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Type Checks
+     * --------------------------------------------------------------
+     */
 
     public boolean isObject(TypeMirror type) {
         return isSameErasure(type, objectType);
@@ -384,10 +390,10 @@ public final class TypeSystem {
 
 
     /**
-     * Returns whether the type belongs to a supported external JSON tree model.
+     * Returns whether the type belongs to a supported external JSON representation.
      *
-     * <p>This answers capability, not shape. For example JsonNode is an
-     * external node even though its precise NodeKind is unknown.</p>
+     * <p>This answers representation capability, not shape. For example, a
+     * JsonNode may have any shape even though its precise NodeKind is unknown.</p>
      */
     public boolean isExternalNode(TypeMirror type) {
         return isAssignableErasure(type, jackson3NodeType)
@@ -397,9 +403,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Type normalization
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Normalize
+     * --------------------------------------------------------------
+     */
 
     public TypeElement typeElement(TypeMirror type) {
         if (!(type instanceof DeclaredType)) {
@@ -469,9 +477,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Map
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Map Types
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns the readable Map key type.
@@ -599,9 +609,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // List
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * List Types
+     * --------------------------------------------------------------
+     */
     /**
      * Returns the readable List element type.
      */
@@ -643,9 +655,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Set
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Set Types
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns the readable Set element type.
@@ -688,9 +702,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Generic array-like type
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Element Types
+     * --------------------------------------------------------------
+     */
 
     /**
      * Resolves the readable element type of Java arrays, List, Set and dynamic
@@ -977,9 +993,11 @@ public final class TypeSystem {
         return null;
     }
 
-    // -------------------------------------------------------------------------
-    // Generic argument resolution
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Resolve Generics
+     * --------------------------------------------------------------
+     */
 
     /**
      * Resolves one generic type argument through inherited generic bindings.
@@ -1125,10 +1143,6 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Common mirrors
-    // -------------------------------------------------------------------------
-
     public TypeMirror objectType() {
         return objectType;
     }
@@ -1154,9 +1168,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // @NodeValue
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Value Nodes
+     * --------------------------------------------------------------
+     */
 
     /**
      * Determines the JSON value kind represented by an @NodeValue type from
@@ -1254,9 +1270,11 @@ public final class TypeSystem {
     }
 
 
-    // -------------------------------------------------------------------------
-    // Type lookup
-    // -------------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------
+     * Type Lookup
+     * --------------------------------------------------------------
+     */
 
     private TypeMirror requiredType(String name) {
         TypeElement element =

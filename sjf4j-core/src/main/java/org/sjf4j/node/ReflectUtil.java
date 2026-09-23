@@ -57,7 +57,11 @@ public final class ReflectUtil {
     public static final boolean IS_JDK8 = PojoAccess.IS_JDK8;
 
 
-    /// POJO
+    /*
+     * --------------------------------------------------------------
+     * POJO
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns true when class can be treated as a POJO node type.
@@ -839,7 +843,11 @@ public final class ReflectUtil {
     }
 
 
-    /// Third part annotation
+    /*
+     * --------------------------------------------------------------
+     * Third-Party Annotations
+     * --------------------------------------------------------------
+     */
     private static final Class<? extends Annotation> CLASS_JACKSON3_JSON_CREATOR;
     private static final Class<? extends Annotation> CLASS_JACKSON3_JSON_PROPERTY;
     private static final Class<? extends Annotation> CLASS_JACKSON3_JSON_ALIAS;
@@ -938,7 +946,11 @@ public final class ReflectUtil {
     }
 
 
-    /// Record
+    /*
+     * --------------------------------------------------------------
+     * Record
+     * --------------------------------------------------------------
+     */
     private static final Method METHOD_IS_RECORD;
     private static final Method METHOD_GET_RECORD_COMPONENTS;
     private static final Method METHOD_RECORD_COMPONENT_GET_NAME;
@@ -1019,7 +1031,11 @@ public final class ReflectUtil {
         return argIndexes;
     }
 
-    /// OneOf
+    /*
+     * --------------------------------------------------------------
+     * OneOf
+     * --------------------------------------------------------------
+     */
 
     public static OneOfInfo analyzeOneOf(Class<?> clazz, OneOf ann) {
         OneOf.Mapping[] mappings = ann.value();

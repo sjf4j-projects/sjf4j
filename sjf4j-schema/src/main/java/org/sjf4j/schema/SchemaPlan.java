@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Compiled schema resource ready for validation.
+ * Compiled schema resource ready for validation of OBNT representations.
  * <p>
  * Plans from the same schema resource share fragment lookup maps:
  * anchors, dynamic anchors, and JSON Pointer fragments. A nested schema with
@@ -18,12 +18,29 @@ import java.util.Map;
  */
 public final class SchemaPlan {
 
-    /// Validate
+    /*
+     * --------------------------------------------------------------
+     * Validate
+     * --------------------------------------------------------------
+     */
 
+    /**
+     * Validates one instance with aggregated messages and non-strict format checks.
+     * <p>
+     * The framework does not write the instance graph. {@code @NodeValue}
+     * instances are validated as raw representations encoded by their configured
+     * value binding; invoked getters and user extensions can have side effects.
+     */
     public ValidationResult validate(Object node) {
         return validate(node, false, false);
     }
 
+    /**
+     * Validates one instance with aggregated messages.
+     * <p>
+     * {@code strictFormat} controls format assertions; it does not change value
+     * binding or framework input-write behavior.
+     */
     public ValidationResult validate(Object node, boolean strictFormat) {
         return validate(node, false, strictFormat);
     }
@@ -32,7 +49,11 @@ public final class SchemaPlan {
      * Validates one instance against this compiled schema plan.
      * <p>
      * In fail-fast mode only the latest error is retained; otherwise all
-     * collected messages are available in the returned result.
+     * collected messages are available in the returned result. The framework does
+     * not write the input graph, but invoked getters, value bindings, and user
+     * extensions can have side effects. Null is an explicit null instance, not a
+     * missing property; missing-property handling belongs to object keywords such
+     * as {@code required}.
      */
     public ValidationResult validate(Object node, boolean failFast, boolean strictFormat) {
         if (booleanSchema) {
@@ -71,7 +92,8 @@ public final class SchemaPlan {
     }
 
     /**
-     * Validates in fail-fast mode and throws on the first error.
+     * Validates in fail-fast mode with the selected format behavior and throws on
+     * the first error.
      */
     public void requireValid(Object node, boolean strictFormat) {
         ValidationResult result = validate(node, true, strictFormat);
@@ -79,7 +101,11 @@ public final class SchemaPlan {
     }
 
 
-    /// Evaluate
+    /*
+     * --------------------------------------------------------------
+     * Evaluate
+     * --------------------------------------------------------------
+     */
 
     /**
      * Executes evaluator pipeline for the current instance branch.
@@ -113,7 +139,11 @@ public final class SchemaPlan {
     }
 
 
-    /// Planning
+    /*
+     * --------------------------------------------------------------
+     * Planning
+     * --------------------------------------------------------------
+     */
 
     final URI schemaUri;
     final PathSegment keywordPs;

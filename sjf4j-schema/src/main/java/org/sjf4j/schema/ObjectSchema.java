@@ -66,7 +66,11 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         return URI.create(id);
     }
 
-    /// Plan
+    /*
+     * --------------------------------------------------------------
+     * Plan
+     * --------------------------------------------------------------
+     */
 
     /**
      * Compiles this root schema with an isolated copy of the provided registry.

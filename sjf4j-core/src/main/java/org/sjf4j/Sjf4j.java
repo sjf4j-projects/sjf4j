@@ -95,7 +95,11 @@ public final class Sjf4j {
         return new Builder(sjf4j);
     }
 
-    /// Getter
+    /*
+     * --------------------------------------------------------------
+     * Getter
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns the immutable streaming configuration used by this runtime.
@@ -132,7 +136,11 @@ public final class Sjf4j {
         return propertiesFacade;
     }
 
-    /// JSON
+    /*
+     * --------------------------------------------------------------
+     * JSON
+     * --------------------------------------------------------------
+     */
 
     /**
      * Reads JSON from a character stream into the requested target type.
@@ -254,7 +262,11 @@ public final class Sjf4j {
         return jsonFacade.writeNodeAsBytes(node);
     }
 
-    /// YAML
+    /*
+     * --------------------------------------------------------------
+     * YAML
+     * --------------------------------------------------------------
+     */
 
     /**
      * Reads YAML from a character stream into the requested target type.
@@ -323,13 +335,20 @@ public final class Sjf4j {
         return yamlFacade.writeNodeAsBytes(node);
     }
 
-    /// Node
+    /*
+     * --------------------------------------------------------------
+     * Node
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Converts an existing structural node into the requested target type.
+     * Converts an existing OBNT value into the requested target type.
      * <p>
-     * This path performs an isolated conversion and deep-copies nested node values
-     * as needed so the result does not retain source-container aliases.
+     * Delegates to the configured {@link NodeFacade} with deep conversion
+     * requested. The framework-default facade recursively binds its recognized
+     * built-in containers and POJO representations, but converter results can
+     * retain references. The configured facade defines compatible-value identity,
+     * converter selection, and copy behavior.
      */
     @SuppressWarnings("unchecked")
     public <T> T fromNode(Object node, Class<T> clazz) {
@@ -337,10 +356,13 @@ public final class Sjf4j {
     }
 
     /**
-     * Converts an existing structural node into the requested generic target type.
+     * Converts an existing OBNT value into the requested generic target type.
      * <p>
-     * This path performs an isolated conversion and deep-copies nested node values
-     * as needed so the result does not retain source-container aliases.
+     * Delegates to the configured {@link NodeFacade} with deep conversion
+     * requested. The framework-default facade recursively binds its recognized
+     * built-in containers and POJO representations, but converter results can
+     * retain references. The configured facade defines compatible-value identity,
+     * converter selection, and copy behavior.
      */
     @SuppressWarnings("unchecked")
     public <T> T fromNode(Object node, TypeReference<T> type) {
@@ -348,11 +370,13 @@ public final class Sjf4j {
     }
 
     /**
-     * Binds an existing structural node into the requested target type without forcing a deep copy.
+     * Binds an existing OBNT value into the requested target type without forcing a deep copy.
      * <p>
-     * Nested objects, arrays, maps, or lists may be shared with the source graph when
-     * the target binding allows it. Use {@link #fromNode(Object, Class)} when you need
-     * an isolated converted result instead.
+     * Delegates to the configured {@link NodeFacade} without requesting deep
+     * conversion. The framework-default facade can return a compatible
+     * non-parameterized value unchanged; a custom facade defines identity,
+     * converter selection, and nested-reference behavior. Use
+     * {@link #fromNode(Object, Class)} to request the facade's deep conversion mode.
      */
     @SuppressWarnings("unchecked")
     public <T> T bindNode(Object node, Class<T> clazz) {
@@ -360,11 +384,14 @@ public final class Sjf4j {
     }
 
     /**
-     * Binds an existing structural node into the requested generic target type without forcing a deep copy.
+     * Binds an existing OBNT value into the requested generic target type without forcing a deep copy.
      * <p>
-     * Nested objects, arrays, maps, or lists may be shared with the source graph when
-     * the target binding allows it. Use {@link #fromNode(Object, TypeReference)} when you need
-     * an isolated converted result instead.
+     * Delegates to the configured {@link NodeFacade} without requesting deep
+     * conversion. The framework-default facade can return a compatible
+     * non-parameterized value unchanged; a custom facade defines identity,
+     * converter selection, and nested-reference behavior. Use
+     * {@link #fromNode(Object, TypeReference)} to request the facade's deep
+     * conversion mode.
      */
     @SuppressWarnings("unchecked")
     public <T> T bindNode(Object node, TypeReference<T> type) {
@@ -372,7 +399,13 @@ public final class Sjf4j {
     }
 
     /**
-     * Creates a detached deep structural copy of the supplied node or value.
+     * Creates a deep copy of the supplied OBNT value.
+     * <p>
+     * Delegates to {@link NodeFacade#deepNode(Object)}. The framework-default
+     * facade recursively copies its recognized built-in containers and POJO
+     * representations, while unrecognized values and already-instantiated
+     * {@code @NodeValue} domain values can be returned by reference. A custom
+     * facade defines its own copy boundary.
      */
     @SuppressWarnings("unchecked")
     public <T> T deepNode(T node) {
@@ -380,17 +413,25 @@ public final class Sjf4j {
     }
 
     /**
-     * Converts a value into the backend-neutral raw structural node form.
+     * Converts a value into the backend-neutral raw OBNT representation.
+     * <p>
+     * Supported containers and POJOs are traversed into raw object/array/value
+     * representations. {@code @NodeValue} types are encoded by their configured
+     * value binding; scalar raw values may be returned unchanged.
      */
     public Object toRaw(Object node) {
         return nodeFacade.writeNode(node);
     }
 
 
-    /// Properties
+    /*
+     * --------------------------------------------------------------
+     * Properties
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Reads flat {@link Properties} data into the default structural object model.
+     * Reads flat {@link Properties} data into the default object node representation.
      */
     public Object fromProperties(Properties props) {
         return propertiesFacade.readNode(props);
@@ -421,7 +462,11 @@ public final class Sjf4j {
         return props;
     }
 
-    /// Builder
+    /*
+     * --------------------------------------------------------------
+     * Builder
+     * --------------------------------------------------------------
+     */
 
     public static final class Builder {
         private FacadeProvider<? extends NodeFacade> nodeFacadeProvider;

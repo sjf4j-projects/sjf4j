@@ -34,7 +34,11 @@ public class VocabularyRegistry {
     }
 
 
-    /// Built-in vocabulary constants and default keyword mappings
+    /*
+     * --------------------------------------------------------------
+     * Built-In Vocabulary Constants and Default Keyword Mappings
+     * --------------------------------------------------------------
+     */
 
     public static final String DRAFT_2019_09_VOCAB_CORE =
             "https://json-schema.org/draft/2019-09/vocab/core";

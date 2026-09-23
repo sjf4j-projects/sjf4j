@@ -51,7 +51,11 @@ public final class SimplePropertiesFacade implements PropertiesFacade {
     }
 
 
-    /// private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     private static String propKey2JsonPath(String key) {
         return "$." + key;

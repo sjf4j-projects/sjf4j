@@ -313,7 +313,11 @@ public final class SimpleJsonReader implements StreamingReader {
         reader.close();
     }
 
-    /// Private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     private int pos = 0;
     private int lastChar = -2; // -2 means unread

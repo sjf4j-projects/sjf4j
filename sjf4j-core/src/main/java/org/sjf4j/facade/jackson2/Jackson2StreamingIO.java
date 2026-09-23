@@ -42,7 +42,11 @@ import java.util.Set;
 public class Jackson2StreamingIO {
     private static final Object UNSET = new Object();
 
-    /// Read
+    /*
+     * --------------------------------------------------------------
+     * Read
+     * --------------------------------------------------------------
+     */
 
     private static void _skipNode(JsonParser parser) throws IOException {
         JsonToken tk = parser.currentToken();
@@ -723,7 +727,11 @@ public class Jackson2StreamingIO {
         return _readRawNode(parser);
     }
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     private static StreamingReader.Token _peekToken(JsonParser parser) throws IOException {
         JsonToken tk = parser.currentToken();
@@ -754,7 +762,11 @@ public class Jackson2StreamingIO {
         }
     }
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
 
     public static void writeNode(JsonGenerator gen, Object node, StreamingContext context) throws IOException {
         Objects.requireNonNull(gen, "gen");
@@ -935,6 +947,10 @@ public class Jackson2StreamingIO {
         }
     }
 
-    /// Support
+    /*
+     * --------------------------------------------------------------
+     * Support
+     * --------------------------------------------------------------
+     */
 
 }

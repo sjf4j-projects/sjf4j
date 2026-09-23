@@ -34,20 +34,23 @@ import java.util.function.Function;
 
 
 /**
- * Core structural utilities for SJF4J's OBNT (Object-Based Node Tree).
+ * Core utilities for SJF4J's OBNT (Object-Based Node Tree).
  * <p>
  * {@code Nodes} is the main helper API for working directly with OBNT values:
- * native Java object graphs composed of object nodes, array nodes, and scalar
- * values without a dedicated JSON AST.
+ * Java object graphs composed of object nodes, array nodes, and value nodes.
  *
  * <p>It provides type conversion, inspection, traversal, equality, hashing,
  * copying, and container access with semantics shared across {@link JsonObject},
  * {@link JsonArray}, plain {@link Map}/{@link List}, and supported facade-native
- * node types.
+ * Java representations.
  */
 public final class Nodes {
 
-    /// Type-safe access and cross-type conversion
+    /*
+     * --------------------------------------------------------------
+     * Type-Safe Access and Cross-Type Conversion
+     * --------------------------------------------------------------
+     */
 
     /**
      * Converts a node to enum using strict conversion.
@@ -323,10 +326,10 @@ public final class Nodes {
     }
 
     /**
-     * Converts a node to JsonObject.
+     * Converts an OBNT value to an object node represented by {@link JsonObject}.
      * <p>
      * Existing {@link JsonObject} instances are returned as-is. {@link Map}
-     * inputs are wrapped as the dynamic backing map. Other object-like sources
+     * inputs are wrapped as the dynamic backing map. Other object node representations
      * are materialized into a new {@link JsonObject} by copying their readable
      * entries.
      */
@@ -341,11 +344,11 @@ public final class Nodes {
     }
 
     /**
-     * Converts a node to Map with Object values.
+     * Converts an OBNT value to a map with {@link Object} values.
      * <p>
      * Existing {@link Map} instances are returned as-is. {@link JsonObject}
-     * and other object-like sources are projected into a new map by readable
-     * entries.
+     * and other object node representations are projected into a new outer map by
+     * readable entries; entry values are not recursively converted.
      */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node) {
@@ -389,10 +392,10 @@ public final class Nodes {
     }
 
     /**
-     * Converts a node to JsonArray.
+     * Converts an OBNT value to an array node represented by {@link JsonArray}.
      * <p>
      * Existing {@link JsonArray} instances are returned as-is. {@link List}
-     * inputs are wrapped as the backing list. Other array-like sources are
+     * inputs are wrapped as the backing list. Other array node representations are
      * materialized into a new {@link JsonArray} by copying their readable
      * elements.
      */
@@ -407,11 +410,12 @@ public final class Nodes {
     }
 
     /**
-     * Converts a node to List with Object values.
+     * Converts an OBNT value to a list with {@link Object} values.
      * <p>
      * Existing {@link List} instances are returned as-is. {@link JsonArray}
-     * and other array-like sources are projected into a new list by readable
-     * element order.
+     * follows {@link JsonArray#toList()} snapshot semantics; other array node
+     * representations are materialized into a new outer list. Elements are not
+     * recursively converted.
      */
     @SuppressWarnings("unchecked")
     public static List<Object> toList(Object node) {
@@ -542,9 +546,9 @@ public final class Nodes {
     /**
      * Converts a node to a JOJO subtype.
      * <p>
-     * A JOJO is any concrete {@link JsonObject} subclass other than
-     * {@link JsonObject} itself. During conversion, declared properties are bound by
-     * normal POJO rules. Unknown object members are retained as dynamic
+     * A JOJO is a Java representation category: a concrete {@link JsonObject}
+     * subclass other than {@link JsonObject} itself. During conversion, declared
+     * properties are bound by POJO rules. Unknown object members are retained as dynamic
      * properties unless {@link NodeObject#readDynamic()}
      * disables that behavior.
      * <p>
@@ -562,9 +566,9 @@ public final class Nodes {
     /**
      * Converts a node to a JAJO subtype.
      * <p>
-     * A JAJO is any concrete {@link JsonArray} subclass other than
-     * {@link JsonArray} itself. The target instance is created first and then
-     * populated with converted array elements in order.
+     * A JAJO is a Java representation category: a concrete {@link JsonArray}
+     * subclass other than {@link JsonArray} itself. The target instance is created
+     * first and then populated with converted array elements in order.
      * <p>
      * This is a binding conversion, not a forced deep copy. Nested containers may
      * still alias source values when the target binding allows reuse.
@@ -586,9 +590,9 @@ public final class Nodes {
      * <p>
      * In SJF4J terminology:
      * <ul>
-     *     <li>POJO means a regular Java object bound by declared members</li>
-     *     <li>JOJO means a {@link JsonObject} subtype with both declared properties and dynamic object properties</li>
-     *     <li>JAJO means a {@link JsonArray} subtype with array semantics and a dedicated Java type</li>
+     *     <li>POJO is a Java representation category bound by declared members</li>
+     *     <li>JOJO is a {@link JsonObject} subtype with declared properties and dynamic object entries</li>
+     *     <li>JAJO is a {@link JsonArray} subtype with array node behavior and a dedicated Java type</li>
      * </ul>
      *
      * <p>For regular POJO targets, properties are mapped by discovered property names, with
@@ -714,13 +718,17 @@ public final class Nodes {
     }
 
 
-    /// Basic
+    /*
+     * --------------------------------------------------------------
+     * Basic
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Compares two values using node semantics instead of Java type identity.
+     * Compares two values using OBNT semantics instead of Java type identity.
      * <p>
-     * Object-like nodes are compared by readable key/value pairs, array-like
-     * nodes are compared by order and element values, and number values are
+     * Object nodes are compared by readable key/value pairs, array nodes are
+     * compared by order and element values, and number value nodes are
      * compared by numeric value (not boxed type).
      */
     public static boolean equals(Object source, Object target) {
@@ -759,10 +767,10 @@ public final class Nodes {
     }
 
     /**
-     * Computes a hash code aligned with {@link #equals(Object, Object)} node semantics.
+     * Computes a hash code aligned with {@link #equals(Object, Object)} OBNT semantics.
      * <p>
-     * Object-like nodes are hashed from readable key/value pairs (order-insensitive
-     * for object members), while array-like nodes are hashed in iteration order.
+     * Object nodes are hashed from readable key/value pairs (order-insensitive
+     * for object members), while array nodes are hashed in iteration order.
      */
     public static int hash(Object node) {
         if (node == null) return 0;
@@ -795,9 +803,12 @@ public final class Nodes {
     /**
      * Returns a shallow copy of the given node.
      * <p>
-     * Container nodes copy only the outer container; nested child nodes are shared.
-     * For POJO/JOJO/JAJO targets, a new instance is created and direct field/item
-     * values are transferred without deep recursion.
+     * Container nodes copy only the outer container; nested child values are shared.
+     * For POJO/JOJO/JAJO representations, a new instance is created and direct field/item
+     * values are transferred without deep recursion. Strings, numbers, booleans,
+     * and unrecognized values are returned unchanged. {@code @NodeValue} types
+     * use their registered value-copy hook; facade-native representations are not
+     * copied and cause {@link JsonException}.
      */
     @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
     public static <T> T copy(T node) {
@@ -906,7 +917,7 @@ public final class Nodes {
      *   <li>{@code @Type[..]}  - JAJO</li>
      *   <li>{@code A[..]}      - Array</li>
      *   <li>{@code S[..]}      - Set</li>
-     *   <li>{@code @Type#raw}  - NodeValue</li>
+     *   <li>{@code @Type#raw}  - {@code @NodeValue} logical value node</li>
      *   <li>{@code !node}      - Unknown</li>
      * </ul>
      *
@@ -1086,10 +1097,14 @@ public final class Nodes {
 
 
 
-    /// Visit
+    /*
+     * --------------------------------------------------------------
+     * Visit
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Visits each readable entry in an object-like node.
+     * Visits each readable entry in an object node.
      */
     @SuppressWarnings("unchecked")
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
@@ -1206,9 +1221,9 @@ public final class Nodes {
     /**
      * Removes object properties that match the predicate.
      * <p>
-     * This operation applies to removable object properties only. Structural
-     * POJO properties are not considered removable properties and therefore are left
-     * unchanged. For facade object nodes, matching keys are collected first and
+     * This operation applies to removable object properties only. Declared POJO
+     * properties are not considered removable properties and therefore are left
+     * unchanged. For facade-native object representations, matching keys are collected first and
      * removed afterward so live key views remain safe to traverse.
      */
     @SuppressWarnings("unchecked")
@@ -1234,7 +1249,7 @@ public final class Nodes {
 
 
     /**
-     * Visits each element in an array-like node.
+     * Visits each element in an array node.
      */
     @SuppressWarnings("unchecked")
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
@@ -1310,7 +1325,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the number of readable members in an object-like node.
+     * Returns the number of readable members in an object node.
      */
     public static int sizeInObject(Object node) {
         Objects.requireNonNull(node, "node");
@@ -1331,7 +1346,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the number of elements in an array-like node.
+     * Returns the number of elements in an array node.
      */
     public static int sizeInArray(Object node) {
         Objects.requireNonNull(node, "node");
@@ -1354,7 +1369,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the readable key set for an object-like node.
+     * Returns the readable key set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return their live key views. POJO inputs
      * return the structural readable-property key view; callers must treat it as
@@ -1380,7 +1395,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the readable entry set for an object-like node.
+     * Returns the readable entry set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return live entry views. POJO inputs
      * return a read-only projection of readable properties; modifying returned
@@ -1430,7 +1445,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns an iterator over an array-like node.
+     * Returns an iterator over an array node.
      */
     @SuppressWarnings("unchecked")
     public static Iterator<Object> iteratorInArray(Object node) {
@@ -1463,7 +1478,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns true when an object-like node contains a readable key.
+     * Returns true when an object node contains a readable key.
      */
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
@@ -1486,7 +1501,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns whether an index is valid for an array-like node.
+     * Returns whether an index is valid for an array node.
      * <p>
      * Negative indexes are normalized against current size.
      */
@@ -1497,9 +1512,9 @@ public final class Nodes {
     }
 
     /**
-     * Gets a value by key from an object-like node.
+     * Gets a value by key from an object node.
      * <p>
-     * Only readable members participate in this view. For POJO nodes, properties
+     * Only readable members participate in this view. For POJO representations, properties
      * without a getter behave as absent and return {@code null}.
      */
     public static Object getInObject(Object node, String key) {
@@ -1523,7 +1538,7 @@ public final class Nodes {
     }
 
     /**
-     * Gets a value by key from an object-like node and converts it to the
+     * Gets a value by key from an object node and converts it to the
      * requested target type.
      */
     public static <T> T getInObject(Object node, String key, Class<T> clazz) {
@@ -1533,7 +1548,7 @@ public final class Nodes {
     }
 
     /**
-     * Gets a value by index from an array-like node.
+     * Gets a value by index from an array node.
      * <p>
      * Negative indexes are supported ({@code -1} means last element). For List,
      * Array, and Set, out-of-range access returns {@code null}. JsonArray behavior
@@ -1574,7 +1589,7 @@ public final class Nodes {
     }
 
     /**
-     * Gets a value by index from an array-like node and converts it to the
+     * Gets a value by index from an array node and converts it to the
      * requested target type.
      */
     public static <T> T getInArray(Object node, int idx, Class<T> clazz) {
@@ -1584,7 +1599,7 @@ public final class Nodes {
     }
 
     /**
-     * Mutable holder used by access helpers to report child node metadata.
+     * Mutable holder used by access helpers to report child-value metadata.
      * <p>
      * Callers typically reuse one instance across repeated lookups to avoid
      * allocating short-lived result wrappers.
@@ -1836,7 +1851,7 @@ public final class Nodes {
     }
 
     /**
-     * Creates a missing object-like container for path ensure operations.
+     * Creates a missing object node representation for path ensure operations.
      */
     public static Object createObjectContainer(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || Map.class.isAssignableFrom(clazz)) {
@@ -1854,7 +1869,7 @@ public final class Nodes {
     }
 
     /**
-     * Creates a missing array-like container for path ensure operations.
+     * Creates a missing array node representation for path ensure operations.
      */
     public static Object createArrayContainer(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || List.class.isAssignableFrom(clazz)) {
@@ -1875,10 +1890,10 @@ public final class Nodes {
 
 
     /**
-     * Puts a value into an object-like node and returns the previous value when
+     * Puts a value into an object node and returns the previous value when
      * the target shape exposes one.
      * <p>
-     * For POJO nodes, only discovered properties are writable; unknown keys fail.
+     * For POJO representations, only discovered properties are writable; unknown keys fail.
      * POJO property writes do not read back the old value and therefore return
      * {@code null}.
      */
@@ -1910,7 +1925,7 @@ public final class Nodes {
     }
 
     /**
-     * Removes a key from an object-like node and returns the previous value.
+     * Removes a key from an object node and returns the previous value.
      * <p>
      * Removal is supported for Map/JsonObject. POJO fields are structural and
      * cannot be removed.
@@ -1999,7 +2014,7 @@ public final class Nodes {
     }
 
     /**
-     * Sets a value in an array-like node by index.
+     * Sets a value in an array node by index.
      * <p>
      * For List/JsonArray: only existing normalized indexes may be replaced.
      * For Java arrays: only in-range replacement is allowed. Negative indexes are
@@ -2063,7 +2078,7 @@ public final class Nodes {
     }
 
     /**
-     * Appends a value to an array-like node.
+     * Appends a value to an array node.
      * <p>
      * Java arrays are fixed-size and therefore not appendable.
      */
@@ -2093,7 +2108,7 @@ public final class Nodes {
     }
 
     /**
-     * Inserts a value at the given index of an array-like node.
+     * Inserts a value at the given index of an array node.
      * <p>
      * Indexed insert is supported by List/JsonArray only. Set and Java array
      * inputs are rejected because they are unordered or fixed-size.
@@ -2125,7 +2140,7 @@ public final class Nodes {
     }
 
     /**
-     * Removes an element by index from an array-like node.
+     * Removes an element by index from an array node.
      * <p>
      * Negative indexes are supported for List. Java arrays and Set do not support
      * index-based removal.
@@ -2155,7 +2170,11 @@ public final class Nodes {
     }
 
 
-    /// Walk
+    /*
+     * --------------------------------------------------------------
+     * Walk
+     * --------------------------------------------------------------
+     */
 
     /** Traversal order relative to child nodes. */
     public enum WalkOrder { TOP_DOWN, BOTTOM_UP }
@@ -2163,7 +2182,7 @@ public final class Nodes {
     public enum WalkTarget { ANY, CONTAINER, OBJECT, ARRAY, VALUE, STRING, NUMBER, BOOLEAN, NULL, UNKNOWN }
 
     /**
-     * Walks the node tree in top-down order and visits both containers and values.
+     * Walks an OBNT tree in top-down order and visits containers and value nodes.
      */
     public static void walk(Object container,
                             BiFunction<PathSegment, Object, Boolean> visitor) {
@@ -2171,7 +2190,7 @@ public final class Nodes {
     }
 
     /**
-     * Walks a node tree with full traversal controls.
+     * Walks an OBNT tree with full traversal controls.
      * <p>
      * {@code maxDepth < 0} means unlimited depth. Traversal starts at root path.
      * Returning {@link Boolean} stops traversal of the current branch.

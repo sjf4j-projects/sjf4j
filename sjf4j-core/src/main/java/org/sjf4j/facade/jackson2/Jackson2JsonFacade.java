@@ -84,7 +84,11 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
     }
 
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming reader from java.io.Reader.
@@ -200,7 +204,11 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
     }
 
 
-    /// Writer
+    /*
+     * --------------------------------------------------------------
+     * Writer
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming writer to java.io.Writer.

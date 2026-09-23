@@ -154,7 +154,11 @@ public final class SimpleJsonWriter extends StreamingWriter {
     }
 
 
-    /// Private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     private void _writeQuoted(String s) throws IOException {
         _validateString(s);

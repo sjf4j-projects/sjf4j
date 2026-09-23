@@ -128,7 +128,11 @@ public final class SimpleJsonWriter implements StreamingWriter {
     }
 
 
-    /// Private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     private void nativeWrite(String s) throws IOException {
         writer.write('"');

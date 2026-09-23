@@ -135,14 +135,14 @@ class Jackson3BinderTest {
 
     @Test
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
-        JsonParser parser = new JsonFactory().createParser("null");
+        JsonParser parser = new JsonFactory().createParser(ObjectReadContext.empty(), "null");
         try (Jackson3Reader reader = new Jackson3Binder(new JsonFactory()).createReader(parser)) {
             reader.nextNull();
         }
         assertTrue(parser.isClosed());
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        JsonGenerator generator = new JsonFactory().createGenerator(output);
+        JsonGenerator generator = new JsonFactory().createGenerator(ObjectWriteContext.empty(), output);
         try (Jackson3Writer writer = new Jackson3Binder(new JsonFactory()).createWriter(generator)) {
             writer.writeNull();
         }

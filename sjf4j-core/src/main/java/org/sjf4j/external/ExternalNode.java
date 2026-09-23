@@ -11,21 +11,24 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
- * Direct structural operations for nodes owned by an external JSON model.
+ * Adapter contract for external Java representations.
+ * <p>
+ * An adapter exposes an external object as the corresponding OBNT object, array,
+ * or value node shape; it does not introduce another OBNT shape.
  *
  * <p>Only {@link #nodeType()} and {@link #jsonType(Object)} are mandatory.
  * All operational defaults fail fast with {@link NodeException}; adapters must
  * override every operation they expose. Defaults never traverse, convert,
- * inspect, allocate, mutate, or infer external nodes.</p>
+ * inspect, allocate, mutate, or infer external representations.</p>
  *
- * <p>{@code N} is the external root type. Native child values are
- * exposed as {@link Object}.</p>
+ * <p>{@code N} is the external root type. Child values are exposed as
+ * {@link Object}.</p>
  *
  * @param <N> external root type handled by this adapter
  */
 public interface ExternalNode<N> {
     /**
-     * Returns the external root class handled by this adapter.
+     * Returns the external Java representation root class handled by this adapter.
      */
     Class<N> nodeType();
 
@@ -42,7 +45,8 @@ public interface ExternalNode<N> {
     }
 
     /**
-     * Returns the SJF4J node kind corresponding to {@link #jsonType(Object)} for {@code node}.
+     * Returns the runtime representation classification corresponding to
+     * {@link #jsonType(Object)} for {@code node}.
      */
     default NodeKind nodeKind(N node) {
         switch (jsonType(node)) {

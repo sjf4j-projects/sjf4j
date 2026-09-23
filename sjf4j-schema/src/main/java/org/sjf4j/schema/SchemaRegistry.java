@@ -390,7 +390,11 @@ public class SchemaRegistry {
         return idSet;
     }
 
-    /// Global
+    /*
+     * --------------------------------------------------------------
+     * Global
+     * --------------------------------------------------------------
+     */
     public static final SchemaRegistry GLOBAL_SCHEMA_REGISTRY = new SchemaRegistry();
     public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
 

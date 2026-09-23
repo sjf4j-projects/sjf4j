@@ -86,7 +86,11 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
     }
 
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming reader from Reader.
@@ -207,7 +211,11 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
     }
 
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming writer to Writer.

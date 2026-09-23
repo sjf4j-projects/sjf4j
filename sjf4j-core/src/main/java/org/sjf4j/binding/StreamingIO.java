@@ -38,14 +38,18 @@ public final class StreamingIO {
 
     /*
      * --------------------------------------------------------------
-     * Reading
+     * Read
      * --------------------------------------------------------------
      */
 
     static final Object UNSET = new Object();
 
     /**
-     * Reads one node from streaming reader into target type using streaming context.
+     * Reads one OBNT value into the requested target type.
+     *
+     * <p>OneOf resolution precedes normal token dispatch. A configured
+     * discriminator selects the concrete target type; otherwise OneOf resolves
+     * from the next token's JSON-semantic type.</p>
      */
     public static Object readNode(StreamingReader reader, Type nodeType, StreamingContext context) {
         Class<?> nodeBoxed = Types.rawBox(nodeType);
@@ -54,7 +58,7 @@ public final class StreamingIO {
     }
 
     /**
-     * Reads next token and dispatches to typed node readers.
+     * Reads the next token and dispatches to the resolved target reader.
      */
     static Object readNode(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
                            StreamingContext context) {
@@ -231,8 +235,14 @@ public final class StreamingIO {
         throw new BindingException("cannot read string value into type '" + nodeBoxed + "'");
     }
 
+    /*
+     * --------------------------------------------------------------
+     * Read Objects
+     * --------------------------------------------------------------
+     */
+
     /**
-     * Reads object token into Map/JsonObject/POJO target.
+     * Reads an object node into a Map, JsonObject, or POJO target.
      */
     static Object readObject(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
                              StreamingContext context) throws IOException {
@@ -423,7 +433,7 @@ public final class StreamingIO {
                 continue;
             }
 
-            // Dynamic JsonObject property
+            // Dynamic object property
             if (pi.isJojo && pi.readDynamic) {
                 Object value = readRawNode(reader);
                 state.acceptDynamic(key, value);
@@ -496,8 +506,14 @@ public final class StreamingIO {
     }
 
 
+    /*
+     * --------------------------------------------------------------
+     * Read Containers
+     * --------------------------------------------------------------
+     */
+
     /**
-     * Reads array token into List/JsonArray/array/Set target.
+     * Reads an array node into a List, JsonArray, Java array, or Set target.
      */
     static Object readArray(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
                             StreamingContext context) throws IOException {
@@ -615,7 +631,7 @@ public final class StreamingIO {
     }
 
     /**
-     * Reads object token into map with typed values.
+     * Reads an object node into a map with typed values.
      */
     static Map<String, Object> readMap(StreamingReader reader, Class<?> mapClazz, Type valueType, Class<?> valueBoxed,
                                        TypeInfo ti, StreamingContext context) throws IOException {
@@ -641,7 +657,7 @@ public final class StreamingIO {
     }
 
     /**
-     * Reads array token into list with typed elements.
+     * Reads an array node into a list with typed elements.
      */
     static List<Object> readList(StreamingReader reader, Class<?> listClazz, Type elementType, Class<?> elementBoxed,
                                  TypeInfo ti, StreamingContext context) throws IOException {
@@ -666,7 +682,7 @@ public final class StreamingIO {
     }
 
     /**
-     * Reads array token into set with typed elements.
+     * Reads an array node into a set with typed elements.
      */
     static Set<Object> readSet(StreamingReader reader, Class<?> setClazz, Type valueType, Class<?> valueClazz,
                                TypeInfo ti, StreamingContext context) throws IOException {
@@ -722,13 +738,13 @@ public final class StreamingIO {
 
     /*
      * --------------------------------------------------------------
-     * Writing
+     * Write
      * --------------------------------------------------------------
      */
 
 
 //    /**
-//     * Writes one node to streaming writer using instance-level value formats.
+//     * Writes one OBNT value to the streaming writer using instance-level value formats.
 //     */
 //    public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
 //        try {
@@ -919,9 +935,9 @@ public final class StreamingIO {
 //            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
 //            String valueFormat = context.defaultValueFormat(rawClazz);
 //            NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
-////            if (vci == null) {
-////                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
-////            }
+//            if (vci == null) {
+//                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
+//            }
 //            if (vci != null) {
 //                Object raw = vci.valueToRaw(node);
 //                writeNode(writer, raw, context);
@@ -942,7 +958,10 @@ public final class StreamingIO {
 //        }
 //    }
 
-
+    /**
+     * Writes one OBNT value, preserving object and array traversal in the
+     * streaming writer rather than materializing an intermediate object node.
+     */
     public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
         try {
             if (node == null) {
@@ -950,7 +969,7 @@ public final class StreamingIO {
                 return;
             }
 
-            // scalar
+            // Value nodes
             if (node instanceof String) {
                 writer.writeStringValue((String) node);
                 return;
@@ -972,7 +991,7 @@ public final class StreamingIO {
                 return;
             }
 
-            // containers
+            // Object and array nodes
             if (node instanceof Map) {
                 writeMap(writer, (Map<?, ?>) node, context);
                 return;
@@ -997,12 +1016,13 @@ public final class StreamingIO {
                 return;
             }
 
-            // arrays
-            if (rawClazz.isArray() && writeArray(writer, node, rawClazz, context)) {
+            // Array nodes
+            if (rawClazz.isArray()) {
+                writeArray(writer, node, rawClazz, context);
                 return;
             }
 
-            // registered types
+            // Registered value and object nodes
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
 
             if (ti.isNodeValue()) {
@@ -1029,6 +1049,12 @@ public final class StreamingIO {
                     "failed to write node of type '" + Types.name(node) + "'", null, e);
         }
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Write Containers
+     * --------------------------------------------------------------
+     */
 
     private static void writeMap(StreamingWriter writer, Map<?, ?> map,
                                  StreamingContext context) throws IOException {
@@ -1117,7 +1143,7 @@ public final class StreamingIO {
         writer.endArray();
     }
 
-    private static boolean writeArray(StreamingWriter writer, Object node, Class<?> rawClazz,
+    private static void writeArray(StreamingWriter writer, Object node, Class<?> rawClazz,
                                       StreamingContext context) throws IOException {
         if (rawClazz == boolean[].class) {
             boolean[] array = (boolean[]) node;
@@ -1127,7 +1153,7 @@ public final class StreamingIO {
                 writer.writeBooleanValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (rawClazz == int[].class) {
@@ -1138,7 +1164,7 @@ public final class StreamingIO {
                 writer.writeIntValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (rawClazz == long[].class) {
@@ -1149,7 +1175,7 @@ public final class StreamingIO {
                 writer.writeLongValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (rawClazz == double[].class) {
@@ -1160,7 +1186,7 @@ public final class StreamingIO {
                 writer.writeDoubleValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (rawClazz == float[].class) {
@@ -1171,7 +1197,7 @@ public final class StreamingIO {
                 writer.writeFloatValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (rawClazz == byte[].class) {
@@ -1182,7 +1208,7 @@ public final class StreamingIO {
                 writer.writeByteValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (rawClazz == short[].class) {
@@ -1193,7 +1219,7 @@ public final class StreamingIO {
                 writer.writeShortValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (rawClazz == char[].class) {
@@ -1204,7 +1230,7 @@ public final class StreamingIO {
                 writer.writeCharValue(array[i]);
             }
             writer.endArray();
-            return true;
+            return;
         }
 
         if (node instanceof Object[]) {
@@ -1215,10 +1241,8 @@ public final class StreamingIO {
                 writeNode(writer, array[i], context);
             }
             writer.endArray();
-            return true;
+            return;
         }
-
-        return false;
     }
 
 

@@ -303,7 +303,11 @@ public final class SimpleJsonReader implements StreamingReader {
     }
 
 
-    /// Private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     private static final int BUFFER_SIZE = 8192;
     private static final int NUMBER_BUFFER_INITIAL_SIZE = 32;

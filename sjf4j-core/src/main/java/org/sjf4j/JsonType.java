@@ -9,17 +9,12 @@ import org.sjf4j.node.TypeInfo;
 import java.util.Map;
 
 /**
- * High-level JSON-semantic classification for values in SJF4J's OBNT model.
+ * JSON-semantic shape of an OBNT value.
  * <p>
- * Unlike {@link NodeKind}, which is a lower-level runtime dispatch category,
- * {@code JsonType} answers the simpler question "what JSON type does this value
- * behave like?". Different Java representations can therefore map to the same
- * {@code JsonType}; for example {@link Map}, {@link JsonObject}, JOJO, and POJO
- * all classify as {@link #OBJECT}.
- *
- * <p>This type is used when APIs need JSON-level semantics rather than exact Java
- * container identity, especially for validation, polymorphic resolution, node
- * comparison, and shape-based decisions.
+ * Different Java representations can have the same shape; for example
+ * {@link Map}, {@link JsonObject}, JOJO, and POJO all have {@link #OBJECT}
+ * shape. Unlike {@link NodeKind}, this type is for object, array, and value
+ * node shape decisions rather than runtime representation dispatch.
  */
 public enum JsonType {
     OBJECT,
@@ -32,7 +27,10 @@ public enum JsonType {
     UNKNOWN;
 
     /**
-     * Resolves the JSON-semantic type from a low-level {@link NodeKind}.
+     * Resolves the JSON-semantic shape from a {@link NodeKind}.
+     * <p>
+     * {@link NodeKind#VALUE_NODE_VALUE} resolves to {@link #UNKNOWN} because the
+     * configured value binding's raw OBNT representation is not encoded in {@code NodeKind}.
      */
     public static JsonType of(NodeKind nodeKind) {
         switch (nodeKind) {
@@ -68,7 +66,10 @@ public enum JsonType {
     }
 
     /**
-     * Resolves the JSON-semantic type of a runtime OBNT value.
+     * Resolves the JSON-semantic shape of an OBNT value.
+     * <p>
+     * A {@code @NodeValue} instance resolves to {@link #UNKNOWN}; use
+     * {@link #rawOf(Class)} to classify its configured raw representation.
      */
     public static JsonType of(Object node) {
         return of(NodeKind.of(node));
@@ -77,9 +78,9 @@ public enum JsonType {
     /**
      * Resolves the JSON-semantic type implied by a Java class.
      * <p>
-     * This method checks plain container/value classes first, then SJF4J-managed
-     * types such as {@code @NodeValue}, {@code @OneOf}, POJO, JOJO, and external
-     * node classes.
+     * This method checks plain object, array, and value representations first,
+     * then SJF4J-managed types. For {@code @NodeValue}, the configured value
+     * binding's raw OBNT representation determines the shape.
      */
     public static JsonType rawOf(Class<?> clazz) {
         NodeKind kind = NodeKind.plainOf(clazz);

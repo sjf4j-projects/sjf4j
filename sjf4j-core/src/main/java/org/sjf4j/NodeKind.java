@@ -11,32 +11,32 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Low-level classification of OBNT node shapes and SJF4J-managed Java types.
+ * Runtime representation and dispatch classification for OBNT values.
  * <p>
- * {@code NodeKind} is mainly an internal dispatch enum, but it also explains how
- * SJF4J groups values at runtime: scalar values, object-like nodes, array-like
- * nodes, facade-native nodes, and structurally managed Java types such as JOJO,
- * JAJO, POJO, and {@code @NodeValue} types.
+ * Each value identifies the Java representation used at runtime, such as a
+ * {@link Map} object node, a {@link List} array node, or a POJO. Use
+ * {@link JsonType} for JSON-semantic shape decisions rather than this
+ * representation classification.
  */
 public enum NodeKind {
-    /** Represents a null or void value. */
+    /** Represents a null value node. */
     VALUE_NULL,
 
-    /** Represents a string value. */
+    /** Represents a string value node. */
     VALUE_STRING,
     VALUE_STRING_CHARACTER,
     VALUE_STRING_ENUM,
     VALUE_STRING_EXTERNAL,
 
-    /** Represents a numeric value. */
+    /** Represents a numeric value node. */
     VALUE_NUMBER,
     VALUE_NUMBER_EXTERNAL,
 
-    /** Represents a boolean value. */
+    /** Represents a boolean value node. */
     VALUE_BOOLEAN,
     VALUE_BOOLEAN_EXTERNAL,
 
-    /** Represents a registered @NodeValue with custom codec. */
+    /** Represents a {@code @NodeValue} logical value node with a configured value binding. */
     VALUE_NODE_VALUE,
 
     /** Represents a {@link Map} object. */
@@ -61,7 +61,7 @@ public enum NodeKind {
     ARRAY_SET,
     ARRAY_EXTERNAL,
 
-    /** Represents an unknown node type. */
+    /** Represents an unclassified runtime representation. */
     UNKNOWN,
 
     /**
@@ -183,7 +183,8 @@ public enum NodeKind {
     }
 
     /**
-     * Returns true for raw JSON-compatible kinds.
+     * Returns true for raw codec representations: scalar values, {@link Map}, or
+     * {@link List}.
      */
     public boolean isRaw() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_NULL ||

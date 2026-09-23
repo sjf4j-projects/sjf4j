@@ -296,7 +296,11 @@ public interface Fastjson2Module {
 
 
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
     /**
      * Writer module for JsonObject/JsonArray and @NodeValue encoding.
      */

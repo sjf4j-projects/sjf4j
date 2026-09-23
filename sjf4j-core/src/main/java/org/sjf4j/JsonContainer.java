@@ -14,14 +14,19 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
- * Base class for JSON containers ({@link JsonObject} and {@link JsonArray}).
+ * Base class for OBNT containers.
  *
- * <p>Provides shared path-based accessors, conversion helpers, traversal, and
- * patch/merge utilities via {@link JsonPath}, {@link Nodes}, and {@link Patches}.
+ * <p>{@link JsonObject} is an object node and {@link JsonArray} is an array
+ * node. This class provides shared path accessors, conversion helpers,
+ * traversal, and patch/merge utilities.
  */
 public abstract class JsonContainer {
 
-    /// Facade helpers
+    /*
+     * --------------------------------------------------------------
+     * Facade Helpers
+     * --------------------------------------------------------------
+     */
 
     /**
      * Serializes this container to JSON.
@@ -45,18 +50,20 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Converts this container into the target node type with deep-copy isolation.
+     * Converts this container into the target Java representation.
+     * <p>
+     * Delegates to {@link Sjf4j#fromNode(Object, Class)} with deep conversion
+     * requested. The configured node facade defines conversion and copy boundaries;
+     * results, including converter results, may retain references.
      */
     public <T> T toNode(Class<T> clazz) {
         return Sjf4j.global().fromNode(this, clazz);
     }
 
     /**
-     * Binds this container into the target node type without forcing a deep copy.
-     * <p>
-     * Nested objects, arrays, maps, or lists may be shared with this container when
-     * the target binding allows it. Use {@link #toNode(Class)} when you need an
-     * isolated converted result.
+     * Binds this container into the target Java representation without requesting
+     * deep conversion. The configured node facade defines aliasing and copy
+     * boundaries; use {@link #toNode(Class)} to request its deep conversion mode.
      */
     public <T> T bindNode(Class<T> clazz) {
         return Sjf4j.global().bindNode(this, clazz);
@@ -64,6 +71,9 @@ public abstract class JsonContainer {
 
     /**
      * Converts this container into a raw Java representation.
+     * <p>
+     * This delegates to {@link Sjf4j#toRaw(Object)}; it is a raw OBNT
+     * conversion, not a shallow view of this container.
      */
     public Object toRaw() {
         return Sjf4j.global().toRaw(this);
@@ -71,7 +81,11 @@ public abstract class JsonContainer {
 
 
 
-    /// Base
+    /*
+     * --------------------------------------------------------------
+     * Base
+     * --------------------------------------------------------------
+     */
 
     /**
      * Compares this container with node-semantic equality.
@@ -81,7 +95,7 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Returns a hash based on node semantics.
+     * Returns a hash based on OBNT semantics.
      */
     public int nodeHash() {
         return Nodes.hash(this);
@@ -106,7 +120,8 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Returns a JSON-like string representation of this JsonObject.
+     * Returns {@link #inspect()} output for debugging and inspection.
+     * This is not JSON serialization.
      */
     @Override
     public String toString() {
@@ -128,7 +143,11 @@ public abstract class JsonContainer {
                 });
     }
 
-    /// By path
+    /*
+     * --------------------------------------------------------------
+     * By Path
+     * --------------------------------------------------------------
+     */
 
     /**
      * Checks if a value exists at the specified JSON path.
@@ -733,7 +752,11 @@ public abstract class JsonContainer {
         JsonPath.parse(path).removeIfPresent(this);
     }
 
-    /// Find
+    /*
+     * --------------------------------------------------------------
+     * Find
+     * --------------------------------------------------------------
+     */
 
     /**
      * Finds all path matches.
@@ -756,9 +779,13 @@ public abstract class JsonContainer {
         return JsonPath.parse(path).findAs(this, clazz);
     }
 
-    /// Eval
+    /*
+     * --------------------------------------------------------------
+     * Eval
+     * --------------------------------------------------------------
+     */
     /**
-     * Evaluates path and returns scalar or list result.
+     * Evaluates a path and returns a single value or list result.
      */
     public Object evalByPath(String path) {
         return JsonPath.parse(path).eval(this);
@@ -779,7 +806,11 @@ public abstract class JsonContainer {
     }
 
 
-    /// Walk
+    /*
+     * --------------------------------------------------------------
+     * Walk
+     * --------------------------------------------------------------
+     */
 
     /**
      * Walks all nodes with default traversal options.
@@ -796,7 +827,11 @@ public abstract class JsonContainer {
         Nodes.walk(this, target, order, maxDepth, visitor);
     }
 
-    /// Patch
+    /*
+     * --------------------------------------------------------------
+     * Patch
+     * --------------------------------------------------------------
+     */
 
     /**
      * Applies a JSON Patch document to this container.

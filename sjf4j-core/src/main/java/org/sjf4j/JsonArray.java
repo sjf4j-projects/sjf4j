@@ -17,24 +17,22 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 /**
- * JSON array container in SJF4J's OBNT model.
+ * Mutable array node in SJF4J's OBNT model.
  *
- * <p>{@link JsonArray} can be used directly as a mutable JSON array node, or
- * subclassed to define a JAJO. A JAJO is the array-side counterpart to JOJO:
- * it keeps JSON-array behavior while giving the subtype a dedicated Java type.
+ * <p>{@link JsonArray} can be subclassed to define a JAJO, a Java representation
+ * category that participates as an array node.
  *
- * <p>Element access and conversion are delegated to {@link Nodes} to keep
- * behavior consistent across JSON container types.
+ * <p>Element access and conversion are delegated to {@link Nodes}.
  */
 public class JsonArray extends JsonContainer {
 
     /**
-     * Stores JSON elements as a list.
+     * Stores array node elements.
      */
     protected transient List<Object> dynamicList;
 
     /**
-     * Creates an empty JsonArray instance.
+     * Creates an empty array node.
      */
     public JsonArray() {
         super();
@@ -54,7 +52,7 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Creates a JsonArray by wrapping a backing list.
+     * Creates an array node backed directly by {@code list}.
      * <p>
      * The provided list becomes this array's storage directly, so element reads
      * and writes are shared with the same list instance.
@@ -62,35 +60,32 @@ public class JsonArray extends JsonContainer {
     @SuppressWarnings("unchecked")
     public JsonArray(List<?> list) {
         this();
-        _dynamicList((List<Object>) list);
+        if (list != null) {
+            Class<?> elemClazz = elementClass();
+            if (elemClazz != Object.class) {
+                for (int i = 0, len = list.size(); i < len; i++) {
+                    Object v = list.get(i);
+                    if (v != null && !elemClazz.isInstance(v))
+                        throw new JsonException("element type mismatch at [" + i + "]: expected " +
+                                elemClazz.getName() + ", but was " + v.getClass().getName());
+                }
+            }
+        }
+        this.dynamicList = (List<Object>) list;
     }
 
 
-    /// Object
+    /*
+     * --------------------------------------------------------------
+     * Object
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns the expected element class for this array.
      */
     public Class<?> elementClass() {
         return Object.class;
-    }
-
-    /**
-     * Replaces internal list storage with optional runtime element class check.
-     */
-    protected void _dynamicList(List<Object> list) {
-        if (list != null) {
-            Class<?> elemClazz = elementClass();
-            if (elemClazz != Object.class) {
-                for (int i = 0; i < list.size(); i++) {
-                    Object v = list.get(i);
-                    if (v != null && !elemClazz.isInstance(v))
-                        throw new JsonException("element type mismatch at [" + i + "]: expected " + elemClazz.getName() +
-                                ", but was " + v.getClass().getName());
-                }
-            }
-        }
-        this.dynamicList = list;
     }
 
     /**
@@ -133,7 +128,8 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Returns the elements as a List.
+     * Returns a shallow element snapshot; element references are preserved.
+     * When no backing list exists, the empty result may be unmodifiable.
      */
     public List<Object> toList() {
         return dynamicList == null ? Collections.emptyList() : new ArrayList<>(dynamicList);
@@ -248,7 +244,11 @@ public class JsonArray extends JsonContainer {
     }
 
 
-    /// JSON Facade
+    /*
+     * --------------------------------------------------------------
+     * JSON Facade
+     * --------------------------------------------------------------
+     */
 
     /**
      * Parses a JSON string into a JsonArray.
@@ -257,7 +257,11 @@ public class JsonArray extends JsonContainer {
         return Sjf4j.global().fromJson(input, JsonArray.class);
     }
 
-    /// YAML Facade
+    /*
+     * --------------------------------------------------------------
+     * YAML Facade
+     * --------------------------------------------------------------
+     */
 
     /**
      * Parses a YAML string into a JsonArray.
@@ -266,25 +270,30 @@ public class JsonArray extends JsonContainer {
         return Sjf4j.global().fromYaml(input, JsonArray.class);
     }
 
-    /// Node Facade
+    /*
+     * --------------------------------------------------------------
+     * Node Facade
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Converts a node into a detached JsonArray.
-     * <p>
-     * This routes through {@link Sjf4j#fromNode(Object, Class)} and does not
-     * preserve source-container aliasing. Use {@link Nodes#toJsonArray(Object)}
-     * when you want target-representation conversion that may reuse an existing
-     * {@link JsonArray} or wrap a backing {@link List}.
+     * Converts an OBNT value to a JsonArray through {@link Sjf4j#fromNode(Object, Class)}.
+     * The configured node facade defines conversion and copy boundaries; returned
+     * values may retain references.
      */
     public static JsonArray fromNode(Object node) {
         return Sjf4j.global().fromNode(node, JsonArray.class);
     }
 
 
-    /// Getter
+    /*
+     * --------------------------------------------------------------
+     * Getter
+     * --------------------------------------------------------------
+     */
     /**
      * Strict getter helper. When {@code containerType} is non-null the message
-     * includes the container name; for plain scalar types pass {@code null}.
+     * includes the container name; for non-container value types pass {@code null}.
      */
     private JsonException _strict(int idx, Class<?> elementType, Class<?> containerType, Exception cause) {
         String msg = containerType == null ? "cannot get " + elementType.getSimpleName() + " at [" + idx + "]" : "cannot get " + containerType.getSimpleName() + " with element type " + elementType.getSimpleName() + " at [" + idx + "]";
@@ -292,7 +301,7 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Lenient getter helper for scalar types only.
+     * Lenient getter helper for value types only.
      */
     private JsonException _lenient(int idx, Class<?> type, Exception cause) {
         return new JsonException("cannot coerce to " + type.getSimpleName() + " at [" + idx + "]", cause);
@@ -300,7 +309,7 @@ public class JsonArray extends JsonContainer {
 
 
     /**
-     * Returns the node at the given index or {@code null} when out of range.
+     * Returns the OBNT value at the given index or {@code null} when out of range.
      * <p>
      * Supports negative indexes ({@code -1} means last element).
      */
@@ -313,7 +322,7 @@ public class JsonArray extends JsonContainer {
         }
     }
     /**
-     * Returns the node at the given index or the default value.
+     * Returns the OBNT value at the given index or the default value.
      */
     public Object getNode(int idx, Object defaultValue) {
         Object value = getNode(idx);
@@ -782,7 +791,11 @@ public class JsonArray extends JsonContainer {
         return getAs(idx, clazz);
     }
 
-    /// Adder
+    /*
+     * --------------------------------------------------------------
+     * Adder
+     * --------------------------------------------------------------
+     */
 
     /**
      * Appends an element to the array.
@@ -808,7 +821,7 @@ public class JsonArray extends JsonContainer {
      * <p>
      * Each argument becomes one array element. This method does not flatten
      * nested arrays or collections; use {@link #addAll(Object)} to copy from an
-     * array-like source.
+     * array node representation.
      */
     public void append(Object... values) {
         if (values == null) return;
@@ -866,12 +879,13 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Copies all elements from the given array-like node.
+     * Copies all elements from the given array node representation.
      * <p>
      * Supported inputs follow {@link Nodes#forEachArray(Object, BiConsumer)}:
-     * {@link List}, {@link JsonArray}, Java arrays, {@link Set}, and facade
-     * array nodes. Values are appended through {@link #add(Object)} without deep
-     * recursion, so nested child nodes may still be shared with the source.
+     * {@link List}, {@link JsonArray}, Java arrays, {@link Set}, and facade-native
+     * Java representations that participate as array nodes.
+     * Values are appended through {@link #add(Object)} without deep recursion, so
+     * nested child values may still be shared with the source.
      */
     public void addAll(Object node) {
         if (node == null) return;
@@ -901,7 +915,11 @@ public class JsonArray extends JsonContainer {
         dynamicList.clear();
     }
 
-    /// Stream
+    /*
+     * --------------------------------------------------------------
+     * Stream
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns a stream wrapper for this array.
@@ -910,14 +928,18 @@ public class JsonArray extends JsonContainer {
         return NodeStream.of(this);
     }
 
-    /// Copy
+    /*
+     * --------------------------------------------------------------
+     * Copy
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a shallow copy of this JsonArray.
      * <p>
-     * Plain {@link JsonArray} instances copy their backing list directly. JAJO
-     * subtypes fall back to {@link Nodes#copy(Object)} so subtype element rules
-     * and construction semantics remain intact.
+     * Plain {@link JsonArray} instances copy their list entries; nested values are
+     * shared. JAJO subtypes fall back to {@link Nodes#copy(Object)} so subtype
+     * element rules and construction semantics remain intact.
      */
     public JsonArray copy() {
         if (getClass() == JsonArray.class) {
@@ -928,6 +950,9 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Creates a deep copy of this JsonArray.
+     * <p>
+     * Delegates to {@link Sjf4j#deepNode(Object)}; array elements are traversed
+     * according to the configured node facade.
      */
     public JsonArray deepCopy() {
         return Sjf4j.global().deepNode(this);

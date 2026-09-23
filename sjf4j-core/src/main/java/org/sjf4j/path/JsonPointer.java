@@ -11,10 +11,13 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * JSON Pointer wrapper for JSON Patch paths.
+ * JSON Pointer wrapper for JSON Patch paths and single-location OBNT access.
  *
- * <p>This class is a restricted {@link JsonPath} that only accepts
- * RFC 6901 pointer syntax (starts with '/').
+ * <p>This class is a restricted {@link JsonPath}. It accepts the empty root
+ * pointer and slash-delimited tokens with RFC 6901 escaping. Nonnegative
+ * 32-bit integer tokens select an array index for array node parents and
+ * retain their token as an object key for object node parents. The {@code -}
+ * token is reserved for append writes; it does not select an existing value.
  */
 @NodeValue
 public class JsonPointer extends JsonPath {
@@ -34,7 +37,8 @@ public class JsonPointer extends JsonPath {
     }
 
     /**
-     * Parses a JSON Pointer expression (RFC 6901).
+     * Parses the supported JSON Pointer subset. The empty string denotes root;
+     * every non-root expression must start with {@code /}.
      */
     @RawToValue
     public static JsonPointer parse(String expr) {

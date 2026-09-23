@@ -27,7 +27,11 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         return StreamingContext.EMPTY;
     }
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming reader from java.io.Reader.
@@ -121,7 +125,11 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     }
 
 
-    /// Writer
+    /*
+     * --------------------------------------------------------------
+     * Writer
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming writer to java.io.Writer.

@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Patch utilities: RFC 7386 JSON Merge Patch, indexed deep merge, and JSON Patch diff.
+ * Patch utilities for OBNT documents: RFC 7386 JSON Merge Patch, indexed deep
+ * merge, and JSON Patch diff.
  */
 public final class Patches {
 
@@ -128,12 +129,20 @@ public final class Patches {
      * including arrays, replace the target value at that member.</p>
      *
      * <p>When the target is not an object and the patch is an object, RFC 7386 treats the target
-     * as an empty object and returns a merged object result.</p>
+     * as an empty object. This implementation uses a new {@link JsonObject} for that result.</p>
+     *
+     * <p>For an object target, this method applies changes to that target in place and therefore
+     * requires its object-member operations to be mutable. It creates a new {@link JsonObject}
+     * only when the target is not an object. The patch document is not directly written. To keep
+     * it unchanged, the target must not alias the patch or a mutable representation reachable
+     * from the patch; otherwise in-place operations can change the patch. Replacement values are
+     * assigned by reference, not copied.
      *
      * <p>Removal requires a removable object container such as {@link JsonObject}, {@link java.util.Map},
-     * or a backend-native mutable object node. POJO fields are structural and cannot be removed;
+     * or a facade-native mutable object node. POJO fields are structural and cannot be removed;
      * an explicit {@code null} patch member for an existing POJO property will fail with
-     * {@code JsonException} rather than silently setting the property to {@code null}.</p>
+     * {@code JsonException} rather than silently setting the property to {@code null}. A failure
+     * after earlier members were processed does not roll back those mutations.</p>
      *
      * <p>Use this when you need standards-compliant merge behavior instead of indexed deep merge
      * from {@link #indexedMerge(Object, Object, boolean, boolean)}.</p>
@@ -170,6 +179,13 @@ public final class Patches {
     /**
      * Computes a JSON Patch operation list that transforms {@code source} into
      * {@code target}.
+     * <p>
+     * The framework does not actively write either input graph, although invoked
+     * getters and extensions can have side effects. Operation value payloads
+     * reference values from {@code target}; the returned document is not a
+     * detached copy of them. Applying the result requires a target representation
+     * that supports every emitted mutation; Java arrays, sets, and POJO member
+     * removal cannot be assumed to support them.
      */
     public static List<PatchOperation> diff(Object source, Object target) {
         List<PatchOperation> operations = new ArrayList<>();

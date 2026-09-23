@@ -67,7 +67,13 @@ public class JsonPatch extends JsonArray {
      * Applies all operations to target in document order.
      * <p>
      * Execution is stateful: each op observes mutations produced by previous ops.
-     * Capture the return value when the patch may replace/remove the root document.
+     * Mutating non-root operations write addressed containers of {@code target};
+     * {@code test} and {@code exist} are read-only. This patch document is not
+     * directly written. To keep it unchanged, the target must not alias the patch
+     * or a mutable representation reachable from the patch; otherwise in-place
+     * operations can change the patch. Capture the return value when an operation
+     * may replace or remove the root document. A failing later operation does not
+     * roll back earlier mutations.
      */
     public Object apply(Object target) {
         Object current = target;

@@ -71,7 +71,7 @@ Backends can also be configured explicitly when needed.
 
 - **Native Java objects** 
   - Built-in support.
-  - Allows processing POJOs, Maps, Lists, and other JSON-like object graphs without serialization.
+  - Allows processing POJOs, Maps, Lists, and other OBNT object graphs without serialization.
 
 Common runtime dependencies (pick as needed):
 
@@ -228,12 +228,12 @@ Modeling  →  Binding  →  Navigating  →  Patching  →  Validating  →  Ma
 
 ### Modeling
 
-SJF4J is built around a unified structural model called the **Object-Based Node Tree (OBNT)**.
+SJF4J uses the **Object-Based Node Tree (OBNT)** as its runtime structural model.
 
-- All structured data in SJF4J are represented as OBNT nodes.
-- All nodes in OBNT are native Java objects rather than a dedicated AST.
-- All APIs operate directly on those objects.
-- All APIs follow, or extend, standard JSON semantics.
+- All structured data in SJF4J is represented as OBNT nodes.
+- All nodes in OBNT are native Java objects, rather than nodes in a dedicated AST.
+- All processing APIs operate directly on these objects.
+- All API behaviors follow and extend standard JSON semantics.
 
 
 ```mermaid
@@ -244,12 +244,13 @@ graph BT
   node --> value(("Value Node<br/> ..."))
 ```
 
-As a result, JSON-oriented operations can be applied directly to existing
-Java object graphs without first converting them into an intermediate JSON tree.
+- An **object node** has named members, such as `Map`, `JsonObject`, or a POJO.
+- An **array node** has ordered elements, such as `List`, `JsonArray`, or a Java array.
+- A **value node** is a non-container value, such as a string, number, boolean, or `null`.
 
 ---
 
-A regular POJO provides a typed, closed object model, 
+A regular POJO provides a typed, closed object model,
 while a **JOJO (JSON-Object Java Object)** extends it with dynamic properties:
 ```java
 public class StudentJojo extends JsonObject { 
@@ -260,10 +261,14 @@ public class StudentJojo extends JsonObject {
     // getters and setters 
 }
 ```
+> Use JOJO when typed fields need to coexist with undeclared properties,
+> such as API payloads, configuration objects, or SQL result bindings.
 
-- Use POJO for well-defined, closed domain models.   
-- Use JOJO when typed fields need to coexist with undeclared properties, 
-such as API payloads, configuration objects, integration models, or SQL result bindings.
+OBNT can also be extended beyond regular POJOs and collections:
+- Extend `JsonArray` to define a typed, extensible array node.
+- Use `@NodeValue` to model a Java type as a logical value node.
+- Use `@OneOf` to model polymorphic node types.
+- Register an **External Node** to integrate your own structural types into OBNT.
   
 Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 

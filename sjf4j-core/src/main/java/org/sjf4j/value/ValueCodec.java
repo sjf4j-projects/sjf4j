@@ -27,33 +27,35 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
- * Codec contract for mapping domain value types to raw OBNT node values.
+ * Codec contract for mapping domain value types to raw OBNT representations.
  * <p>
  * This is the extension point behind {@code @NodeValue}. A codec lets a custom
- * Java type behave like a single logical JSON value in SJF4J instead of being
+ * Java type behave like one logical value node in SJF4J instead of being
  * analyzed as a POJO.
  *
- * <p>The raw side should use SJF4J-supported node forms such as
+ * <p>The codec owns the raw representation returned by {@link #valueToRaw(Object)}
+ * and accepted by {@link #rawToValue(Object)}. It should use SJF4J-supported
+ * OBNT forms such as
  * {@link String}, {@link Number}, {@link Boolean}, {@link java.util.Map},
- * {@link java.util.List}, or {@link Object}. Implementations should be stable,
- * deterministic, and reversible for predictable reads and writes.
+ * {@link java.util.List}, or {@code null}. The framework does not recursively
+ * bind or copy a codec raw value at this boundary.
  * <p>
- * A map-shaped raw value represents a raw JSON object and must be handled as
- * {@code Map<String, Object>}. Its values are raw JSON-tree values; SJF4J does
- * not recursively bind typed map values such as {@code Map<String, SomePojo>}
- * while decoding a codec raw value. This is a contract rather than a
+ * A map-shaped raw value should be handled as {@code Map<String, Object>}. Its
+ * contents remain the codec's responsibility; SJF4J does not recursively bind
+ * typed map values such as {@code Map<String, SomePojo>} while decoding a codec
+ * raw value. This is a contract rather than a
  * registration-time check because generic type arguments are erased from
  * {@link #rawClazz()}.
  */
 public interface ValueCodec<V, R> {
 
     /**
-     * Encodes a domain value to its raw node representation.
+     * Encodes a domain value to the raw representation consumed by a facade or schema.
      */
     R valueToRaw(V value);
 
     /**
-     * Decodes a raw node representation back to the domain value.
+     * Decodes the raw representation back to the domain value.
      */
     V rawToValue(R raw);
 
@@ -71,7 +73,7 @@ public interface ValueCodec<V, R> {
      * Returns a copy of the value when custom copy semantics are needed.
      * <p>
      * Override this for mutable value types. The default implementation returns
-     * the input reference unchanged.
+     * the input reference unchanged; it does not encode and decode the value.
      */
     default V valueCopy(V value) {
         return value;

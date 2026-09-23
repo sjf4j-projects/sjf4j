@@ -38,7 +38,11 @@ public final class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWrite
     }
 
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming reader from java.io.Reader.
@@ -59,7 +63,11 @@ public final class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWrite
     }
 
 
-    /// Writer
+    /*
+     * --------------------------------------------------------------
+     * Writer
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a streaming writer to java.io.Writer.

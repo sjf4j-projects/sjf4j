@@ -40,7 +40,11 @@ public class IRegexpUtil {
         return false;
     }
 
-    /// Private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     /**
      * Matches pattern against input starting from the given position.

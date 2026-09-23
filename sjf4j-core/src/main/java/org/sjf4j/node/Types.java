@@ -370,7 +370,11 @@ public final class Types {
     }
 
 
-    /// Class
+    /*
+     * --------------------------------------------------------------
+     * Class
+     * --------------------------------------------------------------
+     */
 
     /**
      * Simple immutable implementation of ParameterizedType.

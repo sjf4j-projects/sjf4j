@@ -824,7 +824,11 @@ public final class SimpleNodeBinder implements NodeBinder {
         int size();
     }
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
 
     /**
      * Converts runtime object into writable node tree.

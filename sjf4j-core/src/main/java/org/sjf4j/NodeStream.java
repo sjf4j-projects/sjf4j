@@ -16,14 +16,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Stream wrapper for node processing with JSONPath helpers.
+ * Stream wrapper for OBNT values with {@link JsonPath} helpers.
  * <p>
- * Wraps a single-use Java {@link Stream}; terminal operations consume it.
+ * Wraps a single-use Java {@link Stream}; its elements may be OBNT input values
+ * or values derived by stream operations. Terminal operations consume it.
  */
 public class NodeStream<T> {
 
     /**
-     * The underlying Java Stream that contains the JSON nodes.
+     * The underlying Java stream.
      */
     private final Stream<T> stream;
 
@@ -135,7 +136,11 @@ public class NodeStream<T> {
     }
 
 
-    /// Java Stream
+    /*
+     * --------------------------------------------------------------
+     * Java Stream
+     * --------------------------------------------------------------
+     */
 
     /**
      * Filters the stream using the specified predicate.

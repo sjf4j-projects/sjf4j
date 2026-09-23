@@ -20,18 +20,33 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * JSONPath/JSON Pointer execution engine.
+ * JSONPath/JSON Pointer execution engine for OBNT values.
  *
  * <p>JsonPath parses a textual path expression into a chain of {@link PathSegment}
- * tokens and then evaluates the path against a JSON container. It supports both:
+ * tokens and then evaluates the path against an OBNT object node, array node, or
+ * value node. It supports both:
  * <ul>
- *   <li>JSON Path syntax (starts with '$' or '@')</li>
- *   <li>JSON Pointer syntax (starts with '/')</li>
+ *   <li>a JSONPath subset: root/current, name/index, wildcard, descendant,
+ *       union, slice, filter, append, and function tokens</li>
+ *   <li>a JSON Pointer subset: empty root, slash-delimited escaped tokens, and
+ *       nonnegative 32-bit array indexes. {@code -} is reserved for append writes.</li>
  * </ul>
  *
- * <p>Read operations return nodes or converted values using {@link Nodes} conversion
- * semantics. Write operations delegate to {@link Nodes} for object/array mutation,
- * and follow JSON Patch rules for add/replace/remove when used with pointer paths.
+ * <p>Read operations do not actively write the input graph. Invoked getters,
+ * registered functions, and extensions can have side effects. Single-location
+ * reads return {@code null} for both a missing location and an explicit null value; use
+ * {@link #contains(Object)} to distinguish them. {@link #find(Object)} omits
+ * missing locations while retaining explicit null matches. {@link #eval(Object)}
+ * returns a single result for a single path, a list for non-single paths, or a
+ * terminal function result.
+ *
+ * <p>Writes mutate only addressed containers in the supplied graph; they do not
+ * replace a root reference. Object writes upsert {@link Map}/{@link JsonObject}
+ * members, including dynamic JOJO members; ordinary POJO writes require a writable
+ * declared property. Array writes are limited by
+ * the underlying representation: lists and {@link JsonArray} can append, Java
+ * arrays cannot, and sets do not support indexed writes. Multi-match paths are
+ * writable only by {@link #compute(Object, BiFunction)}.
  */
 public class JsonPath {
 
@@ -110,7 +125,7 @@ public class JsonPath {
      * Parses a JSONPath or JSON Pointer expression into executable segments.
      * <p>
      * Empty input resolves to root. Expressions starting with {@code /} are
-     * parsed as JSON Pointer; others are parsed as JSONPath.
+     * parsed as JSON Pointer; others are parsed as the supported JSONPath subset.
      */
     public static JsonPath parse(String expr) {
         Objects.requireNonNull(expr, "expr");
@@ -218,17 +233,19 @@ public class JsonPath {
     }
 
     /**
-     * Returns whether this path addresses at most one concrete location.
+     * Returns whether this path is statically classified for a single put.
      * <p>
-     * This is true only when all segments are limited to Root, Name, Index,
-     * and Append, with no current, wildcard, slice, filter, union, or recursive tokens.
+     * Root, Name, Index, Append, and Param segments qualify. Current makes this
+     * false even though direct writes such as {@code @.a} can execute. Public
+     * JsonPath execution does not resolve Param segments, so a path containing one
+     * is not directly executable.
      */
     public boolean isSinglePut() {
         return singlePut;
     }
 
     /**
-     * Returns whether this path contains an append segment.
+     * Returns the number of append segments in this path.
      * <p>
      * Append segments come from JSONPath {@code [+]} or JSON Pointer {@code /-}.
      */
@@ -240,10 +257,18 @@ public class JsonPath {
         return paramCount;
     }
 
-    /// Find
+    /*
+     * --------------------------------------------------------------
+     * Find
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Returns the node at this path, or {@code null} when any segment is missing.
+     * Returns the value at a single-location path.
+     * <p>
+     * A missing location and an explicit null value both return {@code null}.
+     * Broad path tokens are not collected by this method; use {@link #find(Object)}
+     * or {@link #eval(Object)} for multi-match evaluation.
      *
      * @param container the JSON container to search
      * @return the matched node, or {@code null} when unresolved
@@ -255,7 +280,7 @@ public class JsonPath {
     }
 
     /**
-     * Finds an object at this path in the given container, or returns a default value if not found.
+     * Returns a single-location value or the default value for missing or null.
      *
      * @param container the JSON container to search
      * @param defaultValue the value to return if the path doesn't exist
@@ -827,10 +852,17 @@ public class JsonPath {
         return getAs(container, clazz);
     }
 
-    /// Find
+    /*
+     * --------------------------------------------------------------
+     * Find
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Finds all matching nodes for this path.
+     * Finds all matching values for this path.
+     * <p>
+     * The returned list is empty when there is no match. Explicit null matches
+     * are retained as null elements; missing locations are omitted.
      */
     public List<Object> find(Object container) {
         Objects.requireNonNull(container, "container");
@@ -879,7 +911,11 @@ public class JsonPath {
         return result;
     }
 
-    /// Eval
+    /*
+     * --------------------------------------------------------------
+     * Eval
+     * --------------------------------------------------------------
+     */
 
     /**
      * Evaluates the path and returns either a single value, a list of values,
@@ -949,14 +985,21 @@ public class JsonPath {
         }
     }
 
-    /// Put
+    /*
+     * --------------------------------------------------------------
+     * Put
+     * --------------------------------------------------------------
+     */
 
     /**
      * Writes the value at the final path location and returns the previous value
      * when the target shape exposes one.
      * <p>
-     * The parent container of the final segment must already exist. Object-name
-     * targets upsert. Array index targets write through
+     * The parent container of the final segment must already exist; this method
+     * mutates that parent and never replaces the root reference. Object-name
+     * targets upsert {@link Map}/{@link JsonObject} members, including dynamic
+     * JOJO members. Ordinary POJO targets require a writable declared property.
+     * Array index targets write through
      * {@link Nodes#putInArray(Object, int, Object)}, which replaces existing
      * elements and appends when {@code idx == size}. Append targets write
      * through {@link Nodes#addInArray(Object, Object)}. POJO property writes
@@ -980,7 +1023,7 @@ public class JsonPath {
      * <p>
      * Missing parent containers return {@code null} without writing. Once the
      * parent exists, the final write follows the same last-segment rules as
-     * {@link #put(Object, Object)}.
+     * {@link #put(Object, Object)}, including its POJO property restrictions.
      *
      * @return the previous value when a write occurred and the target shape
      * exposes one, otherwise {@code null}
@@ -996,13 +1039,15 @@ public class JsonPath {
      * Ensures intermediate containers exist and writes the value at the final
      * path location.
      * <p>
+     * This mutates existing addressed containers and any containers it creates.
      * Auto-creation is only supported for single paths made of root/name/index/
      * append segments. Missing containers are created based on inferred static
      * type. Intermediate array indexes use {@link Nodes#putInArray(Object, int, Object)}
      * semantics when a missing container is written back: existing indexes are
      * replaced and {@code index == size} appends for appendable arrays.
      * Once the parent container exists, the final write follows the same last-
-     * segment rules as {@link #put(Object, Object)}.
+     * segment rules as {@link #put(Object, Object)}, including its POJO property
+     * restrictions.
      */
     public Object ensurePut(Object container, Object value) {
         Objects.requireNonNull(container, "container");
@@ -1016,7 +1061,8 @@ public class JsonPath {
      * <p>
      * Missing parent containers are created using {@link #ensurePut(Object, Object)}.
      * For object-name and pointer-object-key targets, absent means the key is
-     * missing or currently maps to {@code null}. For array-index targets, indexes
+     * missing or currently maps to {@code null}; an unknown ordinary POJO property
+     * fails rather than becoming a new member. For array-index targets, indexes
      * are normalized first; indexes greater than the current size fail, indexes
      * equal to the current size append, and existing indexes are replaced only
      * when their current value is {@code null}. Append targets always append.
@@ -1105,7 +1151,11 @@ public class JsonPath {
         return parents.size();
     }
 
-    /// has
+    /*
+     * --------------------------------------------------------------
+     * Has
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns true when the node exists and is non-null.
@@ -1143,13 +1193,21 @@ public class JsonPath {
         }
     }
 
-    /// JSON Patch: add, replace, remove
+    /*
+     * --------------------------------------------------------------
+     * JSON Patch: Add, Replace, Remove
+     * --------------------------------------------------------------
+     */
 
     /**
      * Applies JSON Patch {@code add} semantics at this pointer path.
      * <p>
-     * Name targets upsert object fields. Index targets insert into arrays. Append
-     * targets ({@code -}) append to arrays.
+     * This mutates the addressed parent; it cannot replace a root reference.
+     * Name targets upsert {@link Map}/{@link JsonObject} members, including
+     * dynamic JOJO members; ordinary POJOs require a writable declared property.
+     * Index targets insert into lists and
+     * {@link JsonArray}; append targets ({@code -}) append to appendable arrays.
+     * Java arrays and sets reject indexed insertion.
      */
     public void add(Object container, Object value) {
         Objects.requireNonNull(container, "container");
@@ -1178,6 +1236,9 @@ public class JsonPath {
 
     /**
      * Applies JSON Patch {@code replace} semantics (target must already exist).
+     * <p>
+     * This mutates the addressed parent. POJO replacement requires an existing
+     * writable declared property; Java arrays allow only in-range replacement.
      *
      * @return previous value at the replaced location
      */
@@ -1215,8 +1276,12 @@ public class JsonPath {
     /**
      * Removes the value at this path when the target exists.
      * <p>
-     * Missing parent paths or object keys return {@code null}. Array removals
+     * Missing parent paths return {@code null}. Missing object keys return
+     * {@code null} only for removable object members such as {@link Map},
+     * {@link JsonObject}, and dynamic JOJO members. Ordinary POJO properties,
+     * including unknown keys, cannot be removed and may fail. Array removals
      * still follow array index rules and may fail for out-of-range indexes.
+     * Java-array elements cannot be removed.
      *
      * @return removed value, or {@code null} when no value was removed
      */
@@ -1242,7 +1307,11 @@ public class JsonPath {
     }
 
 
-    /// private
+    /*
+     * --------------------------------------------------------------
+     * Private Helpers
+     * --------------------------------------------------------------
+     */
 
     private static boolean _isPointerObjectKey(PathSegment.Index index, Object container) {
         if (index.pointerToken == null) {

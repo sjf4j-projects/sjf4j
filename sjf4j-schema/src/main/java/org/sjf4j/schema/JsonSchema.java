@@ -6,7 +6,7 @@ import org.sjf4j.annotation.node.OneOf;
 
 
 /**
- * Parsed JSON Schema document node.
+ * Parsed JSON Schema document represented as an OBNT object node or value node.
  * <p>
  * Implementations are lightweight schema models. Runtime validation uses the
  * compiled {@link SchemaPlan} returned by {@link #createPlan(SchemaRegistry)}.
@@ -29,7 +29,11 @@ public interface JsonSchema {
     SchemaPlan createPlan(SchemaRegistry registry);
 
 
-    /// Default
+    /*
+     * --------------------------------------------------------------
+     * Default
+     * --------------------------------------------------------------
+     */
     /**
      * Compiles this schema with no caller-provided external registry.
      * <p>
@@ -41,7 +45,11 @@ public interface JsonSchema {
         return createPlan(null);
     }
 
-    /// Static
+    /*
+     * --------------------------------------------------------------
+     * Static
+     * --------------------------------------------------------------
+     */
 
     /**
      * Parses JSON text into a schema model node.
@@ -53,7 +61,7 @@ public interface JsonSchema {
     }
 
     /**
-     * Creates a schema model node from an already parsed JSON-compatible node.
+     * Creates a schema model from an already parsed OBNT representation.
      * <p>
      * The returned value is not compiled yet.
      */

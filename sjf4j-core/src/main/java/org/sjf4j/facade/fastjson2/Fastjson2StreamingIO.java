@@ -40,7 +40,11 @@ import java.util.Set;
 public class Fastjson2StreamingIO {
     private static final Object UNSET = new Object();
 
-    /// Read
+    /*
+     * --------------------------------------------------------------
+     * Read
+     * --------------------------------------------------------------
+     */
 
     public static Object readNode(JSONReader reader, Type type, StreamingContext context) {
         Objects.requireNonNull(reader, "reader");
@@ -592,13 +596,21 @@ public class Fastjson2StreamingIO {
         }
     }
 
-    /// Reader
+    /*
+     * --------------------------------------------------------------
+     * Reader
+     * --------------------------------------------------------------
+     */
 
     private static StreamingReader.Token _peekToken(JSONReader reader) throws IOException {
         return Fastjson2Reader.mappingToken(reader.current());
     }
 
-    /// Write
+    /*
+     * --------------------------------------------------------------
+     * Write
+     * --------------------------------------------------------------
+     */
 
     public static void writeNode(JSONWriter writer, Object node, StreamingContext context) throws IOException {
         Objects.requireNonNull(writer, "writer");
@@ -787,6 +799,10 @@ public class Fastjson2StreamingIO {
         }
     }
 
-    /// Support
+    /*
+     * --------------------------------------------------------------
+     * Support
+     * --------------------------------------------------------------
+     */
 
 }

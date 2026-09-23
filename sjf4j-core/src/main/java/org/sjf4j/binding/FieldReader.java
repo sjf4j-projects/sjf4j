@@ -272,13 +272,7 @@ public interface FieldReader {
             };
         }
 
-        /*
-         * --------------------------------------------------------------
-         * Generic POJO / JsonObject / Optional / class-level codec / ...
-         *
-         * Cache TypeInfo once.
-         * --------------------------------------------------------------
-         */
+        // Resolve metadata lazily and reuse it for subsequent reads through StreamingIO.
 
         TypeInfo[] fieldTiRef = new TypeInfo[1];
         return (reader, owner, ownerType, ownerBoxed, context) -> {

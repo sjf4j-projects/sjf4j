@@ -25,22 +25,20 @@ import java.util.function.Predicate;
 
 
 /**
- * JSON object container in SJF4J's OBNT model.
+ * Mutable object node in SJF4J's OBNT model.
  *
- * <p>{@link JsonObject} can be used directly as a mutable JSON object node, or
- * subclassed to define a JOJO (JSON-Object Java Object). A JOJO combines
- * discovered Java properties with dynamic JSON properties in the same object, so a
- * model can keep typed domain properties without losing extra object members from
- * input JSON.
+ * <p>{@link JsonObject} can be subclassed to define a JOJO, a Java
+ * representation category that combines declared properties and dynamic entries
+ * in one object node.
  *
- * <p>Dynamic fields are stored in {@code dynamicMap}; discovered properties are mapped
- * via {@link FieldInfo}. Accessors use {@link Nodes} conversion
- * semantics for strict/lenient reads.
+ * <p>Dynamic entries are stored in {@code dynamicProperties}; declared properties
+ * are mapped via {@link FieldInfo}. Accessors use {@link Nodes} strict and
+ * lenient conversion semantics.
  */
 public class JsonObject extends JsonContainer {
 
     /**
-     * Stores dynamic JSON nodes as key-value pairs.
+     * Stores dynamic object node entries.
      */
     protected transient Map<String, Object> dynamicProperties;
     
@@ -50,7 +48,7 @@ public class JsonObject extends JsonContainer {
     protected final transient PojoInfo pi;
 
     /**
-     * Creates an empty JsonObject instance.
+     * Creates an empty object node.
      */
     public JsonObject() {
         super();
@@ -68,7 +66,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates a JsonObject by wrapping a dynamic backing map.
+     * Creates an object node backed directly by {@code map}.
      * <p>
      * The provided map becomes this object's dynamic storage directly; dynamic
      * reads and writes are therefore shared with the same map instance. Declared
@@ -107,7 +105,11 @@ public class JsonObject extends JsonContainer {
                 : Collections.unmodifiableMap(dynamicProperties);
     }
 
-    /// Map
+    /*
+     * --------------------------------------------------------------
+     * Map
+     * --------------------------------------------------------------
+     */
 
     /**
      * Computes hash code from readable declared properties and dynamic entries.
@@ -364,7 +366,8 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a merged Map view of readable declared properties and dynamic entries.
+     * Returns a new map containing readable declared properties and dynamic entries.
+     * Values are not copied.
      */
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
@@ -386,7 +389,11 @@ public class JsonObject extends JsonContainer {
         return Nodes.toMap(this, clazz);
     }
 
-    /// JSON Facade
+    /*
+     * --------------------------------------------------------------
+     * JSON Facade
+     * --------------------------------------------------------------
+     */
 
     /**
      * Parses a JSON string into a JsonObject.
@@ -396,7 +403,11 @@ public class JsonObject extends JsonContainer {
     }
 
 
-    ///  YAML Facade
+    /*
+     * --------------------------------------------------------------
+     * YAML Facade
+     * --------------------------------------------------------------
+     */
 
     /**
      * Parses a YAML string into a JsonObject.
@@ -406,7 +417,11 @@ public class JsonObject extends JsonContainer {
     }
 
 
-    /// Properties Facade
+    /*
+     * --------------------------------------------------------------
+     * Properties Facade
+     * --------------------------------------------------------------
+     */
 
     /**
      * Converts Java Properties into a JsonObject.
@@ -415,26 +430,31 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.global().fromProperties(props, JsonObject.class);
     }
 
-    /// Node Facade
+    /*
+     * --------------------------------------------------------------
+     * Node Facade
+     * --------------------------------------------------------------
+     */
 
     /**
-     * Converts a node into a detached JsonObject.
-     * <p>
-     * This routes through {@link Sjf4j#fromNode(Object, Class)} and does not
-     * preserve source-container aliasing. Use {@link Nodes#toJsonObject(Object)}
-     * when you want target-representation conversion that may reuse an existing
-     * {@link JsonObject} or wrap a backing {@link Map}.
+     * Converts an OBNT value to a JsonObject through {@link Sjf4j#fromNode(Object, Class)}.
+     * The configured node facade defines conversion and copy boundaries; returned
+     * values may retain references.
      */
     public static JsonObject fromNode(Object node) {
         return Sjf4j.global().fromNode(node, JsonObject.class);
     }
 
 
-    /// Getter
+    /*
+     * --------------------------------------------------------------
+     * Getter
+     * --------------------------------------------------------------
+     */
 
     /**
      * Strict getter helper. When {@code containerType} is non-null the message
-     * includes the container name; for plain scalar types pass {@code null}.
+     * includes the container name; for non-container value types pass {@code null}.
      */
     private JsonException _strict(String key, Class<?> type, Class<?> containerType, Exception cause) {
         if (containerType == null) {
@@ -452,7 +472,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the node for the given key or {@code null}.
+     * Returns the OBNT value for the given key or {@code null}.
      * <p>
      * Only readable declared properties participate in this value view. When a
      * declared property is not readable, lookup falls through to dynamic entries
@@ -473,7 +493,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the node for the given key or the default value.
+     * Returns the OBNT value for the given key or the default value.
      */
     public Object getNode(String key, Object defaultValue) {
         Object value = getNode(key);
@@ -938,7 +958,11 @@ public class JsonObject extends JsonContainer {
     }
 
 
-    /// Putter
+    /*
+     * --------------------------------------------------------------
+     * Putter
+     * --------------------------------------------------------------
+     */
 
     /**
      * Puts a key/value pair and returns the previous value when the target
@@ -986,12 +1010,13 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Copies all readable object entries from the given node.
+     * Copies all readable entries from the given object node representation.
      * <p>
      * Supported inputs follow {@link Nodes#forEachObject(Object, BiConsumer)}:
-     * {@link Map}, {@link JsonObject}, JOJO/POJO, and facade object nodes.
+     * {@link Map}, {@link JsonObject}, JOJO/POJO, and facade-native Java
+     * representations that participate as object nodes.
      * Values are transferred through {@link #put(String, Object)} without deep
-     * recursion, so nested child nodes may still be shared with the source.
+     * recursion, so nested child values may still be shared with the source.
      */
     public void putAll(Object node) {
         if (node == null) return;
@@ -1043,12 +1068,17 @@ public class JsonObject extends JsonContainer {
     }
 
 
-    /// Copy, merge
+    /*
+     * --------------------------------------------------------------
+     * Copy and Merge
+     * --------------------------------------------------------------
+     */
 
     /**
      * Creates a shallow copy of this JsonObject.
      * <p>
-     * Plain {@link JsonObject} instances copy their dynamic backing directly.
+     * Plain {@link JsonObject} instances copy their dynamic entries; nested values
+     * are shared.
      * JOJO subtypes fall back to {@link Nodes#copy(Object)} so subtype properties
      * remain part of the copied object view.
      */
@@ -1061,12 +1091,19 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Creates a deep copy of this JsonObject.
+     * <p>
+     * Delegates to {@link Sjf4j#deepNode(Object)}. Declared and dynamic entries
+     * are traversed according to the configured node facade.
      */
     public JsonObject deepCopy() {
         return Sjf4j.global().deepNode(this);
     }
 
-    /// Stream
+    /*
+     * --------------------------------------------------------------
+     * Stream
+     * --------------------------------------------------------------
+     */
 
     /**
      * Returns a NodeStream starting from this object.
@@ -1076,7 +1113,11 @@ public class JsonObject extends JsonContainer {
     }
 
 
-    /// builder
+    /*
+     * --------------------------------------------------------------
+     * Builder
+     * --------------------------------------------------------------
+     */
 
     /**
      * @deprecated Use {@link #edit()} instead.

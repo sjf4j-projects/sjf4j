@@ -20,7 +20,10 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
- * Bridge for external JSON node trees (Jackson/Gson).
+ * Bridge for facade-native Java representations from Jackson and Gson.
+ * <p>
+ * Supported representations participate in the corresponding OBNT object,
+ * array, or value node shape through their backend adapter.
  */
 public class FacadeNodes {
 
@@ -75,7 +78,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns true when object is a supported external node.
+     * Returns true when {@code node} is a supported facade-native Java representation.
      */
     public static boolean isNode(Object node) {
         return (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) ||
@@ -84,7 +87,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns true when class is a supported external node type.
+     * Returns true when {@code clazz} is a supported facade-native Java representation type.
      */
     public static boolean isNode(Class<?> clazz) {
         return (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(clazz)) ||
@@ -93,7 +96,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Resolves node kind for a supported external node.
+     * Resolves the runtime representation classification for a supported facade-native object.
      */
     public static NodeKind kindOf(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.kindOf(node);
@@ -103,7 +106,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Resolves node kind for a supported external node class.
+     * Resolves the runtime representation classification for a supported facade-native class.
      */
     public static NodeKind kindOf(Class<?> clazz) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(clazz)) return Jackson3Nodes.kindOf(clazz);
@@ -119,7 +122,7 @@ public class FacadeNodes {
 //    }
 
     /**
-     * Converts external node to string using strict conversion.
+     * Converts a facade-native value representation to a string using strict conversion.
      */
     public static String toString(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toString(node);
@@ -129,7 +132,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to string using lenient conversion.
+     * Converts a facade-native value representation to a string using lenient conversion.
      */
     public static String asString(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asString(node);
@@ -139,7 +142,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to number using strict conversion.
+     * Converts a facade-native value representation to a number using strict conversion.
      */
     public static Number toNumber(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toNumber(node);
@@ -149,7 +152,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to number using lenient conversion.
+     * Converts a facade-native value representation to a number using lenient conversion.
      */
     public static Number asNumber(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asNumber(node);
@@ -159,7 +162,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to boolean using strict conversion.
+     * Converts a facade-native value representation to a boolean using strict conversion.
      */
     public static Boolean toBoolean(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toBoolean(node);
@@ -169,7 +172,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to boolean using lenient conversion.
+     * Converts a facade-native value representation to a boolean using lenient conversion.
      */
     public static Boolean asBoolean(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asBoolean(node);
@@ -179,7 +182,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to JsonObject.
+     * Converts a facade-native object representation to {@link JsonObject}.
      */
     public static JsonObject toJsonObject(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toJsonObject(node);
@@ -189,7 +192,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to Map.
+     * Converts a facade-native object representation to {@link Map}.
      */
     public static Map<String, Object> toMap(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toMap(node);
@@ -199,7 +202,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to JsonArray.
+     * Converts a facade-native array representation to {@link JsonArray}.
      */
     public static JsonArray toJsonArray(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toJsonArray(node);
@@ -209,7 +212,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to List.
+     * Converts a facade-native array representation to {@link List}.
      */
     public static List<Object> toList(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toList(node);
@@ -219,7 +222,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to Object array.
+     * Converts a facade-native array representation to an object array.
      */
     public static Object[] toArray(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toArray(node);
@@ -229,7 +232,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Converts external node to Set.
+     * Converts a facade-native array representation to a set.
      */
     public static Set<Object> toSet(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toSet(node);
@@ -239,7 +242,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Visits object members of an external node.
+     * Visits object node entries of a facade-native representation.
      */
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
@@ -300,7 +303,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Visits array elements of an external node.
+     * Visits array node elements of a facade-native representation.
      */
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
@@ -335,7 +338,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns number of object entries in external node.
+     * Returns the number of object node entries in a facade-native representation.
      */
     public static int sizeInObject(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.sizeInObject(node);
@@ -345,7 +348,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns number of array entries in external node.
+     * Returns the number of array node elements in a facade-native representation.
      */
     public static int sizeInArray(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.sizeInArray(node);
@@ -355,7 +358,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns object keys from external node.
+     * Returns object node keys from a facade-native representation.
      */
     public static Set<String> keySetInObject(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.keySetInObject(node);
@@ -365,7 +368,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns object entries from external node.
+     * Returns object node entries from a facade-native representation.
      */
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.entrySetInObject(node);
@@ -375,7 +378,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns array iterator from external node.
+     * Returns an array node iterator from a facade-native representation.
      */
     public static Iterator<Object> iteratorInArray(Object node) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.iteratorInArray(node);
@@ -385,7 +388,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns true when object key exists in external node.
+     * Returns true when an object node key exists in a facade-native representation.
      */
     public static boolean containsInObject(Object node, String key) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.containsInObject(node, key);
@@ -395,7 +398,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns object value by key from external node.
+     * Returns an object node value by key from a facade-native representation.
      */
     public static Object getInObject(Object node, String key) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.getInObject(node, key);
@@ -405,7 +408,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Returns array value by index from external node.
+     * Returns an array node value by index from a facade-native representation.
      */
     public static Object getInArray(Object node, int idx) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.getInArray(node, idx);
@@ -539,7 +542,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Puts object value in external node.
+     * Puts an object node value in a facade-native representation.
      */
     public static Object putInObject(Object node, String key, Object value) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
@@ -555,7 +558,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Sets array value in external node.
+     * Sets an array node value in a facade-native representation.
      */
     public static Object setInArray(Object node, int idx, Object value) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
@@ -571,7 +574,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Appends value to array external node.
+     * Appends a value to a facade-native array representation.
      */
     public static void addInArray(Object node, Object value) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
@@ -590,7 +593,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Inserts value at index in array external node.
+     * Inserts a value at an index in a facade-native array representation.
      */
     public static void addInArray(Object node, int idx, Object value) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
@@ -609,7 +612,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Removes object value by key in external node.
+     * Removes an object node value by key from a facade-native representation.
      */
     public static Object removeInObject(Object node, String key) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
@@ -625,7 +628,7 @@ public class FacadeNodes {
     }
 
     /**
-     * Removes array value by index in external node.
+     * Removes an array node value by index from a facade-native representation.
      */
     public static Object removeInArray(Object node, int idx) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
