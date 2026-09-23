@@ -27,6 +27,16 @@ final class NavigatorTestCompiler {
     }
 
     static Result compile(Map<String, String> sources) throws IOException {
+        return compile(
+                sources,
+                TestNavigatorProcessor.class);
+    }
+
+
+    static Result compile(
+            Map<String, String> sources,
+            Class<?> processor) throws IOException {
+
         Path directory = Files.createTempDirectory("sjf4j-navigator-test");
         Path source = directory.resolve("src");
         Path classes = directory.resolve("classes");
@@ -53,7 +63,7 @@ final class NavigatorTestCompiler {
             manager.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
             Boolean success = compiler.getTask(null, manager, diagnostics, Arrays.asList(
                     "-classpath", System.getProperty("java.class.path"),
-                    "-processor", TestNavigatorProcessor.class.getName()
+                    "-processor", processor.getName()
             ), null, manager.getJavaFileObjectsFromFiles(files)).call();
             return new Result(directory, classes, generated, Boolean.TRUE.equals(success), diagnostics);
         }

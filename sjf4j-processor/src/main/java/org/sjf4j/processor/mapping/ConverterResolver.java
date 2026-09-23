@@ -263,7 +263,10 @@ public final class ConverterResolver {
          */
         if (types.isAssignableBoxedGeneric(
                 sourceType,
-                targetType)) {
+                targetType) &&
+                !requiresRuntimeContainerConversion(
+                        sourceType,
+                        targetType)) {
 
             return Conversion.direct(
                     sourceType,
@@ -1399,6 +1402,55 @@ public final class ConverterResolver {
          */
         return sourceKind == NodeKind.OBJECT_MAP &&
                 targetKind == NodeKind.OBJECT_MAP;
+    }
+
+
+    /**
+     * Raw Java containers expose Object members to the mapper type system. Do
+     * not let Java's unchecked raw-to-parameterized assignment bypass SJF4J's
+     * runtime member conversion when the target requires a concrete type.
+     */
+    private boolean requiresRuntimeContainerConversion(
+            TypeMirror source,
+            TypeMirror target) {
+
+        NodeKind sourceKind =
+                types.nodeKind(source);
+
+        NodeKind targetKind =
+                types.nodeKind(target);
+
+        if (isArrayLike(sourceKind) &&
+                isArrayLike(targetKind)) {
+
+            return requiresRuntimeMemberConversion(
+                    types.readElementType(source),
+                    types.writeElementType(target));
+        }
+
+        if (sourceKind == NodeKind.OBJECT_MAP &&
+                targetKind == NodeKind.OBJECT_MAP) {
+
+            return requiresRuntimeMemberConversion(
+                    types.mapReadKeyType(source),
+                    types.mapWriteKeyType(target)) ||
+                    requiresRuntimeMemberConversion(
+                            types.mapReadValueType(source),
+                            types.mapWriteValueType(target));
+        }
+
+        return false;
+    }
+
+
+    private boolean requiresRuntimeMemberConversion(
+            TypeMirror source,
+            TypeMirror target) {
+
+        return source != null &&
+                target != null &&
+                types.isCompileTimeUnknown(source) &&
+                !types.isObject(target);
     }
 
 

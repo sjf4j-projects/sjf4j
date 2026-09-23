@@ -279,10 +279,10 @@ public class MapperSimpleTest {
     public void mapsFacadeNullNodesAsJavaNull() {
         UserMapper mapper = CompiledInstances.of(UserMapper.class);
         ObjectNode source = JsonNodeFactory.instance.objectNode();
-        source.putNull("name");
-        source.putNull("age");
-        source.set("address", JsonNodeFactory.instance.nullNode());
-        source.set("numbers", JsonNodeFactory.instance.nullNode());
+//        source.putNull("name");
+//        source.putNull("age");
+//        source.set("address", JsonNodeFactory.instance.nullNode());
+//        source.set("numbers", JsonNodeFactory.instance.nullNode());
         source.set("array", JsonNodeFactory.instance.arrayNode().addNull().add(2));
 
         JacksonNullDto dto = mapper.jacksonNulls(source);

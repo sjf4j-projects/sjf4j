@@ -3,6 +3,7 @@ package org.sjf4j.facade.jackson2;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.BooleanNode;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.NumericNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -13,6 +14,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -86,6 +88,9 @@ public final class Jackson2Nodes {
         if (node instanceof TextNode) {
             return ((TextNode) node).textValue();
         }
+        if (node instanceof NullNode) {
+            return null;
+        }
         throw _expected("TextNode", node);
     }
 
@@ -102,6 +107,9 @@ public final class Jackson2Nodes {
     public static Number toNumber(Object node) {
         if (node instanceof NumericNode) {
             return ((NumericNode) node).numberValue();
+        }
+        if (node instanceof NullNode) {
+            return null;
         }
         throw _expected("NumericNode", node);
     }
@@ -125,6 +133,9 @@ public final class Jackson2Nodes {
     public static Boolean toBoolean(Object node) {
         if (node instanceof BooleanNode) {
             return ((BooleanNode) node).booleanValue();
+        }
+        if (node instanceof NullNode) {
+            return null;
         }
         throw _expected("BooleanNode", node);
     }
@@ -156,6 +167,9 @@ public final class Jackson2Nodes {
             }
             return jo;
         }
+        if (node instanceof NullNode) {
+            return null;
+        }
         throw _expected("ObjectNode", node);
     }
 
@@ -171,6 +185,9 @@ public final class Jackson2Nodes {
             }
             return map;
         }
+        if (node instanceof NullNode) {
+            return null;
+        }
         throw _expected("ObjectNode", node);
     }
 
@@ -184,6 +201,9 @@ public final class Jackson2Nodes {
                 ja.add(it.next());
             }
             return ja;
+        }
+        if (node instanceof NullNode) {
+            return null;
         }
         throw _expected("ArrayNode", node);
     }
@@ -200,6 +220,9 @@ public final class Jackson2Nodes {
             }
             return list;
         }
+        if (node instanceof NullNode) {
+            return null;
+        }
         throw _expected("ArrayNode", node);
     }
 
@@ -215,6 +238,9 @@ public final class Jackson2Nodes {
             }
             return arr;
         }
+        if (node instanceof NullNode) {
+            return null;
+        }
         throw _expected("ArrayNode", node);
     }
 
@@ -229,6 +255,9 @@ public final class Jackson2Nodes {
                 set.add(it.next());
             }
             return set;
+        }
+        if (node instanceof NullNode) {
+            return null;
         }
         throw _expected("ArrayNode", node);
     }
@@ -326,6 +355,9 @@ public final class Jackson2Nodes {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).get(key);
         }
+        if (node instanceof NullNode) {
+            return null;
+        }
         throw _expected("ObjectNode", node);
     }
 
@@ -334,7 +366,17 @@ public final class Jackson2Nodes {
      */
     public static Object getInArray(Object node, int idx) {
         if (node instanceof ArrayNode) {
-            return ((ArrayNode) node).get(idx);
+            ArrayNode arrnode = (ArrayNode) node;
+            int len = arrnode.size();
+            idx = idx < 0 ? len + idx : idx;
+            if (idx < 0 || idx >= len) {
+                return null;
+            } else {
+                return arrnode.get(idx);
+            }
+        }
+        if (node instanceof NullNode) {
+            return null;
         }
         throw _expected("ArrayNode", node);
     }

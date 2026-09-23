@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 
 import java.sql.ResultSet;
 
@@ -22,9 +22,9 @@ class JdbcTargetPathTest {
         assertEquals("Grace", mapper.nestedAlias(result(new String[]{"full_name"},
                 new Object[]{"Grace"})).getProfile().getName());
 
-        JsonException missing = assertThrows(JsonException.class,
+        BindingException missing = assertThrows(BindingException.class,
                 () -> mapper.nullNested(result(new String[]{"full_name"}, new Object[]{"Ada"})));
-        assertEquals("Missing target path parent: $.profile.name", missing.getMessage());
+        assertEquals("JDBC target path parent is null: $.profile.name", missing.getMessage());
     }
 
     @Test
@@ -40,7 +40,7 @@ class JdbcTargetPathTest {
         @Mapping(target = "$.profile.name", source = "full_name")
         ComplexUser nested(ResultSet rs);
 
-        @Mapping(target = "/profile/name", source = "$.full_name")
+        @Mapping(target = "/profile/name", source = "full_name")
         ComplexUser nestedAlias(ResultSet rs);
 
         @Mapping(target = "$.profile.name", source = "full_name")
@@ -49,7 +49,7 @@ class JdbcTargetPathTest {
         @Mapping(target = "$.name", source = "full_name")
         RootName rootPath(ResultSet rs);
 
-        @Mapping(target = "name", source = "/full_name")
+        @Mapping(target = "name", source = "full_name")
         RootName rootPointer(ResultSet rs);
     }
 

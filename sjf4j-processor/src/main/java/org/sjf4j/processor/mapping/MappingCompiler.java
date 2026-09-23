@@ -134,6 +134,9 @@ public final class MappingCompiler {
         Set<String> consumed =
                 new LinkedHashSet<String>();
 
+        Set<String> pathParents =
+                new LinkedHashSet<String>();
+
         /*
          * Constructor/record parameters must be resolved before ordinary
          * writable properties because they are required for object creation.
@@ -227,6 +230,19 @@ public final class MappingCompiler {
                             value,
                             rule));
 
+            if (target.kind() ==
+                    Target.Kind.PATH &&
+                    target.steps()
+                            .get(0)
+                            .segment() instanceof
+                            PathSegment.Name) {
+
+                pathParents.add(
+                        ((PathSegment.Name) target.steps()
+                                .get(0)
+                                .segment()).name);
+            }
+
             consumed.add(
                     rule.target());
         }
@@ -250,6 +266,7 @@ public final class MappingCompiler {
                     property.name();
 
             if (consumed.contains(name) ||
+                    pathParents.contains(name) ||
                     ignored.contains(name) ||
                     explicit.containsKey(name)) {
 
@@ -571,12 +588,46 @@ public final class MappingCompiler {
         VariableElement source =
                 plan.primarySource();
 
-        ConverterResolver.Conversion conversion =
-                converters.resolveRoot(
-                        plan,
-                        source.asType(),
-                        plan.targetType(),
-                        generated);
+        if (plan.update() &&
+                types.nodeKind(
+                        plan.targetType()) ==
+                        NodeKind.OBJECT_MAP &&
+                types.nodeKind(
+                        source.asType()) !=
+                        NodeKind.OBJECT_MAP) {
+
+            error(
+                    plan.method(),
+                    generated,
+                    "root Map update requires a declared Map source");
+
+            return null;
+        }
+
+        ConverterResolver.Conversion conversion;
+
+        if (plan.update() &&
+                types.nodeKind(
+                        source.asType()) ==
+                        NodeKind.OBJECT_MAP &&
+                types.nodeKind(
+                        plan.targetType()) ==
+                        NodeKind.OBJECT_MAP) {
+
+            conversion =
+                    ConverterResolver.Conversion
+                            .container(
+                                    source.asType(),
+                                    plan.targetType());
+
+        } else {
+            conversion =
+                    converters.resolveRoot(
+                            plan,
+                            source.asType(),
+                            plan.targetType(),
+                            generated);
+        }
 
         if (conversion == null) {
             return null;

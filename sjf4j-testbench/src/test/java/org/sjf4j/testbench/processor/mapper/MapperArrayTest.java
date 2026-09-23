@@ -9,12 +9,13 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -63,16 +64,31 @@ public class MapperArrayTest {
     }
 
     @Test
-    public void updatesRootCollectionsFromArrayLikeSources() {
+    public void updatesRootListsBySetAndAdd() {
         ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
 
-        List<Long> longs = new ArrayList<>(List.of(99L));
-        mapper.updateLongsFromPrimitiveArray(longs, new int[] {1, 2});
-        assertEquals(List.of(1L, 2L), longs);
+        List<Long> set = new ArrayList<>(List.of(99L));
+        mapper.updateLongs(set, new int[] {1, 2});
+        assertEquals(List.of(1L, 2L), set);
 
-        List<Integer> ints = new ArrayList<>(List.of(99));
-        mapper.updateIntsFromJsonArray(ints, JsonArray.of(3L, 4L));
-        assertEquals(List.of(3, 4), ints);
+        List<Long> add = new ArrayList<>(List.of(99L));
+        mapper.addLongs(add, new int[] {1, 2});
+        assertEquals(List.of(99L, 1L, 2L), add);
+    }
+
+    @Test
+    public void updatesJavaArraysByIndexWithoutReplacingThem() {
+        FixedArrayMapper mapper = CompiledInstances.of(FixedArrayMapper.class);
+        FixedArrayTarget target = new FixedArrayTarget();
+        target.values = new Long[] {99L, 98L};
+
+        FixedArraySource source = new FixedArraySource();
+        source.values = new int[] {1};
+        mapper.update(target, source);
+        assertEquals(List.of(1L, 98L), List.of(target.values));
+
+        source.values = new int[] {1, 2, 3};
+        assertThrows(BindingException.class, () -> mapper.update(target, source));
     }
 
     @Test
@@ -100,7 +116,7 @@ public class MapperArrayTest {
         assertSame(nested, fromSet.getNode(1));
         assertEquals(Long.valueOf(1), fromRawSet.getNode(0));
         assertSame(nested, fromRawSet.getNode(1));
-        assertNotSame(json, fromJson);
+        assertSame(json, fromJson);
         assertEquals(Long.valueOf(2), fromJson.getNode(0));
         assertSame(nested, fromJson.getNode(1));
         assertEquals(Integer.valueOf(3), fromPrimitive.getNode(0));
@@ -109,20 +125,26 @@ public class MapperArrayTest {
         JsonArray fromObjectList = mapper.jsonArrayFromObject(List.of(Long.valueOf(5), nested));
         assertEquals(Long.valueOf(5), fromObjectList.getNode(0));
         assertSame(nested, fromObjectList.getNode(1));
-        assertThrows(BindingException.class, () -> mapper.jsonArrayFromObject(JsonArray.of(1)));
+        assertEquals(Integer.valueOf(1), mapper.jsonArrayFromObject(JsonArray.of(1)).getNode(0));
     }
 
     @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public void mapsObjectRuntimeListOnlyToTypedCollectionsAndArrays() {
         ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
-        @SuppressWarnings("rawtypes") List rawList = List.of(Long.valueOf(9), Integer.valueOf(10));
+        List rawList = List.of(Long.valueOf(9), Integer.valueOf(10));
+        Set rawSet = new LinkedHashSet<>(rawList);
+        Map rawMap = new LinkedHashMap<>();
+        rawMap.put("nine", Long.valueOf(9));
 
         assertEquals(List.of(1, 2), mapper.intsFromObject(List.of(Long.valueOf(1), Integer.valueOf(2))));
-        assertThrows(BindingException.class, () -> mapper.intsFromObject(Set.of("1", "2")));
+        assertThrows(JsonException.class, () -> mapper.intsFromObject(Set.of("1", "2")));
         assertEquals(List.of(9, 10), mapper.integerListFromRawList(rawList));
+        assertEquals(new LinkedHashSet<>(List.of(9, 10)), mapper.integerSetFromRawSet(rawSet));
+        assertEquals(Map.of("nine", 9), mapper.integerMapFromRawMap(rawMap));
 
         assertEquals(List.of(3, 4), List.of(mapper.integerArrayFromObject(List.of(Long.valueOf(3), Integer.valueOf(4)))));
-        assertThrows(BindingException.class, () -> mapper.integerArrayFromObject(new int[] {3, 4}));
+        assertEquals(List.of(3, 4), List.of(mapper.integerArrayFromObject(new int[] {3, 4})));
     }
 
     @Test
@@ -209,6 +231,14 @@ public class MapperArrayTest {
         public List<Integer> rawScores = new ArrayList<>();
     }
 
+    public static final class FixedArraySource {
+        public int[] values;
+    }
+
+    public static final class FixedArrayTarget {
+        public Long[] values;
+    }
+
     @CompiledMapper
     public interface ArrayMapper {
         List<Integer> jsonArrayInts(JsonArray source);
@@ -263,6 +293,10 @@ public class MapperArrayTest {
 
         List<Integer> integerListFromRawList(List source);
 
+        Set<Integer> integerSetFromRawSet(Set source);
+
+        Map<String, Integer> integerMapFromRawMap(Map source);
+
         Long[] longArray(int[] source);
 
         Long[] longArrayFromList(List<Integer> source);
@@ -277,9 +311,16 @@ public class MapperArrayTest {
 
         void updateArrayLike(MutableArrayLikeTarget target, ArrayLikeSource source);
 
-        void updateLongsFromPrimitiveArray(List<Long> target, int[] source);
+        void updateLongs(List<Long> target, int[] source);
 
-        void updateIntsFromJsonArray(List<Integer> target, JsonArray source);
+        @MappingOptions(arrays = org.sjf4j.annotation.mapping.ArrayPolicy.ADD)
+        void addLongs(List<Long> target, int[] source);
+
+    }
+
+    @CompiledMapper
+    public interface FixedArrayMapper {
+        void update(FixedArrayTarget target, FixedArraySource source);
     }
 
     @CompiledMapper

@@ -220,6 +220,16 @@ public final class JdbcPlan {
         }
 
 
+        public String[] sources() {
+            return mapping.sources();
+        }
+
+
+        public String compute() {
+            return mapping.compute();
+        }
+
+
         public boolean ignore() {
             return mapping.ignore();
         }

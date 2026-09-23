@@ -235,7 +235,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 throw new BindingException("oneOf scope '" + anyOfInfo.scope + "' is not supported", ps);
             }
 
-            if (!(node instanceof Map) && !(node instanceof JsonObject)) {
+            if (!JsonType.of(node).isObject()) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("node must be a JSON object, when OneOf has a CURRENT discriminator", ps);
             }

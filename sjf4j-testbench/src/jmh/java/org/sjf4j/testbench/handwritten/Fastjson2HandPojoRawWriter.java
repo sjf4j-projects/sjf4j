@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /** Direct Fastjson2 writer using packed UTF-8 field-name writes where they fit. */
+@SuppressWarnings("deprecation")
 public final class Fastjson2HandPojoRawWriter {
     private static final long ID = pack("\"id\":");
     private static final long EMAIL = pack("\"email\":");
@@ -78,6 +79,7 @@ public final class Fastjson2HandPojoRawWriter {
     private static final Unsafe UNSAFE;
     private static final long STRING_VALUE_OFFSET;
     private static final long STRING_CODER_OFFSET;
+
 
     static {
         Unsafe unsafe = null;

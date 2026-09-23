@@ -241,7 +241,7 @@ public final class TypeSystem {
          * UNKNOWN so generated code may deliberately use Nodes for runtime
          * dispatch only when the declared Java type is Object.
          */
-        if (isObject(type) || isExternalNode(type)) {
+        if (isCompileTimeUnknown(type)) {
             return NodeKind.COMPILE_TIME_UNKNOWN;
         }
 
@@ -337,12 +337,13 @@ public final class TypeSystem {
 
 
     public boolean isNodeValue(TypeMirror type) {
-        TypeElement element =
-                typeElement(type);
-
+        TypeElement element = typeElement(type);
         return element != null
-                && element.getAnnotation(
-                NodeValue.class) != null;
+                && element.getAnnotation(NodeValue.class) != null;
+    }
+
+    public boolean isCompileTimeUnknown(TypeMirror type) {
+        return isObject(type) || isExternalNode(type);
     }
 
 
@@ -1151,15 +1152,6 @@ public final class TypeSystem {
         }
 
         return null;
-    }
-
-
-    // -------------------------------------------------------------------------
-    // External node models
-    // -------------------------------------------------------------------------
-
-    public boolean isCompileTimeUnknown(TypeMirror type) {
-        return isObject(type) || isExternalNode(type);
     }
 
 

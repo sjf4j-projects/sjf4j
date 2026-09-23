@@ -628,8 +628,9 @@ public final class Nodes {
             else return toString(node);
         }
         if (Number.class.isAssignableFrom(clazz)) {
-            if (cross) return Numbers.to(asNumber(node), clazz);
-            else return Numbers.to(toNumber(node), clazz);
+            Number number = cross ? asNumber(node) : toNumber(node);
+            if (number == null) return null;
+            return Numbers.to(number, clazz);
         }
         if (clazz == Boolean.class) {
             if (cross) return asBoolean(node);

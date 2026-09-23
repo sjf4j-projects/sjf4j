@@ -29,7 +29,7 @@ public class MapperCollectionTest {
         assertEquals(List.of("b", "a"), new ArrayList<>(out));
     }
 
-    @Test public void rootMapCreateAndUpdates() {
+    @Test public void rootMapCreate() {
         CollectionMapper m = CompiledInstances.of(CollectionMapper.class);
         Map<String, User> in = new LinkedHashMap<>();
         in.put("a", new User("A"));
@@ -55,21 +55,6 @@ public class MapperCollectionTest {
         List<Map<String, User>> mapList = List.of(Map.of("x", new User("X")));
         assertEquals(new UserDto("X"), m.userMaps(mapList).get(0).get("x"));
 
-        List<String> list = new ArrayList<>(List.of("old"));
-        m.replace(list, List.of("n"));
-        assertEquals(List.of("n"), list);
-        m.append(list, List.of("x"));
-        assertEquals(List.of("n", "x"), list);
-
-        Map<String, String> target = new LinkedHashMap<>();
-        target.put("old", "1");
-        m.replaceMap(target, Map.of("n", "2"));
-        assertEquals(Set.of("n"), target.keySet());
-        m.appendMap(target, Map.of("x", "3"));
-        assertEquals("3", target.get("x"));
-        m.putIfAbsentMap(target, Map.of("x", "4", "y", "5"));
-        assertEquals("3", target.get("x"));
-        assertEquals("5", target.get("y"));
     }
 
     @Test public void autoNestedRecursivelyUsesUniqueLeafConverter() {
@@ -179,9 +164,14 @@ public class MapperCollectionTest {
         assertEquals(new UserDto("b"), target.map.get("b"));
 
         target.map.put("keep", new UserDto("keep"));
-        m.clearPutBox(target, source);
-        assertFalse(target.map.containsKey("keep"));
-        assertEquals(Set.of("old", "b"), target.map.keySet());
+        m.putIfPresentBox(target, source);
+        assertEquals(new UserDto("new-old"), target.map.get("old"));
+        assertEquals(new UserDto("b"), target.map.get("b"));
+        assertEquals(new UserDto("keep"), target.map.get("keep"));
+
+        DtoBox absentMap = new DtoBox();
+        m.putIfPresentBox(absentMap, source);
+        assertNull(absentMap.map);
 
         target.map.put("old", new UserDto("existing"));
         target.map.put("empty", null);
@@ -199,104 +189,30 @@ public class MapperCollectionTest {
         assertNull(nullTarget.map);
     }
 
-    @Test public void putIfAbsentMapSkipsConverterForExistingValue() {
-        PutIfAbsentMapper.calls[0] = 0;
-        PutIfAbsentMapper m = CompiledInstances.of(PutIfAbsentMapper.class);
-        Map<String, Long> target = new LinkedHashMap<>();
-        target.put("keep", 1L);
-        target.put("fill", null);
-        Map<String, Integer> source = new LinkedHashMap<>();
-        source.put("keep", 13);
-        source.put("fill", 7);
-        source.put("add", 9);
+    @Test public void rootMapObjectPoliciesConvertOnlyWrittenValues() {
+        RootMapMapper m = CompiledInstances.of(RootMapMapper.class);
 
-        m.update(target, source);
+        Map<String, UserDto> put = new LinkedHashMap<>();
+        put.put("old", new UserDto("old"));
+        m.put(put, Map.of("old", new User("new"), "added", new User("added")));
+        assertEquals(new UserDto("new"), put.get("old"));
+        assertEquals(new UserDto("added"), put.get("added"));
 
-        assertEquals(1L, target.get("keep"));
-        assertEquals(7L, target.get("fill"));
-        assertEquals(9L, target.get("add"));
-        assertEquals(2, PutIfAbsentMapper.calls[0]);
-    }
+        Map<String, UserDto> absent = new LinkedHashMap<>();
+        absent.put("keep", new UserDto("keep"));
+        absent.put("empty", null);
+        m.putIfAbsent(absent, Map.of("keep", new User("skip"), "empty", new User("filled"), "added", new User("added")));
+        assertEquals(new UserDto("keep"), absent.get("keep"));
+        assertEquals(new UserDto("filled"), absent.get("empty"));
+        assertEquals(new UserDto("added"), absent.get("added"));
 
-    @Test public void recursiveUpdatePoliciesApplyToNestedContainers() {
-        RecursiveUpdateMapper m = CompiledInstances.of(RecursiveUpdateMapper.class);
-
-        Map<String, List<UserDto>> listTarget = new LinkedHashMap<>();
-        List<UserDto> existingList = new ArrayList<>(List.of(new UserDto("old")));
-        listTarget.put("keep", existingList);
-        Map<String, List<User>> listSource = new LinkedHashMap<>();
-        listSource.put("keep", List.of(new User("a"), new User("b")));
-        listSource.put("add", List.of(new User("c")));
-        m.putClearAddLists(listTarget, listSource);
-        assertSame(existingList, listTarget.get("keep"));
-        assertEquals(List.of(new UserDto("a"), new UserDto("b")), listTarget.get("keep"));
-        assertEquals(List.of(new UserDto("c")), listTarget.get("add"));
-
-        Map<String, List<UserDto>> absentTarget = new LinkedHashMap<>();
-        List<UserDto> absentExisting = new ArrayList<>(List.of(new UserDto("keep")));
-        absentTarget.put("keep", absentExisting);
-        absentTarget.put("null", null);
-        Map<String, List<User>> absentSource = new LinkedHashMap<>();
-        absentSource.put("keep", List.of(new User("ignored")));
-        absentSource.put("null", List.of(new User("filled")));
-        absentSource.put("add", List.of(new User("new")));
-        m.putIfAbsentLists(absentTarget, absentSource);
-        assertSame(absentExisting, absentTarget.get("keep"));
-        assertEquals(List.of(new UserDto("keep")), absentTarget.get("keep"));
-        assertEquals(List.of(new UserDto("filled")), absentTarget.get("null"));
-        assertEquals(List.of(new UserDto("new")), absentTarget.get("add"));
-
-        Map<String, List<UserDto>> appendTarget = new LinkedHashMap<>();
-        List<UserDto> appendExisting = new ArrayList<>(List.of(new UserDto("old")));
-        appendTarget.put("keep", appendExisting);
-        Map<String, List<User>> appendSource = new LinkedHashMap<>();
-        appendSource.put("keep", List.of(new User("x"), new User("y")));
-        m.putAddLists(appendTarget, appendSource);
-        assertSame(appendExisting, appendTarget.get("keep"));
-        assertEquals(List.of(new UserDto("old"), new UserDto("x"), new UserDto("y")), appendTarget.get("keep"));
-
-        Map<String, Map<String, UserDto>> mapTarget = new LinkedHashMap<>();
-        Map<String, UserDto> existingInner = new LinkedHashMap<>();
-        existingInner.put("keep", new UserDto("keep"));
-        existingInner.put("old", new UserDto("old"));
-        mapTarget.put("outer", existingInner);
-        Map<String, Map<String, User>> mapSource = new LinkedHashMap<>();
-        Map<String, User> sourceInner = new LinkedHashMap<>();
-        sourceInner.put("old", new User("new-old"));
-        sourceInner.put("add", new User("add"));
-        mapSource.put("outer", sourceInner);
-        m.putMaps(mapTarget, mapSource);
-        assertSame(existingInner, mapTarget.get("outer"));
-        assertEquals(new UserDto("keep"), mapTarget.get("outer").get("keep"));
-        assertEquals(new UserDto("new-old"), mapTarget.get("outer").get("old"));
-        assertEquals(new UserDto("add"), mapTarget.get("outer").get("add"));
-
-        Map<String, Map<String, List<UserDto>>> deepTarget = new LinkedHashMap<>();
-        Map<String, List<UserDto>> deepInner = new LinkedHashMap<>();
-        List<UserDto> deepList = new ArrayList<>(List.of(new UserDto("old")));
-        deepInner.put("list", deepList);
-        deepTarget.put("outer", deepInner);
-        Map<String, Map<String, List<User>>> deepSource = new LinkedHashMap<>();
-        Map<String, List<User>> deepSourceInner = new LinkedHashMap<>();
-        deepSourceInner.put("list", List.of(new User("new")));
-        deepSourceInner.put("add", List.of(new User("added")));
-        deepSource.put("outer", deepSourceInner);
-        m.putDeep(deepTarget, deepSource);
-        assertSame(deepInner, deepTarget.get("outer"));
-        assertSame(deepList, deepTarget.get("outer").get("list"));
-        assertEquals(List.of(new UserDto("old"), new UserDto("new")), deepTarget.get("outer").get("list"));
-        assertEquals(List.of(new UserDto("added")), deepTarget.get("outer").get("add"));
-
-        Map<String, Map<String, UserDto>> clearTarget = new LinkedHashMap<>();
-        Map<String, UserDto> oldInner = new LinkedHashMap<>();
-        oldInner.put("gone", new UserDto("gone"));
-        clearTarget.put("old", oldInner);
-        Map<String, Map<String, User>> clearSource = new LinkedHashMap<>();
-        clearSource.put("outer", Map.of("new", new User("new")));
-        m.clearPutMaps(clearTarget, clearSource);
-        assertEquals(Set.of("outer"), clearTarget.keySet());
-        assertNotSame(oldInner, clearTarget.get("outer"));
-        assertEquals(new UserDto("new"), clearTarget.get("outer").get("new"));
+        Map<String, UserDto> present = new LinkedHashMap<>();
+        present.put("keep", new UserDto("keep"));
+        present.put("empty", null);
+        m.putIfPresent(present, Map.of("keep", new User("updated"), "empty", new User("skip"), "added", new User("skip")));
+        assertEquals(new UserDto("updated"), present.get("keep"));
+        assertNull(present.get("empty"));
+        assertFalse(present.containsKey("added"));
     }
 
     @Test public void mapsObntStructuralKinds() {
@@ -416,20 +332,6 @@ public class MapperCollectionTest {
             return u == null ? null : new UserDto(u.name + "!");
         }
 
-        void replace(List<String> target, List<String> source);
-
-        @MappingOptions(arrays = ArrayPolicy.ADD)
-        void append(List<String> target, List<String> source);
-
-        @MappingOptions(objects = ObjectPolicy.CLEAR_PUT)
-        void replaceMap(Map<String, String> target, Map<String, String> source);
-
-        @MappingOptions(objects = ObjectPolicy.PUT)
-        void appendMap(Map<String, String> target, Map<String, String> source);
-
-        @MappingOptions(objects = ObjectPolicy.PUT_IF_ABSENT)
-        void putIfAbsentMap(Map<String, String> target, Map<String, String> source);
-
         @MappingOptions(using = {"this::users"})
         DtoBox box(UserBox box);
 
@@ -466,10 +368,10 @@ public class MapperCollectionTest {
 
         @MappingOptions(using = {"this::users"})
         @Mapping(target = "users", ignore = true)
-        @Mapping(target = "map", object = ObjectPolicy.CLEAR_PUT)
+        @Mapping(target = "map", object = ObjectPolicy.PUT_IF_PRESENT)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
-        void clearPutBox(DtoBox target, UserBox box);
+        void putIfPresentBox(DtoBox target, UserBox box);
 
         @MappingOptions(using = {"this::users"})
         @Mapping(target = "users", ignore = true)
@@ -484,6 +386,7 @@ public class MapperCollectionTest {
 
         @MappingOptions(using = {"this::users"})
         @Mapping(target = "child", sources = {"child"}, compute = "this::toChildDto")
+        @Mapping(target = "set", array = ArrayPolicy.ADD)
         void updateObnt(ObntTarget target, ObntSource source);
 
         default ChildDto toChildDto(Child child) {
@@ -507,6 +410,23 @@ public class MapperCollectionTest {
     }
 
     @CompiledMapper
+    public interface RootMapMapper {
+        @MappingOptions(using = {"this::toDto"})
+        void put(Map<String, UserDto> target, Map<String, User> source);
+
+        @MappingOptions(objects = ObjectPolicy.PUT_IF_ABSENT, using = {"this::toDto"})
+        void putIfAbsent(Map<String, UserDto> target, Map<String, User> source);
+
+        @MappingOptions(objects = ObjectPolicy.PUT_IF_PRESENT, using = {"this::toDto"})
+        void putIfPresent(Map<String, UserDto> target, Map<String, User> source);
+
+        default UserDto toDto(User user) {
+            if ("skip".equals(user.name)) throw new IllegalStateException("converter should have been skipped");
+            return new UserDto(user.name);
+        }
+    }
+
+    @CompiledMapper
     public interface ImportedUserMapper {
         default UserDto toDto(User u) {
             return u == null ? null : new UserDto(u.name + "!");
@@ -524,40 +444,4 @@ public class MapperCollectionTest {
         DtoBox box(UserBox box);
     }
 
-    @CompiledMapper
-    public interface PutIfAbsentMapper {
-        int[] calls = new int[1];
-
-        @MappingOptions(objects = ObjectPolicy.PUT_IF_ABSENT, using = {"this::convert"})
-        void update(Map<String, Long> target, Map<String, Integer> source);
-
-        default Long convert(Integer value) {
-            calls[0]++;
-            if (value != null && value.intValue() == 13) throw new IllegalStateException("converter should have been skipped");
-            return value == null ? null : Long.valueOf(value.longValue());
-        }
-    }
-
-    @CompiledMapper
-    public interface RecursiveUpdateMapper {
-        @MappingOptions(arrays = ArrayPolicy.CLEAR_ADD, objects = ObjectPolicy.PUT, using = {"this::toDto"})
-        void putClearAddLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
-
-        @MappingOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT, using = {"this::toDto"})
-        void putAddLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
-
-        @MappingOptions(objects = ObjectPolicy.PUT_IF_ABSENT, using = {"this::toDto"})
-        void putIfAbsentLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
-
-        @MappingOptions(objects = ObjectPolicy.PUT, using = {"this::toDto"})
-        void putMaps(Map<String, Map<String, UserDto>> target, Map<String, Map<String, User>> source);
-
-        @MappingOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT, using = {"this::toDto"})
-        void putDeep(Map<String, Map<String, List<UserDto>>> target, Map<String, Map<String, List<User>>> source);
-
-        @MappingOptions(objects = ObjectPolicy.CLEAR_PUT, using = {"this::toDto"})
-        void clearPutMaps(Map<String, Map<String, UserDto>> target, Map<String, Map<String, User>> source);
-
-        UserDto toDto(User u);
-    }
 }

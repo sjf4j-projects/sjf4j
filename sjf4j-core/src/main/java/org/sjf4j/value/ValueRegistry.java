@@ -166,7 +166,7 @@ public final class ValueRegistry {
                 // Decode
                 if (ctor.isAnnotationPresent(RawToValue.class)) {
                     if (rawToValueHandle != null)
-                        throw new JsonException("multiple @" + RawToValue.class.getName() +
+                        throw new JsonException("multiple @" + RawToValue.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     try {
                         rawToValueHandle = lookup.unreflectConstructor(ctor);
@@ -181,10 +181,10 @@ public final class ValueRegistry {
                 // Encode
                 if (m.isAnnotationPresent(ValueToRaw.class)) {
                     if (valueToRawHandle != null)
-                        throw new JsonException("multiple @" + ValueToRaw.class.getName() +
+                        throw new JsonException("multiple @" + ValueToRaw.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("cannot use @" + ValueToRaw.class.getName() +
+                        throw new JsonException("cannot use @" + ValueToRaw.class.getSimpleName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -200,10 +200,10 @@ public final class ValueRegistry {
                 // Decode
                 if (m.isAnnotationPresent(RawToValue.class)) {
                     if (rawToValueHandle != null)
-                        throw new JsonException("multiple @" + RawToValue.class.getName() +
+                        throw new JsonException("multiple @" + RawToValue.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     if (!Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("must use @" + RawToValue.class.getName() +
+                        throw new JsonException("must use @" + RawToValue.class.getSimpleName() +
                                 " on constructor or static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -218,10 +218,10 @@ public final class ValueRegistry {
                 // Copy
                 if (m.isAnnotationPresent(ValueCopy.class)) {
                     if (valueCopyHandle != null)
-                        throw new JsonException("multiple @" + ValueCopy.class.getName() +
+                        throw new JsonException("multiple @" + ValueCopy.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("cannot use @" + ValueCopy.class.getName() +
+                        throw new JsonException("cannot use @" + ValueCopy.class.getSimpleName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -238,39 +238,39 @@ public final class ValueRegistry {
         }
 
         if (valueToRawHandle == null)
-            throw new JsonException("missing @" + ValueToRaw.class.getName() + " method in " + clazz.getName());
+            throw new JsonException("missing @" + ValueToRaw.class.getSimpleName() + " method in " + clazz.getName());
         if (valueToRawHandle.type().parameterCount() != 1) {
-            throw new JsonException("@" + ValueToRaw.class.getName() + " method must have no parameters, but found " +
+            throw new JsonException("@" + ValueToRaw.class.getSimpleName() + " method must have no parameters, but found " +
                     (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
         Class<?> valueToRawReturnBoxed = Types.box(valueToRawHandle.type().returnType());
         if (!NodeKind.plainOf(valueToRawReturnBoxed).isRaw())
-            throw new JsonException("@" + ValueToRaw.class.getName() + " method return invalid type " +
+            throw new JsonException("@" + ValueToRaw.class.getSimpleName() + " method return invalid type " +
                     valueToRawReturnBoxed.getName() + " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
         if (rawToValueHandle == null)
-            throw new JsonException("missing @" + RawToValue.class.getName() + " method in " + clazz.getName());
+            throw new JsonException("missing @" + RawToValue.class.getSimpleName() + " method in " + clazz.getName());
         if (rawToValueHandle.type().parameterCount() != 1)
-            throw new JsonException("@" + RawToValue.class.getName() +
+            throw new JsonException("@" + RawToValue.class.getSimpleName() +
                     " method must have exactly one parameter, but found " + rawToValueHandle.type().parameterCount());
         Class<?> rawToValueParamBoxed = Types.box(rawToValueHandle.type().parameterType(0));
         Class<?> rawToValueReturnClazz = rawToValueHandle.type().returnType();
         if (rawToValueParamBoxed != valueToRawReturnBoxed)
-            throw new JsonException("@" + RawToValue.class.getName() + " method parameter type must match @" +
-                    ValueToRaw.class.getName() + " return type. " + "Expected: " + valueToRawReturnBoxed.getName() +
+            throw new JsonException("@" + RawToValue.class.getSimpleName() + " method parameter type must match @" +
+                    ValueToRaw.class.getSimpleName() + " return type. " + "Expected: " + valueToRawReturnBoxed.getName() +
                     ", Found: " + rawToValueParamBoxed.getName());
         if (rawToValueReturnClazz != clazz)
-            throw new JsonException("@" + RawToValue.class.getName() + " method return type must be " +
+            throw new JsonException("@" + RawToValue.class.getSimpleName() + " method return type must be " +
                     clazz.getName() + ", but found " + rawToValueReturnClazz.getName());
 
         if (valueCopyHandle != null) {
             if (valueCopyHandle.type().parameterCount() != 1)
-                throw new JsonException("@" + ValueCopy.class.getName() + " method must have no parameters, but found " +
+                throw new JsonException("@" + ValueCopy.class.getSimpleName() + " method must have no parameters, but found " +
                         (valueCopyHandle.type().parameterCount() + 1));
             Class<?> copyReturnClazz = valueCopyHandle.type().returnType();
             if (copyReturnClazz != clazz)
-                throw new JsonException("@" + ValueCopy.class.getName() + " method return type must be " + clazz.getName() +
+                throw new JsonException("@" + ValueCopy.class.getSimpleName() + " method return type must be " + clazz.getName() +
                         ", but found " + copyReturnClazz.getName());
         }
 

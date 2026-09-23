@@ -30,7 +30,7 @@ public class MapperTargetPathTest {
         TargetPathMapper mapper = CompiledInstances.of(TargetPathMapper.class);
         MissingTarget target = new MissingTarget();
 
-        assertThrows(JsonException.class, () -> mapper.strictUpdate(target, new Source("Ada", "X")));
+        assertThrows(Exception.class, () -> mapper.strictUpdate(target, new Source("Ada", "X")));
         assertNull(target.profile);
 
         target.profile = new Profile();

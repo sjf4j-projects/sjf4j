@@ -17,7 +17,10 @@ import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -87,21 +90,36 @@ public final class JdbcEmitter {
 
         out.indent();
 
+        out.line(
+                "java.util.Objects.requireNonNull(" +
+                        resultSet +
+                        ", " +
+                        stringLiteral(resultSet) +
+                        ");");
+
         out.line("try {");
         out.indent();
 
         String metadata = null;
         String columns = null;
+        String columnCount = null;
+        String labels = null;
+        String consumed = null;
+
+        Map<String, String> indexes =
+                Collections.emptyMap();
 
         /*
          * Map rows always require ResultSetMetaData because their keys come
          * directly from runtime column labels.
          *
-         * PRESENT_ONLY also needs metadata once per mapper invocation.
+         * PRESENT_ONLY and JOJO remainder mapping also need metadata once per
+         * mapper invocation.
          */
         if (method.kind() ==
                 JdbcCompiler.CompiledMethod.Kind.MAP ||
-                method.presentOnly()) {
+                method.presentOnly() ||
+                method.jojo()) {
 
             metadata =
                     names.newName(
@@ -124,16 +142,100 @@ public final class JdbcEmitter {
                             metadata);
         }
 
+        if (method.jojo()) {
+
+            columnCount =
+                    names.newName(
+                            "columnCount");
+
+            labels =
+                    names.newName(
+                            "labels");
+
+            String index =
+                    names.newName(
+                            "column");
+
+            out.line(
+                    "int " +
+                            columnCount +
+                            " = " +
+                            metadata +
+                            ".getColumnCount();");
+
+            out.line(
+                    "java.lang.String[] " +
+                            labels +
+                            " = new java.lang.String[" +
+                            columnCount +
+                            " + 1];");
+
+            out.line(
+                    "for (int " +
+                            index +
+                            " = 1; " +
+                            index +
+                            " <= " +
+                            columnCount +
+                            "; " +
+                            index +
+                            "++) {");
+
+            out.indent();
+
+            out.line(
+                    labels +
+                            "[" +
+                            index +
+                            "] = " +
+                            metadata +
+                            ".getColumnLabel(" +
+                            index +
+                            ");");
+
+            out.dedent();
+            out.line("}");
+        }
+
+        if (plan.list() || method.jojo()) {
+            indexes =
+                    emitColumnIndexes(
+                            out,
+                            names,
+                            resultSet,
+                            columns,
+                            columnCount,
+                            labels,
+                            method.jojo()
+                                    ? method.consumedColumns()
+                                    : method.readColumns());
+        }
+
+        if (method.jojo()) {
+            consumed =
+                    emitConsumedColumns(
+                            out,
+                            names,
+                            columnCount,
+                            indexes,
+                            method.consumedColumns());
+        }
+
         if (plan.currentRow()) {
 
             String row =
                     emitRow(
                             out,
                             names,
-                            method,
-                            resultSet,
-                            metadata,
-                            columns);
+                             method,
+                             resultSet,
+                             metadata,
+                            columnCount,
+                            columns,
+                            indexes,
+                            columnCount,
+                            labels,
+                            consumed);
 
             out.line(
                     "return " +
@@ -145,20 +247,30 @@ public final class JdbcEmitter {
             emitList(
                     out,
                     names,
-                    method,
-                    resultSet,
-                    metadata,
-                    columns);
+                     method,
+                     resultSet,
+                     metadata,
+                    columnCount,
+                    columns,
+                    indexes,
+                    columnCount,
+                    labels,
+                    consumed);
 
         } else {
 
             emitSingle(
                     out,
                     names,
-                    method,
-                    resultSet,
-                    metadata,
-                    columns);
+                     method,
+                     resultSet,
+                     metadata,
+                    columnCount,
+                    columns,
+                    indexes,
+                    columnCount,
+                    labels,
+                    consumed);
         }
 
         out.dedent();
@@ -245,7 +357,12 @@ public final class JdbcEmitter {
             JdbcCompiler.CompiledMethod method,
             String resultSet,
             String metadata,
-            String columns) {
+            String mapColumnCount,
+            String columns,
+            Map<String, String> indexes,
+            String columnCount,
+            String labels,
+            String consumed) {
 
         out.line(
                 "if (!" +
@@ -262,10 +379,15 @@ public final class JdbcEmitter {
                 emitRow(
                         out,
                         names,
-                        method,
-                        resultSet,
-                        metadata,
-                        columns);
+                         method,
+                         resultSet,
+                         metadata,
+                        mapColumnCount,
+                        columns,
+                        indexes,
+                        columnCount,
+                        labels,
+                        consumed);
 
         if (!method.firstResult()) {
 
@@ -299,7 +421,12 @@ public final class JdbcEmitter {
             JdbcCompiler.CompiledMethod method,
             String resultSet,
             String metadata,
-            String columns) {
+            String mapColumnCount,
+            String columns,
+            Map<String, String> indexes,
+            String columnCount,
+            String labels,
+            String consumed) {
 
         String result =
                 names.newName(
@@ -315,6 +442,70 @@ public final class JdbcEmitter {
                                 .rowType() +
                         ">();");
 
+        if (method.kind() ==
+                JdbcCompiler.CompiledMethod.Kind.MAP) {
+
+            out.line(
+                    "if (!" +
+                            resultSet +
+                            ".next()) {");
+
+            out.indent();
+            out.line(
+                    "return " +
+                            result +
+                            ";");
+            out.dedent();
+            out.line("}");
+
+            String count =
+                    names.newName(
+                            "columnCount");
+
+            out.line(
+                    "int " +
+                            count +
+                            " = " +
+                            metadata +
+                            ".getColumnCount();");
+
+            out.line("do {");
+            out.indent();
+
+            String row =
+                    emitRow(
+                            out,
+                            names,
+                            method,
+                            resultSet,
+                            metadata,
+                            count,
+                            columns,
+                            indexes,
+                            columnCount,
+                            labels,
+                            consumed);
+
+            out.line(
+                    result +
+                            ".add(" +
+                            row +
+                            ");");
+
+            out.dedent();
+            out.line(
+                    "} while (" +
+                            resultSet +
+                            ".next());");
+
+            out.line(
+                    "return " +
+                            result +
+                            ";");
+
+            return;
+        }
+
         out.line(
                 "while (" +
                         resultSet +
@@ -326,10 +517,15 @@ public final class JdbcEmitter {
                 emitRow(
                         out,
                         names,
-                        method,
-                        resultSet,
-                        metadata,
-                        columns);
+                         method,
+                         resultSet,
+                         metadata,
+                        mapColumnCount,
+                        columns,
+                        indexes,
+                        columnCount,
+                        labels,
+                        consumed);
 
         out.line(
                 result +
@@ -357,16 +553,22 @@ public final class JdbcEmitter {
             JdbcCompiler.CompiledMethod method,
             String resultSet,
             String metadata,
-            String columns) {
+            String mapColumnCount,
+            String columns,
+            Map<String, String> indexes,
+            String columnCount,
+            String labels,
+            String consumed) {
 
         if (method.kind() ==
                 JdbcCompiler.CompiledMethod.Kind.MAP) {
 
             return emitMapRow(
                     out,
-                    names,
-                    resultSet,
-                    metadata);
+                     names,
+                     resultSet,
+                    metadata,
+                    mapColumnCount);
         }
 
         return emitObjectRow(
@@ -374,7 +576,11 @@ public final class JdbcEmitter {
                 names,
                 method,
                 resultSet,
-                columns);
+                columns,
+                indexes,
+                columnCount,
+                labels,
+                consumed);
     }
 
 
@@ -386,15 +592,25 @@ public final class JdbcEmitter {
             JavaWriter out,
             NameAllocator names,
             String resultSet,
-            String metadata) {
+            String metadata,
+            String columnCount) {
+
+        if (columnCount == null) {
+            columnCount =
+                    names.newName(
+                            "columnCount");
+
+            out.line(
+                    "int " +
+                            columnCount +
+                            " = " +
+                            metadata +
+                            ".getColumnCount();");
+        }
 
         String result =
                 names.newName(
                         "row");
-
-        String count =
-                names.newName(
-                        "columnCount");
 
         String index =
                 names.newName(
@@ -405,17 +621,10 @@ public final class JdbcEmitter {
                         "label");
 
         out.line(
-                "int " +
-                        count +
-                        " = " +
-                        metadata +
-                        ".getColumnCount();");
-
-        out.line(
                 "java.util.Map<String, Object> " +
                         result +
                         " = new java.util.LinkedHashMap<String, Object>(" +
-                        count +
+                        columnCount +
                         ");");
 
         out.line(
@@ -424,7 +633,7 @@ public final class JdbcEmitter {
                         " = 1; " +
                         index +
                         " <= " +
-                        count +
+                        columnCount +
                         "; " +
                         index +
                         "++) {");
@@ -466,7 +675,11 @@ public final class JdbcEmitter {
             NameAllocator names,
             JdbcCompiler.CompiledMethod method,
             String resultSet,
-            String columns) {
+            String columns,
+            Map<String, String> indexes,
+            String columnCount,
+            String labels,
+            String consumed) {
 
         CreatorResolver.Creation creation =
                 method.creation();
@@ -480,11 +693,12 @@ public final class JdbcEmitter {
                 method.constructorArguments()) {
 
             constructorValues.add(
-                    emitColumnRead(
+                    emitValue(
                             out,
                             names,
                             resultSet,
-                            argument.read()));
+                            argument.value(),
+                            indexes));
         }
 
         String target =
@@ -538,22 +752,22 @@ public final class JdbcEmitter {
 
                 out.line(
                         "if (" +
-                                columns +
-                                ".contains(" +
-                                stringLiteral(
-                                        assignment.read()
-                                                .column()) +
-                                ")) {");
+                                presentColumns(
+                                        columns,
+                                        assignment.value(),
+                                        indexes) +
+                                ") {");
 
                 out.indent();
             }
 
             String value =
-                    emitColumnRead(
+                    emitValue(
                             out,
                             names,
                             resultSet,
-                            assignment.read());
+                            assignment.value(),
+                            indexes);
 
             emitTargetWrite(
                     out,
@@ -567,6 +781,17 @@ public final class JdbcEmitter {
                 out.dedent();
                 out.line("}");
             }
+        }
+
+        if (method.jojo()) {
+            emitDynamicColumns(
+                    out,
+                    names,
+                    target,
+                    resultSet,
+                    columnCount,
+                    labels,
+                    consumed);
         }
 
         return target;
@@ -634,15 +859,377 @@ public final class JdbcEmitter {
     }
 
 
+    private Map<String, String> emitColumnIndexes(
+            JavaWriter out,
+            NameAllocator names,
+            String resultSet,
+            String columns,
+            String columnCount,
+            String labels,
+            List<String> sourceColumns) {
+
+        Map<String, String> result =
+                new LinkedHashMap<String, String>();
+
+        if (labels != null) {
+            for (String source :
+                    sourceColumns) {
+                String index =
+                        names.newName(
+                                "index_" +
+                                        source);
+
+                out.line(
+                        "int " +
+                                index +
+                                " = 0;");
+
+                result.put(
+                        source,
+                        index);
+            }
+
+            String column =
+                    names.newName(
+                            "column");
+
+            out.line(
+                    "for (int " +
+                            column +
+                            " = 1; " +
+                            column +
+                            " <= " +
+                            columnCount +
+                            "; " +
+                            column +
+                            "++) {");
+
+            out.indent();
+
+            for (String source :
+                    sourceColumns) {
+                String index =
+                        result.get(source);
+
+                out.line(
+                        "if (" +
+                                index +
+                                " == 0 && " +
+                                stringLiteral(source) +
+                                ".equalsIgnoreCase(" +
+                                labels +
+                                "[" +
+                                column +
+                                "])) { " +
+                                index +
+                                " = " +
+                                column +
+                                "; }");
+            }
+
+            out.dedent();
+            out.line("}");
+
+            if (columns == null) {
+                for (String source :
+                        sourceColumns) {
+                    String index =
+                            result.get(source);
+
+                    out.line(
+                            "if (" +
+                                    index +
+                                    " == 0) { " +
+                                    index +
+                                    " = " +
+                                    resultSet +
+                                    ".findColumn(" +
+                                    stringLiteral(source) +
+                                    "); }");
+                }
+            }
+
+            return result;
+        }
+
+        for (String source :
+                sourceColumns) {
+
+            String index =
+                    names.newName(
+                            "index_" +
+                                    source);
+
+            if (columns == null) {
+                out.line(
+                        "int " +
+                                index +
+                                " = " +
+                                resultSet +
+                                ".findColumn(" +
+                                stringLiteral(source) +
+                                ");");
+            } else {
+                out.line(
+                        "int " +
+                                index +
+                                " = " +
+                                columns +
+                                ".contains(" +
+                                stringLiteral(source) +
+                                ") ? " +
+                                resultSet +
+                                ".findColumn(" +
+                                stringLiteral(source) +
+                                ") : 0;");
+            }
+
+            result.put(
+                    source,
+                    index);
+        }
+
+        return result;
+    }
+
+
+    private String emitConsumedColumns(
+            JavaWriter out,
+            NameAllocator names,
+            String columnCount,
+            Map<String, String> indexes,
+            List<String> consumedColumns) {
+
+        String consumed =
+                names.newName(
+                        "consumed");
+
+        out.line(
+                "boolean[] " +
+                        consumed +
+                        " = new boolean[" +
+                        columnCount +
+                        " + 1];");
+
+        for (String column :
+                consumedColumns) {
+
+            String index =
+                    indexes.get(column);
+
+            out.line(
+                    "if (" +
+                            index +
+                            " != 0) { " +
+                            consumed +
+                            "[" +
+                            index +
+                            "] = true; }");
+        }
+
+        return consumed;
+    }
+
+
+    private void emitDynamicColumns(
+            JavaWriter out,
+            NameAllocator names,
+            String target,
+            String resultSet,
+            String columnCount,
+            String labels,
+            String consumed) {
+
+        String dynamic =
+                names.newName(
+                        "dynamic");
+
+        String column =
+                names.newName(
+                        "column");
+
+        out.line(
+                "java.util.Map<String, Object> " +
+                        dynamic +
+                        " = " +
+                        target +
+                        "._dynamicMap();");
+
+        out.line(
+                "for (int " +
+                        column +
+                        " = 1; " +
+                        column +
+                        " <= " +
+                        columnCount +
+                        "; " +
+                        column +
+                        "++) {");
+
+        out.indent();
+
+        out.line(
+                "if (!" +
+                        consumed +
+                        "[" +
+                        column +
+                        "]) {");
+
+        out.indent();
+
+        out.line(
+                "if (" +
+                        dynamic +
+                        " == null) {");
+
+        out.indent();
+
+        out.line(
+                dynamic +
+                        " = new java.util.LinkedHashMap<String, Object>();");
+
+        out.line(
+                target +
+                        "._dynamicMap(" +
+                        dynamic +
+                        ");");
+
+        out.dedent();
+        out.line("}");
+
+        out.line(
+                dynamic +
+                        ".put(" +
+                        labels +
+                        "[" +
+                        column +
+                        "], " +
+                        resultSet +
+                        ".getObject(" +
+                        column +
+                        "));" );
+
+        out.dedent();
+        out.line("}");
+
+        out.dedent();
+        out.line("}");
+    }
+
+
     // -------------------------------------------------------------------------
     // Column read
     // -------------------------------------------------------------------------
+
+    private String emitValue(
+            JavaWriter out,
+            NameAllocator names,
+            String resultSet,
+            JdbcCompiler.Value value,
+            Map<String, String> indexes) {
+
+        if (value.read() != null) {
+            return emitColumnRead(
+                    out,
+                    names,
+                    resultSet,
+                    value.read(),
+                    indexes);
+        }
+
+        JdbcCompiler.ComputedValue compute =
+                value.compute();
+
+        List<String> arguments =
+                new ArrayList<String>(
+                        compute.reads()
+                                .size());
+
+        for (JdbcCompiler.ColumnRead read :
+                compute.reads()) {
+            arguments.add(
+                    emitColumnRead(
+                            out,
+                            names,
+                            resultSet,
+                            read,
+                            indexes));
+        }
+
+        String result =
+                names.newName("computed");
+
+        out.line(
+                localType(
+                        compute.targetType()) +
+                        " " +
+                        result +
+                        " = this." +
+                        compute.helper() +
+                        "(" +
+                        join(arguments) +
+                        ");");
+
+        return result;
+    }
+
+
+    private String presentColumns(
+            String columns,
+            JdbcCompiler.Value value,
+            Map<String, String> indexes) {
+
+        List<JdbcCompiler.ColumnRead> reads =
+                value.read() != null
+                        ? Collections.singletonList(
+                                value.read())
+                        : value.compute()
+                                .reads();
+
+        StringBuilder out =
+                new StringBuilder();
+
+        for (JdbcCompiler.ColumnRead read : reads) {
+            if (out.length() != 0) {
+                out.append(" && ");
+            }
+
+            String index =
+                    indexes.get(
+                            read.column());
+
+            if (index != null) {
+                out.append(index)
+                        .append(" != 0");
+            } else {
+                out.append(columns)
+                        .append(".contains(")
+                        .append(stringLiteral(
+                                read.column()))
+                        .append(")");
+            }
+        }
+
+        return out.length() == 0
+                ? "true"
+                : out.toString();
+    }
 
     private String emitColumnRead(
             JavaWriter out,
             NameAllocator names,
             String resultSet,
-            JdbcCompiler.ColumnRead read) {
+            JdbcCompiler.ColumnRead read,
+            Map<String, String> indexes) {
+
+        String column =
+                indexes.get(
+                        read.column());
+
+        if (column == null) {
+            column = stringLiteral(
+                    read.column());
+        }
 
         switch (read.kind()) {
             case STRING:
@@ -651,6 +1238,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getString");
 
             case BOOLEAN:
@@ -659,6 +1247,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getBoolean",
                         "boolean",
                         "java.lang.Boolean");
@@ -669,6 +1258,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getByte",
                         "byte",
                         "java.lang.Byte");
@@ -679,6 +1269,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getShort",
                         "short",
                         "java.lang.Short");
@@ -689,6 +1280,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getInt",
                         "int",
                         "java.lang.Integer");
@@ -699,6 +1291,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getLong",
                         "long",
                         "java.lang.Long");
@@ -709,6 +1302,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getFloat",
                         "float",
                         "java.lang.Float");
@@ -719,6 +1313,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getDouble",
                         "double",
                         "java.lang.Double");
@@ -728,7 +1323,8 @@ public final class JdbcEmitter {
                         out,
                         names,
                         resultSet,
-                        read);
+                        read,
+                        column);
 
             case BIG_DECIMAL:
                 return emitReferenceRead(
@@ -736,6 +1332,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getBigDecimal");
 
             case BYTES:
@@ -744,6 +1341,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getBytes");
 
             case DATE:
@@ -752,6 +1350,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getDate");
 
             case TIME:
@@ -760,6 +1359,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getTime");
 
             case TIMESTAMP:
@@ -768,6 +1368,7 @@ public final class JdbcEmitter {
                         names,
                         resultSet,
                         read,
+                        column,
                         "getTimestamp");
 
             case ENUM:
@@ -775,28 +1376,32 @@ public final class JdbcEmitter {
                         out,
                         names,
                         resultSet,
-                        read);
+                        read,
+                        column);
 
             case OBJECT:
                 return emitObjectRead(
                         out,
                         names,
                         resultSet,
-                        read);
+                        read,
+                        column);
 
             case TYPED_OBJECT:
                 return emitTypedObjectRead(
                         out,
                         names,
                         resultSet,
-                        read);
+                        read,
+                        column);
 
             case NODE_VALUE:
                 return emitNodeValueRead(
                         out,
                         names,
                         resultSet,
-                        read);
+                        read,
+                        column);
 
             default:
                 throw new AssertionError(
@@ -810,6 +1415,7 @@ public final class JdbcEmitter {
             NameAllocator names,
             String resultSet,
             JdbcCompiler.ColumnRead read,
+            String column,
             String getter) {
 
         String value =
@@ -824,8 +1430,7 @@ public final class JdbcEmitter {
                         "." +
                         getter +
                         "(" +
-                        stringLiteral(
-                                read.column()) +
+                        column +
                         ");");
 
         return value;
@@ -837,6 +1442,7 @@ public final class JdbcEmitter {
             NameAllocator names,
             String resultSet,
             JdbcCompiler.ColumnRead read,
+            String column,
             String getter,
             String primitiveType,
             String wrapperType) {
@@ -853,8 +1459,7 @@ public final class JdbcEmitter {
                         "." +
                         getter +
                         "(" +
-                        stringLiteral(
-                                read.column()) +
+                        column +
                         ");");
 
         if (read.primitive()) {
@@ -903,7 +1508,8 @@ public final class JdbcEmitter {
             JavaWriter out,
             NameAllocator names,
             String resultSet,
-            JdbcCompiler.ColumnRead read) {
+            JdbcCompiler.ColumnRead read,
+            String column) {
 
         String raw =
                 names.newName("raw_" + read.column());
@@ -914,8 +1520,7 @@ public final class JdbcEmitter {
                         " = " +
                         resultSet +
                         ".getString(" +
-                        stringLiteral(
-                                read.column()) +
+                        column +
                         ");");
 
         if (read.primitive()) {
@@ -1018,7 +1623,8 @@ public final class JdbcEmitter {
             JavaWriter out,
             NameAllocator names,
             String resultSet,
-            JdbcCompiler.ColumnRead read) {
+            JdbcCompiler.ColumnRead read,
+            String column) {
 
         String raw =
                 names.newName("raw_" + read.column());
@@ -1032,8 +1638,7 @@ public final class JdbcEmitter {
                         " = " +
                         resultSet +
                         ".getString(" +
-                        stringLiteral(
-                                read.column()) +
+                        column +
                         ");");
 
         out.line(
@@ -1056,7 +1661,8 @@ public final class JdbcEmitter {
             JavaWriter out,
             NameAllocator names,
             String resultSet,
-            JdbcCompiler.ColumnRead read) {
+            JdbcCompiler.ColumnRead read,
+            String column) {
 
         String value =
                 names.newName("value_" + read.column());
@@ -1067,8 +1673,7 @@ public final class JdbcEmitter {
                         " = " +
                         resultSet +
                         ".getObject(" +
-                        stringLiteral(
-                                read.column()) +
+                        column +
                         ");");
 
         return value;
@@ -1079,7 +1684,8 @@ public final class JdbcEmitter {
             JavaWriter out,
             NameAllocator names,
             String resultSet,
-            JdbcCompiler.ColumnRead read) {
+            JdbcCompiler.ColumnRead read,
+            String column) {
 
         String value =
                 names.newName("value_" + read.column());
@@ -1091,8 +1697,7 @@ public final class JdbcEmitter {
                         " = " +
                         resultSet +
                         ".getObject(" +
-                        stringLiteral(
-                                read.column()) +
+                        column +
                         ", " +
                         classLiteral(
                                 read.targetType()) +
@@ -1106,7 +1711,8 @@ public final class JdbcEmitter {
             JavaWriter out,
             NameAllocator names,
             String resultSet,
-            JdbcCompiler.ColumnRead read) {
+            JdbcCompiler.ColumnRead read,
+            String column) {
 
         String raw =
                 names.newName("raw_" + read.column());
@@ -1120,8 +1726,7 @@ public final class JdbcEmitter {
                         " = " +
                         resultSet +
                         ".getObject(" +
-                        stringLiteral(
-                                read.column()) +
+                        column +
                         ");");
 
         out.line(

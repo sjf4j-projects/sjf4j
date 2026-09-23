@@ -43,7 +43,7 @@ public @interface MappingOptions {
     NullValuePolicy nulls() default NullValuePolicy.SET_TO_NULL;
 
     /** Default array-like update behavior for target properties and nested containers. */
-    ArrayPolicy arrays() default ArrayPolicy.CLEAR_ADD;
+    ArrayPolicy arrays() default ArrayPolicy.SET;
 
     /** Default object-like update behavior for target properties and nested containers. */
     ObjectPolicy objects() default ObjectPolicy.PUT;

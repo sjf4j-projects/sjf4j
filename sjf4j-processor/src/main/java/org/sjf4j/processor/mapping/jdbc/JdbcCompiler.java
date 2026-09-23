@@ -14,6 +14,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
@@ -24,9 +25,11 @@ import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +43,29 @@ public final class JdbcCompiler {
     private static final String JDBC_OPTIONS =
             "org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions";
 
+    /*
+     * Compute helpers declare the Java type read directly from ResultSet. Keep
+     * that contract explicit instead of relying on driver-specific typed getObject.
+     */
+    private static final Set<String> COMPUTE_JDBC_TYPES =
+            Collections.unmodifiableSet(
+                    new HashSet<String>(
+                            Arrays.asList(
+                                    String.class.getName(),
+                                    Boolean.class.getName(),
+                                    Byte.class.getName(),
+                                    Short.class.getName(),
+                                    Integer.class.getName(),
+                                    Long.class.getName(),
+                                    Float.class.getName(),
+                                    Double.class.getName(),
+                                    Character.class.getName(),
+                                    BigDecimal.class.getName(),
+                                    Date.class.getName(),
+                                    Time.class.getName(),
+                                    Timestamp.class.getName(),
+                                    Object.class.getName())));
+
     private final ProcessorContext context;
     private final TypeSystem types;
     private final TypeElement mapper;
@@ -52,6 +78,8 @@ public final class JdbcCompiler {
     private final TypeMirror sqlDateType;
     private final TypeMirror sqlTimeType;
     private final TypeMirror sqlTimestampType;
+    private final TypeMirror runtimeExceptionType;
+    private final TypeMirror errorType;
 
 
     public JdbcCompiler(
@@ -87,6 +115,12 @@ public final class JdbcCompiler {
 
         this.sqlTimestampType =
                 requiredType(Timestamp.class);
+
+        this.runtimeExceptionType =
+                requiredType(RuntimeException.class);
+
+        this.errorType =
+                requiredType(Error.class);
     }
 
 
@@ -284,6 +318,10 @@ public final class JdbcCompiler {
                 context.properties.resolve(
                         targetType);
 
+        boolean jojo =
+                types.nodeKind(targetType) ==
+                        NodeKind.OBJECT_JOJO;
+
         List<ConstructorArgument> constructorArguments =
                 new ArrayList<ConstructorArgument>();
 
@@ -291,6 +329,9 @@ public final class JdbcCompiler {
                 new ArrayList<Assignment>();
 
         Set<String> constructorTargets =
+                new HashSet<String>();
+
+        Set<String> directPathTargets =
                 new HashSet<String>();
 
         if (!compileConstructorArguments(
@@ -326,6 +367,20 @@ public final class JdbcCompiler {
                 return null;
             }
 
+            if (rule.compute()
+                    .trim()
+                    .length() == 0 &&
+                    (rule.source() == null ||
+                            rule.source().length() == 0)) {
+
+                error(
+                        plan.method(),
+                        generated,
+                        "JDBC target path mappings require an explicit source column");
+
+                return null;
+            }
+
             Target target =
                     resolveTarget(
                             targetType,
@@ -337,21 +392,36 @@ public final class JdbcCompiler {
                 return null;
             }
 
-            ColumnRead read =
-                    columnRead(
-                            sourceName(rule),
+            if (target.steps().size() == 1) {
+
+                PathSegment first =
+                        target.steps()
+                                .get(0)
+                                .segment();
+
+                if (first instanceof
+                        PathSegment.Name) {
+                    directPathTargets.add(
+                            ((PathSegment.Name) first)
+                                    .name);
+                }
+            }
+
+            Value value =
+                    value(
+                            rule,
                             target.type(),
                             generated,
                             plan.method());
 
-            if (read == null) {
+            if (value == null) {
                 return null;
             }
 
             assignments.add(
                     new Assignment(
                             target,
-                            read));
+                            value));
         }
 
         /*
@@ -381,6 +451,11 @@ public final class JdbcCompiler {
 
             JdbcPlan.Rule rule =
                     rules.get(name);
+
+            if (rule == null &&
+                    directPathTargets.contains(name)) {
+                continue;
+            }
 
             if (rule != null &&
                     rule.ignore()) {
@@ -420,16 +495,20 @@ public final class JdbcCompiler {
                 return null;
             }
 
-            ColumnRead read =
-                    columnRead(
-                            rule == null
-                                    ? name
-                                    : sourceName(rule),
-                            valueType,
-                            generated,
-                            plan.method());
+            Value value =
+                    rule == null
+                            ? directValue(
+                                    name,
+                                    valueType,
+                                    generated,
+                                    plan.method())
+                            : value(
+                                    rule,
+                                    valueType,
+                                    generated,
+                                    plan.method());
 
-            if (read == null) {
+            if (value == null) {
                 return null;
             }
 
@@ -438,7 +517,7 @@ public final class JdbcCompiler {
                             Target.property(
                                     name,
                                     access),
-                            read));
+                            value));
         }
 
         /*
@@ -475,12 +554,24 @@ public final class JdbcCompiler {
             return null;
         }
 
+        List<String> readColumns =
+                readColumns(
+                        constructorArguments,
+                        assignments);
+
         return CompiledMethod.object(
                 plan,
                 creation,
                 targetType,
                 constructorArguments,
                 assignments,
+                jojo,
+                readColumns,
+                jojo
+                        ? consumedColumns(
+                        plan,
+                        readColumns)
+                        : Collections.<String>emptyList(),
                 presentOnly,
                 firstResult(
                         plan.method()));
@@ -568,16 +659,20 @@ public final class JdbcCompiler {
                 return false;
             }
 
-            ColumnRead read =
-                    columnRead(
-                            rule == null
-                                    ? name
-                                    : sourceName(rule),
-                            parameterType,
-                            generated,
-                            plan.method());
+            Value value =
+                    rule == null
+                            ? directValue(
+                                    name,
+                                    parameterType,
+                                    generated,
+                                    plan.method())
+                            : value(
+                                    rule,
+                                    parameterType,
+                                    generated,
+                                    plan.method());
 
-            if (read == null) {
+            if (value == null) {
                 return false;
             }
 
@@ -588,7 +683,7 @@ public final class JdbcCompiler {
                     new ConstructorArgument(
                             name,
                             parameterType,
-                            read));
+                            value));
         }
 
         return true;
@@ -598,6 +693,339 @@ public final class JdbcCompiler {
     // -------------------------------------------------------------------------
     // Column
     // -------------------------------------------------------------------------
+
+    private Value value(
+            JdbcPlan.Rule rule,
+            TypeMirror targetType,
+            GeneratedClass generated,
+            ExecutableElement method) {
+
+        if (rule.compute()
+                .trim()
+                .length() != 0) {
+
+            return computeValue(
+                    rule,
+                    targetType,
+                    generated,
+                    method);
+        }
+
+        return directValue(
+                sourceName(rule),
+                targetType,
+                generated,
+                method);
+    }
+
+
+    private Value directValue(
+            String column,
+            TypeMirror targetType,
+            GeneratedClass generated,
+            ExecutableElement method) {
+
+        ColumnRead read =
+                columnRead(
+                        column,
+                        targetType,
+                        generated,
+                        method);
+
+        return read == null
+                ? null
+                : Value.read(read);
+    }
+
+
+    private Value computeValue(
+            JdbcPlan.Rule rule,
+            TypeMirror targetType,
+            GeneratedClass generated,
+            ExecutableElement method) {
+
+        if (rule.ignore()) {
+            error(
+                    method,
+                    generated,
+                    "JDBC computed mapping cannot use ignore=true");
+
+            return null;
+        }
+
+        if (rule.source()
+                .trim()
+                .length() != 0) {
+
+            error(
+                    method,
+                    generated,
+                    "JDBC computed mapping must use sources instead of source");
+
+            return null;
+        }
+
+        String compute =
+                rule.compute()
+                        .trim();
+
+        if (!compute.startsWith("this::") ||
+                compute.length() == 6) {
+
+            error(
+                    method,
+                    generated,
+                    "JDBC compute must use this::defaultMethod: " +
+                            compute);
+
+            return null;
+        }
+
+        ExecutableElement helper =
+                resolveComputeHelper(
+                        method,
+                        compute.substring(6)
+                                .trim(),
+                        generated);
+
+        if (helper == null) {
+            return null;
+        }
+
+        javax.lang.model.type.ExecutableType helperType =
+                types.resolveMethodType(
+                        mapper.asType(),
+                        helper);
+
+        if (helperType == null) {
+            error(
+                    method,
+                    generated,
+                    "Cannot resolve JDBC compute helper method: " +
+                            helper.getSimpleName());
+
+            return null;
+        }
+
+        if (!types.isAssignableBoxedGeneric(
+                helperType.getReturnType(),
+                targetType)) {
+
+            error(
+                    method,
+                    generated,
+                    "JDBC compute helper '" +
+                            helper.getSimpleName() +
+                            "' cannot return " +
+                            helperType.getReturnType() +
+                            " for target type " +
+                            targetType);
+
+            return null;
+        }
+
+        if (targetType.getKind()
+                .isPrimitive() &&
+                !helperType.getReturnType()
+                        .getKind()
+                        .isPrimitive()) {
+
+            error(
+                    method,
+                    generated,
+                    "JDBC compute helper '" +
+                            helper.getSimpleName() +
+                            "' must return a primitive for primitive target type " +
+                            targetType);
+
+            return null;
+        }
+
+        for (TypeMirror thrown :
+                helperType.getThrownTypes()) {
+
+            if (!types.isAssignable(
+                    thrown,
+                    runtimeExceptionType) &&
+                    !types.isAssignable(
+                            thrown,
+                            errorType)) {
+
+                error(
+                        method,
+                        generated,
+                        "JDBC compute helper '" +
+                                helper.getSimpleName() +
+                                "' cannot declare checked exception " +
+                                thrown);
+
+                return null;
+            }
+        }
+
+        List<String> columns =
+                new ArrayList<String>();
+
+        if (rule.sources().length != 0) {
+            columns.addAll(
+                    Arrays.asList(
+                            rule.sources()));
+        } else {
+            for (VariableElement parameter :
+                    helper.getParameters()) {
+                columns.add(
+                        parameter.getSimpleName()
+                                .toString());
+            }
+        }
+
+        List<? extends TypeMirror> parameterTypes =
+                helperType.getParameterTypes();
+
+        if (columns.size() != parameterTypes.size()) {
+            error(
+                    method,
+                    generated,
+                    "JDBC compute helper '" +
+                            helper.getSimpleName() +
+                            "' expects " +
+                            parameterTypes.size() +
+                            " source columns but mapping declares " +
+                            columns.size());
+
+            return null;
+        }
+
+        List<ColumnRead> reads =
+                new ArrayList<ColumnRead>(
+                        columns.size());
+
+        for (int i = 0;
+             i < columns.size();
+             i++) {
+
+            TypeMirror parameterType =
+                    parameterTypes.get(i);
+
+            if (!isComputeJdbcType(
+                    parameterType)) {
+
+                error(
+                        method,
+                        generated,
+                        "Unsupported JDBC compute parameter type for helper '" +
+                                helper.getSimpleName() +
+                                "': " +
+                                parameterType);
+
+                return null;
+            }
+
+            ColumnRead read =
+                    columnRead(
+                            columns.get(i),
+                            parameterType,
+                            generated,
+                            method);
+
+            if (read == null) {
+                return null;
+            }
+
+            reads.add(read);
+        }
+
+        return Value.compute(
+                new ComputedValue(
+                        helper.getSimpleName()
+                                .toString(),
+                        targetType,
+                        reads));
+    }
+
+
+    private ExecutableElement resolveComputeHelper(
+            ExecutableElement method,
+            String name,
+            GeneratedClass generated) {
+
+        if (name.length() == 0) {
+            error(
+                    method,
+                    generated,
+                    "JDBC compute method reference must use this::defaultMethod");
+
+            return null;
+        }
+
+        ExecutableElement result =
+                null;
+
+        for (javax.lang.model.element.Element member :
+                mapper.getEnclosedElements()) {
+
+            if (member.getKind() !=
+                    ElementKind.METHOD ||
+                    !member.getSimpleName()
+                            .contentEquals(name)) {
+
+                continue;
+            }
+
+            ExecutableElement candidate =
+                    (ExecutableElement) member;
+
+            if (!candidate.getModifiers()
+                    .contains(Modifier.DEFAULT) ||
+                    candidate.getReturnType()
+                            .getKind() ==
+                            TypeKind.VOID ||
+                    !candidate.getTypeParameters()
+                            .isEmpty()) {
+
+                continue;
+            }
+
+            if (result != null) {
+                error(
+                        method,
+                        generated,
+                        "JDBC compute helper method '" +
+                                name +
+                                "' is ambiguous");
+
+                return null;
+            }
+
+            result =
+                    candidate;
+        }
+
+        if (result == null) {
+            error(
+                    method,
+                    generated,
+                    "JDBC compute helper method '" +
+                            name +
+                            "' must be a current-interface default method");
+        }
+
+        return result;
+    }
+
+
+    private boolean isComputeJdbcType(
+            TypeMirror type) {
+
+        TypeMirror boxed =
+                types.boxed(type);
+
+        return COMPUTE_JDBC_TYPES.contains(
+                erasureName(boxed)) ||
+                sameArray(
+                        boxed,
+                        bytesType);
+    }
 
     private ColumnRead columnRead(
             String column,
@@ -612,6 +1040,17 @@ public final class JdbcCompiler {
                     method,
                     generated,
                     "JDBC source column cannot be empty");
+
+            return null;
+        }
+
+        if (isPath(column)) {
+
+            error(
+                    method,
+                    generated,
+                    "JDBC source must be a column name: " +
+                            column);
 
             return null;
         }
@@ -1096,6 +1535,81 @@ public final class JdbcCompiler {
     }
 
 
+    private List<String> readColumns(
+            List<ConstructorArgument> constructorArguments,
+            List<Assignment> assignments) {
+
+        Set<String> columns =
+                new LinkedHashSet<String>();
+
+        for (ConstructorArgument argument :
+                constructorArguments) {
+            addReadColumns(
+                    columns,
+                    argument.value());
+        }
+
+        for (Assignment assignment :
+                assignments) {
+            addReadColumns(
+                    columns,
+                    assignment.value());
+        }
+
+        return new ArrayList<String>(
+                columns);
+    }
+
+
+    private List<String> consumedColumns(
+            JdbcPlan plan,
+            List<String> readColumns) {
+
+        Set<String> columns =
+                new LinkedHashSet<String>(
+                        readColumns);
+
+        for (JdbcPlan.Rule rule :
+                plan.rules()) {
+            if (!rule.ignore()) {
+                continue;
+            }
+
+            if (rule.sources().length != 0) {
+                columns.addAll(
+                        Arrays.asList(
+                                rule.sources()));
+            } else {
+                columns.add(
+                        sourceName(rule));
+            }
+        }
+
+        return new ArrayList<String>(
+                columns);
+    }
+
+
+    private void addReadColumns(
+            Set<String> columns,
+            Value value) {
+
+        if (value.read() != null) {
+            columns.add(
+                    value.read()
+                            .column());
+            return;
+        }
+
+        for (ColumnRead read :
+                value.compute()
+                        .reads()) {
+            columns.add(
+                    read.column());
+        }
+    }
+
+
     private String sourceName(
             JdbcPlan.Rule rule) {
 
@@ -1286,6 +1800,10 @@ public final class JdbcCompiler {
         private final List<ConstructorArgument> constructorArguments;
         private final List<Assignment> assignments;
 
+        private final boolean jojo;
+        private final List<String> readColumns;
+        private final List<String> consumedColumns;
+
         private final boolean presentOnly;
         private final boolean firstResult;
 
@@ -1297,6 +1815,9 @@ public final class JdbcCompiler {
                 TypeMirror targetType,
                 List<ConstructorArgument> constructorArguments,
                 List<Assignment> assignments,
+                boolean jojo,
+                List<String> readColumns,
+                List<String> consumedColumns,
                 boolean presentOnly,
                 boolean firstResult) {
 
@@ -1315,6 +1836,16 @@ public final class JdbcCompiler {
                             new ArrayList<Assignment>(
                                     assignments));
 
+            this.jojo = jojo;
+            this.readColumns =
+                    Collections.unmodifiableList(
+                            new ArrayList<String>(
+                                    readColumns));
+            this.consumedColumns =
+                    Collections.unmodifiableList(
+                            new ArrayList<String>(
+                                    consumedColumns));
+
             this.presentOnly = presentOnly;
             this.firstResult = firstResult;
         }
@@ -1332,6 +1863,9 @@ public final class JdbcCompiler {
                     Collections.<ConstructorArgument>emptyList(),
                     Collections.<Assignment>emptyList(),
                     false,
+                    Collections.<String>emptyList(),
+                    Collections.<String>emptyList(),
+                    false,
                     firstResult);
         }
 
@@ -1342,6 +1876,9 @@ public final class JdbcCompiler {
                 TypeMirror targetType,
                 List<ConstructorArgument> constructorArguments,
                 List<Assignment> assignments,
+                boolean jojo,
+                List<String> readColumns,
+                List<String> consumedColumns,
                 boolean presentOnly,
                 boolean firstResult) {
 
@@ -1352,6 +1889,9 @@ public final class JdbcCompiler {
                     targetType,
                     constructorArguments,
                     assignments,
+                    jojo,
+                    readColumns,
+                    consumedColumns,
                     presentOnly,
                     firstResult);
         }
@@ -1379,6 +1919,21 @@ public final class JdbcCompiler {
 
         public List<Assignment> assignments() {
             return assignments;
+        }
+
+
+        public boolean jojo() {
+            return jojo;
+        }
+
+
+        public List<String> readColumns() {
+            return readColumns;
+        }
+
+
+        public List<String> consumedColumns() {
+            return consumedColumns;
         }
 
         public boolean presentOnly() {
@@ -1462,17 +2017,17 @@ public final class JdbcCompiler {
 
         private final String name;
         private final TypeMirror type;
-        private final ColumnRead read;
+        private final Value value;
 
 
         ConstructorArgument(
                 String name,
                 TypeMirror type,
-                ColumnRead read) {
+                Value value) {
 
             this.name = name;
             this.type = type;
-            this.read = read;
+            this.value = value;
         }
 
 
@@ -1484,8 +2039,8 @@ public final class JdbcCompiler {
             return type;
         }
 
-        public ColumnRead read() {
-            return read;
+        public Value value() {
+            return value;
         }
     }
 
@@ -1493,15 +2048,15 @@ public final class JdbcCompiler {
     public static final class Assignment {
 
         private final Target target;
-        private final ColumnRead read;
+        private final Value value;
 
 
         Assignment(
                 Target target,
-                ColumnRead read) {
+                Value value) {
 
             this.target = target;
-            this.read = read;
+            this.value = value;
         }
 
 
@@ -1509,8 +2064,88 @@ public final class JdbcCompiler {
             return target;
         }
 
+        public Value value() {
+            return value;
+        }
+    }
+
+
+    public static final class Value {
+
+        private final ColumnRead read;
+        private final ComputedValue compute;
+
+
+        private Value(
+                ColumnRead read,
+                ComputedValue compute) {
+
+            this.read = read;
+            this.compute = compute;
+        }
+
+
+        static Value read(
+                ColumnRead read) {
+
+            return new Value(
+                    read,
+                    null);
+        }
+
+
+        static Value compute(
+                ComputedValue compute) {
+
+            return new Value(
+                    null,
+                    compute);
+        }
+
+
         public ColumnRead read() {
             return read;
+        }
+
+
+        public ComputedValue compute() {
+            return compute;
+        }
+    }
+
+
+    public static final class ComputedValue {
+
+        private final String helper;
+        private final TypeMirror targetType;
+        private final List<ColumnRead> reads;
+
+
+        ComputedValue(
+                String helper,
+                TypeMirror targetType,
+                List<ColumnRead> reads) {
+
+            this.helper = helper;
+            this.targetType = targetType;
+            this.reads = Collections.unmodifiableList(
+                    new ArrayList<ColumnRead>(
+                            reads));
+        }
+
+
+        public String helper() {
+            return helper;
+        }
+
+
+        public TypeMirror targetType() {
+            return targetType;
+        }
+
+
+        public List<ColumnRead> reads() {
+            return reads;
         }
     }
 

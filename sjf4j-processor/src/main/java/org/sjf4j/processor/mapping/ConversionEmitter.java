@@ -13,6 +13,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -355,6 +356,169 @@ public final class ConversionEmitter
     }
 
 
+    @Override
+    public void emitMapUpdate(
+            JavaWriter out,
+            NameAllocator names,
+            MappingPlan plan,
+            ConverterResolver.Conversion conversion,
+            String source,
+            TypeMirror sourceType,
+            TypeMirror targetType,
+            String target,
+            String policy,
+            GeneratedClass generated) {
+
+        ConversionCompiler.CompiledConversion resolved =
+                compiled.get(
+                        conversion);
+
+        if (resolved == null) {
+            throw new IllegalStateException(
+                    "conversion was not prepared: " +
+                            sourceType +
+                            " -> " +
+                            targetType);
+        }
+
+        if (resolved.kind() !=
+                ConversionCompiler.CompiledConversion.Kind.MAP) {
+            throw new IllegalArgumentException(
+                    "root map update requires a map conversion");
+        }
+
+        out.beginBlock(
+                "if (" +
+                        source +
+                        " != null)");
+
+        String entry =
+                names.newName(
+                        "entry");
+
+        if (types.isCompileTimeUnknown(
+                resolved.sourceKeyType()) &&
+                types.isCompileTimeUnknown(
+                        resolved.sourceValueType())) {
+
+            String entryObject =
+                    names.newName(
+                            "entryObject");
+
+            out.line(
+                    "for (Object " +
+                            entryObject +
+                            " : ((java.util.Map) " +
+                            source +
+                            ").entrySet()) {");
+
+            out.indent();
+
+            out.line(
+                    "java.util.Map.Entry<?, ?> " +
+                            entry +
+                            " = (java.util.Map.Entry<?, ?>) " +
+                            entryObject +
+                            ";");
+
+        } else {
+            out.line(
+                    "for (java.util.Map.Entry<?, ?> " +
+                            entry +
+                            " : " +
+                            source +
+                            ".entrySet()) {");
+
+            out.indent();
+        }
+
+        String rawKey =
+                names.newName(
+                        "key");
+
+        out.line(
+                localType(
+                        resolved.sourceKeyType()) +
+                        " " +
+                        rawKey +
+                        " = " +
+                        cast(
+                                resolved.sourceKeyType(),
+                                entry + ".getKey()") +
+                        ";");
+
+        String key =
+                emit(
+                        out,
+                        names,
+                        resolved.keyConversion(),
+                        rawKey);
+
+        if ("PUT_IF_ABSENT".equals(policy)) {
+            out.beginBlock(
+                    "if (!" +
+                            target +
+                            ".containsKey(" +
+                            key +
+                            ") || " +
+                            target +
+                            ".get(" +
+                            key +
+                            ") == null)");
+
+        } else if ("PUT_IF_PRESENT".equals(policy)) {
+            out.beginBlock(
+                    "if (" +
+                            target +
+                            ".containsKey(" +
+                            key +
+                            ") && " +
+                            target +
+                            ".get(" +
+                            key +
+                            ") != null)");
+        }
+
+        String rawValue =
+                names.newName(
+                        "value");
+
+        out.line(
+                localType(
+                        resolved.sourceValueType()) +
+                        " " +
+                        rawValue +
+                        " = " +
+                        cast(
+                                resolved.sourceValueType(),
+                                entry + ".getValue()") +
+                        ";");
+
+        String value =
+                emit(
+                        out,
+                        names,
+                        resolved.valueConversion(),
+                        rawValue);
+
+        out.line(
+                target +
+                        ".put(" +
+                        key +
+                        ", " +
+                        value +
+                        ");");
+
+        if (!"PUT".equals(policy)) {
+            out.endBlock();
+        }
+
+        out.dedent();
+        out.line("}");
+        out.endBlock();
+    }
+
+
     // -------------------------------------------------------------------------
     // Dispatch
     // -------------------------------------------------------------------------
@@ -502,9 +666,9 @@ public final class ConversionEmitter
                     localType(targetType) +
                             " " +
                             value +
-                            " = (" +
-                            localType(targetType) +
-                            ") org.sjf4j.Nodes.to(" +
+                            " = " +
+                            nodesToCast(targetType) +
+                            "org.sjf4j.Nodes.to(" +
                             source +
                             ", " +
                             classLiteral(targetType) +
@@ -964,14 +1128,41 @@ public final class ConversionEmitter
                 names.newName(
                         "entry");
 
-        out.line(
-                "for (java.util.Map.Entry<?, ?> " +
-                        entry +
-                        " : " +
-                        source +
-                        ".entrySet()) {");
+        if (types.isCompileTimeUnknown(
+                conversion.sourceKeyType()) &&
+                types.isCompileTimeUnknown(
+                        conversion.sourceValueType())) {
 
-        out.indent();
+            String entryObject =
+                    names.newName(
+                            "entryObject");
+
+            out.line(
+                    "for (Object " +
+                            entryObject +
+                            " : ((java.util.Map) " +
+                            source +
+                            ").entrySet()) {");
+
+            out.indent();
+
+            out.line(
+                    "java.util.Map.Entry<?, ?> " +
+                            entry +
+                            " = (java.util.Map.Entry<?, ?>) " +
+                            entryObject +
+                            ";");
+
+        } else {
+            out.line(
+                    "for (java.util.Map.Entry<?, ?> " +
+                            entry +
+                            " : " +
+                            source +
+                            ".entrySet()) {");
+
+            out.indent();
+        }
 
         String rawKey =
                 names.newName(
@@ -1605,10 +1796,9 @@ public final class ConversionEmitter
                         targetType) +
                         " " +
                         result +
-                        " = (" +
-                        localType(
-                                targetType) +
-                        ") org.sjf4j.Nodes.to(" +
+                        " = " +
+                        nodesToCast(targetType) +
+                        "org.sjf4j.Nodes.to(" +
                         source +
                         ", " +
                         classLiteral(
@@ -1616,6 +1806,23 @@ public final class ConversionEmitter
                         ");");
 
         return result;
+    }
+
+
+    private String nodesToCast(
+            TypeMirror targetType) {
+
+        if (!(targetType instanceof DeclaredType) ||
+                ((DeclaredType) targetType)
+                        .getTypeArguments()
+                        .isEmpty()) {
+
+            return "";
+        }
+
+        return "(" +
+                localType(targetType) +
+                ") ";
     }
 
 

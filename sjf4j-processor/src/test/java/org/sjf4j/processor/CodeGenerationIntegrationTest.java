@@ -12,6 +12,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CodeGenerationIntegrationTest {
 
     @Test
+    void supportsRootContainerUpdates() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Mapper.java",
+                "package fixture;\n"
+                        + "import java.util.List;\n"
+                        + "import org.sjf4j.annotation.mapping.CompiledMapper;\n"
+                        + "@CompiledMapper public interface Mapper {\n"
+                        + "  void update(List<Long> target, List<Integer> source);\n"
+                        + "}\n"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+    }
+
+    @Test
     void escapedPathNamesAndConflictingNestedTypeNamesCompileAndRun() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/left/Model.java",

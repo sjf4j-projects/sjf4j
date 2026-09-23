@@ -495,6 +495,46 @@ public final class JdbcMethodGenerator {
                 return null;
             }
 
+            boolean computed =
+                    mapping.compute()
+                            .trim()
+                            .length() != 0;
+
+            if (computed &&
+                    mapping.ignore()) {
+
+                error(
+                        method,
+                        generated,
+                        "JDBC computed mapping cannot use ignore=true");
+
+                return null;
+            }
+
+            if (computed &&
+                    mapping.source()
+                            .trim()
+                            .length() != 0) {
+
+                error(
+                        method,
+                        generated,
+                        "JDBC computed mapping must use sources instead of source");
+
+                return null;
+            }
+
+            if (!computed &&
+                    mapping.sources().length != 0) {
+
+                error(
+                        method,
+                        generated,
+                        "JDBC sources requires compute");
+
+                return null;
+            }
+
             rules.add(
                     new JdbcPlan.Rule(
                             mapping));

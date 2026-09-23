@@ -105,7 +105,7 @@ public class MapperValueTest {
     }
 
     @Test
-    public void updatesCollectionAndMapScalarLeavesInPlace() {
+    public void updatesRootCollectionAndMapScalarLeavesInPlace() {
         ScalarMapper mapper = CompiledInstances.of(ScalarMapper.class);
 
         List<Long> longs = new ArrayList<>(List.of(99L));

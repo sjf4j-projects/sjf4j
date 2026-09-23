@@ -127,10 +127,99 @@ public final class MappingEmitter {
                 emitRead(
                         out,
                         names,
-                        source);
+                        source,
+                        rootKnownNonNull(
+                                compiled.plan()));
 
-        String value =
-                conversions.emit(
+        if (compiled.plan()
+                .create()) {
+
+            String value =
+                    conversions.emit(
+                            out,
+                            names,
+                            compiled.plan(),
+                            compiled.rootConversion(),
+                            sourceValue,
+                            source.type(),
+                            compiled.plan()
+                                    .targetType(),
+                            generated);
+
+            out.line(
+                    "return " +
+                            value +
+                            ";");
+
+        } else {
+            String target =
+                    compiled.plan()
+                            .targetParameter()
+                            .getSimpleName()
+                            .toString();
+
+            out.line(
+                    "java.util.Objects.requireNonNull(" +
+                            target +
+                            ", " +
+                            JavaWriter.stringLiteral(
+                                    target) +
+                            ");");
+
+            NodeKind targetKind =
+                    types.nodeKind(
+                            compiled.plan()
+                                    .targetType());
+
+            if (isArrayLike(targetKind)) {
+                if (types.writeElementType(
+                        compiled.plan()
+                                .targetType()) == null) {
+
+                    error(
+                            compiled.plan()
+                                    .method(),
+                            generated,
+                            "root array update target element type is not writable");
+
+                    out.line("return;");
+                    return;
+                }
+
+                String value =
+                        conversions.emit(
+                                out,
+                                names,
+                                compiled.plan(),
+                                compiled.rootConversion(),
+                                sourceValue,
+                                source.type(),
+                                compiled.plan()
+                                        .targetType(),
+                                generated);
+
+                emitArrayContentsUpdate(
+                        out,
+                        names,
+                        target,
+                        materialize(
+                                out,
+                                names,
+                                compiled.plan()
+                                        .targetType(),
+                                value),
+                        targetKind,
+                        option(
+                                compiled.plan(),
+                                "arrays",
+                                "SET"),
+                        compiled.plan(),
+                        generated);
+
+            } else if (targetKind ==
+                    NodeKind.OBJECT_MAP) {
+
+                conversions.emitMapUpdate(
                         out,
                         names,
                         compiled.plan(),
@@ -139,21 +228,14 @@ public final class MappingEmitter {
                         source.type(),
                         compiled.plan()
                                 .targetType(),
+                        target,
+                        option(
+                                compiled.plan(),
+                                "objects",
+                                "PUT"),
                         generated);
+            }
 
-        if (compiled.plan()
-                .create()) {
-
-            out.line(
-                    "return " +
-                            value +
-                            ";");
-
-        } else {
-            /*
-             * Root in-place updates are handled by the conversion emitter,
-             * because the target parameter itself cannot be replaced.
-             */
             out.line("return;");
         }
     }
@@ -196,6 +278,27 @@ public final class MappingEmitter {
         for (MappingCompiler.Assignment assignment :
                 compiled.assignments()) {
 
+            boolean presentOnly =
+                    emitAutomaticPresenceGuard(
+                            out,
+                            compiled.plan(),
+                            assignment);
+
+            if (emitDirectMapUpdate(
+                    out,
+                    names,
+                    compiled,
+                    assignment,
+                    target,
+                    generated)) {
+
+                if (presentOnly) {
+                    out.endBlock();
+                }
+
+                continue;
+            }
+
             String value =
                     emitValue(
                             out,
@@ -212,6 +315,10 @@ public final class MappingEmitter {
                     target,
                     value,
                     generated);
+
+            if (presentOnly) {
+                out.endBlock();
+            }
         }
 
         emitDynamicSources(
@@ -226,6 +333,240 @@ public final class MappingEmitter {
                             target +
                             ";");
         }
+    }
+
+
+    private boolean emitAutomaticPresenceGuard(
+            JavaWriter out,
+            MappingPlan plan,
+            MappingCompiler.Assignment assignment) {
+
+        if (assignment.rule() != null ||
+                assignment.value().kind() !=
+                        MappingCompiler.Value.Kind.READ) {
+
+            return false;
+        }
+
+        MappingCompiler.Read read =
+                assignment.value()
+                        .read();
+
+        if (read.steps()
+                .size() != 1 ||
+                !(read.steps()
+                        .get(0)
+                        .segment() instanceof
+                        PathSegment.Name)) {
+
+            return false;
+        }
+
+        NodeAccess access =
+                read.steps()
+                        .get(0)
+                        .access();
+
+        String source =
+                read.root()
+                        .getSimpleName()
+                        .toString();
+
+        String key =
+                JavaWriter.stringLiteral(
+                        ((PathSegment.Name) read.steps()
+                                .get(0)
+                                .segment()).name);
+
+        String present;
+
+        switch (access.kind()) {
+            case MAP:
+                present = source + ".containsKey(" + key + ")";
+                break;
+
+            case JSON_OBJECT:
+                present = source + ".containsKey(" + key + ")";
+                break;
+
+            case DYNAMIC:
+            case EXTERNAL:
+                present = "org.sjf4j.Nodes.containsInObject(" +
+                        source + ", " + key + ")";
+                break;
+
+            default:
+                return false;
+        }
+
+        if (!rootKnownNonNull(plan)) {
+            present = source + " != null && " + present;
+        }
+
+        out.beginBlock(
+                "if (" +
+                        present +
+                        ")");
+
+        return true;
+    }
+
+
+    private boolean emitDirectMapUpdate(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.CompiledMethod compiled,
+            MappingCompiler.Assignment assignment,
+            String target,
+            GeneratedClass generated) {
+
+        MappingPlan plan =
+                compiled.plan();
+
+        MappingCompiler.Target destination =
+                assignment.target();
+
+        MappingCompiler.Value mapped =
+                assignment.value();
+
+        if (!plan.update() ||
+                mapped.kind() !=
+                        MappingCompiler.Value.Kind.READ ||
+                mapped.conversion().kind() !=
+                        ConverterResolver.Conversion.Kind.CONTAINER ||
+                types.nodeKind(
+                        destination.type()) !=
+                        NodeKind.OBJECT_MAP) {
+
+            return false;
+        }
+
+        NodeAccess access =
+                destination.access();
+
+        if (!access.readable()) {
+            error(
+                    plan.method(),
+                    generated,
+                    "object update target '" +
+                            destination.name() +
+                            "' must be readable");
+
+            return true;
+        }
+
+        String source =
+                emitRead(
+                        out,
+                        names,
+                        mapped.read(),
+                        rootKnownNonNull(plan));
+
+        boolean ignoreNull =
+                "IGNORE".equals(
+                        option(
+                                plan,
+                                "nulls",
+                                "SET_TO_NULL"));
+
+        MappingPlan.Rule rule =
+                assignment.rule();
+
+        String policy =
+                rule != null &&
+                        rule.objectExplicit()
+                        ? rule.objectPolicy()
+                        : option(
+                        plan,
+                        "objects",
+                        "PUT");
+
+        if (ignoreNull) {
+            out.beginBlock(
+                    "if (" +
+                            source +
+                            " != null)");
+        } else {
+            out.beginBlock(
+                    "if (" +
+                            source +
+                            " == null)");
+
+            emitNodeWrite(
+                    out,
+                    target,
+                    destination.name(),
+                    null,
+                    access,
+                    "null");
+
+            out.endBlock();
+            out.beginBlock("else");
+        }
+
+        String existing =
+                names.newName(
+                        "existing");
+
+        out.line(
+                localType(
+                        access.readType()) +
+                        " " +
+                        existing +
+                        " = " +
+                        readTargetExpression(
+                                target,
+                                destination.name(),
+                                access) +
+                        ";");
+
+        out.beginBlock(
+                "if (" +
+                        existing +
+                        " == null)");
+
+        if (!"PUT_IF_PRESENT".equals(policy)) {
+            String value =
+                    conversions.emit(
+                            out,
+                            names,
+                            plan,
+                            mapped.conversion(),
+                            source,
+                            mapped.read()
+                                    .type(),
+                            destination.type(),
+                            generated);
+
+            emitNodeWrite(
+                    out,
+                    target,
+                    destination.name(),
+                    null,
+                    access,
+                    value);
+        }
+
+        out.endBlock();
+        out.beginBlock("else");
+
+        conversions.emitMapUpdate(
+                out,
+                names,
+                plan,
+                mapped.conversion(),
+                source,
+                mapped.read()
+                        .type(),
+                destination.type(),
+                existing,
+                policy,
+                generated);
+
+        out.endBlock();
+        out.endBlock();
+
+        return true;
     }
 
 
@@ -681,7 +1022,8 @@ public final class MappingEmitter {
                         emitRead(
                                 out,
                                 names,
-                                read);
+                                read,
+                                rootKnownNonNull(plan));
 
                 return conversions.emit(
                         out,
@@ -698,6 +1040,7 @@ public final class MappingEmitter {
                 return emitCompute(
                         out,
                         names,
+                        plan,
                         value);
 
             default:
@@ -714,6 +1057,7 @@ public final class MappingEmitter {
     private String emitCompute(
             JavaWriter out,
             NameAllocator names,
+            MappingPlan plan,
             MappingCompiler.Value value) {
 
         List<MappingCompiler.Read> inputs =
@@ -736,7 +1080,8 @@ public final class MappingEmitter {
                     emitComputeInputs(
                             out,
                             names,
-                            inputs);
+                            inputs,
+                            plan);
 
             String result =
                     names.newName("computed");
@@ -835,7 +1180,8 @@ public final class MappingEmitter {
                 emitComputeInputs(
                         out,
                         names,
-                        inputs);
+                        inputs,
+                        plan);
 
         for (int i = 0;
              i < parameterNames.length;
@@ -872,7 +1218,8 @@ public final class MappingEmitter {
     private String[] emitComputeInputs(
             JavaWriter out,
             NameAllocator names,
-            List<MappingCompiler.Read> inputs) {
+            List<MappingCompiler.Read> inputs,
+            MappingPlan plan) {
 
         String[] expressions =
                 new String[inputs.size()];
@@ -885,7 +1232,8 @@ public final class MappingEmitter {
                     emitRead(
                             out,
                             names,
-                            inputs.get(i));
+                            inputs.get(i),
+                            rootKnownNonNull(plan));
         }
 
         return expressions;
@@ -899,7 +1247,8 @@ public final class MappingEmitter {
     private String emitRead(
             JavaWriter out,
             NameAllocator names,
-            MappingCompiler.Read read) {
+            MappingCompiler.Read read,
+            boolean rootKnownNonNull) {
 
         String current =
                 read.root()
@@ -913,6 +1262,8 @@ public final class MappingEmitter {
         TypeMirror currentType =
                 read.root()
                         .asType();
+
+        boolean first = true;
 
         for (MappingCompiler.ReadStep step :
                 read.steps()) {
@@ -929,24 +1280,39 @@ public final class MappingEmitter {
             String value =
                     names.newName("sourceValue");
 
-            /*
-             * Box primitive values so a null parent can propagate as null.
-             */
-            out.line(
-                    localType(valueType) +
-                            " " +
-                            value +
-                            " = null;");
-
             boolean parentPrimitive =
                     currentType.getKind()
                             .isPrimitive();
 
-            if (!parentPrimitive) {
+            boolean guardParent =
+                    !parentPrimitive &&
+                            !(first &&
+                                    rootKnownNonNull);
+
+            if (guardParent) {
+                /*
+                 * Box primitive values so a null parent can propagate as
+                 * null.
+                 */
+                out.line(
+                        localType(valueType) +
+                                " " +
+                                value +
+                                " = null;");
+
                 out.beginBlock(
                         "if (" +
                                 current +
                                 " != null)");
+
+            } else if (segment instanceof
+                    PathSegment.Index) {
+
+                out.line(
+                        localType(valueType) +
+                                " " +
+                                value +
+                                " = null;");
             }
 
             if (segment instanceof
@@ -963,18 +1329,31 @@ public final class MappingEmitter {
                                 .index);
 
             } else {
-                out.line(
-                        value +
-                                " = " +
-                                readExpression(
-                                        current,
-                                        segment,
-                                        access,
-                                        valueType) +
-                                ";");
+                String expression =
+                        readExpression(
+                                current,
+                                segment,
+                                access,
+                                valueType);
+
+                if (guardParent) {
+                    out.line(
+                            value +
+                                    " = " +
+                                    expression +
+                                    ";");
+                } else {
+                    out.line(
+                            localType(valueType) +
+                                    " " +
+                                    value +
+                                    " = " +
+                                    expression +
+                                    ";");
+                }
             }
 
-            if (!parentPrimitive) {
+            if (guardParent) {
                 out.endBlock();
             }
 
@@ -983,9 +1362,19 @@ public final class MappingEmitter {
 
             currentType =
                     valueType;
+
+            first = false;
         }
 
         return current;
+    }
+
+
+    private boolean rootKnownNonNull(
+            MappingPlan plan) {
+
+        return plan.sources()
+                .size() == 1;
     }
 
 
@@ -1273,25 +1662,23 @@ public final class MappingEmitter {
                     rule != null &&
                             rule.arrayExplicit()
                             ? rule.arrayPolicy()
-                            : option(
-                            plan,
-                            "arrays",
-                            "CLEAR_ADD");
+                             : option(
+                             plan,
+                             "arrays",
+                            "SET");
 
-            if (!"SET".equals(arrayPolicy)) {
-                emitArrayUpdate(
-                        out,
-                        names,
-                        destination,
-                        target,
-                        value,
-                        arrayPolicy,
-                        ignoreNull,
-                        generated,
-                        plan);
+            emitArrayUpdate(
+                    out,
+                    names,
+                    destination,
+                    target,
+                    value,
+                    arrayPolicy,
+                    ignoreNull,
+                    generated,
+                    plan);
 
-                return;
-            }
+            return;
         }
 
         if (plan.update() &&
@@ -1305,6 +1692,19 @@ public final class MappingEmitter {
                             plan,
                             "objects",
                             "PUT");
+
+            if (kind != NodeKind.OBJECT_MAP &&
+                    !"PUT".equals(objectPolicy)) {
+
+                error(
+                        plan.method(),
+                        generated,
+                        "ObjectPolicy." +
+                                objectPolicy +
+                                " requires a Map target");
+
+                return;
+            }
 
             emitObjectUpdate(
                     out,
@@ -1320,8 +1720,8 @@ public final class MappingEmitter {
             return;
         }
 
-        if (ignoreNull &&
-                !targetType
+        if (ignoreNull ||
+                targetType
                         .getKind()
                         .isPrimitive()) {
 
@@ -1381,9 +1781,26 @@ public final class MappingEmitter {
             return;
         }
 
+        NodeKind existingKind =
+                types.nodeKind(
+                        access.readType());
+
+        if (existingKind ==
+                NodeKind.ARRAY_SET &&
+                "SET".equals(policy)) {
+
+            error(
+                    plan.method(),
+                    generated,
+                    "ArrayPolicy.SET requires an indexed target");
+
+            return;
+        }
+
         if (access.readType()
                 .getKind() ==
-                TypeKind.ARRAY) {
+                TypeKind.ARRAY &&
+                "ADD".equals(policy)) {
 
             error(
                     plan.method(),
@@ -1394,6 +1811,25 @@ public final class MappingEmitter {
 
             return;
         }
+
+        if (types.writeElementType(
+                access.readType()) == null) {
+
+            error(
+                    plan.method(),
+                    generated,
+                    "array update target '" +
+                            destination.name() +
+                            "' element type is not writable");
+
+            return;
+        }
+
+        value = materialize(
+                out,
+                names,
+                destination.type(),
+                value);
 
         if (ignoreNull) {
             out.beginBlock(
@@ -1452,21 +1888,203 @@ public final class MappingEmitter {
 
         out.beginBlock("else");
 
-        if ("CLEAR_ADD".equals(policy)) {
-            out.line(
-                    existing +
-                            ".clear();");
+        emitArrayContentsUpdate(
+                out,
+                names,
+                existing,
+                value,
+                existingKind,
+                policy,
+                plan,
+                generated);
+
+        out.endBlock();
+
+        out.endBlock();
+    }
+
+
+    private void emitArrayContentsUpdate(
+            JavaWriter out,
+            NameAllocator names,
+            String target,
+            String value,
+            NodeKind targetKind,
+            String policy,
+            MappingPlan plan,
+            GeneratedClass generated) {
+
+        if (targetKind ==
+                NodeKind.ARRAY_SET &&
+                "SET".equals(policy)) {
+
+            error(
+                    plan.method(),
+                    generated,
+                    "ArrayPolicy.SET requires an indexed target");
+
+        return;
+    }
+
+
+        if (targetKind ==
+                NodeKind.ARRAY_ARRAY &&
+                "ADD".equals(policy)) {
+
+            error(
+                    plan.method(),
+                    generated,
+                    "ArrayPolicy.ADD cannot grow a Java array");
+
+            return;
         }
 
+        if ("ADD".equals(policy)) {
+            out.line(
+                    target +
+                            ".addAll(" +
+                            value +
+                            ");");
+
+            return;
+        }
+
+        if (targetKind ==
+                NodeKind.ARRAY_ARRAY) {
+
+            out.beginBlock(
+                    "if (" +
+                            value +
+                            ".length > " +
+                            target +
+                            ".length)");
+            out.line(
+                    "throw new org.sjf4j.exception.BindingException(" +
+                            JavaWriter.stringLiteral(
+                                    "ArrayPolicy.SET source length exceeds target array length") +
+                            ");");
+            out.endBlock();
+
+            String index =
+                    names.newName("i");
+
+            out.line(
+                    "for (int " +
+                            index +
+                            " = 0; " +
+                            index +
+                            " < " +
+                            value +
+                            ".length; " +
+                            index +
+                            "++) {");
+            out.indent();
+            out.line(
+                    target +
+                            "[" +
+                            index +
+                            "] = " +
+                            value +
+                            "[" +
+                            index +
+                            "];");
+            out.dedent();
+            out.line("}");
+
+            return;
+        }
+
+        String index =
+                names.newName("i");
+
         out.line(
-                existing +
-                        ".addAll(" +
+                "for (int " +
+                        index +
+                        " = 0; " +
+                        index +
+                        " < " +
                         value +
-                        ");");
+                        ".size(); " +
+                        index +
+                        "++) {");
+        out.indent();
+        out.beginBlock(
+                "if (" +
+                        index +
+                        " < " +
+                        target +
+                        ".size())");
+
+        if (targetKind ==
+                NodeKind.ARRAY_LIST) {
+            out.line(
+                    target +
+                            ".set(" +
+                            index +
+                            ", " +
+                            value +
+                            ".get(" +
+                            index +
+                            "));");
+        } else {
+            out.line(
+                    target +
+                            ".set(" +
+                            index +
+                            ", " +
+                            value +
+                            ".getNode(" +
+                            index +
+                            "));");
+        }
 
         out.endBlock();
+        out.beginBlock("else");
+
+        if (targetKind ==
+                NodeKind.ARRAY_LIST) {
+            out.line(
+                    target +
+                            ".add(" +
+                            value +
+                            ".get(" +
+                            index +
+                            "));");
+        } else {
+            out.line(
+                    target +
+                            ".add(" +
+                            value +
+                            ".getNode(" +
+                            index +
+                            "));");
+        }
 
         out.endBlock();
+        out.dedent();
+        out.line("}");
+    }
+
+
+    private String materialize(
+            JavaWriter out,
+            NameAllocator names,
+            TypeMirror type,
+            String value) {
+
+        String result =
+                names.newName(
+                        "converted");
+
+        out.line(
+                localType(type) +
+                        " " +
+                        result +
+                        " = " +
+                        value +
+                        ";");
+
+        return result;
     }
 
 
@@ -1544,30 +2162,21 @@ public final class MappingEmitter {
                         existing +
                         " == null)");
 
-        emitNodeWrite(
-                out,
-                target,
-                destination.name(),
-                null,
-                access,
-                value);
+        if (!"PUT_IF_PRESENT".equals(policy)) {
+            emitNodeWrite(
+                    out,
+                    target,
+                    destination.name(),
+                    null,
+                    access,
+                    value);
+        }
 
         out.endBlock();
 
         out.beginBlock("else");
 
-        if ("CLEAR_PUT".equals(policy)) {
-            out.line(
-                    existing +
-                            ".clear();");
-
-            out.line(
-                    existing +
-                            ".putAll(" +
-                            value +
-                            ");");
-
-        } else if ("PUT_IF_ABSENT".equals(
+        if ("PUT_IF_ABSENT".equals(
                 policy)) {
 
             String entry =
@@ -1595,6 +2204,51 @@ public final class MappingEmitter {
                             "((java.util.Map.Entry) " +
                             entry +
                             ").getKey()) == null)");
+
+            out.line(
+                    "((java.util.Map) " +
+                            existing +
+                            ").put(" +
+                            "((java.util.Map.Entry) " +
+                            entry +
+                            ").getKey(), " +
+                            "((java.util.Map.Entry) " +
+                            entry +
+                            ").getValue());");
+
+            out.endBlock();
+
+            out.dedent();
+            out.line("}");
+
+        } else if ("PUT_IF_PRESENT".equals(
+                policy)) {
+
+            String entry =
+                    names.newName("entry");
+
+            out.line(
+                    "for (Object " +
+                            entry +
+                            " : ((java.util.Map) " +
+                            value +
+                            ").entrySet()) {");
+
+            out.indent();
+
+            out.beginBlock(
+                    "if (((java.util.Map) " +
+                            existing +
+                            ").containsKey(" +
+                            "((java.util.Map.Entry) " +
+                            entry +
+                            ").getKey()) && " +
+                            "((java.util.Map) " +
+                            existing +
+                            ").get(" +
+                            "((java.util.Map.Entry) " +
+                            entry +
+                            ").getKey()) != null)");
 
             out.line(
                     "((java.util.Map) " +
@@ -2592,6 +3246,18 @@ public final class MappingEmitter {
                 String source,
                 TypeMirror sourceType,
                 TypeMirror targetType,
+                GeneratedClass generated);
+
+        void emitMapUpdate(
+                JavaWriter out,
+                NameAllocator names,
+                MappingPlan plan,
+                ConverterResolver.Conversion conversion,
+                String source,
+                TypeMirror sourceType,
+                TypeMirror targetType,
+                String target,
+                String policy,
                 GeneratedClass generated);
     }
 }

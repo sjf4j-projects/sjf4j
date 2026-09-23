@@ -65,10 +65,11 @@ public class MapperGenericTest {
         Map<String, UserDto> mapTarget = new LinkedHashMap<>();
         mapTarget.put("old", new UserDto("old"));
         mapper.updateUserMap(mapTarget, map);
-        assertEquals(List.of("first", "empty", "second"), new ArrayList<>(mapTarget.keySet()));
+        assertEquals(List.of("old", "first", "empty", "second"), new ArrayList<>(mapTarget.keySet()));
         assertEquals(new UserDto("Ada"), mapTarget.get("first"));
         assertNull(mapTarget.get("empty"));
         assertEquals(new UserDto("Grace"), mapTarget.get("second"));
+
     }
 
     @Test
@@ -284,7 +285,7 @@ public class MapperGenericTest {
         @MappingOptions(using = {"this::toDto"})
         Map<String, UserDto> userMap(Map<? extends String, ? extends User> source);
 
-        @MappingOptions(objects = ObjectPolicy.CLEAR_PUT, using = {"this::toDto"})
+        @MappingOptions(objects = ObjectPolicy.PUT, using = {"this::toDto"})
         void updateUserMap(
                 Map<String, UserDto> target,
                 Map<? extends String, ? extends User> source);

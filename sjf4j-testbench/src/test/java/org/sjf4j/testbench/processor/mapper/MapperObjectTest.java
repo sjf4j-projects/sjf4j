@@ -16,6 +16,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -178,7 +180,7 @@ public class MapperObjectTest {
 
         JsonObject object = mapper.projectJsonObject(source);
 
-        assertNotSame(source, object);
+        assertSame(source, object);
         assertEquals(800L, object.getNode("id"));
         assertSame(nested, object.getNode("nested"));
     }
@@ -220,7 +222,7 @@ public class MapperObjectTest {
 
         assertEquals(900L, target.getNode("id"));
         assertSame(nested, target.getNode("nested"));
-        assertThrows(BindingException.class, () -> mapper.projectObjectJson(JsonObject.of("id", 1)));
+        assertEquals(JsonObject.of("id", 1), mapper.projectObjectJson(JsonObject.of("id", 1)));
     }
 
     @Test
@@ -232,7 +234,7 @@ public class MapperObjectTest {
         Map<String, Integer> target = mapper.projectObjectInts(source);
 
         assertEquals(9, target.get("x"));
-        assertThrows(BindingException.class, () -> mapper.projectObjectInts(JsonObject.of("x", 1)));
+        assertEquals(Map.of("x", 1), mapper.projectObjectInts(JsonObject.of("x", 1)));
     }
 
     @Test
@@ -318,6 +320,27 @@ public class MapperObjectTest {
         assertEquals(2, jojo.getNode("extra"));
         assertEquals("Katherine", object.name);
         assertEquals(3, object.getNode("extra"));
+    }
+
+    @Test
+    public void automaticObjectMappingDistinguishesMissingFromNull() {
+        JojoMapper mapper = CompiledInstances.of(JojoMapper.class);
+
+        assertNotNull(mapper.copyMapDynamic(Map.of("name", "Ada")).child);
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("child", null);
+        assertNull(mapper.copyMapDynamic(map).child);
+
+        JsonObject json = JsonObject.of("name", "Ada");
+        assertNotNull(mapper.copyJsonDynamic(json).child);
+        json.put("child", null);
+        assertNull(mapper.copyJsonDynamic(json).child);
+
+        ChildJojo jojo = new ChildJojo();
+        jojo.put("name", "Ada");
+        assertNotNull(mapper.copyJojoDynamic(jojo).child);
+        jojo.put("child", null);
+        assertNull(mapper.copyJojoDynamic(jojo).child);
     }
 
     @Test
@@ -524,6 +547,12 @@ public class MapperObjectTest {
 
         @Mapping(target = "name", source = "full_name", ignore = true)
         RichJojo ignoreRenamed(Map<String, Object> source);
+
+        RichJojo copyMapDynamic(Map<String, Object> source);
+
+        RichJojo copyJsonDynamic(JsonObject source);
+
+        RichJojo copyJojoDynamic(ChildJojo source);
 
         RichJojo copyDynamic(SourceJojo source);
 

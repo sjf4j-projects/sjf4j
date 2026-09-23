@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a built-in `Charset` value codec.
 
 ### Changed
+- Expanded compiled mapper container updates with root collections, maps, arrays, and explicit array/object policies.
+- Added computed multi-source JDBC mappings and improved JDBC target-path and typed-getter handling.
 - Refactored the NodeValue module.
 - Renamed public node-value metadata members from `hasValueCodecs()`/`valueCodec` to `isNodeValue()`/`codec` and streamlined shared streaming serialization dispatch.
 - Optimized streaming POJO serialization with backend-prepared field names and specialized scalar field writers.

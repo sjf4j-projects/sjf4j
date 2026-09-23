@@ -21,8 +21,9 @@ class JdbcMappingCreatorTest {
         assertEquals("Grace", ((FactoryView) mapper.factory(result(new String[]{"name"}, new Object[]{"Grace"}))).name);
         assertEquals("Katherine", ((ViewImpl) mapper.views(result(new String[]{"name"},
                 new Object[]{"Katherine"})).get(0)).name);
-        assertEquals("Dorothy", ((PathView) mapper.path(result(new String[]{"name"},
-                new Object[]{"Dorothy"}))).profile.name);
+        assertEquals("Dorothy",
+                ((PathView) mapper.path(result(new String[]{"name"}, new Object[]{"Dorothy"})))
+                        .profile.name);
         assertEquals("Record", ((RecordView) mapper.record(result(new String[]{"name"},
                 new Object[]{"Record"}))).name());
         assertEquals("Constructor", ((SingleView) mapper.single(result(new String[]{"name"},
@@ -51,9 +52,13 @@ class JdbcMappingCreatorTest {
     }
 
     public static class PathView implements View {
-        public CreatorProfile profile = new CreatorProfile();
+        private final CreatorProfile profile = new CreatorProfile();
 
         public PathView() {
+        }
+
+        public CreatorProfile getProfile() {
+            return profile;
         }
     }
 
@@ -111,7 +116,7 @@ class JdbcMappingCreatorTest {
         List<View> views(ResultSet rs);
 
         @MappingCreator(targetType = View.class, creator = "this::newPath")
-        @Mapping(target = "$.profile.name")
+        @Mapping(target = "$.profile.name", source = "name")
         View path(ResultSet rs);
 
         @MappingCreator(targetType = RecordTarget.class, implementation = RecordView.class)

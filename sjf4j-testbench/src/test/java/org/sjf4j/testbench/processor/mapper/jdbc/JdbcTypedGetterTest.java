@@ -6,6 +6,7 @@ import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
 
 import java.lang.reflect.Proxy;
@@ -29,7 +30,7 @@ class JdbcTypedGetterTest {
 
         BindingException nullValue = assertThrows(BindingException.class,
                 () -> mapper.user(typedUserResult(getInts, true)));
-        assertEquals("SQL NULL for column 'age' mapped to primitive int", nullValue.getMessage());
+        assertEquals("SQL NULL cannot be mapped to primitive target from column 'age'", nullValue.getMessage());
         assertEquals(null, mapper.boxedAge(result(new String[]{"age"}, new Object[]{null})).age());
     }
 
@@ -51,7 +52,7 @@ class JdbcTypedGetterTest {
 
         BindingException nullValue = assertThrows(BindingException.class,
                 () -> mapper.primitives(typedPrimitiveResult(new ArrayList<>(), "longValue", false)));
-        assertEquals("SQL NULL for column 'longValue' mapped to primitive long", nullValue.getMessage());
+        assertEquals("SQL NULL cannot be mapped to primitive target from column 'longValue'", nullValue.getMessage());
 
         getters.clear();
         assertEquals(1, mapper.primitiveValues(typedPrimitiveResult(getters, null, true)).size());
@@ -116,6 +117,11 @@ class JdbcTypedGetterTest {
         @RawToValue
         public static Code fromRaw(String raw) {
             return new Code(raw);
+        }
+
+        @ValueToRaw
+        public String toRaw() {
+            return value;
         }
     }
 

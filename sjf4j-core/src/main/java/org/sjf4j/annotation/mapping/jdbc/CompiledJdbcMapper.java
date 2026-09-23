@@ -30,10 +30,11 @@ import java.lang.annotation.Target;
  * {@code PRESENT_ONLY} leaves absent mutable properties at their initialized value. For map results, duplicate result
  * columns overwrite the earlier value with the last value.</p>
  *
- * <p>POJO properties use matching result columns by default; {@link Mapping#source()} supplies a
- * result column alias. JSONPath/JSON Pointer property-name target paths such as {@code $.profile.name}
- * and {@code /profile/name} are also supported for mutable POJOs when every intermediate parent already
- * exists; they are not allocated. JDBC mapper SQL exceptions are wrapped in {@code BindingException}.
+ * <p>POJO properties use matching result columns by default; {@link Mapping#source()} supplies a flat
+ * result column alias and target paths must declare one explicitly. JSONPath/JSON Pointer property-name
+ * target paths such as {@code $.profile.name} and {@code /profile/name} are also supported for mutable
+ * POJOs when every intermediate parent already exists; they are not allocated. JDBC mapper SQL exceptions
+ * are wrapped in {@code BindingException}.
  * Version 1 supports
  * direct flat mapping to POJOs, JOJOs, records, single-constructor targets, creator-selected implementations, and
  * {@code Map<String, Object>}. JOJO declared properties map as POJO properties; unconsumed result columns are retained

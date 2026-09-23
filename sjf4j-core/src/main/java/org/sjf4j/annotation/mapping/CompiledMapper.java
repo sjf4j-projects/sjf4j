@@ -102,15 +102,19 @@ import java.lang.annotation.Target;
  * targets are rejected because no element type is available.</p>
  *
  * <p>For update methods, method-level collection/map policies default to
- * {@link ArrayPolicy#CLEAR_ADD} for array-like containers and
+ * {@link ArrayPolicy#SET} for array-like containers and
  * {@link ObjectPolicy#PUT} for map-like containers, and apply to mapped
- * container properties and nested value containers. {@link NullValuePolicy} is
- * applied before container policy update: {@code IGNORE} keeps the existing
- * target property, while {@code SET} writes {@code null} to the target property
- * when the source property is {@code null}. Root container update methods such
- * as {@code void update(List<T> target, List<S> source)} still return
- * immediately when the source root is {@code null}, because the target
- * parameter itself cannot be reassigned.</p>
+ * container properties and nested value containers. {@code SET} overwrites
+ * indexed target elements and appends remaining source elements; {@code ADD}
+ * only appends. {@link ArrayPolicy#SET} is not supported for {@code Set}
+ * targets, and Java arrays support only bounded {@code SET} updates.
+ * {@link ObjectPolicy#PUT_IF_ABSENT} and {@link ObjectPolicy#PUT_IF_PRESENT}
+ * require {@code Map} targets.
+ * {@link NullValuePolicy} is applied before property container policy update:
+ * {@code IGNORE} keeps the existing target property, while {@code SET} writes
+ * {@code null} when the source property is {@code null}. Root array-like and
+ * {@code Map} update methods modify the supplied target in place and return
+ * immediately when the source root is {@code null}.</p>
  *
  * <p>Current limits: raw or non-parameterized collection/map target types are
  * not supported for recursive conversion, except raw source {@code List} and
@@ -119,10 +123,8 @@ import java.lang.annotation.Target;
  * already match; POJO/{@code JsonObject}/{@code Object}
  * projection to root {@code Map} requires target key type
  * {@code java.lang.String}; plain {@code JsonObject} and JOJO root projection
- * from {@code Map} likewise requires source key type {@code String}; Java
- * array and JAJO targets are create-only and update methods are not generated;
- * mapper interfaces and mapper methods must not themselves declare type
- * parameters.</p>
+ * from {@code Map} likewise requires source key type {@code String}; mapper
+ * interfaces and mapper methods must not themselves declare type parameters.</p>
  *
  * <p>Supported source reads are public fields, JavaBean getters, boolean
  * {@code isXxx} getters, and record accessors. Supported target writes are

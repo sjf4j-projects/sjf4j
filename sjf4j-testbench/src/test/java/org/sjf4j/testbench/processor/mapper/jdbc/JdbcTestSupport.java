@@ -18,7 +18,8 @@ final class JdbcTestSupport {
                     if (method.getName().equals("next")) {
                         return ++row[0] < rows.length;
                     }
-                    if (method.getName().equals("getObject") || method.getName().equals("getString")) {
+                    if (method.getName().equals("getObject") || method.getName().equals("getString") ||
+                            method.getName().equals("getTimestamp")) {
                         int column = column(columns, arguments[0]);
                         return last[0] = rows[row[0]][column - 1];
                     }
