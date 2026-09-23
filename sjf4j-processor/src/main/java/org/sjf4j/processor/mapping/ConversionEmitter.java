@@ -1649,8 +1649,9 @@ public final class ConversionEmitter
 
         out.beginBlock(
                 "if (" +
+                        "org.sjf4j.InternalAccess.dynamicProperties(" +
                         source +
-                        "._dynamicMap() != null)");
+                        ") != null)");
 
         String entry =
                 names.newName(
@@ -1660,8 +1661,9 @@ public final class ConversionEmitter
                 "for (java.util.Map.Entry<String, Object> " +
                         entry +
                         " : " +
+                        "org.sjf4j.InternalAccess.dynamicProperties(" +
                         source +
-                        "._dynamicMap().entrySet()) {");
+                        ").entrySet()) {");
 
         out.indent();
 

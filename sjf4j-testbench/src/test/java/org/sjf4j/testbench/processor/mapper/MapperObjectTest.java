@@ -1,6 +1,7 @@
 package org.sjf4j.testbench.processor.mapper;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.Mapping;
@@ -323,6 +324,17 @@ public class MapperObjectTest {
     }
 
     @Test
+    public void mapsJojoPropertiesThroughGettersAndSetters() {
+        JojoMapper mapper = CompiledInstances.of(JojoMapper.class);
+        AccessorSourceJojo source = new AccessorSourceJojo();
+        source.setName("Ada");
+
+        AccessorTargetJojo target = mapper.copyAccessor(source);
+
+        assertEquals("Ada", target.getName());
+    }
+
+    @Test
     public void automaticObjectMappingDistinguishesMissingFromNull() {
         JojoMapper mapper = CompiledInstances.of(JojoMapper.class);
 
@@ -361,7 +373,7 @@ public class MapperObjectTest {
         assertEquals("ensure", target.child.getNode("ensured"));
         assertEquals("compute", target.child.getNode("computed"));
         assertEquals("yes", target.getNode("extra"));
-        assertEquals(false, target._dynamicMap().containsKey("name"));
+        assertEquals(false, InternalAccess.dynamicProperties(target).containsKey("name"));
         assertEquals(null, target.getNode("full_name"));
         assertEquals(null, target.getNode("ignored"));
         assertEquals(null, target.getNode("dynamic"));
@@ -470,6 +482,30 @@ public class MapperObjectTest {
 
     public static final class ChildJojo extends JsonObject {}
 
+    public static final class AccessorSourceJojo extends JsonObject {
+        private String name;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
+
+    public static final class AccessorTargetJojo extends JsonObject {
+        private String name;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
+
     public static final class SourceJojo extends JsonObject { public String typed; }
 
     public static final class DynamicOnly extends JsonObject {}
@@ -553,6 +589,8 @@ public class MapperObjectTest {
         RichJojo copyJsonDynamic(JsonObject source);
 
         RichJojo copyJojoDynamic(ChildJojo source);
+
+        AccessorTargetJojo copyAccessor(AccessorSourceJojo source);
 
         RichJojo copyDynamic(SourceJojo source);
 

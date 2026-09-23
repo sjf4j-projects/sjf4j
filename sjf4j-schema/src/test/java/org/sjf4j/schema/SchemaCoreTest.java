@@ -2,6 +2,7 @@ package org.sjf4j.schema;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.InternalAccess;
 import org.sjf4j.Sjf4j;
 
 import java.net.URI;
@@ -79,8 +80,8 @@ public class SchemaCoreTest {
         assertDoesNotThrow(() -> schema.remove("type"));
         assertDoesNotThrow(schema::clear);
         assertDoesNotThrow(schema::prune);
-        assertDoesNotThrow(() -> schema._dynamicMap(new LinkedHashMap<>()));
-        assertDoesNotThrow(() -> schema._dynamicMap().put("x", 1));
+        assertDoesNotThrow(() -> InternalAccess.dynamicProperties(schema, new LinkedHashMap<>()));
+        assertDoesNotThrow(() -> InternalAccess.dynamicProperties(schema).put("x", 1));
     }
 
     @Test

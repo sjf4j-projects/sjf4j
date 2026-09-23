@@ -1,5 +1,6 @@
 package org.sjf4j.facade.simple;
 
+import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.OneOf;
@@ -621,7 +622,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
             }
         }
-        if (pi.isJojo) ((JsonObject) pojo)._dynamicMap(dynamicMap);
+        if (pi.isJojo) InternalAccess.dynamicProperties((JsonObject) pojo, dynamicMap);
         return pojo;
     }
 

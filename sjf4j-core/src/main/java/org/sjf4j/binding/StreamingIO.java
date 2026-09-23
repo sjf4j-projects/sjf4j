@@ -1,5 +1,6 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.OneOf;
@@ -310,7 +311,7 @@ public final class StreamingIO {
             }
 
             if (pi.isJojo) {
-                ((JsonObject) pojo)._dynamicMap(dynamicMap);
+                InternalAccess.dynamicProperties((JsonObject) pojo, dynamicMap);
             }
             return pojo;
         }
@@ -1232,7 +1233,7 @@ public final class StreamingIO {
         }
 
         if (pi.isJojo && pi.writeDynamic) {
-            Map<String, Object> dynamicMap = ((JsonObject) node)._dynamicMap();
+            Map<String, Object> dynamicMap = InternalAccess.dynamicProperties((JsonObject) node);
             if (dynamicMap != null) {
                 for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
                     Object value = entry.getValue();

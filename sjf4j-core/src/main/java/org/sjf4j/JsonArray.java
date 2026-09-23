@@ -46,9 +46,9 @@ public class JsonArray extends JsonContainer {
     public static JsonArray of(Object... values) {
         JsonArray ja = new JsonArray();
         if (values != null) {
-            List<Object> list = new ArrayList<>(values.length);
-            Collections.addAll(list, values);
-            ja._dynamicList(list);
+            for (Object value : values) {
+                ja.add(value);
+            }
         }
         return ja;
     }

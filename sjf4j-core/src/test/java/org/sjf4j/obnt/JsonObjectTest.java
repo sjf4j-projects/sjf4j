@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonParser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
@@ -769,13 +770,13 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo1.toJson());
-        assertInstanceOf(LinkedHashMap.class, jo1._dynamicMap());
+        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicProperties(jo1));
         assertInstanceOf(LinkedHashMap.class, jo1.toMap());
 
         JsonObject jo2 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
-        assertInstanceOf(LinkedHashMap.class, jo2._dynamicMap());
+        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicProperties(jo2));
         assertInstanceOf(LinkedHashMap.class, jo2.toMap());
         assertEquals(jo1, jo2);
     }

@@ -1052,8 +1052,9 @@ public final class JdbcEmitter {
                 "java.util.Map<String, Object> " +
                         dynamic +
                         " = " +
+                        "org.sjf4j.InternalAccess.dynamicProperties(" +
                         target +
-                        "._dynamicMap();");
+                        ");");
 
         out.line(
                 "for (int " +
@@ -1089,8 +1090,9 @@ public final class JdbcEmitter {
                         " = new java.util.LinkedHashMap<String, Object>();");
 
         out.line(
-                target +
-                        "._dynamicMap(" +
+                "org.sjf4j.InternalAccess.dynamicProperties(" +
+                        target +
+                        ", " +
                         dynamic +
                         ");");
 

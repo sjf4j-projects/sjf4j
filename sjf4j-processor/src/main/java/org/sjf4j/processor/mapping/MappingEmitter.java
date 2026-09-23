@@ -688,8 +688,9 @@ public final class MappingEmitter {
         if (dynamicOnly) {
             out.beginBlock(
                     "if (" +
+                            "org.sjf4j.InternalAccess.dynamicProperties(" +
                             source +
-                            "._dynamicMap() != null)");
+                            ") != null)");
         }
 
         String entry =
@@ -698,7 +699,9 @@ public final class MappingEmitter {
 
         String entries =
                 dynamicOnly
-                        ? source + "._dynamicMap().entrySet()"
+                        ? "org.sjf4j.InternalAccess.dynamicProperties(" +
+                        source +
+                        ").entrySet()"
                         : source + ".entrySet()";
 
         out.line(
