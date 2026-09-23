@@ -1,7 +1,8 @@
-package org.sjf4j.backend.jackson3.binding;
+package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 
 import java.io.StringWriter;
 import java.math.BigDecimal;

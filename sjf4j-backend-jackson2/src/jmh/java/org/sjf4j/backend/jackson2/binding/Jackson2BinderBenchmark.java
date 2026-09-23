@@ -1,4 +1,4 @@
-package org.sjf4j.backend.jackson3.binding;
+package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;

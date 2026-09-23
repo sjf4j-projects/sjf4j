@@ -1,6 +1,7 @@
-package org.sjf4j.backend.jackson3.binding;
+package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import org.sjf4j.backend.jackson2.binding.Jackson2PreparedName;
 import org.sjf4j.binding.PreparedName;
 import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.StreamingWriter;

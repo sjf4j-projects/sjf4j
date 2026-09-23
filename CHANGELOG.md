@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Moved Jackson 2 streaming binding classes from `org.sjf4j.backend.jackson3.binding` to `org.sjf4j.backend.jackson2.binding`; update imports accordingly.
 - Moved node binding annotations from `org.sjf4j.annotation.binding` to `org.sjf4j.annotation.node` and renamed `@NodeBinding` to `@NodeObject`.
 - Moved `ValueCodec`, `ValueInfo`, `ValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
 - Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
