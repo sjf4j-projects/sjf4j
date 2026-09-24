@@ -261,8 +261,8 @@ class JsonObjectTest {
         JsonObject jo = JsonObject.of("a", 1, "b", true, "c", Nodes.toJsonArray(new int[]{1, 2}));
         assertEquals("{\"a\":1,\"b\":true,\"c\":[1,2]}", jo.toJson());
 
-        assertThrows(NodeException.class, () -> JsonObject.of("a", 1, "b"));
-        assertThrows(NodeException.class, () -> JsonObject.of(1, "a"));
+        assertThrows(IllegalArgumentException.class, () -> JsonObject.of("a", 1, "b"));
+        assertThrows(IllegalArgumentException.class, () -> JsonObject.of(1, "a"));
     }
 
     static class WrapJojo extends JsonObject {

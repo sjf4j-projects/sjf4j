@@ -58,6 +58,7 @@ public class NodeStream<T> {
      * Missing paths map to {@code null} elements.
      */
     public <R> NodeStream<R> getByPath(String path, Class<R> clazz) {
+        Asserts.notNull(clazz, "clazz");
         JsonPath jp = JsonPath.parse(path);
         Stream<R> ns = stream.map(node -> jp.get(node, clazz));
         return new NodeStream<>(ns);
@@ -67,6 +68,7 @@ public class NodeStream<T> {
      * Reads one value by path per element using lenient conversion.
      */
     public <R> NodeStream<R> asByPath(String path, Class<R> clazz) {
+        Asserts.notNull(clazz, "clazz");
         JsonPath jp = JsonPath.parse(path);
         Stream<R> ns = stream.map(node -> jp.getAs(node, clazz));
         return new NodeStream<>(ns);
@@ -76,6 +78,7 @@ public class NodeStream<T> {
      * Finds all matched values per element and flattens them (strict conversion).
      */
     public <R> NodeStream<R> findByPath(String path, Class<R> clazz) {
+        Asserts.notNull(clazz, "clazz");
         JsonPath jp = JsonPath.parse(path);
         Stream<R> ns = stream.flatMap(node -> jp.find(node, clazz).stream());
         return new NodeStream<>(ns);
@@ -85,6 +88,7 @@ public class NodeStream<T> {
      * Finds all matched values per element and flattens them (lenient conversion).
      */
     public <R> NodeStream<R> findAsByPath(String path, Class<R> clazz) {
+        Asserts.notNull(clazz, "clazz");
         JsonPath jp = JsonPath.parse(path);
         Stream<R> ns = stream.flatMap(node -> jp.findAs(node, clazz).stream());
         return new NodeStream<>(ns);
@@ -94,6 +98,7 @@ public class NodeStream<T> {
      * Evaluates a path per element and flattens results with strict conversion.
      */
     public <R> NodeStream<R> evalByPath(String path, Class<R> clazz) {
+        Asserts.notNull(clazz, "clazz");
         JsonPath jp = JsonPath.parse(path);
         Stream<R> ns = stream.flatMap(node -> {
             Object result = jp.eval(node);
@@ -117,6 +122,7 @@ public class NodeStream<T> {
      * Evaluates a path per element and flattens results with lenient conversion.
      */
     public <R> NodeStream<R> evalAsByPath(String path, Class<R> clazz) {
+        Asserts.notNull(clazz, "clazz");
         JsonPath jp = JsonPath.parse(path);
         Stream<R> ns = stream.flatMap(node -> {
             Object result = jp.eval(node);

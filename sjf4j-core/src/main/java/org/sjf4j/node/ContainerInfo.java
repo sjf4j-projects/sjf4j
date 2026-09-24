@@ -39,6 +39,8 @@ public final class ContainerInfo {
         if (noArgsCtorHandle != null) {
             try {
                 return noArgsCtorHandle.invoke();
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to create container instance of " + clazz.getName(), e);
             }

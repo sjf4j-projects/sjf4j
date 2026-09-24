@@ -92,6 +92,7 @@ public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> 
 
     @Override
     public Object readNodePlugin(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return gson.fromJson(input, type);
         } catch (Exception e) {
@@ -101,6 +102,7 @@ public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> 
 
     @Override
     public Object readNodePlugin(String input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return gson.fromJson(input, type);
         } catch (Exception e) {

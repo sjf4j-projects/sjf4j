@@ -14,6 +14,7 @@ import com.alibaba.fastjson2.writer.ObjectWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
@@ -176,6 +177,8 @@ public interface Fastjson2Module {
                     Type resolvedOwnerType = fieldType != null ? fieldType : type;
                     return (T) Fastjson2StreamingIO.readPojo(reader, resolvedOwnerType,
                             Types.rawBox(resolvedOwnerType), pi, streamingContext);
+                } catch (BindingException e) {
+                    throw e;
                 } catch (Exception e) {
                     throw new JSONException(reader.info("JsonObjectReader.readObject() failed"), e);
                 }
@@ -288,6 +291,8 @@ public interface Fastjson2Module {
                 Type ownerType = fieldType != null ? fieldType : type;
                 return (T) Fastjson2StreamingIO.readPojo(reader, ownerType,
                         Types.rawBox(ownerType), pi, streamingContext);
+            } catch (BindingException e) {
+                throw e;
             } catch (Exception e) {
                 throw new JSONException(reader.info("PojoReader.readObject() failed"), e);
             }

@@ -49,6 +49,7 @@ public final class StreamingIO {
      */
     public static Object readNode(StreamingReader reader, Type type, StreamingContext context) {
         Asserts.notNull(reader, "reader");
+        Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawBox);

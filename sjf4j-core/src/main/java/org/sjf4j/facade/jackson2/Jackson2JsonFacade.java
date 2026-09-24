@@ -131,6 +131,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodePlugin(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return objectMapper.readValue(input, objectMapper.constructType(type));
         } catch (Exception e) {
@@ -140,6 +141,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodePlugin(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return objectMapper.readValue(input, objectMapper.constructType(type));
         } catch (Exception e) {
@@ -149,6 +151,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodePlugin(String input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return objectMapper.readValue(input, objectMapper.constructType(type));
         } catch (Exception e) {
@@ -158,6 +161,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodePlugin(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return objectMapper.readValue(input, objectMapper.constructType(type));
         } catch (Exception e) {
@@ -169,6 +173,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodeExclusive(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         try (JsonParser parser = objectMapper.getFactory().createParser(input)
                 .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
@@ -179,6 +184,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodeExclusive(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         try (JsonParser parser = objectMapper.getFactory().createParser(input)
                 .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
@@ -189,6 +195,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
 
     @Override
     public Object readNodeExclusive(String input, Type type) {
+        Asserts.notNull(type, "type");
         try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
@@ -197,6 +204,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
     }
     @Override
     public Object readNodeExclusive(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
             return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {

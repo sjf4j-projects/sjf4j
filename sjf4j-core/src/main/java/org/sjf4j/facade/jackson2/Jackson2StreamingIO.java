@@ -61,6 +61,7 @@ public class Jackson2StreamingIO {
 
     public static Object readNode(JsonParser parser, Type type, StreamingContext context) throws IOException {
         Asserts.notNull(parser, "parser");
+        Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawBox);

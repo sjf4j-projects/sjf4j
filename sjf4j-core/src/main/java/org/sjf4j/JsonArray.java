@@ -701,6 +701,7 @@ public class JsonArray extends JsonContainer {
      * Returns a typed Map value using strict conversion.
      */
     public <T> Map<String, T> getMap(int idx, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.toMap(getNode(idx), clazz);
         } catch (Exception e) {
@@ -734,6 +735,7 @@ public class JsonArray extends JsonContainer {
      * Returns a typed List value using strict conversion.
      */
     public <T> List<T> getList(int idx, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.toList(getNode(idx), clazz);
         } catch (Exception e) {
@@ -756,6 +758,7 @@ public class JsonArray extends JsonContainer {
      * Returns a typed array using strict conversion.
      */
     public <T> T[] getArray(int idx, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.toArray(getNode(idx), clazz);
         } catch (Exception e) {

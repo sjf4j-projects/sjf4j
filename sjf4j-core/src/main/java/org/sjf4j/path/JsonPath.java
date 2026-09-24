@@ -2,6 +2,7 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
@@ -293,13 +294,42 @@ public class JsonPath {
     }
 
     private NodeException _strict(Object container, Object value, String target, Exception cause) {
-        return new NodeException("cannot get " + target + " from path '" + this + "': container=" +
-                Types.name(container) + ", value=" + Types.name(value), cause);
+        String message = "cannot get " + target + " from path '" + this + "': container=" +
+                Types.name(container) + ", value=" + Types.name(value);
+        if (cause instanceof BindingException) {
+            BindingException binding = (BindingException) cause;
+            if (binding.hasPathSegment()) return binding;
+            if (value != null && _hasExactTargetPath()) {
+                return new BindingException(message + ": " + binding.getMessage(), tail(), binding);
+            }
+            return new BindingException(message + ": " + binding.getMessage(), binding);
+        }
+        return new NodeException(message, cause);
     }
 
     private NodeException _lenient(Object container, Object value, String target, Exception cause) {
-        return new NodeException("cannot coerce value at path '" + this + "' to " + target + ": container=" +
-                Types.name(container) + ", value=" + Types.name(value), cause);
+        String message = "cannot coerce value at path '" + this + "' to " + target + ": container=" +
+                Types.name(container) + ", value=" + Types.name(value);
+        if (cause instanceof BindingException) {
+            BindingException binding = (BindingException) cause;
+            if (binding.hasPathSegment()) return binding;
+            if (value != null && _hasExactTargetPath()) {
+                return new BindingException(message + ": " + binding.getMessage(), tail(), binding);
+            }
+            return new BindingException(message + ": " + binding.getMessage(), binding);
+        }
+        return new NodeException(message, cause);
+    }
+
+    private boolean _hasExactTargetPath() {
+        if (!(segments[0] instanceof PathSegment.Root)) return false;
+        for (int i = 1; i < segments.length; i++) {
+            PathSegment segment = segments[i];
+            if (segment instanceof PathSegment.Name) continue;
+            if (segment instanceof PathSegment.Index && ((PathSegment.Index) segment).index >= 0) continue;
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -706,6 +736,7 @@ public class JsonPath {
      * Returns a typed Map at this path using strict conversion.
      */
     public <T> Map<String, T> getMap(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = getNode(container);
@@ -746,6 +777,7 @@ public class JsonPath {
      * Returns a typed List at this path using strict conversion.
      */
     public <T> List<T> getList(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = getNode(container);
@@ -772,6 +804,7 @@ public class JsonPath {
      * Returns a typed array at this path using strict conversion.
      */
     public <T> T[] getArray(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = getNode(container);
@@ -798,6 +831,7 @@ public class JsonPath {
      * Returns a typed Set at this path using strict conversion.
      */
     public <T> Set<T> getSet(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = getNode(container);
@@ -811,6 +845,7 @@ public class JsonPath {
      * Returns a value at this path converted to the given type.
      */
     public <T> T get(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = getNode(container);
@@ -837,6 +872,7 @@ public class JsonPath {
      * Returns a value at this path using lenient conversion.
      */
     public <T> T getAs(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = getNode(container);
@@ -888,8 +924,8 @@ public class JsonPath {
      * Finds and converts all matches using strict conversion.
      */
     public <T> List<T> find(Object container, Class<T> clazz) {
-        Asserts.notNull(container, "container");
         Asserts.notNull(clazz, "clazz");
+        Asserts.notNull(container, "container");
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -905,8 +941,8 @@ public class JsonPath {
      * Finds and converts all matches using lenient conversion.
      */
     public <T> List<T> findAs(Object container, Class<T> clazz) {
-        Asserts.notNull(container, "container");
         Asserts.notNull(clazz, "clazz");
+        Asserts.notNull(container, "container");
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -960,6 +996,7 @@ public class JsonPath {
      * Evaluates the path and converts the result using strict conversion.
      */
     public <T> T eval(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = eval(container);
@@ -969,8 +1006,17 @@ public class JsonPath {
             }
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new NodeException("cannot evaluate " + clazz.getName() + " from path '" + this + "': container=" +
-                    Types.name(container) + ", value=" + Types.name(value), e);
+            String message = "cannot evaluate " + clazz.getName() + " from path '" + this + "': container=" +
+                    Types.name(container) + ", value=" + Types.name(value);
+            if (e instanceof BindingException) {
+                BindingException binding = (BindingException) e;
+                if (binding.hasPathSegment()) throw binding;
+                if (value != null && _hasExactTargetPath()) {
+                    throw new BindingException(message + ": " + binding.getMessage(), tail(), binding);
+                }
+                throw new BindingException(message + ": " + binding.getMessage(), binding);
+            }
+            throw new NodeException(message, e);
         }
     }
 
@@ -978,6 +1024,7 @@ public class JsonPath {
      * Evaluates the path and converts the result using lenient conversion.
      */
     public <T> T evalAs(Object container, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
             value = eval(container);
@@ -987,8 +1034,17 @@ public class JsonPath {
             }
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new NodeException("cannot coerce value at path '" + this + "' to " + clazz.getName() + ": container=" +
-                    Types.name(container) + ", value=" + Types.name(value), e);
+            String message = "cannot coerce value at path '" + this + "' to " + clazz.getName() + ": container=" +
+                    Types.name(container) + ", value=" + Types.name(value);
+            if (e instanceof BindingException) {
+                BindingException binding = (BindingException) e;
+                if (binding.hasPathSegment()) throw binding;
+                if (value != null && _hasExactTargetPath()) {
+                    throw new BindingException(message + ": " + binding.getMessage(), tail(), binding);
+                }
+                throw new BindingException(message + ": " + binding.getMessage(), binding);
+            }
+            throw new NodeException(message, e);
         }
     }
 

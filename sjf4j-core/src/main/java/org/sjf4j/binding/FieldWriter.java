@@ -194,6 +194,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeIntValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);
@@ -220,6 +222,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeLongValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);
@@ -246,6 +250,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeDoubleValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);
@@ -272,6 +278,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeFloatValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);
@@ -298,6 +306,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeShortValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);
@@ -324,6 +334,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeByteValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);
@@ -350,6 +362,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeBooleanValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);
@@ -376,6 +390,8 @@ public interface FieldWriter {
                 count = _writeName(writer, preparedName, count);
                 writer.writeCharValue(value);
                 return count;
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to write field '" + fieldName +
                         "' of node type '" + Types.name(owner) + "'", e);

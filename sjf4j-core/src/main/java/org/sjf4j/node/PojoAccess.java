@@ -148,6 +148,8 @@ public final class PojoAccess {
             if (getterHandle != null) {
                 return getterHandle.invoke(receiver);
             }
+        } catch (BindingException e) {
+            throw e;
         } catch (Throwable e) {
             throw new BindingException("failed to invoke getter for property '" + name + "' (node type: " +
                     Types.name(receiver) + ")", e);
@@ -168,6 +170,8 @@ public final class PojoAccess {
                 setterHandle.invoke(receiver, value);
                 return;
             }
+        } catch (BindingException e) {
+            throw e;
         } catch (Throwable e) {
             throw new BindingException("failed to invoke setter for property '" + name + "' of type '" +
                     Types.name(value) + "' (node type: " + Types.name(receiver) + ")", e);

@@ -67,6 +67,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from reader into target type.
      */
     default Object readNode(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
@@ -74,6 +75,8 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
@@ -83,6 +86,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from input stream into target type.
      */
     default Object readNode(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
@@ -90,6 +94,8 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
@@ -99,12 +105,15 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from string into target type.
      */
     default Object readNode(String input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
@@ -114,12 +123,15 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from bytes into target type.
      */
     default Object readNode(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
@@ -157,6 +169,8 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writer.endDocument();
             writer.flush();
             writer.flushTo(output);
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException("failed to write node type '" + Types.name(node) + "' to streaming", e);
         }
@@ -174,6 +188,8 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writer.endDocument();
             writer.flush();
             writer.flushTo(output);
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException("failed to write node type '" + Types.name(node) + "' to streaming", e);
         }
@@ -186,6 +202,8 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         try (StringWriter output = new StringWriter()) {
             writeNode(output, node);
             return output.toString();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }
@@ -198,6 +216,8 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             writeNode(output, node);
             return output.toByteArray();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }

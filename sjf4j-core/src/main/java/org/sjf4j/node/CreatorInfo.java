@@ -114,6 +114,8 @@ public class CreatorInfo {
         } else if (noArgsCtorHandle != null) {
             try {
                 return noArgsCtorHandle.invoke();
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to invoke constructor of " + clazz, e);
             }
@@ -155,6 +157,8 @@ public class CreatorInfo {
             }
 
             return argsCreatorHandle.invokeWithArguments(args);
+        } catch (BindingException e) {
+            throw e;
         } catch (Throwable e) {
             throw new BindingException("failed to invoke creator constructor of " + clazz, e);
         }

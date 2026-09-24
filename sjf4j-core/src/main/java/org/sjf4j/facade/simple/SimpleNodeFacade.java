@@ -87,6 +87,7 @@ public final class SimpleNodeFacade implements NodeFacade {
      */
     @Override
     public Object readNode(Object node, Type type, boolean deepCopy) {
+        Asserts.notNull(type, "type");
         try {
             Class<?> rawBox = Types.rawBox(type);
             return _readNode(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE);

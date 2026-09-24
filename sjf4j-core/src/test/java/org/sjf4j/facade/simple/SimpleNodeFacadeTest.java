@@ -38,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -431,8 +432,9 @@ public class SimpleNodeFacadeTest {
         Msg msg = (Msg) nodeFacade.readNode(jo, Msg.class);
         assertEquals(Status.OK, msg.status);
 
-        Msg back = (Msg) nodeFacade.readNode(msg, null);
+        Msg back = (Msg) nodeFacade.readNode(msg, Object.class);
         assertEquals(Status.OK, back.status);
+        assertThrowsExactly(NullPointerException.class, () -> nodeFacade.readNode(msg, null));
     }
 
     // ========== Boolean Getter ==========

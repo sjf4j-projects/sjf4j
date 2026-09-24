@@ -86,6 +86,8 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
             StreamingIO.writeNode(new Jackson2Writer(this, gen), node, context);
             gen.flush();
             return sw.getAndClear();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON", e);
         } finally {
@@ -97,6 +99,8 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
         try (FastStringWriter output = new FastStringWriter()) {
             writeNode(output, node);
             return output.toString();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }

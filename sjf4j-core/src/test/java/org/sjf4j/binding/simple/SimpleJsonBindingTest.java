@@ -19,7 +19,9 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 class SimpleJsonBindingTest {
 
@@ -131,21 +133,17 @@ class SimpleJsonBindingTest {
     }
 
     @Test
-    void wrapsMalformedInputAndNonFiniteOutputFailures() {
+    void reportsMalformedInputAndNonFiniteOutputFailuresDirectly() {
         SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
 
-        BindingException readFailure = assertThrows(BindingException.class,
+        BindingException readFailure = assertThrowsExactly(BindingException.class,
                 () -> binding.readNode("{\"value\":}", Map.class));
-        assertInstanceOf(BindingException.class, readFailure.getCause());
+        assertEquals("expected value, but got '}' at position 9, at path '$'", readFailure.getMessage());
+        assertNull(readFailure.getCause());
 
-        BindingException writeFailure = assertThrows(BindingException.class,
+        BindingException writeFailure = assertThrowsExactly(BindingException.class,
                 () -> binding.writeNodeAsString(Double.NaN));
-        assertInstanceOf(BindingException.class, writeFailure.getCause());
-        assertInstanceOf(BindingException.class, rootCause(writeFailure));
-    }
-
-    private static Throwable rootCause(Throwable error) {
-        while (error.getCause() != null) error = error.getCause();
-        return error;
+        assertEquals("cannot write non-finite JSON number", writeFailure.getMessage());
+        assertNull(writeFailure.getCause());
     }
 }

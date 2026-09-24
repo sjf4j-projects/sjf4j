@@ -49,6 +49,7 @@ public class Fastjson2StreamingIO {
 
     public static Object readNode(JSONReader reader, Type type, StreamingContext context) {
         Asserts.notNull(reader, "reader");
+        Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawBox);

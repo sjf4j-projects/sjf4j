@@ -23,7 +23,7 @@ public class BindingException extends NodeException {
      * Creates a binding exception without path context and cause.
      */
     public BindingException(String message, Throwable cause) {
-        super(message, cause, false, false);
+        super(message, cause);
         this.ps = null;
     }
 
@@ -47,7 +47,7 @@ public class BindingException extends NodeException {
      * Creates a binding exception with path context and cause.
      */
     public BindingException(String message, PathSegment ps, Throwable cause) {
-        super(message, cause, false, false);
+        super(message, cause);
         this.ps = ps;
     }
 

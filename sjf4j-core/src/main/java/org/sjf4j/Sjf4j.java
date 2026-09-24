@@ -148,7 +148,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, clazz);
+        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -156,7 +156,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -171,7 +171,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, clazz);
+        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -179,7 +179,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -194,7 +194,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, clazz);
+        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -202,7 +202,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -217,7 +217,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, clazz);
+        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -225,7 +225,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -274,7 +274,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, Class<T> clazz) {
-        return (T) yamlFacade.readNode(input, clazz);
+        return (T) yamlFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -282,7 +282,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, TypeReference<T> type) {
-        return (T) yamlFacade.readNode(input, type.getType());
+        return (T) yamlFacade.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -297,7 +297,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, Class<T> clazz) {
-        return (T) yamlFacade.readNode(input, clazz);
+        return (T) yamlFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -305,7 +305,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, TypeReference<T> type) {
-        return (T) yamlFacade.readNode(input, type.getType());
+        return (T) yamlFacade.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -353,7 +353,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromNode(Object node, Class<T> clazz) {
-        return (T) nodeFacade.readNode(node, clazz, true);
+        return (T) nodeFacade.readNode(node, Asserts.notNull(clazz, "clazz"), true);
     }
 
     /**
@@ -367,7 +367,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromNode(Object node, TypeReference<T> type) {
-        return (T) nodeFacade.readNode(node, type.getType(), true);
+        return (T) nodeFacade.readNode(node, Asserts.notNull(type, "type").getType(), true);
     }
 
     /**
@@ -381,7 +381,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T bindNode(Object node, Class<T> clazz) {
-        return (T) nodeFacade.readNode(node, clazz, false);
+        return (T) nodeFacade.readNode(node, Asserts.notNull(clazz, "clazz"), false);
     }
 
     /**
@@ -396,7 +396,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T bindNode(Object node, TypeReference<T> type) {
-        return (T) nodeFacade.readNode(node, type.getType(), false);
+        return (T) nodeFacade.readNode(node, Asserts.notNull(type, "type").getType(), false);
     }
 
     /**
@@ -442,6 +442,7 @@ public final class Sjf4j {
      * Reads flat {@link Properties} data into the requested target type.
      */
     public <T> T fromProperties(Properties props, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, clazz);
     }
@@ -450,6 +451,7 @@ public final class Sjf4j {
      * Reads flat {@link Properties} data into the requested generic target type.
      */
     public <T> T fromProperties(Properties props, TypeReference<T> type) {
+        Asserts.notNull(type, "type");
         JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, type);
     }

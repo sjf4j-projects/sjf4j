@@ -87,12 +87,12 @@ public class JsonObject extends JsonContainer {
         JsonObject jo = new JsonObject();
         if (keyValues == null || keyValues.length == 0) return jo;
         if ((keyValues.length & 1) != 0) {
-            throw new NodeException("JsonObject.of requires an even number of arguments");
+            throw new IllegalArgumentException("JsonObject.of requires an even number of arguments");
         }
         for (int i = 0; i < keyValues.length; i += 2) {
             Object key = keyValues[i];
             if (!(key instanceof String)) {
-                throw new NodeException("JsonObject.of key at index " + i + " must be a String");
+                throw new IllegalArgumentException("JsonObject.of key at index " + i + " must be a String");
             }
             jo.put((String) key, keyValues[i + 1]);
         }
@@ -875,6 +875,7 @@ public class JsonObject extends JsonContainer {
      * Returns a typed Map value using strict conversion.
      */
     public <T> Map<String, T> getMap(String key, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.toMap(getNode(key), clazz);
         } catch (Exception e) {
@@ -908,6 +909,7 @@ public class JsonObject extends JsonContainer {
      * Returns a typed List value using strict conversion.
      */
     public <T> List<T> getList(String key, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.toList(getNode(key), clazz);
         } catch (Exception e) {
@@ -930,6 +932,7 @@ public class JsonObject extends JsonContainer {
      * Returns a typed array using strict conversion.
      */
     public <T> T[] getArray(String key, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.toArray(getNode(key), clazz);
         } catch (Exception e) {
@@ -941,6 +944,7 @@ public class JsonObject extends JsonContainer {
      * Returns a value converted to the given type.
      */
     public <T> T get(String key, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.to(getNode(key), clazz);
         } catch (Exception e) {
@@ -965,6 +969,7 @@ public class JsonObject extends JsonContainer {
      * Returns a value using lenient conversion.
      */
     public <T> T getAs(String key, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.as(getNode(key), clazz);
         } catch (Exception e) {

@@ -4,6 +4,7 @@ import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.patch.Patches;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -57,6 +58,7 @@ public abstract class JsonContainer {
      * results, including converter results, may retain references.
      */
     public <T> T toNode(Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return Sjf4j.global().fromNode(this, clazz);
     }
 
@@ -66,6 +68,7 @@ public abstract class JsonContainer {
      * boundaries; use {@link #toNode(Class)} to request its deep conversion mode.
      */
     public <T> T bindNode(Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return Sjf4j.global().bindNode(this, clazz);
     }
 
@@ -570,6 +573,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Map, or null if it doesn't exist
      */
     public <T> Map<String, T> getMapByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).getMap(this, clazz);
     }
 
@@ -613,6 +617,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a List, or null if it doesn't exist
      */
     public <T> List<T> getListByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).getList(this, clazz);
     }
 
@@ -634,6 +639,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to an Array, or null if it doesn't exist
      */
     public <T> T[] getArrayByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).getArray(this, clazz);
     }
 
@@ -649,6 +655,7 @@ public abstract class JsonContainer {
      * Returns a typed Set value by path using strict conversion.
      */
     public <T> Set<T> getSetByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).getSet(this, clazz);
     }
 
@@ -658,6 +665,7 @@ public abstract class JsonContainer {
      * Returns a path value converted to the target type.
      */
     public <T> T getByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).get(this, clazz);
     }
 
@@ -674,6 +682,7 @@ public abstract class JsonContainer {
      * Returns a path value converted to target type leniently.
      */
     public <T> T getAsByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).getAs(this, clazz);
     }
 
@@ -769,6 +778,7 @@ public abstract class JsonContainer {
      * Finds all path matches converted to target type.
      */
     public <T> List<T> findByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).find(this, clazz);
     }
 
@@ -776,6 +786,7 @@ public abstract class JsonContainer {
      * Finds all path matches converted leniently.
      */
     public <T> List<T> findAsByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).findAs(this, clazz);
     }
 
@@ -795,6 +806,7 @@ public abstract class JsonContainer {
      * Evaluates path and converts result to target type.
      */
     public <T> T evalByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).eval(this, clazz);
     }
 
@@ -802,6 +814,7 @@ public abstract class JsonContainer {
      * Evaluates path and converts result leniently.
      */
     public <T> T evalAsByPath(String path, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).evalAs(this, clazz);
     }
 

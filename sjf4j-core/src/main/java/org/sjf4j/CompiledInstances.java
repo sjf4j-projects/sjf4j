@@ -1,6 +1,7 @@
 package org.sjf4j;
 
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -30,15 +31,13 @@ public final class CompiledInstances {
 
     @SuppressWarnings("unchecked")
     public static <T> T of(Class<T> type) {
-        if (type == null) {
-            throw new NodeException("CompiledInstances.of requires a non-null interface type");
-        }
+        Asserts.notNull(type, "type");
         return (T) INSTANCES_CACHE.get(type);
     }
 
     private static Object _create(Class<?> type) {
         if (!type.isInterface()) {
-            throw new NodeException("CompiledInstances.of requires an interface type, but got " +
+            throw new IllegalArgumentException("CompiledInstances.of requires an interface type, but got " +
                     type.getName());
         }
 

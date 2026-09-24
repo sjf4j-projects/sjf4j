@@ -306,6 +306,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextIntValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);
@@ -326,6 +328,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextLongValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);
@@ -346,6 +350,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextDoubleValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);
@@ -366,6 +372,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextFloatValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);
@@ -386,6 +394,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextShortValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);
@@ -406,6 +416,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextByteValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);
@@ -426,6 +438,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextBooleanValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);
@@ -446,6 +460,8 @@ public interface FieldReader {
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
                 setter.invokeExact(receiver, reader.nextCharValue());
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to bind value to field '" + fieldName +
                         "' of node type '" + Types.name(receiver) + "'", e);

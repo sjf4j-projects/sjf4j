@@ -59,10 +59,15 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz) {
+        Asserts.notNull(enumClazz, "enumClazz");
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return (E) node;
         String s = toString(node);
-        return Enum.valueOf(enumClazz, s);
+        try {
+            return Enum.valueOf(enumClazz, s);
+        } catch (IllegalArgumentException e) {
+            throw new BindingException("cannot bind '" + s + "' to enum " + enumClazz.getName(), e);
+        }
     }
 
     /**
@@ -70,6 +75,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz) {
+        Asserts.notNull(enumClazz, "enumClazz");
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return (E) node;
         String s = asString(node);
@@ -374,6 +380,7 @@ public final class Nodes {
      * Converts a node to typed Map.
      */
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
+        Asserts.notNull(valueClazz, "valueClazz");
         return _toMap(node, Map.class, valueClazz);
     }
 
@@ -441,6 +448,7 @@ public final class Nodes {
      * Converts a node to typed List.
      */
     public static <T> List<T> toList(Object node, Class<T> valueClazz) {
+        Asserts.notNull(valueClazz, "valueClazz");
         return _toList(node, List.class, valueClazz);
     }
 
@@ -487,8 +495,9 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T[] toArray(Object node, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         if (node == null) return null;
-        if (node.getClass().isArray() && (clazz == null || clazz == Object.class)) {
+        if (node.getClass().isArray() && clazz == Object.class) {
             if (node.getClass().getComponentType().isPrimitive()) {
                 int length = Array.getLength(node);
                 Object[] arr = new Object[length];
@@ -529,6 +538,7 @@ public final class Nodes {
      * Converts a node to typed Set.
      */
     public static <T> Set<T> toSet(Object node, Class<T> valueClazz) {
+        Asserts.notNull(valueClazz, "valueClazz");
         return _toSet(node, Set.class, valueClazz);
     }
 
@@ -559,6 +569,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T toJojo(Object node, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
             throw new BindingException("expected JOJO subtype, but was " + clazz.getName());
         if (node == null) return null;
@@ -577,6 +588,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T toJajo(Object node, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
             throw new BindingException("expected JAJO subtype, but was " + clazz.getName());
         if (node == null) return null;
@@ -611,6 +623,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.pojoInfo == null && ti.oneOfInfo == null) {
             throw new BindingException("class '" + clazz.getName() + "' is not a registered POJO");
@@ -691,6 +704,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return (T) _to(node, clazz, false);
     }
 
@@ -704,6 +718,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, TypeReference<T> type) {
+        Asserts.notNull(type, "type");
         return (T) Sjf4j.global().nodeFacade().readNode(node, type.getType(), false);
     }
 
@@ -716,6 +731,7 @@ public final class Nodes {
      */
     @SuppressWarnings({"unchecked"})
     public static <T> T as(Object node, Class<T> clazz) {
+        Asserts.notNull(clazz, "clazz");
         return (T) _to(node, clazz, true);
     }
 

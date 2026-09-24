@@ -13,7 +13,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.exception.NodeException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.annotation.node.PropertyStrategy;
@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
@@ -479,8 +479,8 @@ public class Fastjson2FacadeTest {
     void testPluginModuleNormalFailureMessageWithoutOneOfHint() {
         Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
 
-        NodeException ex = assertThrows(NodeException.class, () -> facade.readNode("{", Book.class));
-        assertTrue(ex.getMessage().contains("failed to read JSON"));
+        BindingException ex = assertThrowsExactly(BindingException.class, () -> facade.readNode("{", Book.class));
+        assertEquals("unexpected token '\u001A'", ex.getMessage());
         assertFalse(ex.getMessage().contains("OneOf is not supported in Fastjson2 PLUGIN_MODULE mode"));
     }
 

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
@@ -174,6 +175,8 @@ public interface Jackson2Module {
                 try {
                     return (T) Jackson2StreamingIO.readPojo(p, type,
                             pi.clazz, pi, streamingContext);
+                } catch (BindingException e) {
+                    throw e;
                 } catch (Exception e) {
                     ctx.reportBadDefinition(ctx.constructType(type), "Jackson2StreamingIO.readPojo() failed");
                 }

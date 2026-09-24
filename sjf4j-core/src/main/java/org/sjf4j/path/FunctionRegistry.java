@@ -1,6 +1,7 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
@@ -103,6 +104,8 @@ public class FunctionRegistry {
         if (fd == null) throw new NodeException("function '" + name + "' does not exist");
         try {
             return fd.invoke(target, args);
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new NodeException("function '" + name + "' invocation failed", e);
         }

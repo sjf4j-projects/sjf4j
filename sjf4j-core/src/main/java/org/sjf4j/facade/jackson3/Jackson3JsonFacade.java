@@ -110,6 +110,7 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
 
     @Override
     public Object readNodePlugin(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {
@@ -119,6 +120,7 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
 
     @Override
     public Object readNodePlugin(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {
@@ -128,6 +130,7 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
 
     @Override
     public Object readNodePlugin(String input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {
@@ -137,6 +140,7 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
 
     @Override
     public Object readNodePlugin(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {

@@ -350,7 +350,10 @@ public class SimpleJsonFacadeTest {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20---]}},\"sex\":true}";
 
         BindingException error = assertThrows(BindingException.class, () -> facade.readNode(json1, JsonObject.class));
-        assertTrue(error.getCause().getMessage().contains("'$.friends.rose.age[1]'"));
+        assertEquals("Invalid character after value, but got '-' at position 84, at path '$.friends.rose.age[1]'",
+                error.getMessage());
+        assertEquals("$.friends.rose.age[1]", error.getPathSegment().rootedPathExpr());
+        assertNull(error.getCause());
     }
 
     @Test

@@ -24,10 +24,10 @@ public class PathProcessorTest {
 
     @Test
     public void registryRejectsInvalidTargets() {
-        NodeException nullType = assertThrows(NodeException.class, () -> CompiledInstances.of(null));
-        assertTrue(nullType.getMessage().contains("non-null interface type"), nullType.getMessage());
+        assertThrows(NullPointerException.class, () -> CompiledInstances.of(null));
 
-        NodeException notInterface = assertThrows(NodeException.class, () -> CompiledInstances.of(NotInterface.class));
+        IllegalArgumentException notInterface = assertThrows(IllegalArgumentException.class,
+                () -> CompiledInstances.of(NotInterface.class));
         assertTrue(notInterface.getMessage().contains("requires an interface type"), notInterface.getMessage());
         assertTrue(notInterface.getMessage().contains(NotInterface.class.getName()), notInterface.getMessage());
 

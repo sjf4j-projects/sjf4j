@@ -14,6 +14,7 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -52,6 +53,9 @@ public final class StreamingIO {
      * from the next token's JSON-semantic type.</p>
      */
     public static Object readNode(StreamingReader reader, Type nodeType, StreamingContext context) {
+        Asserts.notNull(reader, "reader");
+        Asserts.notNull(nodeType, "nodeType");
+        Asserts.notNull(context, "context");
         Class<?> nodeBoxed = Types.rawBox(nodeType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(nodeBoxed);
         return readNode(reader, nodeType, nodeBoxed, ti, context);

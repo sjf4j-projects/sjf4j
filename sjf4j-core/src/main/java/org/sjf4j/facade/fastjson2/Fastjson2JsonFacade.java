@@ -136,6 +136,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
     // Plugin read
     @Override
     public Object readNodePlugin(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             JSONReader reader = JSONReader.of(input, readerContext);
             return reader.read(type);
@@ -146,6 +147,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
 
     @Override
     public Object readNodePlugin(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
             return reader.read(type);
@@ -156,6 +158,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
 
     @Override
     public Object readNodePlugin(String input, Type type) {
+        Asserts.notNull(type, "type");
         try (JSONReader reader = JSONReader.of(input, readerContext)) {
             return reader.read(type);
         } catch (Exception e) {
@@ -165,6 +168,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
 
     @Override
     public Object readNodePlugin(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         try (JSONReader reader = JSONReader.of(input, readerContext)) {
             return reader.read(type);
         } catch (Exception e) {
@@ -175,6 +179,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
     // Exclusive read
     @Override
     public Object readNodeExclusive(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             JSONReader reader = JSONReader.of(input, readerContext);
             return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
@@ -185,6 +190,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
 
     @Override
     public Object readNodeExclusive(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         try {
             JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
             return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
@@ -195,6 +201,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
 
     @Override
     public Object readNodeExclusive(String input, Type type) {
+        Asserts.notNull(type, "type");
         try (JSONReader reader = JSONReader.of(input, readerContext)) {
             return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
         } catch (Exception e) {
@@ -204,6 +211,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
 
     @Override
     public Object readNodeExclusive(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         try (JSONReader reader = JSONReader.of(input, readerContext)) {
             return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
         } catch (Exception e) {

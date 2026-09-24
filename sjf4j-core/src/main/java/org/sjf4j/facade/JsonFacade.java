@@ -34,6 +34,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
@@ -50,6 +51,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
@@ -66,6 +68,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(String input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
@@ -82,6 +85,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
@@ -97,34 +101,42 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default Object readNodeExclusive(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         throw unsupportedMode(StreamingContext.StreamingMode.EXCLUSIVE_IO);
     }
 
     default Object readNodeExclusive(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         return readNodeExclusive(new InputStreamReader(input, StandardCharsets.UTF_8), type);
     }
 
     default Object readNodeExclusive(String input, Type type) {
+        Asserts.notNull(type, "type");
         return readNodeExclusive(new FastStringReader(input), type);
     }
 
     default Object readNodeExclusive(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         return readNodeExclusive(new ByteArrayInputStream(input), type);
     }
 
     default Object readNodePlugin(Reader input, Type type) {
+        Asserts.notNull(type, "type");
         throw unsupportedMode(StreamingContext.StreamingMode.PLUGIN_MODULE);
     }
 
     default Object readNodePlugin(InputStream input, Type type) {
+        Asserts.notNull(type, "type");
         return readNodePlugin(new InputStreamReader(input, StandardCharsets.UTF_8), type);
     }
 
     default Object readNodePlugin(String input, Type type) {
+        Asserts.notNull(type, "type");
         return readNodePlugin(new FastStringReader(input), type);
     }
 
     default Object readNodePlugin(byte[] input, Type type) {
+        Asserts.notNull(type, "type");
         return readNodePlugin(new ByteArrayInputStream(input), type);
     }
 
@@ -205,6 +217,8 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
         writeNodeExclusive(writer, node);
         try {
             writer.flush();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }
@@ -214,6 +228,8 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
         try (StringWriter output = new StringWriter()) {
             writeNodeExclusive(output, node);
             return output.toString();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }
@@ -223,6 +239,8 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             writeNodeExclusive(output, node);
             return output.toByteArray();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }
@@ -237,6 +255,8 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
         writeNodePlugin(writer, node);
         try {
             writer.flush();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }
@@ -246,6 +266,8 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
         try (StringWriter output = new StringWriter()) {
             writeNodePlugin(output, node);
             return output.toString();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }
@@ -255,6 +277,8 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             writeNodePlugin(output, node);
             return output.toByteArray();
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
             throw new BindingException(e);
         }
@@ -265,10 +289,26 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default BindingException failedToRead(Type type, Exception e) {
+        if (e instanceof BindingException) throw (BindingException) e;
+        if (e.getCause() instanceof BindingException) {
+            BindingException binding = (BindingException) e.getCause();
+            if (binding.hasPathSegment()) {
+                throw new BindingException("failed to read JSON into type '" + type + "'",
+                        binding.getPathSegment(), e);
+            }
+        }
         throw new BindingException("failed to read JSON into type '" + type + "'", e);
     }
 
     default BindingException failedToWrite(Object node, Exception e) {
+        if (e instanceof BindingException) throw (BindingException) e;
+        if (e.getCause() instanceof BindingException) {
+            BindingException binding = (BindingException) e.getCause();
+            if (binding.hasPathSegment()) {
+                throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON",
+                        binding.getPathSegment(), e);
+            }
+        }
         throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON", e);
     }
 

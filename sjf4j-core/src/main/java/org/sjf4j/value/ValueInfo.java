@@ -54,6 +54,8 @@ public class ValueInfo {
         if (codec != null) {
             try {
                 return codec.valueToRaw(value);
+            } catch (BindingException e) {
+                throw e;
             } catch (Exception e) {
                 throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
                         " using ValueCodec " + codec.getClass().getName(), e);
@@ -61,6 +63,8 @@ public class ValueInfo {
         } else if (valueToRawHandle != null) {
             try {
                 return valueToRawHandle.invoke(value);
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
                         " using annotated method " + valueToRawHandle, e);
@@ -85,6 +89,8 @@ public class ValueInfo {
         if (codec != null) {
             try {
                 return codec.rawToValue(raw);
+            } catch (BindingException e) {
+                throw e;
             } catch (Exception e) {
                 throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
                         " using ValueCodec " + codec.getClass().getName(), e);
@@ -92,6 +98,8 @@ public class ValueInfo {
         } else if (rawToValueHandle != null) {
             try {
                 return rawToValueHandle.invoke(raw);
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
                         " using annotated method " + rawToValueHandle, e);
@@ -108,6 +116,8 @@ public class ValueInfo {
         if (codec != null) {
             try {
                 return codec.valueCopy(value);
+            } catch (BindingException e) {
+                throw e;
             } catch (Exception e) {
                 throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
                         " using ValueCodec " + codec.getClass().getName(), e);
@@ -115,6 +125,8 @@ public class ValueInfo {
         } else if (valueCopyHandle != null) {
             try {
                 return valueCopyHandle.invoke(value);
+            } catch (BindingException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
                         " using annotated method " + valueCopyHandle, e);
