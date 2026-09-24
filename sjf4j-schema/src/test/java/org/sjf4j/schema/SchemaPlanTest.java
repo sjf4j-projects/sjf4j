@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.NodeException;
 
 import java.net.URI;
 
@@ -231,6 +232,6 @@ class SchemaPlanTest {
 
         SchemaPlan plan = schema.createPlan();
 
-        assertThrows(SchemaException.class, () -> plan.validate("Cyclic schema reference"));
+        assertThrows(NodeException.class, () -> plan.validate("Cyclic schema reference"));
     }
 }

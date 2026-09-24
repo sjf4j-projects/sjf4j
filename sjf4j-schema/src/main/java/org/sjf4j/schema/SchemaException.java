@@ -3,7 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.exception.NodeException;
 
 /**
- * Exception for schema compilation/validation errors.
+ * Exception for schema compilation, loading, and linking errors.
  */
 public class SchemaException extends NodeException {
 

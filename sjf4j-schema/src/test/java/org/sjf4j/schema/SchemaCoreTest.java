@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.InternalAccess;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.exception.NodeException;
 
 import java.net.URI;
 import java.time.LocalDate;
@@ -148,7 +149,7 @@ public class SchemaCoreTest {
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
         SchemaPlan plan = schema.createPlan();
-        assertThrows(SchemaException.class, () -> plan.isValid("StackOverflowError"));
+        assertThrows(NodeException.class, () -> plan.isValid("StackOverflowError"));
     }
 
     @Test

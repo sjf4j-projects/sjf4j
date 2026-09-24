@@ -78,7 +78,8 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: no $id or retrievalUri", null, (String) null));
+                    "missing root schema uri: no $id or retrievalUri",
+                    PathSegment.Root.INSTANCE, null));
         }
         _putSchema(canonicalUri, os);
 
@@ -110,7 +111,8 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: no $id or retrievalUri", null, (String) null));
+                    "missing root schema uri: no $id or retrievalUri",
+                    PathSegment.Root.INSTANCE, null));
         }
 
         if (_containsLocalResource(canonicalUri) || (retrievalUri != null && _containsLocalResource(retrievalUri))) {
@@ -147,7 +149,8 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: no $id or retrievalUri", null, (String) null));
+                    "missing root schema uri: no $id or retrievalUri",
+                    PathSegment.Root.INSTANCE, null));
         }
         index(os);
         return SchemaPlanner.buildAndPutPlan(os, this);
@@ -165,7 +168,7 @@ public class SchemaRegistry {
         SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
         if (old != null && old != plan) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                    "duplicate schema uri '" + id + "'", null, id));
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }
     }
 
@@ -175,7 +178,7 @@ public class SchemaRegistry {
         ObjectSchema old = byIdSchemas.putIfAbsent(id, schema);
         if (old != null && old != schema) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                    "duplicate schema uri '" + id + "'", null, id));
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }
     }
 
@@ -188,11 +191,11 @@ public class SchemaRegistry {
         Asserts.notNull(uri, "uri");
         if (uri.toString().isEmpty()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema uri must not be empty", null, (String) null));
+                    "schema uri must not be empty", PathSegment.Root.INSTANCE, uri));
         }
         if (!uri.isAbsolute()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema uri must be absolute", null, uri.toString()));
+                    "schema uri must be absolute", PathSegment.Root.INSTANCE, uri));
         }
     }
 
@@ -210,7 +213,8 @@ public class SchemaRegistry {
             SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
             if (old != null && old != plan) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + entry.getKey() + "'", null, entry.getKey()));
+                        "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
+                        URI.create(entry.getKey())));
             }
         }
         for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
@@ -218,7 +222,8 @@ public class SchemaRegistry {
             ObjectSchema old = registry.byIdSchemas.putIfAbsent(entry.getKey(), schema);
             if (old != null && old != schema) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + entry.getKey() + "'", null, entry.getKey()));
+                        "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
+                        URI.create(entry.getKey())));
             }
         }
         return registry;
@@ -330,7 +335,7 @@ public class SchemaRegistry {
         if (plan == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                     "cannot resolve schema fragment '#" + fragment + "'",
-                    null, rootPlan.schemaUri));
+                    PathSegment.Root.INSTANCE, rootPlan.schemaUri));
         }
 
         return plan;
@@ -439,7 +444,7 @@ public class SchemaRegistry {
         URI uri = DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
         ObjectSchema schema = SchemaUtil.loadSchemaFromLocalUri(uri);
         if (schema == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                "global schema not found", null, uri.toString()));
+                "global schema not found", PathSegment.Root.INSTANCE, uri));
         GLOBAL_SCHEMA_REGISTRY.index(schema);
         if (alias != null && !alias.isEmpty()) {
             GLOBAL_SCHEMA_REGISTRY._putSchema(URI.create(alias), schema);

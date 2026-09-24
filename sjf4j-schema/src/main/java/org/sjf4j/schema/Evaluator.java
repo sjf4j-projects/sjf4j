@@ -162,7 +162,7 @@ public interface Evaluator {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                         "invalid 'type' keyword: expected string or array, found '" +
                                 type.getClass().getSimpleName() + "'",
-                        keywordPs, null));
+                        keywordPs, schemaUri));
             }
         }
         /**
@@ -349,7 +349,7 @@ public interface Evaluator {
             this.divisor = Numbers.normalizeDecimal(multipleOf);
             if (divisor.signum() <= 0)
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
-                        "invalid 'multipleOf' keyword: value must be > 0", keywordPs, null));
+                        "invalid 'multipleOf' keyword: value must be > 0", keywordPs, schemaUri));
             this.isIntegerDivisor = divisor.scale() <= 0;
             this.divisorLong = isIntegerDivisor ? divisor.longValueExact() : 0L;
             this.divisorDouble = divisor.doubleValue();
@@ -410,13 +410,19 @@ public interface Evaluator {
             this.schemaUri = schemaUri;
             if (minLength != null) {
                 this.minLength = minLength.intValue();
-                if (minLength < 0) throw new SchemaException("");
+                if (minLength < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'minLength' keyword: value must be >= 0", minLengthKeywordPs, schemaUri));
+                }
             } else {
                 this.minLength = -1;
             }
             if (maxLength != null) {
                 this.maxLength = maxLength.intValue();
-                if (maxLength < 0) throw new SchemaException("");
+                if (maxLength < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'maxLength' keyword: value must be >= 0", maxLengthKeywordPs, schemaUri));
+                }
             } else {
                 this.maxLength = -1;
             }
@@ -457,7 +463,7 @@ public interface Evaluator {
             this.keywordPs = keywordPs;
             this.schemaUri = schemaUri;
             this.pattern = Asserts.notNull(pattern,  "pattern");
-            this.pn = SchemaUtil.compileRegexPattern(pattern, "pattern");
+            this.pn = SchemaUtil.compileRegexPattern(pattern, "pattern", keywordPs, schemaUri);
         }
 
         /**
@@ -585,14 +591,22 @@ public interface Evaluator {
             this.maxPropertiesKeywordPs = maxPropertiesKeywordPs;
             this.schemaUri = schemaUri;
             if (minProperties != null) {
-                this.minProperties = minProperties.intValue();
-                if (minProperties < 0) throw new SchemaException("");
+                this.minProperties = minProperties;
+                if (minProperties < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'minProperties' keyword: value must be >= 0",
+                            minPropertiesKeywordPs, schemaUri));
+                }
             } else {
                 this.minProperties = -1;
             }
             if (maxProperties != null) {
-                this.maxProperties = maxProperties.intValue();
-                if (maxProperties < 0) throw new SchemaException("");
+                this.maxProperties = maxProperties;
+                if (maxProperties < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'maxProperties' keyword: value must be >= 0",
+                            maxPropertiesKeywordPs, schemaUri));
+                }
             } else {
                 this.maxProperties = -1;
             }
@@ -627,7 +641,8 @@ public interface Evaluator {
         final Pattern[] patterns;
         final SchemaPlan[] patternPlans;
         final SchemaPlan additionalPropertiesPlan;
-        public PropertiesEvaluator(Map<String, SchemaPlan> properties,
+        public PropertiesEvaluator(PathSegment patternPropertiesKeywordPs, URI schemaUri,
+                                   Map<String, SchemaPlan> properties,
                                    Map<String, SchemaPlan> patternProperties,
                                    SchemaPlan additionalPropertiesPlan) {
             this.properties = properties;
@@ -636,7 +651,8 @@ public interface Evaluator {
                 this.patternPlans = new SchemaPlan[patternProperties.size()];
                 int i = 0;
                 for (Map.Entry<String, SchemaPlan> entry : patternProperties.entrySet()) {
-                    this.patterns[i] = SchemaUtil.compileRegexPattern(entry.getKey(), "patternProperties");
+                    this.patterns[i] = SchemaUtil.compileRegexPattern(entry.getKey(), "patternProperties",
+                            new PathSegment.Name(patternPropertiesKeywordPs, entry.getKey()), schemaUri);
                     this.patternPlans[i] = entry.getValue();
                     i++;
                 }
@@ -912,14 +928,20 @@ public interface Evaluator {
             this.uniqueItemsKeywordPs = uniqueItemsKeywordPs;
             this.schemaUri = schemaUri;
             if (minItems != null) {
-                this.minItems = minItems.intValue();
-                if (minItems < 0) throw new SchemaException("");
+                this.minItems = minItems;
+                if (minItems < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'minItems' keyword: value must be >= 0", minItemsKeywordPs, schemaUri));
+                }
             } else {
                 this.minItems = -1;
             }
             if (maxItems != null) {
-                this.maxItems = maxItems.intValue();
-                if (maxItems < 0) throw new SchemaException("");
+                this.maxItems = maxItems;
+                if (maxItems < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'maxItems' keyword: value must be >= 0", maxItemsKeywordPs, schemaUri));
+                }
             } else {
                 this.maxItems = -1;
             }
@@ -1031,14 +1053,22 @@ public interface Evaluator {
             this.schemaUri = schemaUri;
             this.containsPlan = containsPlan;
             if (minContains != null) {
-                this.minContains = minContains.intValue();
-                if (minContains < 0) throw new SchemaException("");
+                this.minContains = minContains;
+                if (minContains < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'minContains' keyword: value must be >= 0",
+                            minContainsKeywordPs, schemaUri));
+                }
             } else {
                 this.minContains = 1;
             }
             if (maxContains != null) {
-                this.maxContains = maxContains.intValue();
-                if (maxContains < 0) throw new SchemaException("");
+                this.maxContains = maxContains;
+                if (maxContains < 0) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                            "invalid 'maxContains' keyword: value must be >= 0",
+                            maxContainsKeywordPs, schemaUri));
+                }
             } else {
                 this.maxContains = -1;
             }

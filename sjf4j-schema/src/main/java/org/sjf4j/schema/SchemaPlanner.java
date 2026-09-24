@@ -57,7 +57,7 @@ public final class SchemaPlanner {
         if (retrievalUri != null && !retrievalUri.equals(idUri)) {
             context.registry.putPlan(retrievalUri, plan);
         }
-        _bindDeferredRefs(context, idUri);
+        _bindDeferredRefs(context);
         return plan;
     }
 
@@ -251,7 +251,8 @@ public final class SchemaPlanner {
                 ? _buildPlanByKey("additionalProperties", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (properties != null || patternProperties != null || additionalProperties != null) {
-            evaluators.add(new Evaluator.PropertiesEvaluator(properties, patternProperties, additionalProperties));
+            evaluators.add(new Evaluator.PropertiesEvaluator(new PathSegment.Name(ps, "patternProperties"), idUri,
+                    properties, patternProperties, additionalProperties));
         }
 
         // dependentSchemas
@@ -432,7 +433,7 @@ public final class SchemaPlanner {
         SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.schemaUri, jsonPath.tail(),
                 resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
                 context, resourcePlan.dialect, resourcePlan.vocabulary);
-        _bindDeferredRefs(context, resourcePlan.schemaUri);
+        _bindDeferredRefs(context);
         return plan;
     }
 
@@ -587,9 +588,17 @@ public final class SchemaPlanner {
         return plan;
     }
 
-    private static void _bindDeferredRefs(PlanningContext context, URI idUri) {
+    private static void _bindDeferredRefs(PlanningContext context) {
         for (Evaluator.RefEvaluator refEvaluator : context.refEvaluators) {
-            URI refUri = SchemaUtil.resolveUri(refEvaluator.schemaUri, URI.create(refEvaluator.ref));
+            URI refUri;
+            try {
+                refUri = SchemaUtil.resolveUri(refEvaluator.schemaUri, URI.create(refEvaluator.ref));
+            } catch (SchemaException e) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve $ref URI '" + refEvaluator.ref + "': base='"
+                                + refEvaluator.schemaUri + "', ref='" + refEvaluator.ref + "'",
+                        refEvaluator.keywordPs, refEvaluator.schemaUri), e);
+            }
             String resource = SchemaUtil.stripFragment(refUri.toString());
 
             // Resolve resource and fragment separately so diagnostics can tell
@@ -600,7 +609,7 @@ public final class SchemaPlanner {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema resource '" + resource + "' while resolving $ref '"
                                 + refEvaluator.ref + "' -> '" + refUri + "'; preload or register the referenced schema",
-                        refEvaluator.keywordPs, idUri));
+                        refEvaluator.keywordPs, refEvaluator.schemaUri));
             }
             String fragment = refUri.getFragment();
             SchemaPlan refPlan = context.registry.resolveFragment(resourcePlan, fragment);
@@ -608,12 +617,20 @@ public final class SchemaPlanner {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
                                 + "' while resolving $ref '" + refEvaluator.ref + "' -> '" + refUri + "'",
-                        refEvaluator.keywordPs, idUri));
+                        refEvaluator.keywordPs, refEvaluator.schemaUri));
             }
             refEvaluator.plan = refPlan;
         }
         for (Evaluator.DynamicRefEvaluator dynamicRefEvaluator : context.dynamicRefEvaluators) {
-            URI refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.schemaUri, URI.create(dynamicRefEvaluator.ref));
+            URI refUri;
+            try {
+                refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.schemaUri, URI.create(dynamicRefEvaluator.ref));
+            } catch (SchemaException e) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve $dynamicRef URI '" + dynamicRefEvaluator.ref + "': base='"
+                                + dynamicRefEvaluator.schemaUri + "', ref='" + dynamicRefEvaluator.ref + "'",
+                        dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri), e);
+            }
             String resource = SchemaUtil.stripFragment(refUri.toString());
 
             // Dynamic references use the same static target resolution first;
@@ -623,7 +640,7 @@ public final class SchemaPlanner {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema resource '" + resource + "' while resolving $dynamicRef '"
                                 + dynamicRefEvaluator.ref + "' -> '" + refUri + "'; preload or register the referenced schema",
-                        dynamicRefEvaluator.keywordPs, idUri));
+                        dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri));
             }
             String fragment = refUri.getFragment();
             SchemaPlan refPlan = context.registry.resolveFragment(resourcePlan, fragment);
@@ -631,7 +648,7 @@ public final class SchemaPlanner {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
                                 + "' while resolving $dynamicRef '" + dynamicRefEvaluator.ref + "' -> '" + refUri + "'",
-                        dynamicRefEvaluator.keywordPs, idUri));
+                        dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri));
             }
             dynamicRefEvaluator.initialPlan = refPlan;
             dynamicRefEvaluator.dynamicAnchorName = fragment != null && fragment.startsWith("/")

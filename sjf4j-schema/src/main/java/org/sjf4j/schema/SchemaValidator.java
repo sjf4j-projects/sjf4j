@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Strings;
 
@@ -163,7 +164,7 @@ public final class SchemaValidator {
             URI refUri = baseDirUri.resolve(ref);
             SchemaPlan plan = _registerByRef(refUri);
             if (plan == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                    "failed to load schema by ref uri", null, refUri.toString()));
+                    "failed to load schema by ref uri", PathSegment.Root.INSTANCE, refUri));
             return plan;
         }
 
@@ -181,7 +182,7 @@ public final class SchemaValidator {
                 "no schema found for @ValidJsonSchema on '" + clazz.getName() +
                         "'; expected annotation value/ref or file at '" + simpleNameUri +
                         "' or '" + snakeNameUri + "'",
-                null, (String) null));
+                PathSegment.Root.INSTANCE, baseDirUri));
     }
 
 

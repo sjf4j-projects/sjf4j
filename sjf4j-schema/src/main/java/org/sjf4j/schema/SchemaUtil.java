@@ -115,13 +115,9 @@ public final class SchemaUtil {
     }
 
     static String formatSchemaLine(String code, String summary, PathSegment keywordPs, URI schemaUri) {
-        return formatSchemaLine(code, summary, displayPath(keywordPs), displaySchemaUri(schemaUri));
-    }
-
-    static String formatSchemaLine(String code, String summary, String keywordPath, String schemaUri) {
         StringBuilder sb = new StringBuilder();
         sb.append("SCHEMA ").append(code).append(": ").append(summary);
-        _appendMeta(sb, _meta("keyword", keywordPath), _meta("schema", schemaUri));
+        _appendMeta(sb, _meta("keyword", displayPath(keywordPs)), _meta("schema", displaySchemaUri(schemaUri)));
         return sb.toString();
     }
 
@@ -150,7 +146,8 @@ public final class SchemaUtil {
     public static String displaySchemaUri(URI schemaUri) {
         if (schemaUri == null) return "<inline>";
         if ("sjf4j".equalsIgnoreCase(schemaUri.getScheme())) return "<inline>";
-        return schemaUri.toString();
+        String value = schemaUri.toString();
+        return value.isEmpty() ? "<inline>" : value;
     }
 
     // Length of Unicode code points
@@ -192,7 +189,8 @@ public final class SchemaUtil {
      * small normalization pass for verbose Unicode property names often used in
      * JSON Schema test suites.
      */
-    public static Pattern compileRegexPattern(String pattern, String keyword) {
+    public static Pattern compileRegexPattern(String pattern, String keyword,
+                                              PathSegment keywordPs, URI schemaUri) {
         Asserts.notNull(pattern, "pattern");
         String normalized = normalizeEcma262Regex(pattern);
         normalized = normalizeUnicodeProperties(normalized);
@@ -201,7 +199,7 @@ public final class SchemaUtil {
         } catch (PatternSyntaxException e) {
             throw new SchemaException(formatSchemaLine(Code.SCHEMA_INVALID,
                     "invalid regex for keyword '" + keyword + "': " + pattern,
-                    (String) null, (String) null), e);
+                    keywordPs, schemaUri), e);
         }
     }
 
@@ -329,7 +327,7 @@ public final class SchemaUtil {
             if (r.startsWith("#")) return URI.create(stripFragment(base.toString()) + r);
             throw new SchemaException(formatSchemaLine(Code.SCHEMA_RESOLVE,
                     "cannot resolve relative uri against opaque base uri: base='" + base + "', ref='" + ref + "'",
-                    null, displaySchemaUri(base)));
+                    PathSegment.Root.INSTANCE, base));
         }
 
         return base.resolve(ref);
@@ -368,7 +366,7 @@ public final class SchemaUtil {
                 return new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null).toString();
             } catch (URISyntaxException e) {
                 throw new SchemaException(formatSchemaLine(Code.SCHEMA_URI,
-                        "failed to normalize uri key '" + uri + "'", null, displaySchemaUri(uri)), e);
+                        "failed to normalize uri key '" + uri + "'", PathSegment.Root.INSTANCE, uri), e);
             }
         }
         return uri.toString();
@@ -392,16 +390,16 @@ public final class SchemaUtil {
         Asserts.notNull(uri, "uri");
         ObjectSchema schema;
         if ("file".equalsIgnoreCase(uri.getScheme())) {
-            schema = _loadSchemaFromFile(uri.getPath());
+            schema = _loadSchemaFromFile(uri);
         } else if ("classpath".equalsIgnoreCase(uri.getScheme())) {
             String path = uri.getPath();
             if (path == null || path.isEmpty()) {
                 path = uri.getSchemeSpecificPart();
             }
-            schema = _loadSchemaFromResource(path);
+            schema = _loadSchemaFromResource(uri, path);
         } else {
             throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
-                    "unsupported local schema uri", null, uri.toString()));
+                    "unsupported local schema uri", PathSegment.Root.INSTANCE, uri));
         }
         if (schema == null) return null;
         schema.setRetrievalUri(uri);
@@ -412,14 +410,14 @@ public final class SchemaUtil {
      * Loads a schema from a file path. Returns {@code null} when the file does
      * not exist.
      */
-    private static ObjectSchema _loadSchemaFromFile(String path) {
-        try (InputStream in = Files.newInputStream(Paths.get(path))) {
+    private static ObjectSchema _loadSchemaFromFile(URI uri) {
+        try (InputStream in = Files.newInputStream(Paths.get(uri.getPath()))) {
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (NoSuchFileException e) {
             return null;
         } catch (Exception e) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
-                    "failed to load schema from file", null, path), e);
+                    "failed to load schema from file", PathSegment.Root.INSTANCE, uri), e);
         }
     }
 
@@ -427,14 +425,14 @@ public final class SchemaUtil {
      * Loads a schema from a classpath resource path. Returns {@code null} when
      * the resource does not exist.
      */
-    private static ObjectSchema _loadSchemaFromResource(String path) {
+    private static ObjectSchema _loadSchemaFromResource(URI uri, String path) {
         if (path.startsWith("/")) path = path.substring(1);
         try (InputStream in = SchemaRegistry.class.getClassLoader().getResourceAsStream(path)) {
             if (in == null) return null;
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (Exception e) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
-                    "failed to load schema from resource", null, path), e);
+                    "failed to load schema from resource", PathSegment.Root.INSTANCE, uri), e);
         }
     }
 
