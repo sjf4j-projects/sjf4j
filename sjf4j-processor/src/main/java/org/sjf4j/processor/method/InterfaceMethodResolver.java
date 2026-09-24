@@ -1,6 +1,7 @@
 package org.sjf4j.processor.method;
 
 import org.sjf4j.processor.type.TypeSystem;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -40,17 +41,17 @@ public final class InterfaceMethodResolver {
             TypeSystem types) {
 
         this.typeUtils =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         typeUtils,
                         "typeUtils");
 
         this.elements =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         elements,
                         "elements");
 
         this.types =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         types,
                         "types");
     }

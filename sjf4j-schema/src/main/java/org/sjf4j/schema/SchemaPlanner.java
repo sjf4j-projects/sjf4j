@@ -4,6 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -35,8 +36,8 @@ public final class SchemaPlanner {
 
 
     static SchemaPlan buildAndPutPlan(ObjectSchema schema, SchemaRegistry registry) {
-        Objects.requireNonNull(schema, "schema");
-        Objects.requireNonNull(registry, "registry");
+        Asserts.notNull(schema, "schema");
+        Asserts.notNull(registry, "registry");
 
         URI retrievalUri = schema.getRetrievalUri();
         URI idUri = retrievalUri != null
@@ -419,9 +420,9 @@ public final class SchemaPlanner {
     }
 
     static SchemaPlan lazyBuildPlanByPath(SchemaPlan resourcePlan, String path, SchemaRegistry registry) {
-        Objects.requireNonNull(resourcePlan, "resourcePlan");
-        Objects.requireNonNull(path, "path");
-        Objects.requireNonNull(registry, "registry");
+        Asserts.notNull(resourcePlan, "resourcePlan");
+        Asserts.notNull(path, "path");
+        Asserts.notNull(registry, "registry");
         if (!path.startsWith("/") || resourcePlan.schema == null) return null;
 
         JsonPath jsonPath = JsonPath.parse(path);

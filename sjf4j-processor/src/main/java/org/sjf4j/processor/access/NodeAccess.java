@@ -1,6 +1,7 @@
 package org.sjf4j.processor.access;
 
 import org.sjf4j.processor.property.Property;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
@@ -42,12 +43,12 @@ public final class NodeAccess {
             Property property) {
 
         this.kind =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         kind,
                         "kind");
 
         this.ownerType =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         ownerType,
                         "ownerType");
 

@@ -11,6 +11,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
@@ -47,8 +48,8 @@ public class Fastjson2StreamingIO {
      */
 
     public static Object readNode(JSONReader reader, Type type, StreamingContext context) {
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(reader, "reader");
+        Asserts.notNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawBox);
         return _readNode(reader, type, rawBox, ti, context);
@@ -240,7 +241,7 @@ public class Fastjson2StreamingIO {
 
     public static Object readPojo(JSONReader reader, Type ownerType, Class<?> ownerRawClazz,
                                   PojoInfo pi, StreamingContext context) throws IOException {
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(context, "context");
         CreatorInfo ci = pi.creatorInfo;
         boolean hasParentOneOf = pi.hasParentScopeOneOf;
 
@@ -573,7 +574,7 @@ public class Fastjson2StreamingIO {
 
     public static Object readOneOf(JSONReader reader, OneOfInfo anyOfInfo,
                                    StreamingContext context) throws IOException {
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(context, "context");
         try {
             if (anyOfInfo.hasDiscriminator) {
                 Object rawNode = _readRawNode(reader);
@@ -613,8 +614,8 @@ public class Fastjson2StreamingIO {
      */
 
     public static void writeNode(JSONWriter writer, Object node, StreamingContext context) throws IOException {
-        Objects.requireNonNull(writer, "writer");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(writer, "writer");
+        Asserts.notNull(context, "context");
         _writeNode(writer, node, context);
     }
 

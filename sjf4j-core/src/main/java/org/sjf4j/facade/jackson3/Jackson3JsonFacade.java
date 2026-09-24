@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.util.Asserts;
 import tools.jackson.databind.AnnotationIntrospector;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
@@ -36,8 +37,8 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
      * Creates facade with configured JsonMapper and SJF4J module.
      */
     public Jackson3JsonFacade(JsonMapper jsonMapper, StreamingContext context) {
-        Objects.requireNonNull(jsonMapper, "jsonMapper");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(jsonMapper, "jsonMapper");
+        Asserts.notNull(context, "context");
 
         JsonMapper.Builder builder = jsonMapper.rebuild();
         builder.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -85,25 +86,25 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
 
     @Override
     public Jackson3Reader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
     public Jackson3Reader createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
     public Jackson3Reader createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
     public Jackson3Reader createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
@@ -152,13 +153,13 @@ public final class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jack
 
     @Override
     public Jackson3Writer createWriter(Writer output) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         return new Jackson3Writer(jsonMapper.createGenerator(output));
     }
 
     @Override
     public Jackson3Writer createWriter(OutputStream output) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         return new Jackson3Writer(jsonMapper.createGenerator(output));
     }
 

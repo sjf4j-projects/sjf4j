@@ -3,6 +3,7 @@ package org.sjf4j.processor.property;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.annotation.NodeAnnotations;
 import org.sjf4j.processor.type.TypeSystem;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -53,11 +54,11 @@ public final class PropertyResolver {
             TypeSystem types,
             NodeAnnotations annotations) {
 
-        this.typeUtils = Objects.requireNonNull(typeUtils, "typeUtils");
-        this.elements = Objects.requireNonNull(elements, "elements");
-        this.messager = Objects.requireNonNull(messager, "messager");
-        this.types = Objects.requireNonNull(types, "types");
-        this.annotations = Objects.requireNonNull(annotations, "annotations");
+        this.typeUtils = Asserts.notNull(typeUtils, "typeUtils");
+        this.elements = Asserts.notNull(elements, "elements");
+        this.messager = Asserts.notNull(messager, "messager");
+        this.types = Asserts.notNull(types, "types");
+        this.annotations = Asserts.notNull(annotations, "annotations");
     }
 
     /**

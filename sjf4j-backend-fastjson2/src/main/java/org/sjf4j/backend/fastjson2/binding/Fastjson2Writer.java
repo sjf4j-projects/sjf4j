@@ -3,6 +3,7 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -18,7 +19,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     public Fastjson2Writer(StreamingBinder<?, ?> binder, JSONWriter writer) {
         super(binder);
-        this.writer = Objects.requireNonNull(writer, "writer");
+        this.writer = Asserts.notNull(writer, "writer");
     }
 
     @Override
@@ -50,7 +51,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeName(String name) {
-        writer.writeName(Objects.requireNonNull(name, "name"));
+        writer.writeName(Asserts.notNull(name, "name"));
         writer.writeColon();
     }
 
@@ -61,7 +62,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeStringValue(String value) {
-        writer.writeString(Objects.requireNonNull(value, "value"));
+        writer.writeString(Asserts.notNull(value, "value"));
     }
 
     @Override
@@ -106,7 +107,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeNumberValue(Number value) {
-        Objects.requireNonNull(value, "value");
+        Asserts.notNull(value, "value");
         if (value instanceof Integer) {
             writer.writeInt32(value.intValue());
         } else if (value instanceof Long) {
@@ -130,12 +131,12 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeBigIntegerValue(BigInteger value) {
-        writer.writeBigInt(Objects.requireNonNull(value, "value"));
+        writer.writeBigInt(Asserts.notNull(value, "value"));
     }
 
     @Override
     public void writeBigDecimalValue(BigDecimal value) {
-        writer.writeDecimal(Objects.requireNonNull(value, "value"));
+        writer.writeDecimal(Asserts.notNull(value, "value"));
     }
 
     @Override

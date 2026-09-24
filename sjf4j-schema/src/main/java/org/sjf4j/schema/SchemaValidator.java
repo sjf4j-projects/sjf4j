@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Strings;
 
 import java.net.URI;
@@ -109,7 +110,7 @@ public final class SchemaValidator {
      * when no schema can be loaded from the resolved location.
      */
     public SchemaPlan load(String ref) {
-        Objects.requireNonNull(ref, "ref");
+        Asserts.notNull(ref, "ref");
         URI refUri = baseDirUri.resolve(ref);
         return _registerByRef(refUri);
     }

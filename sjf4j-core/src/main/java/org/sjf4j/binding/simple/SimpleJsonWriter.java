@@ -4,6 +4,7 @@ import org.sjf4j.binding.PreparedName;
 import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Asserts;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -24,7 +25,7 @@ public final class SimpleJsonWriter extends StreamingWriter {
      */
     public SimpleJsonWriter(StreamingBinder<?, ?> binder, Writer output) {
         super(binder);
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         this.writer = output;
     }
 

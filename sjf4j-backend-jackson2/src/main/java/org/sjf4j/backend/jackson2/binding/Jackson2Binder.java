@@ -13,6 +13,7 @@ import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -32,30 +33,30 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
     @SuppressWarnings("deprecation")
     public Jackson2Binder(JsonFactory factory, StreamingContext context) {
         super(context);
-        Objects.requireNonNull(factory, "factory");
+        Asserts.notNull(factory, "factory");
         this.factory = factory;
         this.factory.disable(JsonFactory.Feature.CHARSET_DETECTION);
     }
 
     @Override
     public Jackson2Reader createReader(Reader input) throws IOException {
-        return new Jackson2Reader(factory.createParser(Objects.requireNonNull(input, "input")));
+        return new Jackson2Reader(factory.createParser(Asserts.notNull(input, "input")));
     }
 
     /** Creates a streaming reader that wraps the supplied Jackson parser. */
     public Jackson2Reader createReader(JsonParser parser) {
-        return new Jackson2Reader(Objects.requireNonNull(parser, "parser"));
+        return new Jackson2Reader(Asserts.notNull(parser, "parser"));
     }
 
     @Override
     public Jackson2Reader createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson2Reader(factory.createParser(input));
     }
 
     @Override
     public Jackson2Reader createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson2Reader(factory.createParser(input));
     }
 
@@ -64,17 +65,17 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
 
     @Override
     public Jackson2Writer createWriter(Writer output) throws IOException {
-        return new Jackson2Writer(this, factory.createGenerator(Objects.requireNonNull(output, "output")));
+        return new Jackson2Writer(this, factory.createGenerator(Asserts.notNull(output, "output")));
     }
 
     /** Creates a streaming writer that wraps the supplied Jackson generator. */
     public Jackson2Writer createWriter(JsonGenerator generator) {
-        return new Jackson2Writer(this, Objects.requireNonNull(generator, "generator"));
+        return new Jackson2Writer(this, Asserts.notNull(generator, "generator"));
     }
 
     @Override
     public Jackson2Writer createWriter(OutputStream output) throws IOException {
-        return new Jackson2Writer(this, factory.createGenerator(Objects.requireNonNull(output, "output"), JsonEncoding.UTF8));
+        return new Jackson2Writer(this, factory.createGenerator(Asserts.notNull(output, "output"), JsonEncoding.UTF8));
     }
 
     @Override

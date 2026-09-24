@@ -1,5 +1,7 @@
 package org.sjf4j.processor.property;
 
+import org.sjf4j.util.Asserts;
+
 import java.util.Objects;
 
 /**
@@ -16,7 +18,7 @@ public final class Property {
             PropertyAccess read,
             PropertyAccess write) {
 
-        this.name = Objects.requireNonNull(name, "name");
+        this.name = Asserts.notNull(name, "name");
         this.read = read;
         this.write = write;
     }

@@ -7,6 +7,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
@@ -47,8 +48,8 @@ public final class StreamingIO {
      * Reads one node from streaming reader into target type using streaming context.
      */
     public static Object readNode(StreamingReader reader, Type type, StreamingContext context) {
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(reader, "reader");
+        Asserts.notNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawBox);
         return _readNode(reader, type, rawBox, ti, context);
@@ -636,8 +637,8 @@ public final class StreamingIO {
      * Writes one node to streaming writer using instance-level value formats.
      */
     public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
-        Objects.requireNonNull(writer, "writer");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(writer, "writer");
+        Asserts.notNull(context, "context");
         _writeNode(writer, node, context);
     }
 

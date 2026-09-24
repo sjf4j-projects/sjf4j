@@ -1,6 +1,7 @@
 package org.sjf4j.facade.simple;
 
 import org.sjf4j.facade.StreamingWriter;
+import org.sjf4j.util.Asserts;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -18,7 +19,7 @@ public final class SimpleJsonWriter implements StreamingWriter {
      * Creates writer over output characters.
      */
     public SimpleJsonWriter(Writer output) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
 
         if (!(output instanceof BufferedWriter)) {
             output = new BufferedWriter(output);

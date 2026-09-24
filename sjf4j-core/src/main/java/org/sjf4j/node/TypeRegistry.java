@@ -8,6 +8,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
 
@@ -28,12 +29,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@link TypeInfo} later used by reads, writes, conversion, copying, and
  * traversal. It classifies a class as a value codec, {@code @OneOf} type,
  * supported container, or object binding.
+ * Cached metadata is not updated by later {@link ValueRegistry} registrations.
  *
  * <p>Most application code does not need to call this class directly, but its
  * metadata model defines the runtime binding semantics used across
  * {@link Nodes}, {@link org.sjf4j.Sjf4j}, and facade integrations.
  */
 public final class TypeRegistry {
+    /**
+     * Global cache of analyzed type metadata; entries are not invalidated by
+     * later {@link ValueRegistry} registrations.
+     */
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
 
 
@@ -134,7 +140,7 @@ public final class TypeRegistry {
      * Returns value codec metadata for a class and named format.
      */
     public static ValueInfo registerNodeValueOrElseThrow(Class<?> clazz, String valueFormat) {
-        Objects.requireNonNull(valueFormat, "valueFormat");
+        Asserts.notNull(valueFormat, "valueFormat");
 
         TypeInfo ti = registerTypeInfo(clazz);
         ValueInfo info = ti.getNodeValueInfo(valueFormat);

@@ -29,6 +29,7 @@ import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.fixture.JsonObjectPersonFixture;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
@@ -315,7 +316,7 @@ public class TypeRegistryTest {
             }
         }, null, false);
 
-        ValueInfo vci = Objects.requireNonNull(ValueRegistry.resolve(CodecDay.class))[0];
+        ValueInfo vci = Asserts.notNull(ValueRegistry.resolve(CodecDay.class), "test")[0];
         log.info("vci={}", vci);
         assertNotNull(vci);
 

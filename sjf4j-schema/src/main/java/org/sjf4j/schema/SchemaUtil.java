@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
+import org.sjf4j.util.Asserts;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -192,7 +193,7 @@ public final class SchemaUtil {
      * JSON Schema test suites.
      */
     public static Pattern compileRegexPattern(String pattern, String keyword) {
-        Objects.requireNonNull(pattern, "pattern");
+        Asserts.notNull(pattern, "pattern");
         String normalized = normalizeEcma262Regex(pattern);
         normalized = normalizeUnicodeProperties(normalized);
         try {
@@ -358,7 +359,7 @@ public final class SchemaUtil {
      * local resource URIs map to one key consistently.
      */
     public static String normalizeUriKey(URI uri) {
-        Objects.requireNonNull(uri, "uri");
+        Asserts.notNull(uri, "uri");
         if (uri.getFragment() != null) {
             uri = URI.create(stripFragment(uri.toString()));
         }
@@ -388,7 +389,7 @@ public final class SchemaUtil {
      * its root retrieval URI.
      */
     public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
-        Objects.requireNonNull(uri, "uri");
+        Asserts.notNull(uri, "uri");
         ObjectSchema schema;
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             schema = _loadSchemaFromFile(uri.getPath());

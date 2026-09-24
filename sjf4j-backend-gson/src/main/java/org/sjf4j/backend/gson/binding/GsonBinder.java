@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -21,18 +22,18 @@ public final class GsonBinder extends JsonBinder<GsonReader, GsonWriter> {
 
     public GsonBinder(Gson gson, StreamingContext context) {
         super(context);
-        this.gson = Objects.requireNonNull(gson, "gson");
+        this.gson = Asserts.notNull(gson, "gson");
     }
 
     @Override
     public GsonReader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new GsonReader(gson.newJsonReader(input));
     }
 
     @Override
     public GsonWriter createWriter(Writer output) throws IOException {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         JsonWriter writer = gson.newJsonWriter(output);
         writer.setSerializeNulls(true);
         return new GsonWriter(this, writer);

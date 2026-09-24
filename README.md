@@ -269,7 +269,12 @@ OBNT can also be extended beyond regular POJOs and collections:
 - Use `@NodeValue` to model a Java type as a logical value node.
 - Use `@OneOf` to model polymorphic node types.
 - Register an **External Node** to integrate your own structural types into OBNT.
-  
+
+Register custom `ValueRegistry` codecs during application initialization, before
+their types or dependent bindings are first analyzed. The registry and
+`TypeRegistry` cache are global across `Sjf4j` instances; creating an instance
+does not reset them, and later registrations do not update cached metadata.
+
 Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 

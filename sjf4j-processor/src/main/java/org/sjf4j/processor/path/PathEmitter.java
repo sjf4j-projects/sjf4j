@@ -876,7 +876,7 @@ final class PathEmitter {
                         .toString();
 
         out.line(
-                "java.util.Objects.requireNonNull(" +
+                "org.sjf4j.util.Asserts.notNull(" +
                         root +
                         ", " +
                         JavaWriter.stringLiteral(root) +

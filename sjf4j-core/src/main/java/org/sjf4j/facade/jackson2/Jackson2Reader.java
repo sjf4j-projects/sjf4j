@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.JsonType;
 import org.sjf4j.facade.StreamingReader;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -21,7 +22,7 @@ public final class Jackson2Reader implements StreamingReader {
      * Creates reader adapter from Jackson2 JsonParser.
      */
     public Jackson2Reader(JsonParser parser) {
-        Objects.requireNonNull(parser, "parser");
+        Asserts.notNull(parser, "parser");
         this.parser = parser;
     }
 

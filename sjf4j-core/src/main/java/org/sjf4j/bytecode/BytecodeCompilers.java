@@ -4,6 +4,7 @@ package org.sjf4j.bytecode;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPath;
+import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.Type;
 import java.util.Iterator;
@@ -31,9 +32,9 @@ final class BytecodeCompilers {
     }
 
     public static BytecodePath<?, ?> compilePath(String pathExpr, Type rootType, Type valueType, boolean allowFallback) {
-        Objects.requireNonNull(pathExpr, "pathExpr");
-        Objects.requireNonNull(rootType, "rootType");
-        Objects.requireNonNull(valueType, "valueType");
+        Asserts.notNull(pathExpr, "pathExpr");
+        Asserts.notNull(rootType, "rootType");
+        Asserts.notNull(valueType, "valueType");
         Class<?> rootClazz = Types.rawClazz(rootType);
         Class<?> valueClazz = Types.rawClazz(valueType);
 

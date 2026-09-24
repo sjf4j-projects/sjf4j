@@ -3,6 +3,7 @@ package org.sjf4j.backend.jsonp.binding;
 import jakarta.json.stream.JsonParser;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -23,7 +24,7 @@ public final class JsonpReader implements StreamingReader {
      * current event cannot be recovered.</p>
      */
     public JsonpReader(JsonParser parser) {
-        this.parser = Objects.requireNonNull(parser, "parser");
+        this.parser = Asserts.notNull(parser, "parser");
         try {
             current = parser.currentEvent();
         } catch (UnsupportedOperationException ignored) {

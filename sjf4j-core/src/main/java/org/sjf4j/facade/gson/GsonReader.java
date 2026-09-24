@@ -5,6 +5,7 @@ import com.google.gson.stream.JsonToken;
 import org.sjf4j.JsonType;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.EOFException;
@@ -23,7 +24,7 @@ public final class GsonReader implements StreamingReader {
      * Creates reader adapter from Gson JsonReader.
      */
     public GsonReader(JsonReader reader) {
-        Objects.requireNonNull(reader, "reader");
+        Asserts.notNull(reader, "reader");
         this.reader = reader;
     }
 

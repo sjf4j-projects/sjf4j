@@ -13,6 +13,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
@@ -59,8 +60,8 @@ public class Jackson2StreamingIO {
     }
 
     public static Object readNode(JsonParser parser, Type type, StreamingContext context) throws IOException {
-        Objects.requireNonNull(parser, "parser");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(parser, "parser");
+        Asserts.notNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawBox);
         return _readNode(parser, type, rawBox, ti, context);
@@ -647,7 +648,7 @@ public class Jackson2StreamingIO {
 
     public static Object readOneOf(JsonParser parser, OneOfInfo anyOfInfo,
                                    StreamingContext context) throws IOException {
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(context, "context");
         JsonToken token = parser.currentToken();
         if (token == null) {
             token = parser.nextToken();
@@ -769,8 +770,8 @@ public class Jackson2StreamingIO {
      */
 
     public static void writeNode(JsonGenerator gen, Object node, StreamingContext context) throws IOException {
-        Objects.requireNonNull(gen, "gen");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(gen, "gen");
+        Asserts.notNull(context, "context");
         _writeNode(gen, node, context);
     }
 

@@ -1,5 +1,7 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.util.Asserts;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,8 +23,8 @@ public class VocabularyRegistry {
      * Later registrations for the same keyword overwrite previous mapping.
      */
     public static void registerKeyword(String keyword, String... vocabUris) {
-        Objects.requireNonNull(keyword);
-        Objects.requireNonNull(vocabUris);
+        Asserts.notNull(keyword, "keyword");
+        Asserts.notNull(vocabUris, "vocabUris");
         KEYWORD_VOCAB_CACHE.put(keyword, vocabUris);
     }
 

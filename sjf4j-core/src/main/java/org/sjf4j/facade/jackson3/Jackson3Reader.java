@@ -2,6 +2,7 @@ package org.sjf4j.facade.jackson3;
 
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.JsonType;
+import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
 import tools.jackson.databind.util.TokenBuffer;
@@ -24,7 +25,7 @@ public final class Jackson3Reader implements StreamingReader {
     }
 
     Jackson3Reader(JsonParser parser, boolean advanceForkSource) {
-        Objects.requireNonNull(parser, "parser");
+        Asserts.notNull(parser, "parser");
         this.parser = parser;
         this.advanceForkSource = advanceForkSource;
     }

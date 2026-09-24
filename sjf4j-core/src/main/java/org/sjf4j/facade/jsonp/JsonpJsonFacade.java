@@ -5,6 +5,7 @@ import jakarta.json.spi.JsonProvider;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,7 +24,7 @@ public final class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWrite
     }
 
     public JsonpJsonFacade(StreamingContext context) {
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(context, "context");
         this.jsonProvider = JsonProvider.provider();
         this.streamingContext = context;
     }
@@ -49,7 +50,7 @@ public final class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWrite
      */
     @Override
     public JsonpReader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new JsonpReader(jsonProvider.createParser(input));
     }
 
@@ -58,7 +59,7 @@ public final class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWrite
      */
     @Override
     public JsonpReader createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new JsonpReader(jsonProvider.createParser(input));
     }
 

@@ -285,7 +285,7 @@ public final class FindGenerator {
                     .isPrimitive()) {
 
                 out.line(
-                        "java.util.Objects.requireNonNull(" +
+                        "org.sjf4j.util.Asserts.notNull(" +
                                 root.getSimpleName() +
                                 ", " +
                                 JavaWriter.stringLiteral(
@@ -474,7 +474,7 @@ public final class FindGenerator {
                     .isPrimitive()) {
 
                 out.line(
-                        "java.util.Objects.requireNonNull(" +
+                        "org.sjf4j.util.Asserts.notNull(" +
                                 rootName +
                                 ", " +
                                 JavaWriter.stringLiteral(
@@ -962,7 +962,7 @@ public final class FindGenerator {
                     .isPrimitive()) {
 
                 out.line(
-                        "java.util.Objects.requireNonNull(" +
+                        "org.sjf4j.util.Asserts.notNull(" +
                                 rootName +
                                 ", " +
                                 JavaWriter.stringLiteral(
@@ -1201,7 +1201,7 @@ public final class FindGenerator {
                     .isPrimitive()) {
 
                 out.line(
-                        "java.util.Objects.requireNonNull(" +
+                        "org.sjf4j.util.Asserts.notNull(" +
                                 rootName +
                                 ", " +
                                 JavaWriter.stringLiteral(

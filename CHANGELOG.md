@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added compiled binding generation with `@ReadFrom` and `@WriteTo` annotations for custom property read/write methods.
+
 ### Breaking Changes
 - Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.
 - Moved Jackson 2 streaming binding classes from `org.sjf4j.backend.jackson3.binding` to `org.sjf4j.backend.jackson2.binding`; update imports accordingly.

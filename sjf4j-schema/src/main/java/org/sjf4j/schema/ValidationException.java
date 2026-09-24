@@ -1,5 +1,7 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.util.Asserts;
+
 import java.util.Objects;
 
 
@@ -18,7 +20,7 @@ public class ValidationException extends SchemaException {
      * Creates an exception from a validation result.
      */
     public ValidationException(ValidationResult result) {
-        super(buildMessage(Objects.requireNonNull(result, "result")));
+        super(buildMessage(Asserts.notNull(result, "result")));
         this.result = result;
     }
 

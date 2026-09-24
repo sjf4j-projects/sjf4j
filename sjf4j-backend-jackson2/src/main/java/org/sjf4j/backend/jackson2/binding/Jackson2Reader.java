@@ -3,6 +3,7 @@ package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -17,7 +18,7 @@ public class Jackson2Reader implements StreamingReader {
     private boolean initialized;
 
     public Jackson2Reader(JsonParser parser) {
-        this.parser = Objects.requireNonNull(parser, "parser");
+        this.parser = Asserts.notNull(parser, "parser");
     }
 
     @Override

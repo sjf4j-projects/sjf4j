@@ -17,6 +17,7 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
@@ -51,7 +52,7 @@ public final class SimpleNodeBinder implements NodeBinder {
      * Creates a binding with the supplied streaming configuration.
      */
     public SimpleNodeBinder(StreamingContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        this.context = Asserts.notNull(context, "context");
     }
 
 

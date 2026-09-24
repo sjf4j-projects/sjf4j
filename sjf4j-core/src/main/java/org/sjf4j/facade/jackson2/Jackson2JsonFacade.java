@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,8 +44,8 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
      * Creates facade with configured ObjectMapper and SJF4J module.
      */
     public Jackson2JsonFacade(ObjectMapper objectMapper, StreamingContext context) {
-        Objects.requireNonNull(objectMapper, "objectMapper");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(objectMapper, "objectMapper");
+        Asserts.notNull(context, "context");
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         AnnotationIntrospector serializationAi = objectMapper.getSerializationConfig().getAnnotationIntrospector();
@@ -95,7 +96,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
      */
     @Override
     public Jackson2Reader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 
@@ -104,7 +105,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
      */
     @Override
     public Jackson2Reader createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 
@@ -113,7 +114,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
      */
     @Override
     public Jackson2Reader createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 
@@ -122,7 +123,7 @@ public final class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jack
      */
     @Override
     public Jackson2Reader createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 

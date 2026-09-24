@@ -2,6 +2,7 @@ package org.sjf4j.path;
 
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ public final class PathSyntax {
      * Linearizes a segment chain into an ordered array.
      */
     public static PathSegment[] linearize(PathSegment lastSegment) {
-        Objects.requireNonNull(lastSegment, "lastSegment");
+        Asserts.notNull(lastSegment, "lastSegment");
         int size = 0;
         for (PathSegment p = lastSegment; p != null; p = p.parent()) size++;
         PathSegment[] segments = new PathSegment[size];
@@ -68,7 +69,7 @@ public final class PathSyntax {
      * {@code /}) and RFC 6902 append token ({@code -}) when used in patch paths.
      */
     public static PathSegment[] parsePointer(String expr) {
-        Objects.requireNonNull(expr, "expr");
+        Asserts.notNull(expr, "expr");
         if (!expr.isEmpty() && !expr.startsWith("/"))
             throw new NodeException("invalid JSON Pointer expression '" + expr + "': must start with '/'");
 
@@ -130,7 +131,7 @@ public final class PathSyntax {
      * only valid as the last token.
      */
     public static String toPointerExpr(PathSegment[] segments) {
-        Objects.requireNonNull(segments, "segments");
+        Asserts.notNull(segments, "segments");
         StringBuilder sb = new StringBuilder();
 
         for (int i = 0, len = segments.length; i < len; i++) {
@@ -183,7 +184,7 @@ public final class PathSyntax {
      * Formats segments as a JSONPath expression.
      */
     public static String toPathExpr(PathSegment[] segments) {
-        Objects.requireNonNull(segments, "segments");
+        Asserts.notNull(segments, "segments");
         StringBuilder sb = new StringBuilder();
         PathSegment lastPt = null;
         for (PathSegment pt : segments) {

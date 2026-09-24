@@ -6,6 +6,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -72,12 +73,12 @@ public final class TypeSystem {
             Elements elements) {
 
         this.typeUtils =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         typeUtils,
                         "typeUtils");
 
         this.elements =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         elements,
                         "elements");
 

@@ -23,6 +23,7 @@ import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -457,7 +458,7 @@ public class CompiledNavigatorBenchmark {
 
     @Benchmark
     public Root ensurePutIfAbsent_existing_price_native(EnsureIfAbsentExistingState s) {
-        Root root = java.util.Objects.requireNonNull(s.priceRoot, "root");
+        Root root = Asserts.notNull(s.priceRoot, "root");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -500,7 +501,7 @@ public class CompiledNavigatorBenchmark {
 
     @Benchmark
     public Root ensurePutIfAbsent_existing_bookPrice_native(EnsureIfAbsentExistingState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPriceRoot, "root");
+        Root root = Asserts.notNull(s.bookPriceRoot, "root");
         Store store = root.store;
         if (store == null) {
             store = new Store();

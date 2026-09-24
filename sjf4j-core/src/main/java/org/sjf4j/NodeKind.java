@@ -4,6 +4,7 @@ import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.external.ExternalNode;
+import org.sjf4j.util.Asserts;
 
 import java.util.List;
 import java.util.Map;
@@ -96,7 +97,7 @@ public enum NodeKind {
     }
 
     public static NodeKind plainOf(Class<?> clazz) {
-        Objects.requireNonNull(clazz);
+        Asserts.notNull(clazz, "clazz");
         if (clazz == Object.class) {
             return UNKNOWN;
         } else if (clazz.isPrimitive()) {

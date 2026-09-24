@@ -2,6 +2,7 @@ package org.sjf4j.backend.snake.binding;
 
 import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
@@ -34,7 +35,7 @@ public final class SnakeWriter extends StreamingWriter {
 
     public SnakeWriter(StreamingBinder<?, ?> binder, Emitter emitter) throws IOException {
         super(binder);
-        Objects.requireNonNull(emitter, "emitter");
+        Asserts.notNull(emitter, "emitter");
         this.emitter = emitter;
     }
 

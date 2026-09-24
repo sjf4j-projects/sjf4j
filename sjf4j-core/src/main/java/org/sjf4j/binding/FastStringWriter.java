@@ -1,5 +1,7 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.util.Asserts;
+
 import java.io.Writer;
 import java.util.Objects;
 
@@ -19,7 +21,7 @@ public final class FastStringWriter extends Writer {
     }
 
     public FastStringWriter(StringBuilder builder) {
-        this.builder = Objects.requireNonNull(builder, "builder");
+        this.builder = Asserts.notNull(builder, "builder");
     }
 
     public StringBuilder getBuilder() {

@@ -3,6 +3,7 @@ package org.sjf4j;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -766,7 +767,7 @@ public class JsonArray extends JsonContainer {
      * Returns a value converted to the given type.
      */
     public <T> T get(int idx, Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz");
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.to(getNode(idx), clazz);
         } catch (Exception e) {
@@ -776,10 +777,13 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Returns a value converted to the inferred type.
+     *
+     * @throws IllegalArgumentException if {@code reified} is nonempty
+     * @throws NullPointerException if {@code reified} is null
      */
     @SuppressWarnings("unchecked")
     public <T> T get(int idx, T... reified) {
-        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(idx, clazz);
     }
@@ -788,7 +792,7 @@ public class JsonArray extends JsonContainer {
      * Returns a value using lenient conversion.
      */
     public <T> T getAs(int idx, Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz");
+        Asserts.notNull(clazz, "clazz");
         try {
             return Nodes.as(getNode(idx), clazz);
         } catch (Exception e) {
@@ -798,10 +802,13 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Returns a value using lenient conversion with inferred type.
+     *
+     * @throws IllegalArgumentException if {@code reified} is nonempty
+     * @throws NullPointerException if {@code reified} is null
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(int idx, T... reified) {
-        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(idx, clazz);
     }

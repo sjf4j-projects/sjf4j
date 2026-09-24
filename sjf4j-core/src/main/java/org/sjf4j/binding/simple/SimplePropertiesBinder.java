@@ -8,6 +8,7 @@ import org.sjf4j.binding.PropertiesBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -27,7 +28,7 @@ public final class SimplePropertiesBinder implements PropertiesBinder {
      */
     @Override
     public JsonObject readNode(Properties properties) {
-        Objects.requireNonNull(properties, "properties");
+        Asserts.notNull(properties, "properties");
         List<PropertyPath> paths = new ArrayList<>();
         for (String key : properties.stringPropertyNames()) {
             paths.add(new PropertyPath(key, _parsePath(key)));
@@ -46,7 +47,7 @@ public final class SimplePropertiesBinder implements PropertiesBinder {
      */
     @Override
     public void writeNode(Properties properties, Object node) {
-        Objects.requireNonNull(properties, "properties");
+        Asserts.notNull(properties, "properties");
         if (!JsonType.of(node).isObject()) {
             throw new BindingException("Properties binding requires an object root");
         }

@@ -5,6 +5,7 @@ import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 import org.sjf4j.processor.property.PropertyResolver;
 import org.sjf4j.processor.type.TypeSystem;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeMirror;
@@ -25,12 +26,12 @@ public final class NodeAccessResolver {
             PropertyResolver properties) {
 
         this.types =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         types,
                         "types");
 
         this.properties =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         properties,
                         "properties");
     }

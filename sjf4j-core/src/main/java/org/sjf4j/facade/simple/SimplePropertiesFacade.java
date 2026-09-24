@@ -5,6 +5,7 @@ import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.PathSyntax;
+import org.sjf4j.util.Asserts;
 
 import java.util.Objects;
 import java.util.Properties;
@@ -24,7 +25,7 @@ public final class SimplePropertiesFacade implements PropertiesFacade {
      */
     @Override
     public JsonObject readNode(Properties properties) {
-        Objects.requireNonNull(properties, "properties");
+        Asserts.notNull(properties, "properties");
         JsonObject jo = new JsonObject();
         TreeSet<String> sortedKeys = new TreeSet<>(properties.stringPropertyNames());
         for (String key : sortedKeys) {
@@ -40,7 +41,7 @@ public final class SimplePropertiesFacade implements PropertiesFacade {
      */
     @Override
     public void writeNode(Properties properties, Object node) {
-        Objects.requireNonNull(properties, "properties");
+        Asserts.notNull(properties, "properties");
         Nodes.walk(node, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1,
                 (ps, value) -> {
             if (value != null) {

@@ -5,6 +5,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -19,7 +20,7 @@ public final class JsonpReader implements StreamingReader {
 
     /** Creates reader adapter from JSON-P parser. */
     public JsonpReader(JsonParser parser) {
-        Objects.requireNonNull(parser, "parser");
+        Asserts.notNull(parser, "parser");
         this.parser = parser;
         this.current = parser.hasNext() ? parser.next() : null;
     }

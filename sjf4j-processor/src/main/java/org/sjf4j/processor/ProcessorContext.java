@@ -5,6 +5,7 @@ import org.sjf4j.processor.annotation.NodeAnnotations;
 import org.sjf4j.processor.method.InterfaceMethodResolver;
 import org.sjf4j.processor.property.PropertyResolver;
 import org.sjf4j.processor.type.TypeSystem;
+import org.sjf4j.util.Asserts;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
@@ -29,7 +30,7 @@ public final class ProcessorContext {
     public final InterfaceMethodResolver methods;
 
     public ProcessorContext(ProcessingEnvironment environment) {
-        Objects.requireNonNull(environment, "environment");
+        Asserts.notNull(environment, "environment");
 
         this.typeUtils = environment.getTypeUtils();
         this.elements = environment.getElementUtils();

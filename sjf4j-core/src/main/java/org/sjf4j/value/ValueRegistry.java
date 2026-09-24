@@ -8,6 +8,7 @@ import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoAccess;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -20,6 +21,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Global registry of value codecs.
+ *
+ * <p>Register custom codecs during application initialization, before metadata
+ * for the codec type or dependent bindings is analyzed. The registry is shared
+ * by all {@code Sjf4j} instances and later registrations do not update metadata
+ * already cached by {@link org.sjf4j.node.TypeRegistry}.
+ */
 public final class ValueRegistry {
     private ValueRegistry() {}
 
@@ -32,7 +41,7 @@ public final class ValueRegistry {
      * The returned array is registry-owned and must not be modified.
      */
     public static ValueInfo[] resolve(Class<?> runtimeClazz) {
-        Objects.requireNonNull(runtimeClazz, "runtimeClazz");
+        Asserts.notNull(runtimeClazz, "runtimeClazz");
 
         ValueInfo[] infos = NODE_VALUE_INFOS.get(runtimeClazz);
         if (infos != null) return infos;
@@ -80,9 +89,11 @@ public final class ValueRegistry {
 
     /**
      * Registers value codec metadata. Published arrays are immutable snapshots.
+     * Custom registrations must be completed during application initialization
+     * before relevant metadata is analyzed.
      */
     public static void register(ValueInfo valueInfo, boolean forceDefault) {
-        Objects.requireNonNull(valueInfo, "nodeValueInfo");
+        Asserts.notNull(valueInfo, "nodeValueInfo");
 
         NODE_VALUE_INFOS.compute(valueInfo.valueClazz, (valueClazz, oldInfos) -> {
             if (oldInfos == null) {
@@ -108,15 +119,19 @@ public final class ValueRegistry {
         });
     }
 
+    /**
+     * Registers a codec using its declared value and raw classes. The same
+     * application-initialization requirement as {@link #register(ValueInfo, boolean)} applies.
+     */
     public static <N, R> void registerByCodec(ValueCodec<N, R> codec, String valueFormat, boolean forceDefault) {
-        Objects.requireNonNull(codec, "codec");
+        Asserts.notNull(codec, "codec");
 
         Class<R> rawClazz = codec.rawClazz();
         if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
             throw new BindingException("invalid raw type in NodeValueCodec " + codec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
         Class<N> valueClazz = codec.valueClazz();
-        Objects.requireNonNull(valueClazz, "valueClazz");
+        Asserts.notNull(valueClazz, "valueClazz");
 
         ValueInfo info = new ValueInfo(valueFormat, valueClazz, rawClazz, codec, null, null, null);
         register(info, forceDefault);

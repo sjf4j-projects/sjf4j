@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.util.Asserts;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -40,7 +41,7 @@ public final class Numbers {
      * Checks if a BigInteger number is within the range of a Long.
      */
     private static boolean inLongRange(BigInteger number) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         return (number.compareTo(BI_MIN_LONG) >= 0) && (number.compareTo(BI_MAX_LONG) <= 0);
     }
 
@@ -48,7 +49,7 @@ public final class Numbers {
      * Checks if a BigDecimal number is within the range of a Long.
      */
     private static boolean inLongRange(BigDecimal number) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         return (number.compareTo(BD_MIN_LONG) >= 0) && (number.compareTo(BD_MAX_LONG) <= 0);
     }
 
@@ -88,7 +89,7 @@ public final class Numbers {
      * Converts a Number to a Long with range checking.
      */
     public static long toLong(Number number) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         if (number instanceof Long) return (long) number;
         if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
             throw new ArithmeticException("cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
@@ -160,7 +161,7 @@ public final class Numbers {
      * Converts a Number to a Double with range checking.
      */
     public static double toDouble(Number number) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         if (number instanceof Double) return (double) number;
         double d = number.doubleValue();
         if (!Double.isFinite(d)) {
@@ -173,7 +174,7 @@ public final class Numbers {
      * Converts a Number to a Float with range checking.
      */
     public static float toFloat(Number number) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         if (number instanceof Float) return (float) number;
         float f = number.floatValue();
         if (!Float.isFinite(f)) {
@@ -197,7 +198,7 @@ public final class Numbers {
      * Converts a Number to BigInteger.
      */
     public static BigInteger toBigInteger(Number number) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         if (number instanceof BigInteger) return (BigInteger) number;
         if (number instanceof BigDecimal) return ((BigDecimal) number).toBigInteger();
         if (number instanceof Double || number instanceof Float) {
@@ -214,7 +215,7 @@ public final class Numbers {
      * Converts a Number to BigDecimal.
      */
     public static BigDecimal toBigDecimal(Number number) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         if (number instanceof BigDecimal) return (BigDecimal) number;
         if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
         if (number instanceof Double || number instanceof Float) {
@@ -228,7 +229,7 @@ public final class Numbers {
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Number number, Class<T> clazz) {
-        Objects.requireNonNull(number, "number");
+        Asserts.notNull(number, "number");
         if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
         Class<?> boxed = Types.box(clazz);
         if (boxed == Long.class) return (T) Long.valueOf(Numbers.toLong(number));
@@ -363,8 +364,8 @@ public final class Numbers {
      * Infinity.</p>
      */
     public static double parseDoubleLiteral(CharSequence text, int[] pos) {
-        Objects.requireNonNull(text, "text");
-        Objects.requireNonNull(pos, "pos");
+        Asserts.notNull(text, "text");
+        Asserts.notNull(pos, "pos");
 
         int start = pos[0];
         boolean negative = false;
@@ -458,8 +459,8 @@ public final class Numbers {
      * Compares two numbers with cross-type numeric semantics.
      */
     public static int compare(Number source, Number target) {
-        Objects.requireNonNull(source, "source");
-        Objects.requireNonNull(target, "target");
+        Asserts.notNull(source, "source");
+        Asserts.notNull(target, "target");
         if (source instanceof BigInteger || target instanceof BigInteger) {
             return toBigInteger(source).compareTo(toBigInteger(target));
         }

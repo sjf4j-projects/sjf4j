@@ -6,6 +6,7 @@ import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -144,7 +145,7 @@ public interface Evaluator {
         public TypeEvaluator(PathSegment keywordPs, URI schemaUri, Object type) {
             this.keywordPs = keywordPs;
             this.schemaUri = schemaUri;
-            Objects.requireNonNull(type, "type");
+            Asserts.notNull(type, "type");
             JsonType jt = JsonType.of(type);
             if (jt.isString()) {
                 this.type = Nodes.toString(type);
@@ -245,7 +246,7 @@ public interface Evaluator {
         public EnumEvaluator(PathSegment keywordPs, URI schemaUri, Object[] enumValues) {
             this.keywordPs = keywordPs;
             this.schemaUri = schemaUri;
-            this.enumValues = Objects.requireNonNull(enumValues);
+            this.enumValues = Asserts.notNull(enumValues,  "enumValues");
         }
         /**
          * Checks whether the instance matches any value in the enum.
@@ -455,7 +456,7 @@ public interface Evaluator {
         public PatternEvaluator(PathSegment keywordPs, URI schemaUri, String pattern) {
             this.keywordPs = keywordPs;
             this.schemaUri = schemaUri;
-            this.pattern = Objects.requireNonNull(pattern);
+            this.pattern = Asserts.notNull(pattern,  "pattern");
             this.pn = SchemaUtil.compileRegexPattern(pattern, "pattern");
         }
 
@@ -489,7 +490,7 @@ public interface Evaluator {
         public FormatEvaluator(PathSegment keywordPs, URI schemaUri, String format, boolean assertion) {
             this.keywordPs = keywordPs;
             this.schemaUri = schemaUri;
-            this.format = Objects.requireNonNull(format, "format");
+            this.format = Asserts.notNull(format, "format");
             this.formatValidator = FormatValidator.of(format);
             this.assertion = assertion;
         }

@@ -6,6 +6,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -29,8 +30,8 @@ public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> 
     }
 
     public GsonJsonFacade(GsonBuilder gsonBuilder, StreamingContext context) {
-        Objects.requireNonNull(gsonBuilder, "gsonBuilder");
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(gsonBuilder, "gsonBuilder");
+        Asserts.notNull(context, "context");
 
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
@@ -85,7 +86,7 @@ public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> 
      */
     @Override
     public GsonReader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new GsonReader(gson.newJsonReader(input));
     }
 
@@ -119,7 +120,7 @@ public final class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> 
      */
     @Override
     public GsonWriter createWriter(Writer output) throws IOException {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         return new GsonWriter(gson.newJsonWriter(output));
     }
 

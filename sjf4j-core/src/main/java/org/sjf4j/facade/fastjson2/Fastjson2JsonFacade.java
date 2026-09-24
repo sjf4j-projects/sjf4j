@@ -8,6 +8,7 @@ import com.alibaba.fastjson2.writer.ObjectWriterProvider;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.util.Asserts;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -41,7 +42,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
 
     public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures, JSONWriter.Feature[] writerFeatures,
                                StreamingContext context) {
-        Objects.requireNonNull(context, "context");
+        Asserts.notNull(context, "context");
         readerFeatures = readerFeatures == null ? new JSONReader.Feature[0] : readerFeatures;
         writerFeatures = writerFeatures == null ? new JSONWriter.Feature[0] : writerFeatures;
 
@@ -97,7 +98,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
      */
     @Override
     public Fastjson2Reader createReader(Reader input) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         JSONReader reader = JSONReader.of(input, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -107,7 +108,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
      */
     @Override
     public Fastjson2Reader createReader(InputStream input) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -117,7 +118,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
      */
     @Override
     public Fastjson2Reader createReader(String input) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         JSONReader reader = JSONReader.of(input, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -127,7 +128,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
      */
     @Override
     public Fastjson2Reader createReader(byte[] input) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         JSONReader reader = JSONReader.of(input, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -222,7 +223,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
      */
     @Override
     public Fastjson2Writer createWriter(Writer output) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         JSONWriter writer = JSONWriter.of(writerContext);
         // The adapter writes into Fastjson2's internal buffer; callers flush to the real Writer separately.
         return new Fastjson2Writer(writer);
@@ -233,7 +234,7 @@ public final class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fa
      */
     @Override
     public Fastjson2Writer createWriter(OutputStream output) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         JSONWriter writer = JSONWriter.ofUTF8(writerContext);
         // The adapter writes into Fastjson2's internal buffer; callers flush to the real OutputStream separately.
         return new Fastjson2Writer(writer);

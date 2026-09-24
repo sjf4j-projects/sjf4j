@@ -2,6 +2,7 @@ package org.sjf4j.backend.snake.binding;
 
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
 import org.yaml.snakeyaml.events.DocumentStartEvent;
@@ -37,7 +38,7 @@ public final class SnakeReader implements StreamingReader {
     private final Parser parser;
 
     public SnakeReader(Parser parser) {
-        this.parser = Objects.requireNonNull(parser, "parser");
+        this.parser = Asserts.notNull(parser, "parser");
     }
 
     @Override

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonArrayApiSurfaceTest {
@@ -101,8 +102,10 @@ class JsonArrayApiSurfaceTest {
         assertEquals(12, array.getAs(0, Integer.class));
         assertEquals(34, array.<Integer>get(1));
         assertEquals(12, array.<Integer>getAs(0));
-        assertThrows(NodeException.class, () -> array.get(0, "boom"));
-        assertThrows(NodeException.class, () -> array.getAs(0, "boom"));
+        assertThrowsExactly(IllegalArgumentException.class, () -> array.get(0, "boom"));
+        assertThrowsExactly(IllegalArgumentException.class, () -> array.getAs(0, "boom"));
+        assertThrowsExactly(NullPointerException.class, () -> array.get(0, (String[]) null));
+        assertThrowsExactly(NullPointerException.class, () -> array.getAs(0, (String[]) null));
 
         JsonArray mutated = array.copy();
         assertEquals(array, mutated);

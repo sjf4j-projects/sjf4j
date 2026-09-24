@@ -4,6 +4,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,7 +27,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
     protected final StreamingContext context;
 
     protected StreamingBinder(StreamingContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        this.context = Asserts.notNull(context, "context");
     }
 
     /*
@@ -44,7 +45,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Creates a streaming reader from InputStream using UTF-8.
      */
     public R createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
@@ -52,7 +53,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Creates a streaming reader from input string.
      */
     public R createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return createReader(new FastStringReader(input));
     }
 
@@ -60,7 +61,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Creates a streaming reader from UTF-8 bytes.
      */
     public R createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return createReader(new ByteArrayInputStream(input));
     }
 
@@ -68,7 +69,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Reads one node from reader into target type.
      */
     public Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
@@ -84,7 +85,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Reads one node from input stream into target type.
      */
     public Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
@@ -100,7 +101,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Reads one node from string into target type.
      */
     public Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type, context);
@@ -115,7 +116,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Reads one node from bytes into target type.
      */
     public Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type, context);
@@ -150,7 +151,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Writes one node to writer.
      */
     public void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();
@@ -167,7 +168,7 @@ public abstract class StreamingBinder<R extends StreamingReader, W extends Strea
      * Writes one node to output stream.
      */
     public void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();

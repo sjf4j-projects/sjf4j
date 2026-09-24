@@ -1,6 +1,7 @@
 package org.sjf4j.processor.mapping.jdbc;
 
 import org.sjf4j.annotation.mapping.Mapping;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
@@ -72,19 +73,19 @@ public final class JdbcPlan {
             List<Rule> rules) {
 
         this.method =
-                Objects.requireNonNull(method, "method");
+                Asserts.notNull(method, "method");
 
         this.methodType =
-                Objects.requireNonNull(methodType, "methodType");
+                Asserts.notNull(methodType, "methodType");
 
         this.cursorMode =
-                Objects.requireNonNull(cursorMode, "cursorMode");
+                Asserts.notNull(cursorMode, "cursorMode");
 
         this.resultKind =
-                Objects.requireNonNull(resultKind, "resultKind");
+                Asserts.notNull(resultKind, "resultKind");
 
         this.resultSetParameter =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         resultSetParameter,
                         "resultSetParameter");
 
@@ -92,12 +93,12 @@ public final class JdbcPlan {
                 rowNumberParameter;
 
         this.returnType =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         returnType,
                         "returnType");
 
         this.rowType =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         rowType,
                         "rowType");
 
@@ -201,7 +202,7 @@ public final class JdbcPlan {
 
         Rule(Mapping mapping) {
             this.mapping =
-                    Objects.requireNonNull(
+                    Asserts.notNull(
                             mapping,
                             "mapping");
         }

@@ -3,6 +3,7 @@ package org.sjf4j.facade;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,7 +43,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Creates a streaming reader from InputStream using UTF-8.
      */
     default R createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
@@ -50,7 +51,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Creates a streaming reader from input string.
      */
     default R createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return createReader(new FastStringReader(input));
     }
 
@@ -58,7 +59,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Creates a streaming reader from UTF-8 bytes.
      */
     default R createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return createReader(new ByteArrayInputStream(input));
     }
 
@@ -66,7 +67,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from reader into target type.
      */
     default Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
@@ -82,7 +83,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from input stream into target type.
      */
     default Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
@@ -98,7 +99,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from string into target type.
      */
     default Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type, streamingContext());
@@ -113,7 +114,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from bytes into target type.
      */
     default Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type, streamingContext());
@@ -148,7 +149,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Writes one node to writer.
      */
     default void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();
@@ -165,7 +166,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Writes one node to output stream.
      */
     default void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();

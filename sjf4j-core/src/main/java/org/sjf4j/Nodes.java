@@ -12,6 +12,7 @@ import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
@@ -1109,8 +1110,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(consumer, "consumer");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(consumer, "consumer");
         if (node instanceof Map) {
             ((Map<String, Object>) node).forEach(consumer);
             return;
@@ -1140,8 +1141,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(predicate, "predicate");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(predicate, "predicate");
         if (node instanceof Map) {
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
                 if (predicate.test(entry.getKey(), entry.getValue())) {
@@ -1179,8 +1180,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean replaceAllInObject(Object node, BiFunction<String, Object, Object> replacer) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(replacer, "replacer");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(replacer, "replacer");
         if (node instanceof Map) {
             boolean changed = false;
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
@@ -1229,8 +1230,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(predicate, "predicate");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(predicate, "predicate");
 
         if (node instanceof Map) {
             return ((Map<String, Object>) node).entrySet().removeIf(entry ->
@@ -1254,8 +1255,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(consumer, "consumer");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(consumer, "consumer");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             for (int i = 0, len = list.size(); i < len; i++) consumer.accept(i, list.get(i));
@@ -1288,8 +1289,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(predicate, "predicate");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(predicate, "predicate");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             for (int i = 0, len = list.size(); i < len; i++) {
@@ -1329,7 +1330,7 @@ public final class Nodes {
      * Returns the number of readable members in an object node.
      */
     public static int sizeInObject(Object node) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof Map) {
             return ((Map<?, ?>) node).size();
         }
@@ -1350,7 +1351,7 @@ public final class Nodes {
      * Returns the number of elements in an array node.
      */
     public static int sizeInArray(Object node) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof List) {
             return ((List<?>) node).size();
         }
@@ -1378,7 +1379,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Set<String> keySetInObject(Object node) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).keySet();
         }
@@ -1404,7 +1405,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).entrySet();
         }
@@ -1450,7 +1451,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Iterator<Object> iteratorInArray(Object node) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof List) {
             return ((List<Object>) node).iterator();
         }
@@ -1483,8 +1484,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).containsKey(key);
         }
@@ -1519,8 +1520,8 @@ public final class Nodes {
      * without a getter behave as absent and return {@code null}.
      */
     public static Object getInObject(Object node, String key) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
         if (node instanceof Map) {
             return ((Map<?, ?>) node).get(key);
         }
@@ -1543,7 +1544,7 @@ public final class Nodes {
      * requested target type.
      */
     public static <T> T getInObject(Object node, String key, Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz");
+        Asserts.notNull(clazz, "clazz");
         Object sub = getInObject(node, key);
         return to(sub, clazz);
     }
@@ -1557,7 +1558,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object node, int idx) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             int size = list.size();
@@ -1594,7 +1595,7 @@ public final class Nodes {
      * requested target type.
      */
     public static <T> T getInArray(Object node, int idx, Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz");
+        Asserts.notNull(clazz, "clazz");
         Object sub = getInArray(node, idx);
         return to(sub, clazz);
     }
@@ -1633,9 +1634,9 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void getAccessInObject(Object node, String key, Access out) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
-        Objects.requireNonNull(out, "out");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
+        Asserts.notNull(out, "out");
 
         out.node = null;
         out.present = false;
@@ -1681,9 +1682,9 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void putAccessInObject(Object node, Type type, String key, Access out) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
-        Objects.requireNonNull(out, "out");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
+        Asserts.notNull(out, "out");
 
         if (node instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) node;
@@ -1736,8 +1737,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void getAccessInArray(Object node, int idx, Access out) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(out, "out");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(out, "out");
 
         out.node = null;
         out.present = false;
@@ -1792,8 +1793,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void putAccessInArray(Object node, Type type, Integer idx, Access out) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(out, "out");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(out, "out");
 
         out.type = Object.class;
         out.node = null;
@@ -1900,8 +1901,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object putInObject(Object node, String key, Object value) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).put(key, value);
         }
@@ -1933,8 +1934,8 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object removeInObject(Object node, String key) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).remove(key);
         }
@@ -1960,9 +1961,9 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T computeIfAbsentInObject(Object node, String key, Function<String, T> computer) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
-        Objects.requireNonNull(computer, "computer");
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
+        Asserts.notNull(computer, "computer");
         if (node instanceof Map) {
             return ((Map<String, T>) node).computeIfAbsent(key, computer);
         }
@@ -2027,7 +2028,7 @@ public final class Nodes {
 
     @SuppressWarnings("unchecked")
     private static Object _putInArray(Object node, int idx, Object value, boolean allowAppend) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             int size = list.size();
@@ -2085,7 +2086,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, Object value) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof List) {
             ((List<Object>) node).add(value);
             return;
@@ -2116,7 +2117,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, int idx, Object value) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -2148,7 +2149,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object removeInArray(Object node, int idx) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -2199,10 +2200,10 @@ public final class Nodes {
     public static void walk(Object container, WalkTarget target,
                             WalkOrder order, int maxDepth,
                             BiFunction<PathSegment, Object, Boolean> visitor) {
-        Objects.requireNonNull(container, "container");
-        Objects.requireNonNull(target, "target");
-        Objects.requireNonNull(order, "order");
-        Objects.requireNonNull(visitor, "visitor");
+        Asserts.notNull(container, "container");
+        Asserts.notNull(target, "target");
+        Asserts.notNull(order, "order");
+        Asserts.notNull(visitor, "visitor");
         _walk(container, PathSegment.Root.INSTANCE, visitor, target, order, maxDepth);
     }
 

@@ -8,6 +8,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,9 +51,9 @@ public final class NodeMapperBuilder<S, T> {
     }
 
     public NodeMapperBuilder(Class<S> sourceType, Class<T> targetType, StreamingContext streamingContext) {
-        this.sourceType = Objects.requireNonNull(sourceType, "sourceType");
-        this.targetType = Objects.requireNonNull(targetType, "targetType");
-        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
+        this.sourceType = Asserts.notNull(sourceType, "sourceType");
+        this.targetType = Asserts.notNull(targetType, "targetType");
+        this.streamingContext = Asserts.notNull(streamingContext, "streamingContext");
     }
 
     /**
@@ -91,7 +92,7 @@ public final class NodeMapperBuilder<S, T> {
      * object graph and not on current target state.
      */
     public NodeMapperBuilder<S, T> compute(String multiPath, Function<S, Object> computer) {
-        Objects.requireNonNull(computer, "computer");
+        Asserts.notNull(computer, "computer");
         return _addComputeAction(multiPath, false, true,
                 (root, parent, current) -> computer.apply(root));
     }
@@ -111,7 +112,7 @@ public final class NodeMapperBuilder<S, T> {
      * creating missing target containers when needed.
      */
     public NodeMapperBuilder<S, T> ensureCompute(String targetPath, Function<S, Object> computer) {
-        Objects.requireNonNull(computer, "computer");
+        Asserts.notNull(computer, "computer");
         return _addComputeAction(targetPath, true, false,
                 (root, parent, current) -> computer.apply(root));
     }
@@ -123,7 +124,7 @@ public final class NodeMapperBuilder<S, T> {
      * object conversion when matching source/target types are encountered.
      */
     public NodeMapperBuilder<S, T> with(NodeMapper<?, ?> nestedMapper) {
-        Objects.requireNonNull(nestedMapper, "nestedMapper");
+        Asserts.notNull(nestedMapper, "nestedMapper");
         nestedMappers.add(nestedMapper);
         return this;
     }
@@ -299,7 +300,7 @@ public final class NodeMapperBuilder<S, T> {
                                                       boolean ensure,
                                                       boolean allowMulti,
                                                       ComputeFunction<S> computer) {
-        Objects.requireNonNull(computer, "computer");
+        Asserts.notNull(computer, "computer");
         String opName = ensure ? "ensureCompute()" : "compute()";
         JsonPath compiledTargetPath = allowMulti ? _compilePath(targetPath) : _requireSingleTargetPath(targetPath, opName);
         actions.add(new ComputeAction<>(compiledTargetPath, computer, ensure));
@@ -324,7 +325,7 @@ public final class NodeMapperBuilder<S, T> {
     }
 
     private static JsonPath _compilePath(String path) {
-        Objects.requireNonNull(path, "path");
+        Asserts.notNull(path, "path");
         String expr = path.trim();
         if (expr.isEmpty()) throw new NodeException("path is empty");
         if (expr.startsWith("$") || expr.startsWith("/")) return JsonPath.parse(expr);

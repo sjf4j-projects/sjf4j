@@ -9,6 +9,7 @@ import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -68,10 +69,10 @@ public final class Sjf4j {
         this.propertiesFacadeProvider = builder.propertiesFacadeProvider == null
                 ? FacadeFactory.propertiesFacadeProvider() : builder.propertiesFacadeProvider;
 
-        this.nodeFacade = Objects.requireNonNull(nodeFacadeProvider.create(streamingContext), "nodeFacade");
-        this.jsonFacade = Objects.requireNonNull(jsonFacadeProvider.create(streamingContext), "jsonFacade");
-        this.yamlFacade = Objects.requireNonNull(yamlFacadeProvider.create(streamingContext), "yamlFacade");
-        this.propertiesFacade = Objects.requireNonNull(propertiesFacadeProvider.create(streamingContext), "propertiesFacade");
+        this.nodeFacade = Asserts.notNull(nodeFacadeProvider.create(streamingContext), "nodeFacade");
+        this.jsonFacade = Asserts.notNull(jsonFacadeProvider.create(streamingContext), "jsonFacade");
+        this.yamlFacade = Asserts.notNull(yamlFacadeProvider.create(streamingContext), "yamlFacade");
+        this.propertiesFacade = Asserts.notNull(propertiesFacadeProvider.create(streamingContext), "propertiesFacade");
     }
 
     /**
@@ -489,7 +490,7 @@ public final class Sjf4j {
          * and null-serialization behavior so callers can derive a slightly adjusted runtime.
          */
         public Builder(Sjf4j sjf4j) {
-            Objects.requireNonNull(sjf4j, "sjf4j");
+            Asserts.notNull(sjf4j, "sjf4j");
             this.nodeFacadeProvider = sjf4j.nodeFacadeProvider;
             this.jsonFacadeProvider = sjf4j.jsonFacadeProvider;
             this.yamlFacadeProvider = sjf4j.yamlFacadeProvider;
@@ -506,7 +507,7 @@ public final class Sjf4j {
          * {@link Sjf4j} instance instead of the auto-detected framework default.
          */
         public Builder nodeFacadeProvider(FacadeProvider<? extends NodeFacade> nodeFacadeProvider) {
-            this.nodeFacadeProvider = Objects.requireNonNull(nodeFacadeProvider, "nodeFacadeProvider");
+            this.nodeFacadeProvider = Asserts.notNull(nodeFacadeProvider, "nodeFacadeProvider");
             return this;
         }
 
@@ -517,7 +518,7 @@ public final class Sjf4j {
          * Jackson, Gson, Fastjson2, or a custom facade.
          */
         public Builder jsonFacadeProvider(FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider) {
-            this.jsonFacadeProvider = Objects.requireNonNull(jsonFacadeProvider, "jsonFacadeProvider");
+            this.jsonFacadeProvider = Asserts.notNull(jsonFacadeProvider, "jsonFacadeProvider");
             return this;
         }
 
@@ -525,7 +526,7 @@ public final class Sjf4j {
          * Overrides the provider used to create the runtime YAML facade.
          */
         public Builder yamlFacadeProvider(FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider) {
-            this.yamlFacadeProvider = Objects.requireNonNull(yamlFacadeProvider, "yamlFacadeProvider");
+            this.yamlFacadeProvider = Asserts.notNull(yamlFacadeProvider, "yamlFacadeProvider");
             return this;
         }
 
@@ -533,7 +534,7 @@ public final class Sjf4j {
          * Overrides the provider used to create the runtime properties facade.
          */
         public Builder propertiesFacadeProvider(FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider) {
-            this.propertiesFacadeProvider = Objects.requireNonNull(propertiesFacadeProvider,
+            this.propertiesFacadeProvider = Asserts.notNull(propertiesFacadeProvider,
                     "propertiesFacadeProvider");
             return this;
         }
@@ -545,7 +546,7 @@ public final class Sjf4j {
          * strategy, while other modes can force shared or backend-native streaming paths.
          */
         public Builder streamingMode(StreamingContext.StreamingMode streamingMode) {
-            this.streamingMode = Objects.requireNonNull(streamingMode, "streamingMode");
+            this.streamingMode = Asserts.notNull(streamingMode, "streamingMode");
             return this;
         }
 
@@ -556,13 +557,13 @@ public final class Sjf4j {
          * explicitly declare its own {@code valueFormat}.
          */
         public Builder defaultValueFormat(Class<?> valueType, String valueFormat) {
-            Class<?> checkedValueType = Objects.requireNonNull(valueType, "valueType");
+            Class<?> checkedValueType = Asserts.notNull(valueType, "valueType");
             if (checkedValueType.isPrimitive()) {
                 throw new IllegalArgumentException("defaultValueFormat does not support primitive type '"
                         + checkedValueType.getName() + "'; use boxed type '"
                         + Types.box(checkedValueType).getName() + "'");
             }
-            defaultValueFormats.put(checkedValueType, Objects.requireNonNull(valueFormat, "valueFormat"));
+            defaultValueFormats.put(checkedValueType, Asserts.notNull(valueFormat, "valueFormat"));
             return this;
         }
 

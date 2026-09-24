@@ -93,7 +93,7 @@ public final class JdbcEmitter {
         out.indent();
 
         out.line(
-                "java.util.Objects.requireNonNull(" +
+                "org.sjf4j.util.Asserts.notNull(" +
                         resultSet +
                         ", " +
                         stringLiteral(resultSet) +

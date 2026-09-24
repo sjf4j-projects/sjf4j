@@ -5,6 +5,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPointer;
+import org.sjf4j.util.Asserts;
 
 import java.util.Map;
 import java.util.Objects;
@@ -33,8 +34,8 @@ public class OperationRegistry {
      * Registers handler for operation name.
      */
     public static void register(String opName, OperationHandler opHandler) {
-        Objects.requireNonNull(opName, "opName");
-        Objects.requireNonNull(opHandler, "opHandler");
+        Asserts.notNull(opName, "opName");
+        Asserts.notNull(opHandler, "opHandler");
         OPERATION_CACHE.put(opName, opHandler);
     }
 
@@ -56,7 +57,7 @@ public class OperationRegistry {
      * Applies operation and returns the possibly replaced root document.
      */
     public static Object apply(Object target, PatchOperation operation) {
-        Objects.requireNonNull(operation, "operation");
+        Asserts.notNull(operation, "operation");
         JsonPointer path = _requirePath(operation);
         try {
             if (_isRoot(path)) {

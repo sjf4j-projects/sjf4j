@@ -1,6 +1,7 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
 
@@ -17,7 +18,7 @@ public class Jackson3Reader implements StreamingReader {
     private boolean initialized;
 
     public Jackson3Reader(JsonParser parser) {
-        this.parser = Objects.requireNonNull(parser, "parser");
+        this.parser = Asserts.notNull(parser, "parser");
     }
 
     @Override

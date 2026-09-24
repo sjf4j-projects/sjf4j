@@ -161,7 +161,7 @@ public final class MappingEmitter {
                             .toString();
 
             out.line(
-                    "java.util.Objects.requireNonNull(" +
+                    "org.sjf4j.util.Asserts.notNull(" +
                             target +
                             ", " +
                             JavaWriter.stringLiteral(
@@ -269,7 +269,7 @@ public final class MappingEmitter {
                             .toString();
 
             out.line(
-                    "java.util.Objects.requireNonNull(" +
+                    "org.sjf4j.util.Asserts.notNull(" +
                             target +
                             ", " +
                             JavaWriter.stringLiteral(
@@ -2376,7 +2376,7 @@ public final class MappingEmitter {
             switch (target.mode()) {
                 case STRICT:
                     out.line(
-                            "java.util.Objects.requireNonNull(" +
+                            "org.sjf4j.util.Asserts.notNull(" +
                                     child +
                                     ", " +
                                     JavaWriter.stringLiteral(

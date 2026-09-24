@@ -33,7 +33,7 @@ class JdbcComputeTest {
                 NullPointerException.class,
                 () -> mapper.row(null));
 
-        assertEquals("resultSet", error.getMessage());
+        assertEquals("'resultSet' must not be null", error.getMessage());
     }
 
     @CompiledJdbcMapper

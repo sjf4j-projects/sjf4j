@@ -4,6 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.util.Map;
 import java.util.Objects;
@@ -38,9 +39,9 @@ public class FunctionRegistry {
          * Creates a function descriptor with name and implementation.
          */
         public FunctionDescriptor(String name, PathFunction func) {
-            Objects.requireNonNull(name, "name");
+            Asserts.notNull(name, "name");
             if (name.isEmpty()) throw new NodeException("function name must not be empty");
-            Objects.requireNonNull(func, "func");
+            Asserts.notNull(func, "func");
             this.name = name;
             this.func = func;
         }

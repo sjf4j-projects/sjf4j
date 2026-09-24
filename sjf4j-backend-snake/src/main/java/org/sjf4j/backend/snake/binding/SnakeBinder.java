@@ -2,6 +2,7 @@ package org.sjf4j.backend.snake.binding;
 
 import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.YamlBinder;
+import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
@@ -25,19 +26,19 @@ public final class SnakeBinder extends YamlBinder<SnakeReader, SnakeWriter> {
     public SnakeBinder(LoaderOptions loaderOptions, DumperOptions dumperOptions,
                        StreamingContext context) {
         super(context);
-        this.loaderOptions = Objects.requireNonNull(loaderOptions, "loaderOptions");
-        this.dumperOptions = Objects.requireNonNull(dumperOptions, "dumperOptions");
+        this.loaderOptions = Asserts.notNull(loaderOptions, "loaderOptions");
+        this.dumperOptions = Asserts.notNull(dumperOptions, "dumperOptions");
     }
 
     @Override
     public SnakeReader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         return new SnakeReader(new ParserImpl(new StreamReader(input), loaderOptions));
     }
 
     @Override
     public SnakeWriter createWriter(Writer output) throws IOException {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         return new SnakeWriter(this, new Emitter(output, dumperOptions));
     }
 

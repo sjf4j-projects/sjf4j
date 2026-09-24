@@ -6,6 +6,7 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -128,7 +129,7 @@ public class JsonPath {
      * parsed as JSON Pointer; others are parsed as the supported JSONPath subset.
      */
     public static JsonPath parse(String expr) {
-        Objects.requireNonNull(expr, "expr");
+        Asserts.notNull(expr, "expr");
         expr = expr.trim();
         PathSegment[] segments;
         if (expr.isEmpty()) {
@@ -821,10 +822,13 @@ public class JsonPath {
 
     /**
      * Returns a value at this path converted to the inferred type parameter.
+     *
+     * @throws IllegalArgumentException if {@code reified} is nonempty
+     * @throws NullPointerException if {@code reified} is null
      */
     @SuppressWarnings("unchecked")
     public <T> T get(Object container, T... reified) {
-        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(container, clazz);
     }
@@ -844,10 +848,13 @@ public class JsonPath {
 
     /**
      * Returns a value at this path using lenient conversion with inferred type.
+     *
+     * @throws IllegalArgumentException if {@code reified} is nonempty
+     * @throws NullPointerException if {@code reified} is null
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(Object container, T... reified) {
-        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(container, clazz);
     }
@@ -865,7 +872,7 @@ public class JsonPath {
      * are retained as null elements; missing locations are omitted.
      */
     public List<Object> find(Object container) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         if (singleGet) {
             List<Object> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -881,8 +888,8 @@ public class JsonPath {
      * Finds and converts all matches using strict conversion.
      */
     public <T> List<T> find(Object container, Class<T> clazz) {
-        Objects.requireNonNull(container, "container");
-        Objects.requireNonNull(clazz, "clazz");
+        Asserts.notNull(container, "container");
+        Asserts.notNull(clazz, "clazz");
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -898,8 +905,8 @@ public class JsonPath {
      * Finds and converts all matches using lenient conversion.
      */
     public <T> List<T> findAs(Object container, Class<T> clazz) {
-        Objects.requireNonNull(container, "container");
-        Objects.requireNonNull(clazz, "clazz");
+        Asserts.notNull(container, "container");
+        Asserts.notNull(clazz, "clazz");
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -926,7 +933,7 @@ public class JsonPath {
      * the matched value(s) as target plus parsed literal arguments.
      */
     public Object eval(Object container) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         PathSegment tk = segments[segments.length - 1];
         if (singleGet) {
             Object value = _findOne(container, 1, segments.length);
@@ -1009,7 +1016,7 @@ public class JsonPath {
      *                       segment cannot be written
      */
     public Object put(Object container, Object value) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if (lastContainer == MISSING || lastContainer == null) {
             throw new NodeException("cannot put value at path '" + this + "': parent container does not exist");
@@ -1029,7 +1036,7 @@ public class JsonPath {
      * exposes one, otherwise {@code null}
      */
     public Object putIfParentPresent(Object container, Object value) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if (lastContainer == MISSING || lastContainer == null) return null;
         return _putLast(lastContainer, segments[segments.length - 1], value, "putIfParentPresent()");
@@ -1050,7 +1057,7 @@ public class JsonPath {
      * restrictions.
      */
     public Object ensurePut(Object container, Object value) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         Object lastContainer = _ensureContainersInPath(container);
         return _putLast(lastContainer, segments[segments.length - 1], value, "ensurePut()");
     }
@@ -1071,7 +1078,7 @@ public class JsonPath {
      * the existing non-null value when no write was performed
      */
     public Object ensurePutIfAbsent(Object container, Object value) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if (lastContainer == MISSING || lastContainer == null) {
             return ensurePut(container, value);
@@ -1129,8 +1136,8 @@ public class JsonPath {
      * @return number of matched locations written
      */
     public int compute(Object container, BiFunction<Object, Object, Object> computer) {
-        Objects.requireNonNull(container, "container");
-        Objects.requireNonNull(computer, "computer");
+        Asserts.notNull(container, "container");
+        Asserts.notNull(computer, "computer");
         PathSegment lastToken = segments[segments.length - 1];
         if (!(lastToken instanceof PathSegment.Name || lastToken instanceof PathSegment.Index
                 || lastToken instanceof PathSegment.Append)) {
@@ -1171,7 +1178,7 @@ public class JsonPath {
      * index validity after negative-index normalization.
      */
     public boolean contains(Object container) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         if (segments.length == 1 && segments[0] instanceof PathSegment.Root) return true;
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if (lastContainer == MISSING || lastContainer == null) return false;
@@ -1210,7 +1217,7 @@ public class JsonPath {
      * Java arrays and sets reject indexed insertion.
      */
     public void add(Object container, Object value) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if  (lastContainer == MISSING || lastContainer == null)
             throw new NodeException("cannot add value at path '" + this + "': parent container does not exist");
@@ -1243,7 +1250,7 @@ public class JsonPath {
      * @return previous value at the replaced location
      */
     public Object replace(Object container, Object value) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if  (lastContainer == MISSING || lastContainer == null) {
             throw new NodeException("cannot replace value at path '" + this + "': parent container does not exist");
@@ -1286,7 +1293,7 @@ public class JsonPath {
      * @return removed value, or {@code null} when no value was removed
      */
     public Object removeIfPresent(Object container) {
-        Objects.requireNonNull(container, "container");
+        Asserts.notNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if  (lastContainer == MISSING || lastContainer == null) return null;
 

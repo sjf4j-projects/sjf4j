@@ -18,6 +18,7 @@ import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.bytecode.FallbackBytecodePath;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -640,7 +641,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root put_price_native(PutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
             throw new NodeException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
@@ -685,7 +686,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root put_bookPrice_native(PutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
             throw new NodeException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
@@ -738,7 +739,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public int compute_existing_price_native(ComputeBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
             return 0;
@@ -747,7 +748,7 @@ public class BytecodePathBenchmark {
         if (bicycle == null) {
             return 0;
         }
-        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
+        BiFunction<Object, Object, Object> computer = Asserts.notNull(INCREMENT_DOUBLE, "computer");
         bicycle.price = (Double) computer.apply(bicycle, bicycle.price);
         s.lastPriceRoot = root;
         return 1;
@@ -784,7 +785,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public int compute_existing_bookPrice_native(ComputeBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
             return 0;
@@ -801,7 +802,7 @@ public class BytecodePathBenchmark {
         if (item == null) {
             return 0;
         }
-        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
+        BiFunction<Object, Object, Object> computer = Asserts.notNull(INCREMENT_DOUBLE, "computer");
         item.price = (Double) computer.apply(item, item.price);
         s.lastBookPriceRoot = root;
         return 1;
@@ -838,9 +839,9 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public int compute_missing_price_native(PutIfParentPresentMissingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
-        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
+        BiFunction<Object, Object, Object> computer = Asserts.notNull(INCREMENT_DOUBLE, "computer");
         if (store != null && store.bicycle != null) {
             Bicycle bicycle = store.bicycle;
             bicycle.price = (Double) computer.apply(bicycle, bicycle.price);
@@ -877,9 +878,9 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public int compute_missing_bookPrice_native(PutIfParentPresentMissingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
-        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
+        BiFunction<Object, Object, Object> computer = Asserts.notNull(INCREMENT_DOUBLE, "computer");
         if (store != null && store.book != null) {
             List<Book> book = store.book;
             int index = _readListIndex(book, BOOK_INDEX);
@@ -929,7 +930,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root putIfParentPresent_existing_price_native(PutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
             return root;
@@ -974,7 +975,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root putIfParentPresent_existing_bookPrice_native(PutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
             return root;
@@ -1027,7 +1028,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root putIfParentPresent_missing_price_native(PutIfParentPresentMissingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store != null) {
             Bicycle bicycle = store.bicycle;
@@ -1065,7 +1066,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root putIfParentPresent_missing_bookPrice_native(PutIfParentPresentMissingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store != null) {
             List<Book> book = store.book;
@@ -1116,7 +1117,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePut_missing_price_native(EnsurePutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -1163,7 +1164,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePut_missing_bookPrice_native(EnsurePutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -1226,7 +1227,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePut_existing_price_native(EnsurePutExistingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -1268,7 +1269,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePut_existing_bookPrice_native(EnsurePutExistingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -1328,7 +1329,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePutIfAbsent_existing_price_native(EnsurePutIfAbsentExistingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -1372,7 +1373,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePutIfAbsent_existing_bookPrice_native(EnsurePutIfAbsentExistingBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -1433,7 +1434,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePutIfAbsent_missing_price_native(EnsurePutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Root root = Asserts.notNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();
@@ -1477,7 +1478,7 @@ public class BytecodePathBenchmark {
 
     @Benchmark
     public Root ensurePutIfAbsent_missing_bookPrice_native(EnsurePutBenchmarkState s) {
-        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Root root = Asserts.notNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
             store = new Store();

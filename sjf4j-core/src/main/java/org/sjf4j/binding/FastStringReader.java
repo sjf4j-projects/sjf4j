@@ -1,5 +1,7 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.util.Asserts;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Objects;
@@ -15,7 +17,7 @@ public final class FastStringReader extends Reader {
     private int mark;
 
     public FastStringReader(String str) {
-        this.str = Objects.requireNonNull(str);
+        this.str = Asserts.notNull(str, "str");
         this.length = str.length();
     }
 

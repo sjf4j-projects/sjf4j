@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.util.Asserts;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
@@ -55,22 +57,22 @@ final class MappingPlan {
             AnnotationMirror options) {
 
         this.method =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         method,
                         "method");
 
         this.methodType =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         methodType,
                         "methodType");
 
         this.kind =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         kind,
                         "kind");
 
         this.targetType =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         targetType,
                         "targetType");
 
@@ -204,17 +206,17 @@ final class MappingPlan {
                 boolean objectExplicit) {
 
             this.annotation =
-                    Objects.requireNonNull(
+                    Asserts.notNull(
                             annotation,
                             "annotation");
 
             this.mode =
-                    Objects.requireNonNull(
+                    Asserts.notNull(
                             mode,
                             "mode");
 
             this.target =
-                    Objects.requireNonNull(
+                    Asserts.notNull(
                             target,
                             "target");
 

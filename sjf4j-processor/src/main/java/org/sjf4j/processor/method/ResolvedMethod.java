@@ -1,5 +1,7 @@
 package org.sjf4j.processor.method;
 
+import org.sjf4j.util.Asserts;
+
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.ExecutableType;
 import java.util.Objects;
@@ -19,12 +21,12 @@ public final class ResolvedMethod {
             ExecutableType type) {
 
         this.declaration =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         declaration,
                         "declaration");
 
         this.type =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         type,
                         "type");
     }

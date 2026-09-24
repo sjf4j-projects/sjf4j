@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.Objects;
@@ -33,7 +34,7 @@ public class ValidationMessage {
      */
     public ValidationMessage(Severity severity, PathSegment instancePs, PathSegment keywordPs,
                              URI schemaUri, String keyword, String message) {
-        Objects.requireNonNull(severity, "severity");
+        Asserts.notNull(severity, "severity");
         this.severity = severity;
         this.instancePs = instancePs;
         this.keywordPs = keywordPs;

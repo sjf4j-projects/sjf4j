@@ -10,10 +10,10 @@ public final class Asserts {
     }
 
     /**
-     * Returns the value when non-null, otherwise throws an argument exception.
+     * Returns the value when non-null, otherwise throws a {@link NullPointerException}.
      */
     public static <T> T notNull(T value, String name) {
-        if (value == null) throw new IllegalArgumentException("'" + name + "' must not be null");
+        if (value == null) throw new NullPointerException("'" + name + "' must not be null");
         return value;
     }
 

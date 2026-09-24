@@ -6,6 +6,7 @@ import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.util.Asserts;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -42,7 +43,7 @@ public class JsonPointer extends JsonPath {
      */
     @RawToValue
     public static JsonPointer parse(String expr) {
-        Objects.requireNonNull(expr, "expr");
+        Asserts.notNull(expr, "expr");
 
         PathSegment[] segments;
         if (expr.isEmpty()) {
@@ -59,7 +60,7 @@ public class JsonPointer extends JsonPath {
      * Creates a pointer from the last segment in a chain.
      */
     public static JsonPointer fromLast(PathSegment lastSegment) {
-        Objects.requireNonNull(lastSegment, "lastSegment");
+        Asserts.notNull(lastSegment, "lastSegment");
         PathSegment[] segments = PathSyntax.linearize(lastSegment);
         return new JsonPointer(null, segments);
     }

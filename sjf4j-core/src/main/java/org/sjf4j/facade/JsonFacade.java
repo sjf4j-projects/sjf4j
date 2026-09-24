@@ -3,6 +3,7 @@ package org.sjf4j.facade;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -33,7 +34,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
@@ -49,7 +50,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
@@ -65,7 +66,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
@@ -81,7 +82,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input");
+        Asserts.notNull(input, "input");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
@@ -129,7 +130,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
@@ -148,7 +149,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output");
+        Asserts.notNull(output, "output");
         StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:

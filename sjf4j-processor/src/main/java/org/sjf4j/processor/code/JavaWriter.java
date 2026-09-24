@@ -1,5 +1,7 @@
 package org.sjf4j.processor.code;
 
+import org.sjf4j.util.Asserts;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.Writer;
@@ -49,11 +51,11 @@ public final class JavaWriter implements Closeable {
             String packageName,
             String simpleName) {
 
-        this.writer = Objects.requireNonNull(writer, "writer");
+        this.writer = Asserts.notNull(writer, "writer");
         this.packageName =
                 packageName == null ? "" : packageName;
         this.simpleName =
-                Objects.requireNonNull(simpleName, "simpleName");
+                Asserts.notNull(simpleName, "simpleName");
     }
 
 
@@ -67,7 +69,7 @@ public final class JavaWriter implements Closeable {
      * Writes one source line using the current indentation.
      */
     public void line(String line) {
-        Objects.requireNonNull(line, "line");
+        Asserts.notNull(line, "line");
 
         StringBuilder out =
                 new StringBuilder(line.length() + indent * 4);
@@ -144,7 +146,7 @@ public final class JavaWriter implements Closeable {
      * Returns a source-safe Java string literal.
      */
     public static String stringLiteral(String value) {
-        Objects.requireNonNull(value, "value");
+        Asserts.notNull(value, "value");
 
         StringBuilder out =
                 new StringBuilder(value.length() + 2);

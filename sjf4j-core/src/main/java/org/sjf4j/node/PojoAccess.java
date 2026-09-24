@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Asserts;
 
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
@@ -139,7 +140,7 @@ public final class PojoAccess {
 
     public static Object invokeGetter(String name, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                                       Object receiver) {
-        Objects.requireNonNull(receiver, "receiver");
+        Asserts.notNull(receiver, "receiver");
         try {
             if (getterLambda != null) {
                 return getterLambda.apply(receiver);
@@ -157,7 +158,7 @@ public final class PojoAccess {
 
     public static void invokeSetter(String name, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
                                     Object receiver, Object value) {
-        Objects.requireNonNull(receiver, "receiver");
+        Asserts.notNull(receiver, "receiver");
         try {
             if (setterLambda != null) {
                 setterLambda.accept(receiver, value);

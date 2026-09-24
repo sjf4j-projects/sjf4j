@@ -6,6 +6,7 @@ import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -298,7 +299,7 @@ public class JsonObject extends JsonContainer {
      * Performs the given visitor for each readable entry.
      */
     public void forEach(BiConsumer<String, Object> visitor) {
-        Objects.requireNonNull(visitor, "visitor");
+        Asserts.notNull(visitor, "visitor");
         if (pi != null) {
             for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()){
                 visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
@@ -315,7 +316,7 @@ public class JsonObject extends JsonContainer {
      * Returns true if any readable entry matches the predicate.
      */
     public boolean anyMatch(BiPredicate<String, Object> predicate) {
-        Objects.requireNonNull(predicate, "predicate");
+        Asserts.notNull(predicate, "predicate");
         if (pi != null) {
             for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()){
                 if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
@@ -338,7 +339,7 @@ public class JsonObject extends JsonContainer {
      * entries in place.
      */
     public boolean replaceAll(BiFunction<String, Object, Object> mapper) {
-        Objects.requireNonNull(mapper, "mapper");
+        Asserts.notNull(mapper, "mapper");
         boolean changed = false;
         if (pi != null) {
             for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()){
@@ -949,10 +950,13 @@ public class JsonObject extends JsonContainer {
     
     /**
      * Returns a value converted to the inferred type.
+     *
+     * @throws IllegalArgumentException if {@code reified} is nonempty
+     * @throws NullPointerException if {@code reified} is null
      */
     @SuppressWarnings("unchecked")
     public <T> T get(String key, T... reified) {
-        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(key, clazz);
     }
@@ -970,10 +974,13 @@ public class JsonObject extends JsonContainer {
     
     /**
      * Returns a value using lenient conversion with inferred type.
+     *
+     * @throws IllegalArgumentException if {@code reified} is nonempty
+     * @throws NullPointerException if {@code reified} is null
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(String key, T... reified) {
-        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(key, clazz);
     }
@@ -994,7 +1001,7 @@ public class JsonObject extends JsonContainer {
      * old value and therefore return {@code null}.
      */
     public Object put(String key, Object object) {
-        Objects.requireNonNull(key, "key");
+        Asserts.notNull(key, "key");
         if (pi != null) {
             FieldInfo fi = pi.properties.get(key);
             if (fi != null) {
@@ -1011,8 +1018,8 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T computeIfAbsent(String key, Function<String, T> computer) {
-        Objects.requireNonNull(key, "key");
-        Objects.requireNonNull(computer, "computer");
+        Asserts.notNull(key, "key");
+        Asserts.notNull(computer, "computer");
 
         if (pi != null && pi.properties.containsKey(key)) {
             T old = (T) getNode(key);
@@ -1050,7 +1057,7 @@ public class JsonObject extends JsonContainer {
      * Declared JOJO/POJO properties are not removable.
      */
     public Object remove(String key) {
-        Objects.requireNonNull(key, "key");
+        Asserts.notNull(key, "key");
         if (pi != null && pi.properties.containsKey(key)) {
             throw new NodeException("cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
                     "'. Only dynamic properties in JsonObject are removable.");
@@ -1065,7 +1072,7 @@ public class JsonObject extends JsonContainer {
      * Removes dynamic entries that match the predicate.
      */
     public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
-        Objects.requireNonNull(filter, "filter");
+        Asserts.notNull(filter, "filter");
         if (dynamicProperties != null) {
             return dynamicProperties.entrySet().removeIf(filter);
         }

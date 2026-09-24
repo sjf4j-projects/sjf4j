@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.binding.FieldReader;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 
 import java.lang.invoke.MethodHandle;
@@ -127,7 +128,7 @@ public class FieldInfo {
      * Invokes this property's getter.
      */
     public Object invokeGetter(Object receiver) {
-        Objects.requireNonNull(receiver, "receiver");
+        Asserts.notNull(receiver, "receiver");
         return PojoAccess.invokeGetter(name, getterHandle, getterLambda, receiver);
     }
 
@@ -144,7 +145,7 @@ public class FieldInfo {
      * Invokes this property's setter.
      */
     public void invokeSetter(Object receiver, Object value) {
-        Objects.requireNonNull(receiver, "receiver");
+        Asserts.notNull(receiver, "receiver");
         PojoAccess.invokeSetter(name, setterHandle, setterLambda, receiver, value);
     }
 

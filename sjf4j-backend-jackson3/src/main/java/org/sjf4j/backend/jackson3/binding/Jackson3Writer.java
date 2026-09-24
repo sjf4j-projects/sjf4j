@@ -3,6 +3,7 @@ package org.sjf4j.backend.jackson3.binding;
 import org.sjf4j.binding.PreparedName;
 import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
@@ -17,7 +18,7 @@ public final class Jackson3Writer extends StreamingWriter {
 
     public Jackson3Writer(StreamingBinder<?, ?> binder, JsonGenerator generator) {
         super(binder);
-        this.generator = Objects.requireNonNull(generator, "generator");
+        this.generator = Asserts.notNull(generator, "generator");
     }
 
     @Override
@@ -42,7 +43,7 @@ public final class Jackson3Writer extends StreamingWriter {
 
     @Override
     public void writeName(String name) throws IOException {
-        generator.writeName(Objects.requireNonNull(name, "name"));
+        generator.writeName(Asserts.notNull(name, "name"));
     }
 
     @Override
@@ -52,7 +53,7 @@ public final class Jackson3Writer extends StreamingWriter {
 
     @Override
     public void writeStringValue(String value) throws IOException {
-        generator.writeString(Objects.requireNonNull(value, "value"));
+        generator.writeString(Asserts.notNull(value, "value"));
     }
 
     @Override
@@ -97,7 +98,7 @@ public final class Jackson3Writer extends StreamingWriter {
 
     @Override
     public void writeNumberValue(Number value) throws IOException {
-        Objects.requireNonNull(value, "value");
+        Asserts.notNull(value, "value");
         if (value instanceof Integer) generator.writeNumber(value.intValue());
         else if (value instanceof Long) generator.writeNumber(value.longValue());
         else if (value instanceof Double) generator.writeNumber(value.doubleValue());
@@ -110,12 +111,12 @@ public final class Jackson3Writer extends StreamingWriter {
 
     @Override
     public void writeBigIntegerValue(BigInteger value) throws IOException {
-        generator.writeNumber(Objects.requireNonNull(value, "value"));
+        generator.writeNumber(Asserts.notNull(value, "value"));
     }
 
     @Override
     public void writeBigDecimalValue(BigDecimal value) throws IOException {
-        generator.writeNumber(Objects.requireNonNull(value, "value"));
+        generator.writeNumber(Asserts.notNull(value, "value"));
     }
 
 

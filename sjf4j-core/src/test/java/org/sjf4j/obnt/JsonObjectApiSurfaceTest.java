@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonObjectApiSurfaceTest {
@@ -102,8 +103,10 @@ class JsonObjectApiSurfaceTest {
         assertEquals(12, object.getAs("string", Integer.class));
         assertEquals(34, object.<Integer>get("number"));
         assertEquals(12, object.<Integer>getAs("string"));
-        assertThrows(NodeException.class, () -> object.get("number", 1));
-        assertThrows(NodeException.class, () -> object.getAs("string", 1));
+        assertThrowsExactly(IllegalArgumentException.class, () -> object.get("number", 1));
+        assertThrowsExactly(IllegalArgumentException.class, () -> object.getAs("string", 1));
+        assertThrowsExactly(NullPointerException.class, () -> object.get("number", (Integer[]) null));
+        assertThrowsExactly(NullPointerException.class, () -> object.getAs("string", (Integer[]) null));
         assertEquals(object.toMap(), object.toNode(Map.class));
         JsonObject nested = JsonObject.of("k", "v");
         Map<?, ?> boundMap = JsonObject.of("nested", nested).bindNode(Map.class);

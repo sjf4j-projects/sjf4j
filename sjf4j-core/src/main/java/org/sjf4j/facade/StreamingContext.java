@@ -2,6 +2,7 @@ package org.sjf4j.facade;
 
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.util.Map;
 import java.util.Objects;
@@ -29,7 +30,7 @@ public final class StreamingContext {
     public StreamingContext(StreamingMode streamingMode, boolean includeNulls) {
         this.valueFormatTypes = EMPTY_VALUE_TYPES;
         this.valueFormats = EMPTY_VALUE_FORMATS;
-        this.streamingMode = Objects.requireNonNull(streamingMode, "streamingMode");
+        this.streamingMode = Asserts.notNull(streamingMode, "streamingMode");
         this.includeNulls = includeNulls;
         this.nodeFacade = new SimpleNodeFacade(this);
     }
@@ -41,7 +42,7 @@ public final class StreamingContext {
     public StreamingContext(Map<Class<?>, String> defaultValueFormats,
                              StreamingMode streamingMode,
                              boolean includeNulls) {
-        Objects.requireNonNull(defaultValueFormats, "defaultValueFormats");
+        Asserts.notNull(defaultValueFormats, "defaultValueFormats");
         if (defaultValueFormats.isEmpty()) {
             this.valueFormatTypes = EMPTY_VALUE_TYPES;
             this.valueFormats = EMPTY_VALUE_FORMATS;
@@ -50,17 +51,17 @@ public final class StreamingContext {
             this.valueFormats = new String[defaultValueFormats.size()];
             int i = 0;
             for (Map.Entry<Class<?>, String> entry : defaultValueFormats.entrySet()) {
-                Class<?> valueType = Objects.requireNonNull(entry.getKey(), "valueType");
+                Class<?> valueType = Asserts.notNull(entry.getKey(), "valueType");
                 if (valueType.isPrimitive()) {
                     throw new IllegalArgumentException("defaultValueFormat does not support primitive type '"
                             + valueType.getName() + "'; use boxed type '" + Types.box(valueType).getName() + "'");
                 }
                 valueFormatTypes[i] = valueType;
-                valueFormats[i] = Objects.requireNonNull(entry.getValue(), "valueFormat");
+                valueFormats[i] = Asserts.notNull(entry.getValue(), "valueFormat");
                 i++;
             }
         }
-        this.streamingMode = Objects.requireNonNull(streamingMode, "streamingMode");
+        this.streamingMode = Asserts.notNull(streamingMode, "streamingMode");
         this.includeNulls = includeNulls;
         this.nodeFacade = new SimpleNodeFacade(this);
     }
@@ -76,7 +77,7 @@ public final class StreamingContext {
     }
 
     public void copyDefaultValueFormatsTo(Map<Class<?>, String> target) {
-        Objects.requireNonNull(target, "target");
+        Asserts.notNull(target, "target");
         for (int i = 0; i < valueFormatTypes.length; i++) {
             target.put(valueFormatTypes[i], valueFormats[i]);
         }

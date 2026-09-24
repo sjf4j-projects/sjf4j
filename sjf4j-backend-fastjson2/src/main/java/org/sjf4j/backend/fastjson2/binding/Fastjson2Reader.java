@@ -3,6 +3,7 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONReader;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -17,7 +18,7 @@ public final class Fastjson2Reader implements StreamingReader {
     private Token peeked;
 
     public Fastjson2Reader(JSONReader reader) {
-        this.reader = Objects.requireNonNull(reader, "reader");
+        this.reader = Asserts.notNull(reader, "reader");
     }
 
     @Override

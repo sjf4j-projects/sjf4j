@@ -1,6 +1,7 @@
 package org.sjf4j.facade.snake;
 
 import org.sjf4j.facade.StreamingWriter;
+import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
@@ -28,7 +29,7 @@ public final class SnakeWriter implements StreamingWriter {
      * Creates writer adapter from SnakeYAML emitter.
      */
     public SnakeWriter(Emitter emitter) throws IOException {
-        Objects.requireNonNull(emitter, "emitter");
+        Asserts.notNull(emitter, "emitter");
         this.emitter = emitter;
     }
 

@@ -1,10 +1,12 @@
 package org.sjf4j.processor;
 
+import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.path.CompiledNavigator;
-import org.sjf4j.processor.mapping.jdbc.JdbcMapperGenerator;
+import org.sjf4j.processor.binding.BindingGenerator;
 import org.sjf4j.processor.mapping.MapperGenerator;
+import org.sjf4j.processor.mapping.jdbc.JdbcMapperGenerator;
 import org.sjf4j.processor.path.NavigatorGenerator;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -18,7 +20,6 @@ import java.lang.annotation.Annotation;
 import java.util.Set;
 import java.util.function.Consumer;
 
-
 /**
  * Annotation processor entry point for SJF4J compiled features.
  */
@@ -30,19 +31,17 @@ public final class CodegenProcessor extends AbstractProcessor {
     private NavigatorGenerator navigatorGenerator;
     private MapperGenerator mapperGenerator;
     private JdbcMapperGenerator jdbcMapperGenerator;
-
+    private BindingGenerator bindingGenerator;
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         return AnnotationValidator.supportedAnnotationTypes();
     }
 
-
     @Override
     public SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latestSupported();
     }
-
 
     @Override
     public synchronized void init(
@@ -64,8 +63,10 @@ public final class CodegenProcessor extends AbstractProcessor {
 
         this.jdbcMapperGenerator =
                 new JdbcMapperGenerator(context);
-    }
 
+        this.bindingGenerator =
+                new BindingGenerator(context);
+    }
 
     @Override
     public boolean process(
@@ -91,9 +92,13 @@ public final class CodegenProcessor extends AbstractProcessor {
                 CompiledJdbcMapper.class,
                 this::generateJdbcMapper);
 
+        processInterfaces(
+                roundEnv,
+                CompiledBinder.class,
+                bindingGenerator::generate);
+
         return false;
     }
-
 
     private void generateMapper(
             TypeElement type) {
@@ -112,7 +117,6 @@ public final class CodegenProcessor extends AbstractProcessor {
         mapperGenerator.generate(type);
     }
 
-
     private void generateJdbcMapper(
             TypeElement type) {
 
@@ -126,7 +130,6 @@ public final class CodegenProcessor extends AbstractProcessor {
 
         jdbcMapperGenerator.generate(type);
     }
-
 
     private <A extends Annotation> void processInterfaces(
             RoundEnvironment roundEnv,

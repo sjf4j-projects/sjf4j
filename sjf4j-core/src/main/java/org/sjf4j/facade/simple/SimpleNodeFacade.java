@@ -10,6 +10,7 @@ import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.CreatorInfo;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.Nodes;
@@ -60,16 +61,16 @@ public final class SimpleNodeFacade implements NodeFacade {
      * <p>These converters are checked before the default binding logic.
      */
     public SimpleNodeFacade(StreamingContext streamingContext, NodeConverter<?, ?>... converters) {
-        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
+        this.streamingContext = Asserts.notNull(streamingContext, "streamingContext");
         if (converters == null || converters.length == 0) {
             this.converters = EMPTY_CONVERTERS;
         } else {
             NodeConverterSlot[] slots = new NodeConverterSlot[converters.length];
             int i = 0;
             for (NodeConverter<?, ?> converter : converters) {
-                Objects.requireNonNull(converter, "converter");
-                Class<?> sourceType = Types.box(Objects.requireNonNull(converter.sourceType(), "converter.sourceType()"));
-                Class<?> targetType = Types.box(Objects.requireNonNull(converter.targetType(), "converter.targetType()"));
+                Asserts.notNull(converter, "converter");
+                Class<?> sourceType = Types.box(Asserts.notNull(converter.sourceType(), "converter.sourceType()"));
+                Class<?> targetType = Types.box(Asserts.notNull(converter.targetType(), "converter.targetType()"));
                 slots[i++] = new NodeConverterSlot(sourceType, targetType, converter);
             }
             this.converters = slots;

@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 
 import java.lang.invoke.MethodHandle;
@@ -125,7 +126,7 @@ public class CreatorInfo {
      * Creates an object through its argument-based creator.
      */
     public Object newPojoWithArgs(Object[] args) {
-        Objects.requireNonNull(args, "args");
+        Asserts.notNull(args, "args");
         if (argsCreatorHandle == null) {
             throw new BindingException("failed to create instance of " + clazz + ": No creator constructor");
         }

@@ -6,7 +6,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.Patches;
@@ -22,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonContainerPathApiSurfaceTest {
@@ -106,8 +106,10 @@ class JsonContainerPathApiSurfaceTest {
         assertEquals(34, root.<Integer>getByPath("$.num"));
         assertEquals(12, root.getAsByPath("$.string", Integer.class));
         assertEquals(12, root.<Integer>getAsByPath("$.string"));
-        assertThrows(NodeException.class, () -> root.getByPath("$.num", 1));
-        assertThrows(NodeException.class, () -> root.getAsByPath("$.string", 1));
+        assertThrowsExactly(IllegalArgumentException.class, () -> root.getByPath("$.num", 1));
+        assertThrowsExactly(IllegalArgumentException.class, () -> root.getAsByPath("$.string", 1));
+        assertThrowsExactly(NullPointerException.class, () -> root.getByPath("$.num", (Integer[]) null));
+        assertThrowsExactly(NullPointerException.class, () -> root.getAsByPath("$.string", (Integer[]) null));
 
         root.putByPath("$.obj.added", 1);
         assertEquals(1, root.putIfParentPresentByPath("$.obj.added", 2));

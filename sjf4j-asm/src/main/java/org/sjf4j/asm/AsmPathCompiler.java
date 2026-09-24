@@ -15,6 +15,7 @@ import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -49,9 +50,9 @@ public class AsmPathCompiler implements PathCompiler {
 
     @Override
     public BytecodePath<?, ?> compilePath(JsonPath path, Type rootType, Type valueType) {
-        Objects.requireNonNull(path, "path");
-        Objects.requireNonNull(rootType, "rootType");
-        Objects.requireNonNull(valueType, "valueType");
+        Asserts.notNull(path, "path");
+        Asserts.notNull(rootType, "rootType");
+        Asserts.notNull(valueType, "valueType");
         Class<?> rootClazz = Types.rawClazz(rootType);
         Class<?> valueClazz = Types.rawClazz(valueType);
 
@@ -164,7 +165,7 @@ public class AsmPathCompiler implements PathCompiler {
                 null, null);
         mv.visitCode();
 
-        // Objects.requireNonNull(root, "root");
+        // Asserts.notNull(root, "root");
         mv.visitVarInsn(Opcodes.ALOAD, 1);
         mv.visitLdcInsn("root");
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",
@@ -192,7 +193,7 @@ public class AsmPathCompiler implements PathCompiler {
                 null, null);
         mv.visitCode();
 
-        // Objects.requireNonNull(root, "root");
+        // Asserts.notNull(root, "root");
         mv.visitVarInsn(Opcodes.ALOAD, 1);
         mv.visitLdcInsn("root");
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",
@@ -215,7 +216,7 @@ public class AsmPathCompiler implements PathCompiler {
                 null, null);
         mv.visitCode();
 
-        // Objects.requireNonNull(root, "root");
+        // Asserts.notNull(root, "root");
         mv.visitVarInsn(Opcodes.ALOAD, 1);
         mv.visitLdcInsn("root");
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",
@@ -243,7 +244,7 @@ public class AsmPathCompiler implements PathCompiler {
                 null, null);
         mv.visitCode();
 
-        // Objects.requireNonNull(root, "root");
+        // Asserts.notNull(root, "root");
         mv.visitVarInsn(Opcodes.ALOAD, 1);
         mv.visitLdcInsn("root");
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",
@@ -271,14 +272,14 @@ public class AsmPathCompiler implements PathCompiler {
                 null, null);
         mv.visitCode();
 
-        // Objects.requireNonNull(root, "root");
+        // Asserts.notNull(root, "root");
         mv.visitVarInsn(Opcodes.ALOAD, 1);
         mv.visitLdcInsn("root");
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",
                 "requireNonNull", "(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", false);
         mv.visitInsn(Opcodes.POP);
 
-        // Objects.requireNonNull(computer, "computer");
+        // Asserts.notNull(computer, "computer");
         mv.visitVarInsn(Opcodes.ALOAD, 2);
         mv.visitLdcInsn("computer");
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",

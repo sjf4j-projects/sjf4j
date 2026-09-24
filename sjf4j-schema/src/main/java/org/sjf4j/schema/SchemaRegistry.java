@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.HashSet;
@@ -64,7 +65,7 @@ public class SchemaRegistry {
      * so later compilation can resolve a relative root {@code $id}.
      */
     public void index(URI retrievalUri, JsonSchema schema) {
-        Objects.requireNonNull(schema, "schema");
+        Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             return;
         }
@@ -96,7 +97,7 @@ public class SchemaRegistry {
      * built-in schemas remain fallback-only and do not block local indexing.
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
-        Objects.requireNonNull(schema, "schema");
+        Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             return;
         }
@@ -134,7 +135,7 @@ public class SchemaRegistry {
      * Indexes a root schema if needed and returns its compiled root plan.
      */
     public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
-        Objects.requireNonNull(schema, "schema");
+        Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
         }
@@ -184,7 +185,7 @@ public class SchemaRegistry {
     }
 
     private void _checkUri(URI uri) {
-        Objects.requireNonNull(uri, "uri");
+        Asserts.notNull(uri, "uri");
         if (uri.toString().isEmpty()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "schema uri must not be empty", null, (String) null));
@@ -230,7 +231,7 @@ public class SchemaRegistry {
      * resource rather than as a separate registry key.
      */
     public SchemaPlan resolve(URI uri) {
-        Objects.requireNonNull(uri, "uri");
+        Asserts.notNull(uri, "uri");
         String id = uri.toString();
         String fragment = uri.getFragment();
         if (fragment != null) id = SchemaUtil.stripFragment(id);
@@ -245,13 +246,13 @@ public class SchemaRegistry {
      * same resource URI, compilation is triggered lazily at this point.
      */
     public SchemaPlan resolve(String id, String fragment) {
-        Objects.requireNonNull(id, "id");
+        Asserts.notNull(id, "id");
         SchemaPlan plan = _resolveResource(id, true);
         return _resolveFragmentOrThrow(plan, fragment);
     }
 
     SchemaPlan resolveBuilt(URI uri) {
-        Objects.requireNonNull(uri, "uri");
+        Asserts.notNull(uri, "uri");
         String id = uri.toString();
         String fragment = uri.getFragment();
         if (fragment != null) id = SchemaUtil.stripFragment(id);
@@ -268,7 +269,7 @@ public class SchemaRegistry {
      * compiled lazily.
      */
     SchemaPlan resolveResource(URI uri) {
-        Objects.requireNonNull(uri, "uri");
+        Asserts.notNull(uri, "uri");
         String id = uri.getFragment() == null ? uri.toString() : SchemaUtil.stripFragment(uri.toString());
         return _resolveResource(id, true);
     }
@@ -342,7 +343,7 @@ public class SchemaRegistry {
      * lookup, not for fragment resolution.
      */
     ObjectSchema resolveSchema(URI uri) {
-        Objects.requireNonNull(uri, "uri");
+        Asserts.notNull(uri, "uri");
         String id = SchemaUtil.normalizeUriKey(uri);
         ObjectSchema schema = byIdSchemas.get(id);
         if (schema != null) return schema;

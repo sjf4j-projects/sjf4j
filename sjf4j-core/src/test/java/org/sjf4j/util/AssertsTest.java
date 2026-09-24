@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 class AssertsTest {
 
@@ -16,8 +16,8 @@ class AssertsTest {
     }
 
     @Test
-    void notNullRejectsNullWithIllegalArgumentException() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+    void notNullRejectsNullWithNullPointerException() {
+        NullPointerException exception = assertThrowsExactly(NullPointerException.class,
                 () -> Asserts.notNull(null, "value"));
 
         assertEquals("'value' must not be null", exception.getMessage());

@@ -4,6 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.Types;
+import org.sjf4j.util.Asserts;
 
 import java.util.List;
 import java.util.Objects;
@@ -58,7 +59,7 @@ public class JsonPatch extends JsonArray {
      * Adds one patch operation.
      */
     public void add(PatchOperation operation) {
-        Objects.requireNonNull(operation, "operation");
+        Asserts.notNull(operation, "operation");
         super.add(operation);
     }
 

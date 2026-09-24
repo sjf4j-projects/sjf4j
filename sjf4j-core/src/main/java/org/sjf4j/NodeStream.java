@@ -2,6 +2,7 @@ package org.sjf4j;
 
 
 import org.sjf4j.path.JsonPath;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -39,7 +40,7 @@ public class NodeStream<T> {
      * Creates a NodeStream from list elements.
      */
     public static <T> NodeStream<T> of(List<T> nodes) {
-        Objects.requireNonNull(nodes, "nodes");
+        Asserts.notNull(nodes, "nodes");
         return new NodeStream<>(nodes.stream());
     }
 
@@ -47,7 +48,7 @@ public class NodeStream<T> {
      * Creates a NodeStream from a single element.
      */
     public static <T> NodeStream<T> of(T node) {
-        Objects.requireNonNull(node, "node");
+        Asserts.notNull(node, "node");
         return new NodeStream<>(Stream.of(node));
     }
 

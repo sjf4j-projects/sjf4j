@@ -1,6 +1,7 @@
 package org.sjf4j.processor.code;
 
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
@@ -48,16 +49,16 @@ public final class GeneratedClass {
             String suffix) {
 
         this.context =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         context,
                         "context");
 
         this.origin =
-                Objects.requireNonNull(
+                Asserts.notNull(
                         origin,
                         "origin");
 
-        Objects.requireNonNull(
+        Asserts.notNull(
                 suffix,
                 "suffix");
 
@@ -176,21 +177,21 @@ public final class GeneratedClass {
 
     public void addField(Member member) {
         fields.add(
-                Objects.requireNonNull(
+                Asserts.notNull(
                         member,
                         "member"));
     }
 
     public void addMethod(Member member) {
         methods.add(
-                Objects.requireNonNull(
+                Asserts.notNull(
                         member,
                         "member"));
     }
 
     public void addHelper(Member member) {
         helpers.add(
-                Objects.requireNonNull(
+                Asserts.notNull(
                         member,
                         "member"));
     }
