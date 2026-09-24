@@ -26,6 +26,10 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
 
     private final JsonFactory factory;
 
+    public Jackson2Binder() {
+        this(new JsonFactory(), StreamingContext.EMPTY);
+    }
+
     public Jackson2Binder(JsonFactory factory) {
         this(factory, StreamingContext.EMPTY);
     }

@@ -24,8 +24,15 @@ dependencies {
     implementation(project(":sjf4j-asm"))
     implementation(project(":sjf4j-schema"))
 
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
+    implementation(project(":sjf4j-backend-jackson3"))
+    implementation(project(":sjf4j-backend-jackson2"))
+    implementation(project(":sjf4j-backend-gson"))
+    implementation(project(":sjf4j-backend-fastjson2"))
+    implementation(project(":sjf4j-backend-jsonp"))
+    implementation(project(":sjf4j-backend-snake"))
+
     implementation("tools.jackson.core:jackson-databind:3.2.0")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     implementation("org.yaml:snakeyaml:2.5")

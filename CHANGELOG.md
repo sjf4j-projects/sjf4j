@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added compiled binding generation with `@ReadFrom` and `@WriteTo` annotations for custom property read/write methods.
+- Added `@CompiledBinder` format and backend selection with automatic JSON backend resolution.
 
 ### Breaking Changes
 - Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.

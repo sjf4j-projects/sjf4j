@@ -2,20 +2,11 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.type.WildcardType;
-import java.util.List;
-
-/** Emits direct StreamingReader binding code. */
+/** Emits direct concrete-reader binding code. */
 final class ReadEmitter {
-
-    private static final String READER =
-            "org.sjf4j.binding.StreamingReader";
 
     private static final String STREAMING_IO =
             "org.sjf4j.binding.StreamingIO";
@@ -24,9 +15,14 @@ final class ReadEmitter {
             "org.sjf4j.binding.StreamingContext";
 
     private final ProcessorContext context;
+    private final BackendSpec backend;
 
-    ReadEmitter(ProcessorContext context) {
+    ReadEmitter(
+            ProcessorContext context,
+            BackendSpec backend) {
+
         this.context = context;
+        this.backend = backend;
     }
 
     void emitMethod(
@@ -40,25 +36,78 @@ final class ReadEmitter {
                 out,
                 plan.method());
 
-        String reader =
+        String input =
                 BindingSource.parameterName(
                         plan,
-                        plan.readerWriterParameter());
+                        0);
+
+        NameAllocator names =
+                methodNames(plan);
+
+        String reader =
+                names.newName("reader");
+
+        boolean owned =
+                plan.readInput() == BindingPlan.ReadInput.STRING ||
+                plan.readInput() == BindingPlan.ReadInput.BYTES;
+
+        if (owned) {
+            out.beginBlock(
+                    "try (" +
+                            backend.readerType() +
+                            " " + reader +
+                            " = this.binder.createReader(" +
+                            input + "))");
+
+            emitReadBody(
+                    out,
+                    plan,
+                    value,
+                    reader,
+                    names);
+
+            out.endBlock();
+        } else {
+            out.line(
+                    backend.readerType() +
+                            " " + reader +
+                            " = this.binder.createReader(" +
+                            input + ");");
+
+            emitReadBody(
+                    out,
+                    plan,
+                    value,
+                    reader,
+                    names);
+        }
+
+        BindingSource.endOverride(out);
+    }
+
+    private void emitReadBody(
+            JavaWriter out,
+            BindingPlan plan,
+            BindingValue value,
+            String reader,
+            NameAllocator names) {
+
+        String result =
+                names.newName("result");
 
         out.line(reader + ".startDocument();");
 
         out.line(
                 plan.valueType() +
-                        " result = " +
+                        " " + result +
+                        " = " +
                         readExpression(
                                 value,
                                 reader) +
                         ";");
 
         out.line(reader + ".endDocument();");
-        out.line("return result;");
-
-        BindingSource.endOverride(out);
+        out.line("return " + result + ";");
     }
 
     void emitHelper(
@@ -70,7 +119,8 @@ final class ReadEmitter {
                         value.type() +
                         " " +
                         value.helperName() +
-                        "(" + READER +
+                        "(" +
+                        backend.readerType() +
                         " reader) throws java.io.IOException");
 
         switch (value.kind()) {
@@ -315,14 +365,14 @@ final class ReadEmitter {
                         reader +
                         ".nextString()))";
 
-            case FALLBACK:
+            case RUNTIME:
                 return "(" + value.type() + ") " +
                         STREAMING_IO +
                         ".readNode(" +
                         reader + ", " +
-                        typeExpression(
-                                value.type()) +
-                        ", " +
+                        context.typeUtils
+                                .erasure(value.type()) +
+                        ".class, " +
                         STREAMING_CONTEXT +
                         ".EMPTY)";
 
@@ -351,136 +401,22 @@ final class ReadEmitter {
                 ";";
     }
 
-    /**
-     * Emits a java.lang.reflect.Type expression for generic fallback binding.
-     */
-    private String typeExpression(TypeMirror type) {
-        switch (type.getKind()) {
-            case ARRAY: {
-                ArrayType array =
-                        (ArrayType) type;
+    private NameAllocator methodNames(
+            BindingPlan plan) {
 
-                TypeMirror component =
-                        array.getComponentType();
+        NameAllocator names =
+                new NameAllocator();
 
-                if (isReifiable(component)) {
-                    return context.typeUtils
-                            .erasure(type)
-                            .toString() +
-                            ".class";
-                }
+        for (javax.lang.model.element.VariableElement parameter :
+                plan.method()
+                        .declaration()
+                        .getParameters()) {
 
-                return "new org.sjf4j.node.Types.GenericArrayTypeImpl(" +
-                        typeExpression(component) +
-                        ")";
-            }
-
-            case DECLARED: {
-                DeclaredType declared =
-                        (DeclaredType) type;
-
-                List<? extends TypeMirror> arguments =
-                        declared.getTypeArguments();
-
-                if (arguments.isEmpty()) {
-                    return context.typeUtils
-                            .erasure(type)
-                            .toString() +
-                            ".class";
-                }
-
-                StringBuilder expression =
-                        new StringBuilder();
-
-                expression.append(
-                        "new org.sjf4j.node.Types.ParameterizedTypeImpl(")
-                        .append(context.typeUtils
-                                .erasure(type))
-                        .append(".class, new java.lang.reflect.Type[]{");
-
-                for (int i = 0; i < arguments.size(); i++) {
-                    if (i > 0) {
-                        expression.append(", ");
-                    }
-
-                    expression.append(
-                            typeExpression(
-                                    arguments.get(i)));
-                }
-
-                expression.append("}, ");
-
-                TypeMirror enclosing =
-                        declared.getEnclosingType();
-
-                if (enclosing == null ||
-                        enclosing.getKind() ==
-                                TypeKind.NONE) {
-                    expression.append("null");
-                } else {
-                    expression.append(
-                            typeExpression(enclosing));
-                }
-
-                expression.append(')');
-                return expression.toString();
-            }
-
-            case WILDCARD: {
-                WildcardType wildcard =
-                        (WildcardType) type;
-
-                TypeMirror upper =
-                        wildcard.getExtendsBound();
-
-                TypeMirror lower =
-                        wildcard.getSuperBound();
-
-                String upperExpression =
-                        upper == null
-                                ? "java.lang.Object.class"
-                                : typeExpression(upper);
-
-                String lowerExpression =
-                        lower == null
-                                ? ""
-                                : typeExpression(lower);
-
-                return "new org.sjf4j.node.Types.WildcardTypeImpl(" +
-                        "new java.lang.reflect.Type[]{" +
-                        upperExpression +
-                        "}, new java.lang.reflect.Type[]{" +
-                        lowerExpression +
-                        "})";
-            }
-
-            default:
-                return context.typeUtils
-                        .erasure(type)
-                        .toString() +
-                        ".class";
-        }
-    }
-
-    private boolean isReifiable(TypeMirror type) {
-        if (type.getKind().isPrimitive()) {
-            return true;
+            names.reserve(
+                    parameter.getSimpleName()
+                            .toString());
         }
 
-        if (type.getKind() ==
-                TypeKind.ARRAY) {
-            return isReifiable(
-                    ((ArrayType) type)
-                            .getComponentType());
-        }
-
-        if (type.getKind() !=
-                TypeKind.DECLARED) {
-            return false;
-        }
-
-        return ((DeclaredType) type)
-                .getTypeArguments()
-                .isEmpty();
+        return names;
     }
 }

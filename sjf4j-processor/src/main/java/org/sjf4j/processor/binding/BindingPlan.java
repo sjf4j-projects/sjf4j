@@ -5,9 +5,7 @@ import org.sjf4j.processor.method.ResolvedMethod;
 import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
-/**
- * An analyzed @CompiledBinder operation before recursive value compilation.
- */
+/** An analyzed @CompiledBinder operation before recursive value compilation. */
 final class BindingPlan {
 
     enum Direction {
@@ -15,51 +13,64 @@ final class BindingPlan {
         WRITE_TO
     }
 
+    enum ReadInput {
+        STRING,
+        BYTES,
+        INPUT_STREAM,
+        READER
+    }
+
+    enum WriteOutput {
+        STRING,
+        BYTES,
+        OUTPUT_STREAM,
+        WRITER
+    }
+
     private final ResolvedMethod method;
     private final Direction direction;
     private final TypeMirror valueType;
-    private final int readerWriterParameter;
-    private final int valueParameter;
+    private final ReadInput readInput;
+    private final WriteOutput writeOutput;
 
     private BindingPlan(
             ResolvedMethod method,
             Direction direction,
             TypeMirror valueType,
-            int readerWriterParameter,
-            int valueParameter) {
+            ReadInput readInput,
+            WriteOutput writeOutput) {
 
         this.method = Objects.requireNonNull(method, "method");
         this.direction = Objects.requireNonNull(direction, "direction");
         this.valueType = Objects.requireNonNull(valueType, "valueType");
-        this.readerWriterParameter = readerWriterParameter;
-        this.valueParameter = valueParameter;
+        this.readInput = readInput;
+        this.writeOutput = writeOutput;
     }
 
     static BindingPlan readFrom(
             ResolvedMethod method,
             TypeMirror valueType,
-            int readerParameter) {
+            ReadInput input) {
 
         return new BindingPlan(
                 method,
                 Direction.READ_FROM,
                 valueType,
-                readerParameter,
-                -1);
+                Objects.requireNonNull(input, "input"),
+                null);
     }
 
     static BindingPlan writeTo(
             ResolvedMethod method,
             TypeMirror valueType,
-            int valueParameter,
-            int writerParameter) {
+            WriteOutput output) {
 
         return new BindingPlan(
                 method,
                 Direction.WRITE_TO,
                 valueType,
-                writerParameter,
-                valueParameter);
+                null,
+                Objects.requireNonNull(output, "output"));
     }
 
     ResolvedMethod method() {
@@ -74,11 +85,11 @@ final class BindingPlan {
         return valueType;
     }
 
-    int readerWriterParameter() {
-        return readerWriterParameter;
+    ReadInput readInput() {
+        return readInput;
     }
 
-    int valueParameter() {
-        return valueParameter;
+    WriteOutput writeOutput() {
+        return writeOutput;
     }
 }

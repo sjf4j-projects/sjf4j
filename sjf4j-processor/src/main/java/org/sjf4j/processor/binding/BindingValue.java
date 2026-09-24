@@ -5,9 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Recursively compiled binding semantics for one Java value type.
- */
+/** Recursively compiled binding semantics for one Java value type. */
 final class BindingValue {
 
     enum Kind {
@@ -28,7 +26,9 @@ final class BindingValue {
         LIST,
         SET,
         MAP,
-        FALLBACK
+
+        /** Runtime dispatch is reserved for NodeKind.COMPILE_TIME_UNKNOWN. */
+        RUNTIME
     }
 
     private final BindingPlan.Direction direction;

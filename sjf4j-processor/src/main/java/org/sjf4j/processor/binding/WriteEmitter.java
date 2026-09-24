@@ -1,19 +1,23 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
-/** Emits direct StreamingWriter binding code. */
+/** Emits direct concrete-writer binding code. */
 final class WriteEmitter {
-
-    private static final String WRITER =
-            "org.sjf4j.binding.StreamingWriter";
 
     private static final String STREAMING_IO =
             "org.sjf4j.binding.StreamingIO";
 
     private static final String STREAMING_CONTEXT =
             "org.sjf4j.binding.StreamingContext";
+
+    private final BackendSpec backend;
+
+    WriteEmitter(BackendSpec backend) {
+        this.backend = backend;
+    }
 
     void emitMethod(
             JavaWriter out,
@@ -25,27 +29,156 @@ final class WriteEmitter {
                 out,
                 plan.method());
 
-        String writer =
-                BindingSource.parameterName(
-                        plan,
-                        plan.readerWriterParameter());
-
         String source =
                 BindingSource.parameterName(
                         plan,
-                        plan.valueParameter());
+                        0);
+
+        NameAllocator names =
+                methodNames(plan);
+
+        switch (plan.writeOutput()) {
+            case STRING:
+                emitStringMethod(
+                        out,
+                        compiled.value(),
+                        source,
+                        names);
+                break;
+
+            case BYTES:
+                emitBytesMethod(
+                        out,
+                        compiled.value(),
+                        source,
+                        names);
+                break;
+
+            case WRITER:
+            case OUTPUT_STREAM:
+                emitStreamMethod(
+                        out,
+                        compiled.value(),
+                        source,
+                        BindingSource.parameterName(
+                                plan,
+                                1),
+                        names);
+                break;
+
+            default:
+                throw new AssertionError(
+                        plan.writeOutput());
+        }
+
+        BindingSource.endOverride(out);
+    }
+
+    private void emitStringMethod(
+            JavaWriter out,
+            BindingValue value,
+            String source,
+            NameAllocator names) {
+
+        String output =
+                names.newName("output");
+
+        String writer =
+                names.newName("writer");
+
+        out.beginBlock(
+                "try (org.sjf4j.binding.FastStringWriter " +
+                        output +
+                        " = new org.sjf4j.binding.FastStringWriter(); " +
+                        backend.writerType() +
+                        " " + writer +
+                        " = this.binder.createWriter(" +
+                        output + "))");
+
+        emitWriteBody(
+                out,
+                value,
+                source,
+                writer);
+
+        out.line(writer + ".flushTo(" + output + ");");
+        out.line("return " + output + ".toString();");
+        out.endBlock();
+    }
+
+    private void emitBytesMethod(
+            JavaWriter out,
+            BindingValue value,
+            String source,
+            NameAllocator names) {
+
+        String output =
+                names.newName("output");
+
+        String writer =
+                names.newName("writer");
+
+        out.beginBlock(
+                "try (java.io.ByteArrayOutputStream " +
+                        output +
+                        " = new java.io.ByteArrayOutputStream(); " +
+                        backend.writerType() +
+                        " " + writer +
+                        " = this.binder.createWriter(" +
+                        output + "))");
+
+        emitWriteBody(
+                out,
+                value,
+                source,
+                writer);
+
+        out.line(writer + ".flushTo(" + output + ");");
+        out.line("return " + output + ".toByteArray();");
+        out.endBlock();
+    }
+
+    private void emitStreamMethod(
+            JavaWriter out,
+            BindingValue value,
+            String source,
+            String output,
+            NameAllocator names) {
+
+        String writer =
+                names.newName("writer");
+
+        out.line(
+                backend.writerType() +
+                        " " + writer +
+                        " = this.binder.createWriter(" +
+                        output + ");");
+
+        emitWriteBody(
+                out,
+                value,
+                source,
+                writer);
+
+        out.line(writer + ".flushTo(" + output + ");");
+    }
+
+    private void emitWriteBody(
+            JavaWriter out,
+            BindingValue value,
+            String source,
+            String writer) {
 
         out.line(writer + ".startDocument();");
 
         writeValue(
                 out,
-                compiled.value(),
+                value,
                 writer,
                 source);
 
         out.line(writer + ".endDocument();");
-
-        BindingSource.endOverride(out);
+        out.line(writer + ".flush();");
     }
 
     void emitHelper(
@@ -55,7 +188,8 @@ final class WriteEmitter {
         out.beginBlock(
                 "private static void " +
                         value.helperName() +
-                        "(" + WRITER +
+                        "(" +
+                        backend.writerType() +
                         " writer, " +
                         value.type() +
                         " value) throws java.io.IOException");
@@ -323,7 +457,7 @@ final class WriteEmitter {
                 out.endBlock();
                 return;
 
-            case FALLBACK:
+            case RUNTIME:
                 out.line(
                         STREAMING_IO +
                                 ".writeNode(" +
@@ -375,5 +509,24 @@ final class WriteEmitter {
 
         return owner + '.' +
                 access.memberName();
+    }
+
+    private NameAllocator methodNames(
+            BindingPlan plan) {
+
+        NameAllocator names =
+                new NameAllocator();
+
+        for (javax.lang.model.element.VariableElement parameter :
+                plan.method()
+                        .declaration()
+                        .getParameters()) {
+
+            names.reserve(
+                    parameter.getSimpleName()
+                            .toString());
+        }
+
+        return names;
     }
 }

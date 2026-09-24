@@ -16,6 +16,10 @@ public final class GsonBinder extends JsonBinder<GsonReader, GsonWriter> {
 
     private final Gson gson;
 
+    public GsonBinder() {
+        this(new Gson(), StreamingContext.EMPTY);
+    }
+
     public GsonBinder(Gson gson) {
         this(gson, StreamingContext.EMPTY);
     }

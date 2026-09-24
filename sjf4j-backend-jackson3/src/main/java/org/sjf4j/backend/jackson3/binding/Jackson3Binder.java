@@ -31,6 +31,10 @@ public class Jackson3Binder extends JsonBinder<Jackson3Reader, Jackson3Writer> {
 
     private final JsonFactory factory;
 
+    public Jackson3Binder() {
+        this(new JsonFactory(), StreamingContext.EMPTY);
+    }
+
     public Jackson3Binder(JsonFactory factory) {
         this(factory, StreamingContext.EMPTY);
     }

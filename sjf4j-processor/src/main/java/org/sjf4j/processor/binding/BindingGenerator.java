@@ -9,18 +9,19 @@ import javax.lang.model.element.TypeElement;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Generates implementations for {@code @CompiledBinder} interfaces.
- */
+/** Generates implementations for {@code @CompiledBinder} interfaces. */
 public final class BindingGenerator {
 
     private final ProcessorContext context;
     private final BindingMethodGenerator methodGenerator;
+    private final BackendResolver backendResolver;
 
     public BindingGenerator(ProcessorContext context) {
         this.context = context;
         this.methodGenerator =
                 new BindingMethodGenerator(context);
+        this.backendResolver =
+                new BackendResolver(context);
     }
 
     public void generate(TypeElement type) {
@@ -30,7 +31,6 @@ public final class BindingGenerator {
             context.error(
                     type,
                     "@CompiledBinder interface cannot declare type parameters");
-
             return;
         }
 
@@ -38,6 +38,29 @@ public final class BindingGenerator {
                 GeneratedClass.forInterface(
                         context,
                         type);
+
+        BackendSpec backend =
+                backendResolver.resolve(
+                        type,
+                        generated);
+
+        if (backend == null ||
+                !generated.isValid()) {
+            return;
+        }
+
+        /*
+         * Instance field rather than static state: CompiledInstances already
+         * caches the generated implementation, while this shape leaves room
+         * for future binder injection without changing generated helpers.
+         */
+        generated.addField(
+                out -> out.line(
+                        "private final " +
+                                backend.binderType() +
+                                " binder = new " +
+                                backend.binderType() +
+                                "();"));
 
         List<ResolvedMethod> resolvedMethods =
                 context.methods.abstractMethods(type);
@@ -81,12 +104,24 @@ public final class BindingGenerator {
                         plans.size());
 
         for (BindingPlan plan : plans) {
-            compiled.add(
-                    compiler.compile(plan));
+            BindingCompiler.CompiledMethod method =
+                    compiler.compile(
+                            plan,
+                            generated);
+
+            if (method != null) {
+                compiled.add(method);
+            }
+        }
+
+        if (!generated.isValid()) {
+            return;
         }
 
         BindingEmitter emitter =
-                new BindingEmitter(context);
+                new BindingEmitter(
+                        context,
+                        backend);
 
         for (BindingCompiler.CompiledMethod method :
                 compiled) {

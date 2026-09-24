@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
@@ -22,7 +23,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Compiles Java types into recursive binding semantics before source emission.
+ * Compiles Java types into recursive direct-binding semantics before source
+ * emission.
+ *
+ * <p>V2 deliberately permits runtime dispatch only for
+ * {@link NodeKind#COMPILE_TIME_UNKNOWN}. A statically known shape that is not
+ * supported by the direct compiler is rejected instead of silently falling
+ * back to runtime binding.</p>
  */
 final class BindingCompiler {
 
@@ -53,15 +60,20 @@ final class BindingCompiler {
         this.linkedHashMapType = requiredType("java.util.LinkedHashMap");
     }
 
-    CompiledMethod compile(BindingPlan plan) {
+    CompiledMethod compile(
+            BindingPlan plan,
+            GeneratedClass generated) {
+
         BindingValue value =
                 compileValue(
                         plan.direction(),
-                        plan.valueType());
+                        plan.valueType(),
+                        plan.method().declaration(),
+                        generated);
 
-        return new CompiledMethod(
-                plan,
-                value);
+        return value == null
+                ? null
+                : new CompiledMethod(plan, value);
     }
 
     Collection<BindingValue> helpers() {
@@ -70,7 +82,17 @@ final class BindingCompiler {
 
     private BindingValue compileValue(
             BindingPlan.Direction direction,
-            TypeMirror inputType) {
+            TypeMirror inputType,
+            ExecutableElement method,
+            GeneratedClass generated) {
+
+        if (inputType == null) {
+            error(
+                    method,
+                    generated,
+                    "Cannot resolve binding type");
+            return null;
+        }
 
         TypeMirror type =
                 context.types.concrete(inputType);
@@ -88,7 +110,13 @@ final class BindingCompiler {
         BindingValue.Kind kind =
                 resolveKind(
                         direction,
-                        type);
+                        type,
+                        method,
+                        generated);
+
+        if (kind == null) {
+            return null;
+        }
 
         BindingValue value =
                 new BindingValue(
@@ -115,16 +143,31 @@ final class BindingCompiler {
 
         switch (kind) {
             case POJO:
-                compilePojo(value);
+                if (!compilePojo(
+                        value,
+                        method,
+                        generated)) {
+                    return null;
+                }
                 break;
 
             case LIST:
             case SET:
-                compileElement(value);
+                if (!compileElement(
+                        value,
+                        method,
+                        generated)) {
+                    return null;
+                }
                 break;
 
             case MAP:
-                compileMap(value);
+                if (!compileMap(
+                        value,
+                        method,
+                        generated)) {
+                    return null;
+                }
                 break;
 
             default:
@@ -136,7 +179,9 @@ final class BindingCompiler {
 
     private BindingValue.Kind resolveKind(
             BindingPlan.Direction direction,
-            TypeMirror type) {
+            TypeMirror type,
+            ExecutableElement method,
+            GeneratedClass generated) {
 
         TypeKind javaKind =
                 type.getKind();
@@ -160,7 +205,11 @@ final class BindingCompiler {
                 case CHAR:
                     return BindingValue.Kind.CHARACTER;
                 default:
-                    return BindingValue.Kind.FALLBACK;
+                    return unsupported(
+                            method,
+                            generated,
+                            type,
+                            "primitive kind " + javaKind);
             }
         }
 
@@ -218,63 +267,77 @@ final class BindingCompiler {
                 context.types.nodeKind(type);
 
         switch (nodeKind) {
+            case COMPILE_TIME_UNKNOWN:
+                return BindingValue.Kind.RUNTIME;
+
             case OBJECT_POJO:
-                if (direction == BindingPlan.Direction.WRITE_TO ||
-                        hasPublicNoArgsConstructor(type)) {
+                if (direction ==
+                        BindingPlan.Direction.WRITE_TO) {
                     return BindingValue.Kind.POJO;
                 }
-                return BindingValue.Kind.FALLBACK;
+
+                if (hasPublicNoArgsConstructor(type)) {
+                    return BindingValue.Kind.POJO;
+                }
+
+                return unsupported(
+                        method,
+                        generated,
+                        type,
+                        "read binding currently requires a public no-args constructor; creator support is deferred");
 
             case ARRAY_LIST:
-                if (direction == BindingPlan.Direction.READ_FROM) {
-                    TypeMirror elementType =
-                            context.types.listWriteElementType(type);
-
-                    return elementType != null &&
-                            canAssignImplementation(
-                                    arrayListType,
-                                    type)
-                            ? BindingValue.Kind.LIST
-                            : BindingValue.Kind.FALLBACK;
+                if (directList(direction, type)) {
+                    return BindingValue.Kind.LIST;
                 }
-
-                return context.types.listReadElementType(type) != null
-                        ? BindingValue.Kind.LIST
-                        : BindingValue.Kind.FALLBACK;
+                return unsupported(
+                        method,
+                        generated,
+                        type,
+                        "List type cannot be bound directly with the declared generic/write constraints");
 
             case ARRAY_SET:
-                if (direction == BindingPlan.Direction.READ_FROM) {
-                    TypeMirror elementType =
-                            context.types.setWriteElementType(type);
-
-                    return elementType != null &&
-                            canAssignImplementation(
-                                    linkedHashSetType,
-                                    type)
-                            ? BindingValue.Kind.SET
-                            : BindingValue.Kind.FALLBACK;
+                if (directSet(direction, type)) {
+                    return BindingValue.Kind.SET;
                 }
-
-                return context.types.setReadElementType(type) != null
-                        ? BindingValue.Kind.SET
-                        : BindingValue.Kind.FALLBACK;
+                return unsupported(
+                        method,
+                        generated,
+                        type,
+                        "Set type cannot be bound directly with the declared generic/write constraints");
 
             case OBJECT_MAP:
-                return directMap(direction, type)
-                        ? BindingValue.Kind.MAP
-                        : BindingValue.Kind.FALLBACK;
+                if (directMap(direction, type)) {
+                    return BindingValue.Kind.MAP;
+                }
+                return unsupported(
+                        method,
+                        generated,
+                        type,
+                        "Map direct binding requires a String key and a directly writable/readable value type");
+
+            case UNKNOWN:
+                return unsupported(
+                        method,
+                        generated,
+                        type,
+                        "compile-time node kind is UNKNOWN");
 
             default:
-                /*
-                 * JOJO/JAJO, @NodeValue, arrays, external nodes and
-                 * COMPILE_TIME_UNKNOWN deliberately remain on runtime binding
-                 * in v1. They can be compiled incrementally later.
-                 */
-                return BindingValue.Kind.FALLBACK;
+                return unsupported(
+                        method,
+                        generated,
+                        type,
+                        "node kind " + nodeKind +
+                                " is not yet supported by V2 direct binding");
         }
     }
 
-    private void compilePojo(BindingValue value) {
+    private boolean compilePojo(
+            BindingValue value,
+            ExecutableElement method,
+            GeneratedClass generated) {
+
         Map<String, Property> properties =
                 context.properties.resolve(
                         value.type());
@@ -299,7 +362,13 @@ final class BindingCompiler {
             BindingValue propertyValue =
                     compileValue(
                             value.direction(),
-                            access.type());
+                            access.type(),
+                            method,
+                            generated);
+
+            if (propertyValue == null) {
+                return false;
+            }
 
             compiled.add(
                     new BindingProperty(
@@ -309,9 +378,14 @@ final class BindingCompiler {
         }
 
         value.properties(compiled);
+        return true;
     }
 
-    private void compileElement(BindingValue value) {
+    private boolean compileElement(
+            BindingValue value,
+            ExecutableElement method,
+            GeneratedClass generated) {
+
         TypeMirror elementType;
 
         if (value.kind() == BindingValue.Kind.LIST) {
@@ -332,13 +406,26 @@ final class BindingCompiler {
                                     value.type());
         }
 
-        value.elementValue(
+        BindingValue elementValue =
                 compileValue(
                         value.direction(),
-                        elementType));
+                        elementType,
+                        method,
+                        generated);
+
+        if (elementValue == null) {
+            return false;
+        }
+
+        value.elementValue(elementValue);
+        return true;
     }
 
-    private void compileMap(BindingValue value) {
+    private boolean compileMap(
+            BindingValue value,
+            ExecutableElement method,
+            GeneratedClass generated) {
+
         TypeMirror mapValueType =
                 value.direction() ==
                         BindingPlan.Direction.READ_FROM
@@ -347,10 +434,53 @@ final class BindingCompiler {
                         : context.types.mapReadValueType(
                                 value.type());
 
-        value.mapValue(
+        BindingValue mapValue =
                 compileValue(
                         value.direction(),
-                        mapValueType));
+                        mapValueType,
+                        method,
+                        generated);
+
+        if (mapValue == null) {
+            return false;
+        }
+
+        value.mapValue(mapValue);
+        return true;
+    }
+
+    private boolean directList(
+            BindingPlan.Direction direction,
+            TypeMirror type) {
+
+        if (direction == BindingPlan.Direction.READ_FROM) {
+            TypeMirror elementType =
+                    context.types.listWriteElementType(type);
+
+            return elementType != null &&
+                    canAssignImplementation(
+                            arrayListType,
+                            type);
+        }
+
+        return context.types.listReadElementType(type) != null;
+    }
+
+    private boolean directSet(
+            BindingPlan.Direction direction,
+            TypeMirror type) {
+
+        if (direction == BindingPlan.Direction.READ_FROM) {
+            TypeMirror elementType =
+                    context.types.setWriteElementType(type);
+
+            return elementType != null &&
+                    canAssignImplementation(
+                            linkedHashSetType,
+                            type);
+        }
+
+        return context.types.setReadElementType(type) != null;
     }
 
     private boolean directMap(
@@ -412,7 +542,6 @@ final class BindingCompiler {
                         Modifier.ABSTRACT) ||
                 !element.getModifiers().contains(
                         Modifier.PUBLIC)) {
-
             return false;
         }
 
@@ -420,7 +549,6 @@ final class BindingCompiler {
                 NestingKind.MEMBER &&
                 !element.getModifiers().contains(
                         Modifier.STATIC)) {
-
             return false;
         }
 
@@ -442,16 +570,36 @@ final class BindingCompiler {
             if (constructor.getParameters().isEmpty() &&
                     constructor.getModifiers().contains(
                             Modifier.PUBLIC)) {
-
                 return true;
             }
         }
 
-        /*
-         * A public class with no declared constructor has an implicit public
-         * no-args constructor.
-         */
         return !declaredConstructor;
+    }
+
+    private BindingValue.Kind unsupported(
+            ExecutableElement method,
+            GeneratedClass generated,
+            TypeMirror type,
+            String reason) {
+
+        error(
+                method,
+                generated,
+                "Cannot generate direct " +
+                        "binding for " + type +
+                        ": " + reason);
+
+        return null;
+    }
+
+    private void error(
+            ExecutableElement method,
+            GeneratedClass generated,
+            String message) {
+
+        context.error(method, message);
+        generated.invalidate();
     }
 
     private String helperSuggestion(

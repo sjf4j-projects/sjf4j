@@ -3,17 +3,24 @@ package org.sjf4j.processor.binding;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 
-/**
- * Coordinates source emission for compiled binder methods and helpers.
- */
+/** Coordinates source emission for compiled binder methods and helpers. */
 final class BindingEmitter {
 
     private final ReadEmitter reads;
     private final WriteEmitter writes;
 
-    BindingEmitter(ProcessorContext context) {
-        this.reads = new ReadEmitter(context);
-        this.writes = new WriteEmitter();
+    BindingEmitter(
+            ProcessorContext context,
+            BackendSpec backend) {
+
+        this.reads =
+                new ReadEmitter(
+                        context,
+                        backend);
+
+        this.writes =
+                new WriteEmitter(
+                        backend);
     }
 
     void emitMethod(
