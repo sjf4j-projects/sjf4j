@@ -1,7 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -75,7 +75,7 @@ class NumbersTest {
         assertEquals(7.0f, Numbers.to(7, Float.class));
         assertEquals(BigInteger.valueOf(7), Numbers.to(7, BigInteger.class));
         assertEquals(BigDecimal.valueOf(7), Numbers.to(7, BigDecimal.class));
-        assertThrows(JsonException.class, () -> Numbers.to(7, Boolean.class));
+        assertThrows(NodeException.class, () -> Numbers.to(7, Boolean.class));
     }
 
     @Test
@@ -114,7 +114,7 @@ class NumbersTest {
 //        assertEquals(Double.class, Numbers.parseNumber("_1.25e2_").getClass());
 //
 //        assertEquals(BigInteger.class, Numbers.parseNumber("_" + "1".repeat(100) + "_").getClass());
-//        assertThrows(JsonException.class, () -> Numbers.parseNumber("_" + "1".repeat(101) + "_"));
+//        assertThrows(NodeException.class, () -> Numbers.parseNumber("_" + "1".repeat(101) + "_"));
 //    }
 
     @Test

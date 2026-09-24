@@ -7,7 +7,7 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
 import org.sjf4j.backend.gson.external.GsonNodeProvider;
@@ -173,12 +173,12 @@ class GsonNodeTest {
     }
 
     private static void assertStrictRejection(Runnable operation, String expected) {
-        JsonException exception = assertThrows(JsonException.class, operation::run);
+        NodeException exception = assertThrows(NodeException.class, operation::run);
         assertEquals("expected " + expected + ", but was com.google.gson.JsonPrimitive", exception.getMessage());
     }
 
     private static void assertUnsupported(Runnable operation, String method) {
-        JsonException exception = assertThrows(JsonException.class, operation::run);
+        NodeException exception = assertThrows(NodeException.class, operation::run);
         assertEquals("unsupported external node operation '" + method + "'", exception.getMessage());
     }
 

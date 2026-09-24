@@ -9,7 +9,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.FieldReader;
 import org.sjf4j.binding.FieldWriter;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeIgnore;
@@ -121,7 +121,7 @@ public final class ReflectUtil {
 
     public static PojoInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
         if (!isPojoCandidate(clazz)) {
-            if (orElseThrow) throw new JsonException("class " + clazz.getName() + " cannot be a POJO candidate");
+            if (orElseThrow) throw new BindingException("class " + clazz.getName() + " cannot be a POJO candidate");
             else return null;
         }
 
@@ -132,7 +132,7 @@ public final class ReflectUtil {
         try {
             creatorInfo = analyzeCreator(clazz, lookup);
         } catch (Exception e) {
-            if (orElseThrow) throw e instanceof JsonException ? (JsonException) e : new JsonException(e);
+            if (orElseThrow) throw e instanceof BindingException ? (BindingException) e : new BindingException(e);
             else return null;
         }
 
@@ -232,10 +232,10 @@ public final class ReflectUtil {
                 if (implicitIdx != null && !finalName.equals(family.implicitName)) {
                     Integer finalIdx = creatorInfo.argIndexes.get(finalName);
                     if (finalIdx != null && !finalIdx.equals(implicitIdx)) {
-                        throw new JsonException("property '" + finalName + "' conflicts with multiple creator arguments in "
+                        throw new BindingException("property '" + finalName + "' conflicts with multiple creator arguments in "
                                 + clazz.getName());
                     }
-                    throw new JsonException("property '" + finalName + "' renames creator-bound property '"
+                    throw new BindingException("property '" + finalName + "' renames creator-bound property '"
                             + family.implicitName + "' in " + clazz.getName());
                 }
             }
@@ -245,7 +245,7 @@ public final class ReflectUtil {
             boolean genericDependent = Types.containsTypeVariable(type);
             if (genericDependent &&
                     (family.oneOfInfo != null || family.codecName != null || family.codecPattern != null)) {
-                throw new JsonException("generic field '" + finalName +
+                throw new BindingException("generic field '" + finalName +
                         "' does not support field-level OneOf or value codec");
             }
 
@@ -265,7 +265,7 @@ public final class ReflectUtil {
                     fieldReader);
             FieldInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
-                throw new JsonException("multiple property families resolve to JSON property '" + pi.name +
+                throw new BindingException("multiple property families resolve to JSON property '" + pi.name +
                         "' in " + clazz.getName());
             }
 
@@ -274,7 +274,7 @@ public final class ReflectUtil {
                 if (aliasMap == null) aliasMap = new HashMap<>();
                 String old = aliasMap.put(alias, pi.name);
                 if (old != null && !old.equals(pi.name)) {
-                    throw new JsonException("alias '" + alias + "' is mapped to multiple properties in " + clazz.getName());
+                    throw new BindingException("alias '" + alias + "' is mapped to multiple properties in " + clazz.getName());
                 }
             }
         } //for
@@ -319,7 +319,7 @@ public final class ReflectUtil {
             if (Modifier.isStatic(mod) || field.isSynthetic()) continue;
             if (Modifier.isTransient(mod)) {
                 if (field.getAnnotation(NodeProperty.class) != null) {
-                    throw new JsonException("transient field '" + field.getName() + "' in " + root.getName() +
+                    throw new BindingException("transient field '" + field.getName() + "' in " + root.getName() +
                             " cannot use @NodeProperty");
                 }
                 continue;
@@ -455,7 +455,7 @@ public final class ReflectUtil {
             return;
         }
 
-        throw new JsonException("ambiguous getter methods for property '" + family.implicitName +
+        throw new BindingException("ambiguous getter methods for property '" + family.implicitName +
                 "' in " + root.getName() + ": " + current + " and " + method);
     }
 
@@ -476,7 +476,7 @@ public final class ReflectUtil {
             return;
         }
 
-        throw new JsonException("ambiguous setter methods for property '" + family.implicitName +
+        throw new BindingException("ambiguous setter methods for property '" + family.implicitName +
                 "' in " + root.getName() + ": " + current + " and " + method);
     }
 
@@ -518,7 +518,7 @@ public final class ReflectUtil {
         Class<?> leftRaw = Types.rawBox(left);
         Class<?> rightRaw = Types.rawBox(right);
         if (leftRaw == rightRaw || leftRaw.isAssignableFrom(rightRaw) || rightRaw.isAssignableFrom(leftRaw)) return;
-        throw new JsonException("incompatible " + leftLabel + "/" + rightLabel + " types for property '"
+        throw new BindingException("incompatible " + leftLabel + "/" + rightLabel + " types for property '"
                 + propertyName + "' in " + root.getName() + ": "
                 + leftRaw.getName() + " vs " + rightRaw.getName());
     }
@@ -560,7 +560,7 @@ public final class ReflectUtil {
         void addExplicitName(String name, Class<?> owner) {
             if (name == null || name.isEmpty()) return;
             if (explicitName == null) explicitName = name;
-            else if (!explicitName.equals(name)) throw new JsonException("conflicting explicit names for property '" + implicitName + "' in " + owner.getName());
+            else if (!explicitName.equals(name)) throw new BindingException("conflicting explicit names for property '" + implicitName + "' in " + owner.getName());
         }
         void addAliases(String[] src) {
             if (src == null || src.length == 0) return;
@@ -570,12 +570,12 @@ public final class ReflectUtil {
         void mergeCodecName(String cn, Class<?> owner) {
             if (cn == null) return;
             if (codecName == null) codecName = cn;
-            else if (!codecName.equals(cn)) throw new JsonException("conflicting codecName for property '" + implicitName + "' in " + owner.getName());
+            else if (!codecName.equals(cn)) throw new BindingException("conflicting codecName for property '" + implicitName + "' in " + owner.getName());
         }
         void mergeCodecPattern(String cp, Class<?> owner) {
             if (cp == null) return;
             if (codecPattern == null) codecPattern = cp;
-            else if (!codecPattern.equals(cp)) throw new JsonException("conflicting codecPattern for property '" + implicitName + "' in " + owner.getName());
+            else if (!codecPattern.equals(cp)) throw new BindingException("conflicting codecPattern for property '" + implicitName + "' in " + owner.getName());
         }
         boolean canUseGetter() {
             return getterMethod != null && !ignoreGetter;
@@ -658,7 +658,7 @@ public final class ReflectUtil {
                 return new ValueInfo(codecPattern, codec.valueClazz(),
                         codec.rawClazz(), codec, null, null, null);
             }
-            throw new JsonException("type '" + rawType.getName() + "' does not support codecPattern;" +
+            throw new BindingException("type '" + rawType.getName() + "' does not support codecPattern;" +
                     " its ValueCodec does not implement " + PatternedValueCodec.class.getName());
         }
         if (codecName != null) {
@@ -700,14 +700,14 @@ public final class ReflectUtil {
         for (Constructor<?> ctor : ctors) {
             if (ctor.isAnnotationPresent(NodeCreator.class) || hasCreatorAnnotation(ctor)) {
                 if (creator != null) {
-                    throw new JsonException("multiple creator definitions found in " + clazz.getName());
+                    throw new BindingException("multiple creator definitions found in " + clazz.getName());
                 }
                 try {
                     try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
                     creatorHandle = lookup.unreflectConstructor(ctor);
                     creator = ctor;
                 } catch (IllegalAccessException e) {
-                    throw new JsonException("cannot access creator constructor of " + clazz.getName(), e);
+                    throw new BindingException("cannot access creator constructor of " + clazz.getName(), e);
                 }
             }
         }
@@ -716,17 +716,17 @@ public final class ReflectUtil {
             if (!Modifier.isStatic(method.getModifiers())) continue;
             if (method.isAnnotationPresent(NodeCreator.class) || hasCreatorAnnotation(method)) {
                 if (creator != null) {
-                    throw new JsonException("multiple creator definitions found in " + clazz.getName());
+                    throw new BindingException("multiple creator definitions found in " + clazz.getName());
                 }
                 if (!clazz.isAssignableFrom(method.getReturnType())) {
-                    throw new JsonException("creator method must return " + clazz.getName() + ": " + method);
+                    throw new BindingException("creator method must return " + clazz.getName() + ": " + method);
                 }
                 try {
                     try { method.setAccessible(true); } catch (RuntimeException ignored) {}
                     creatorHandle = lookup.unreflect(method);
                     creator = method;
                 } catch (IllegalAccessException e) {
-                    throw new JsonException("cannot access creator method '" + method.getName() +
+                    throw new BindingException("cannot access creator method '" + method.getName() +
                             "' of " + clazz.getName(), e);
                 }
             }
@@ -738,7 +738,7 @@ public final class ReflectUtil {
                 creatorHandle = lookup.unreflectConstructor(ctors[0]);
                 creator = ctors[0];
             } catch (IllegalAccessException e) {
-                throw new JsonException("cannot access creator constructor of " + clazz.getName(), e);
+                throw new BindingException("cannot access creator constructor of " + clazz.getName(), e);
             }
         }
 
@@ -792,7 +792,7 @@ public final class ReflectUtil {
                     }
                 }
                 if (name == null || name.isEmpty())
-                    throw new JsonException("missing parameter name for creator in " + clazz.getName() +
+                    throw new BindingException("missing parameter name for creator in " + clazz.getName() +
                             ": parameter index " + i + " (from 0). Use @NodeProperty on parameters.");
                 argNames[i] = name;
                 String codecName = getCodecName(params[i]);
@@ -811,7 +811,7 @@ public final class ReflectUtil {
                     for (String alias : aliases) {
                         String old = aliasMap.put(alias, argNames[i]);
                         if (old != null)
-                            throw new JsonException("alias '" + alias + "' is mapped to multiple properties in " +
+                            throw new BindingException("alias '" + alias + "' is mapped to multiple properties in " +
                                     clazz.getName());
                     }
                 }
@@ -825,7 +825,7 @@ public final class ReflectUtil {
                 try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
                 noArgsCtor = lookup.unreflectConstructor(ctor);
             } catch (NoSuchMethodException | IllegalAccessException e) {
-                throw new JsonException("no defined creator or no-args constructor of " + clazz.getName(), e);
+                throw new BindingException("no defined creator or no-args constructor of " + clazz.getName(), e);
             }
             noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
         } else if (creator.getParameterCount() == 0) {
@@ -1040,7 +1040,7 @@ public final class ReflectUtil {
     public static OneOfInfo analyzeOneOf(Class<?> clazz, OneOf ann) {
         OneOf.Mapping[] mappings = ann.value();
         if (mappings == null || mappings.length == 0) {
-            throw new JsonException("empty mappings in @" + OneOf.class.getName() + " of class " + clazz.getName());
+            throw new BindingException("empty mappings in @" + OneOf.class.getName() + " of class " + clazz.getName());
         }
 
         boolean hasDiscriminator = !ann.key().isEmpty() || !ann.path().isEmpty();
@@ -1048,21 +1048,21 @@ public final class ReflectUtil {
         for (OneOf.Mapping mapping : mappings) {
             Class<?> subClazz = mapping.value();
             if (!clazz.isAssignableFrom(subClazz)) {
-                throw new JsonException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
+                throw new BindingException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
                         " is not assignable from " + clazz.getName());
             }
             if (hasDiscriminator) {
                 if (mapping.when().length == 0) {
-                    throw new JsonException("given a discriminator but has empty 'when' in mapping " +
+                    throw new BindingException("given a discriminator but has empty 'when' in mapping " +
                             subClazz.getName() + " in @" + OneOf.class.getName() + " of class " + clazz.getName());
                 }
             } else {
                 JsonType jt = JsonType.rawOf(mapping.value());
                 if (jt.isUnknown()) {
-                    throw new JsonException("mapping raw JsonType must not be UNKNOWN in class " + clazz.getName());
+                    throw new BindingException("mapping raw JsonType must not be UNKNOWN in class " + clazz.getName());
                 }
                 if (!enumSet.add(jt)) {
-                    throw new JsonException("mapping duplicated raw JsonType " + jt + " in class " + subClazz.getName());
+                    throw new BindingException("mapping duplicated raw JsonType " + jt + " in class " + subClazz.getName());
                 }
             }
         }

@@ -4,9 +4,10 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 
 /**
- * Exception for binding/streaming errors with optional path context.
+ * Exception for Java binding definitions and binding or streaming execution
+ * errors, with optional path context.
  */
-public class BindingException extends JsonException {
+public class BindingException extends NodeException {
 
     private final PathSegment ps;
 

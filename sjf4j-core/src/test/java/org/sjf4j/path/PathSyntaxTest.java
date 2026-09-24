@@ -2,7 +2,7 @@ package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.List;
 
@@ -103,10 +103,10 @@ public class PathSyntaxTest {
 
     @Test
     void testInvalidInputs() {
-        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("users")); // missing '/'
-        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("/a~2b"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("/~"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("/a~xb"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePointer("users")); // missing '/'
+        assertThrows(NodeException.class, () -> PathSyntax.parsePointer("/a~2b"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePointer("/~"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePointer("/a~xb"));
     }
 
     @Test
@@ -382,7 +382,7 @@ public class PathSyntaxTest {
         fe = PathSyntax.parseFilter("@.members[?@.age > 30]");
         System.out.println("fe=" + fe);
         assertEquals("@.members[?@.age > 30]", fe.toString());
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.members[*].age > 30"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("@.members[*].age > 30"));
     }
 
     @Test
@@ -393,7 +393,7 @@ public class PathSyntaxTest {
         fe = PathSyntax.parseFilter("@.ninja == 'x'");
         assertEquals("(@.ninja == \"x\")", fe.toString());
 
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x inx [1]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("@.x inx [1]"));
 
         fe = PathSyntax.parseFilter("@.x in []");
         assertEquals("(@.x in [])", fe.toString());
@@ -410,9 +410,9 @@ public class PathSyntaxTest {
         assertEquals("$.items[?(@.size in [\"S\", \"M\"])]",
                 JsonPath.parse("$.items[?(@.size in ['S','M'])]").toExpr());
 
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1,]"));
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1"));
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("@.x in [1 2]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("@.x in [1,]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("@.x in [1"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("@.x in [1 2]"));
     }
 
     @Test
@@ -420,10 +420,10 @@ public class PathSyntaxTest {
         PathSegment[] segments = PathSyntax.parsePath("$[-2147483648]");
         assertEquals(Integer.MIN_VALUE, ((PathSegment.Index) segments[1]).index);
 
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[2147483648]"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[-2147483649]"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[١]"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[١:]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[2147483648]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[-2147483649]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[١]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[١:]"));
     }
 
     @Test
@@ -446,12 +446,12 @@ public class PathSyntaxTest {
         assertEquals(compact.step, whitespace.step);
 
         assertInstanceOf(PathSegment.Union.class, PathSyntax.parsePath("$[1:4,2]")[1]);
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[1:4:0]"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[1:4:2:1]"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[1::foo]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1:4:0]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1:4:2:1]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1::foo]"));
         assertInstanceOf(PathSegment.Name.class, PathSyntax.parsePath("$['1:4']")[1]);
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[?@.x:1]"));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$[9007199254740992:]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[?@.x:1]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[9007199254740992:]"));
         assertSlice("$[-9007199254740991:]", -9007199254740991L, null, null);
     }
 
@@ -482,8 +482,8 @@ public class PathSyntaxTest {
     private void testParsePathFailure(String path, String expectedError) {
         try {
             PathSyntax.parsePath(path);
-            fail("Expected JsonException for path: " + path);
-        } catch (JsonException e) {
+            fail("Expected NodeException for path: " + path);
+        } catch (NodeException e) {
             assertTrue(e.getMessage().toLowerCase().contains(expectedError.toLowerCase()),
                     "Error message should contain: " + expectedError + ", but got: " + e.getMessage());
         }

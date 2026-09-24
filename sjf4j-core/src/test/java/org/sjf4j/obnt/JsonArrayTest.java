@@ -6,7 +6,9 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
+import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -20,6 +22,15 @@ import static org.junit.jupiter.api.Assertions.fail;
 @Slf4j
 class JsonArrayTest {
 
+    static class ThrowingGetterJsonArray extends JsonArray {
+        BindingException failure;
+
+        @Override
+        public Object getNode(int idx) {
+            throw failure;
+        }
+    }
+
     @Test
     public void testGetter1() {
         String json1 = "[12,34,[56,78],9,{\"a\":0}]";
@@ -32,6 +43,40 @@ class JsonArrayTest {
         assertEquals(0, ja.getJsonObject(4).getFloat("a"));
 
         System.out.println(ja.toJson());
+    }
+
+    @Test
+    void typedGetterPropagatesBindingExceptionButKeepsStructuralErrors() {
+        JsonArray array = JsonArray.of(1);
+
+        BindingException binding = assertThrows(BindingException.class,
+                () -> array.get(0, Thread.class));
+        assertTrue(binding.getMessage().contains("expected " + Thread.class.getName()));
+
+        NodeException structural = assertThrows(NodeException.class, () -> array.getString(0));
+        assertEquals(NodeException.class, structural.getClass());
+    }
+
+    @Test
+    void gettersAddCurrentPathToUnpathedBindingErrorsAndPreservePathedErrors() {
+        ThrowingGetterJsonArray array = new ThrowingGetterJsonArray();
+        BindingException unpathed = new BindingException("codec failed");
+        array.failure = unpathed;
+
+        BindingException strict = assertThrows(BindingException.class, () -> array.getString(0));
+        assertSame(unpathed, strict.getCause());
+        assertEquals("$[0]", strict.getPathSegment().rootedPathExpr());
+        assertTrue(strict.getMessage().contains("codec failed"));
+
+        BindingException lenient = assertThrows(BindingException.class, () -> array.getAsString(0));
+        assertSame(unpathed, lenient.getCause());
+        assertEquals("$[0]", lenient.getPathSegment().rootedPathExpr());
+
+        BindingException pathed = new BindingException("nested codec failed",
+                new PathSegment.Index(PathSegment.Root.INSTANCE, 1));
+        array.failure = pathed;
+        assertSame(pathed, assertThrows(BindingException.class, () -> array.getString(0)));
+        assertSame(pathed, assertThrows(BindingException.class, () -> array.getAsString(0)));
     }
 
     @Test public void testRemove1() {
@@ -95,11 +140,11 @@ class JsonArrayTest {
         System.out.println(ja1);
         assertNull(ja1.getNode(2));
 
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             JsonArray ja = JsonArray.fromJson("[\"number,5,null,[\"gaga\",\"haha\"],45,32]");
         });
 
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             JsonArray ja = JsonArray.fromJson("[\"number\",5,null,[\"gaga\",\"haha\"],45,32]");
             ja.getLong(0);
         });
@@ -196,7 +241,7 @@ class JsonArrayTest {
         JsonArray empty = JsonArray.fromJson("[]");
         empty.ensurePutIfAbsentByPath("$[0]", 9);
         assertEquals("[9]", empty.toJson());
-        assertThrows(JsonException.class, () -> JsonArray.fromJson("[]").ensurePutIfAbsentByPath("$[1]", 9));
+        assertThrows(NodeException.class, () -> JsonArray.fromJson("[]").ensurePutIfAbsentByPath("$[1]", 9));
     }
 
     @Test public void testByPath2() {
@@ -277,10 +322,10 @@ class JsonArrayTest {
         assertEquals("x", ja.getString(2));
         
         // test boundary cases
-        assertThrows(JsonException.class, () -> ja.set(-10, "error"));
-        assertThrows(JsonException.class, () -> ja.set(10, "error"));
-        assertThrows(JsonException.class, () -> ja.add(-10, "error"));
-        assertThrows(JsonException.class, () -> ja.add(10, "error"));
+        assertThrows(NodeException.class, () -> ja.set(-10, "error"));
+        assertThrows(NodeException.class, () -> ja.set(10, "error"));
+        assertThrows(NodeException.class, () -> ja.add(-10, "error"));
+        assertThrows(NodeException.class, () -> ja.add(10, "error"));
         
         // test add at end (index == size)
         ja.add(ja.size(), "end");

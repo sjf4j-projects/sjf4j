@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Nodes;
@@ -100,7 +100,7 @@ public class JsonObjectPojoTest {
     public void testBadField() {
         Person p = new Person();
         p.setName("Alice");
-        assertThrows(JsonException.class, () -> p.put("age", 18.99));
+        assertThrows(NodeException.class, () -> p.put("age", 18.99));
     }
 
     @Test
@@ -216,7 +216,7 @@ public class JsonObjectPojoTest {
     @Test
     public void testInvalidAssignments() {
         Person p = new Person();
-        assertThrows(JsonException.class, () -> p.put("age", "not_a_number"));
+        assertThrows(NodeException.class, () -> p.put("age", "not_a_number"));
     }
 
     @Test

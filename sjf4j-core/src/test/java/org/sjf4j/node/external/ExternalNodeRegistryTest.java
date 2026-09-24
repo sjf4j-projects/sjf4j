@@ -3,7 +3,7 @@ package org.sjf4j.node.external;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
@@ -13,7 +13,7 @@ import org.sjf4j.node.TypeRegistry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 class ExternalNodeRegistryTest {
     @Test
@@ -29,7 +29,7 @@ class ExternalNodeRegistryTest {
         TypeInfo typeInfo = TypeRegistry.registerTypeInfo(TestExternalChildNode.class);
         assertSame(TestExternalChildNodeProvider.ADAPTER, typeInfo.externalNode);
         assertNull(typeInfo.pojoInfo);
-        assertThrows(JsonException.class, () -> TypeRegistry.registerPojoOrElseThrow(TestExternalChildNode.class));
+        assertThrowsExactly(BindingException.class, () -> TypeRegistry.registerPojoOrElseThrow(TestExternalChildNode.class));
     }
 
     @Test
@@ -59,7 +59,7 @@ class ExternalNodeRegistryTest {
 
     @Test
     void unsupportedOperationsFailFastByDefault() {
-        NodeException exception = assertThrows(NodeException.class,
+        NodeException exception = assertThrowsExactly(NodeException.class,
                 () -> new TestExternalAdapter().getInObject(new TestExternalNode(JsonType.OBJECT), "key"));
 
         assertEquals("unsupported external node operation 'getInObject'", exception.getMessage());

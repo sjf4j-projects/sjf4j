@@ -1,7 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.PatternedValueCodec;
 
@@ -41,7 +41,7 @@ class ValueCodecEdgeCaseTest {
 
         URL url = new URL("https://example.com/p?q=1");
         assertStringCodec(ValueCodec.URL_CODEC, url, url.toString(), URL.class);
-        assertThrows(JsonException.class, () -> ValueCodec.URL_CODEC.rawToValue(":bad-url"));
+        assertThrows(BindingException.class, () -> ValueCodec.URL_CODEC.rawToValue(":bad-url"));
 
         UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
         assertStringCodec(ValueCodec.UUID_CODEC, uuid, uuid.toString(), UUID.class);
@@ -111,7 +111,7 @@ class ValueCodecEdgeCaseTest {
         assertNull(ValueCodec.INET_ADDR.rawToValue(null));
         assertEquals(address.getHostAddress(), ValueCodec.INET_ADDR.valueToRaw(address));
         assertEquals(address, ValueCodec.INET_ADDR.rawToValue(address.getHostAddress()));
-        assertThrows(JsonException.class, () -> ValueCodec.INET_ADDR.rawToValue("300.300.300.300"));
+        assertThrows(BindingException.class, () -> ValueCodec.INET_ADDR.rawToValue("300.300.300.300"));
 
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Shanghai"));
         calendar.setTimeInMillis(1704103200000L);

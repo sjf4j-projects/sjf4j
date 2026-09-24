@@ -1,11 +1,11 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 /**
  * Exception for schema compilation/validation errors.
  */
-public class SchemaException extends JsonException {
+public class SchemaException extends NodeException {
 
     /**
      * Creates a schema exception with message.

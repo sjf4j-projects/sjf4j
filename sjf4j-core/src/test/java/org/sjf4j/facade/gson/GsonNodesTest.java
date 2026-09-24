@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 
@@ -40,7 +40,7 @@ class GsonNodesTest {
         assertEquals(NodeKind.OBJECT_EXTERNAL, GsonNodes.kindOf(objectNode));
         assertEquals(NodeKind.ARRAY_EXTERNAL, GsonNodes.kindOf(arrayNode));
         assertEquals(NodeKind.VALUE_NULL, GsonNodes.kindOf(JsonNull.INSTANCE));
-        assertThrows(JsonException.class, () -> GsonNodes.kindOf("x"));
+        assertThrows(NodeException.class, () -> GsonNodes.kindOf("x"));
 
         assertEquals(NodeKind.OBJECT_EXTERNAL, GsonNodes.kindOf(JsonObject.class));
         assertEquals(NodeKind.ARRAY_EXTERNAL, GsonNodes.kindOf(JsonArray.class));
@@ -57,9 +57,9 @@ class GsonNodesTest {
         assertTrue(GsonNodes.asBoolean(new JsonPrimitive(1)));
         assertNull(GsonNodes.asBoolean(objectNode));
 
-        assertThrows(JsonException.class, () -> GsonNodes.toString(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.toNumber(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.toBoolean(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toString(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toNumber(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toBoolean(objectNode));
     }
 
     @Test
@@ -124,33 +124,33 @@ class GsonNodesTest {
         assertTrue(GsonNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(GsonNodes.anyMatchArray(arrayNode, (idx, value) -> false));
 
-        assertThrows(JsonException.class, () -> GsonNodes.toJsonObject(arrayNode));
-        assertThrows(JsonException.class, () -> GsonNodes.toMap(arrayNode));
-        assertThrows(JsonException.class, () -> GsonNodes.toJsonArray(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.toList(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.toArray(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.toSet(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.sizeInObject(arrayNode));
-        assertThrows(JsonException.class, () -> GsonNodes.sizeInArray(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.keySetInObject(arrayNode));
-        assertThrows(JsonException.class, () -> GsonNodes.entrySetInObject(arrayNode));
-        assertThrows(JsonException.class, () -> GsonNodes.iteratorInArray(objectNode));
-        assertThrows(JsonException.class, () -> GsonNodes.containsInObject(arrayNode, "name"));
-        assertThrows(JsonException.class, () -> GsonNodes.getInObject(arrayNode, "name"));
-        assertThrows(JsonException.class, () -> GsonNodes.getInArray(objectNode, 0));
-        assertThrows(JsonException.class, () -> GsonNodes.putAccessInObject(arrayNode, null, "name", new Nodes.Access()));
-        assertThrows(JsonException.class, () -> GsonNodes.putAccessInArray(objectNode, null, 0, new Nodes.Access()));
-        assertThrows(JsonException.class, () -> GsonNodes.forEachObject(arrayNode, (k, v) -> {}));
-        assertThrows(JsonException.class, () -> GsonNodes.anyMatchObject(arrayNode, (k, v) -> true));
-        assertThrows(JsonException.class, () -> GsonNodes.replaceInObject(arrayNode, (k, v) -> v));
-        assertThrows(JsonException.class, () -> GsonNodes.removeIfInObject(arrayNode, (k, v) -> true));
-        assertThrows(JsonException.class, () -> GsonNodes.forEachArray(objectNode, (i, v) -> {}));
-        assertThrows(JsonException.class, () -> GsonNodes.anyMatchArray(objectNode, (i, v) -> true));
-        assertThrows(JsonException.class, () -> GsonNodes.putInObject(objectNode, "x", new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> GsonNodes.setInArray(arrayNode, 0, new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> GsonNodes.addInArray(arrayNode, new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> GsonNodes.addInArray(arrayNode, 0, new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> GsonNodes.removeInObject(objectNode, "name"));
-        assertThrows(JsonException.class, () -> GsonNodes.removeInArray(arrayNode, 0));
+        assertThrows(NodeException.class, () -> GsonNodes.toJsonObject(arrayNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toMap(arrayNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toJsonArray(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toList(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toArray(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.toSet(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.sizeInObject(arrayNode));
+        assertThrows(NodeException.class, () -> GsonNodes.sizeInArray(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.keySetInObject(arrayNode));
+        assertThrows(NodeException.class, () -> GsonNodes.entrySetInObject(arrayNode));
+        assertThrows(NodeException.class, () -> GsonNodes.iteratorInArray(objectNode));
+        assertThrows(NodeException.class, () -> GsonNodes.containsInObject(arrayNode, "name"));
+        assertThrows(NodeException.class, () -> GsonNodes.getInObject(arrayNode, "name"));
+        assertThrows(NodeException.class, () -> GsonNodes.getInArray(objectNode, 0));
+        assertThrows(NodeException.class, () -> GsonNodes.putAccessInObject(arrayNode, null, "name", new Nodes.Access()));
+        assertThrows(NodeException.class, () -> GsonNodes.putAccessInArray(objectNode, null, 0, new Nodes.Access()));
+        assertThrows(NodeException.class, () -> GsonNodes.forEachObject(arrayNode, (k, v) -> {}));
+        assertThrows(NodeException.class, () -> GsonNodes.anyMatchObject(arrayNode, (k, v) -> true));
+        assertThrows(NodeException.class, () -> GsonNodes.replaceInObject(arrayNode, (k, v) -> v));
+        assertThrows(NodeException.class, () -> GsonNodes.removeIfInObject(arrayNode, (k, v) -> true));
+        assertThrows(NodeException.class, () -> GsonNodes.forEachArray(objectNode, (i, v) -> {}));
+        assertThrows(NodeException.class, () -> GsonNodes.anyMatchArray(objectNode, (i, v) -> true));
+        assertThrows(NodeException.class, () -> GsonNodes.putInObject(objectNode, "x", new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> GsonNodes.setInArray(arrayNode, 0, new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> GsonNodes.addInArray(arrayNode, new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> GsonNodes.addInArray(arrayNode, 0, new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> GsonNodes.removeInObject(objectNode, "name"));
+        assertThrows(NodeException.class, () -> GsonNodes.removeInArray(arrayNode, 0));
     }
 }

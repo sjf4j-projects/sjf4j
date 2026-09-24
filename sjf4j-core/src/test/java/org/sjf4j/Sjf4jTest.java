@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
@@ -204,7 +204,7 @@ public class Sjf4jTest {
         JsonObject invalidNode = JsonObject.of("inner", JsonObject.of("count", JsonObject.of("bad", true)));
         Sjf4j runtime = Sjf4j.builder().build();
 
-        BindingException error = findBindingException(assertThrows(JsonException.class,
+        BindingException error = findBindingException(assertThrows(NodeException.class,
                 () -> runtime.fromNode(invalidNode, RuntimeOuter.class)));
 
         assertNotNull(error);

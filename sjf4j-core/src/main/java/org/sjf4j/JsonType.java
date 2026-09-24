@@ -1,7 +1,7 @@
 package org.sjf4j;
 
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.FacadeNodes;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
@@ -120,7 +120,7 @@ public enum JsonType {
             case "integer": return JsonType.INTEGER;
             case "boolean": return JsonType.BOOLEAN;
             case "null": return JsonType.NULL;
-            default: throw new JsonException("Unknown JSON Schema type: " + type);
+            default: throw new NodeException("Unknown JSON Schema type: " + type);
         }
     }
 

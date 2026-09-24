@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.annotation.node.PropertyStrategy;
@@ -179,7 +179,7 @@ public class GsonFacadeTest {
     @Test
     void testExclusiveIoIsRejectedAtRuntime() {
         GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), ctx(StreamingContext.StreamingMode.EXCLUSIVE_IO));
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> facade.readNode("{}", Object.class));
         assertTrue(ex.getMessage().contains("EXCLUSIVE_IO"));
     }

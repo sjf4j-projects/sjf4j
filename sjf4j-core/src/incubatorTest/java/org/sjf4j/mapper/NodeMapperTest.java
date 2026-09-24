@@ -2,7 +2,7 @@ package org.sjf4j.mapper;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -129,17 +129,17 @@ public class NodeMapperTest {
     public void testNonEnsureActionsDoNotCreateMissingTargetPath() {
         UserSource source = sampleUser();
 
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("$.meta.city", "profile.city")
                 .build()
                 .map(source));
 
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .value("$.meta.source", "sjf4j")
                 .build()
                 .map(source));
 
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("$.meta.label", root -> root.name + ":x")
                 .build()
                 .map(source));
@@ -147,23 +147,23 @@ public class NodeMapperTest {
 
     @Test
     public void testCopyRejectsMultiSourcePath() {
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("displayName", "friends[*].name"));
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("friends[*].level", "friends[*].name"));
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("friends[*].level", "name"));
     }
 
     @Test
     public void testValueRejectsMultiTargetPath() {
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .value("friends[*].level", "A"));
     }
 
     @Test
     public void testEnsureValueRejectsMultiTargetPath() {
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .ensureValue("friends[*].level", "A"));
     }
 
@@ -245,17 +245,17 @@ public class NodeMapperTest {
     public void testBuildCompiledNonEnsureThrows() {
         UserSource source = sampleUser();
 
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("$.meta.city", "profile.city")
                 .buildCompiled()
                 .map(source));
 
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .value("$.meta.source", "sjf4j")
                 .buildCompiled()
                 .map(source));
 
-        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("$.meta.label", root -> root.name + ":x")
                 .buildCompiled()
                 .map(source));

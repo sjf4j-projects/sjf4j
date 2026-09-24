@@ -2,7 +2,7 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
@@ -82,7 +82,7 @@ public class JsonPath {
     }
 
     protected JsonPath(String raw, PathSegment[] segments) {
-        if (segments.length == 0) throw new JsonException("segments must not be empty");
+        if (segments.length == 0) throw new NodeException("segments must not be empty");
         this.raw = raw;
         this.segments = segments;
 
@@ -291,13 +291,13 @@ public class JsonPath {
         return null == value ? defaultValue : value;
     }
 
-    private JsonException _strict(Object container, Object value, String target, Exception cause) {
-        return new JsonException("cannot get " + target + " from path '" + this + "': container=" +
+    private NodeException _strict(Object container, Object value, String target, Exception cause) {
+        return new NodeException("cannot get " + target + " from path '" + this + "': container=" +
                 Types.name(container) + ", value=" + Types.name(value), cause);
     }
 
-    private JsonException _lenient(Object container, Object value, String target, Exception cause) {
-        return new JsonException("cannot coerce value at path '" + this + "' to " + target + ": container=" +
+    private NodeException _lenient(Object container, Object value, String target, Exception cause) {
+        return new NodeException("cannot coerce value at path '" + this + "' to " + target + ": container=" +
                 Types.name(container) + ", value=" + Types.name(value), cause);
     }
 
@@ -824,7 +824,7 @@ public class JsonPath {
      */
     @SuppressWarnings("unchecked")
     public <T> T get(Object container, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(container, clazz);
     }
@@ -847,7 +847,7 @@ public class JsonPath {
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(Object container, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(container, clazz);
     }
@@ -962,7 +962,7 @@ public class JsonPath {
             }
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("cannot evaluate " + clazz.getName() + " from path '" + this + "': container=" +
+            throw new NodeException("cannot evaluate " + clazz.getName() + " from path '" + this + "': container=" +
                     Types.name(container) + ", value=" + Types.name(value), e);
         }
     }
@@ -980,7 +980,7 @@ public class JsonPath {
             }
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("cannot coerce value at path '" + this + "' to " + clazz.getName() + ": container=" +
+            throw new NodeException("cannot coerce value at path '" + this + "' to " + clazz.getName() + ": container=" +
                     Types.name(container) + ", value=" + Types.name(value), e);
         }
     }
@@ -1005,14 +1005,14 @@ public class JsonPath {
      * through {@link Nodes#addInArray(Object, Object)}. POJO property writes
      * return {@code null} because they avoid reading the old value.
      *
-     * @throws JsonException when the parent container does not exist or the last
+     * @throws NodeException when the parent container does not exist or the last
      *                       segment cannot be written
      */
     public Object put(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if (lastContainer == MISSING || lastContainer == null) {
-            throw new JsonException("cannot put value at path '" + this + "': parent container does not exist");
+            throw new NodeException("cannot put value at path '" + this + "': parent container does not exist");
         }
         return _putLast(lastContainer, segments[segments.length - 1], value, "put()");
     }
@@ -1096,7 +1096,7 @@ public class JsonPath {
             int size = Nodes.sizeInArray(lastContainer);
             int idx = index.index < 0 ? size + index.index : index.index;
             if (idx < 0 || idx > size) {
-                throw new JsonException("cannot ensure-put-if-absent value at indexed path '" + this +
+                throw new NodeException("cannot ensure-put-if-absent value at indexed path '" + this +
                         "': index " + index.index + " is out of bounds for array size " + size);
             }
             if (idx == size) {
@@ -1111,7 +1111,7 @@ public class JsonPath {
             Nodes.addInArray(lastContainer, value);
             return null;
         } else {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; ensurePutIfAbsent() expected Name, Index, or Append token");
         }
     }
@@ -1134,7 +1134,7 @@ public class JsonPath {
         PathSegment lastToken = segments[segments.length - 1];
         if (!(lastToken instanceof PathSegment.Name || lastToken instanceof PathSegment.Index
                 || lastToken instanceof PathSegment.Append)) {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; compute() expected Name, Index, or Append token");
         }
         if (singlePut) {
@@ -1188,7 +1188,7 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Append) {
             return false;
         } else {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; contains() expected Name or Index token");
         }
     }
@@ -1213,7 +1213,7 @@ public class JsonPath {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if  (lastContainer == MISSING || lastContainer == null)
-            throw new JsonException("cannot add value at path '" + this + "': parent container does not exist");
+            throw new NodeException("cannot add value at path '" + this + "': parent container does not exist");
 
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
@@ -1229,7 +1229,7 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(lastContainer, value);
         } else {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; add() expected Name, Index, or Append token");
         }
     }
@@ -1246,29 +1246,29 @@ public class JsonPath {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if  (lastContainer == MISSING || lastContainer == null) {
-            throw new JsonException("cannot replace value at path '" + this + "': parent container does not exist");
+            throw new NodeException("cannot replace value at path '" + this + "': parent container does not exist");
         }
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
             if (!Nodes.containsInObject(lastContainer, name)) {
-                throw new JsonException("cannot replace value at non-existent path '" + this + "'");
+                throw new NodeException("cannot replace value at non-existent path '" + this + "'");
             }
             return Nodes.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
             if (_isPointerObjectKey(index, lastContainer)) {
                 if (!Nodes.containsInObject(lastContainer, index.pointerToken)) {
-                    throw new JsonException("cannot replace value at non-existent path '" + this + "'");
+                    throw new NodeException("cannot replace value at non-existent path '" + this + "'");
                 }
                 return Nodes.putInObject(lastContainer, index.pointerToken, value);
             }
             if (!Nodes.containsInArray(lastContainer, index.index)) {
-                throw new JsonException("cannot replace value at non-existent path '" + this + "'");
+                throw new NodeException("cannot replace value at non-existent path '" + this + "'");
             }
             return Nodes.setInArray(lastContainer, index.index, value);
         } else {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; replace() expected Name or Index token");
         }
     }
@@ -1301,7 +1301,7 @@ public class JsonPath {
             }
             return Nodes.removeInArray(lastContainer, index.index);
         } else {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; remove() expected Name or Index token");
         }
     }
@@ -1370,7 +1370,7 @@ public class JsonPath {
                     return MISSING;
                 }
             } else if (pt instanceof PathSegment.Descendant) {
-                if (i + 1 >= segments.length) throw new JsonException("descendant '..' cannot appear at the end");
+                if (i + 1 >= segments.length) throw new NodeException("descendant '..' cannot appear at the end");
                 List<Object> result = new ArrayList<>();
                 _findMatch(container, node, i + 1, endExclusive, result, Function.identity(), acc);
                 if (result.isEmpty()) {
@@ -1378,14 +1378,14 @@ public class JsonPath {
                 } else if (result.size() == 1) {
                     return result.get(0);
                 } else {
-                    throw new JsonException("path '" + this + "' matched " + result.size() +
+                    throw new NodeException("path '" + this + "' matched " + result.size() +
                             " results, but this method requires a single value");
                 }
             } else if (pt instanceof PathSegment.Param) {
-                throw new JsonException("path parameter " + pt +
+                throw new NodeException("path parameter " + pt +
                         " can only be used in @GetByPath-style annotations");
             } else {
-                throw new JsonException("unsupported path token '" + pt + "'");
+                throw new NodeException("unsupported path token '" + pt + "'");
             }
         }
         return node;
@@ -1433,7 +1433,7 @@ public class JsonPath {
                     Nodes.forEachArray(node, (j, v) -> _findAll(root, v, nextI, endExclusive, result, converter, acc));
                 }
             } else if (pt instanceof PathSegment.Descendant) {
-                if (i + 1 >= segments.length) throw new JsonException("descendant '..' cannot appear at the end");
+                if (i + 1 >= segments.length) throw new NodeException("descendant '..' cannot appear at the end");
                 _findMatch(root, node, i + 1, endExclusive, result, converter, acc);
             } else if (pt instanceof PathSegment.Slice) {
                 PathSegment.Slice slicePt = (PathSegment.Slice) pt;
@@ -1482,7 +1482,7 @@ public class JsonPath {
                     }
                 }
             } else {
-                throw new JsonException("unexpected path token '" + pt + "'");
+                throw new NodeException("unexpected path token '" + pt + "'");
             }
             return;
         }
@@ -1637,7 +1637,7 @@ public class JsonPath {
             Nodes.addInArray(lastContainer, value);
             return null;
         } else {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; " + opName + " expected Name, Index, or Append token");
         }
     }
@@ -1660,7 +1660,7 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(lastContainer, computer.apply(lastContainer, null));
         } else {
-            throw new JsonException("unsupported last path token '" + lastToken +
+            throw new NodeException("unsupported last path token '" + lastToken +
                     "'; compute() expected Name, Index, or Append token");
         }
     }
@@ -1671,7 +1671,7 @@ public class JsonPath {
      */
     private Object _ensureContainersInPath(Object container) {
         if (!isSinglePut()) {
-            throw new JsonException("JsonPath '" + this + "' must represent a single-node path; " +
+            throw new NodeException("JsonPath '" + this + "' must represent a single-node path; " +
                     "automatic container creation supports only Root, Name, Index, and Append segments");
         }
 
@@ -1698,10 +1698,10 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("cannot put field '" + key + "' on object node type '" + curType + "'");
+                        throw new NodeException("cannot put field '" + key + "' on object node type '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("expected object node at '" + ps.rootedPathExpr() + "', but was '" +
+                    throw new NodeException("expected object node at '" + ps.rootedPathExpr() + "', but was '" +
                             curType + "'");
                 }
             } else if (ps instanceof PathSegment.Index) {
@@ -1721,7 +1721,7 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("cannot ensure path segment '" + ps.rootedPathExpr() +
+                        throw new NodeException("cannot ensure path segment '" + ps.rootedPathExpr() +
                                 "': indexed array access requires an existing element; use append path syntax instead");
                     }
                 } else if (_isPointerObjectKey(index, jt)) {
@@ -1739,10 +1739,10 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("cannot put field '" + index.pointerToken + "' on object node type '" + curType + "'");
+                        throw new NodeException("cannot put field '" + index.pointerToken + "' on object node type '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("expected array node at '" + ps.rootedPathExpr() + "', but was '" +
+                    throw new NodeException("expected array node at '" + ps.rootedPathExpr() + "', but was '" +
                             curType + "'");
                 }
             } else if (ps instanceof PathSegment.Append) {
@@ -1758,14 +1758,14 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("cannot append to array node type '" + curType + "'");
+                        throw new NodeException("cannot append to array node type '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("expected array node at '" + ps.rootedPathExpr() + "', but was '" +
+                    throw new NodeException("expected array node at '" + ps.rootedPathExpr() + "', but was '" +
                             curType + "'");
                 }
             } else {
-                throw new JsonException("unexpected path token '" + ps + "'");
+                throw new NodeException("unexpected path token '" + ps + "'");
             }
         }
         return curNode; // last container

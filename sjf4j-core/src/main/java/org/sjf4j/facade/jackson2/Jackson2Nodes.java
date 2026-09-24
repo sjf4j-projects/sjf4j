@@ -9,12 +9,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -63,7 +62,7 @@ public final class Jackson2Nodes {
         if (jsonNode.isBoolean()) return NodeKind.VALUE_BOOLEAN_EXTERNAL;
         if (jsonNode.isObject()) return NodeKind.OBJECT_EXTERNAL;
         if (jsonNode.isArray()) return NodeKind.ARRAY_EXTERNAL;
-        if (jsonNode.isPojo()) throw new JsonException("Jackson 2.x POJONode is not supported");
+        if (jsonNode.isPojo()) throw new NodeException("Jackson 2.x POJONode is not supported");
         return NodeKind.UNKNOWN;
     }
 
@@ -554,7 +553,7 @@ public final class Jackson2Nodes {
             an.set(idx, vv);
             return old;
         }
-        throw new JsonException("cannot set at index " + idx + " in ArrayNode of size " + an.size());
+        throw new NodeException("cannot set at index " + idx + " in ArrayNode of size " + an.size());
     }
 
     /**
@@ -575,7 +574,7 @@ public final class Jackson2Nodes {
         ArrayNode an = (ArrayNode) node;
         idx = idx < 0 ? an.size() + idx : idx;
         if (idx < 0 || idx > an.size()) {
-            throw new JsonException("cannot insert at index " + idx + " in ArrayNode of size " + an.size());
+            throw new NodeException("cannot insert at index " + idx + " in ArrayNode of size " + an.size());
         }
         an.insert(idx, (JsonNode) value);
     }
@@ -598,7 +597,7 @@ public final class Jackson2Nodes {
             ArrayNode an = (ArrayNode) node;
             idx = idx < 0 ? an.size() + idx : idx;
             if (idx < 0 || idx >= an.size()) {
-                throw new JsonException("cannot remove at index " + idx + " in ArrayNode of size " + an.size());
+                throw new NodeException("cannot remove at index " + idx + " in ArrayNode of size " + an.size());
             }
             return an.remove(idx);
         }
@@ -606,12 +605,12 @@ public final class Jackson2Nodes {
     }
 
 
-    private static JsonException _notNode(Object node) {
-        return new JsonException("expected Jackson 2.x JsonNode, but was " + Types.name(node));
+    private static NodeException _notNode(Object node) {
+        return new NodeException("expected Jackson 2.x JsonNode, but was " + Types.name(node));
     }
 
-    private static JsonException _expected(String expected, Object node) {
-        return new JsonException("expected " + expected + ", but was " + Types.name(node));
+    private static NodeException _expected(String expected, Object node) {
+        return new NodeException("expected " + expected + ", but was " + Types.name(node));
     }
 
 

@@ -1,7 +1,6 @@
 package org.sjf4j.node;
 
-import org.sjf4j.exception.JsonException;
-import org.sjf4j.util.Strings;
+import org.sjf4j.exception.NodeException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -240,7 +239,7 @@ public final class Numbers {
         if (boxed == Float.class) return (T) Float.valueOf(Numbers.toFloat(number));
         if (boxed == BigInteger.class) return (T) Numbers.toBigInteger(number);
         if (boxed == BigDecimal.class) return (T) Numbers.toBigDecimal(number);
-        throw new JsonException("cannot convert " + Types.name(number) + " '" + number + "' to " + clazz.getName());
+        throw new NodeException("cannot convert " + Types.name(number) + " '" + number + "' to " + clazz.getName());
     }
 
 

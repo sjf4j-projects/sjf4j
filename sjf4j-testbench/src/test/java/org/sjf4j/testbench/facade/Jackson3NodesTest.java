@@ -1,7 +1,7 @@
 package org.sjf4j.testbench.facade;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.facade.jackson3.Jackson3Nodes;
 import org.sjf4j.NodeKind;
@@ -56,9 +56,9 @@ class Jackson3NodesTest {
         assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, Jackson3Nodes.kindOf(BooleanNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson3Nodes.kindOf(JsonNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson3Nodes.kindOf(new BinaryNode(new byte[]{1})));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.kindOf(new POJONode("x")));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.kindOf("x"));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.kindOf(String.class));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.kindOf(new POJONode("x")));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.kindOf("x"));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.kindOf(String.class));
 
         assertEquals("x", Jackson3Nodes.toString(StringNode.valueOf("x")));
         assertEquals("1", Jackson3Nodes.asString(JsonNodeFactory.instance.numberNode(1)));
@@ -70,9 +70,9 @@ class Jackson3NodesTest {
         assertTrue(Jackson3Nodes.asBoolean(JsonNodeFactory.instance.numberNode(1)));
         assertNull(Jackson3Nodes.asBoolean(objectNode));
 
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toString(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toNumber(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toBoolean(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toString(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toNumber(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toBoolean(objectNode));
     }
 
     @Test
@@ -136,28 +136,28 @@ class Jackson3NodesTest {
         assertTrue(Jackson3Nodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(Jackson3Nodes.anyMatchArray(arrayNode, (idx, value) -> false));
 
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toJsonObject(arrayNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toMap(arrayNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toJsonArray(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toList(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toArray(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.toSet(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.sizeInObject(arrayNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.sizeInArray(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.keySetInObject(arrayNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.entrySetInObject(arrayNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.iteratorInArray(objectNode));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.containsInObject(arrayNode, "name"));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.getInObject(arrayNode, "name"));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.getInArray(objectNode, 0));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.putAccessInObject(arrayNode, null, "name", new Nodes.Access()));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.putAccessInArray(objectNode, null, 0, new Nodes.Access()));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.forEachObject(arrayNode, (k, v) -> {}));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchObject(arrayNode, (k, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.replaceInObject(arrayNode, (k, v) -> v));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.removeIfInObject(arrayNode, (k, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.forEachArray(objectNode, (i, v) -> {}));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchArray(objectNode, (i, v) -> true));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toJsonObject(arrayNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toMap(arrayNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toJsonArray(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toList(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toArray(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.toSet(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.sizeInObject(arrayNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.sizeInArray(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.keySetInObject(arrayNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.entrySetInObject(arrayNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.iteratorInArray(objectNode));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.containsInObject(arrayNode, "name"));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.getInObject(arrayNode, "name"));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.getInArray(objectNode, 0));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.putAccessInObject(arrayNode, null, "name", new Nodes.Access()));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.putAccessInArray(objectNode, null, 0, new Nodes.Access()));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.forEachObject(arrayNode, (k, v) -> {}));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.anyMatchObject(arrayNode, (k, v) -> true));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.replaceInObject(arrayNode, (k, v) -> v));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.removeIfInObject(arrayNode, (k, v) -> true));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.forEachArray(objectNode, (i, v) -> {}));
+        assertThrows(NodeException.class, () -> Jackson3Nodes.anyMatchArray(objectNode, (i, v) -> true));
         assertTrue(Jackson3Nodes.removeIfInObject(objectNode, (key, value) -> key.equals("age") || key.equals("missing")));
         assertFalse(objectNode.has("age"));
         assertFalse(Jackson3Nodes.removeIfInObject(objectNode, (key, value) -> false));
@@ -273,7 +273,7 @@ class Jackson3NodesTest {
         assertEquals("jack", FacadeNodes.asString(FacadeNodes.removeInObject(objectNode, "name")));
         assertEquals(true, FacadeNodes.toBoolean(FacadeNodes.removeInArray(arrayNode, -1)));
 
-        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInObject("x", "name", new Nodes.Access()));
-        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInArray("x", 0, new Nodes.Access()));
+        assertThrows(NodeException.class, () -> FacadeNodes.getAccessInObject("x", "name", new Nodes.Access()));
+        assertThrows(NodeException.class, () -> FacadeNodes.getAccessInArray("x", 0, new Nodes.Access()));
     }
 }

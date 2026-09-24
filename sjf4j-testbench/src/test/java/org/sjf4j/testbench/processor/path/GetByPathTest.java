@@ -7,7 +7,7 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.List;
 import java.util.Map;
@@ -43,12 +43,12 @@ public class GetByPathTest {
     }
 
     @Test
-    public void primitiveMissingPathThrowsJsonException() {
+    public void primitiveMissingPathThrowsNodeException() {
         GetNodes nodes = CompiledInstances.of(GetNodes.class);
 
         assertEquals(7, nodes.getMemberScore(account()));
-        assertThrows(JsonException.class, () -> nodes.getMemberScore(null));
-        assertThrows(JsonException.class, () -> nodes.getMemberScore(new Account(new Profile(new Organization(List.of(), Map.of(), JsonObject.of())))));
+        assertThrows(NodeException.class, () -> nodes.getMemberScore(null));
+        assertThrows(NodeException.class, () -> nodes.getMemberScore(new Account(new Profile(new Organization(List.of(), Map.of(), JsonObject.of())))));
     }
 
     @Test
@@ -77,7 +77,7 @@ public class GetByPathTest {
         assertEquals(123, nodes.getJsonObjectValue(directory, "value"));
 
         assertNull(nodes.getFriendNameByJsonPathIndex(directory, 99));
-        assertThrows(JsonException.class, () -> nodes.getFriendScore(directory, 99));
+        assertThrows(NodeException.class, () -> nodes.getFriendScore(directory, 99));
     }
 
     @Test

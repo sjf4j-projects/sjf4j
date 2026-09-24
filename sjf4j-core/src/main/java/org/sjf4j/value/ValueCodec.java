@@ -1,6 +1,6 @@
 package org.sjf4j.value;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -143,7 +143,7 @@ public interface ValueCodec<V, R> {
                 try {
                     return URI.create(raw).toURL();
                 } catch (IllegalArgumentException | MalformedURLException e) {
-                    throw new JsonException("invalid URL: " + raw, e);
+                    throw new BindingException("invalid URL: " + raw, e);
                 }
             });
 
@@ -186,7 +186,7 @@ public interface ValueCodec<V, R> {
     ValueCodec<InetAddress, String> INET_ADDR = new SimpleValueCodec<>(InetAddress.class, String.class,
             InetAddress::getHostAddress, raw -> {
                 try { return InetAddress.getByName(raw); }
-                catch (UnknownHostException e) { throw new JsonException("invalid InetAddress: " + raw, e); }
+                catch (UnknownHostException e) { throw new BindingException("invalid InetAddress: " + raw, e); }
             });
 
     ValueCodec<Date, String> DATE = new SimpleValueCodec<>(Date.class, String.class,

@@ -1,7 +1,7 @@
 package org.sjf4j.bytecode;
 
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPath;
 
@@ -39,10 +39,10 @@ final class BytecodeCompilers {
 
         JsonPath path = JsonPath.parse(pathExpr);
         if (path.length() < 2) {
-            throw new JsonException("CompiledPath requires a non-root target path: '" + path + "'");
+            throw new NodeException("CompiledPath requires a non-root target path: '" + path + "'");
         }
         if (!path.isSinglePut()) {
-            throw new JsonException("CompiledPath only supports a single target path with Name/Index/Append segments: '" + path + "'");
+            throw new NodeException("CompiledPath only supports a single target path with Name/Index/Append segments: '" + path + "'");
         }
 
         if (PATH_COMPILER != null) {
@@ -56,7 +56,7 @@ final class BytecodeCompilers {
         String message = "CompiledPath requires an optional bytecode compiler for '" + path.toExpr() +
                 "' (rootType=" + Types.name(rootType) + ", valueType=" + Types.name(valueType) +
                 "). Add sjf4j-asm to the runtime classpath, or instantiate FallbackCompiledPath explicitly.";
-        throw new JsonException(message);
+        throw new NodeException(message);
     }
 
 }

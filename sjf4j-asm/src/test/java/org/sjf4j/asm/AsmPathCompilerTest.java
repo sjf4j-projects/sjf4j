@@ -5,7 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.bytecode.FallbackBytecodePath;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
@@ -197,7 +197,7 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, Object> pastEnd = BytecodePath.compile("$.holder.values[5]", Root.class, Object.class);
         assertAsmCompiled(pastEnd);
-        JsonException ex = assertThrows(JsonException.class, () -> pastEnd.put(root, "x"));
+        NodeException ex = assertThrows(NodeException.class, () -> pastEnd.put(root, "x"));
         assertTrue(ex.getMessage().contains("cannot set at index"));
     }
 
@@ -237,7 +237,7 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, String> listOob = BytecodePath.compile("$.holder.names[-4]", Root.class, String.class);
         assertAsmCompiled(listOob);
-        JsonException listEx = assertThrows(JsonException.class, () -> listOob.put(root, "bad"));
+        NodeException listEx = assertThrows(NodeException.class, () -> listOob.put(root, "bad"));
         assertTrue(listEx.getMessage().contains("cannot set at index -4"));
 
         BytecodePath<Root, Object> firstJsonArray = BytecodePath.compile("$.holder.values[-3]", Root.class, Object.class);
@@ -247,7 +247,7 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, Object> jsonArrayOob = BytecodePath.compile("$.holder.values[-4]", Root.class, Object.class);
         assertAsmCompiled(jsonArrayOob);
-        JsonException jsonEx = assertThrows(JsonException.class, () -> jsonArrayOob.put(root, "bad"));
+        NodeException jsonEx = assertThrows(NodeException.class, () -> jsonArrayOob.put(root, "bad"));
         assertTrue(jsonEx.getMessage().contains("cannot set at index -4"));
 
         BytecodePath<Root, String> firstArray = BytecodePath.compile("$.holder.tags[-3]", Root.class, String.class);
@@ -257,7 +257,7 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, String> arrayOob = BytecodePath.compile("$.holder.tags[-4]", Root.class, String.class);
         assertAsmCompiled(arrayOob);
-        JsonException arrayEx = assertThrows(JsonException.class, () -> arrayOob.put(root, "bad"));
+        NodeException arrayEx = assertThrows(NodeException.class, () -> arrayOob.put(root, "bad"));
         assertTrue(arrayEx.getMessage().contains("cannot set at index -4"));
 
         root.holder.dynamic.put("items", new ArrayList<>(List.of("zero", "one")));
@@ -269,14 +269,14 @@ public class AsmPathCompilerTest {
 
     @Test
     public void testStaticValueTypeMismatchFailsFast() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.holder.tags[1]", Root.class, Integer.class));
         assertTrue(ex.getMessage().contains("does not coerce terminal type java.lang.String"));
     }
 
     @Test
     public void testPrimitiveValueTypeFailsFast() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.holder.leaf.score", Root.class, int.class));
         assertTrue(ex.getMessage().contains("valueType must be a reference type"));
         assertTrue(ex.getMessage().contains(Integer.class.getName()));
@@ -284,14 +284,14 @@ public class AsmPathCompilerTest {
 
     @Test
     public void testSetIndexFailsFast() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.holder.keys[0]", Root.class, String.class));
         assertTrue(ex.getMessage().contains("cannot read by index from unordered Set type"));
     }
 
     @Test
     public void testJavaArrayAppendFailsFast() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.holder.tags[+]", Root.class, String.class));
         assertTrue(ex.getMessage().contains("cannot append to Java array type"));
     }
@@ -313,7 +313,7 @@ public class AsmPathCompilerTest {
         BytecodePath<Root, Object> path = BytecodePath.compile("$.holder.values[+]", Root.class, Object.class);
         assertAsmCompiled(path);
 
-        JsonException ex = assertThrows(JsonException.class, () -> path.get(sampleRoot()));
+        NodeException ex = assertThrows(NodeException.class, () -> path.get(sampleRoot()));
         assertTrue(ex.getMessage().contains("append"));
     }
 
@@ -323,7 +323,7 @@ public class AsmPathCompilerTest {
         assertAsmCompiled(arrayPath);
         assertEquals("a", arrayPath.get(JsonArray.of("a", "b")));
 
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("/0", JsonObject.class, Object.class));
         assertTrue(ex.getMessage().contains("array-like target"));
     }
@@ -344,7 +344,7 @@ public class AsmPathCompilerTest {
         BytecodePath<Root, Integer> path = BytecodePath.compile("$.holder.leaf.score", Root.class, Integer.class);
         assertAsmCompiled(path);
 
-        JsonException ex = assertThrows(JsonException.class, () -> path.put(root, 1));
+        NodeException ex = assertThrows(NodeException.class, () -> path.put(root, 1));
         assertTrue(ex.getMessage().contains("parent container does not exist"));
     }
 
@@ -443,7 +443,7 @@ public class AsmPathCompilerTest {
         BytecodePath<BookStoreRoot, Double> oob =
                 BytecodePath.compile("$.store.book[-3].price", BookStoreRoot.class, Double.class);
         assertAsmCompiled(oob);
-        JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, 1.5d));
+        NodeException ex = assertThrows(NodeException.class, () -> oob.ensurePut(root, 1.5d));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
     }
 
@@ -463,7 +463,7 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, String> outOfRange = BytecodePath.compile("$.holder.values[2].name", Root.class, String.class);
         assertAsmCompiled(outOfRange);
-        JsonException ex = assertThrows(JsonException.class, () -> outOfRange.ensurePut(root, "bad"));
+        NodeException ex = assertThrows(NodeException.class, () -> outOfRange.ensurePut(root, "bad"));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
     }
 
@@ -479,7 +479,7 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, String> oob = BytecodePath.compile("$.holder.values[-3].name", Root.class, String.class);
         assertAsmCompiled(oob);
-        JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, "bad"));
+        NodeException ex = assertThrows(NodeException.class, () -> oob.ensurePut(root, "bad"));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
     }
 
@@ -510,7 +510,7 @@ public class AsmPathCompilerTest {
         BytecodePath<Root, String> path = BytecodePath.compile("$.holder.tags[0]", Root.class, String.class);
         assertAsmCompiled(path);
 
-        JsonException ex = assertThrows(JsonException.class, () -> path.ensurePut(root, "x"));
+        NodeException ex = assertThrows(NodeException.class, () -> path.ensurePut(root, "x"));
         assertTrue(ex.getMessage().contains("cannot create array container"));
     }
 
@@ -529,7 +529,7 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, Double> oob = BytecodePath.compile("$.holder.books[-2].price", Root.class, Double.class);
         assertAsmCompiled(oob);
-        JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, 9.5d));
+        NodeException ex = assertThrows(NodeException.class, () -> oob.ensurePut(root, 9.5d));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
     }
 
@@ -554,13 +554,13 @@ public class AsmPathCompilerTest {
 
         BytecodePath<Root, String> oob = BytecodePath.compile("$.holder.names[-4]", Root.class, String.class);
         assertAsmCompiled(oob);
-        JsonException ex = assertThrows(JsonException.class, () -> oob.compute(root, (parent, current) -> "bad"));
+        NodeException ex = assertThrows(NodeException.class, () -> oob.compute(root, (parent, current) -> "bad"));
         assertTrue(ex.getMessage().contains("cannot set at index -4"));
     }
 
     @Test
     public void testSetterOnlyMiddlePojoPropertyFailsAtCompileTime() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.holder.leaf.score", SetterOnlyRoot.class, Integer.class));
         assertTrue(ex.getMessage().contains("readable property"));
     }

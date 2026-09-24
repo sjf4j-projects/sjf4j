@@ -3,7 +3,7 @@ package org.sjf4j.exception;
 /**
  * Exception for JSON path parsing, evaluation, and mutation errors.
  */
-public class PathException extends JsonException {
+public class PathException extends NodeException {
 
     public PathException(String message) {
         super(message);

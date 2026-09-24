@@ -12,10 +12,12 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
+import org.sjf4j.path.PathSegment;
 
 import java.io.StringReader;
 import java.math.BigInteger;
@@ -44,6 +46,15 @@ class JsonObjectTest {
 
         PrecomputedMetadataJojo() {
             super(PI);
+        }
+    }
+
+    static class ThrowingGetterJsonObject extends JsonObject {
+        BindingException failure;
+
+        @Override
+        public Object getNode(String key) {
+            throw failure;
         }
     }
 
@@ -101,7 +112,7 @@ class JsonObjectTest {
 //        assertEquals(Double.class, jo.getObject("height").getClass()); // BigDecimal in Fastjson2
         assertInstanceOf(Number.class, jo.getNode("height"));
 
-        assertThrows(JsonException.class, () -> jo.getString("height"));
+        assertThrows(NodeException.class, () -> jo.getString("height"));
         assertEquals("175.3", jo.getAsString("height"));
 
         assertEquals("good", jo.getJsonObject("friends").getString("jack"));
@@ -125,6 +136,40 @@ class JsonObjectTest {
         String height = jo.getAs("height");
         assertEquals(123, id);
         assertEquals("175.3", height);
+    }
+
+    @Test
+    void typedGetterPropagatesBindingExceptionButKeepsStructuralErrors() {
+        JsonObject object = JsonObject.of("value", 1);
+
+        BindingException binding = assertThrows(BindingException.class,
+                () -> object.get("value", Thread.class));
+        assertTrue(binding.getMessage().contains("expected " + Thread.class.getName()));
+
+        NodeException structural = assertThrows(NodeException.class, () -> object.getString("value"));
+        assertEquals(NodeException.class, structural.getClass());
+    }
+
+    @Test
+    void gettersAddCurrentPathToUnpathedBindingErrorsAndPreservePathedErrors() {
+        ThrowingGetterJsonObject object = new ThrowingGetterJsonObject();
+        BindingException unpathed = new BindingException("codec failed");
+        object.failure = unpathed;
+
+        BindingException strict = assertThrows(BindingException.class, () -> object.getString("value"));
+        assertSame(unpathed, strict.getCause());
+        assertEquals("$.value", strict.getPathSegment().rootedPathExpr());
+        assertTrue(strict.getMessage().contains("codec failed"));
+
+        BindingException lenient = assertThrows(BindingException.class, () -> object.getAsString("value"));
+        assertSame(unpathed, lenient.getCause());
+        assertEquals("$.value", lenient.getPathSegment().rootedPathExpr());
+
+        BindingException pathed = new BindingException("nested codec failed",
+                new PathSegment.Name(PathSegment.Root.INSTANCE, "nested"));
+        object.failure = pathed;
+        assertSame(pathed, assertThrows(BindingException.class, () -> object.getString("value")));
+        assertSame(pathed, assertThrows(BindingException.class, () -> object.getAsString("value")));
     }
 
     @Test public void testPutter1() {
@@ -207,7 +252,7 @@ class JsonObjectTest {
             jo.getDouble("duck");
         });
 
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga,\"haha\"],45:32}");
         });
     }
@@ -216,8 +261,8 @@ class JsonObjectTest {
         JsonObject jo = JsonObject.of("a", 1, "b", true, "c", Nodes.toJsonArray(new int[]{1, 2}));
         assertEquals("{\"a\":1,\"b\":true,\"c\":[1,2]}", jo.toJson());
 
-        assertThrows(JsonException.class, () -> JsonObject.of("a", 1, "b"));
-        assertThrows(JsonException.class, () -> JsonObject.of(1, "a"));
+        assertThrows(NodeException.class, () -> JsonObject.of("a", 1, "b"));
+        assertThrows(NodeException.class, () -> JsonObject.of(1, "a"));
     }
 
     static class WrapJojo extends JsonObject {
@@ -334,7 +379,7 @@ class JsonObjectTest {
         jo1.ensurePutByPath("$.x.y.z", 555);
         assertEquals(555, (Integer) jo1.getNodeByPath("$.x.y.z"));
 
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             jo1.ensurePutByPath("$.duck.yes", "no");
         });
 
@@ -368,11 +413,11 @@ class JsonObjectTest {
 
     @Test public void testByPath3() {
         JsonObject jo1 = new JsonObject();
-        assertThrows(JsonException.class, () -> jo1.ensurePutByPath("$.a.b[1].c", "444"));
+        assertThrows(NodeException.class, () -> jo1.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo2 = new JsonObject();
         jo2.ensurePutByPath("$.a.b", new JsonArray());
-        assertThrows(JsonException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
+        assertThrows(NodeException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo3 = new JsonObject();
         jo3.ensurePutByPath("$.a.b", JsonArray.of(0, JsonObject.of("d", "99")));
@@ -383,11 +428,11 @@ class JsonObjectTest {
 
     @Test public void testByPath4() {
         JsonObject jo1 = JsonObject.fromJson(JSON);
-        assertThrows(JsonException.class, () -> jo1.ensurePutByPath("$.a.b[1].c", "444"));
+        assertThrows(NodeException.class, () -> jo1.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo2 = new JsonObject();
         jo2.ensurePutByPath("$.a.b", new JsonArray());
-        assertThrows(JsonException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
+        assertThrows(NodeException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo3 = new JsonObject();
         jo3.ensurePutByPath("$.a.b", JsonArray.of(0, JsonObject.of("d", "99")));
@@ -523,7 +568,7 @@ class JsonObjectTest {
         /// Only gson
 //        String big = new String(new char[101]).replace('\0', '9');
 //        String json4 = "{\"big\":" + big + "}";
-//        assertThrows(JsonException.class, () -> JsonObject.fromJson(json4));
+//        assertThrows(NodeException.class, () -> JsonObject.fromJson(json4));
     }
 
     @Test public void testNumber2() {

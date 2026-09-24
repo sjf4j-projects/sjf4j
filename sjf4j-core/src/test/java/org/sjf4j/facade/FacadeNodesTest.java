@@ -12,7 +12,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 
@@ -67,8 +67,8 @@ class FacadeNodesTest {
 
         assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(jacksonObject.getClass()));
         assertEquals(NodeKind.OBJECT_EXTERNAL, FacadeNodes.kindOf(gsonObject.getClass()));
-        assertThrows(JsonException.class, () -> FacadeNodes.kindOf("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.kindOf(String.class));
+        assertThrows(NodeException.class, () -> FacadeNodes.kindOf("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.kindOf(String.class));
     }
 
     @Test
@@ -255,48 +255,48 @@ class FacadeNodesTest {
         assertTrue(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 9));
 
-        assertThrows(JsonException.class, () -> FacadeNodes.putInObject(objectNode, "x", new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.setInArray(arrayNode, 0, new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray(arrayNode, new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray(arrayNode, 0, new JsonPrimitive("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInObject(objectNode, "name"));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInArray(arrayNode, 0));
+        assertThrows(NodeException.class, () -> FacadeNodes.putInObject(objectNode, "x", new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> FacadeNodes.setInArray(arrayNode, 0, new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> FacadeNodes.addInArray(arrayNode, new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> FacadeNodes.addInArray(arrayNode, 0, new JsonPrimitive("y")));
+        assertThrows(NodeException.class, () -> FacadeNodes.removeInObject(objectNode, "name"));
+        assertThrows(NodeException.class, () -> FacadeNodes.removeInArray(arrayNode, 0));
 
-        assertThrows(JsonException.class, () -> FacadeNodes.toString("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.asString("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toNumber("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.asNumber("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toBoolean("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.asBoolean("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toJsonObject("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toMap("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toJsonArray("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toList("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toArray("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.toSet("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.forEachObject("x", (k, v) -> {}));
-        assertThrows(JsonException.class, () -> FacadeNodes.anyMatchObject("x", (k, v) -> true));
-        assertThrows(JsonException.class, () -> FacadeNodes.replaceAllInObject("x", (k, v) -> v));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeIfInObject("x", (k, v) -> true));
-        assertThrows(JsonException.class, () -> FacadeNodes.forEachArray("x", (i, v) -> {}));
-        assertThrows(JsonException.class, () -> FacadeNodes.anyMatchArray("x", (i, v) -> true));
-        assertThrows(JsonException.class, () -> FacadeNodes.sizeInObject("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.sizeInArray("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.keySetInObject("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.entrySetInObject("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.iteratorInArray("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.containsInObject("x", "k"));
-        assertThrows(JsonException.class, () -> FacadeNodes.getInObject("x", "k"));
-        assertThrows(JsonException.class, () -> FacadeNodes.getInArray("x", 0));
-        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInObject("x", "k", new Nodes.Access()));
-        assertThrows(JsonException.class, () -> FacadeNodes.getAccessInArray("x", 0, new Nodes.Access()));
-        assertThrows(JsonException.class, () -> FacadeNodes.putAccessInObject("x", null, "k", new Nodes.Access()));
-        assertThrows(JsonException.class, () -> FacadeNodes.putAccessInArray("x", null, 0, new Nodes.Access()));
-        assertThrows(JsonException.class, () -> FacadeNodes.putInObject("x", "k", "v"));
-        assertThrows(JsonException.class, () -> FacadeNodes.setInArray("x", 0, "v"));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray("x", "v"));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray("x", 0, "v"));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInObject("x", "k"));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInArray("x", 0));
+        assertThrows(NodeException.class, () -> FacadeNodes.toString("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.asString("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toNumber("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.asNumber("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toBoolean("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.asBoolean("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toJsonObject("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toMap("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toJsonArray("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toList("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toArray("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.toSet("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.forEachObject("x", (k, v) -> {}));
+        assertThrows(NodeException.class, () -> FacadeNodes.anyMatchObject("x", (k, v) -> true));
+        assertThrows(NodeException.class, () -> FacadeNodes.replaceAllInObject("x", (k, v) -> v));
+        assertThrows(NodeException.class, () -> FacadeNodes.removeIfInObject("x", (k, v) -> true));
+        assertThrows(NodeException.class, () -> FacadeNodes.forEachArray("x", (i, v) -> {}));
+        assertThrows(NodeException.class, () -> FacadeNodes.anyMatchArray("x", (i, v) -> true));
+        assertThrows(NodeException.class, () -> FacadeNodes.sizeInObject("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.sizeInArray("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.keySetInObject("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.entrySetInObject("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.iteratorInArray("x"));
+        assertThrows(NodeException.class, () -> FacadeNodes.containsInObject("x", "k"));
+        assertThrows(NodeException.class, () -> FacadeNodes.getInObject("x", "k"));
+        assertThrows(NodeException.class, () -> FacadeNodes.getInArray("x", 0));
+        assertThrows(NodeException.class, () -> FacadeNodes.getAccessInObject("x", "k", new Nodes.Access()));
+        assertThrows(NodeException.class, () -> FacadeNodes.getAccessInArray("x", 0, new Nodes.Access()));
+        assertThrows(NodeException.class, () -> FacadeNodes.putAccessInObject("x", null, "k", new Nodes.Access()));
+        assertThrows(NodeException.class, () -> FacadeNodes.putAccessInArray("x", null, 0, new Nodes.Access()));
+        assertThrows(NodeException.class, () -> FacadeNodes.putInObject("x", "k", "v"));
+        assertThrows(NodeException.class, () -> FacadeNodes.setInArray("x", 0, "v"));
+        assertThrows(NodeException.class, () -> FacadeNodes.addInArray("x", "v"));
+        assertThrows(NodeException.class, () -> FacadeNodes.addInArray("x", 0, "v"));
+        assertThrows(NodeException.class, () -> FacadeNodes.removeInObject("x", "k"));
+        assertThrows(NodeException.class, () -> FacadeNodes.removeInArray("x", 0));
     }
 }

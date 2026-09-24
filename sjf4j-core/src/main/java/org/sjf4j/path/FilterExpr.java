@@ -1,7 +1,7 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Numbers;
 
@@ -159,7 +159,7 @@ public interface FilterExpr {
             PathExpr nonSingular = l instanceof PathExpr && !((PathExpr) l).path.singleGet ? (PathExpr) l :
                     r instanceof PathExpr && !((PathExpr) r).path.singleGet ? (PathExpr) r : null;
             if (o != Op.AND && o != Op.OR && nonSingular != null && !(nonSingular.path.tail() instanceof PathSegment.Function)) {
-                throw new JsonException("filter comparison requires a singular path, but path '" + nonSingular.path + "' is non-singular");
+                throw new NodeException("filter comparison requires a singular path, but path '" + nonSingular.path + "' is non-singular");
             }
         }
 
@@ -200,7 +200,7 @@ public interface FilterExpr {
                 if (!pathExpr.path.singleGet && pathExpr.path.tail() instanceof PathSegment.Function) {
                     JsonType type = JsonType.of(value);
                     if (type.isArray() || type.isObject()) {
-                        throw new JsonException("filter comparison path '" + pathExpr.path + "' function returned " + type + "; comparison requires scalar output");
+                        throw new NodeException("filter comparison path '" + pathExpr.path + "' function returned " + type + "; comparison requires scalar output");
                     }
                 }
             }
@@ -239,7 +239,7 @@ public interface FilterExpr {
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             int size = args.size();
-            if (size == 0) throw new JsonException("function '" + name + "' requires a target argument");
+            if (size == 0) throw new NodeException("function '" + name + "' requires a target argument");
             Object target = args.get(0).eval(rootNode, currentNode);
             Object[] values = size <= 1 ? NO_ARGS : new Object[size - 1];
             for (int i = 1; i < size; i++) {

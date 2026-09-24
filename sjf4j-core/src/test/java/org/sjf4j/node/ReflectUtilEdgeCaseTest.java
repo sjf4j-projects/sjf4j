@@ -13,7 +13,7 @@ import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Strings;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
@@ -273,13 +273,13 @@ class ReflectUtilEdgeCaseTest {
         assertEquals("z", ((ValidValue) codecInfo.valueCopy(new ValidValue("z"))).value);
 
         assertNull(ValueRegistry.analyzeByAnnotation(String.class));
-        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(MissingEncode.class));
-        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(MissingDecode.class));
-        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(StaticEncode.class));
-        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(NonStaticDecode.class));
-        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(WrongDecodeParam.class));
-        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(WrongCopyReturn.class));
-        assertThrows(JsonException.class, () -> ValueRegistry.analyzeByAnnotation(DuplicateEncode.class));
+        assertThrows(BindingException.class, () -> ValueRegistry.analyzeByAnnotation(MissingEncode.class));
+        assertThrows(BindingException.class, () -> ValueRegistry.analyzeByAnnotation(MissingDecode.class));
+        assertThrows(BindingException.class, () -> ValueRegistry.analyzeByAnnotation(StaticEncode.class));
+        assertThrows(BindingException.class, () -> ValueRegistry.analyzeByAnnotation(NonStaticDecode.class));
+        assertThrows(BindingException.class, () -> ValueRegistry.analyzeByAnnotation(WrongDecodeParam.class));
+        assertThrows(BindingException.class, () -> ValueRegistry.analyzeByAnnotation(WrongCopyReturn.class));
+        assertThrows(BindingException.class, () -> ValueRegistry.analyzeByAnnotation(DuplicateEncode.class));
     }
 
     @Test
@@ -288,15 +288,15 @@ class ReflectUtilEdgeCaseTest {
         assertTrue(disc.hasDiscriminator);
         assertEquals(DiscA.class, disc.matchByWhen("a"));
 
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeOneOf(
+        assertThrows(BindingException.class, () -> ReflectUtil.analyzeOneOf(
                 DuplicateRawOneOf.class,
                 DuplicateRawOneOf.class.getAnnotation(OneOf.class)
         ));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeOneOf(
+        assertThrows(BindingException.class, () -> ReflectUtil.analyzeOneOf(
                 WrongOneOf.class,
                 WrongOneOf.class.getAnnotation(OneOf.class)
         ));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeOneOf(
+        assertThrows(BindingException.class, () -> ReflectUtil.analyzeOneOf(
                 MissingWhenOneOf.class,
                 MissingWhenOneOf.class.getAnnotation(OneOf.class)
         ));
@@ -307,13 +307,14 @@ class ReflectUtilEdgeCaseTest {
                 ReflectUtil.analyzePojo(FieldBindingPojo.class, true).propertyStrategy);
         assertEquals(PropertyStrategy.BEAN_FIELD,
                 ReflectUtil.analyzePojo(IdentityNamingPojo.class, true).propertyStrategy);
-        assertThrows(JsonException.class,
+        assertThrows(BindingException.class,
                 () -> ReflectUtil.analyzePojo(TransientNodePropertyPojo.class, true));
 
         assertFalse(ReflectUtil.isPojoCandidate(JsonArray.class));
         assertFalse(ReflectUtil.isPojoCandidate(JsonObject.class));
         assertFalse(ReflectUtil.isPojoCandidate(SampleEnum.class));
         assertFalse(ReflectUtil.isPojoCandidate(SampleInterface.class));
+        assertNull(ReflectUtil.analyzePojo(WrongStaticCreatorPojo.class, false));
 
         try {
             Field field = FastjsonOnlyPojo.class.getDeclaredField("name");
@@ -369,7 +370,7 @@ class ReflectUtilEdgeCaseTest {
         StaticCreatorPojo pojo = (StaticCreatorPojo) staticCreator.newPojoWithArgs(new Object[]{"han"});
         assertEquals("han", pojo.name);
 
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeCreator(WrongStaticCreatorPojo.class, lookup));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeCreator(DuplicateCreatorPojo.class, lookup));
+        assertThrows(BindingException.class, () -> ReflectUtil.analyzeCreator(WrongStaticCreatorPojo.class, lookup));
+        assertThrows(BindingException.class, () -> ReflectUtil.analyzeCreator(DuplicateCreatorPojo.class, lookup));
     }
 }

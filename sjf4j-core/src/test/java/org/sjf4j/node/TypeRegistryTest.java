@@ -15,7 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.RawToValue;
@@ -101,15 +102,15 @@ public class TypeRegistryTest {
 
     @Test
     public void testContainerFactoryFallback() {
-        assertThrows(JsonException.class, () -> TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), 0, false));
+        assertThrows(BindingException.class, () -> TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), 0, false));
         Map<String, Object> map = TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), 0, true);
         assertTrue(map.isEmpty());
 
-        assertThrows(JsonException.class, () -> TypeRegistry.newListContainer(Arrays.asList("x").getClass(), 3, false));
+        assertThrows(BindingException.class, () -> TypeRegistry.newListContainer(Arrays.asList("x").getClass(), 3, false));
         List<Object> list = TypeRegistry.newListContainer(Arrays.asList("x").getClass(), 3, true);
         assertTrue(list.isEmpty());
 
-        assertThrows(JsonException.class, () -> TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), 0, false));
+        assertThrows(BindingException.class, () -> TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), 0, false));
         Set<Object> set = TypeRegistry.newSetContainer(Collections.singleton("z").getClass(), 0, true);
         assertTrue(set.isEmpty());
     }
@@ -330,7 +331,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testRegisterValueCodecDuplicateFails() {
-        assertThrows(JsonException.class, () -> ValueRegistry.registerByCodec(new ValueCodec<LocalDate, String>() {
+        assertThrows(BindingException.class, () -> ValueRegistry.registerByCodec(new ValueCodec<LocalDate, String>() {
             @Override
             public String valueToRaw(LocalDate node) {
                 return node.toString();
@@ -375,7 +376,7 @@ public class TypeRegistryTest {
         log.info("obj1.name={}", obj1.name);
 
         Jackson2JsonFacade jackson2 = new Jackson2JsonFacade();
-        assertThrows(JsonException.class, () -> jackson2.readNode(json, CreatorPojoNoMatch.class));
+        assertThrows(NodeException.class, () -> jackson2.readNode(json, CreatorPojoNoMatch.class));
     }
 
     @Test

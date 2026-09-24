@@ -6,7 +6,7 @@ import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -138,7 +138,7 @@ public class MapperArrayTest {
         rawMap.put("nine", Long.valueOf(9));
 
         assertEquals(List.of(1, 2), mapper.intsFromObject(List.of(Long.valueOf(1), Integer.valueOf(2))));
-        assertThrows(JsonException.class, () -> mapper.intsFromObject(Set.of("1", "2")));
+        assertThrows(NodeException.class, () -> mapper.intsFromObject(Set.of("1", "2")));
         assertEquals(List.of(9, 10), mapper.integerListFromRawList(rawList));
         assertEquals(new LinkedHashSet<>(List.of(9, 10)), mapper.integerSetFromRawSet(rawSet));
         assertEquals(Map.of("nine", 9), mapper.integerMapFromRawMap(rawMap));
@@ -175,7 +175,7 @@ public class MapperArrayTest {
     public void jajoTargetUsesRuntimeElementTypeCheck() {
         ArrayMapper mapper = CompiledInstances.of(ArrayMapper.class);
 
-        assertThrows(JsonException.class, () -> mapper.stringJsonArray(List.of("ok", Integer.valueOf(1))));
+        assertThrows(NodeException.class, () -> mapper.stringJsonArray(List.of("ok", Integer.valueOf(1))));
     }
 
     @Test

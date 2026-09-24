@@ -21,7 +21,7 @@ import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 
 import java.util.ArrayList;
@@ -606,11 +606,11 @@ public class CompiledNavigatorBenchmark {
             int effectiveIndex = size + index;
             if (effectiveIndex >= 0) return effectiveIndex;
         }
-        throw new JsonException("cannot ensure path segment at index " + index + " at '" + expr + "': " +
+        throw new NodeException("cannot ensure path segment at index " + index + " at '" + expr + "': " +
                 "indexed array access requires an existing element; use append path syntax instead");
     }
 
-    private static JsonException missingParent(String expr) {
-        return new JsonException("cannot put value at path '" + expr + "': parent container does not exist");
+    private static NodeException missingParent(String expr) {
+        return new NodeException("cannot put value at path '" + expr + "': parent container does not exist");
     }
 }

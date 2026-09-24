@@ -3,7 +3,7 @@ package org.sjf4j.exception;
 /**
  * Exception for JSON patch application errors.
  */
-public class PatchException extends JsonException {
+public class PatchException extends NodeException {
 
     public PatchException(String message) {
         super(message);

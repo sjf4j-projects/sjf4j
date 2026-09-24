@@ -5,7 +5,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoAccess;
 import org.sjf4j.node.Types;
 
@@ -52,7 +52,7 @@ public final class ValueRegistry {
                 infos = NODE_VALUE_INFOS.get(type);
                 if (infos != null) {
                     if (matched != null) {
-                        throw new JsonException("ambiguous NodeValue for runtime type '" +
+                        throw new BindingException("ambiguous NodeValue for runtime type '" +
                                 runtimeClazz.getName() + "': registered for '" + matchType.getName() +
                                 "' and '" + type.getName() + "' at type distance " + distance + "'");
                     }
@@ -91,7 +91,7 @@ public final class ValueRegistry {
 
             for (ValueInfo oldInfo : oldInfos) {
                 if (oldInfo != null && valueInfo.valueFormat.equals(oldInfo.valueFormat)) {
-                    throw new JsonException("valueCodec already registered for type '" + valueClazz.getName() +
+                    throw new BindingException("valueCodec already registered for type '" + valueClazz.getName() +
                             "' and valueFormat '" + valueInfo.valueFormat + "'");
                 }
             }
@@ -113,7 +113,7 @@ public final class ValueRegistry {
 
         Class<R> rawClazz = codec.rawClazz();
         if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
-            throw new JsonException("invalid raw type in NodeValueCodec " + codec.getClass().getName() + ": " +
+            throw new BindingException("invalid raw type in NodeValueCodec " + codec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
         Class<N> valueClazz = codec.valueClazz();
         Objects.requireNonNull(valueClazz, "valueClazz");
@@ -166,12 +166,12 @@ public final class ValueRegistry {
                 // Decode
                 if (ctor.isAnnotationPresent(RawToValue.class)) {
                     if (rawToValueHandle != null)
-                        throw new JsonException("multiple @" + RawToValue.class.getSimpleName() +
+                        throw new BindingException("multiple @" + RawToValue.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     try {
                         rawToValueHandle = lookup.unreflectConstructor(ctor);
                     } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
+                        throw new BindingException(e);
                     }
                 }
             }
@@ -181,10 +181,10 @@ public final class ValueRegistry {
                 // Encode
                 if (m.isAnnotationPresent(ValueToRaw.class)) {
                     if (valueToRawHandle != null)
-                        throw new JsonException("multiple @" + ValueToRaw.class.getSimpleName() +
+                        throw new BindingException("multiple @" + ValueToRaw.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("cannot use @" + ValueToRaw.class.getSimpleName() +
+                        throw new BindingException("cannot use @" + ValueToRaw.class.getSimpleName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -194,16 +194,16 @@ public final class ValueRegistry {
                         valueToRawHandle = lookup.unreflect(m);
                         continue;
                     } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
+                        throw new BindingException(e);
                     }
                 }
                 // Decode
                 if (m.isAnnotationPresent(RawToValue.class)) {
                     if (rawToValueHandle != null)
-                        throw new JsonException("multiple @" + RawToValue.class.getSimpleName() +
+                        throw new BindingException("multiple @" + RawToValue.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     if (!Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("must use @" + RawToValue.class.getSimpleName() +
+                        throw new BindingException("must use @" + RawToValue.class.getSimpleName() +
                                 " on constructor or static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -212,16 +212,16 @@ public final class ValueRegistry {
                     try {
                         rawToValueHandle = lookup.unreflect(m);
                     } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
+                        throw new BindingException(e);
                     }
                 }
                 // Copy
                 if (m.isAnnotationPresent(ValueCopy.class)) {
                     if (valueCopyHandle != null)
-                        throw new JsonException("multiple @" + ValueCopy.class.getSimpleName() +
+                        throw new BindingException("multiple @" + ValueCopy.class.getSimpleName() +
                                 " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("cannot use @" + ValueCopy.class.getSimpleName() +
+                        throw new BindingException("cannot use @" + ValueCopy.class.getSimpleName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -230,7 +230,7 @@ public final class ValueRegistry {
                     try {
                         valueCopyHandle = lookup.unreflect(m);
                     } catch (IllegalAccessException e) {
-                        throw new JsonException(e);
+                        throw new BindingException(e);
                     }
                 }
             }// for
@@ -238,39 +238,39 @@ public final class ValueRegistry {
         }
 
         if (valueToRawHandle == null)
-            throw new JsonException("missing @" + ValueToRaw.class.getSimpleName() + " method in " + clazz.getName());
+            throw new BindingException("missing @" + ValueToRaw.class.getSimpleName() + " method in " + clazz.getName());
         if (valueToRawHandle.type().parameterCount() != 1) {
-            throw new JsonException("@" + ValueToRaw.class.getSimpleName() + " method must have no parameters, but found " +
+            throw new BindingException("@" + ValueToRaw.class.getSimpleName() + " method must have no parameters, but found " +
                     (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
         Class<?> valueToRawReturnBoxed = Types.box(valueToRawHandle.type().returnType());
         if (!NodeKind.plainOf(valueToRawReturnBoxed).isRaw())
-            throw new JsonException("@" + ValueToRaw.class.getSimpleName() + " method return invalid type " +
+            throw new BindingException("@" + ValueToRaw.class.getSimpleName() + " method return invalid type " +
                     valueToRawReturnBoxed.getName() + " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
         if (rawToValueHandle == null)
-            throw new JsonException("missing @" + RawToValue.class.getSimpleName() + " method in " + clazz.getName());
+            throw new BindingException("missing @" + RawToValue.class.getSimpleName() + " method in " + clazz.getName());
         if (rawToValueHandle.type().parameterCount() != 1)
-            throw new JsonException("@" + RawToValue.class.getSimpleName() +
+            throw new BindingException("@" + RawToValue.class.getSimpleName() +
                     " method must have exactly one parameter, but found " + rawToValueHandle.type().parameterCount());
         Class<?> rawToValueParamBoxed = Types.box(rawToValueHandle.type().parameterType(0));
         Class<?> rawToValueReturnClazz = rawToValueHandle.type().returnType();
         if (rawToValueParamBoxed != valueToRawReturnBoxed)
-            throw new JsonException("@" + RawToValue.class.getSimpleName() + " method parameter type must match @" +
+            throw new BindingException("@" + RawToValue.class.getSimpleName() + " method parameter type must match @" +
                     ValueToRaw.class.getSimpleName() + " return type. " + "Expected: " + valueToRawReturnBoxed.getName() +
                     ", Found: " + rawToValueParamBoxed.getName());
         if (rawToValueReturnClazz != clazz)
-            throw new JsonException("@" + RawToValue.class.getSimpleName() + " method return type must be " +
+            throw new BindingException("@" + RawToValue.class.getSimpleName() + " method return type must be " +
                     clazz.getName() + ", but found " + rawToValueReturnClazz.getName());
 
         if (valueCopyHandle != null) {
             if (valueCopyHandle.type().parameterCount() != 1)
-                throw new JsonException("@" + ValueCopy.class.getSimpleName() + " method must have no parameters, but found " +
+                throw new BindingException("@" + ValueCopy.class.getSimpleName() + " method must have no parameters, but found " +
                         (valueCopyHandle.type().parameterCount() + 1));
             Class<?> copyReturnClazz = valueCopyHandle.type().returnType();
             if (copyReturnClazz != clazz)
-                throw new JsonException("@" + ValueCopy.class.getSimpleName() + " method return type must be " + clazz.getName() +
+                throw new BindingException("@" + ValueCopy.class.getSimpleName() + " method return type must be " + clazz.getName() +
                         ", but found " + copyReturnClazz.getName());
         }
 

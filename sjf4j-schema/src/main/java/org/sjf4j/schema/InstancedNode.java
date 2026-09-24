@@ -1,7 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
@@ -214,7 +214,7 @@ public final class InstancedNode {
      */
     InstancedNode inferSubByKey(String key, Object subNode, InstancedNode reusedLeaf) {
         if (jsonType != JsonType.OBJECT)
-            throw new JsonException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
+            throw new NodeException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         if (subInstanceCache != null) {
             InstancedNode subInstance = subInstanceCache.get(key);
             if (subInstance != null) return subInstance.reset();
@@ -235,7 +235,7 @@ public final class InstancedNode {
      */
     InstancedNode inferSubByIndex(int idx, Object subNode, InstancedNode reusedLeaf) {
         if (jsonType != JsonType.ARRAY)
-            throw new JsonException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
+            throw new NodeException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
         if (subInstanceCache != null) {
             InstancedNode subInstance = subInstanceCache.get(idx);
             if (subInstance != null) return subInstance.reset();

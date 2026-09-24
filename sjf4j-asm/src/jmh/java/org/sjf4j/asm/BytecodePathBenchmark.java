@@ -16,7 +16,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.bytecode.FallbackBytecodePath;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 
 import java.util.ArrayList;
@@ -87,7 +87,7 @@ public class BytecodePathBenchmark {
                 return effectiveIndex;
             }
         }
-        throw new JsonException("cannot ensure path segment at index " + index + " at '" + expr + "': " +
+        throw new NodeException("cannot ensure path segment at index " + index + " at '" + expr + "': " +
                 "indexed array access requires an existing element; use append path syntax instead");
     }
 
@@ -643,11 +643,11 @@ public class BytecodePathBenchmark {
         Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
-            throw new JsonException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
+            throw new NodeException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
         }
         Bicycle bicycle = store.bicycle;
         if (bicycle == null) {
-            throw new JsonException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
+            throw new NodeException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
         }
         bicycle.price = s.nextPrice;
         s.lastPriceRoot = root;
@@ -688,19 +688,19 @@ public class BytecodePathBenchmark {
         Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
-            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+            throw new NodeException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
         }
         List<Book> book = store.book;
         if (book == null) {
-            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+            throw new NodeException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
         }
         int index = _readListIndex(book, BOOK_INDEX);
         if (index < 0) {
-            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+            throw new NodeException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
         }
         Book item = book.get(index);
         if (item == null) {
-            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+            throw new NodeException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
         }
         item.price = s.nextBookPrice;
         s.lastBookPriceRoot = root;

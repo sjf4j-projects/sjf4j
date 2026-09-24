@@ -2,7 +2,6 @@ package org.sjf4j.node;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
 
 import java.lang.invoke.MethodHandle;
 import java.util.function.Supplier;
@@ -22,7 +21,7 @@ public final class ContainerInfo {
     public ContainerInfo(Class<?> clazz, NodeKind kind,
                          MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda) {
         if (kind != NodeKind.OBJECT_MAP && kind != NodeKind.ARRAY_LIST && kind != NodeKind.ARRAY_SET) {
-            throw new JsonException("invalid container kind '" + kind + "' for " + clazz.getName());
+            throw new BindingException("invalid container kind '" + kind + "' for " + clazz.getName());
         }
         this.clazz = clazz;
         this.kind = kind;

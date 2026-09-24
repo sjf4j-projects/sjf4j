@@ -3,7 +3,7 @@ package org.sjf4j.patch;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -187,7 +187,7 @@ public class PatchesTest {
         int[] target = {9, 8, 7};
         List<Object> patch = new ArrayList<>(Arrays.asList(1, 2, null));
 
-        JsonException e = assertThrows(JsonException.class,
+        NodeException e = assertThrows(NodeException.class,
                 () -> Patches.indexedMerge(target, patch, true, false));
 
         assertTrue(e.getMessage().contains("cannot remove at index 2 from Java array"));

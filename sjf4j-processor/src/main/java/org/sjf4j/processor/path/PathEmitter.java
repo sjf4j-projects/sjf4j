@@ -1571,7 +1571,7 @@ final class PathEmitter {
                             " == " +
                             owner +
                             ".length) " +
-                            "throw new org.sjf4j.exception.JsonException(" +
+                            "throw new org.sjf4j.exception.NodeException(" +
                             JavaWriter.stringLiteral(
                                     "cannot append to a Java array") +
                             ");");
@@ -1584,7 +1584,7 @@ final class PathEmitter {
                             " >= " +
                             owner +
                             ".length) " +
-                            "throw new org.sjf4j.exception.JsonException(" +
+                            "throw new org.sjf4j.exception.NodeException(" +
                             JavaWriter.stringLiteral(
                                     "invalid Java array index") +
                             ");");
@@ -1682,7 +1682,7 @@ final class PathEmitter {
                         : "List";
 
         out.line(
-                "throw new org.sjf4j.exception.JsonException(" +
+                "throw new org.sjf4j.exception.NodeException(" +
                         JavaWriter.stringLiteral(
                                 "cannot set at index ") +
                         " + " +
@@ -2299,7 +2299,7 @@ final class PathEmitter {
             return "return null;";
         }
 
-        return "throw new org.sjf4j.exception.JsonException(" +
+        return "throw new org.sjf4j.exception.NodeException(" +
                 JavaWriter.stringLiteral(
                         "@GetByPath primitive result is missing: method " +
                                 method.getSimpleName() +
@@ -2314,7 +2314,7 @@ final class PathEmitter {
     private String putMissingThrow(
             NavigatorMethodGenerator.PutPlan plan) {
 
-        return "throw new org.sjf4j.exception.JsonException(" +
+        return "throw new org.sjf4j.exception.NodeException(" +
                 JavaWriter.stringLiteral(
                         plan.annotation +
                                 " missing parent: method " +
@@ -2446,7 +2446,7 @@ final class PathEmitter {
             Step step) {
 
         out.line(
-                "throw new org.sjf4j.exception.JsonException(" +
+                "throw new org.sjf4j.exception.NodeException(" +
                         JavaWriter.stringLiteral(
                                 "Cannot create missing ensure intermediate '" +
                                         stepHint(step) +

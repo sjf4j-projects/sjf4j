@@ -3,7 +3,7 @@ package org.sjf4j.testbench.asm;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.bytecode.BytecodePath;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,7 +33,7 @@ public class BytecodePathTest {
 
     @Test
     public void testObjectRootIsRejectedByBytecodeCompiler() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.a", Object.class, Integer.class));
         assertTrue(ex.getMessage().contains("Object"));
         assertTrue(ex.getMessage().contains("FallbackCompiledPath"));
@@ -106,7 +106,7 @@ public class BytecodePathTest {
         RootWithArray arrayRoot = new RootWithArray();
         arrayRoot.items = new int[]{1};
         AtomicBoolean arrayCallbackCalled = new AtomicBoolean(false);
-        assertThrows(JsonException.class, () -> arrayAppendByIndex.compute(arrayRoot, (parent, current) -> {
+        assertThrows(NodeException.class, () -> arrayAppendByIndex.compute(arrayRoot, (parent, current) -> {
             arrayCallbackCalled.set(true);
             assertNull(current);
             return 4;
@@ -145,7 +145,7 @@ public class BytecodePathTest {
                 BytecodePath.compile("$.items[+].value", RootWithObjectList.class, Object.class);
         RootWithObjectList objectListRoot = new RootWithObjectList();
         objectListRoot.items = new ArrayList<>();
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> intermediateAppend.ensurePutIfAbsent(objectListRoot, 8));
         assertTrue(ex.getMessage().contains("ensurePutIfAbsent"));
 

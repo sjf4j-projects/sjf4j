@@ -6,7 +6,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -228,7 +228,7 @@ class PropertyDiscoveryTest {
 
     @Test
     void methodRenameCreatorMustMatchFinalPropertyName() {
-        assertThrows(JsonException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> TypeRegistry.registerPojoOrElseThrow(MethodRenameCreatorPojo.class));
     }
 
@@ -291,7 +291,7 @@ class PropertyDiscoveryTest {
 
     @Test
     void conflictingFinalNamesFailFast() {
-        assertThrows(JsonException.class, () -> TypeRegistry.registerPojoOrElseThrow(CollidingRenamePojo.class));
+        assertThrowsExactly(BindingException.class, () -> TypeRegistry.registerPojoOrElseThrow(CollidingRenamePojo.class));
     }
 
     @Test

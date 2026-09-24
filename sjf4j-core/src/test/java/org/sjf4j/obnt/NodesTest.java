@@ -15,7 +15,8 @@ import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -50,7 +51,7 @@ public class NodesTest {
         assertEquals("a", Nodes.toString('a'));
         assertNull(Nodes.toString(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toString(123);
         });
     }
@@ -71,7 +72,7 @@ public class NodesTest {
         assertEquals(123.45, Nodes.toNumber(123.45));
         assertNull(Nodes.toNumber(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toNumber("123");
         });
     }
@@ -83,7 +84,7 @@ public class NodesTest {
         assertEquals(123L, Nodes.asLong(123.45));
         assertNull(Nodes.asLong(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toLong("123");
         });
     }
@@ -95,7 +96,7 @@ public class NodesTest {
         assertEquals(123, Nodes.asInt(123.45));
         assertNull(Nodes.asInt(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toInt("123");
         });
     }
@@ -106,7 +107,7 @@ public class NodesTest {
         assertEquals(123.0, Nodes.asDouble(123));
         assertNull(Nodes.asDouble(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toDouble("123.45");
         });
     }
@@ -117,7 +118,7 @@ public class NodesTest {
         assertEquals(BigInteger.valueOf(123L), Nodes.toBigInteger(123L));
         assertNull(Nodes.asBigInteger(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toBigInteger("123");
         });
     }
@@ -128,7 +129,7 @@ public class NodesTest {
         assertEquals(new BigDecimal("123"), Nodes.asBigDecimal(123));
         assertNull(Nodes.asBigDecimal(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toBigDecimal("123.45");
         });
         assertDoesNotThrow(() -> {
@@ -143,7 +144,7 @@ public class NodesTest {
         assertFalse(Nodes.toBoolean(false));
         assertNull(Nodes.toBoolean(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toBoolean("true");
         });
     }
@@ -154,7 +155,7 @@ public class NodesTest {
         assertEquals(jo, Nodes.toJsonObject(jo));
         assertNull(Nodes.toJsonObject(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toJsonObject("not an object");
         });
     }
@@ -171,7 +172,7 @@ public class NodesTest {
         
         assertNull(Nodes.toJsonObject(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toJsonObject("not an object");
         });
     }
@@ -182,7 +183,7 @@ public class NodesTest {
         assertEquals(ja, Nodes.toJsonArray(ja));
         assertNull(Nodes.toJsonArray(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toJsonArray("not an array");
         });
     }
@@ -201,7 +202,7 @@ public class NodesTest {
         
         assertNull(Nodes.toJsonArray(null));
         
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.toJsonArray("not an array");
         });
     }
@@ -229,6 +230,19 @@ public class NodesTest {
         assertEquals(2, arrayByTypeReference.size());
         assertEquals(2, arrayByClass.getInt(1));
         assertEquals(2, arrayByTypeReference.getInt(1));
+    }
+
+    @Test
+    void classAndTypeReferencePojoBindingFailuresMatch() {
+        BindingException byClass = assertThrows(BindingException.class,
+                () -> Nodes.to(JsonArray.of("not an object"), GenericUser.class));
+        BindingException byTypeReference = assertThrows(BindingException.class,
+                () -> Nodes.to(JsonArray.of("not an object"), new TypeReference<GenericUser>() {}));
+
+        assertTrue(byClass.getMessage().contains("GenericUser"));
+        assertTrue(byTypeReference.getMessage().contains("GenericUser"));
+        assertEquals(BindingException.class, byClass.getClass());
+        assertEquals(BindingException.class, byTypeReference.getClass());
     }
 
     @Test
@@ -277,7 +291,7 @@ public class NodesTest {
         assertEquals(TestEnum.A, Nodes.to(TestEnum.A, TestEnum.class));
         assertEquals(TestEnum.A, Nodes.as("A", TestEnum.class));
 
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             Nodes.to("not a number", Integer.class);
         });
     }
@@ -310,8 +324,10 @@ public class NodesTest {
 
         JsonObject withNull = JsonObject.of("a", null);
         assertThrows(NullPointerException.class, () -> Nodes.to(withNull, ConcurrentHashMap.class));
-        assertThrows(JsonException.class, () -> Nodes.to(jo, ConcurrentMap.class));
-        assertThrows(JsonException.class, () -> Nodes.to(jo, SortedMap.class));
+        assertEquals(BindingException.class, assertThrows(BindingException.class,
+                () -> Nodes.to(jo, ConcurrentMap.class)).getClass());
+        assertEquals(BindingException.class, assertThrows(BindingException.class,
+                () -> Nodes.to(jo, SortedMap.class)).getClass());
     }
 
     @Test
@@ -347,7 +363,8 @@ public class NodesTest {
         assertInstanceOf(TreeSet.class, treeSet);
         assertEquals(Arrays.asList(1, 2, 3), new ArrayList<>(treeSet));
 
-        assertThrows(JsonException.class, () -> Nodes.to(ja, SortedSet.class));
+        assertEquals(BindingException.class, assertThrows(BindingException.class,
+                () -> Nodes.to(ja, SortedSet.class)).getClass());
     }
 
     @Test

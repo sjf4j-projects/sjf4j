@@ -3,7 +3,7 @@ package org.sjf4j.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,7 +63,7 @@ class FilterExprTest {
     void nonSingularPathsAreAllowedForExistenceButNotComparisons() {
         JsonObject root = JsonObject.fromJson("{\"users\":[{\"age\":1},{\"age\":3}]}");
         assertEquals(Collections.singletonList(root), JsonPath.parse("$[?@.users[?(@.age > 2)]]").find(JsonArray.of(root)));
-        JsonException error = assertThrows(JsonException.class,
+        NodeException error = assertThrows(NodeException.class,
                 () -> JsonPath.parse("$[?(@.users[*].age > 2)]"));
         assertTrue(error.getMessage().contains("@.users[*].age"));
     }
@@ -71,7 +71,7 @@ class FilterExprTest {
     @Test
     void nonSingularTailFunctionMustReturnScalarForComparison() {
         FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("arrayForComparison", (target, args) -> JsonArray.of(1)));
-        JsonException error = assertThrows(JsonException.class,
+        NodeException error = assertThrows(NodeException.class,
                 () -> JsonPath.parse("$[?(@..value.arrayForComparison() == 1)]").find(JsonArray.of(JsonObject.of("value", 1))));
         assertTrue(error.getMessage().contains("@..value.arrayForComparison()"));
         assertTrue(error.getMessage().contains("ARRAY"));
@@ -170,9 +170,9 @@ class FilterExprTest {
         assertEquals("a'b", PathSyntax.parseFilter("'a\\'b'").eval(null, null));
         assertEquals("a\"b\n", PathSyntax.parseFilter("\"a\\\"b\\n\"").eval(null, null));
         assertEquals("\\'\"\b\f\n\r\tA", PathSyntax.parseFilter("'\\\\\\'\\\"\\b\\f\\n\\r\\t\\u0041'").eval(null, null));
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("'\\x'"));
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("'\\u12'"));
-        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("'\\uZZZZ'"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("'\\x'"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("'\\u12'"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("'\\uZZZZ'"));
         assertTrue(PathSyntax.parseFilter("'HAN' =~ /ha/imsug").evalTruth(null, null));
 
         FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("explodeFilterExpr", (target, args) -> {

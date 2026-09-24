@@ -6,7 +6,7 @@ import org.sjf4j.annotation.path.FindByPath;
 import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.annotation.path.PutIfParentPresentByPath;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
@@ -469,7 +469,7 @@ public final class NavigatorMethodGenerator {
 
         try {
             path = JsonPath.parse(expression);
-        } catch (JsonException e) {
+        } catch (NodeException e) {
             error(
                     method,
                     generated,

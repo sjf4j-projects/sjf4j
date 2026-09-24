@@ -15,6 +15,7 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.FacadeNodes;
@@ -25,7 +26,6 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.NodeKind;
 import org.sjf4j.TypeReference;
 import org.sjf4j.path.JsonPath;
-import org.sjf4j.exception.JsonException;
 import tools.jackson.databind.PropertyName;
 import tools.jackson.databind.cfg.MapperConfig;
 import tools.jackson.databind.introspect.Annotated;
@@ -702,7 +702,7 @@ class Jackson3FacadeTest {
     void testExclusiveIoUnsupportedAtRuntime() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
                 ctx(StreamingContext.StreamingMode.EXCLUSIVE_IO));
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> facade.readNode("{}", Object.class));
         assertTrue(ex.getMessage().contains("unsupported streaming mode"));
     }
@@ -777,12 +777,12 @@ class Jackson3FacadeTest {
         assertEquals("one", ((tools.jackson.databind.JsonNode) JsonPath.parse("/0").removeIfPresent(objectNode)).asString());
         JsonPath.parse("/0").add(objectNode, StringNode.valueOf("again"));
         assertEquals("again", JsonPath.parse("/0").getString(objectNode));
-        assertThrows(JsonException.class, () -> JsonPath.parse("/missing/name").ensurePut(objectNode, StringNode.valueOf("created")));
+        assertThrows(NodeException.class, () -> JsonPath.parse("/missing/name").ensurePut(objectNode, StringNode.valueOf("created")));
 
         assertEquals("a", ((tools.jackson.databind.JsonNode) JsonPath.parse("/0").ensurePutIfAbsent(arrayNode, StringNode.valueOf("ignored"))).asString());
         assertEquals("a", ((tools.jackson.databind.JsonNode) JsonPath.parse("/0").replace(arrayNode, StringNode.valueOf("b"))).asString());
         JsonPath.parse("/1").add(arrayNode, StringNode.valueOf("c"));
         assertEquals("c", JsonPath.parse("/1").getString(arrayNode));
-        assertThrows(JsonException.class, () -> JsonPath.parse("/-/name").ensurePut(arrayNode, StringNode.valueOf("created")));
+        assertThrows(NodeException.class, () -> JsonPath.parse("/-/name").ensurePut(arrayNode, StringNode.valueOf("created")));
     }
 }

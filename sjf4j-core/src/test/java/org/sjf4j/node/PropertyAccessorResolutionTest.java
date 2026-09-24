@@ -3,7 +3,7 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeIgnore;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.PropertyStrategy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -117,14 +117,14 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void overloadedSetterFailsFastEvenWithGetterAnchor() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> TypeRegistry.registerPojoOrElseThrow(SetterAnchorPojo.class));
         assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
 
     @Test
     void ambiguousSetterFailsFast() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> TypeRegistry.registerPojoOrElseThrow(AmbiguousSetterPojo.class));
         assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
@@ -137,7 +137,7 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void childSetterOverloadDoesNotSilentlyOverrideParentSetter() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> TypeRegistry.registerPojoOrElseThrow(ChildSetterOverloadPojo.class));
         assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
@@ -154,7 +154,7 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void incompatibleAccessorTypesFailFast() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> TypeRegistry.registerPojoOrElseThrow(IncompatibleAccessorPojo.class));
         assertTrue(ex.getMessage().contains("incompatible getter/setter types"));
     }

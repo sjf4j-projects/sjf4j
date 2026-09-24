@@ -3,7 +3,7 @@ package org.sjf4j.patch;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPointer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -188,7 +188,7 @@ class JsonPatchSemanticsTest {
         patch.add(new PatchOperation(PatchOperation.STD_MOVE,
                 JsonPointer.parse("/a/b"), null, JsonPointer.parse("/a")));
 
-        assertThrows(JsonException.class, () -> patch.apply(target));
+        assertThrows(NodeException.class, () -> patch.apply(target));
         assertEquals(before, target);
     }
 
@@ -200,7 +200,7 @@ class JsonPatchSemanticsTest {
         patch.add(new PatchOperation(PatchOperation.STD_MOVE,
                 JsonPointer.parse("/b/c"), null, JsonPointer.parse("/a")));
 
-        assertThrows(JsonException.class, () -> patch.apply(target));
+        assertThrows(NodeException.class, () -> patch.apply(target));
         assertEquals(before, target);
     }
 
@@ -212,7 +212,7 @@ class JsonPatchSemanticsTest {
         patch.add(new PatchOperation(PatchOperation.STD_MOVE,
                 JsonPointer.parse("/99"), null, JsonPointer.parse("/1")));
 
-        assertThrows(JsonException.class, () -> patch.apply(target));
+        assertThrows(NodeException.class, () -> patch.apply(target));
         assertEquals(before, target);
     }
 
@@ -223,7 +223,7 @@ class JsonPatchSemanticsTest {
         patch.add(new PatchOperation(PatchOperation.STD_TEST,
                 JsonPointer.parse("/missing"), null, null));
 
-        assertThrows(JsonException.class, () -> patch.apply(target));
+        assertThrows(NodeException.class, () -> patch.apply(target));
     }
 
     @Test

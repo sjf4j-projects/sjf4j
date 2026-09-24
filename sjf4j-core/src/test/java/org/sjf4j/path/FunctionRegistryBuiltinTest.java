@@ -3,7 +3,7 @@ package org.sjf4j.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -52,24 +52,24 @@ class FunctionRegistryBuiltinTest {
 
     @Test
     void testBuiltinErrorsAndCustomRegistration() {
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("missing", null, NO_ARGS));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("length", "abc", new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("count", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("value", "x", new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("sum", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("min", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("max", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("avg", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("stddev", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("first", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("last", JsonArray.of(), new Object[]{1}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("match", "abc", NO_ARGS));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("match", "abc", new Object[]{null}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("match", "abc", new Object[]{JsonObject.of("p", 1)}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("search", "abc", NO_ARGS));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{null}));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{JsonObject.of("p", 1)}));
-        assertThrows(JsonException.class, () -> new FunctionRegistry.FunctionDescriptor("", (target, args) -> null));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("missing", null, NO_ARGS));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("length", "abc", new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("count", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("value", "x", new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("sum", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("min", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("max", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("avg", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("stddev", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("first", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("last", JsonArray.of(), new Object[]{1}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("match", "abc", NO_ARGS));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("match", "abc", new Object[]{null}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("match", "abc", new Object[]{JsonObject.of("p", 1)}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("search", "abc", NO_ARGS));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{null}));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{JsonObject.of("p", 1)}));
+        assertThrows(NodeException.class, () -> new FunctionRegistry.FunctionDescriptor("", (target, args) -> null));
         assertThrows(NullPointerException.class, () -> new FunctionRegistry.FunctionDescriptor(null, (target, args) -> null));
         assertThrows(NullPointerException.class, () -> new FunctionRegistry.FunctionDescriptor("x", null));
 
@@ -82,6 +82,6 @@ class FunctionRegistryBuiltinTest {
         FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("boom", (target, args) -> {
             throw new IllegalStateException("boom");
         }));
-        assertThrows(JsonException.class, () -> FunctionRegistry.invoke("boom", 1, NO_ARGS));
+        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("boom", 1, NO_ARGS));
     }
 }

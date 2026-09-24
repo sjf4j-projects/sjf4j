@@ -1,7 +1,7 @@
 package org.sjf4j.processor.path;
 
 import org.sjf4j.NodeKind;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
@@ -16,7 +16,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
@@ -98,7 +97,7 @@ public final class FindGenerator {
             path =
                     JsonPath.parse(
                             expression);
-        } catch (JsonException e) {
+        } catch (NodeException e) {
             error(
                     method,
                     generated,

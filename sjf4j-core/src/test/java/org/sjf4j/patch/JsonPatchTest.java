@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.path.JsonPointer;
@@ -98,7 +98,7 @@ public class JsonPatchTest {
                 null
         ));
 
-        assertThrows(JsonException.class, () -> patch.apply(target));
+        assertThrows(NodeException.class, () -> patch.apply(target));
     }
 
     @Test
@@ -124,7 +124,7 @@ public class JsonPatchTest {
                 2,
                 null
         ));
-        assertThrows(JsonException.class, () -> patch2.apply(target));
+        assertThrows(NodeException.class, () -> patch2.apply(target));
     }
 
     @Test
@@ -228,12 +228,12 @@ public class JsonPatchTest {
 
         JsonPatch add = new JsonPatch();
         add.add(new PatchOperation(PatchOperation.STD_ADD, JsonPointer.parse("/01"), 9, null));
-        assertThrows(JsonException.class, () -> add.apply(src));
+        assertThrows(NodeException.class, () -> add.apply(src));
         assertEquals(Arrays.asList(1, 2, 3), src);
 
         JsonPatch replace = new JsonPatch();
         replace.add(new PatchOperation(PatchOperation.STD_REPLACE, JsonPointer.parse("/01"), 9, null));
-        assertThrows(JsonException.class, () -> replace.apply(src));
+        assertThrows(NodeException.class, () -> replace.apply(src));
         assertEquals(Arrays.asList(1, 2, 3), src);
 
         JsonObject target = JsonObject.of("01", 1);
@@ -248,7 +248,7 @@ public class JsonPatchTest {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.parse("/10"), null, null));
 
-        assertThrows(JsonException.class, () -> patch.apply(src));
+        assertThrows(NodeException.class, () -> patch.apply(src));
         assertEquals(Arrays.asList(1, 2, 3), src);
     }
 

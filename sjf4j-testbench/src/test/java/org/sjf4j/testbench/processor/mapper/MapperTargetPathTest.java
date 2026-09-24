@@ -6,7 +6,6 @@ import org.sjf4j.annotation.mapping.EnsureMapping;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingIfParentPresent;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

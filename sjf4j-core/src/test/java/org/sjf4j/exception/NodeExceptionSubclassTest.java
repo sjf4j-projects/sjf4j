@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-class JsonExceptionSubclassTest {
+class NodeExceptionSubclassTest {
 
     private static final Factory[] FACTORIES = {
             new Factory(NodeException.class, NodeException::new, NodeException::new, NodeException::new,
@@ -34,29 +34,29 @@ class JsonExceptionSubclassTest {
         }
     }
 
-    private static void assertException(Class<? extends JsonException> type, JsonException exception,
-            String message, Throwable cause) {
+    private static void assertException(Class<? extends NodeException> type, NodeException exception,
+                                        String message, Throwable cause) {
         assertInstanceOf(type, exception);
-        assertInstanceOf(JsonException.class, exception);
+        assertInstanceOf(NodeException.class, exception);
         assertEquals(message, exception.getMessage());
         if (cause == null) assertNull(exception.getCause());
         else assertSame(cause, exception.getCause());
     }
 
     private interface FullConstructor {
-        JsonException create(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace);
+        NodeException create(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace);
     }
 
     private static final class Factory {
-        final Class<? extends JsonException> type;
-        final Function<String, JsonException> message;
-        final BiFunction<String, Throwable, JsonException> messageAndCause;
+        final Class<? extends NodeException> type;
+        final Function<String, NodeException> message;
+        final BiFunction<String, Throwable, NodeException> messageAndCause;
         final FullConstructor full;
-        final Function<Throwable, JsonException> cause;
+        final Function<Throwable, NodeException> cause;
 
-        Factory(Class<? extends JsonException> type, Function<String, JsonException> message,
-                BiFunction<String, Throwable, JsonException> messageAndCause, FullConstructor full,
-                Function<Throwable, JsonException> cause) {
+        Factory(Class<? extends NodeException> type, Function<String, NodeException> message,
+                BiFunction<String, Throwable, NodeException> messageAndCause, FullConstructor full,
+                Function<Throwable, NodeException> cause) {
             this.type = type;
             this.message = message;
             this.messageAndCause = messageAndCause;

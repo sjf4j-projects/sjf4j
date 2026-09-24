@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.Types;
@@ -521,15 +521,15 @@ public final class GsonNodes {
         throw unsupported("removeInArray");
     }
 
-    private static JsonException notNode(Object node) {
-        return new JsonException("expected Gson JsonElement, but was " + Types.name(node));
+    private static NodeException notNode(Object node) {
+        return new NodeException("expected Gson JsonElement, but was " + Types.name(node));
     }
 
-    private static JsonException expected(String expected, Object node) {
-        return new JsonException("expected " + expected + ", but was " + Types.name(node));
+    private static NodeException expected(String expected, Object node) {
+        return new NodeException("expected " + expected + ", but was " + Types.name(node));
     }
 
-    private static JsonException unsupported(String method) {
-        return new JsonException("cannot call " + method + "() on Gson JsonElement facade");
+    private static NodeException unsupported(String method) {
+        return new NodeException("cannot call " + method + "() on Gson JsonElement facade");
     }
 }

@@ -3,7 +3,7 @@ package org.sjf4j.bytecode;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPath;
 
@@ -19,7 +19,7 @@ public class BytecodePathTest {
 
     @Test
     public void testAsm1() {
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.a.b", Root.class, Integer.class));
         assertTrue(ex.getMessage().contains("sjf4j-asm"));
     }
@@ -92,7 +92,7 @@ public class BytecodePathTest {
 
         FallbackBytecodePath<JsonObject, Object> intermediateAppend = new FallbackBytecodePath<>(
                 JsonPath.parse("$.items[+].value"), JsonObject.class, Object.class);
-        assertThrows(JsonException.class, () -> intermediateAppend.ensurePutIfAbsent(root, "y"));
+        assertThrows(NodeException.class, () -> intermediateAppend.ensurePutIfAbsent(root, "y"));
     }
 
     public static class Root {

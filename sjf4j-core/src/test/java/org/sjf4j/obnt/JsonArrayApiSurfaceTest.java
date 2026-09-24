@@ -3,7 +3,7 @@ package org.sjf4j.obnt;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -101,8 +101,8 @@ class JsonArrayApiSurfaceTest {
         assertEquals(12, array.getAs(0, Integer.class));
         assertEquals(34, array.<Integer>get(1));
         assertEquals(12, array.<Integer>getAs(0));
-        assertThrows(JsonException.class, () -> array.get(0, "boom"));
-        assertThrows(JsonException.class, () -> array.getAs(0, "boom"));
+        assertThrows(NodeException.class, () -> array.get(0, "boom"));
+        assertThrows(NodeException.class, () -> array.getAs(0, "boom"));
 
         JsonArray mutated = array.copy();
         assertEquals(array, mutated);
@@ -151,10 +151,10 @@ class JsonArrayApiSurfaceTest {
         array.getJsonObject(6).put("k", "changed");
         assertEquals("v", deepCopy.getJsonObject(0).getString("k"));
 
-        assertThrows(JsonException.class, () -> new TypedIntegerArray(Arrays.asList(1, "x")));
+        assertThrows(NodeException.class, () -> new TypedIntegerArray(Arrays.asList(1, "x")));
         TypedIntegerArray integers = new TypedIntegerArray();
         integers.add(1);
-        assertThrows(JsonException.class, () -> integers.add("x"));
+        assertThrows(NodeException.class, () -> integers.add("x"));
         mutated.clear();
         assertTrue(mutated.isEmpty());
         assertNotEquals(array, mutated);

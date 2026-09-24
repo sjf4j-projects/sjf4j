@@ -3,7 +3,7 @@ package org.sjf4j.patch;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -104,7 +104,7 @@ class PatchesSemanticsTest {
         target.setName("han");
         target.setCount(1);
 
-        JsonException e = assertThrows(JsonException.class,
+        NodeException e = assertThrows(NodeException.class,
                 () -> Patches.mergePatch(target, JsonObject.of("name", null)));
 
         assertTrue(e.getMessage().contains("cannot remove field 'name'"));

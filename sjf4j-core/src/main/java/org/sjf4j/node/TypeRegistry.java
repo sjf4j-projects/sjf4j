@@ -5,7 +5,6 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
@@ -64,7 +63,7 @@ public final class TypeRegistry {
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
             if (mustPojo && ti.pojoInfo == null) {
-                throw new JsonException("class '" + clazz.getName() + "' is not a POJO");
+                throw new BindingException("class '" + clazz.getName() + "' is not a POJO");
             }
             return ti;
         }
@@ -72,7 +71,7 @@ public final class TypeRegistry {
         ExternalNode<?> externalNode = ExternalNodeRegistry.resolve(clazz);
         if (externalNode != null) {
             if (mustPojo) {
-                throw new JsonException("class '" + clazz.getName() + "' is an external node, not a POJO");
+                throw new BindingException("class '" + clazz.getName() + "' is an external node, not a POJO");
             }
             ti = new TypeInfo(clazz, null, null, null, null, externalNode);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -82,7 +81,7 @@ public final class TypeRegistry {
         ValueInfo[] valueInfos = ValueRegistry.resolve(clazz);
         if (valueInfos != null) {
             if (mustPojo) {
-                throw new JsonException("class '" + clazz.getName() + "' is a NodeValue, not a POJO");
+                throw new BindingException("class '" + clazz.getName() + "' is a NodeValue, not a POJO");
             }
             ti = new TypeInfo(clazz, valueInfos, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -100,7 +99,7 @@ public final class TypeRegistry {
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
             if (mustPojo) {
-                throw new JsonException("class '" + clazz.getName() + "' is a container, not a POJO");
+                throw new BindingException("class '" + clazz.getName() + "' is a container, not a POJO");
             }
             ti = new TypeInfo(clazz, null, null, ci, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -140,7 +139,7 @@ public final class TypeRegistry {
         TypeInfo ti = registerTypeInfo(clazz);
         ValueInfo info = ti.getNodeValueInfo(valueFormat);
         if (info == null) {
-            throw new JsonException("no ValueCodec registered for type '" + clazz.getName() +
+            throw new BindingException("no ValueCodec registered for type '" + clazz.getName() +
                     "' with valueFormat '" + valueFormat + "'");
         }
         return info;

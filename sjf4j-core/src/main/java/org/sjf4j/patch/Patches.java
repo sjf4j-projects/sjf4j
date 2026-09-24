@@ -36,7 +36,7 @@ public final class Patches {
      * Use {@code deepCopy=true} when composite patch values should not be shared by
      * reference.</p>
      *
-     * <p>Fixed-size Java arrays cannot be truncated and fail with {@code JsonException}.
+     * <p>Fixed-size Java arrays cannot be truncated and fail with {@code NodeException}.
      * If you need RFC 7386 semantics instead (array replace and object {@code null}
      * means remove), use {@link #mergePatch(Object, Object)}.</p>
      */
@@ -141,7 +141,7 @@ public final class Patches {
      * <p>Removal requires a removable object container such as {@link JsonObject}, {@link java.util.Map},
      * or a facade-native mutable object node. POJO fields are structural and cannot be removed;
      * an explicit {@code null} patch member for an existing POJO property will fail with
-     * {@code JsonException} rather than silently setting the property to {@code null}. A failure
+     * {@code NodeException} rather than silently setting the property to {@code null}. A failure
      * after earlier members were processed does not roll back those mutations.</p>
      *
      * <p>Use this when you need standards-compliant merge behavior instead of indexed deep merge

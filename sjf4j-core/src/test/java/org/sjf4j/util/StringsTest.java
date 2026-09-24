@@ -1,7 +1,6 @@
 package org.sjf4j.util;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

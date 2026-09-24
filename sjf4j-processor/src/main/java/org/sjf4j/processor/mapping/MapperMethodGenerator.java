@@ -1,6 +1,6 @@
 package org.sjf4j.processor.mapping;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
@@ -557,7 +557,7 @@ public final class MapperMethodGenerator {
                     JsonPath.parse(
                             rule.target());
 
-        } catch (JsonException e) {
+        } catch (NodeException e) {
             error(
                     method,
                     generated,

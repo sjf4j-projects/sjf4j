@@ -1,9 +1,11 @@
 package org.sjf4j;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.FieldInfo;
+import org.sjf4j.path.PathSegment;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -84,12 +86,12 @@ public class JsonObject extends JsonContainer {
         JsonObject jo = new JsonObject();
         if (keyValues == null || keyValues.length == 0) return jo;
         if ((keyValues.length & 1) != 0) {
-            throw new JsonException("JsonObject.of requires an even number of arguments");
+            throw new NodeException("JsonObject.of requires an even number of arguments");
         }
         for (int i = 0; i < keyValues.length; i += 2) {
             Object key = keyValues[i];
             if (!(key instanceof String)) {
-                throw new JsonException("JsonObject.of key at index " + i + " must be a String");
+                throw new NodeException("JsonObject.of key at index " + i + " must be a String");
             }
             jo.put((String) key, keyValues[i + 1]);
         }
@@ -456,19 +458,35 @@ public class JsonObject extends JsonContainer {
      * Strict getter helper. When {@code containerType} is non-null the message
      * includes the container name; for non-container value types pass {@code null}.
      */
-    private JsonException _strict(String key, Class<?> type, Class<?> containerType, Exception cause) {
+    private NodeException _strict(String key, Class<?> type, Class<?> containerType, Exception cause) {
+        String message;
         if (containerType == null) {
-            return new JsonException("cannot get " + type.getName() + " at '" + key + "'", cause);
+            message = "cannot get " + type.getName() + " at '" + key + "'";
+        } else {
+            message = "cannot get " + containerType.getName() + " with element type " +
+                    type.getName() + " at '" + key + "'";
         }
-        return new JsonException("cannot get " + containerType.getName() + " with element type " +
-                type.getName() + " at '" + key + "'", cause);
+        if (cause instanceof BindingException) {
+            BindingException binding = (BindingException) cause;
+            if (binding.hasPathSegment()) return binding;
+            return new BindingException(message + ": " + binding.getMessage(),
+                    new PathSegment.Name(PathSegment.Root.INSTANCE, key), binding);
+        }
+        return new NodeException(message, cause);
     }
 
     /**
      * Lenient getter helper with location context.
      */
-    private JsonException _lenient(String key, Class<?> type, Exception cause) {
-        return new JsonException("cannot coerce to " + type.getName() + " at '" + key + "'", cause);
+    private NodeException _lenient(String key, Class<?> type, Exception cause) {
+        String message = "cannot coerce to " + type.getName() + " at '" + key + "'";
+        if (cause instanceof BindingException) {
+            BindingException binding = (BindingException) cause;
+            if (binding.hasPathSegment()) return binding;
+            return new BindingException(message + ": " + binding.getMessage(),
+                    new PathSegment.Name(PathSegment.Root.INSTANCE, key), binding);
+        }
+        return new NodeException(message, cause);
     }
 
     /**
@@ -523,8 +541,11 @@ public class JsonObject extends JsonContainer {
      * Returns a String value using lenient conversion.
      */
     public String getAsString(String key) {
-        Object value = getNode(key);
-        return Nodes.asString(value);
+        try {
+            return Nodes.asString(getNode(key));
+        } catch (BindingException e) {
+            throw _lenient(key, String.class, e);
+        }
     }
 
     /**
@@ -931,7 +952,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T get(String key, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(key, clazz);
     }
@@ -952,7 +973,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(String key, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(key, clazz);
     }
@@ -1031,7 +1052,7 @@ public class JsonObject extends JsonContainer {
     public Object remove(String key) {
         Objects.requireNonNull(key, "key");
         if (pi != null && pi.properties.containsKey(key)) {
-            throw new JsonException("cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
+            throw new NodeException("cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
                     "'. Only dynamic properties in JsonObject are removable.");
         }
         if (dynamicProperties != null) {

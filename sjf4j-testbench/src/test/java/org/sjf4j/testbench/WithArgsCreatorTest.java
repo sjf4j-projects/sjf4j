@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
@@ -141,13 +141,13 @@ public class WithArgsCreatorTest {
 
     @Test
     void shouldFailAllArgsNoCreatorPojoWithoutParams() {
-        assertThrows(JsonException.class,
+        assertThrows(NodeException.class,
                 () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", AllArgsNoCreatorPojo.class));
     }
 
     @Test
     void shouldFailCreatorMissingParam() {
-        assertThrows(JsonException.class,
+        assertThrows(NodeException.class,
                 () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", ExplicitCreatorMissingParamPojo.class));
     }
 
@@ -241,13 +241,13 @@ public class WithArgsCreatorTest {
 
 //    @Test
 //    void shouldFailWhenMissingPrimitive() {
-//        assertThrows(JsonException.class,
+//        assertThrows(NodeException.class,
 //                () -> sjf4j.fromJson("{\"name\":\"a\"}", PrimitivePojo.class));
 //    }
 //
 //    @Test
 //    void shouldFailWhenNullToPrimitive() {
-//        assertThrows(JsonException.class,
+//        assertThrows(NodeException.class,
 //                () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":null}", PrimitivePojo.class));
 //    }
 
@@ -260,13 +260,13 @@ public class WithArgsCreatorTest {
 
     @Test
     void shouldFailTypeMismatch() {
-        assertThrows(JsonException.class,
+        assertThrows(NodeException.class,
                 () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":\"notNumber\"}", PrimitivePojo.class));
     }
 
     @Test
     void shouldFailOverflow() {
-        assertThrows(JsonException.class,
+        assertThrows(NodeException.class,
                 () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":2147483648}", PrimitivePojo.class));
     }
 
@@ -292,7 +292,7 @@ public class WithArgsCreatorTest {
 
     @Test
     void shouldFailWhenMultipleCreators() {
-        assertThrows(JsonException.class,
+        assertThrows(NodeException.class,
                 () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", MultiCreatorPojo.class));
     }
 

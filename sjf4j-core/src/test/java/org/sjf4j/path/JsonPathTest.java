@@ -5,7 +5,7 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Nodes;
@@ -70,7 +70,7 @@ public class JsonPathTest {
         log.info("path2: {}", path2);
         assertEquals("$['a~'][0]['b/\\'']['c~']['d e']", path2.toExpr());
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("/a~2b"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("/a~2b"));
     }
 
     @Test
@@ -251,7 +251,7 @@ public class JsonPathTest {
         log.info("$: {}", JsonPath.parse("$").getNode(jo1));
         assertEquals(JsonObject.class, JsonPath.parse("$").getNode(jo1).getClass());
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.book[*].price").getNode(jo1));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.book[*].price").getNode(jo1));
 
     }
 
@@ -359,7 +359,7 @@ public class JsonPathTest {
         JsonPath.parse("$.array[2]").put(jo, null);
         assertNull(JsonPath.parse("$.array[2]").ensurePutIfAbsent(jo, 333));
         assertEquals(Arrays.asList(1, 999, 333, 7), JsonPath.parse("$.array[*]").find(jo));
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.array[5]").ensurePutIfAbsent(jo, 8));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.array[5]").ensurePutIfAbsent(jo, 8));
 
         JsonPath path5 = JsonPath.parse("$.a.b");
         assertTrue(path5.hasNonNull(jo));
@@ -424,9 +424,9 @@ public class JsonPathTest {
         assertEquals("B", JsonPath.parse("/array/1").removeIfPresent(document));
         assertEquals(Arrays.asList("a", "c", "d"), JsonPath.parse("$.array[*]").find(document));
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("/missing/key").add(document, 1));
-        assertThrows(JsonException.class, () -> JsonPath.parse("/array/9").replace(document, "x"));
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.array[*]").add(document, "x"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("/missing/key").add(document, 1));
+        assertThrows(NodeException.class, () -> JsonPath.parse("/array/9").replace(document, "x"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.array[*]").add(document, "x"));
     }
 
     @Test
@@ -474,7 +474,7 @@ public class JsonPathTest {
         assertNull(JsonPath.parse("$.nonexist").getNode(jo));
         assertEquals("default", JsonPath.parse("$.nonexist").getString(jo, "default"));
 
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             JsonPath.parse("$.a[*]").getNode(jo);
         });
 
@@ -486,16 +486,16 @@ public class JsonPathTest {
         assertEquals("", root.toPointerExpr());
         assertSame(jo, root.getNode(jo));
         assertTrue(root.contains(jo));
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.."));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.."));
 
         JsonArray ja = JsonArray.fromJson("[1,2,3]");
         assertNull(JsonPath.parse("$[10]").getNode(ja));
 
         JsonPath append = JsonPath.parse("$[+]");
         assertFalse(append.contains(ja));
-        assertThrows(JsonException.class, () -> append.getNode(ja));
-        assertThrows(JsonException.class, () -> append.replace(ja, 4));
-        assertThrows(JsonException.class, () -> append.removeIfPresent(ja));
+        assertThrows(NodeException.class, () -> append.getNode(ja));
+        assertThrows(NodeException.class, () -> append.replace(ja, 4));
+        assertThrows(NodeException.class, () -> append.removeIfPresent(ja));
     }
 
     @Test
@@ -636,16 +636,16 @@ public class JsonPathTest {
         assertTrue(holder.autoJsonArrayField instanceof AutoJsonArray);
         assertEquals("jajo", JsonPath.parse("$.autoJsonArrayField[0].name").getString(holder));
 
-        JsonException babyArrayFailure = assertThrows(JsonException.class,
+        NodeException babyArrayFailure = assertThrows(NodeException.class,
                 () -> JsonPath.parse("$.babyArrayField[2].name").ensurePut(holder, "baby"));
         assertTrue(babyArrayFailure.getMessage().contains("only List/JsonArray/JAJO/Set are supported"));
         assertNull(holder.babyArrayField);
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.setField[0].name").ensurePut(holder, "set"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.setField[0].name").ensurePut(holder, "set"));
         assertTrue(holder.setField instanceof LinkedHashSet);
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.unsupportedObjectField.name").ensurePut(holder, "x"));
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.unsupportedArrayField[0]").ensurePut(holder, "x"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.unsupportedObjectField.name").ensurePut(holder, "x"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.unsupportedArrayField[0]").ensurePut(holder, "x"));
     }
 
     @Test
@@ -693,7 +693,7 @@ public class JsonPathTest {
         log.info("jo1={}", jo1);
         assertEquals("Zack", jo1.getJsonArray("babies").getJsonObject(3).getString("name"));
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.babies[9].name").ensurePut(jo1, "Error"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.babies[9].name").ensurePut(jo1, "Error"));
     }
 
     @Test
@@ -713,7 +713,7 @@ public class JsonPathTest {
         log.info("p1={}", p1);
         assertEquals("Zack", p1.babies.get(3).name);
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.babies[9].name").ensurePut(p1, "Error"));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.babies[9].name").ensurePut(p1, "Error"));
     }
 
     @Test
@@ -778,7 +778,7 @@ public class JsonPathTest {
                 "}";
         JsonObject jo = JsonObject.fromJson(json);
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.numbers[1,3,5]").getNode(jo));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$.numbers[1,3,5]").getNode(jo));
 
         List<Object> multiIndex = JsonPath.parse("$.numbers[1,3,5]").find(jo);
         assertEquals(3, multiIndex.size());
@@ -840,7 +840,7 @@ public class JsonPathTest {
         assertTrue(allNames.contains("grandchild3"));
         assertTrue(allNames.contains("deepName"));
 
-        assertThrows(JsonException.class, () -> JsonPath.parse("$..name").getNode(jo));
+        assertThrows(NodeException.class, () -> JsonPath.parse("$..name").getNode(jo));
         assertEquals(1, JsonPath.parse("$..only").getNode(jo));
         assertEquals(30, JsonPath.parse("$..nested..values[2]").getNode(jo));
 

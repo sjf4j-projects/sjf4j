@@ -6,7 +6,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.Patches;
@@ -106,8 +106,8 @@ class JsonContainerPathApiSurfaceTest {
         assertEquals(34, root.<Integer>getByPath("$.num"));
         assertEquals(12, root.getAsByPath("$.string", Integer.class));
         assertEquals(12, root.<Integer>getAsByPath("$.string"));
-        assertThrows(JsonException.class, () -> root.getByPath("$.num", 1));
-        assertThrows(JsonException.class, () -> root.getAsByPath("$.string", 1));
+        assertThrows(NodeException.class, () -> root.getByPath("$.num", 1));
+        assertThrows(NodeException.class, () -> root.getAsByPath("$.string", 1));
 
         root.putByPath("$.obj.added", 1);
         assertEquals(1, root.putIfParentPresentByPath("$.obj.added", 2));

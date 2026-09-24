@@ -2,7 +2,7 @@ package org.sjf4j.patch;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.Types;
 
 import java.util.List;
@@ -82,7 +82,7 @@ public class JsonPatch extends JsonArray {
             Object v = get(i, Object.class);
             if (v instanceof PatchOperation) {
                 current = ((PatchOperation) v).apply(current);
-            } else throw new JsonException("unsupported patch type: " + Types.name(v));
+            } else throw new NodeException("unsupported patch type: " + Types.name(v));
         }
         return current;
     }

@@ -12,7 +12,8 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -178,6 +179,12 @@ class NodesEdgeCaseTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
+    void rawTypeReferenceIsABindingDefinitionError() {
+        assertThrows(BindingException.class, () -> new TypeReference() {});
+    }
+
+    @Test
     void testCollectionConversionsCoverPojoPrimitiveSetAndFacadeShapes() {
         Bean bean = new Bean();
         bean.setName("han");
@@ -273,7 +280,7 @@ class NodesEdgeCaseTest {
         assertEquals(2, Nodes.getInArray(new int[]{1, 2}, -1));
         assertEquals(Integer.valueOf(2), Nodes.getInArray(new int[]{1, 2}, -1, Integer.class));
         assertNull(Nodes.getInArray(new int[]{1, 2}, 5));
-        assertThrows(JsonException.class, () -> Nodes.getInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0));
+        assertThrows(NodeException.class, () -> Nodes.getInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0));
 
         Iterator<Object> iterator = Nodes.iteratorInArray(new int[]{1, 2});
         assertTrue(iterator.hasNext());
@@ -315,13 +322,13 @@ class NodesEdgeCaseTest {
         Nodes.getAccessInArray(Arrays.asList("x", null), 1, access);
         assertNull(access.node);
         assertTrue(access.present);
-        assertThrows(JsonException.class, () -> Nodes.putAccessInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), null, 0, access));
+        assertThrows(NodeException.class, () -> Nodes.putAccessInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), null, 0, access));
 
         assertEquals("jack", Nodes.putInObject(map, "name", "map"));
         assertNull(Nodes.putInObject(bean, "name", "pojo"));
         assertEquals("pojo", bean.getName());
         assertNull(Nodes.putInObject(dynamicBean, "extra2", 3));
-        assertThrows(JsonException.class, () -> Nodes.putInObject(bean, "missing", 1));
+        assertThrows(NodeException.class, () -> Nodes.putInObject(bean, "missing", 1));
 
         assertEquals("map", Nodes.computeIfAbsentInObject(map, "name", key -> {
             throw new AssertionError("mapping function should not be called for non-null map value");
@@ -342,7 +349,7 @@ class NodesEdgeCaseTest {
         bean.setName(null);
         assertEquals("computed-pojo", Nodes.computeIfAbsentInObject(bean, "name", key -> "computed-pojo"));
         assertEquals("computed-pojo", bean.getName());
-        assertThrows(JsonException.class, () -> Nodes.computeIfAbsentInObject(bean, "missing", key -> "missing"));
+        assertThrows(NodeException.class, () -> Nodes.computeIfAbsentInObject(bean, "missing", key -> "missing"));
 
         assertEquals("computed-dynamic", Nodes.computeIfAbsentInObject(dynamicBean, "dynamic", key -> "computed-dynamic"));
         assertEquals("computed-dynamic", dynamicBean.getNode("dynamic"));
@@ -352,7 +359,7 @@ class NodesEdgeCaseTest {
         assertEquals("computed-facade", facadeObject.get("created").textValue());
 
         List<Object> list = new ArrayList<>(Arrays.asList("a"));
-        assertThrows(JsonException.class, () -> Nodes.setInArray(list, 1, "b"));
+        assertThrows(NodeException.class, () -> Nodes.setInArray(list, 1, "b"));
         assertEquals("a", Nodes.setInArray(list, 0, "x"));
         assertNull(Nodes.putInArray(list, 1, "y"));
         assertEquals(Arrays.asList("x", "y"), list);
@@ -368,25 +375,25 @@ class NodesEdgeCaseTest {
         int[] numbers = {1, 2};
         assertEquals(2, Nodes.setInArray(numbers, -1, 7));
         assertEquals(7, numbers[1]);
-        assertThrows(JsonException.class, () -> Nodes.setInArray(numbers, 2, 9));
-        assertThrows(JsonException.class, () -> Nodes.putInArray(numbers, 2, 9));
-        assertThrows(JsonException.class, () -> Nodes.setInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0, "x"));
-        assertThrows(JsonException.class, () -> Nodes.putInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0, "x"));
+        assertThrows(NodeException.class, () -> Nodes.setInArray(numbers, 2, 9));
+        assertThrows(NodeException.class, () -> Nodes.putInArray(numbers, 2, 9));
+        assertThrows(NodeException.class, () -> Nodes.setInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0, "x"));
+        assertThrows(NodeException.class, () -> Nodes.putInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0, "x"));
 
         Set<Object> set = new LinkedHashSet<>();
         Nodes.addInArray(set, "x");
         assertTrue(set.contains("x"));
-        assertThrows(JsonException.class, () -> Nodes.addInArray(numbers, 9));
-        assertThrows(JsonException.class, () -> Nodes.addInArray(set, 0, "y"));
+        assertThrows(NodeException.class, () -> Nodes.addInArray(numbers, 9));
+        assertThrows(NodeException.class, () -> Nodes.addInArray(set, 0, "y"));
 
         Map<String, Object> removableMap = new LinkedHashMap<>(map);
         assertEquals(2, Nodes.removeInObject(removableMap, "count"));
         assertEquals(2, Nodes.removeInObject(jsonObject, "count"));
-        JsonException beanRemove = assertThrows(JsonException.class, () -> Nodes.removeInObject(bean, "name"));
+        NodeException beanRemove = assertThrows(NodeException.class, () -> Nodes.removeInObject(bean, "name"));
         assertTrue(beanRemove.getMessage().contains("cannot remove field 'name'"));
         assertEquals("b", Nodes.removeInArray(new ArrayList<>(Arrays.asList("a", "b")), -1));
-        assertThrows(JsonException.class, () -> Nodes.removeInArray(numbers, 0));
-        assertThrows(JsonException.class, () -> Nodes.removeInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0));
+        assertThrows(NodeException.class, () -> Nodes.removeInArray(numbers, 0));
+        assertThrows(NodeException.class, () -> Nodes.removeInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0));
     }
 
     @Test
@@ -430,7 +437,7 @@ class NodesEdgeCaseTest {
         Nodes.putAccessInArray(arrayNode, null, 9, access);
         assertNull(access.node);
 
-        assertThrows(JsonException.class, () -> Nodes.copy(objectNode));
+        assertThrows(NodeException.class, () -> Nodes.copy(objectNode));
         assertEquals("han", Nodes.asString(Nodes.putInObject(objectNode, "name", MAPPER.valueToTree("jack"))));
         assertEquals("jack", objectNode.get("name").textValue());
         assertEquals("jack", Nodes.asString(Nodes.removeInObject(objectNode, "name")));
@@ -444,11 +451,15 @@ class NodesEdgeCaseTest {
 
     @Test
     void testJojoJajoEqualityHashAndWalkCoverage() {
-        assertThrows(JsonException.class, () -> Nodes.toJojo(JsonObject.of("name", "han"), JsonObject.class));
+        BindingException jojoError = assertThrows(BindingException.class,
+                () -> Nodes.toJojo(JsonObject.of("name", "han"), JsonObject.class));
+        assertEquals(BindingException.class, jojoError.getClass());
         assertNull(Nodes.toJajo(null, DynamicArray.class));
         DynamicArray dynamicArray = Nodes.toJajo(Arrays.asList(1, 2), DynamicArray.class);
         assertEquals(Arrays.asList(1, 2), dynamicArray.toList());
-        assertThrows(JsonException.class, () -> Nodes.toJajo(Arrays.asList(1, 2), JsonArray.class));
+        BindingException jajoError = assertThrows(BindingException.class,
+                () -> Nodes.toJajo(Arrays.asList(1, 2), JsonArray.class));
+        assertEquals(BindingException.class, jajoError.getClass());
 
         assertTrue(Nodes.equals(new UnknownValue("v"), new UnknownValue("v")));
         assertFalse(Nodes.equals("1", 1));
@@ -598,7 +609,7 @@ class NodesEdgeCaseTest {
         assertTrue(objectNode.has("keep"));
         assertFalse(Nodes.removeIfInObject(objectNode, (key, value) -> false));
 
-        assertThrows(JsonException.class, () -> Nodes.removeIfInObject("x", (key, value) -> true));
+        assertThrows(NodeException.class, () -> Nodes.removeIfInObject("x", (key, value) -> true));
         assertThrows(NullPointerException.class, () -> Nodes.removeIfInObject(map, null));
     }
 
@@ -616,7 +627,7 @@ class NodesEdgeCaseTest {
         set.add("a");
         assertEquals(1, Nodes.sizeInArray(set));
         Nodes.forEachArray(set, (i, v) -> assertEquals("a", v));
-        assertThrows(JsonException.class, () -> Nodes.getInArray(set, 0));
+        assertThrows(NodeException.class, () -> Nodes.getInArray(set, 0));
     }
 
     @Test
@@ -626,7 +637,7 @@ class NodesEdgeCaseTest {
         Nodes.addInArray(set, "b");
         assertEquals(2, Nodes.sizeInArray(set));
         assertEquals("[\"a\",\"b\"]", Sjf4j.global().toJsonString(set));
-        assertThrows(JsonException.class, () -> Nodes.removeInArray(set, 0));
+        assertThrows(NodeException.class, () -> Nodes.removeInArray(set, 0));
     }
 
     @Test

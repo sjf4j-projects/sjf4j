@@ -1,6 +1,8 @@
 package org.sjf4j;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
+import org.sjf4j.path.PathSegment;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -66,7 +68,7 @@ public class JsonArray extends JsonContainer {
                 for (int i = 0, len = list.size(); i < len; i++) {
                     Object v = list.get(i);
                     if (v != null && !elemClazz.isInstance(v))
-                        throw new JsonException("element type mismatch at [" + i + "]: expected " +
+                        throw new NodeException("element type mismatch at [" + i + "]: expected " +
                                 elemClazz.getName() + ", but was " + v.getClass().getName());
                 }
             }
@@ -295,16 +297,29 @@ public class JsonArray extends JsonContainer {
      * Strict getter helper. When {@code containerType} is non-null the message
      * includes the container name; for non-container value types pass {@code null}.
      */
-    private JsonException _strict(int idx, Class<?> elementType, Class<?> containerType, Exception cause) {
+    private NodeException _strict(int idx, Class<?> elementType, Class<?> containerType, Exception cause) {
         String msg = containerType == null ? "cannot get " + elementType.getSimpleName() + " at [" + idx + "]" : "cannot get " + containerType.getSimpleName() + " with element type " + elementType.getSimpleName() + " at [" + idx + "]";
-        return new JsonException(msg, cause);
+        if (cause instanceof BindingException) {
+            BindingException binding = (BindingException) cause;
+            if (binding.hasPathSegment()) return binding;
+            return new BindingException(msg + ": " + binding.getMessage(),
+                    new PathSegment.Index(PathSegment.Root.INSTANCE, idx), binding);
+        }
+        return new NodeException(msg, cause);
     }
 
     /**
      * Lenient getter helper for value types only.
      */
-    private JsonException _lenient(int idx, Class<?> type, Exception cause) {
-        return new JsonException("cannot coerce to " + type.getSimpleName() + " at [" + idx + "]", cause);
+    private NodeException _lenient(int idx, Class<?> type, Exception cause) {
+        String message = "cannot coerce to " + type.getSimpleName() + " at [" + idx + "]";
+        if (cause instanceof BindingException) {
+            BindingException binding = (BindingException) cause;
+            if (binding.hasPathSegment()) return binding;
+            return new BindingException(message + ": " + binding.getMessage(),
+                    new PathSegment.Index(PathSegment.Root.INSTANCE, idx), binding);
+        }
+        return new NodeException(message, cause);
     }
 
 
@@ -764,7 +779,7 @@ public class JsonArray extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T get(int idx, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(idx, clazz);
     }
@@ -786,7 +801,7 @@ public class JsonArray extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(int idx, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new NodeException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(idx, clazz);
     }
@@ -802,7 +817,7 @@ public class JsonArray extends JsonContainer {
      */
     public void add(Object object) {
         if (object != null && !elementClass().isInstance(object))
-            throw new JsonException("cannot add element of type '" + object.getClass().getName() +
+            throw new NodeException("cannot add element of type '" + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementClass().getName() + "'");
 
         if (dynamicList == null) dynamicList = new ArrayList<>();
@@ -836,12 +851,12 @@ public class JsonArray extends JsonContainer {
      */
     public void add(int idx, Object object) {
         if (object != null && !elementClass().isInstance(object))
-            throw new JsonException("cannot add element of type '" + object.getClass().getName() +
+            throw new NodeException("cannot add element of type '" + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementClass().getName() + "'");
 
         int pidx = _pos(idx);
         if (pidx < 0 || pidx > size()) {
-            throw new JsonException("cannot add at index " + idx + " in JsonArray of size " + size());
+            throw new NodeException("cannot add at index " + idx + " in JsonArray of size " + size());
         }
 
         if (dynamicList == null) dynamicList = new ArrayList<>();
@@ -856,12 +871,12 @@ public class JsonArray extends JsonContainer {
      */
     public Object set(int idx, Object object) {
         if (object != null && !elementClass().isInstance(object))
-            throw new JsonException("cannot set element of type '" + object.getClass().getName() +
+            throw new NodeException("cannot set element of type '" + object.getClass().getName() +
                     " in JsonArray with elementType '" + elementClass().getName() + "'");
 
         int pidx = _pos(idx);
         if (pidx < 0 || pidx >= size()) {
-            throw new JsonException("cannot set at index " + idx + " in JsonArray of size " + size());
+            throw new NodeException("cannot set at index " + idx + " in JsonArray of size " + size());
         }
         if (dynamicList == null) dynamicList = new ArrayList<>();
         return dynamicList.set(pidx, object);
@@ -902,7 +917,7 @@ public class JsonArray extends JsonContainer {
         if (dynamicList == null) return null;
         int pidx = _pos(idx);
         if (pidx < 0 || pidx >= size()) {
-            throw new JsonException("cannot remove at index " + idx + " in JsonArray of size " + size());
+            throw new NodeException("cannot remove at index " + idx + " in JsonArray of size " + size());
         }
         return dynamicList.remove(pidx);
     }

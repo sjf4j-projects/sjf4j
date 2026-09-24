@@ -6,7 +6,7 @@ import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.annotation.path.PutIfParentPresentByPath;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,7 +80,7 @@ public class PutIfParentPresentByPathTest {
     @Test
     public void finalInvalidIndexWithExistingParentStillThrows() {
         PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
-        assertThrows(JsonException.class, () -> nodes.putListValue(new ArrayList<>(), "x"));
+        assertThrows(NodeException.class, () -> nodes.putListValue(new ArrayList<>(), "x"));
     }
 
     @Test
@@ -88,7 +88,7 @@ public class PutIfParentPresentByPathTest {
         PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
         Account account = new Account(null);
         nodes.putIfParentMissing(account, "x");
-        assertThrows(JsonException.class, () -> nodes.putMissing(account, "x"));
+        assertThrows(NodeException.class, () -> nodes.putMissing(account, "x"));
     }
 
     private static Account account() {

@@ -3,6 +3,7 @@ package org.sjf4j.processor;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.exception.NodeException;
 
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
@@ -493,6 +494,8 @@ public class PathProcessorTest {
         assertTrue(source.contains("oldValue = (String) list.set(index, value)"), source);
         assertTrue(source.contains("String oldValue = array[index]"), source);
         assertTrue(!source.contains("Nodes.to"), source);
+        assertTrue(source.contains("org.sjf4j.exception.NodeException"), source);
+        assertTrue(!source.contains("JsonException"), source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> rootClass = Class.forName("testcase.Model$Root", true, loader);
@@ -527,7 +530,7 @@ public class PathProcessorTest {
                 .invoke(nodes, flagClass.getConstructor(boolean.class).newInstance(true)));
         Exception missingPrimitive = assertThrows(java.lang.reflect.InvocationTargetException.class,
                 () -> nodesClass.getMethod("getActive", flagClass).invoke(nodes, new Object[]{null}));
-        assertTrue(missingPrimitive.getCause() instanceof org.sjf4j.exception.JsonException);
+        assertEquals(NodeException.class, missingPrimitive.getCause().getClass());
         assertEquals("map-name", nodesClass.getMethod("getDynamicMap", rootClass, String.class).invoke(nodes, root, "name"));
         assertEquals("one", nodesClass.getMethod("getDynamicList", rootClass, int.class).invoke(nodes, root, -1));
         assertEquals("array-one", nodesClass.getMethod("getDynamicArray", rootClass, int.class).invoke(nodes, root, 1));

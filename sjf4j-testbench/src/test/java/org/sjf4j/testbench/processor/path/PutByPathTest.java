@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,7 +49,7 @@ public class PutByPathTest {
         Integer[] array = {1, 2, 3};
         assertEquals(Integer.valueOf(3), nodes.putLastArray(array, 7));
         assertEquals(Integer.valueOf(7), array[2]);
-        assertThrows(JsonException.class, () -> nodes.putArrayAtSize(array, 8));
+        assertThrows(NodeException.class, () -> nodes.putArrayAtSize(array, 8));
 
         JsonArray jsonArray = JsonArray.of("old");
         assertEquals("old", nodes.putJsonArrayValue(jsonArray, "new"));
@@ -91,13 +91,13 @@ public class PutByPathTest {
     }
 
     @Test
-    public void missingPutParentThrowsJsonException() {
+    public void missingPutParentThrowsNodeException() {
         PutNodes nodes = CompiledInstances.of(PutNodes.class);
 
-        assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(null, "x"));
-        assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(new Account(null), "x"));
-        assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(new Account(new Profile(new Organization(new ArrayList<>(), new HashMap<>(), JsonObject.of(), new HashMap<>()))), "x"));
-        assertThrows(JsonException.class, () -> nodes.putLast(new ArrayList<>(), 1));
+        assertThrows(NodeException.class, () -> nodes.putLastMemberEmail(null, "x"));
+        assertThrows(NodeException.class, () -> nodes.putLastMemberEmail(new Account(null), "x"));
+        assertThrows(NodeException.class, () -> nodes.putLastMemberEmail(new Account(new Profile(new Organization(new ArrayList<>(), new HashMap<>(), JsonObject.of(), new HashMap<>()))), "x"));
+        assertThrows(NodeException.class, () -> nodes.putLast(new ArrayList<>(), 1));
     }
 
     @Test
@@ -127,12 +127,12 @@ public class PutByPathTest {
     }
 
     @Test
-    public void dynamicIndexMissingParentThrowsJsonException() {
+    public void dynamicIndexMissingParentThrowsNodeException() {
         PutNodes nodes = CompiledInstances.of(PutNodes.class);
         Account account = account();
 
-        assertThrows(JsonException.class, () -> nodes.putRegionDistrict(account, "east", 9, "x"));
-        assertThrows(JsonException.class, () -> nodes.putDynamicListValue(new ArrayList<>(List.of("a")), 9, "x"));
+        assertThrows(NodeException.class, () -> nodes.putRegionDistrict(account, "east", 9, "x"));
+        assertThrows(NodeException.class, () -> nodes.putDynamicListValue(new ArrayList<>(List.of("a")), 9, "x"));
     }
 
     private static Account account() {

@@ -1,6 +1,6 @@
 package org.sjf4j.node;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -74,7 +74,7 @@ public final class Types {
             return rawClazz(upperBounds.length > 0 ? upperBounds[0] : Object.class);
         }
 
-        throw new JsonException("cannot resolve raw class from type: " + type);
+        throw new NodeException("cannot resolve raw class from type: " + type);
     }
 
     /**

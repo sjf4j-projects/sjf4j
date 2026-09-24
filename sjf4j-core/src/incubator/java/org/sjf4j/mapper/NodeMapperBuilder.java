@@ -1,7 +1,7 @@
 package org.sjf4j.mapper;
 
 import org.sjf4j.bytecode.BytecodePath;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.StreamingContext;
@@ -241,7 +241,7 @@ public final class NodeMapperBuilder<S, T> {
             }
             return CompiledAction.compute(targetCP, parentCP, a.computer, a.ensure);
         }
-        throw new JsonException("unknown MappingAction: " + action.getClass().getName());
+        throw new NodeException("unknown MappingAction: " + action.getClass().getName());
     }
 
     private NodeFacade _buildFacade() {
@@ -252,7 +252,7 @@ public final class NodeMapperBuilder<S, T> {
         for (int i = 0; i < nestedMappers.size(); i++) {
             NodeMapper<?, ?> nestedMapper = nestedMappers.get(i);
             if (nestedMapper.sourceType() == sourceType && nestedMapper.targetType() == targetType) {
-                throw new JsonException("with() does not support nested mapper with same source/target types: '" +
+                throw new NodeException("with() does not support nested mapper with same source/target types: '" +
                         sourceType.getName() + "' -> '" + targetType.getName() + "'");
             }
             converters[i] = _toConverter(nestedMapper);
@@ -309,7 +309,7 @@ public final class NodeMapperBuilder<S, T> {
     private static JsonPath _requireSingleTargetPath(String targetPath, String opName) {
         JsonPath compiledTargetPath = _compilePath(targetPath);
         if (!compiledTargetPath.isSinglePut()) {
-            throw new JsonException(opName + " does not support multi target path: target='" + compiledTargetPath + "'");
+            throw new NodeException(opName + " does not support multi target path: target='" + compiledTargetPath + "'");
         }
         return compiledTargetPath;
     }
@@ -317,7 +317,7 @@ public final class NodeMapperBuilder<S, T> {
     private static JsonPath _requireSingleSourcePath(String sourcePath, String opName, JsonPath compiledTargetPath) {
         JsonPath compiledSourcePath = _compilePath(sourcePath);
         if (!compiledSourcePath.isSinglePut()) {
-            throw new JsonException(opName + " does not support multi source path: source='" +
+            throw new NodeException(opName + " does not support multi source path: source='" +
                     compiledSourcePath + "', target='" + compiledTargetPath + "'");
         }
         return compiledSourcePath;
@@ -326,7 +326,7 @@ public final class NodeMapperBuilder<S, T> {
     private static JsonPath _compilePath(String path) {
         Objects.requireNonNull(path, "path");
         String expr = path.trim();
-        if (expr.isEmpty()) throw new JsonException("path is empty");
+        if (expr.isEmpty()) throw new NodeException("path is empty");
         if (expr.startsWith("$") || expr.startsWith("/")) return JsonPath.parse(expr);
         return JsonPath.parse("$." + expr);
     }
@@ -381,7 +381,7 @@ public final class NodeMapperBuilder<S, T> {
 
         private ComputeAction(JsonPath targetPath, ComputeFunction<S> computer, boolean ensure) {
             if (!targetPath.isSinglePut() && ensure) {
-                throw new JsonException("ensureCompute() does not support multi target path: target='" + targetPath + "'");
+                throw new NodeException("ensureCompute() does not support multi target path: target='" + targetPath + "'");
             }
             this.targetPath = targetPath;
             this.computer = computer;

@@ -1,7 +1,7 @@
 package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,9 +15,9 @@ class PathSyntaxEdgeCaseTest {
 
     @Test
     void testPointerFormattingErrors() {
-        assertThrows(JsonException.class, () -> PathSyntax.toPointerExpr(new PathSegment[]{new PathSegment.Name(PathSegment.Root.INSTANCE, "a"), PathSegment.Root.INSTANCE}));
-        assertThrows(JsonException.class, () -> PathSyntax.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Append(PathSegment.Root.INSTANCE), new PathSegment.Name(PathSegment.Root.INSTANCE, "a")}));
-        assertThrows(JsonException.class, () -> PathSyntax.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Descendant(PathSegment.Root.INSTANCE)}));
+        assertThrows(NodeException.class, () -> PathSyntax.toPointerExpr(new PathSegment[]{new PathSegment.Name(PathSegment.Root.INSTANCE, "a"), PathSegment.Root.INSTANCE}));
+        assertThrows(NodeException.class, () -> PathSyntax.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Append(PathSegment.Root.INSTANCE), new PathSegment.Name(PathSegment.Root.INSTANCE, "a")}));
+        assertThrows(NodeException.class, () -> PathSyntax.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Descendant(PathSegment.Root.INSTANCE)}));
     }
 
     @Test
@@ -30,15 +30,15 @@ class PathSyntaxEdgeCaseTest {
         assertEquals("$.items[?(@.enabled == true)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.enabled == true]")));
         assertEquals("$.items[?(@.enabled == false)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.enabled == false]")));
 
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$."));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$.."));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$.name("));
-        assertThrows(JsonException.class, () -> PathSyntax.parsePath("$#"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$."));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$.."));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$.name("));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$#"));
     }
 
     @Test
     void testFunctionArgAndParenHelpers() {
-        assertThrows(JsonException.class, () -> PathSyntax._findMatchingParen("(abc", 0));
+        assertThrows(NodeException.class, () -> PathSyntax._findMatchingParen("(abc", 0));
         assertEquals(4, PathSyntax._findMatchingParen("(')')x", 0));
         assertEquals(Collections.singletonList(""), PathSyntax._parseFunctionArgs("   "));
         assertEquals(Arrays.asList("1", "nested(2,3)", "'x,y'", "/a(b)/"), PathSyntax._parseFunctionArgs("1, nested(2,3), 'x,y', /a(b)/"));

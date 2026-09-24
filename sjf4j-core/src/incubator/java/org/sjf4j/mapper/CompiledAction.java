@@ -2,7 +2,7 @@ package org.sjf4j.mapper;
 
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.bytecode.FallbackBytecodePath;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 
 /**
@@ -130,7 +130,7 @@ final class CompiledAction<S, T> {
         try {
             return (BytecodePath<Object, Object>) BytecodePath.compile(
                     path.toExpr(), (Class) rootType, Object.class);
-        } catch (JsonException e) {
+        } catch (NodeException e) {
             return new FallbackBytecodePath<>(path, (Class) rootType, Object.class);
         }
     }

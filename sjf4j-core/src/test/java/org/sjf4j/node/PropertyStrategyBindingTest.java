@@ -5,7 +5,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.PropertyStrategy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -191,7 +191,7 @@ class PropertyStrategyBindingTest {
 
     @Test
     void creatorRenameMustMatchFinalPropertyName() {
-        assertThrows(JsonException.class,
+        assertThrows(NodeException.class,
                 () -> TypeRegistry.registerPojoOrElseThrow(MethodRenameCreatorPojo.class));
     }
 

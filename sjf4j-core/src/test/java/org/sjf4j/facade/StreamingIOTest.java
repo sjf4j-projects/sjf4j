@@ -15,7 +15,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
@@ -616,7 +616,7 @@ public class StreamingIOTest {
                 "  \"age\": 18\n" +
                 "}\n";
 
-        Throwable cause = assertThrows(JsonException.class, () -> {
+        Throwable cause = assertThrows(NodeException.class, () -> {
             Object node = facade.readNode(json, UserJojo.class);
             log.info("node={}", node);
         });
@@ -641,7 +641,7 @@ public class StreamingIOTest {
 
 //        System.out.println(user1.inspect());
 //        System.out.println(facade.writeNodeAsString(user1));
-        Throwable cause = assertThrows(JsonException.class, () -> facade.writeNodeAsString(user1));
+        Throwable cause = assertThrows(NodeException.class, () -> facade.writeNodeAsString(user1));
         BindingException inner = findBindingException(cause);
         assertNotNull(inner, "JsonBindingException not found in cause chain");
 //        assertTrue(inner.getMessage().contains("/@UserJojo{throws_key"));
@@ -712,7 +712,7 @@ public class StreamingIOTest {
         System.out.println(Nodes.inspect(sjf4j));
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
 
-        assertThrows(JsonException.class, () -> sjf4j.fromJson(json, ParentZooPath.class));
+        assertThrows(NodeException.class, () -> sjf4j.fromJson(json, ParentZooPath.class));
     }
 
     private void assertOneOfByDiscriminatorOnField() {
@@ -849,8 +849,8 @@ public class StreamingIOTest {
         assertInstanceOf(LinkedList.class, holder.list);
         assertInstanceOf(TreeSet.class, holder.set);
 
-        assertThrows(JsonException.class, () -> sjf4j.fromJson("{\"a\":1}", SortedMap.class));
-        assertThrows(JsonException.class, () -> sjf4j.fromJson("[2,1,3]", SortedSet.class));
+        assertThrows(NodeException.class, () -> sjf4j.fromJson("{\"a\":1}", SortedMap.class));
+        assertThrows(NodeException.class, () -> sjf4j.fromJson("[2,1,3]", SortedSet.class));
     }
 
     private void assertSharedStreamingScalarContract() {
@@ -871,7 +871,7 @@ public class StreamingIOTest {
         assertNull(sjf4j.fromJson("\"\"", Character.class));
         assertEquals('x', sjf4j.fromJson("\"x\"", Character.class));
         assertEquals(ScalarEnum.FIRST, sjf4j.fromJson("\"FIRST\"", ScalarEnum.class));
-        assertThrows(JsonException.class, () -> sjf4j.fromJson("true", String.class));
+        assertThrows(NodeException.class, () -> sjf4j.fromJson("true", String.class));
 
         assertEquals("null", sjf4j.toJsonString(null));
         assertEquals("true", sjf4j.toJsonString(true));

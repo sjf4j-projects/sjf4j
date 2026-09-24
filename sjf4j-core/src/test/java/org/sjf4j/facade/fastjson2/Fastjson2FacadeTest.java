@@ -13,7 +13,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.annotation.node.PropertyStrategy;
@@ -479,7 +479,7 @@ public class Fastjson2FacadeTest {
     void testPluginModuleNormalFailureMessageWithoutOneOfHint() {
         Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
 
-        JsonException ex = assertThrows(JsonException.class, () -> facade.readNode("{", Book.class));
+        NodeException ex = assertThrows(NodeException.class, () -> facade.readNode("{", Book.class));
         assertTrue(ex.getMessage().contains("failed to read JSON"));
         assertFalse(ex.getMessage().contains("OneOf is not supported in Fastjson2 PLUGIN_MODULE mode"));
     }

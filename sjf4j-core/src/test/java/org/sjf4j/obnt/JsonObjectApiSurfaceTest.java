@@ -3,7 +3,7 @@ package org.sjf4j.obnt;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -102,8 +102,8 @@ class JsonObjectApiSurfaceTest {
         assertEquals(12, object.getAs("string", Integer.class));
         assertEquals(34, object.<Integer>get("number"));
         assertEquals(12, object.<Integer>getAs("string"));
-        assertThrows(JsonException.class, () -> object.get("number", 1));
-        assertThrows(JsonException.class, () -> object.getAs("string", 1));
+        assertThrows(NodeException.class, () -> object.get("number", 1));
+        assertThrows(NodeException.class, () -> object.getAs("string", 1));
         assertEquals(object.toMap(), object.toNode(Map.class));
         JsonObject nested = JsonObject.of("k", "v");
         Map<?, ?> boundMap = JsonObject.of("nested", nested).bindNode(Map.class);
@@ -140,7 +140,7 @@ class JsonObjectApiSurfaceTest {
         assertTrue(fieldBacked.anyMatch((key, value) -> "city".equals(key)));
         assertTrue(fieldBacked.replaceAll((key, value) -> "name".equals(key) ? "HAN" : value));
         assertEquals("HAN", fieldBacked.name);
-        assertThrows(JsonException.class, () -> fieldBacked.remove("name"));
+        assertThrows(NodeException.class, () -> fieldBacked.remove("name"));
         fieldBacked.clear();
         assertEquals(2, fieldBacked.size());
         fieldBacked.put("city", "SG");

@@ -3,7 +3,7 @@ package org.sjf4j.testbench.reflect;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
 
 import java.util.concurrent.TimeUnit;
@@ -104,7 +104,7 @@ public class GetterOverheadBenchmark {
         try {
             return fn.apply(obj.getNode(key));
         } catch (Exception e) {
-            throw new JsonException("cannot get " + type + " at '" + key + "'", e);
+            throw new NodeException("cannot get " + type + " at '" + key + "'", e);
         }
     }
 
@@ -112,7 +112,7 @@ public class GetterOverheadBenchmark {
         try {
             return Nodes.toString(obj.getNode(key));
         } catch (Exception e) {
-            throw new JsonException("cannot get String at '" + key + "'", e);
+            throw new NodeException("cannot get String at '" + key + "'", e);
         }
     }
 

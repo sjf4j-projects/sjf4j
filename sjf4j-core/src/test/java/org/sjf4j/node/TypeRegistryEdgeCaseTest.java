@@ -14,7 +14,7 @@ import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.simple.SimpleJsonReader;
@@ -44,9 +44,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TypeRegistryEdgeCaseTest {
+
+    interface NonPojoTarget {}
 
     @NodeValue
     static class MiniValue {
@@ -287,6 +290,25 @@ class TypeRegistryEdgeCaseTest {
     }
 
     @Test
+    void bindingMetadataFailuresUseBindingException() {
+        BindingException missingCodec = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerNodeValueOrElseThrow(String.class, "missing"));
+        assertTrue(missingCodec.getMessage().contains("no ValueCodec registered"));
+
+        assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(null, true));
+        assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(String.class, true));
+        assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(int.class, true));
+
+        BindingException cold = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(NonPojoTarget.class, true));
+        assertEquals(BindingException.class, cold.getClass());
+        assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(NonPojoTarget.class));
+        BindingException cached = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(NonPojoTarget.class, true));
+        assertEquals(BindingException.class, cached.getClass());
+    }
+
+    @Test
     void testCodecPatternResolvesLocalDateCodec() {
         PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalDatePatternPojo.class);
         FieldInfo fi = pi.properties.get("date");
@@ -313,8 +335,9 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testCodecPatternOnNonPatternTypeThrows() {
-        assertThrows(JsonException.class, () ->
-                TypeRegistry.registerPojoOrElseThrow(InvalidPatternPojo.class));
+        BindingException error = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerPojoOrElseThrow(InvalidPatternPojo.class));
+        assertEquals(BindingException.class, error.getClass());
     }
 
     static class LocalDatePatternPojo {
@@ -565,8 +588,8 @@ class TypeRegistryEdgeCaseTest {
         CreatorInfo badNoArgs = new CreatorInfo(NoArgsPojo.class, null, null,
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null);
-        assertThrows(JsonException.class, badNoArgs::newPojoNoArgs);
-        assertThrows(JsonException.class, () -> badNoArgs.newPojoWithArgs(new Object[0]));
+        assertThrowsExactly(BindingException.class, badNoArgs::newPojoNoArgs);
+        assertThrowsExactly(BindingException.class, () -> badNoArgs.newPojoWithArgs(new Object[0]));
     }
 
     @Test
@@ -637,7 +660,7 @@ class TypeRegistryEdgeCaseTest {
         CreatorInfo aliasCreator = ReflectUtil.analyzeCreator(AliasCreatorPojo.class, lookup);
         TypeRegistry.PojoCreationSession duplicateSession = new TypeRegistry.PojoCreationSession(aliasCreator, 0);
         duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("name"), "first");
-        JsonException duplicate = assertThrows(JsonException.class,
+        BindingException duplicate = assertThrowsExactly(BindingException.class,
                 () -> duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("n"), "second"));
         assertTrue(duplicate.getMessage().contains("duplicate creator argument assignment"));
     }
@@ -645,7 +668,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testDuplicateCreatorBindingFailsAfterMaterialization() {
         PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(AliasCreatorPojo.class);
-        JsonException duplicate = assertThrows(JsonException.class,
+        BindingException duplicate = assertThrowsExactly(BindingException.class,
                 () -> StreamingIO.readPojo(new SimpleJsonReader(new StringReader("{\"name\":\"first\",\"n\":\"second\"}")),
                         AliasCreatorPojo.class, AliasCreatorPojo.class, pi, StreamingContext.EMPTY));
         assertTrue(duplicate.getMessage().contains("duplicate creator argument assignment"));
@@ -693,7 +716,7 @@ class TypeRegistryEdgeCaseTest {
         assertTrue(plainField.invokeSetterIfPresent(pojo, "again"));
         assertEquals("again", pojo.plain);
         assertFalse(readOnlyField.invokeSetterIfPresent(pojo, "x"));
-        assertThrows(JsonException.class, () -> readOnlyField.invokeSetter(pojo, "x"));
+        assertThrowsExactly(BindingException.class, () -> readOnlyField.invokeSetter(pojo, "x"));
         assertThrows(NullPointerException.class, () -> plainField.invokeGetter(null));
 
         FieldInfo missingGetter = new FieldInfo(
@@ -712,7 +735,7 @@ class TypeRegistryEdgeCaseTest {
                 null,
                 null, null
         );
-        assertThrows(JsonException.class, () -> missingGetter.invokeGetter(new Object()));
+        assertThrowsExactly(BindingException.class, () -> missingGetter.invokeGetter(new Object()));
 
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         Method getterMethod = ThrowingAccessor.class.getDeclaredMethod("getName");
@@ -735,8 +758,8 @@ class TypeRegistryEdgeCaseTest {
                 null
         );
         ThrowingAccessor accessor = new ThrowingAccessor();
-        assertThrows(JsonException.class, () -> throwingField.invokeGetter(accessor));
-        assertThrows(JsonException.class, () -> throwingField.invokeSetter(accessor, "x"));
+        assertThrowsExactly(BindingException.class, () -> throwingField.invokeGetter(accessor));
+        assertThrowsExactly(BindingException.class, () -> throwingField.invokeSetter(accessor, "x"));
 
         ValueInfo codecInfo = TypeRegistry.registerTypeInfo(MiniValue.class).valueInfos[0];
         MiniValue value = new MiniValue("v");
@@ -745,14 +768,15 @@ class TypeRegistryEdgeCaseTest {
         assertEquals("v", ((MiniValue) codecInfo.valueCopy(value)).value);
 
         ValueInfo throwing = new ValueInfo("", String.class, String.class, new ThrowingCodec(), null, null, null);
-        assertThrows(JsonException.class, () -> throwing.valueToRaw("x"));
-        assertThrows(JsonException.class, () -> throwing.rawToValue("x"));
-        assertThrows(JsonException.class, () -> throwing.valueCopy("x"));
-        assertThrows(JsonException.class, () -> throwing.rawToValue(1));
+        BindingException valueToRaw = assertThrowsExactly(BindingException.class, () -> throwing.valueToRaw("x"));
+        assertInstanceOf(IllegalStateException.class, valueToRaw.getCause());
+        assertThrowsExactly(BindingException.class, () -> throwing.rawToValue("x"));
+        assertThrowsExactly(BindingException.class, () -> throwing.valueCopy("x"));
+        assertThrowsExactly(BindingException.class, () -> throwing.rawToValue(1));
 
         ValueInfo none = new ValueInfo("", String.class, String.class, null, null, null, null);
-        assertThrows(JsonException.class, () -> none.valueToRaw("x"));
-        assertThrows(JsonException.class, () -> none.rawToValue("x"));
+        assertThrowsExactly(BindingException.class, () -> none.valueToRaw("x"));
+        assertThrowsExactly(BindingException.class, () -> none.rawToValue("x"));
         assertSame("x", none.valueCopy("x"));
 
         ValueInfo throwingHandles = new ValueInfo(
@@ -764,9 +788,9 @@ class TypeRegistryEdgeCaseTest {
                 lookup.unreflect(ThrowingHandleValue.class.getDeclaredMethod("decode", String.class)),
                 lookup.unreflect(ThrowingHandleValue.class.getDeclaredMethod("copy"))
         );
-        assertThrows(JsonException.class, () -> throwingHandles.valueToRaw(new ThrowingHandleValue()));
-        assertThrows(JsonException.class, () -> throwingHandles.rawToValue("x"));
-        assertThrows(JsonException.class, () -> throwingHandles.valueCopy(new ThrowingHandleValue()));
+        assertThrowsExactly(BindingException.class, () -> throwingHandles.valueToRaw(new ThrowingHandleValue()));
+        assertThrowsExactly(BindingException.class, () -> throwingHandles.rawToValue("x"));
+        assertThrowsExactly(BindingException.class, () -> throwingHandles.valueCopy(new ThrowingHandleValue()));
 
         OneOfInfo discriminated = ReflectUtil.analyzeOneOf(
                 DiscriminatedOneOf.class,

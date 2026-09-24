@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.EnsurePutByPath;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -96,7 +96,7 @@ public class EnsurePutByPathTest {
         assertNull(nodes.ensureRecordMap(new RecordRoot(map), "record-value"));
         assertEquals("record-value", map.get("name"));
 
-        assertThrows(JsonException.class, () -> nodes.ensureRecordMap(new RecordRoot(null), "missing"));
+        assertThrows(NodeException.class, () -> nodes.ensureRecordMap(new RecordRoot(null), "missing"));
     }
 
     @Test

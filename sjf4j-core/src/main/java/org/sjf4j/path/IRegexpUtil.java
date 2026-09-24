@@ -1,6 +1,6 @@
 package org.sjf4j.path;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 
 /**
@@ -96,7 +96,7 @@ public class IRegexpUtil {
         for (int i = start + 1; i < p.length(); i++) {
             if (p.charAt(i) == ']') return i;
         }
-        throw new JsonException("unclosed character class '['");
+        throw new NodeException("unclosed character class '['");
     }
 
     /**
@@ -107,7 +107,7 @@ public class IRegexpUtil {
             char c = p.charAt(i);
             if (c == '\\') {
                 i++;
-                if (i >= to) throw new JsonException("invalid escape in []");
+                if (i >= to) throw new NodeException("invalid escape in []");
                 if (p.charAt(i) == ch) return true;
             } else if (i + 2 < to && p.charAt(i + 1) == '-') {
                 char lo = c;

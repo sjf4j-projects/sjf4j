@@ -1,7 +1,7 @@
 package org.sjf4j.path;
 
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.Numbers;
 
 import java.util.List;
@@ -375,7 +375,7 @@ public abstract class PathSegment {
         } else if (Numbers.isNumeric(raw)) {
             return Numbers.parseNumber(raw);
         } else {
-            throw new JsonException("invalid function argument '" + raw + "'");
+            throw new NodeException("invalid function argument '" + raw + "'");
         }
     }
 

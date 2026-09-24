@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -24,14 +24,14 @@ public class PathProcessorTest {
 
     @Test
     public void registryRejectsInvalidTargets() {
-        JsonException nullType = assertThrows(JsonException.class, () -> CompiledInstances.of(null));
+        NodeException nullType = assertThrows(NodeException.class, () -> CompiledInstances.of(null));
         assertTrue(nullType.getMessage().contains("non-null interface type"), nullType.getMessage());
 
-        JsonException notInterface = assertThrows(JsonException.class, () -> CompiledInstances.of(NotInterface.class));
+        NodeException notInterface = assertThrows(NodeException.class, () -> CompiledInstances.of(NotInterface.class));
         assertTrue(notInterface.getMessage().contains("requires an interface type"), notInterface.getMessage());
         assertTrue(notInterface.getMessage().contains(NotInterface.class.getName()), notInterface.getMessage());
 
-        JsonException notCompiled = assertThrows(JsonException.class, () -> CompiledInstances.of(NotCompiled.class));
+        NodeException notCompiled = assertThrows(NodeException.class, () -> CompiledInstances.of(NotCompiled.class));
         assertTrue(notCompiled.getMessage().contains("Cannot find generated SJF4J implementation"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains("@CompiledXxx"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains(NotCompiled.class.getName() + "_Impl"), notCompiled.getMessage());

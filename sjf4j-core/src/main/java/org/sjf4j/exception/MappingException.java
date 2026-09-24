@@ -3,7 +3,7 @@ package org.sjf4j.exception;
 /**
  * Exception for mapper declaration, generation, and execution errors.
  */
-public class MappingException extends JsonException {
+public class MappingException extends NodeException {
 
     public MappingException(String message) {
         super(message);

@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.NodeConverter;
@@ -458,7 +458,7 @@ public class SimpleNodeFacadeTest {
         assertEquals(0, bt.age); // default int=0
 
         jo.put("age", null);
-        assertThrows(JsonException.class, () -> nodeFacade.readNode(jo, BasicTypes.class));
+        assertThrows(NodeException.class, () -> nodeFacade.readNode(jo, BasicTypes.class));
     }
 
 
@@ -530,7 +530,7 @@ public class SimpleNodeFacadeTest {
         assertInstanceOf(ConcurrentHashMap.class, concurrentMap);
         assertEquals(1, concurrentMap.get("a"));
 
-        assertThrows(JsonException.class, () -> nodeFacade.readNode(jo, SortedMap.class));
+        assertThrows(NodeException.class, () -> nodeFacade.readNode(jo, SortedMap.class));
     }
 
     @Test
@@ -545,7 +545,7 @@ public class SimpleNodeFacadeTest {
         assertInstanceOf(TreeSet.class, treeSet);
         assertEquals(Arrays.asList(1, 2, 3), new ArrayList<>(treeSet));
 
-        assertThrows(JsonException.class, () -> nodeFacade.readNode(ja, SortedSet.class));
+        assertThrows(NodeException.class, () -> nodeFacade.readNode(ja, SortedSet.class));
     }
 
     @Test

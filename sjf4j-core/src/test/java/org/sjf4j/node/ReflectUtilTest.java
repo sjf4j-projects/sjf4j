@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 
@@ -98,7 +98,7 @@ class ReflectUtilTest {
     @Test
     void analyzeCreator_prefersAnnotatedCreatorCtor() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
-        assertThrows(JsonException.class, () -> {
+        assertThrows(NodeException.class, () -> {
             CreatorInfo ci = ReflectUtil.analyzeCreator(ExplicitCreatorPojo.class, lookup);
         });
     }
@@ -135,7 +135,7 @@ class ReflectUtilTest {
     @Test
     void analyzeCreator_throwsOnMultipleCreators() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> ReflectUtil.analyzeCreator(MultipleCreatorsPojo.class, lookup));
         assertTrue(ex.getMessage().contains("multiple creator definitions"));
     }
@@ -148,7 +148,7 @@ class ReflectUtilTest {
     @Test
     void analyzeCreator_detectsAliasConflict_inCreatorParams() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
-        JsonException ex = assertThrows(JsonException.class,
+        NodeException ex = assertThrows(NodeException.class,
                 () -> ReflectUtil.analyzeCreator(AliasConflictCreatorPojo.class, lookup));
         assertTrue(ex.getMessage().contains("mapped to multiple properties"));
     }

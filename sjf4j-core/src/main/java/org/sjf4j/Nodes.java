@@ -2,7 +2,8 @@ package org.sjf4j;
 
 
 import org.sjf4j.annotation.node.NodeObject;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
@@ -86,7 +87,7 @@ public final class Nodes {
         if (node instanceof String || node instanceof Character) return node.toString();
         if (node.getClass().isEnum()) return ((Enum<?>) node).name();
         if (FacadeNodes.isNode(node)) return FacadeNodes.toString(node);
-        throw new JsonException("expected String, but was " + Types.name(node));
+        throw new NodeException("expected String, but was " + Types.name(node));
     }
 
     /**
@@ -126,7 +127,7 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Number) return (Number) node;
         if (FacadeNodes.isNode(node)) return FacadeNodes.toNumber(node);
-        throw new JsonException("expected Number, but was " + Types.name(node));
+        throw new NodeException("expected Number, but was " + Types.name(node));
     }
 
     /**
@@ -298,7 +299,7 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
         if (FacadeNodes.isNode(node)) return FacadeNodes.toBoolean(node);
-        throw new JsonException("expected Boolean, but was " + Types.name(node));
+        throw new NodeException("expected Boolean, but was " + Types.name(node));
     }
 
     /**
@@ -311,14 +312,14 @@ public final class Nodes {
             String str = ((String) node).toLowerCase(Locale.ROOT);
             if ("true".equals(str) || "yes".equals(str) || "on".equals(str) || "1".equals(str)) return true;
             if ("false".equals(str) || "no".equals(str) || "off".equals(str) || "0".equals(str)) return false;
-//            throw new JsonException("cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
+//            throw new NodeException("cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
             return null;
         }
         if (node instanceof Number) {
             int i = ((Number) node).intValue();
             if (i == 1) return true;
             if (i == 0) return false;
-//            throw new JsonException("cannot convert Number to Boolean: numeric values other than 0-false or 1-true");
+//            throw new NodeException("cannot convert Number to Boolean: numeric values other than 0-false or 1-true");
             return null;
         }
         if (FacadeNodes.isNode(node)) return FacadeNodes.asBoolean(node);
@@ -365,7 +366,7 @@ public final class Nodes {
             return map;
         }
         if (FacadeNodes.isNode(node)) return FacadeNodes.toMap(node);
-        throw new JsonException("expected Map, but was " + Types.name(node));
+        throw new NodeException("expected Map, but was " + Types.name(node));
     }
 
     /**
@@ -432,7 +433,7 @@ public final class Nodes {
             return new ArrayList<>((Set<Object>) node);
         }
         if (FacadeNodes.isNode(node)) return FacadeNodes.toList(node);
-        throw new JsonException("expected List, but was " + Types.name(node));
+        throw new NodeException("expected List, but was " + Types.name(node));
     }
 
     /**
@@ -477,7 +478,7 @@ public final class Nodes {
         }
         if (node instanceof Set) return ((Set<Object>) node).toArray();
         if (FacadeNodes.isNode(node)) return FacadeNodes.toArray(node);
-        throw new JsonException("expected Array, but was " + Types.name(node));
+        throw new NodeException("expected Array, but was " + Types.name(node));
     }
 
     /**
@@ -520,7 +521,7 @@ public final class Nodes {
         }
         if (node instanceof Set) return (Set<Object>) node;
         if (FacadeNodes.isNode(node)) return FacadeNodes.toSet(node);
-        throw new JsonException("expected Set, but was " + Types.name(node));
+        throw new NodeException("expected Set, but was " + Types.name(node));
     }
 
     /**
@@ -558,7 +559,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static <T> T toJojo(Object node, Class<T> clazz) {
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
-            throw new JsonException("expected JOJO subtype, but was " + clazz.getName());
+            throw new BindingException("expected JOJO subtype, but was " + clazz.getName());
         if (node == null) return null;
         return (T) Sjf4j.global().nodeFacade().readNode(node, clazz, false);
     }
@@ -576,7 +577,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static <T> T toJajo(Object node, Class<T> clazz) {
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
-            throw new JsonException("expected JAJO subtype, but was " + clazz.getName());
+            throw new BindingException("expected JAJO subtype, but was " + clazz.getName());
         if (node == null) return null;
         PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(clazz);
         JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
@@ -611,7 +612,7 @@ public final class Nodes {
     public static <T> T toPojo(Object node, Class<T> clazz) {
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.pojoInfo == null && ti.oneOfInfo == null) {
-            throw new JsonException("class '" + clazz.getName() + "' is not a registered POJO");
+            throw new BindingException("class '" + clazz.getName() + "' is not a registered POJO");
         }
         return (T) Sjf4j.global().nodeFacade().readNode(node, clazz, false);
     }
@@ -677,7 +678,7 @@ public final class Nodes {
             return Sjf4j.global().nodeFacade().readNode(node, clazz, false);
         }
 
-        throw new JsonException("expected " + clazz.getName() + ", but was " + Types.name(node));
+        throw new BindingException("expected " + clazz.getName() + ", but was " + Types.name(node));
     }
 
     /**
@@ -685,7 +686,7 @@ public final class Nodes {
      * <p>
      * Strict mode does not coerce incompatible values across logical domains
      * (for example arbitrary string to number/boolean). Type mismatch throws
-     * {@link JsonException}.
+     * {@link NodeException}.
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, Class<T> clazz) {
@@ -808,7 +809,7 @@ public final class Nodes {
      * values are transferred without deep recursion. Strings, numbers, booleans,
      * and unrecognized values are returned unchanged. {@code @NodeValue} types
      * use their registered value-copy hook; facade-native representations are not
-     * copied and cause {@link JsonException}.
+     * copied and cause {@link NodeException}.
      */
     @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
     public static <T> T copy(T node) {
@@ -894,7 +895,7 @@ public final class Nodes {
         }
 
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("cannot copy facade node '" + Types.name(node) + "'");
+            throw new NodeException("cannot copy facade node '" + Types.name(node) + "'");
         }
 
         return node;
@@ -1130,7 +1131,7 @@ public final class Nodes {
             FacadeNodes.forEachObject(node, consumer);
             return;
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
 
@@ -1165,7 +1166,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.anyMatchObject(node, predicate);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
 
@@ -1215,7 +1216,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.replaceAllInObject(node, replacer);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1244,7 +1245,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.removeIfInObject(node, predicate);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
 
@@ -1279,7 +1280,7 @@ public final class Nodes {
             FacadeNodes.forEachArray(node, consumer);
             return;
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -1321,7 +1322,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.anyMatchArray(node, predicate);
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -1342,7 +1343,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.sizeInObject(node);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1365,7 +1366,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.sizeInArray(node);
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -1391,7 +1392,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.keySetInObject(node);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1441,7 +1442,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.entrySetInObject(node);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1474,7 +1475,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.iteratorInArray(node);
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -1497,7 +1498,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.containsInObject(node, key);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1534,7 +1535,7 @@ public final class Nodes {
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.getInObject(node, key);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1580,12 +1581,12 @@ public final class Nodes {
             }
         }
         if (node instanceof Set) {
-            throw new JsonException("cannot call getInArray() on an unordered Java Set");
+            throw new NodeException("cannot call getInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.getInArray(node, idx);
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -1669,7 +1670,7 @@ public final class Nodes {
             FacadeNodes.getAccessInObject(node, key, out);
             return;
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1723,7 +1724,7 @@ public final class Nodes {
             FacadeNodes.putAccessInObject(node, type, key, out);
             return;
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
 
     }
 
@@ -1770,13 +1771,13 @@ public final class Nodes {
             return;
         }
         if (node instanceof Set) {
-            throw new JsonException("cannot call getAccessInArray() on an unordered Java Set");
+            throw new NodeException("cannot call getAccessInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.getAccessInArray(node, idx, out);
             return;
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -1841,13 +1842,13 @@ public final class Nodes {
         }
         if (node instanceof Set) {
             if (idx == null) return;
-            throw new JsonException("cannot call putAccessInArray() on an unordered Java Set");
+            throw new NodeException("cannot call putAccessInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.putAccessInArray(node, type, idx, out);
             return;
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -1864,7 +1865,7 @@ public final class Nodes {
         if (pi != null) {
             return pi.creatorInfo.forceNewPojo();
         }
-        throw new JsonException("cannot create object node of type '" + clazz +
+        throw new NodeException("cannot create object node of type '" + clazz +
                 "'; only Map/JsonObject/JOJO/POJO are supported");
     }
 
@@ -1884,7 +1885,7 @@ public final class Nodes {
         if (Set.class.isAssignableFrom(clazz)) {
             return TypeRegistry.newSetContainer(clazz, 0, false);
         }
-        throw new JsonException("cannot create array node of type '" + clazz +
+        throw new NodeException("cannot create array node of type '" + clazz +
                 "'; only List/JsonArray/JAJO/Set are supported");
     }
 
@@ -1914,14 +1915,14 @@ public final class Nodes {
                 fi.invokeSetter(node, value);
                 return null;
             } else {
-                throw new JsonException("unknown property '" + key + "' in POJO '" +
+                throw new NodeException("unknown property '" + key + "' in POJO '" +
                         node.getClass().getName() + "'");
             }
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.putInObject(node, key, value);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1941,13 +1942,13 @@ public final class Nodes {
             return ((JsonObject) node).remove(key);
         }
         if (TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
-            throw new JsonException("cannot remove field '" + key + "' from POJO '" +
+            throw new NodeException("cannot remove field '" + key + "' from POJO '" +
                     node.getClass().getName() + "'");
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.removeInObject(node, key);
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -1982,7 +1983,7 @@ public final class Nodes {
                 }
                 return newNode;
             } else {
-                throw new JsonException("unknown property '" + key + "' in POJO '" +
+                throw new NodeException("unknown property '" + key + "' in POJO '" +
                         node.getClass().getName() + "'");
             }
         }
@@ -1997,7 +1998,7 @@ public final class Nodes {
             }
             return newNode;
         }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected Object node, but was " + Types.name(node));
     }
 
     /**
@@ -2038,7 +2039,7 @@ public final class Nodes {
                 list.add(value);
                 return null;
             }
-            throw new JsonException("cannot set at index " + idx + " in List of size " + size);
+            throw new NodeException("cannot set at index " + idx + " in List of size " + size);
         }
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
@@ -2049,7 +2050,7 @@ public final class Nodes {
                 ja.add(value);
                 return null;
             }
-            throw new JsonException("cannot set at index " + idx + " in JsonArray of size " + ja.size());
+            throw new NodeException("cannot set at index " + idx + " in JsonArray of size " + ja.size());
         }
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
@@ -2060,12 +2061,12 @@ public final class Nodes {
                 return old;
             }
             if (allowAppend && idx == len) {
-                throw new JsonException("cannot append to a Java array");
+                throw new NodeException("cannot append to a Java array");
             }
-            throw new JsonException("cannot set at index " + idx + " in Java array of size " + len);
+            throw new NodeException("cannot set at index " + idx + " in Java array of size " + len);
         }
         if (node instanceof Set) {
-            throw new JsonException("cannot set by index on an unordered Java Set");
+            throw new NodeException("cannot set by index on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             if (allowAppend && FacadeNodes.sizeInArray(node) == idx) {
@@ -2074,7 +2075,7 @@ public final class Nodes {
             }
             return FacadeNodes.setInArray(node, idx, value);
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -2094,7 +2095,7 @@ public final class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("cannot append to a Java array");
+            throw new NodeException("cannot append to a Java array");
         }
         if (node instanceof Set) {
             ((Set<Object>) node).add(value);
@@ -2104,7 +2105,7 @@ public final class Nodes {
             FacadeNodes.addInArray(node, value);
             return;
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -2127,16 +2128,16 @@ public final class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("cannot insert into a Java array");
+            throw new NodeException("cannot insert into a Java array");
         }
         if (node instanceof Set) {
-            throw new JsonException("cannot call addInArray() with an index on an unordered Java Set");
+            throw new NodeException("cannot call addInArray() with an index on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.addInArray(node, idx, value);
             return;
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
     /**
@@ -2157,16 +2158,16 @@ public final class Nodes {
             return ((JsonArray) node).remove(idx);
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("cannot remove at index " + idx +
+            throw new NodeException("cannot remove at index " + idx +
                     " from Java array of component type '" + node.getClass().getComponentType().getName() + "'");
         }
         if (node instanceof Set) {
-            throw new JsonException("cannot call removeInArray() on an unordered Java Set");
+            throw new NodeException("cannot call removeInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.removeInArray(node, idx);
         }
-        throw new JsonException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected Array node, but was " + Types.name(node));
     }
 
 

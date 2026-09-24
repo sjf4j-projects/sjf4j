@@ -8,7 +8,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.bytecode.PathCompiler;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.FieldInfo;
@@ -56,18 +56,18 @@ public class AsmPathCompiler implements PathCompiler {
         Class<?> valueClazz = Types.rawClazz(valueType);
 
         if (rootClazz == Object.class) {
-            throw new JsonException("ASM CompiledPath does not support Object root for '" + path.toExpr() +
+            throw new NodeException("ASM CompiledPath does not support Object root for '" + path.toExpr() +
                     "'; use FallbackCompiledPath for fully dynamic roots");
         }
         if (valueClazz.isPrimitive()) {
-            throw new JsonException("ASM CompiledPath valueType must be a reference type for '" + path.toExpr() +
+            throw new NodeException("ASM CompiledPath valueType must be a reference type for '" + path.toExpr() +
                     "'; use " + Types.box(valueClazz).getName() + " instead of " + valueClazz.getName());
         }
         if (path.length() < 2) {
-            throw new JsonException("ASM CompiledPath requires a non-root target path: '" + path.toExpr() + "'");
+            throw new NodeException("ASM CompiledPath requires a non-root target path: '" + path.toExpr() + "'");
         }
         if (!path.isSinglePut()) {
-            throw new JsonException("ASM CompiledPath supports only a single target path with Name/Index/Append segments: '" +
+            throw new NodeException("ASM CompiledPath supports only a single target path with Name/Index/Append segments: '" +
                     path.toExpr() + "'");
         }
 
@@ -87,7 +87,7 @@ public class AsmPathCompiler implements PathCompiler {
         try {
             return (BytecodePath<?, ?>) compiledClass.getConstructor().newInstance();
         } catch (Exception e) {
-            throw new JsonException("failed to instantiate ASM CompiledPath for '" + path.toExpr() +
+            throw new NodeException("failed to instantiate ASM CompiledPath for '" + path.toExpr() +
                     "' (rootType=" + rootClazz.getName() + ", valueType=" + valueClazz.getName() + ")", e);
         }
     }
@@ -379,7 +379,7 @@ public class AsmPathCompiler implements PathCompiler {
                 Class<?> boxedCurrentClazz = Types.box(currentClazz);
                 if (boxedCurrentClazz != Object.class && boxedValueClazz != Object.class &&
                         !boxedValueClazz.isAssignableFrom(boxedCurrentClazz)) {
-                    throw new JsonException("ASM CompiledPath '" + expr +
+                    throw new NodeException("ASM CompiledPath '" + expr +
                             "' does not coerce terminal type " + boxedCurrentClazz.getName() +
                             " to requested valueType " + boxedValueClazz.getName());
                 }
@@ -400,7 +400,7 @@ public class AsmPathCompiler implements PathCompiler {
             return _emitGetChildByIndex(mv, currentLocal, currentLocal + 1, ((PathSegment.Index) ps).index,
                     currentType, currentClazz, expr, currentLocal + 2);
         } else {
-            throw new JsonException("unsupported path token '" + ps + "' at '" + expr + "'");
+            throw new NodeException("unsupported path token '" + ps + "' at '" + expr + "'");
         }
     }
 
@@ -442,7 +442,7 @@ public class AsmPathCompiler implements PathCompiler {
         } else {
             PojoInfo pi = TypeRegistry.registerTypeInfo(currentClazz).pojoInfo;
             if (pi == null) {
-                throw new JsonException("cannot read property '" + name +
+                throw new NodeException("cannot read property '" + name +
                         "' from " + currentClazz.getName() + " at '" + expr + "'");
             }
 
@@ -468,7 +468,7 @@ public class AsmPathCompiler implements PathCompiler {
                     vvc = AsmUtil.emitCastOrBox(mv, vvc);
                     mv.visitVarInsn(Opcodes.ASTORE, dstLocal);
                 } else {
-                    throw new JsonException("property '" + name + "' on " +
+                    throw new NodeException("property '" + name + "' on " +
                             currentClazz.getName() + " is not readable through a public field or public getter" +
                             " at '" + expr + "'");
                 }
@@ -484,7 +484,7 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitVarInsn(Opcodes.ASTORE, dstLocal);
                 return Object.class;
             } else {
-                throw new JsonException("cannot resolve property '" + name +
+                throw new NodeException("cannot resolve property '" + name +
                         "' on " + currentClazz.getName() +
                         " at '" + expr +
                         "': no readable property found and target is not a JOJO dynamic object");
@@ -593,10 +593,10 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitLabel(done);
             return vvc;
         } else if (Set.class.isAssignableFrom(currentClazz)) {
-            throw new JsonException("cannot read by index from unordered Set type " +
+            throw new NodeException("cannot read by index from unordered Set type " +
                     currentClazz.getName() + " at '" + expr + "'");
         } else {
-            throw new JsonException("expected array-like target before index [" + idx +
+            throw new NodeException("expected array-like target before index [" + idx +
                     "] at '" + expr + "', but was " + currentClazz.getName());
         }
     }
@@ -680,7 +680,7 @@ public class AsmPathCompiler implements PathCompiler {
                 childType = _emitEnsureChildByAppend(mv, path, segments[i + 1],
                         currentType, currentClazz, currentLocal, childLocal);
             } else {
-                throw new JsonException("unsupported path token '" + ps + "' at '" + expr + "'");
+                throw new NodeException("unsupported path token '" + ps + "' at '" + expr + "'");
             }
 
             currentType = childType;
@@ -734,7 +734,7 @@ public class AsmPathCompiler implements PathCompiler {
         } else if (last instanceof PathSegment.Append) {
             _emitPutChildByAppend(mv, path, parentClazz, parentLocal, valueLocal, returnValue);
         } else {
-            throw new JsonException("unsupported last path token '" + last +
+            throw new NodeException("unsupported last path token '" + last +
                     "'; put() expected Name, Index, or Append token");
         }
     }
@@ -775,7 +775,7 @@ public class AsmPathCompiler implements PathCompiler {
         } else {
             PojoInfo pi = TypeRegistry.registerTypeInfo(currentClazz).pojoInfo;
             if (pi == null) {
-                throw new JsonException("cannot resolve property '" + name +
+                throw new NodeException("cannot resolve property '" + name +
                         "' on " + currentClazz.getName() + " at '" + expr + "'");
             }
 
@@ -796,10 +796,10 @@ public class AsmPathCompiler implements PathCompiler {
                             propInfo.publicGetter.getName(), "()" + org.objectweb.asm.Type.getDescriptor(vvc), false);
                     AsmUtil.emitCastOrBox(mv, vvc);
                 } else if (propInfo.publicSetter != null) {
-                    throw new JsonException("property '" + name + "' on " + currentClazz.getName() +
+                    throw new NodeException("property '" + name + "' on " + currentClazz.getName() +
                             " is not readable through a public field or public getter at '" + expr + "'");
                 } else {
-                    throw new JsonException("property '" + name + "' on " + currentClazz.getName() +
+                    throw new NodeException("property '" + name + "' on " + currentClazz.getName() +
                             " is not writable through a public field or public setter at '" + expr + "'");
                 }
                 mv.visitVarInsn(Opcodes.ASTORE, childLocal);
@@ -813,7 +813,7 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitVarInsn(Opcodes.ASTORE, childLocal);
                 childType = Object.class;
             } else {
-                throw new JsonException("cannot resolve property '" + name + "' on " + currentClazz.getName() +
+                throw new NodeException("cannot resolve property '" + name + "' on " + currentClazz.getName() +
                         " at '" + expr + "': no property found and target is not a JOJO dynamic object");
             }
         }
@@ -850,10 +850,10 @@ public class AsmPathCompiler implements PathCompiler {
         } else if (currentClazz.isArray()) {
             childType = currentClazz.getComponentType();
         } else if (Set.class.isAssignableFrom(currentClazz)) {
-            throw new JsonException("cannot ensure by index from unordered Set type " +
+            throw new NodeException("cannot ensure by index from unordered Set type " +
                     currentClazz.getName() + " at '" + expr + "'");
         } else {
-            throw new JsonException("expected array-like target before index [" + index + "] at '" + expr +
+            throw new NodeException("expected array-like target before index [" + index + "] at '" + expr +
                     "', but was " + currentClazz.getName());
         }
 
@@ -1055,7 +1055,7 @@ public class AsmPathCompiler implements PathCompiler {
         } else if (currentClazz.isArray()) {
             childType = currentClazz.getComponentType();
         } else {
-            throw new JsonException("expected array-like target before append at '" + expr +
+            throw new NodeException("expected array-like target before append at '" + expr +
                     "', but was " + currentClazz.getName());
         }
 
@@ -1075,7 +1075,7 @@ public class AsmPathCompiler implements PathCompiler {
             concreteClazz = objectContainer
                     ? _resolveObjectContainerClass(childClazz, expr)
                     : _resolveArrayContainerClass(childClazz, expr);
-        } catch (JsonException e) {
+        } catch (NodeException e) {
             _emitThrow(mv, e.getMessage());
             return;
         }
@@ -1088,7 +1088,7 @@ public class AsmPathCompiler implements PathCompiler {
 
     private Class<?> _requirePublicNoArgsCtor(Class<?> clazz, String kind, String expr) {
         if (!Modifier.isPublic(clazz.getModifiers()) || Modifier.isAbstract(clazz.getModifiers()) || clazz.isInterface()) {
-            throw new JsonException("cannot create " + kind + " container of type '" + clazz.getName() +
+            throw new NodeException("cannot create " + kind + " container of type '" + clazz.getName() +
                     "' at '" + expr + "'; ASM ensurePut() requires a public concrete class");
         }
         try {
@@ -1098,7 +1098,7 @@ public class AsmPathCompiler implements PathCompiler {
             }
             return clazz;
         } catch (NoSuchMethodException e) {
-            throw new JsonException("cannot create " + kind + " container of type '" + clazz.getName() +
+            throw new NodeException("cannot create " + kind + " container of type '" + clazz.getName() +
                     "' at '" + expr + "'; ASM ensurePut() requires a public no-args constructor");
         }
     }
@@ -1158,10 +1158,10 @@ public class AsmPathCompiler implements PathCompiler {
                 }
             } else {
                 if (pi == null) {
-                    throw new JsonException("cannot write property '" + name +
+                    throw new NodeException("cannot write property '" + name +
                             "' on " + parentClazz.getName() + " at '" + expr + "'");
                 }
-                throw new JsonException("property '" + name + "' on " + parentClazz.getName() +
+                throw new NodeException("property '" + name + "' on " + parentClazz.getName() +
                         " is not writable through a public field or public setter at '" + expr + "'");
             }
             if (returnValue) {
@@ -1364,10 +1364,10 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitInsn(Opcodes.ARETURN);
             }
         } else if (Set.class.isAssignableFrom(parentClazz)) {
-            throw new JsonException("cannot set by index on unordered Set type " +
+            throw new NodeException("cannot set by index on unordered Set type " +
                     parentClazz.getName() + " at '" + expr + "'");
         } else {
-            throw new JsonException("expected array-like target before index [" + index +
+            throw new NodeException("expected array-like target before index [" + index +
                     "] at '" + expr + "', but was " + parentClazz.getName());
         }
     }
@@ -1404,10 +1404,10 @@ public class AsmPathCompiler implements PathCompiler {
                     "add", "(Ljava/lang/Object;)Z", true);
             mv.visitInsn(Opcodes.POP);
         } else if (parentClazz.isArray()) {
-            throw new JsonException("cannot append to Java array type " +
+            throw new NodeException("cannot append to Java array type " +
                     parentClazz.getName() + " at '" + expr + "'");
         } else {
-            throw new JsonException("expected array-like target before append at '" +
+            throw new NodeException("expected array-like target before append at '" +
                     expr + "', but was " + parentClazz.getName());
         }
         if (returnValue) {
@@ -1418,11 +1418,11 @@ public class AsmPathCompiler implements PathCompiler {
     }
 
     private void _emitThrow(MethodVisitor mv, String message) {
-        // throw new JsonException(message);
-        mv.visitTypeInsn(Opcodes.NEW, AsmUtil.toInternalName(JsonException.class));
+        // throw new NodeException(message);
+        mv.visitTypeInsn(Opcodes.NEW, AsmUtil.toInternalName(NodeException.class));
         mv.visitInsn(Opcodes.DUP);
         mv.visitLdcInsn(message);
-        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, AsmUtil.toInternalName(JsonException.class),
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, AsmUtil.toInternalName(NodeException.class),
                 "<init>", "(Ljava/lang/String;)V", false);
         mv.visitInsn(Opcodes.ATHROW);
     }
@@ -1441,7 +1441,7 @@ public class AsmPathCompiler implements PathCompiler {
         if (pi != null) {
             return _requirePublicNoArgsCtor(childClazz, "object", expr);
         }
-        throw new JsonException("cannot create object container of type '" + childClazz.getName() +
+        throw new NodeException("cannot create object container of type '" + childClazz.getName() +
                 "' at '" + expr + "'; ASM ensurePut() requires Object/Map/JsonObject/POJO" +
                 " with a public no-args constructor");
     }
@@ -1465,7 +1465,7 @@ public class AsmPathCompiler implements PathCompiler {
         if (JsonArray.class.isAssignableFrom(childClazz)) {
             return _requirePublicNoArgsCtor(childClazz, "JsonArray", expr);
         }
-        throw new JsonException("cannot create array container of type '" + childClazz.getName() +
+        throw new NodeException("cannot create array container of type '" + childClazz.getName() +
                 "' at '" + expr + "'; ASM ensurePut() requires Object/List/Set/JsonArray" +
                 " with a public no-args constructor");
     }

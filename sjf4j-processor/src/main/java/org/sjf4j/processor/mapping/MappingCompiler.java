@@ -1,7 +1,7 @@
 package org.sjf4j.processor.mapping;
 
 import org.sjf4j.NodeKind;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
@@ -10,7 +10,6 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.type.TypeSystem;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -553,7 +552,7 @@ public final class MappingCompiler {
                                     .name;
                 }
 
-            } catch (JsonException ignored) {
+            } catch (NodeException ignored) {
                 return;
             }
         }
@@ -1232,7 +1231,7 @@ public final class MappingCompiler {
                     JsonPath.parse(
                             expression);
 
-        } catch (JsonException e) {
+        } catch (NodeException e) {
             if (required) {
                 error(
                         plan.method(),
@@ -1431,7 +1430,7 @@ public final class MappingCompiler {
                     JsonPath.parse(
                             rule.target());
 
-        } catch (JsonException e) {
+        } catch (NodeException e) {
             error(
                     method,
                     generated,
@@ -1679,7 +1678,7 @@ public final class MappingCompiler {
                             .name;
                 }
             }
-        } catch (JsonException ignored) {
+        } catch (NodeException ignored) {
             /*
              * Target validation reports the real diagnostic.
              */
