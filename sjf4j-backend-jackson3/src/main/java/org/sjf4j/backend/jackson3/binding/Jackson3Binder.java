@@ -12,6 +12,7 @@ import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.ObjectReadContext;
 import tools.jackson.core.ObjectWriteContext;
+import tools.jackson.core.StreamReadFeature;
 import tools.jackson.core.TokenStreamFactory;
 import tools.jackson.core.io.SegmentedStringWriter;
 import tools.jackson.core.json.JsonFactory;
@@ -42,9 +43,10 @@ public class Jackson3Binder extends JsonBinder<Jackson3Reader, Jackson3Writer> {
     public Jackson3Binder(JsonFactory factory, StreamingContext context) {
         super(context);
         Asserts.notNull(factory, "factory");
-        this.factory = factory.isEnabled(TokenStreamFactory.Feature.CHARSET_DETECTION)
-                ? factory.rebuild().disable(TokenStreamFactory.Feature.CHARSET_DETECTION).build()
-                : factory;
+        this.factory = factory.rebuild()
+                .disable(TokenStreamFactory.Feature.CHARSET_DETECTION)
+                .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+                .build();
     }
 
     @Override

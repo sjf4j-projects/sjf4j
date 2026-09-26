@@ -82,51 +82,32 @@ public interface StreamingReader extends Closeable {
      */
 
     /**
-     * Prepared set of property names.
+     * Prepared backend-specific property-name matcher.
      *
-     * <p>A matcher may contain backend-specific precomputed state:</p>
-     *
-     * <ul>
-     *   <li>property hashes</li>
-     *   <li>serialized UTF-8 names</li>
-     *   <li>Jackson PropertyNameMatcher</li>
-     *   <li>plain strings</li>
-     * </ul>
-     *
-     * <p>Property indexes are stable and normally correspond to generated
-     * property indexes.</p>
+     * <p>The index returned by {@link #match(String)} corresponds to the
+     * canonical name returned by {@link #name(int)}.</p>
      */
     interface NameMatcher {
 
-        /**
-         * No known property matched.
-         */
         int UNKNOWN = -1;
 
-        /**
-         * The next token is END_OBJECT.
-         *
-         * <p>The END_OBJECT token is not consumed by
-         * {@code nextNameMatch}; the caller must call {@link #endObject()}.</p>
-         */
-        int END_OBJECT = -2;
-
-        /**
-         * Number of known properties.
-         */
-        int size();
-
-        /**
-         * Canonical property name for the specified index.
-         */
+        /** Canonical property name for a matched index. */
         String name(int index);
 
-        /**
-         * Generic String-based fallback matching.
-         *
-         * @return property index or {@link #UNKNOWN}
-         */
+        /** Generic String fallback. */
         int match(String name);
+    }
+
+    /**
+     * Returns a cached matcher for the specified POJO type when this reader
+     * has a backend-specific matching fast path, or {@code null} otherwise.
+     *
+     * <p>The default is deliberately {@code null}: backends such as Gson keep
+     * the ordinary String-name path instead of paying for an extra matcher
+     * layer.</p>
+     */
+    default NameMatcher nameMatcher(Class<?> type) {
+        return null;
     }
 
 
@@ -208,40 +189,16 @@ public interface StreamingReader extends Closeable {
     String nextName() throws IOException;
 
     /**
-     * Matches the next property name against a prepared property set.
-     *
-     * <p>This is the primary fast-path API for generated binders.</p>
-     *
-     * <p>The default implementation falls back to String property-name
-     * materialization. High-performance backends should override this
-     * method.</p>
-     *
-     * @return matched property index,
-     *         {@link NameMatcher#UNKNOWN}, or
-     *         {@link NameMatcher#END_OBJECT}
+     * Matches the next property name against prepared backend-specific
+     * metadata. The default path materializes the String name.
      */
-    default int nextNameMatch(
-            NameMatcher matcher) throws IOException {
-
-        if (peekToken() == Token.END_OBJECT) {
-            return NameMatcher.END_OBJECT;
-        }
-
+    default int nextNameMatch(NameMatcher matcher) throws IOException {
         return matcher.match(nextName());
     }
 
     /**
-     * Matches the next property name, with an optional expected property index.
-     *
-     * <p>{@code expectedIndex} is only a performance hint. Implementations
-     * must remain correct when properties are reordered, omitted, or unknown.</p>
-     *
-     * <p>This allows implementations such as an ordered-name reader to
-     * attempt an expected-name fast path first, and fall back to general
-     * matching on a miss.</p>
-     *
-     * <p>A negative expected index means that no ordered-name hint is
-     * available.</p>
+     * Same as {@link #nextNameMatch(NameMatcher)}, with an optional expected
+     * property index hint for backends that can exploit ordered names.
      */
     default int nextNameMatch(
             NameMatcher matcher,

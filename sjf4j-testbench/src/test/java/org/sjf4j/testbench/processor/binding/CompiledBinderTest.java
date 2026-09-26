@@ -1,6 +1,8 @@
 package org.sjf4j.testbench.processor.binding;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.BindingBackend;
 import org.sjf4j.annotation.binding.CompiledBinder;
@@ -25,13 +27,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** End-to-end tests for the V2 compiled binder API. */
+/** End-to-end tests for compiled JSON binders across supported backends. */
 public class CompiledBinderTest {
 
     private static final String PERSON_JSON = "{"
@@ -44,10 +47,20 @@ public class CompiledBinderTest {
             + "\"unknown\":{\"deep\":[1,{\"x\":2}]}"
             + "}";
 
+    private static final String REORDERED_PERSON_JSON = "{"
+            + "\"unknown\":{\"deep\":[1,{\"x\":2}]},"
+            + "\"display_name\":\"Ada Lovelace\","
+            + "\"role\":\"ADMIN\","
+            + "\"id\":7,"
+            + "\"active\":true,"
+            + "\"level\":3,"
+            + "\"name\":\"Ada\""
+            + "}";
 
-    @Test
-    public void readsAndWritesScalarValues() throws IOException {
-        TestBinder binder = CompiledInstances.of(TestBinder.class);
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void readsAndWritesScalarValues(String backend, BinderContract binder) throws IOException {
 
         assertEquals(42, binder.readInt("42"));
         assertEquals("Ada", binder.readString("\"Ada\""));
@@ -62,9 +75,9 @@ public class CompiledBinderTest {
     }
 
 
-    @Test
-    public void supportsAllReadInputForms() throws IOException {
-        TestBinder binder = CompiledInstances.of(TestBinder.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void supportsAllReadInputForms(String backend, BinderContract binder) throws IOException {
         byte[] bytes = PERSON_JSON.getBytes(StandardCharsets.UTF_8);
 
         assertBasicPerson(binder.readPerson(PERSON_JSON));
@@ -74,9 +87,9 @@ public class CompiledBinderTest {
     }
 
 
-    @Test
-    public void supportsAllWriteOutputForms() throws IOException {
-        TestBinder binder = CompiledInstances.of(TestBinder.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void supportsAllWriteOutputForms(String backend, BinderContract binder) throws IOException {
         Person source = personFixture();
 
         String stringJson = binder.writePerson(source);
@@ -95,9 +108,9 @@ public class CompiledBinderTest {
     }
 
 
-    @Test
-    public void roundTripsNestedPojoCollectionsAndMap() throws IOException {
-        TestBinder binder = CompiledInstances.of(TestBinder.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void roundTripsNestedPojoCollectionsAndMap(String backend, BinderContract binder) throws IOException {
         Person source = personFixture();
 
         Person result = binder.readPerson(binder.writePerson(source));
@@ -106,9 +119,9 @@ public class CompiledBinderTest {
     }
 
 
-    @Test
-    public void supportsRootCollectionsAndMaps() throws IOException {
-        TestBinder binder = CompiledInstances.of(TestBinder.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void supportsRootCollectionsAndMaps(String backend, BinderContract binder) throws IOException {
 
         List<Integer> numbers = binder.readNumbers("[1,2,null,4]");
         assertEquals(Arrays.asList(1, 2, null, 4), numbers);
@@ -130,9 +143,9 @@ public class CompiledBinderTest {
     }
 
 
-    @Test
-    public void handlesNullRootAndCompileTimeUnknownFallback() throws IOException {
-        TestBinder binder = CompiledInstances.of(TestBinder.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void handlesNullRootAndCompileTimeUnknownFallback(String backend, BinderContract binder) throws IOException {
 
         assertNull(binder.readPerson("null"));
         assertEquals("null", binder.writePerson(null));
@@ -150,9 +163,9 @@ public class CompiledBinderTest {
     }
 
 
-    @Test
-    public void doesNotCloseCallerOwnedIo() throws IOException {
-        TestBinder binder = CompiledInstances.of(TestBinder.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void doesNotCloseCallerOwnedIo(String backend, BinderContract binder) throws IOException {
         byte[] bytes = PERSON_JSON.getBytes(StandardCharsets.UTF_8);
 
         TrackingReader reader = new TrackingReader(PERSON_JSON);
@@ -175,12 +188,23 @@ public class CompiledBinderTest {
     }
 
 
-    @Test
-    public void autoBackendBinderUsesTheSamePublicContract() throws IOException {
-        AutoBinder binder = CompiledInstances.of(AutoBinder.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void matchesReorderedAndUnknownProperties(String backend, BinderContract binder) throws IOException {
+        assertBasicPerson(binder.readPerson(REORDERED_PERSON_JSON));
+    }
 
-        assertEquals("Ada", binder.readName("\"Ada\""));
-        assertEquals("\"Ada\"", binder.writeName("Ada"));
+
+    private static Stream<Arguments> jsonBackends() {
+        return Stream.of(
+                Arguments.of("simple", CompiledInstances.of(SimpleBinder.class)),
+                Arguments.of("jackson3", CompiledInstances.of(Jackson3Binder.class)),
+                Arguments.of("jackson2", CompiledInstances.of(Jackson2Binder.class)),
+                Arguments.of("gson", CompiledInstances.of(GsonBinder.class)),
+                Arguments.of("fastjson2", CompiledInstances.of(Fastjson2Binder.class)),
+                Arguments.of("jsonp", CompiledInstances.of(JsonpBinder.class)),
+                Arguments.of("auto", CompiledInstances.of(AutoBinder.class))
+        );
     }
 
 
@@ -380,8 +404,7 @@ public class CompiledBinderTest {
     }
 
 
-    @CompiledBinder(backend = BindingBackend.SIMPLE)
-    public interface TestBinder {
+    public interface BinderContract {
 
         @ReadFrom
         int readInt(String input) throws IOException;
@@ -447,17 +470,27 @@ public class CompiledBinderTest {
         String writeAny(Object value) throws IOException;
     }
 
+    @CompiledBinder(backend = BindingBackend.SIMPLE)
+    public interface SimpleBinder extends BinderContract {}
+
+    @CompiledBinder(backend = BindingBackend.JACKSON3)
+    public interface Jackson3Binder extends BinderContract {}
+
+    @CompiledBinder(backend = BindingBackend.JACKSON2)
+    public interface Jackson2Binder extends BinderContract {}
+
+    @CompiledBinder(backend = BindingBackend.GSON)
+    public interface GsonBinder extends BinderContract {}
+
+    @CompiledBinder(backend = BindingBackend.FASTJSON2)
+    public interface Fastjson2Binder extends BinderContract {}
+
+    @CompiledBinder(backend = BindingBackend.JSONP)
+    public interface JsonpBinder extends BinderContract {}
 
     /** Leaves backend selection at AUTO to exercise compile-time resolution. */
     @CompiledBinder
-    public interface AutoBinder {
-
-        @ReadFrom
-        String readName(String input) throws IOException;
-
-        @WriteTo
-        String writeName(String value) throws IOException;
-    }
+    public interface AutoBinder extends BinderContract {}
 
 
     private static final class TrackingReader extends StringReader {

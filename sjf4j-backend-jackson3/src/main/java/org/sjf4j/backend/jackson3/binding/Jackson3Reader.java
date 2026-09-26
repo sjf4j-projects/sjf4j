@@ -1,7 +1,8 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.util.Asserts;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.TypeRegistry;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
 
@@ -17,8 +18,23 @@ public class Jackson3Reader implements StreamingReader {
     private JsonToken token;
     private boolean initialized;
 
+    private static final ClassValue<NameMatcher> NAME_MATCHERS =
+            new ClassValue<NameMatcher>() {
+                @Override
+                protected NameMatcher computeValue(Class<?> type) {
+                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(type);
+                    return createNameMatcher(
+                            pi.properties.keySet().toArray(new String[0]));
+                }
+            };
+
+    /** Creates prepared Jackson 3 name-matching metadata. */
+    public static NameMatcher createNameMatcher(String... names) {
+        return new Jackson3NameMatcher(names);
+    }
+
     public Jackson3Reader(JsonParser parser) {
-        this.parser = Asserts.notNull(parser, "parser");
+        this.parser = Objects.requireNonNull(parser, "parser");
     }
 
     @Override
@@ -63,6 +79,35 @@ public class Jackson3Reader implements StreamingReader {
         String name = parser.currentName();
         advance();
         return name;
+    }
+
+    @Override
+    public NameMatcher nameMatcher(Class<?> type) {
+        return NAME_MATCHERS.get(type);
+    }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher) throws IOException {
+        require(JsonToken.PROPERTY_NAME);
+
+        int index;
+        if (matcher instanceof Jackson3NameMatcher) {
+            index = parser.currentNameMatch(
+                    ((Jackson3NameMatcher) matcher).matcher);
+            if (index < 0) {
+                index = NameMatcher.UNKNOWN;
+            }
+        } else {
+            index = matcher.match(parser.currentName());
+        }
+
+        advance();
+        return index;
+    }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
+        return nextNameMatch(matcher);
     }
 
     @Override

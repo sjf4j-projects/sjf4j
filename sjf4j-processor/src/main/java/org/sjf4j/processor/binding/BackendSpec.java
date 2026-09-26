@@ -61,4 +61,20 @@ final class BackendSpec {
     String libraryMarkerType() {
         return libraryMarkerType;
     }
+
+    boolean usesNameMatcher() {
+        switch (backend) {
+            case JACKSON3:
+            case JACKSON2:
+            case FASTJSON2:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    boolean usesExpectedNameMatch() {
+        return backend == BindingBackend.JACKSON2;
+    }
+
 }

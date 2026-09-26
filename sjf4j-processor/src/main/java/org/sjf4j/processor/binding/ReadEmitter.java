@@ -14,6 +14,9 @@ final class ReadEmitter {
     private static final String STREAMING_CONTEXT =
             "org.sjf4j.binding.StreamingContext";
 
+    private static final String NAME_MATCHER =
+            "org.sjf4j.binding.StreamingReader.NameMatcher";
+
     private final ProcessorContext context;
     private final BackendSpec backend;
 
@@ -23,6 +26,10 @@ final class ReadEmitter {
 
         this.context = context;
         this.backend = backend;
+    }
+
+    boolean usesNameMatcher() {
+        return backend.usesNameMatcher();
     }
 
     void emitMethod(
@@ -110,6 +117,36 @@ final class ReadEmitter {
         out.line("return " + result + ";");
     }
 
+    void emitNameMatcherField(
+            JavaWriter out,
+            BindingValue value) {
+
+        if (!backend.usesNameMatcher() ||
+                value.kind() != BindingValue.Kind.POJO) {
+            return;
+        }
+
+        StringBuilder line = new StringBuilder();
+        line.append("private static final ")
+                .append(NAME_MATCHER)
+                .append(' ')
+                .append(matcherFieldName(value))
+                .append(" = ")
+                .append(backend.readerType())
+                .append(".createNameMatcher(");
+
+        for (int i = 0; i < value.properties().size(); i++) {
+            if (i > 0) {
+                line.append(", ");
+            }
+            line.append(JavaWriter.stringLiteral(
+                    value.properties().get(i).name()));
+        }
+
+        line.append(");");
+        out.line(line.toString());
+    }
+
     void emitHelper(
             JavaWriter out,
             BindingValue value) {
@@ -162,15 +199,80 @@ final class ReadEmitter {
                         value.type() +
                         "();");
 
+        if (backend.usesExpectedNameMatch()) {
+            out.line("int expectedNameIndex = 0;");
+        }
+
         out.beginBlock(
                 "while (!reader.nextIfObjectEnd())");
+
+        if (backend.usesNameMatcher()) {
+            emitMatchedPojoProperty(out, value);
+        } else {
+            emitStringPojoProperty(out, value);
+        }
+
+        out.endBlock();
+        out.line("return value;");
+    }
+
+    private void emitMatchedPojoProperty(
+            JavaWriter out,
+            BindingValue value) {
+
+        if (backend.usesExpectedNameMatch()) {
+            out.line(
+                    "int nameIndex = reader.nextNameMatch(" +
+                            matcherFieldName(value) +
+                            ", expectedNameIndex);");
+        } else {
+            out.line(
+                    "int nameIndex = reader.nextNameMatch(" +
+                            matcherFieldName(value) +
+                            ");");
+        }
+
+        out.beginBlock("switch (nameIndex)");
+
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            int propertyIndex = index++;
+            out.line("case " + propertyIndex + ":");
+            out.indent();
+            if (backend.usesExpectedNameMatch()) {
+                out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
+            }
+            out.line(
+                    assignment(
+                            property.access(),
+                            "value",
+                            readExpression(
+                                    property.value(),
+                                    "reader")));
+            out.line("break;");
+            out.dedent();
+        }
+
+        out.line("default:");
+        out.indent();
+        if (backend.usesExpectedNameMatch()) {
+            out.line("expectedNameIndex = -1;");
+        }
+        out.line("reader.skipNext();");
+        out.line("break;");
+        out.dedent();
+
+        out.endBlock();
+    }
+
+    private void emitStringPojoProperty(
+            JavaWriter out,
+            BindingValue value) {
 
         out.line("String name = reader.nextName();");
         out.beginBlock("switch (name)");
 
-        for (BindingProperty property :
-                value.properties()) {
-
+        for (BindingProperty property : value.properties()) {
             out.line(
                     "case " +
                             JavaWriter.stringLiteral(
@@ -198,9 +300,10 @@ final class ReadEmitter {
         out.dedent();
 
         out.endBlock();
-        out.endBlock();
+    }
 
-        out.line("return value;");
+    private String matcherFieldName(BindingValue value) {
+        return value.helperName() + "_names";
     }
 
     private void emitList(

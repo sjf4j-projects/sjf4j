@@ -35,6 +35,8 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
+    implementation("jakarta.json:jakarta.json-api:2.1.3")
+    implementation("org.eclipse.parsson:parsson:1.1.7")
     implementation("org.yaml:snakeyaml:2.5")
 
     // test

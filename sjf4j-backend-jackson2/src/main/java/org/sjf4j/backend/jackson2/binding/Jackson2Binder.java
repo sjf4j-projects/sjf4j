@@ -40,16 +40,17 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
         Asserts.notNull(factory, "factory");
         this.factory = factory;
         this.factory.disable(JsonFactory.Feature.CHARSET_DETECTION);
-    }
-
-    @Override
-    public Jackson2Reader createReader(Reader input) throws IOException {
-        return new Jackson2Reader(factory.createParser(Asserts.notNull(input, "input")));
+        this.factory.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
     }
 
     /** Creates a streaming reader that wraps the supplied Jackson parser. */
     public Jackson2Reader createReader(JsonParser parser) {
         return new Jackson2Reader(Asserts.notNull(parser, "parser"));
+    }
+
+    @Override
+    public Jackson2Reader createReader(Reader input) throws IOException {
+        return new Jackson2Reader(factory.createParser(Asserts.notNull(input, "input")));
     }
 
     @Override

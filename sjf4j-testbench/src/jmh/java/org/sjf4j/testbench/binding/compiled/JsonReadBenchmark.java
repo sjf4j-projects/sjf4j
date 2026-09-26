@@ -46,14 +46,14 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 1)
+@Fork(value = 3)
 @Threads(1)
 @State(Scope.Thread)
 public class JsonReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{JsonReadBenchmark.class.getName()});
-//        Main.main(new String[]{"ReadBenchmark.json_fastjson2", "ReadBenchmark.json_jackson2"});
+//        Main.main(new String[]{JsonReadBenchmark.class.getName()});
+        Main.main(new String[]{JsonReadBenchmark.class.getName() + ".json_simple"});
     }
 
     private static final String JSON_DATA2 = "{\n" +

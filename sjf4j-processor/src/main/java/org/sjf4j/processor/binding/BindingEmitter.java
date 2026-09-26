@@ -46,6 +46,14 @@ final class BindingEmitter {
             return;
         }
 
+        if (value.direction() ==
+                BindingPlan.Direction.READ_FROM &&
+                value.kind() == BindingValue.Kind.POJO &&
+                reads.usesNameMatcher()) {
+            generated.addField(
+                    out -> reads.emitNameMatcherField(out, value));
+        }
+
         generated.addHelper(
                 out -> {
                     if (value.direction() ==

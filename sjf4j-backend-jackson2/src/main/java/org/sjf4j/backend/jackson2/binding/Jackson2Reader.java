@@ -3,7 +3,8 @@ package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.util.Asserts;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.TypeRegistry;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -17,8 +18,23 @@ public class Jackson2Reader implements StreamingReader {
     private JsonToken token;
     private boolean initialized;
 
+    private static final ClassValue<NameMatcher> NAME_MATCHERS =
+            new ClassValue<NameMatcher>() {
+                @Override
+                protected NameMatcher computeValue(Class<?> type) {
+                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(type);
+                    return createNameMatcher(
+                            pi.properties.keySet().toArray(new String[0]));
+                }
+            };
+
+    /** Creates prepared Jackson 2 name-matching metadata. */
+    public static NameMatcher createNameMatcher(String... names) {
+        return new Jackson2NameMatcher(names);
+    }
+
     public Jackson2Reader(JsonParser parser) {
-        this.parser = Asserts.notNull(parser, "parser");
+        this.parser = Objects.requireNonNull(parser, "parser");
     }
 
     @Override
@@ -63,6 +79,40 @@ public class Jackson2Reader implements StreamingReader {
         String name = parser.currentName();
         advance();
         return name;
+    }
+
+    @Override
+    public NameMatcher nameMatcher(Class<?> type) {
+        return NAME_MATCHERS.get(type);
+    }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher) throws IOException {
+        return nextNameMatch(matcher, -1);
+    }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
+        require(JsonToken.FIELD_NAME);
+
+        String name = parser.currentName();
+        int index;
+
+        if (matcher instanceof Jackson2NameMatcher) {
+            Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
+            if (expectedIndex >= 0 &&
+                    expectedIndex < jacksonMatcher.size() &&
+                    jacksonMatcher.name(expectedIndex).equals(name)) {
+                index = expectedIndex;
+            } else {
+                index = jacksonMatcher.match(name);
+            }
+        } else {
+            index = matcher.match(name);
+        }
+
+        advance();
+        return index;
     }
 
     @Override

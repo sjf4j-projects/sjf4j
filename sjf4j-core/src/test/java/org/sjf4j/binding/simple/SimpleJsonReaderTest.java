@@ -78,7 +78,6 @@ class SimpleJsonReaderTest {
     @Test
     void reportsNameTokensAndMatchesNames() throws Exception {
         StreamingReader.NameMatcher matcher = new StreamingReader.NameMatcher() {
-            @Override
             public int size() {
                     return 1;
                 }
@@ -98,8 +97,7 @@ class SimpleJsonReaderTest {
             assertEquals(1, reader.nextIntValue());
             assertEquals(StreamingReader.NameMatcher.UNKNOWN, reader.nextNameMatch(matcher, 0));
             assertEquals(2, reader.nextIntValue());
-            assertEquals(StreamingReader.NameMatcher.END_OBJECT, reader.nextNameMatch(matcher));
-            reader.endObject();
+            assertTrue(reader.nextIfObjectEnd());
         }
     }
 

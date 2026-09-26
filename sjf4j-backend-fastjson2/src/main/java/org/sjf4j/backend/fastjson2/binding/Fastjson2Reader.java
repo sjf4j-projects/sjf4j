@@ -3,7 +3,8 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONReader;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.util.Asserts;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.TypeRegistry;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -17,8 +18,23 @@ public final class Fastjson2Reader implements StreamingReader {
     private final JSONReader reader;
     private Token peeked;
 
+    private static final ClassValue<NameMatcher> NAME_MATCHERS =
+            new ClassValue<NameMatcher>() {
+                @Override
+                protected NameMatcher computeValue(Class<?> type) {
+                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(type);
+                    return createNameMatcher(
+                            pi.properties.keySet().toArray(new String[0]));
+                }
+            };
+
+    /** Creates prepared Fastjson2 name-matching metadata. */
+    public static NameMatcher createNameMatcher(String... names) {
+        return new Fastjson2NameMatcher(names);
+    }
+
     public Fastjson2Reader(JSONReader reader) {
-        this.reader = Asserts.notNull(reader, "reader");
+        this.reader = Objects.requireNonNull(reader, "reader");
     }
 
     @Override
@@ -73,6 +89,28 @@ public final class Fastjson2Reader implements StreamingReader {
     public String nextName() {
         peeked = null;
         return reader.readFieldName();
+    }
+
+    @Override
+    public NameMatcher nameMatcher(Class<?> type) {
+        return NAME_MATCHERS.get(type);
+    }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher) {
+        peeked = null;
+        Fastjson2NameMatcher fastMatcher = (Fastjson2NameMatcher) matcher;
+        long hash = reader.readFieldNameHashCode();
+        if (fastMatcher.hashSafe()) {
+            return fastMatcher.matchHash(hash);
+        }
+
+        return fastMatcher.match(reader.getFieldName());
+    }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher, int expectedIndex) {
+        return nextNameMatch(matcher);
     }
 
     @Override

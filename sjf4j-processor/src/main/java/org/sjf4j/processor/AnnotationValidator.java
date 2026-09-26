@@ -216,51 +216,44 @@ final class AnnotationValidator {
             return;
         }
 
-        if (Mapping.class.getSimpleName()
-                .equals(annotation) ||
-                Mappings.class.getSimpleName()
-                        .equals(annotation)) {
-            return;
-        }
-
         TypeElement type =
                 (TypeElement) enclosing;
 
-        switch (owner) {
-            case NAVIGATOR:
-                if (type.getAnnotation(
-                        CompiledNavigator.class) == null) {
-
-                    context.error(
-                            element,
-                            "@" + annotation +
-                                    " method must be declared in an @CompiledNavigator interface");
-                }
-                return;
-
-            case MAPPER:
-                if (!isMapper(type)) {
-                    context.error(
-                            element,
-                            "@" + annotation +
-                                    " method must be declared in an @CompiledMapper or @CompiledJdbcMapper interface");
-                }
-                return;
-
-            case BINDER:
-                if (type.getAnnotation(
-                        CompiledBinder.class) == null) {
-
-                    context.error(
-                            element,
-                            "@" + annotation +
-                                    " method must be declared in an @CompiledBinder interface");
-                }
-                return;
-
-            default:
-                throw new AssertionError(owner);
-        }
+//        switch (owner) {
+//            case NAVIGATOR:
+//                if (type.getAnnotation(
+//                        CompiledNavigator.class) == null) {
+//
+//                    context.error(
+//                            element,
+//                            "@" + annotation +
+//                                    " method must be declared in an @CompiledNavigator interface");
+//                }
+//                return;
+//
+//            case MAPPER:
+//                if (!isMapper(type)) {
+//                    context.error(
+//                            element,
+//                            "@" + annotation +
+//                                    " method must be declared in an @CompiledMapper or @CompiledJdbcMapper interface");
+//                }
+//                return;
+//
+//            case BINDER:
+//                if (type.getAnnotation(
+//                        CompiledBinder.class) == null) {
+//
+//                    context.error(
+//                            element,
+//                            "@" + annotation +
+//                                    " method must be declared in an @CompiledBinder interface");
+//                }
+//                return;
+//
+//            default:
+//                throw new AssertionError(owner);
+//        }
     }
 
     /*
