@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.StreamingBinder;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
@@ -16,7 +16,6 @@ import org.sjf4j.path.PathSegment;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -142,7 +141,7 @@ class ExceptionContractTest {
 
         Type nullTarget = null;
         SimpleJsonFacade facade = new SimpleJsonFacade();
-        SimpleJsonBinder binder = new SimpleJsonBinder(StreamingContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
         assertThrowsExactly(NullPointerException.class, () -> facade.readNode(new StringReader("null"), nullTarget));
         assertThrowsExactly(NullPointerException.class,
                 () -> facade.readNode(new ByteArrayInputStream(jsonBytes), nullTarget));
@@ -225,7 +224,7 @@ class ExceptionContractTest {
         private final RuntimeException failure;
 
         private FailingBinder(RuntimeException failure) {
-            super(StreamingContext.EMPTY);
+            super(RuntimeContext.EMPTY);
             this.failure = failure;
         }
 

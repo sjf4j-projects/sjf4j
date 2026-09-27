@@ -2,8 +2,8 @@ package org.sjf4j.binding.oneof;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,7 +28,7 @@ class OneOfIOTest {
 
     @Test
     void mapsCurrentKeyDiscriminatorToMatchingSubtype() {
-        Container container = (Container) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        Container container = (Container) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"pet\":{\"name\":\"Rex\",\"kind\":\"dog\",\"barks\":true}}", Container.class);
 
         Dog dog = assertInstanceOf(Dog.class, container.pet);
@@ -39,9 +39,9 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: mappings without a discriminator select by JSON type. */
     @Test
     void mapsJsonTypesToTheirConfiguredTargets() {
-        JsonTypeContainer strings = (JsonTypeContainer) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        JsonTypeContainer strings = (JsonTypeContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"value\":\"text\"}", JsonTypeContainer.class);
-        JsonTypeContainer numbers = (JsonTypeContainer) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        JsonTypeContainer numbers = (JsonTypeContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"value\":12}", JsonTypeContainer.class);
 
         assertEquals("text", strings.value);
@@ -51,7 +51,7 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: a PARENT discriminator can precede its polymorphic property. */
     @Test
     void mapsParentScopeDiscriminatorBeforeTheProperty() {
-        Parent container = (Parent) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        Parent container = (Parent) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mog\",\"lives\":9}}", Parent.class);
 
         Cat cat = assertInstanceOf(Cat.class, container.pet);
@@ -62,7 +62,7 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: a PARENT discriminator after the property is deferred and then applied. */
     @Test
     void defersParentScopePropertyUntilItsFollowingDiscriminator() {
-        Parent container = (Parent) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        Parent container = (Parent) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"pet\":{\"name\":\"Rex\",\"barks\":true},\"kind\":\"dog\"}", Parent.class);
 
         Dog dog = assertInstanceOf(Dog.class, container.pet);
@@ -72,7 +72,7 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: FAILBACK_NULL consumes an unmapped object without losing following fields. */
     @Test
     void fallsBackToNullForAnUnmappedDiscriminatorAndContinues() {
-        FallbackContainer container = (FallbackContainer) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        FallbackContainer container = (FallbackContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"pet\":{\"kind\":\"lizard\",\"name\":\"Liz\"},\"after\":7}", FallbackContainer.class);
 
         assertNull(container.pet);
@@ -82,16 +82,16 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: FAIL reports an unmapped discriminator. */
     @Test
     void rejectsAnUnmappedDiscriminatorByDefault() {
-        assertThrows(RuntimeException.class, () -> new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        assertThrows(RuntimeException.class, () -> new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"pet\":{\"kind\":\"lizard\"}}", Container.class));
     }
 
     /** Retained SJF4J semantics: pending fields, unknown dynamic fields, and arrays of a type-level OneOf all bind normally. */
     @Test
     void preservesUnknownSubtypeFieldsAndBindsOneOfContainerElements() {
-        Container container = (Container) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        Container container = (Container) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"pet\":{\"extra\":3,\"name\":\"Rex\",\"kind\":\"dog\",\"barks\":true}}", Container.class);
-        AnimalList list = (AnimalList) new SimpleJsonBinder(StreamingContext.EMPTY).readNode(
+        AnimalList list = (AnimalList) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"pets\":[{\"kind\":\"cat\",\"name\":\"Mog\",\"lives\":9}]}", AnimalList.class);
 
         assertEquals(3, container.pet.getInt("extra"));

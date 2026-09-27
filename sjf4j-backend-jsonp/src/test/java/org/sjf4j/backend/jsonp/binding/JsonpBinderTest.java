@@ -5,7 +5,7 @@ import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -39,7 +39,7 @@ class JsonpBinderTest {
         assertNull(value.nullable);
 
         String includingNulls = binder.writeNodeAsString(value);
-        String omittingNulls = new JsonpBinder(JsonProvider.provider(), new StreamingContext(false))
+        String omittingNulls = new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false))
                 .writeNodeAsString(value);
         assertTrue(includingNulls.contains("\"nullable\":null"));
         assertFalse(omittingNulls.contains("\"nullable\""));
@@ -47,7 +47,7 @@ class JsonpBinderTest {
 
     @Test
     void supportsIoAndNativeParserGeneratorOverloads() throws Exception {
-        JsonpBinder binder = new JsonpBinder(JsonProvider.provider(), new StreamingContext(false));
+        JsonpBinder binder = new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false));
         byte[] input = "{\"title\":\"héllo\"}".getBytes(StandardCharsets.UTF_8);
 
         assertEquals("héllo", ((Document) binder.readNode(input, Document.class)).title);

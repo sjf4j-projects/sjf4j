@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.PojoAccess;
@@ -25,7 +26,7 @@ public interface FieldWriter {
      * @param count number of properties already written
      * @return updated property count
      */
-    int write(StreamingWriter writer, PreparedName preparedName, Object owner, StreamingContext context, int count) throws IOException;
+    int write(StreamingWriter writer, PreparedName preparedName, Object owner, RuntimeContext context, int count) throws IOException;
 
 
     @FunctionalInterface
@@ -639,7 +640,7 @@ public interface FieldWriter {
     }
 
     static int _writeNullValueField(StreamingWriter writer, PreparedName preparedName,
-                                    StreamingContext context, int count) throws IOException {
+                                    RuntimeContext context, int count) throws IOException {
         if (!context.includeNulls) {
             return count;
         }

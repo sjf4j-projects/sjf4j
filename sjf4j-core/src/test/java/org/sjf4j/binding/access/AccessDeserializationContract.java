@@ -2,13 +2,13 @@ package org.sjf4j.binding.access;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.binding.StreamingContext;
 
 import java.util.List;
 
@@ -17,47 +17,47 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Source-derived access behavior that has a public SJF4J equivalent. */
 public abstract class AccessDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(StreamingContext context);
+    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
 
     /** Retained SJF4J structural coverage (no Jackson source): unknown values are deliberately discarded. */
     @Test void testCreatorUnknownFieldsDoNotPreventLaterCreatorAndSetterValues() {
-        CreatorBean bean = (CreatorBean) binding(StreamingContext.EMPTY).readNode("{\"unknown\":{\"x\":1},\"name\":\"Ada\",\"city\":\"London\"}", CreatorBean.class);
+        CreatorBean bean = (CreatorBean) binding(RuntimeContext.EMPTY).readNode("{\"unknown\":{\"x\":1},\"name\":\"Ada\",\"city\":\"London\"}", CreatorBean.class);
         assertEquals("Ada", bean.name); assertEquals("London", bean.city);
     }
 
     /** Structural source: JsonIgnorePropertiesDeserTest#testIssue426; NodeIgnore is SJF4J's explicit ignored-member equivalent. */
     @Test void testNodeIgnoreLeavesTheExistingFieldValueUntouched() {
-        IgnoredBean bean = (IgnoredBean) binding(StreamingContext.EMPTY).readNode("{\"userId\":9,\"firstName\":\"Mike\"}", IgnoredBean.class);
+        IgnoredBean bean = (IgnoredBean) binding(RuntimeContext.EMPTY).readNode("{\"userId\":9,\"firstName\":\"Mike\"}", IgnoredBean.class);
         assertNull(bean.userId); assertEquals("Mike", bean.firstName);
     }
 
     /** Structural source: ReadOnlyDeserTest#testReadOnlyProps95; a getter-only property is not writable. */
     @Test void testGetterOnlyPropertyIsIgnoredWithoutConvertingItsValue() {
-        GetterOnly bean = (GetterOnly) binding(StreamingContext.EMPTY).readNode("{\"values\":[\"not-an-integer\"],\"name\":\"Ada\"}", GetterOnly.class);
+        GetterOnly bean = (GetterOnly) binding(RuntimeContext.EMPTY).readNode("{\"values\":[\"not-an-integer\"],\"name\":\"Ada\"}", GetterOnly.class);
         assertEquals(List.of(), bean.getValues()); assertEquals("Ada", bean.name);
     }
 
     /** Retained SJF4J structural coverage (no Jackson source): bean setter access is selected over a matching field. */
     @Test void testBeanFieldAndSetterAccessUseOnePropertyFamily() {
-        BeanAndField bean = (BeanAndField) binding(StreamingContext.EMPTY).readNode("{\"name\":\"Ada\"}", BeanAndField.class);
+        BeanAndField bean = (BeanAndField) binding(RuntimeContext.EMPTY).readNode("{\"name\":\"Ada\"}", BeanAndField.class);
         assertEquals("setter:Ada", bean.getName()); assertEquals("field", bean.name);
     }
 
     /** Retained SJF4J structural coverage (no Jackson source): a public field remains writable without bean accessors. */
     @Test void testPublicFieldAccessWithoutBeanAccessors() {
-        FieldOnly bean = (FieldOnly) binding(StreamingContext.EMPTY).readNode("{\"name\":\"Ada\"}", FieldOnly.class);
+        FieldOnly bean = (FieldOnly) binding(RuntimeContext.EMPTY).readNode("{\"name\":\"Ada\"}", FieldOnly.class);
         assertEquals("Ada", bean.name);
     }
 
     /** Retained SJF4J structural coverage (no Jackson source): duplicate aliases retain input order. */
     @Test void testDuplicateAliasCollisionUsesTheLastInputValue() {
-        AliasBean bean = (AliasBean) binding(StreamingContext.EMPTY).readNode("{\"oldName\":\"first\",\"name\":\"last\"}", AliasBean.class);
+        AliasBean bean = (AliasBean) binding(RuntimeContext.EMPTY).readNode("{\"oldName\":\"first\",\"name\":\"last\"}", AliasBean.class);
         assertEquals("last", bean.name);
     }
 
     /** Structural source: ReadOnlyListDeserTest#testAccessReadOnly2118; readDynamic is the public SJF4J dynamic-property policy. */
     @Test void testReadDynamicRetainsOnlyTheRealDynamicEquivalent() {
-        DynamicBean bean = (DynamicBean) binding(StreamingContext.EMPTY).readNode("{\"id\":1,\"extra\":2}", DynamicBean.class);
+        DynamicBean bean = (DynamicBean) binding(RuntimeContext.EMPTY).readNode("{\"id\":1,\"extra\":2}", DynamicBean.class);
         assertEquals(1, bean.id); assertNull(bean.getNode("extra"));
     }
 

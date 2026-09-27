@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 
 import java.io.Reader;
 import java.io.Writer;
@@ -55,7 +55,7 @@ class GsonBinderTest {
         JsonObject nativeJson = JsonParser.parseString(gson.toJson(value)).getAsJsonObject();
         JsonObject binderJson = JsonParser.parseString(new GsonBinder(gson).writeNodeAsString(value)).getAsJsonObject();
         JsonObject omitNullsJson = JsonParser.parseString(
-                new GsonBinder(gson, new StreamingContext(false)).writeNodeAsString(value)).getAsJsonObject();
+                new GsonBinder(gson, new RuntimeContext(false)).writeNodeAsString(value)).getAsJsonObject();
 
         assertFalse(nativeJson.has("nullable"));
         assertTrue(binderJson.get("nullable").isJsonNull());

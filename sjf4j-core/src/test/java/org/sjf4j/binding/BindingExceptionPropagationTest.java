@@ -2,6 +2,7 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.NodeKind;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 import org.sjf4j.exception.BindingException;
@@ -78,10 +79,10 @@ class BindingExceptionPropagationTest {
 
         assertSame(failure, assertThrowsExactly(BindingException.class,
                 () -> reader.bind(new SimpleJsonReader(new StringReader("1")), accessor,
-                        Object.class, PrimitiveAccessor.class, StreamingContext.EMPTY)));
+                        Object.class, PrimitiveAccessor.class, RuntimeContext.EMPTY)));
         assertSame(failure, assertThrowsExactly(BindingException.class,
                 () -> writer.write(new SimpleJsonWriter(null, new StringWriter()),
-                        new PreparedName.SimplePreparedName("value"), accessor, StreamingContext.EMPTY, 0)));
+                        new PreparedName.SimplePreparedName("value"), accessor, RuntimeContext.EMPTY, 0)));
     }
 
     public static Object throwCreator() {

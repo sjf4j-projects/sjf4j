@@ -2,14 +2,13 @@ package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonWriter;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Objects;
 
 
 public final class GsonBinder extends JsonBinder<GsonReader, GsonWriter> {
@@ -17,14 +16,14 @@ public final class GsonBinder extends JsonBinder<GsonReader, GsonWriter> {
     private final Gson gson;
 
     public GsonBinder() {
-        this(new Gson(), StreamingContext.EMPTY);
+        this(new Gson(), RuntimeContext.EMPTY);
     }
 
     public GsonBinder(Gson gson) {
-        this(gson, StreamingContext.EMPTY);
+        this(gson, RuntimeContext.EMPTY);
     }
 
-    public GsonBinder(Gson gson, StreamingContext context) {
+    public GsonBinder(Gson gson, RuntimeContext context) {
         super(context);
         this.gson = Asserts.notNull(gson, "gson");
     }

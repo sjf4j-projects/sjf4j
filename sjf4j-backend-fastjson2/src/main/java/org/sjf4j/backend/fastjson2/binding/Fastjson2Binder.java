@@ -3,8 +3,8 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -13,7 +13,6 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 /** JSON binder backed directly by Fastjson2's streaming reader and writer. */
 public final class Fastjson2Binder extends JsonBinder<Fastjson2Reader, Fastjson2Writer> {
@@ -22,15 +21,15 @@ public final class Fastjson2Binder extends JsonBinder<Fastjson2Reader, Fastjson2
     private final JSONWriter.Context writerContext;
 
     public Fastjson2Binder() {
-        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), StreamingContext.EMPTY);
+        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), RuntimeContext.EMPTY);
     }
 
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
-        this(readerContext, writerContext, StreamingContext.EMPTY);
+        this(readerContext, writerContext, RuntimeContext.EMPTY);
     }
 
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
-                           StreamingContext context) {
+                           RuntimeContext context) {
         super(context);
         this.readerContext = Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");

@@ -1,7 +1,7 @@
 package org.sjf4j.binding.simple;
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -14,10 +14,10 @@ import java.io.Writer;
 public final class SimpleJsonBinder extends JsonBinder<SimpleJsonReader, SimpleJsonWriter> {
 
     public SimpleJsonBinder() {
-        this(StreamingContext.EMPTY);
+        this(RuntimeContext.EMPTY);
     }
 
-    public SimpleJsonBinder(StreamingContext context) {
+    public SimpleJsonBinder(RuntimeContext context) {
         super(context);
     }
 

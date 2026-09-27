@@ -24,6 +24,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
@@ -82,7 +83,7 @@ public class JsonWriteBenchmark {
     private static final JSONWriter.Context FASTJSON2_WRITER_CONTEXT =
             JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
-    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder(org.sjf4j.binding.StreamingContext.EMPTY);
+    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder(RuntimeContext.EMPTY);
     private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
 
     private static final User USER;

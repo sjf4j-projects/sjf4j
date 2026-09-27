@@ -1,5 +1,6 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.OneOfInfo;
@@ -27,7 +28,7 @@ import java.util.function.ObjLongConsumer;
 public interface FieldReader {
 
     void bind(StreamingReader reader, Object owner, Type ownerType, Class<?> ownerBoxed,
-              StreamingContext context) throws IOException;
+              RuntimeContext context) throws IOException;
 
 
     @FunctionalInterface

@@ -1,6 +1,8 @@
 package org.sjf4j.binding;
 
 
+import org.sjf4j.RuntimeContext;
+
 /**
  * JSON facade interface with streaming support and runtime mode dispatch.
  *
@@ -11,7 +13,7 @@ package org.sjf4j.binding;
  */
 public abstract class JsonBinder<R extends StreamingReader, W extends StreamingWriter> extends StreamingBinder<R, W> {
 
-    protected JsonBinder(StreamingContext context) {
+    protected JsonBinder(RuntimeContext context) {
         super(context);
     }
 

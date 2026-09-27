@@ -65,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized streaming POJO serialization with backend-prepared field names and specialized scalar field writers.
 - Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
 - Optimized streaming POJO binding and writing with precomputed specialized field accessors.
-- Gson streaming binders now create configured writers and honor the `StreamingContext` null-serialization policy.
+- Gson streaming binders now create configured writers and honor the `RuntimeContext` null-serialization policy.
 - Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`.
 - Optimized the built-in JSON reader with buffered input and allocation-conscious primitive number parsing.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
@@ -246,7 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `Nodes.shape(...)` and `JsonContainer.shape()` to produce compact inspect-style structural summaries that keep supported container structure while rendering terminal values by simple runtime type name.
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
 - Added `@NodeBinding(readDynamic = ... , writeDynamic = ...)` for JOJO types so unknown-field retention on read and dynamic-property emission on write can be controlled per type.
-- Added instance-scoped `StreamingContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
+- Added instance-scoped `RuntimeContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
 - Added `ValueFormatMapping`, named `ValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
 - Added `Sjf4j.Builder.includeNulls(...)` so each runtime can choose whether JSON serialization keeps or omits `null` properties across Gson, Jackson 2, Jackson 3, and Fastjson2 facades.
 

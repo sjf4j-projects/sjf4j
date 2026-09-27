@@ -4,7 +4,7 @@ import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.util.Asserts;
 
 import java.io.ByteArrayInputStream;
@@ -16,7 +16,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 /** JSON binder backed directly by a Jakarta JSON-P {@link JsonProvider}. */
 public class JsonpBinder extends JsonBinder<JsonpReader, JsonpWriter> {
@@ -28,10 +27,10 @@ public class JsonpBinder extends JsonBinder<JsonpReader, JsonpWriter> {
     }
 
     public JsonpBinder(JsonProvider provider) {
-        this(provider, StreamingContext.EMPTY);
+        this(provider, RuntimeContext.EMPTY);
     }
 
-    public JsonpBinder(JsonProvider provider, StreamingContext context) {
+    public JsonpBinder(JsonProvider provider, RuntimeContext context) {
         super(context);
         this.provider = Asserts.notNull(provider, "provider");
     }

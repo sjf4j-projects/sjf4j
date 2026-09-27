@@ -1,9 +1,9 @@
 package org.sjf4j.backend.jackson3.binding;
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.PreparedName;
-import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Types;
@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Objects;
 
 /** JSON binder backed directly by a Jackson 3 {@link JsonFactory}. */
 public class Jackson3Binder extends JsonBinder<Jackson3Reader, Jackson3Writer> {
@@ -33,14 +32,14 @@ public class Jackson3Binder extends JsonBinder<Jackson3Reader, Jackson3Writer> {
     private final JsonFactory factory;
 
     public Jackson3Binder() {
-        this(new JsonFactory(), StreamingContext.EMPTY);
+        this(new JsonFactory(), RuntimeContext.EMPTY);
     }
 
     public Jackson3Binder(JsonFactory factory) {
-        this(factory, StreamingContext.EMPTY);
+        this(factory, RuntimeContext.EMPTY);
     }
 
-    public Jackson3Binder(JsonFactory factory, StreamingContext context) {
+    public Jackson3Binder(JsonFactory factory, RuntimeContext context) {
         super(context);
         Asserts.notNull(factory, "factory");
         this.factory = factory.rebuild()

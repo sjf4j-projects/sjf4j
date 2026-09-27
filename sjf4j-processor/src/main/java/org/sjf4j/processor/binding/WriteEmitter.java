@@ -10,8 +10,8 @@ final class WriteEmitter {
     private static final String STREAMING_IO =
             "org.sjf4j.binding.StreamingIO";
 
-    private static final String STREAMING_CONTEXT =
-            "org.sjf4j.binding.StreamingContext";
+    private static final String RUNTIME_CONTEXT =
+            "org.sjf4j.RuntimeContext";
 
     private final BackendSpec backend;
 
@@ -463,7 +463,7 @@ final class WriteEmitter {
                                 ".writeNode(" +
                                 writer + ", " +
                                 expression + ", " +
-                                STREAMING_CONTEXT +
+                                RUNTIME_CONTEXT +
                                 ".EMPTY);");
                 return;
 

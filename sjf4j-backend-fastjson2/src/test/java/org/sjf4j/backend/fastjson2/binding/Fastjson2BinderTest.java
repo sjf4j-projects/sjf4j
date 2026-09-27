@@ -5,7 +5,7 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -57,7 +57,7 @@ class Fastjson2BinderTest {
 
         String includingNulls = new Fastjson2Binder().writeNodeAsString(value);
         String omittingNulls = new Fastjson2Binder(JSONFactory.createReadContext(),
-                JSONFactory.createWriteContext(), new StreamingContext(false)).writeNodeAsString(value);
+                JSONFactory.createWriteContext(), new RuntimeContext(false)).writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
         assertFalse(omittingNulls.contains("\"nullable\""));

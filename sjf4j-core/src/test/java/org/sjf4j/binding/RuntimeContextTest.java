@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.RuntimeContext;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -12,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class StreamingContextTest {
+class RuntimeContextTest {
     @Test
     void storesFormatsAndForwardsThemToCopies() {
-        StreamingContext context = new StreamingContext(Map.of(LocalDate.class, "ISO"), false);
+        RuntimeContext context = new RuntimeContext(Map.of(LocalDate.class, "ISO"), false);
         Map<Class<?>, String> formats = new LinkedHashMap<>();
         context.copyDefaultValueFormatsTo(formats);
 
@@ -27,7 +28,6 @@ class StreamingContextTest {
 
     @Test
     void emptyContextIncludesNullsAndProvidesNodeBinder() {
-        assertTrue(StreamingContext.EMPTY.includeNulls);
-        assertNotNull(StreamingContext.EMPTY.nodeBinder);
+        assertTrue(RuntimeContext.EMPTY.includeNulls);
     }
 }

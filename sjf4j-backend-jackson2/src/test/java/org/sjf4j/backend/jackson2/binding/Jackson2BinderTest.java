@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -52,7 +52,7 @@ class Jackson2BinderTest {
 
         String includingNulls = new Jackson2Binder(new JsonFactory())
                 .writeNodeAsString(value);
-        String omittingNulls = new Jackson2Binder(new JsonFactory(), new StreamingContext(false))
+        String omittingNulls = new Jackson2Binder(new JsonFactory(), new RuntimeContext(false))
                 .writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
@@ -62,7 +62,7 @@ class Jackson2BinderTest {
 
     @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
-        StreamingContext context = new StreamingContext(false);
+        RuntimeContext context = new RuntimeContext(false);
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), context);
         StringWriter output = new StringWriter();
 

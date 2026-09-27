@@ -6,9 +6,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.JsonBinder;
-import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.annotation.node.NodeProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,60 +17,60 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Plain Jackson enum defaults, adapted through SJF4J's public binding API. */
 public abstract class EnumDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(StreamingContext context);
+    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
 
     /** Source: EnumDeserializationTest#testSimple. */
     @Test void testSimple() {
-        assertEquals(TestEnum.OK, binding(StreamingContext.EMPTY).readNode("\"OK\"", TestEnum.class));
-        assertNull(binding(StreamingContext.EMPTY).readNode("null", TestEnum.class));
+        assertEquals(TestEnum.OK, binding(RuntimeContext.EMPTY).readNode("\"OK\"", TestEnum.class));
+        assertNull(binding(RuntimeContext.EMPTY).readNode("null", TestEnum.class));
     }
 
     /** Source: EnumDeserializationTest#testComplexEnum. */
     @Test void testComplexEnum() {
         assertEquals(java.util.concurrent.TimeUnit.SECONDS,
-                binding(StreamingContext.EMPTY).readNode("\"SECONDS\"", java.util.concurrent.TimeUnit.class));
+                binding(RuntimeContext.EMPTY).readNode("\"SECONDS\"", java.util.concurrent.TimeUnit.class));
     }
 
     /** Source: EnumDeserializationTest#testNumbersToEnums; Jackson defaults numeric input to ordinal. */
     @Test void testNumbersToEnums() {
-        assertEquals(TestEnum.RULES, binding(StreamingContext.EMPTY).readNode("1", TestEnum.class));
+        assertEquals(TestEnum.RULES, binding(RuntimeContext.EMPTY).readNode("1", TestEnum.class));
     }
 
     /** SJF4J only treats a JSON number token as an enum ordinal. */
     @Test void testQuotedNumberIsNotAnEnumOrdinal() {
         assertThrows(RuntimeException.class,
-                () -> binding(StreamingContext.EMPTY).readNode("\"1\"", TestEnum.class));
+                () -> binding(RuntimeContext.EMPTY).readNode("\"1\"", TestEnum.class));
     }
 
     /** Source: EnumDeserializationTest#testSimple; unknown text fails by default. */
     @Test void testUnknownEnumTextFailsByDefault() {
         assertThrows(RuntimeException.class,
-                () -> binding(StreamingContext.EMPTY).readNode("\"NO-SUCH-VALUE\"", TestEnum.class));
+                () -> binding(RuntimeContext.EMPTY).readNode("\"NO-SUCH-VALUE\"", TestEnum.class));
     }
 
     /** Source: EnumDefaultReadTest#testWithoutCustomFeatures; an out-of-range ordinal fails by default. */
     @Test void testUnknownEnumNumberFailsByDefault() {
         assertThrows(RuntimeException.class,
-                () -> binding(StreamingContext.EMPTY).readNode("4343", TestEnum.class));
+                () -> binding(RuntimeContext.EMPTY).readNode("4343", TestEnum.class));
     }
 
     /** Source: EnumDeserializationTest#testUnwrappedEnumException; arrays are rejected by Jackson default. */
     @Test void testUnwrappedEnumException() {
         assertThrows(RuntimeException.class,
-                () -> binding(StreamingContext.EMPTY).readNode("[\"JACKSON\"]", TestEnum.class));
+                () -> binding(RuntimeContext.EMPTY).readNode("[\"JACKSON\"]", TestEnum.class));
     }
 
     /** Source: EnumDeserializationTest#testDoNotAllowUnknownEnumValuesAsMapKeysWhenReadAsNullDisabled. */
     @Disabled("TODO: Map key support needs a cross-path design before enum keys can be bound.")
     @Test void testDoNotAllowUnknownEnumValuesAsMapKeysWhenReadAsNullDisabled() {
-        assertThrows(RuntimeException.class, () -> binding(StreamingContext.EMPTY).readNode(
+        assertThrows(RuntimeException.class, () -> binding(RuntimeContext.EMPTY).readNode(
                 "{\"map\":{\"NO-SUCH-VALUE\":\"value\"}}", EnumMapHolder.class));
     }
 
     /** Source: EnumDeserializationTest#testEnumValuesCaseSensitivity. */
     @Disabled("TODO: Map key support needs a cross-path design before enum keys can be bound.")
     @Test void testEnumValuesCaseSensitivity() {
-        assertThrows(RuntimeException.class, () -> binding(StreamingContext.EMPTY).readNode(
+        assertThrows(RuntimeException.class, () -> binding(RuntimeContext.EMPTY).readNode(
                 "{\"map\":{\"JACkson\":\"value\"}}", EnumMapHolder.class));
     }
 
@@ -90,32 +90,32 @@ public abstract class EnumDeserializationContract {
 
     /** Source: EnumDeserializationTest#testEnumsWithJsonValue, structural NodeValue equivalent. */
     @Test void testEnumsWithJsonValue() {
-        EnumCode value = (EnumCode) binding(StreamingContext.EMPTY).readNode("\"foo\"", EnumCode.class);
+        EnumCode value = (EnumCode) binding(RuntimeContext.EMPTY).readNode("\"foo\"", EnumCode.class);
         assertEquals("foo", value.value);
     }
 
     /** Source: EnumSameName4302Test#testWrappedShouldWork. */
     @Test void testWrappedShouldWork() {
-        EnumHolder value = (EnumHolder) binding(StreamingContext.EMPTY).readNode("{\"value\":\"OK\"}", EnumHolder.class);
+        EnumHolder value = (EnumHolder) binding(RuntimeContext.EMPTY).readNode("{\"value\":\"OK\"}", EnumHolder.class);
         assertEquals(TestEnum.OK, value.value);
     }
 
     /** Source: EnumAliasDeser2352Test#testEnumWithAlias, structural property alias only. */
     @Test void testEnumPropertyAlias() {
-        AliasedEnumHolder value = (AliasedEnumHolder) binding(StreamingContext.EMPTY).readNode("{\"legacyValue\":\"OK\"}", AliasedEnumHolder.class);
+        AliasedEnumHolder value = (AliasedEnumHolder) binding(RuntimeContext.EMPTY).readNode("{\"legacyValue\":\"OK\"}", AliasedEnumHolder.class);
         assertEquals(TestEnum.OK, value.value);
     }
 
     /** Source: EnumDeserializationTest#testSimple, array and collection element binding. */
     @Test void testEnumArraysAndCollections() {
-        TestEnum[] array = (TestEnum[]) binding(StreamingContext.EMPTY).readNode("[\"JACKSON\",\"OK\"]", TestEnum[].class);
+        TestEnum[] array = (TestEnum[]) binding(RuntimeContext.EMPTY).readNode("[\"JACKSON\",\"OK\"]", TestEnum[].class);
         assertEquals(TestEnum.JACKSON, array[0]);
         assertEquals(List.of(TestEnum.RULES, TestEnum.OK), read("[\"RULES\",\"OK\"]", new TypeReference<List<TestEnum>>() {}));
     }
 
     @SuppressWarnings("unchecked")
     private <T> T read(String json, TypeReference<T> type) {
-        return (T) binding(StreamingContext.EMPTY).readNode(json, type.getType());
+        return (T) binding(RuntimeContext.EMPTY).readNode(json, type.getType());
     }
 
     enum TestEnum { JACKSON, RULES, OK }

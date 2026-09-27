@@ -1,8 +1,10 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.FieldInfo;
@@ -22,14 +24,14 @@ public final class OneOfIO {
     private static final int INITIAL_PENDING_CAPACITY = 4;
 
     static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
-                            StreamingContext context) throws IOException {
+                            RuntimeContext context) throws IOException {
         return oneOfInfo.hasDiscriminator
                 ? readOneOfByDtor(reader, oneOfInfo, context)
                 : readOneOfByJsonType(reader, oneOfInfo, context);
     }
 
     static Object readOneOfByJsonType(StreamingReader reader, OneOfInfo oneOfInfo,
-                                      StreamingContext context) throws IOException {
+                                      RuntimeContext context) throws IOException {
         JsonType jsonType = reader.peekToken().jsonType();
 
         Class<?> targetClazz = oneOfInfo.matchByJsonType(jsonType);
@@ -47,7 +49,7 @@ public final class OneOfIO {
 
 
     static Object readOneOfByDtor(StreamingReader reader, OneOfInfo oneOfInfo,
-                                  StreamingContext context) throws IOException {
+                                  RuntimeContext context) throws IOException {
         if (oneOfInfo.scope != OneOf.Scope.CURRENT) {
             throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + oneOfInfo.scope);
         }
@@ -69,7 +71,7 @@ public final class OneOfIO {
 
 
     private static Object _readByDtorPath(StreamingReader reader, OneOfInfo oneOfInfo,
-                                         StreamingContext context) throws IOException {
+                                         RuntimeContext context) throws IOException {
         Map<String, Object> rawMap = StreamingIO.readRawObject(reader);
 
         Object discriminatorValue = oneOfInfo.compiledPath.getNode(rawMap);
@@ -83,12 +85,12 @@ public final class OneOfIO {
             if (oneOfInfo.fallbackNull) return null;
             throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
         }
-        return context.nodeBinder.readNode(rawMap, targetClazz);
+        return NodeMapper.convert(rawMap, targetClazz, context);
     }
 
 
     private static Object _readByDtorKey(StreamingReader reader, OneOfInfo oneOfInfo,
-                                         StreamingContext context) throws IOException {
+                                         RuntimeContext context) throws IOException {
 
         final boolean fallbackNull = oneOfInfo.fallbackNull;
         final String discriminatorKey = oneOfInfo.key;
@@ -149,7 +151,7 @@ public final class OneOfIO {
     private static Object _readRemainingObject(StreamingReader reader, Class<?> targetClazz,
                                                String[] pendingNames, Object[] pendingValues, int pendingSize,
                                                String discriminatorKey, Object discriminatorValue,
-                                               StreamingContext context) throws IOException {
+                                               RuntimeContext context) throws IOException {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(targetClazz);
         PojoInfo pi = ti.pojoInfo;
@@ -232,13 +234,13 @@ public final class OneOfIO {
 
 
     private static void _acceptRawField(String key, Object rawValue, Class<?> ownerClazz,
-                                        PojoInfo pi, CreatorState state, StreamingContext context) {
+                                        PojoInfo pi, CreatorState state, RuntimeContext context) {
 
         CreatorInfo ci = pi.creatorInfo;
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, ci.argTypes[argIdx]);
-            Object value = context.nodeBinder.readNode(rawValue, argType);
+            Object value = NodeMapper.convert(rawValue, argType, context);
             state.acceptCtorArg(argIdx, value);
             return;
         }
@@ -246,7 +248,7 @@ public final class OneOfIO {
         FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
         if (fi != null) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
-            Object value = context.nodeBinder.readNode(rawValue, argType);
+            Object value = NodeMapper.convert(rawValue, argType, context);
             if (state.isCreated()) {
                 fi.invokeSetter(state.pojo(), value);
             } else {

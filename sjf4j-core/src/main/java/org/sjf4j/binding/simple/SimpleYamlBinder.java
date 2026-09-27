@@ -1,6 +1,6 @@
 package org.sjf4j.binding.simple;
 
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.binding.YamlBinder;
@@ -15,7 +15,7 @@ import java.io.Writer;
  */
 public final class SimpleYamlBinder extends YamlBinder<StreamingReader, StreamingWriter> {
 
-    public SimpleYamlBinder(StreamingContext context) {
+    public SimpleYamlBinder(RuntimeContext context) {
         super(context);
     }
 

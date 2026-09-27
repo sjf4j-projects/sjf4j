@@ -1,12 +1,11 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.ObjectReadContext;
 import tools.jackson.core.ObjectWriteContext;
-import tools.jackson.core.TokenStreamFactory;
 import tools.jackson.core.json.JsonFactory;
 import tools.jackson.core.json.JsonReadFeature;
 
@@ -55,7 +54,7 @@ class Jackson3BinderTest {
 
         String includingNulls = new Jackson3Binder(new JsonFactory())
                 .writeNodeAsString(value);
-        String omittingNulls = new Jackson3Binder(new JsonFactory(), new StreamingContext(false))
+        String omittingNulls = new Jackson3Binder(new JsonFactory(), new RuntimeContext(false))
                 .writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
@@ -65,7 +64,7 @@ class Jackson3BinderTest {
 
     @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
-        StreamingContext context = new StreamingContext(false);
+        RuntimeContext context = new RuntimeContext(false);
         Jackson3Binder binder = new Jackson3Binder(new JsonFactory(), context);
         StringWriter output = new StringWriter();
 

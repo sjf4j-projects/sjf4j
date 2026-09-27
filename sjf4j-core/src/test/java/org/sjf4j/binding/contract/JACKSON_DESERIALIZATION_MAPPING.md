@@ -70,7 +70,7 @@ Jackson method attribution. The retained codec class covers Boolean and Number
 
 `DynamicPropertyDeserializationContract` has no Jackson mapping: its first two
 methods test `NodeBinding(readDynamic/writeDynamic = false)` dynamic storage and
-its last two test `StreamingContext` null inclusion during serialization.
+its last two test `RuntimeContext` null inclusion during serialization.
 
 `CollectionDeserializationContract#testList`, `#testQueue`, and
 `#testConcreteCollections`, plus

@@ -3,6 +3,7 @@ package org.sjf4j.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 
 import java.io.StringWriter;
@@ -21,13 +22,13 @@ class StreamingIOWriteTest {
         map.put("items", new int[]{1, 2});
         map.put("node", JsonObject.of("values", JsonArray.of("a", "b")));
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
-            StreamingIO.writeNode(writer, map, StreamingContext.EMPTY);
+            StreamingIO.writeNode(writer, map, RuntimeContext.EMPTY);
             writer.flush();
         }
         assertEquals("{\"items\":[1,2],\"node\":{\"values\":[\"a\",\"b\"]}}", output.toString());
 
         SeparatorWriter separators = new SeparatorWriter(null);
-        StreamingIO.writeNode(separators, new int[]{1, 2}, StreamingContext.EMPTY);
+        StreamingIO.writeNode(separators, new int[]{1, 2}, RuntimeContext.EMPTY);
         assertEquals(0, separators.properties);
         assertEquals(1, separators.elements);
     }
@@ -36,7 +37,7 @@ class StreamingIOWriteTest {
     void writesCharsetName() throws Exception {
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
-            StreamingIO.writeNode(writer, StandardCharsets.UTF_8, StreamingContext.EMPTY);
+            StreamingIO.writeNode(writer, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
             writer.flush();
         }
         assertEquals("\"UTF-8\"", output.toString());

@@ -1,5 +1,6 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
@@ -17,16 +18,15 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 /**
  * Base streaming binding for reading and writing structured data.
  */
 public abstract class StreamingBinder<R extends StreamingReader, W extends StreamingWriter> {
 
-    protected final StreamingContext context;
+    protected final RuntimeContext context;
 
-    protected StreamingBinder(StreamingContext context) {
+    protected StreamingBinder(RuntimeContext context) {
         this.context = Asserts.notNull(context, "context");
     }
 

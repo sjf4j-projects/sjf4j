@@ -3,8 +3,10 @@ package org.sjf4j.binding;
 import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.value.ValueInfo;
@@ -52,7 +54,7 @@ public final class StreamingIO {
      * discriminator selects the concrete target type; otherwise OneOf resolves
      * from the next token's JSON-semantic type.</p>
      */
-    public static Object readNode(StreamingReader reader, Type nodeType, StreamingContext context) throws IOException {
+    public static Object readNode(StreamingReader reader, Type nodeType, RuntimeContext context) throws IOException {
         Asserts.notNull(reader, "reader");
         Asserts.notNull(nodeType, "nodeType");
         Asserts.notNull(context, "context");
@@ -68,7 +70,7 @@ public final class StreamingIO {
      * Reads the next token and dispatches to the resolved target reader.
      */
     static Object readNode(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
-                           StreamingContext context) {
+                           RuntimeContext context) {
         try {
             if (ti.oneOfInfo != null) {
                 return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
@@ -157,7 +159,7 @@ public final class StreamingIO {
      * Reads null token and decodes via value codec when needed.
      */
     static Object readNull(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                           StreamingContext context) throws IOException {
+                           RuntimeContext context) throws IOException {
         reader.nextNull();
         if (nodeBoxed == Optional.class) {
             return Optional.empty();
@@ -169,7 +171,7 @@ public final class StreamingIO {
      * Reads boolean token into target type.
      */
     static Object readBoolean(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                              StreamingContext context) throws IOException {
+                              RuntimeContext context) throws IOException {
         if (nodeBoxed == Boolean.class) {
             return reader.nextBooleanValue();
         }
@@ -189,7 +191,7 @@ public final class StreamingIO {
      * Reads number token into target numeric or codec type.
      */
     static Object readNumber(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                             StreamingContext context) throws IOException {
+                             RuntimeContext context) throws IOException {
         if (nodeBoxed == Number.class) {
             return reader.nextNumber();
         }
@@ -219,7 +221,7 @@ public final class StreamingIO {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     static Object readString(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                             StreamingContext context) throws IOException {
+                             RuntimeContext context) throws IOException {
         if (nodeBoxed == String.class) {
             return reader.nextString();
         }
@@ -252,7 +254,7 @@ public final class StreamingIO {
      * Reads an object node into a Map, JsonObject, or POJO target.
      */
     static Object readObject(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
-                             StreamingContext context) throws IOException {
+                             RuntimeContext context) throws IOException {
         if (Map.class.isAssignableFrom(nodeBoxed)) {
             Type valueType = Types.resolveTypeArgument(nodeType, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
@@ -296,7 +298,7 @@ public final class StreamingIO {
 
 
     static Object readPojo(StreamingReader reader, Type pojoType, Class<?> pojoBoxed,
-                           PojoInfo pi, StreamingContext context) throws IOException {
+                           PojoInfo pi, RuntimeContext context) throws IOException {
         CreatorInfo ci = pi.creatorInfo;
         boolean hasParentOneOf = pi.hasParentScopeOneOf;
 
@@ -476,7 +478,7 @@ public final class StreamingIO {
             Class<?> targetClazz = oneOfInfo.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
             Object value;
             if (targetClazz != null) {
-                value = context.nodeBinder.readNode(deferredParentOneOfRaw, targetClazz);
+                value = NodeMapper.convert(deferredParentOneOfRaw, targetClazz, context);
             } else if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                 value = null;
             } else {
@@ -492,7 +494,7 @@ public final class StreamingIO {
 
 
     static Object readFieldValue(StreamingReader reader, FieldInfo fi, Type ownerType,
-                                 Class<?> ownerBoxed, StreamingContext context) throws IOException {
+                                 Class<?> ownerBoxed, RuntimeContext context) throws IOException {
         Type fieldType = fi.type;
         Class<?> fieldBoxed = fi.boxed;
         if (fi.genericDependent) {
@@ -523,7 +525,7 @@ public final class StreamingIO {
      * Reads an array node into a List, JsonArray, Java array, or Set target.
      */
     static Object readArray(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
-                            StreamingContext context) throws IOException {
+                            RuntimeContext context) throws IOException {
         if (List.class.isAssignableFrom(nodeBoxed)) {
             Type elementType = Types.resolveTypeArgument(nodeType, List.class, 0);
             Class<?> elementBoxed = Types.rawBox(elementType);
@@ -574,7 +576,7 @@ public final class StreamingIO {
     }
 
     static Object readValueWithCodec(StreamingReader reader, Type valueType, Class<?> valueBoxed, ValueInfo valueInfo,
-                                     StreamingContext context) throws IOException {
+                                     RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             if (valueBoxed == Optional.class) {
                 return Optional.empty();
@@ -630,7 +632,7 @@ public final class StreamingIO {
     }
 
     static Map<String, Object> readMapOrNull(StreamingReader reader, Class<?> mapClazz, Type valueType, Class<?> valueBoxed,
-                                       TypeInfo ti, StreamingContext context) throws IOException {
+                                       TypeInfo ti, RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -641,7 +643,7 @@ public final class StreamingIO {
      * Reads an object node into a map with typed values.
      */
     static Map<String, Object> readMap(StreamingReader reader, Class<?> mapClazz, Type valueType, Class<?> valueBoxed,
-                                       TypeInfo ti, StreamingContext context) throws IOException {
+                                       TypeInfo ti, RuntimeContext context) throws IOException {
         Map<String, Object> map = (mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class)
                 ? new LinkedHashMap<>()
                 : TypeRegistry.newMapContainer(mapClazz, 0, false);
@@ -656,7 +658,7 @@ public final class StreamingIO {
 
 
     static List<Object> readListOrNull(StreamingReader reader, Class<?> listClazz, Type elementType, Class<?> elementBoxed,
-                                 TypeInfo ti, StreamingContext context) throws IOException {
+                                 TypeInfo ti, RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -667,7 +669,7 @@ public final class StreamingIO {
      * Reads an array node into a list with typed elements.
      */
     static List<Object> readList(StreamingReader reader, Class<?> listClazz, Type elementType, Class<?> elementBoxed,
-                                 TypeInfo ti, StreamingContext context) throws IOException {
+                                 TypeInfo ti, RuntimeContext context) throws IOException {
         List<Object> list = (listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class)
                 ? new ArrayList<>()
                 : TypeRegistry.newListContainer(listClazz, 0, false);
@@ -681,7 +683,7 @@ public final class StreamingIO {
 
 
     static Set<Object> readSetOrNull(StreamingReader reader, Class<?> setClazz, Type valueType, Class<?> valueClazz,
-                                     TypeInfo ti, StreamingContext context) throws IOException {
+                                     TypeInfo ti, RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -692,7 +694,7 @@ public final class StreamingIO {
      * Reads an array node into a set with typed elements.
      */
     static Set<Object> readSet(StreamingReader reader, Class<?> setClazz, Type valueType, Class<?> valueClazz,
-                               TypeInfo ti, StreamingContext context) throws IOException {
+                               TypeInfo ti, RuntimeContext context) throws IOException {
         Set<Object> set = (setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class)
                 ? new LinkedHashSet<>()
                 : TypeRegistry.newSetContainer(setClazz, 0, false);
@@ -705,7 +707,7 @@ public final class StreamingIO {
     }
 
     static Object readJavaArrayOrNull(StreamingReader reader, Class<?> arrClazz, Class<?> componentClazz, Class<?> componentBoxed,
-                                      TypeInfo ti, StreamingContext context) throws IOException {
+                                      TypeInfo ti, RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -714,7 +716,7 @@ public final class StreamingIO {
 
     @SuppressWarnings("SuspiciousSystemArraycopy")
     static Object readJavaArray(StreamingReader reader, Class<?> arrClazz, Class<?> componentClazz, Class<?> componentBoxed,
-                                TypeInfo ti, StreamingContext context) throws IOException {
+                                TypeInfo ti, RuntimeContext context) throws IOException {
         Object array = null;
         int size = 0;
         reader.startArray();
@@ -969,7 +971,7 @@ public final class StreamingIO {
      * Writes one OBNT value, preserving object and array traversal in the
      * streaming writer rather than materializing an intermediate object node.
      */
-    public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
+    public static void writeNode(StreamingWriter writer, Object node, RuntimeContext context) throws IOException {
         try {
             if (node == null) {
                 writer.writeNull();
@@ -1064,7 +1066,7 @@ public final class StreamingIO {
      */
 
     private static void writeMap(StreamingWriter writer, Map<?, ?> map,
-                                 StreamingContext context) throws IOException {
+                                 RuntimeContext context) throws IOException {
         writer.startObject();
         int count = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -1082,7 +1084,7 @@ public final class StreamingIO {
     }
 
     private static void writeList(StreamingWriter writer, List<?> list,
-                                  StreamingContext context) throws IOException {
+                                  RuntimeContext context) throws IOException {
         writer.startArray();
         if (list instanceof RandomAccess) {
             for (int i = 0, size = list.size(); i < size; i++) {
@@ -1106,7 +1108,7 @@ public final class StreamingIO {
     }
 
     private static void writeJsonObject(StreamingWriter writer, JsonObject object,
-                                        StreamingContext context) throws IOException {
+                                        RuntimeContext context) throws IOException {
         writer.startObject();
         int count = 0;
         for (Map.Entry<String, Object> entry : object.entrySet()) {
@@ -1124,7 +1126,7 @@ public final class StreamingIO {
     }
 
     private static void writeJsonArray(StreamingWriter writer, JsonArray array,
-                                       StreamingContext context) throws IOException {
+                                       RuntimeContext context) throws IOException {
         writer.startArray();
         for (int i = 0, size = array.size(); i < size; i++) {
             if (i > 0) {
@@ -1136,7 +1138,7 @@ public final class StreamingIO {
     }
 
     private static void writeSet(StreamingWriter writer, Set<?> set,
-                                 StreamingContext context) throws IOException {
+                                 RuntimeContext context) throws IOException {
         writer.startArray();
         boolean first = true;
         for (Object value : set) {
@@ -1151,7 +1153,7 @@ public final class StreamingIO {
     }
 
     private static void writeArray(StreamingWriter writer, Object node, Class<?> rawClazz,
-                                      StreamingContext context) throws IOException {
+                                      RuntimeContext context) throws IOException {
         if (rawClazz == boolean[].class) {
             boolean[] array = (boolean[]) node;
             writer.startArray();
@@ -1254,7 +1256,7 @@ public final class StreamingIO {
 
 
     static void writePojo(StreamingWriter writer, Object node, PojoInfo pi,
-                          StreamingContext context) throws IOException {
+                          RuntimeContext context) throws IOException {
         writer.startObject();
         int cnt = 0;
         FieldWriter[] fieldWriters = pi.fieldWriters;

@@ -1,17 +1,16 @@
-package org.sjf4j.binding;
+package org.sjf4j;
 
+import org.sjf4j.binding.NodeBinder;
 import org.sjf4j.binding.simple.SimpleNodeBinder;
 import org.sjf4j.node.Types;
 import org.sjf4j.util.Asserts;
 
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Shared runtime streaming context assembled by {@code Sjf4j.Builder}.
  */
-public final class StreamingContext {
-    public final NodeBinder nodeBinder;
+public final class RuntimeContext {
     public final boolean includeNulls;
     private final Class<?>[] valueFormatTypes;
     private final String[] valueFormats;
@@ -19,21 +18,20 @@ public final class StreamingContext {
     // Empty
     private static final Class<?>[] EMPTY_VALUE_TYPES = new Class<?>[0];
     private static final String[] EMPTY_VALUE_FORMATS = new String[0];
-    public static final StreamingContext EMPTY = new StreamingContext(true);
+    public static final RuntimeContext EMPTY = new RuntimeContext(true);
 
 
-    public StreamingContext(boolean includeNulls) {
+    public RuntimeContext(boolean includeNulls) {
         this.valueFormatTypes = EMPTY_VALUE_TYPES;
         this.valueFormats = EMPTY_VALUE_FORMATS;
         this.includeNulls = includeNulls;
-        this.nodeBinder = new SimpleNodeBinder(this);
     }
 
-    public StreamingContext(Map<Class<?>, String> defaultValueFormats) {
+    public RuntimeContext(Map<Class<?>, String> defaultValueFormats) {
         this(defaultValueFormats, true);
     }
 
-    public StreamingContext(Map<Class<?>, String> defaultValueFormats, boolean includeNulls) {
+    public RuntimeContext(Map<Class<?>, String> defaultValueFormats, boolean includeNulls) {
         Asserts.notNull(defaultValueFormats, "defaultValueFormats");
         if (defaultValueFormats.isEmpty()) {
             this.valueFormatTypes = EMPTY_VALUE_TYPES;
@@ -54,7 +52,6 @@ public final class StreamingContext {
             }
         }
         this.includeNulls = includeNulls;
-        this.nodeBinder = new SimpleNodeBinder(this);
     }
 
     public String defaultValueFormat(Class<?> valueType) {

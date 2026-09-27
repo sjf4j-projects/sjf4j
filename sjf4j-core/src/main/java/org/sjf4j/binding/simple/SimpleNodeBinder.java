@@ -4,7 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.NodeBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -39,19 +38,19 @@ import java.util.Set;
  */
 public final class SimpleNodeBinder implements NodeBinder {
 
-    private final StreamingContext context;
+    private final RuntimeContext context;
 
     /**
      * Creates a binding with the default conversion pipeline.
      */
     public SimpleNodeBinder() {
-        this(StreamingContext.EMPTY);
+        this(RuntimeContext.EMPTY);
     }
 
     /**
      * Creates a binding with the supplied streaming configuration.
      */
-    public SimpleNodeBinder(StreamingContext context) {
+    public SimpleNodeBinder(RuntimeContext context) {
         this.context = Asserts.notNull(context, "context");
     }
 

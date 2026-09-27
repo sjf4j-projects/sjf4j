@@ -11,8 +11,8 @@ final class ReadEmitter {
     private static final String STREAMING_IO =
             "org.sjf4j.binding.StreamingIO";
 
-    private static final String STREAMING_CONTEXT =
-            "org.sjf4j.binding.StreamingContext";
+    private static final String RUNTIME_CONTEXT =
+            "org.sjf4j.RuntimeContext";
 
     private static final String NAME_MATCHER =
             "org.sjf4j.binding.StreamingReader.NameMatcher";
@@ -476,7 +476,7 @@ final class ReadEmitter {
                         context.typeUtils
                                 .erasure(value.type()) +
                         ".class, " +
-                        STREAMING_CONTEXT +
+                        RUNTIME_CONTEXT +
                         ".EMPTY)";
 
             default:

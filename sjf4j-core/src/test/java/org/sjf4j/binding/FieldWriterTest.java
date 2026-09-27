@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import java.math.BigDecimal;
@@ -19,7 +20,7 @@ class FieldWriterTest {
 
     @Test
     void writesReadablePrivateFieldThroughGetter() {
-        assertEquals("{\"name\":\"Ada\"}", new SimpleJsonBinder(StreamingContext.EMPTY).writeNodeAsString(new Person()));
+        assertEquals("{\"name\":\"Ada\"}", new SimpleJsonBinder(RuntimeContext.EMPTY).writeNodeAsString(new Person()));
     }
 
     enum Choice { FIRST }
@@ -45,7 +46,7 @@ class FieldWriterTest {
         assertEquals("{\"text\":\"text\",\"integer\":1,\"longer\":2,\"decimal\":3.5,\"floating\":1.25,"
                         + "\"shorter\":6,\"smaller\":7,\"flag\":true,\"character\":\"x\",\"bigInteger\":10,\"bigDecimal\":2.5,"
                         + "\"number\":4,\"choice\":\"FIRST\"}",
-                new SimpleJsonBinder(StreamingContext.EMPTY).writeNodeAsString(new BoxedValues()));
+                new SimpleJsonBinder(RuntimeContext.EMPTY).writeNodeAsString(new BoxedValues()));
     }
 
     static class NullableValues {
@@ -57,9 +58,9 @@ class FieldWriterTest {
     @Test
     void filtersOrWritesNullBoxedScalarsAccordingToContext() {
         NullableValues values = new NullableValues();
-        assertEquals("{}", new SimpleJsonBinder(new StreamingContext(Collections.emptyMap(), false))
+        assertEquals("{}", new SimpleJsonBinder(new RuntimeContext(Collections.emptyMap(), false))
                 .writeNodeAsString(values));
         assertEquals("{\"integer\":null,\"character\":null,\"choice\":null}",
-                new SimpleJsonBinder(StreamingContext.EMPTY).writeNodeAsString(values));
+                new SimpleJsonBinder(RuntimeContext.EMPTY).writeNodeAsString(values));
     }
 }

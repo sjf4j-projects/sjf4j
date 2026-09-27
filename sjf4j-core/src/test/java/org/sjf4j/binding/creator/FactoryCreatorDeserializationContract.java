@@ -3,7 +3,7 @@ package org.sjf4j.binding.creator;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
 
@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class FactoryCreatorDeserializationContract {
-    private final SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
+    private final SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
 
     // Structural source: TestCreators#testSimpleFactory; NodeCreator/NodeProperty replace JsonCreator/JsonProperty.
     @Test void staticFactoryCreatesPropertyBasedValue() {

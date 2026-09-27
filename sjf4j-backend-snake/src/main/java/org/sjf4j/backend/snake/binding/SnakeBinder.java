@@ -1,6 +1,6 @@
 package org.sjf4j.backend.snake.binding;
 
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.YamlBinder;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
@@ -12,7 +12,6 @@ import org.yaml.snakeyaml.reader.StreamReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Objects;
 
 /** YAML binder backed by SnakeYAML's event parser and emitter. */
 public final class SnakeBinder extends YamlBinder<SnakeReader, SnakeWriter> {
@@ -20,11 +19,11 @@ public final class SnakeBinder extends YamlBinder<SnakeReader, SnakeWriter> {
     private final DumperOptions dumperOptions;
 
     public SnakeBinder() {
-        this(new LoaderOptions(), new DumperOptions(), StreamingContext.EMPTY);
+        this(new LoaderOptions(), new DumperOptions(), RuntimeContext.EMPTY);
     }
 
     public SnakeBinder(LoaderOptions loaderOptions, DumperOptions dumperOptions,
-                       StreamingContext context) {
+                       RuntimeContext context) {
         super(context);
         this.loaderOptions = Asserts.notNull(loaderOptions, "loaderOptions");
         this.dumperOptions = Asserts.notNull(dumperOptions, "dumperOptions");

@@ -3,6 +3,7 @@ package org.sjf4j.binding.simple;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
@@ -10,7 +11,6 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.binding.StreamingContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.TypeReference;
 
@@ -449,7 +449,7 @@ class SimpleNodeBinderTest {
     void usesStreamingContextValueFormatForValueCodecs() {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         SimpleNodeBinder configured = new SimpleNodeBinder(
-                new StreamingContext(Map.of(Instant.class, "epochMillis")));
+                new RuntimeContext(Map.of(Instant.class, "epochMillis")));
 
         assertEquals(instant.toEpochMilli(), configured.writeNode(instant));
         assertEquals(instant, configured.readNode(instant.toEpochMilli(), Instant.class));

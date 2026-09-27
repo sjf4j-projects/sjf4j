@@ -9,7 +9,7 @@ import com.fasterxml.jackson.core.util.BufferRecycler;
 import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.PreparedName;
-import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Types;
@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Objects;
 
 /** JSON binder backed directly by a Jackson 2 {@link JsonFactory}. */
 public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
@@ -27,15 +26,15 @@ public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
     private final JsonFactory factory;
 
     public Jackson2Binder() {
-        this(new JsonFactory(), StreamingContext.EMPTY);
+        this(new JsonFactory(), RuntimeContext.EMPTY);
     }
 
     public Jackson2Binder(JsonFactory factory) {
-        this(factory, StreamingContext.EMPTY);
+        this(factory, RuntimeContext.EMPTY);
     }
 
     @SuppressWarnings("deprecation")
-    public Jackson2Binder(JsonFactory factory, StreamingContext context) {
+    public Jackson2Binder(JsonFactory factory, RuntimeContext context) {
         super(context);
         Asserts.notNull(factory, "factory");
         this.factory = factory;
