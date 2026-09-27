@@ -52,10 +52,13 @@ public final class StreamingIO {
      * discriminator selects the concrete target type; otherwise OneOf resolves
      * from the next token's JSON-semantic type.</p>
      */
-    public static Object readNode(StreamingReader reader, Type nodeType, StreamingContext context) {
+    public static Object readNode(StreamingReader reader, Type nodeType, StreamingContext context) throws IOException {
         Asserts.notNull(reader, "reader");
         Asserts.notNull(nodeType, "nodeType");
         Asserts.notNull(context, "context");
+        if (nodeType == Object.class) {
+            return readRawNode(reader);
+        }
         Class<?> nodeBoxed = Types.rawBox(nodeType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(nodeBoxed);
         return readNode(reader, nodeType, nodeBoxed, ti, context);

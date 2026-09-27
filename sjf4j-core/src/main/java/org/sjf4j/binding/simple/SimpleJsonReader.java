@@ -1,6 +1,7 @@
 package org.sjf4j.binding.simple;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
@@ -24,6 +25,27 @@ public final class SimpleJsonReader implements StreamingReader {
      */
     public SimpleJsonReader(Reader input) {
         this.reader = input;
+        this.inputBuffer = new char[BUFFER_SIZE];
+    }
+
+    /**
+     * Creates reader over input string.
+     */
+    public SimpleJsonReader(String input) {
+        if (input.length() <= BUFFER_SIZE) {
+            this.reader = null;
+            this.inputBuffer = input.toCharArray();
+            this.inputLimit = inputBuffer.length;
+            this.inputEof = true;
+        } else {
+            this.reader = new FastStringReader(input);
+            this.inputBuffer = new char[BUFFER_SIZE];
+        }
+    }
+
+    @Override
+    public void startDocument() throws IOException {
+        if (inputClosed) throw new IOException("Stream closed");
     }
 
     /**
@@ -299,7 +321,13 @@ public final class SimpleJsonReader implements StreamingReader {
      */
     @Override
     public void close() throws IOException {
-        reader.close();
+        inputClosed = true;
+        inputPos = 0;
+        inputLimit = 0;
+        bufferedToken = null;
+        if (reader != null) {
+            reader.close();
+        }
     }
 
 
@@ -313,10 +341,11 @@ public final class SimpleJsonReader implements StreamingReader {
     private static final int NUMBER_BUFFER_INITIAL_SIZE = 32;
     /** Do not retain an input-sized array after parsing an exceptional numeric value. */
     private static final int NUMBER_BUFFER_RETAIN_CAP = 1024;
-    private final char[] inputBuffer = new char[BUFFER_SIZE];
+    private final char[] inputBuffer;
     private int inputPos;
     private int inputLimit;
     private boolean inputEof;
+    private boolean inputClosed;
     private int pos = 0;
     private Token bufferedToken = null;
     private int[] containerStateStack = new int[8];
@@ -525,7 +554,10 @@ public final class SimpleJsonReader implements StreamingReader {
     }
 
     private boolean _fillBuffer() throws IOException {
-        if (inputEof) return false;
+        if (inputClosed) throw new IOException("Stream closed");
+        if (inputEof) {
+            return false;
+        }
         int read;
         do {
             read = reader.read(inputBuffer, 0, inputBuffer.length);

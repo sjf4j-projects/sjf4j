@@ -2,6 +2,7 @@ package org.sjf4j.binding.simple;
 
 import org.sjf4j.binding.JsonBinder;
 import org.sjf4j.binding.StreamingContext;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -26,6 +27,14 @@ public final class SimpleJsonBinder extends JsonBinder<SimpleJsonReader, SimpleJ
     @Override
     public SimpleJsonReader createReader(Reader input) throws IOException {
         return new SimpleJsonReader(input);
+    }
+
+    /**
+     * Creates a binding reader from input string.
+     */
+    @Override
+    public SimpleJsonReader createReader(String input) throws IOException {
+        return new SimpleJsonReader(Asserts.notNull(input, "input"));
     }
 
     /**

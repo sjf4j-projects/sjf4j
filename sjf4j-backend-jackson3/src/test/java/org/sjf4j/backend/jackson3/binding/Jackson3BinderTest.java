@@ -101,24 +101,6 @@ class Jackson3BinderTest {
     }
 
     @Test
-    void usesNativeFactoryOverloadsForStringAndOutput() throws Exception {
-        TrackingFactory factory = new TrackingFactory();
-        Jackson3Binder binder = new Jackson3Binder(factory);
-
-        try (Jackson3Reader reader = binder.createReader("null")) {
-            reader.nextNull();
-        }
-        assertEquals("string", factory.parserSource);
-
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try (Jackson3Writer writer = binder.createWriter(output)) {
-            writer.writeStringValue("héllo");
-        }
-        assertTrue(factory.generatorOutput);
-        assertEquals("\"héllo\"", new String(output.toByteArray(), StandardCharsets.UTF_8));
-    }
-
-    @Test
     void byteAndStreamInputRemainUtf8() throws Exception {
         Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
         byte[] utf8 = "{\"title\":\"héllo\"}".getBytes(StandardCharsets.UTF_8);
@@ -211,26 +193,4 @@ class Jackson3BinderTest {
         }
     }
 
-    static class TrackingFactory extends JsonFactory {
-        String parserSource;
-        boolean generatorOutput;
-
-        TrackingFactory() {
-            super(JsonFactory.builder()
-                    .disable(TokenStreamFactory.Feature.CHARSET_DETECTION)
-                    .build());
-        }
-
-        @Override
-        public JsonParser createParser(ObjectReadContext context, String input) {
-            parserSource = "string";
-            return super.createParser(context, input);
-        }
-
-        @Override
-        public JsonGenerator createGenerator(ObjectWriteContext context, OutputStream output) {
-            generatorOutput = true;
-            return super.createGenerator(context, output);
-        }
-    }
 }

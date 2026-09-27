@@ -9,6 +9,7 @@ import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -21,6 +22,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -162,6 +164,53 @@ public class CompiledBinderTest {
         assertEquals(raw, roundTrip);
     }
 
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void readsObjectValuesLikeRuntimeBinding(String backend, BinderContract binder) throws IOException {
+        String input = "{"
+                + "\"text\":\"Ada\","
+                + "\"number\":7,"
+                + "\"enabled\":true,"
+                + "\"empty\":null,"
+                + "\"nested\":{\"first\":\"one\",\"second\":2},"
+                + "\"items\":[false,{\"third\":3},null]"
+                + "}";
+
+        Map<String, Object> compiled = binder.readObjectMap(input);
+        Map<?, ?> runtime = (Map<?, ?>) new SimpleJsonBinder().readNode(input, Object.class);
+
+        assertEquals(runtime, compiled);
+        assertEquals(LinkedHashMap.class, compiled.getClass());
+        assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
+                new ArrayList<String>(compiled.keySet()));
+
+        Map<?, ?> nested = (Map<?, ?>) compiled.get("nested");
+        List<?> items = (List<?>) compiled.get("items");
+        assertEquals(LinkedHashMap.class, nested.getClass());
+        assertEquals(ArrayList.class, items.getClass());
+        assertEquals(Arrays.asList("first", "second"), new ArrayList<Object>(nested.keySet()));
+        assertEquals(LinkedHashMap.class, items.get(1).getClass());
+
+        String holderInput = "{"
+                + "\"value\":{\"text\":\"Ada\",\"nested\":[1,{\"enabled\":true}]},"
+                + "\"values\":[\"first\",{\"inner\":[null,2]},[false,3]]"
+                + "}";
+        ObjectHolder holder = binder.readObjectHolder(holderInput);
+        Map<?, ?> runtimeHolder = (Map<?, ?>) new SimpleJsonBinder().readNode(holderInput, Object.class);
+        Map<?, ?> holderValue = (Map<?, ?>) holder.getValue();
+        List<?> holderNested = (List<?>) holderValue.get("nested");
+        List<?> holderValues = holder.getValues();
+
+        assertEquals(runtimeHolder.get("value"), holder.getValue());
+        assertEquals(runtimeHolder.get("values"), holderValues);
+        assertEquals(LinkedHashMap.class, holderValue.getClass());
+        assertEquals(Arrays.asList("text", "nested"), new ArrayList<Object>(holderValue.keySet()));
+        assertEquals(ArrayList.class, holderNested.getClass());
+        assertEquals(ArrayList.class, holderValues.getClass());
+        assertEquals(LinkedHashMap.class, holderValues.get(1).getClass());
+        assertEquals(ArrayList.class, holderValues.get(2).getClass());
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("jsonBackends")
@@ -404,6 +453,29 @@ public class CompiledBinderTest {
     }
 
 
+    public static final class ObjectHolder {
+
+        private Object value;
+        private List<Object> values;
+
+        public Object getValue() {
+            return value;
+        }
+
+        public void setValue(Object value) {
+            this.value = value;
+        }
+
+        public List<Object> getValues() {
+            return values;
+        }
+
+        public void setValues(List<Object> values) {
+            this.values = values;
+        }
+    }
+
+
     public interface BinderContract {
 
         @ReadFrom
@@ -459,6 +531,12 @@ public class CompiledBinderTest {
 
         @ReadFrom
         Map<String, Address> readAddresses(String input) throws IOException;
+
+        @ReadFrom
+        Map<String, Object> readObjectMap(String input) throws IOException;
+
+        @ReadFrom
+        ObjectHolder readObjectHolder(String input) throws IOException;
 
         @WriteTo
         String writeAddresses(Map<String, Address> values) throws IOException;

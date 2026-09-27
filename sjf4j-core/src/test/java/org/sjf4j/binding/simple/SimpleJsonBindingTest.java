@@ -43,6 +43,8 @@ class SimpleJsonBindingTest {
         }
         try (SimpleJsonReader reader = binding.createReader("null")) {
             assertInstanceOf(SimpleJsonReader.class, reader);
+            reader.nextNull();
+            reader.endDocument();
         }
         try (SimpleJsonReader reader = binding.createReader("null".getBytes(StandardCharsets.UTF_8))) {
             assertInstanceOf(SimpleJsonReader.class, reader);
@@ -114,11 +116,13 @@ class SimpleJsonBindingTest {
     }
 
     @Test
-    void readsStringsWhoseEscapesCrossTheInternalBufferBoundary() {
+    void readsStringsAtAndAcrossTheInternalBufferBoundary() {
         SimpleJsonBinder binding = new SimpleJsonBinder(StreamingContext.EMPTY);
         String prefix = "a".repeat(8190);
+        String atBufferSize = '"' + prefix + '"';
         String json = '"' + prefix + "\\n\"";
 
+        assertEquals(prefix, binding.readNode(atBufferSize, String.class));
         assertEquals(prefix + '\n', binding.readNode(json, String.class));
     }
 

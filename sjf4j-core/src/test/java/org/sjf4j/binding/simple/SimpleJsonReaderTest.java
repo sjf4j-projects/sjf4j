@@ -34,6 +34,49 @@ class SimpleJsonReaderTest {
     }
 
     @Test
+    void readsSmallStringInputAndCloses() throws Exception {
+        try (SimpleJsonReader reader = new SimpleJsonReader("[1,true]")) {
+            reader.startArray();
+            assertEquals(1, reader.nextIntValue());
+            assertTrue(reader.nextBooleanValue());
+            reader.endArray();
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void closePreventsReadsFromStringAndReaderInputs() throws Exception {
+        SimpleJsonReader stringReader = new SimpleJsonReader("null");
+        stringReader.close();
+        assertThrows(IOException.class, stringReader::startDocument);
+        assertThrows(IOException.class, stringReader::peekToken);
+
+        SimpleJsonReader readerInput = new SimpleJsonReader(new StringReader("null"));
+        readerInput.close();
+        assertThrows(IOException.class, readerInput::peekToken);
+    }
+
+    @Test
+    void closeClearsBufferedInputAndEofState() throws Exception {
+        SimpleJsonReader reader = new SimpleJsonReader("[1]");
+        reader.startArray();
+        reader.close();
+        assertThrows(IOException.class, reader::nextIntValue);
+
+        SimpleJsonReader eofReader = new SimpleJsonReader("null");
+        eofReader.nextNull();
+        eofReader.endDocument();
+        eofReader.close();
+        assertThrows(IOException.class, eofReader::peekToken);
+
+        SimpleJsonReader readerEof = new SimpleJsonReader(new StringReader("null"));
+        readerEof.nextNull();
+        readerEof.endDocument();
+        readerEof.close();
+        assertThrows(IOException.class, readerEof::peekToken);
+    }
+
+    @Test
     void readsCharValuesAndConsumesFullStrings() throws Exception {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(
                 "[\"x\",\"\\\\\",\"\\u0041\",\"\\uD83D\\uDE00\",\"multiple\",2]"))) {
