@@ -2,6 +2,9 @@ package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.binding.BinderProvider;
+import org.sjf4j.binding.BindingFactory;
+import org.sjf4j.binding.Format;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.ObjectReadContext;
@@ -31,6 +34,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Jackson3BinderTest {
+
+    @Test
+    void isDiscoveredAsTheDefaultJsonBinderProvider() {
+        BinderProvider provider = BindingFactory.provider(Format.JSON);
+
+        assertInstanceOf(Jackson3BinderProvider.class, provider);
+        assertInstanceOf(Jackson3Binder.class, provider.create(RuntimeContext.EMPTY));
+    }
 
     @Test
     void readsPojoWithNestedCollectionsAndMaps() {
