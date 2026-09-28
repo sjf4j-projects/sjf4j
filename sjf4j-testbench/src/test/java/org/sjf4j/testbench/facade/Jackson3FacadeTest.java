@@ -8,6 +8,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.backend.jackson3.binding.Jackson3BinderProvider;
+import org.sjf4j.binding.BinderProvider;
+import org.sjf4j.binding.Format;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -20,7 +24,6 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.NodeKind;
@@ -62,11 +65,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson3FacadeTest {
 
     private static final Sjf4j ASSERT_SJF4J = Sjf4j.builder()
-            .jsonFacadeProvider(SimpleJsonFacade.provider())
+            .jsonBinderProvider(BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new))
             .build();
 
     private final Sjf4j sjf4j = Sjf4j.builder()
-            .jsonFacadeProvider(Jackson3JsonFacade.provider())
+            .jsonBinderProvider(new Jackson3BinderProvider())
             .build();
 
     static class Book extends JsonObject {

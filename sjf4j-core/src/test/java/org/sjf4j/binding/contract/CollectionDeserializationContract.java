@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Portable collection cases from Jackson's CollectionDeserializationTest. */
 public abstract class CollectionDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
+    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
     /** Source: CollectionDeserializationTest#testUntypedList. */
     @Test void testUntypedList() {
         List<?> value = assertInstanceOf(List.class, binding(RuntimeContext.EMPTY).readNode("[\"text!\",true,null,23]", Object.class));

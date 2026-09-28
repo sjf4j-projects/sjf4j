@@ -72,6 +72,18 @@ class Fastjson2BinderTest {
     }
 
     @Test
+    void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
+        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of("[{\"id\":7},\"next\"]"))) {
+            reader.startArray();
+            assertEquals(StreamingReader.Token.START_OBJECT, reader.peekToken());
+            assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
+            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
+            assertEquals("next", reader.nextString());
+            reader.endArray();
+        }
+    }
+
+    @Test
     void readsPojoWithNestedCollectionsAndIgnoresUnknownProperties() {
         String json = "{\"id\":7,\"title\":\"Ada\",\"details\":{\"active\":true},"
                 + "\"tags\":[\"one\",\"two\"],\"nullable\":null,\"unknown\":\"ignored\"}";

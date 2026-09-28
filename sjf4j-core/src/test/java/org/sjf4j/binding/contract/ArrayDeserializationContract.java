@@ -2,7 +2,7 @@ package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Default array bindings from Jackson's ArrayDeserializationTest. */
 public abstract class ArrayDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
+    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
 
     /** Source: ArrayDeserializationTest#testUntypedArray. */
     @Test

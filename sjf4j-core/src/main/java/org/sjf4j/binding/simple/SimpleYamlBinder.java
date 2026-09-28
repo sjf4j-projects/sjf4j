@@ -1,9 +1,9 @@
 package org.sjf4j.binding.simple;
 
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
-import org.sjf4j.binding.YamlBinder;
 import org.sjf4j.exception.BindingException;
 
 import java.io.IOException;
@@ -11,9 +11,9 @@ import java.io.Reader;
 import java.io.Writer;
 
 /**
- * Placeholder YAML facade used when SnakeYAML is not available.
+ * Placeholder YAML binder used when SnakeYAML is not available.
  */
-public final class SimpleYamlBinder extends YamlBinder<StreamingReader, StreamingWriter> {
+public final class SimpleYamlBinder extends StreamingBinder<StreamingReader, StreamingWriter> {
 
     public SimpleYamlBinder(RuntimeContext context) {
         super(context);

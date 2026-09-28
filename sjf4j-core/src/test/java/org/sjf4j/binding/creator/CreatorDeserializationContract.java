@@ -4,14 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** NodeCreator constructor and factory cases structurally adapted from Jackson creator tests. */
 public abstract class CreatorDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
+    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
     /** Structural source: CreatorPropertyConstraintsTest#testRequiredAnnotatedParam; SJF4J has no required flag, so a missing primitive uses its Java default. */
     @Test void testRequiredAnnotatedParam() {
         ConstructorBean bean = (ConstructorBean) binding(RuntimeContext.EMPTY).readNode("{\"name\":\"han\"}", ConstructorBean.class);

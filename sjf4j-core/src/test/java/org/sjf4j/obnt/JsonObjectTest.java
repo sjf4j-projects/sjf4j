@@ -579,19 +579,12 @@ class JsonObjectTest {
     }
 
     @Test
-    public void testYaml1() {
-
+    public void testYamlUnavailableWithoutOptionalBackend() {
         String json1 = "{\"s1\":\"haha\",\"i2\":null,\"f3\":99.9,\"b4\":true,\"s\\\"5\":\"00\"}";
         JsonObject jo1 = (JsonObject) new Fastjson2JsonFacade().readNode(
                 new StringReader(json1), JsonObject.class);
-//        JsonObject jo1 = JsonObject.fromJson(json1);
-        String ya1 = jo1.toYaml();
-        log.info("ya1: \n{}", ya1);
-
-        JsonObject jo2 = JsonObject.fromYaml(ya1);
-        log.info("jo1={}", jo1.inspect());
-        log.info("jo2={}", jo2.inspect());
-        assertEquals(jo1, jo2);
+        BindingException error = assertThrows(BindingException.class, jo1::toYaml);
+        assertTrue(error.getMessage().contains("YAML writing is unavailable"));
     }
 
     public static class Address {
@@ -611,12 +604,12 @@ class JsonObjectTest {
                 "address", JsonObject.of(
                         "city", "New York",
                         "street", "5th Ave"));
-        Person p1 = jo.bindNode(Person.class);
+        Person p1 = jo.convertTo(Person.class, false);
         assertEquals("Bob", p1.name);
         assertEquals("New York", p1.address.city);
         assertEquals("5th Ave", p1.address.street);
 
-        JsonObject back = JsonObject.fromNode(p1);
+        JsonObject back = JsonObject.convertFrom(p1);
         assertEquals("Bob", back.getString("name"));
     }
 

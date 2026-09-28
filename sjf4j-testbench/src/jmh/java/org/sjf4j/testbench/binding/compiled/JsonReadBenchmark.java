@@ -26,9 +26,13 @@ import org.sjf4j.annotation.binding.BindingBackend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Reader;
 import org.sjf4j.backend.gson.binding.GsonBinder;
+import org.sjf4j.backend.gson.binding.GsonReader;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
+import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
@@ -38,15 +42,16 @@ import org.sjf4j.testbench.model.User;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 1)
+@Warmup(iterations = 20, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(value = 3)
 @Threads(1)
 @State(Scope.Thread)
 public class JsonReadBenchmark {
@@ -160,6 +165,21 @@ public class JsonReadBenchmark {
         return JACKSON2_COMPILED.readMap(JSON_DATA2);
     }
 
+    @Benchmark
+    public Object json_jackson2_map_compiled_generic() throws IOException {
+        return JACKSON2_COMPILED.readMapGeneric(JSON_DATA2);
+    }
+
+    @Benchmark
+    public Object json_jackson2_map_raw_node() throws IOException {
+        try (Jackson2Reader reader = JACKSON2_BINDER.createReader(JSON_DATA2)) {
+            reader.startDocument();
+            Object value = reader.readRawNode();
+            reader.endDocument();
+            return value;
+        }
+    }
+
     @CompiledBinder(backend = BindingBackend.JACKSON2)
     public static interface Jackson2CompiledBinder {
 
@@ -171,6 +191,9 @@ public class JsonReadBenchmark {
 
         @ReadFrom
         Map<String, Object> readMap(String json) throws IOException;
+
+        @ReadFrom
+        LinkedHashMap<String, Object> readMapGeneric(String json) throws IOException;
     }
 
 
@@ -210,6 +233,16 @@ public class JsonReadBenchmark {
     @Benchmark
     public Object json_gson_map_compiled() throws IOException {
         return GSON_COMPILED.readMap(JSON_DATA2);
+    }
+
+    @Benchmark
+    public Object json_gson_map_raw_node() throws IOException {
+        try (GsonReader reader = GSON_BINDER.createReader(JSON_DATA2)) {
+            reader.startDocument();
+            Object value = reader.readRawNode();
+            reader.endDocument();
+            return value;
+        }
     }
 
     @CompiledBinder(backend = BindingBackend.GSON)
@@ -264,6 +297,16 @@ public class JsonReadBenchmark {
     @Benchmark
     public Object json_fastjson2_map_compiled() throws IOException {
         return FASTJSON2_COMPILED.readMap(JSON_DATA2);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_map_raw_node() throws IOException {
+        try (Fastjson2Reader reader = FASTJSON2_BINDER.createReader(JSON_DATA2)) {
+            reader.startDocument();
+            Object value = reader.readRawNode();
+            reader.endDocument();
+            return value;
+        }
     }
 
 
@@ -351,6 +394,16 @@ public class JsonReadBenchmark {
     @Benchmark
     public Object json_simple_map_compiled() throws IOException {
         return SIMPLE_COMPILED.readMap(JSON_DATA2);
+    }
+
+    @Benchmark
+    public Object json_simple_map_raw_node() throws IOException {
+        try (SimpleJsonReader reader = SIMPLE_BINDER.createReader(JSON_DATA2)) {
+            reader.startDocument();
+            Object value = reader.readRawNode();
+            reader.endDocument();
+            return value;
+        }
     }
 
 

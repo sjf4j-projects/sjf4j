@@ -10,7 +10,6 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -52,11 +51,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Execution(ExecutionMode.SAME_THREAD)
 public class StreamingIOTest {
 
-    private static final Sjf4j ASSERT_SJF4J = Sjf4j.builder()
-            .jsonFacadeProvider(SimpleJsonFacade.provider())
-            .build();
+    private static final FacadeRuntime ASSERT_RUNTIME =
+            new FacadeRuntime(new SimpleJsonFacade(new StreamingContext(StreamingContext.StreamingMode.SHARED_IO)));
 
-    private Sjf4j sjf4j = Sjf4j.global();
+    private FacadeRuntime sjf4j = ASSERT_RUNTIME;
+
+    private static final class FacadeRuntime {
+        private final JsonFacade<?, ?> facade;
+
+        private FacadeRuntime(JsonFacade<?, ?> facade) {
+            this.facade = facade;
+        }
+
+        private <T> T fromJson(String json, Class<T> type) {
+            return type.cast(facade.readNode(json, type));
+        }
+
+        @SuppressWarnings("unchecked")
+        private <T> T fromJson(String json, TypeReference<T> type) {
+            return (T) facade.readNode(json, type.getType());
+        }
+
+        private String toJsonString(Object node) {
+            return facade.writeNodeAsString(node);
+        }
+    }
 
     @FunctionalInterface
     private interface BackendCase {
@@ -79,18 +98,12 @@ public class StreamingIOTest {
     }
 
     private void useSimple(StreamingContext.StreamingMode mode) {
-        sjf4j = Sjf4j.builder(Sjf4j.global())
-                .streamingMode(mode)
-                .jsonFacadeProvider(SimpleJsonFacade.provider())
-                .build();
+        sjf4j = new FacadeRuntime(new SimpleJsonFacade(new StreamingContext(mode)));
     }
 
     private void useJackson2(StreamingContext.StreamingMode mode, boolean includeNulls) {
-        sjf4j = Sjf4j.builder(Sjf4j.global())
-                .streamingMode(mode)
-                .includeNulls(includeNulls)
-                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
-                .build();
+        sjf4j = new FacadeRuntime(new Jackson2JsonFacade(new ObjectMapper(),
+                new StreamingContext(mode, includeNulls)));
     }
 
     private void useGson(StreamingContext.StreamingMode mode) {
@@ -98,11 +111,8 @@ public class StreamingIOTest {
     }
 
     private void useGson(StreamingContext.StreamingMode mode, boolean includeNulls) {
-        sjf4j = Sjf4j.builder(Sjf4j.global())
-                .streamingMode(mode)
-                .includeNulls(includeNulls)
-                .jsonFacadeProvider(GsonJsonFacade.provider(new GsonBuilder()))
-                .build();
+        sjf4j = new FacadeRuntime(new GsonJsonFacade(new GsonBuilder(),
+                new StreamingContext(mode, includeNulls)));
     }
 
     private void useFastjson2(StreamingContext.StreamingMode mode) {
@@ -110,11 +120,8 @@ public class StreamingIOTest {
     }
 
     private void useFastjson2(StreamingContext.StreamingMode mode, boolean includeNulls) {
-        sjf4j = Sjf4j.builder(Sjf4j.global())
-                .streamingMode(mode)
-                .includeNulls(includeNulls)
-                .jsonFacadeProvider(Fastjson2JsonFacade.provider())
-                .build();
+        sjf4j = new FacadeRuntime(new Fastjson2JsonFacade(null, null,
+                new StreamingContext(mode, includeNulls)));
     }
 
     private void use(Backend backend, StreamingContext.StreamingMode mode) {
@@ -353,17 +360,17 @@ public class StreamingIOTest {
 
     private void assertIncludeNullsBehavior(boolean includeNulls) {
         if (includeNulls) {
-            assertNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelObject()), JsonObject.class));
-            assertNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelMap()), JsonObject.class));
-            assertPojoNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullablePojo()), JsonObject.class));
-            assertJojoNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableJojo()), JsonObject.class));
+            assertNullsIncluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullableTopLevelObject()), JsonObject.class));
+            assertNullsIncluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullableTopLevelMap()), JsonObject.class));
+            assertPojoNullsIncluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullablePojo()), JsonObject.class));
+            assertJojoNullsIncluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullableJojo()), JsonObject.class));
             return;
         }
 
-        assertNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelObject()), JsonObject.class));
-        assertNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelMap()), JsonObject.class));
-        assertPojoNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullablePojo()), JsonObject.class));
-        assertJojoNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableJojo()), JsonObject.class));
+        assertNullsExcluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullableTopLevelObject()), JsonObject.class));
+        assertNullsExcluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullableTopLevelMap()), JsonObject.class));
+        assertPojoNullsExcluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullablePojo()), JsonObject.class));
+        assertJojoNullsExcluded(ASSERT_RUNTIME.fromJson(sjf4j.toJsonString(nullableJojo()), JsonObject.class));
     }
 
     static class NullablePojo {
@@ -743,7 +750,12 @@ public class StreamingIOTest {
     }
 
     @Test
-    public void assertOneOfByCurrentPath() {
+    void testOneOfByCurrentPath() {
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
+        assertOneOfByCurrentPath();
+    }
+
+    private void assertOneOfByCurrentPath() {
         String json = "{\"meta\":{\"kind\":\"cat\"},\"name\":\"Mimi\",\"lives\":9}";
         PathAnimal animal = sjf4j.fromJson(json, PathAnimal.class);
         assertNotNull(animal);

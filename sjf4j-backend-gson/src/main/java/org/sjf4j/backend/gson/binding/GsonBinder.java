@@ -3,7 +3,7 @@ package org.sjf4j.backend.gson.binding;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -11,7 +11,7 @@ import java.io.Reader;
 import java.io.Writer;
 
 
-public final class GsonBinder extends JsonBinder<GsonReader, GsonWriter> {
+public final class GsonBinder extends StreamingBinder<GsonReader, GsonWriter> {
 
     private final Gson gson;
 

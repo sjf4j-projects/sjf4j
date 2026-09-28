@@ -44,14 +44,14 @@ public class JsonObjectPojoTest {
         String json1 = p1.toJson();
         log.info("json1={}", json1);
 
-        Person p2 = JsonObject.fromJson(json1).bindNode(Person.class);
+        Person p2 = JsonObject.fromJson(json1).convertTo(Person.class, false);
         log.info("p1={}", p1.inspect());
         log.info("p2={}", p2.inspect());
         // Shallow binding still honors declared generic fields such as List<Baby>;
         // only untyped branches may keep source aliases.
         assertEquals(p1, p2);
 
-        Person p3 = Sjf4j.global().fromNode(JsonObject.fromJson(json1), Person.class);
+        Person p3 = Sjf4j.global().convert(JsonObject.fromJson(json1), Person.class, true);
         log.info("p3={}", p3.inspect());
         assertEquals(p1, p3);
     }
@@ -66,7 +66,7 @@ public class JsonObjectPojoTest {
         p1.setBabies(babies);
         p1.put("ex", "wang");
 
-        JsonObject jo1 = JsonObject.fromNode(p1);
+        JsonObject jo1 = JsonObject.convertFrom(p1);
         assertEquals(p1, jo1);
         assertTrue(p1.nodeEquals(jo1));
 
@@ -92,7 +92,7 @@ public class JsonObjectPojoTest {
         Person person = new Person();
         person.setName("haha");
         wrapper.setValue(person);
-        JsonObject jo = JsonObject.fromNode(wrapper);
+        JsonObject jo = JsonObject.convertFrom(wrapper);
         log.info("jo={}", jo);
     }
 
@@ -264,7 +264,7 @@ public class JsonObjectPojoTest {
         parent.setBabies(Collections.singletonList(baby));
 
         log.info("parent={}", Nodes.inspect(parent));
-        JsonObject jo2 = JsonObject.fromNode(parent);
+        JsonObject jo2 = JsonObject.convertFrom(parent);
         log.info("jo2={}", jo2);
 
         Baby baby2 = jo2.getAsByPath("/babies/0", Baby.class);

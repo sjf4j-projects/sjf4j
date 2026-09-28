@@ -208,7 +208,7 @@ public class NodesTest {
     }
 
     @Test
-    public void testNonGenericTypeReferenceMatchesClassConversion() {
+    public void testTypeReferenceUsesStructuralConversion() {
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
         JsonObject byClass = Nodes.to(map, JsonObject.class);
@@ -218,7 +218,7 @@ public class NodesTest {
         assertEquals("value", byClass.getString("key"));
         assertEquals("value", byTypeReference.getString("key"));
         assertEquals(2, byClass.getInt("later"));
-        assertEquals(2, byTypeReference.getInt("later"));
+        assertNull(byTypeReference.getNode("later"));
 
         List<Object> list = new ArrayList<>();
         list.add(1);
@@ -227,9 +227,9 @@ public class NodesTest {
         list.add(2);
 
         assertEquals(2, arrayByClass.size());
-        assertEquals(2, arrayByTypeReference.size());
+        assertEquals(1, arrayByTypeReference.size());
         assertEquals(2, arrayByClass.getInt(1));
-        assertEquals(2, arrayByTypeReference.getInt(1));
+        assertEquals(1, arrayByTypeReference.getInt(0));
     }
 
     @Test
@@ -246,23 +246,27 @@ public class NodesTest {
     }
 
     @Test
-    public void testBindNodeWrapsJsonContainersButFromNodeDetaches() {
+    public void testConvertDeepCopyControlsNestedContainerIdentity() {
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
-        JsonObject shallowObject = Sjf4j.global().bindNode(map, JsonObject.class);
-        JsonObject deepObject = Sjf4j.global().fromNode(map, JsonObject.class);
+        JsonObject nested = JsonObject.of("value", 1);
+        map.put("nested", nested);
+        JsonObject shallowObject = Sjf4j.global().convert(map, JsonObject.class, false);
+        JsonObject deepObject = Sjf4j.global().convert(map, JsonObject.class, true);
         map.put("later", 2);
 
-        assertEquals(2, shallowObject.getInt("later"));
+        assertFalse(shallowObject.containsKey("later"));
         assertFalse(deepObject.containsKey("later"));
+        assertSame(nested, shallowObject.getJsonObject("nested"));
+        assertNotSame(nested, deepObject.getJsonObject("nested"));
 
         List<Object> list = new ArrayList<>();
         list.add(1);
-        JsonArray shallowArray = Sjf4j.global().bindNode(list, JsonArray.class);
-        JsonArray deepArray = Sjf4j.global().fromNode(list, JsonArray.class);
+        JsonArray shallowArray = Sjf4j.global().convert(list, JsonArray.class, false);
+        JsonArray deepArray = Sjf4j.global().convert(list, JsonArray.class, true);
         list.add(2);
 
-        assertEquals(2, shallowArray.size());
+        assertEquals(1, shallowArray.size());
         assertEquals(1, deepArray.size());
     }
 
@@ -552,7 +556,8 @@ public class NodesTest {
         Box<Map<String, Object>> source = new Box<>();
         source.value = rawUser;
 
-        Box<GenericUser> bound = Sjf4j.global().fromNode(source, new TypeReference<Box<GenericUser>>() {});
+        Box<GenericUser> bound = Sjf4j.global().convert(
+                source, new TypeReference<Box<GenericUser>>() {}, true);
 
         assertNotSame(source, bound);
         assertInstanceOf(GenericUser.class, bound.value);
@@ -589,7 +594,8 @@ public class NodesTest {
         List<Map<String, Object>> source = new ArrayList<>();
         source.add(rawUser);
 
-        List<GenericUser> deepCopied = Sjf4j.global().fromNode(source, new TypeReference<List<GenericUser>>() {});
+        List<GenericUser> deepCopied = Sjf4j.global().convert(
+                source, new TypeReference<List<GenericUser>>() {}, true);
         List<GenericUser> shallowBound = Nodes.to(source, new TypeReference<List<GenericUser>>() {});
 
         assertNotSame(source, deepCopied);
@@ -605,7 +611,7 @@ public class NodesTest {
                 "address", JsonObject.of(
                         "city", "New York",
                         "street", "5th Ave"));
-        Person p1 = jo.bindNode(Person.class);
+        Person p1 = jo.convertTo(Person.class, false);
         JsonObject jo1 = new JsonObject();
         jo1.putAll(p1);
         assertTrue(Nodes.equals(p1,jo1));
@@ -647,7 +653,7 @@ public class NodesTest {
     public void testCopy1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}");
         JsonObject jo2 = Nodes.copy(jo1);
-        JsonObject jo3 = Sjf4j.global().deepNode(jo1);
+        JsonObject jo3 = Sjf4j.global().deepcopy(jo1);
         assertEquals(jo1, jo2);
         assertEquals(jo1, jo3);
 
@@ -663,9 +669,9 @@ public class NodesTest {
                 "address", JsonObject.of(
                 "city", "New York",
                 "street", "5th Ave"));
-        Person p1 = jo.bindNode(Person.class);
+        Person p1 = jo.convertTo(Person.class, false);
         Person p2 = Nodes.copy(p1);
-        Person p3 = Sjf4j.global().deepNode(p1);
+        Person p3 = Sjf4j.global().deepcopy(p1);
         assertEquals(p1, p2);
         assertEquals(p1, p3);
 
@@ -682,9 +688,9 @@ public class NodesTest {
         JsonObject jo = JsonObject.of(
                 "name", "Bob",
                 "friends", new String[]{"Tom", "Jay"});
-        Baby b1 = jo.bindNode(Baby.class);
+        Baby b1 = jo.convertTo(Baby.class, false);
         Baby b2 = Nodes.copy(b1);
-        Baby b3 = Sjf4j.global().deepNode(b1);
+        Baby b3 = Sjf4j.global().deepcopy(b1);
         log.info("b1={}, b3={}", b1, b3);
         log.info("b2={}, b3={}", b2, b3);
         assertEquals(b1, b2);
@@ -823,7 +829,7 @@ public class NodesTest {
     @Test
     public void testInspect2() {
         LocalDate date1 = LocalDate.now();
-        LocalDate date2 = Sjf4j.global().fromNode(date1.toString(), LocalDate.class);
+        LocalDate date2 = Sjf4j.global().convert(date1.toString(), LocalDate.class, true);
         log.info("date2={}", date2);
         assertEquals(date1, date2);
 

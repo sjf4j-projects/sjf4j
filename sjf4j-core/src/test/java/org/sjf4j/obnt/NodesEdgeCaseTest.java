@@ -655,10 +655,10 @@ class NodesEdgeCaseTest {
     public void setConvertsToNodeAndRawArray() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
-        Object node = Sjf4j.global().deepNode(set);
+        Object node = Sjf4j.global().deepcopy(set);
         assertInstanceOf(Set.class, node);
         assertEquals("[\"a\"]", Sjf4j.global().toJsonString(node));
-        Object node2 = Sjf4j.global().toRaw(set);
+        Object node2 = Sjf4j.global().convertToRaw(set);
         assertInstanceOf(List.class, node2);
     }
 }

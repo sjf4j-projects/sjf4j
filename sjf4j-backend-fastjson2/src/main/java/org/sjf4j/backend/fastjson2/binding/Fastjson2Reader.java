@@ -48,9 +48,8 @@ public final class Fastjson2Reader implements StreamingReader {
      * {@link ArrayList}.</p>
      */
     public Object readRawNode() throws IOException {
-        peeked = null;
         try {
-            return readRawNode(reader);
+            return _readRawNode();
         } finally {
             peeked = null;
         }
@@ -60,7 +59,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public Token peekToken() {
         if (peeked == null) {
             peeked = reader.isEnd() ? Token.EOF
-                    : token(reader.current());
+                    : _token(reader.current());
         }
         return peeked;
     }
@@ -76,7 +75,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public void startObject() {
         peeked = null;
         if (!reader.nextIfObjectStart()) {
-            throw expected("START_OBJECT");
+            throw _expected("START_OBJECT");
         }
     }
 
@@ -84,7 +83,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public void endObject() {
         peeked = null;
         if (!reader.nextIfObjectEnd()) {
-            throw expected("END_OBJECT");
+            throw _expected("END_OBJECT");
         }
     }
 
@@ -92,7 +91,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public void startArray() {
         peeked = null;
         if (!reader.nextIfArrayStart()) {
-            throw expected("START_ARRAY");
+            throw _expected("START_ARRAY");
         }
     }
 
@@ -100,7 +99,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public void endArray() {
         peeked = null;
         if (!reader.nextIfArrayEnd()) {
-            throw expected("END_ARRAY");
+            throw _expected("END_ARRAY");
         }
     }
 
@@ -254,13 +253,13 @@ public final class Fastjson2Reader implements StreamingReader {
         reader.close();
     }
 
-    private Object readRawNode(JSONReader reader) throws IOException {
+    private Object _readRawNode() throws IOException {
         char current = reader.current();
         switch (current) {
             case '{':
-                return readRawObject(reader);
+                return _readRawObject();
             case '[':
-                return readRawArray(reader);
+                return _readRawArray();
             case '"':
                 return reader.readString();
             case 't':
@@ -273,36 +272,36 @@ public final class Fastjson2Reader implements StreamingReader {
                 if (current == '-' || current >= '0' && current <= '9') {
                     return reader.readNumber();
                 }
-                Token token = reader.isEnd() ? Token.EOF : token(current);
+                Token token = reader.isEnd() ? Token.EOF : _token(current);
                 throw new BindingException("unexpected token '" + token + "'");
         }
     }
 
-    private Map<String, Object> readRawObject(JSONReader reader) throws IOException {
+    private Map<String, Object> _readRawObject() throws IOException {
         if (!reader.nextIfObjectStart()) {
             throw new BindingException("expected token '{', but was " + reader.current());
         }
 
         Map<String, Object> value = new LinkedHashMap<>();
         while (!reader.nextIfObjectEnd()) {
-            value.put(reader.readFieldName(), readRawNode(reader));
+            value.put(reader.readFieldName(), _readRawNode());
         }
         return value;
     }
 
-    private List<Object> readRawArray(JSONReader reader) throws IOException {
+    private List<Object> _readRawArray() throws IOException {
         if (!reader.nextIfArrayStart()) {
             throw new BindingException("expected token '[', but was " + reader.current());
         }
 
         List<Object> value = new ArrayList<>();
         while (!reader.nextIfArrayEnd()) {
-            value.add(readRawNode(reader));
+            value.add(_readRawNode());
         }
         return value;
     }
 
-    private static Token token(char ch) {
+    private static Token _token(char ch) {
         switch (ch) {
             case '{':
                 return Token.START_OBJECT;
@@ -336,7 +335,7 @@ public final class Fastjson2Reader implements StreamingReader {
         }
     }
 
-    private BindingException expected(String token) {
+    private BindingException _expected(String token) {
         return new BindingException("expected token '" + token + "', but got " + reader.current());
     }
 }

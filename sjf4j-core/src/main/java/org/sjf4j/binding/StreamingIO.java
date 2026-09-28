@@ -477,7 +477,7 @@ public final class StreamingIO {
             Class<?> targetClazz = oneOfInfo.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
             Object value;
             if (targetClazz != null) {
-                value = NodeMapper.convert(deferredParentOneOfRaw, targetClazz, context);
+                value = NodeMapper.convert(deferredParentOneOfRaw, targetClazz, false, context);
             } else if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                 value = null;
             } else {

@@ -20,8 +20,6 @@ import java.util.Objects;
 public final class Jackson2Reader implements StreamingReader {
 
     private final JsonParser parser;
-    private JsonToken token;
-    private boolean initialized;
 
     private static final ClassValue<NameMatcher> NAME_MATCHERS =
             new ClassValue<NameMatcher>() {
@@ -42,57 +40,56 @@ public final class Jackson2Reader implements StreamingReader {
         this.parser = Objects.requireNonNull(parser, "parser");
     }
 
-    /**
-     * Reads the next value as the raw SJF4J object graph.
-     *
-     * <p>Objects are represented by {@link LinkedHashMap} and arrays by
-     * {@link ArrayList}.</p>
-    */
-    public Object readRawNode() throws IOException {
-        return readRawNodeValue();
+    @Override
+    public Token peekToken() throws IOException {
+        return _token(currentToken());
     }
 
     @Override
-    public Token peekToken() throws IOException {
-        if (!initialized) {
-            initialized = true;
-            token = parser.currentToken();
-            if (token == null) {
-                token = parser.nextToken();
-            }
-        }
-        return token(token);
+    public void startDocument() throws IOException {
+        currentToken();
     }
 
     @Override
     public void startObject() throws IOException {
-        require(JsonToken.START_OBJECT);
-        advance();
+        JsonToken current = currentToken();
+        if (current != JsonToken.START_OBJECT) {
+            throw _expected(JsonToken.START_OBJECT.name(), current);
+        }
+        parser.nextToken();
     }
 
     @Override
     public void endObject() throws IOException {
-        require(JsonToken.END_OBJECT);
-        advance();
+        JsonToken current = currentToken();
+        if (current != JsonToken.END_OBJECT) {
+            throw _expected(JsonToken.END_OBJECT.name(), current);
+        }
+        parser.nextToken();
     }
 
     @Override
     public void startArray() throws IOException {
-        require(JsonToken.START_ARRAY);
-        advance();
+        JsonToken current = currentToken();
+        if (current != JsonToken.START_ARRAY) {
+            throw _expected(JsonToken.START_ARRAY.name(), current);
+        }
+        parser.nextToken();
     }
 
     @Override
     public void endArray() throws IOException {
-        require(JsonToken.END_ARRAY);
-        advance();
+        JsonToken current = currentToken();
+        if (current != JsonToken.END_ARRAY) {
+            throw _expected(JsonToken.END_ARRAY.name(), current);
+        }
+        parser.nextToken();
     }
 
     @Override
     public String nextName() throws IOException {
-        require(JsonToken.FIELD_NAME);
         String name = parser.currentName();
-        advance();
+        parser.nextToken();
         return name;
     }
 
@@ -108,7 +105,10 @@ public final class Jackson2Reader implements StreamingReader {
 
     @Override
     public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
-        require(JsonToken.FIELD_NAME);
+        JsonToken current = currentToken();
+        if (current != JsonToken.FIELD_NAME) {
+            throw _expected(JsonToken.FIELD_NAME.name(), current);
+        }
 
         String name = parser.currentName();
         int index;
@@ -126,153 +126,135 @@ public final class Jackson2Reader implements StreamingReader {
             index = matcher.match(name);
         }
 
-        advance();
+        parser.nextToken();
         return index;
     }
 
     @Override
     public String nextString() throws IOException {
-        require(JsonToken.VALUE_STRING);
         String value = parser.getText();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public Number nextNumber() throws IOException {
-        requireNumber();
         Number value = parser.getNumberValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public long nextLongValue() throws IOException {
-        requireInteger();
         long value = parser.getLongValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public int nextIntValue() throws IOException {
-        requireInteger();
         int value = parser.getIntValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public short nextShortValue() throws IOException {
-        requireInteger();
         short value = parser.getShortValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public byte nextByteValue() throws IOException {
-        requireInteger();
         byte value = parser.getByteValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public double nextDoubleValue() throws IOException {
-        requireNumber();
         double value = parser.getDoubleValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public float nextFloatValue() throws IOException {
-        requireNumber();
         float value = parser.getFloatValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public boolean nextBooleanValue() throws IOException {
-        ensureToken();
-        if (token != JsonToken.VALUE_TRUE && token != JsonToken.VALUE_FALSE) {
-            throw expected("boolean");
-        }
         boolean value = parser.getBooleanValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public char nextCharValue() throws IOException {
-        requireString();
         String value = parser.getText();
         if (value.isEmpty()) {
             throw new BindException("cannot read empty string as char");
         }
-        advance();
+        parser.nextToken();
         return value.charAt(0);
     }
 
     @Override
     public BigInteger nextBigInteger() throws IOException {
-        requireInteger();
         BigInteger value = parser.getBigIntegerValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public BigDecimal nextBigDecimal() throws IOException {
-        requireNumber();
         BigDecimal value = parser.getDecimalValue();
-        advance();
+        parser.nextToken();
         return value;
     }
 
     @Override
     public void nextNull() throws IOException {
-        require(JsonToken.VALUE_NULL);
-        advance();
+        parser.nextToken();
     }
 
     @Override
     public boolean nextIfNull() throws IOException {
-        ensureToken();
-        if (token != JsonToken.VALUE_NULL) return false;
-        advance();
+        if (currentToken() != JsonToken.VALUE_NULL) return false;
+        parser.nextToken();
         return true;
     }
 
     @Override
     public boolean nextIfObjectEnd() throws IOException {
-        ensureToken();
-        if (token != JsonToken.END_OBJECT) return false;
-        advance();
+        if (currentToken() != JsonToken.END_OBJECT) return false;
+        parser.nextToken();
         return true;
     }
 
     @Override
     public boolean nextIfArrayEnd() throws IOException {
-        ensureToken();
-        if (token != JsonToken.END_ARRAY) return false;
-        advance();
+        if (currentToken() != JsonToken.END_ARRAY) return false;
+        parser.nextToken();
         return true;
     }
 
     @Override
     public void skipNext() throws IOException {
-        ensureToken();
-        if (token != JsonToken.START_OBJECT && token != JsonToken.START_ARRAY &&
-                token != JsonToken.VALUE_STRING && !isNumber() &&
-                token != JsonToken.VALUE_TRUE && token != JsonToken.VALUE_FALSE &&
-                token != JsonToken.VALUE_NULL) {
-            throw expected("value");
+        JsonToken current = currentToken();
+        if (current != JsonToken.START_OBJECT && current != JsonToken.START_ARRAY &&
+                current != JsonToken.VALUE_STRING &&
+                current != JsonToken.VALUE_NUMBER_INT && current != JsonToken.VALUE_NUMBER_FLOAT &&
+                current != JsonToken.VALUE_TRUE && current != JsonToken.VALUE_FALSE &&
+                current != JsonToken.VALUE_NULL) {
+            throw _expected("value", current);
         }
         parser.skipChildren();
-        advance();
+        parser.nextToken();
     }
 
     @Override
@@ -280,111 +262,73 @@ public final class Jackson2Reader implements StreamingReader {
         parser.close();
     }
 
-    private Object readRawNodeValue() throws IOException {
-        ensureToken();
-        if (token == null) {
-            throw new BindingException("unexpected token '" + token(token) + "'");
+
+    /**
+     * Reads the next value as the raw SJF4J object graph.
+     *
+     * <p>Objects are represented by {@link LinkedHashMap} and arrays by
+     * {@link ArrayList}.</p>
+     */
+    @Override
+    public Object readRawNode() throws IOException {
+        Object value = _readRawNode();
+        parser.nextToken();
+        return value;
+    }
+
+    private Object _readRawNode() throws IOException {
+        JsonToken current = currentToken();
+        if (current == null) {
+            throw new BindingException("unexpected token '" + _token(null) + "'");
         }
-        switch (token) {
+        switch (current) {
             case START_OBJECT:
-                return readRawObject();
+                return _readRawObject();
             case START_ARRAY:
-                return readRawArray();
-            case VALUE_STRING: {
-                String value = parser.getText();
-                advance();
-                return value;
-            }
+                return _readRawArray();
+            case VALUE_STRING:
+                return parser.getText();
             case VALUE_NUMBER_INT:
-            case VALUE_NUMBER_FLOAT: {
-                Number value = parser.getNumberValue();
-                advance();
-                return value;
-            }
+            case VALUE_NUMBER_FLOAT:
+                return parser.getNumberValue();
             case VALUE_TRUE:
-            case VALUE_FALSE: {
-                boolean value = parser.getBooleanValue();
-                advance();
-                return value;
-            }
+            case VALUE_FALSE:
+                return parser.getBooleanValue();
             case VALUE_NULL:
-                advance();
                 return null;
             default:
-                throw new BindingException("unexpected token '" + token(token) + "'");
+                throw new BindingException("unexpected token '" + _token(current) + "'");
         }
     }
 
-    private Map<String, Object> readRawObject() throws IOException {
+    private Map<String, Object> _readRawObject() throws IOException {
         Map<String, Object> value = new LinkedHashMap<>();
-        advance();
-        while (token != JsonToken.END_OBJECT) {
-            String name = parser.currentName();
-            advance();
-            value.put(name, readRawNodeValue());
+        String name;
+        while ((name = parser.nextFieldName()) != null) {
+            parser.nextToken();
+            value.put(name, _readRawNode());
         }
-        advance();
         return value;
     }
 
-    private List<Object> readRawArray() throws IOException {
+    private List<Object> _readRawArray() throws IOException {
         List<Object> value = new ArrayList<>();
-        advance();
-        while (token != JsonToken.END_ARRAY) {
-            value.add(readRawNodeValue());
+        while (parser.nextToken() != JsonToken.END_ARRAY) {
+            value.add(_readRawNode());
         }
-        advance();
         return value;
     }
 
-    private void require(JsonToken expected) throws IOException {
-        ensureToken();
-        if (token != expected) {
-            throw expected(expected.name());
-        }
+    private JsonToken currentToken() throws IOException {
+        JsonToken current = parser.currentToken();
+        return current == null ? parser.nextToken() : current;
     }
 
-    private void requireString() throws IOException {
-        ensureToken();
-        if (token != JsonToken.VALUE_STRING) {
-            throw expected("string");
-        }
+    private IOException _expected(String expected, JsonToken actual) {
+        return new IOException("Expected " + expected + ", but was " + actual);
     }
 
-    private void requireNumber() throws IOException {
-        ensureToken();
-        if (!isNumber()) {
-            throw expected("number");
-        }
-    }
-
-    private void requireInteger() throws IOException {
-        ensureToken();
-        if (token != JsonToken.VALUE_NUMBER_INT) {
-            throw expected("integer number");
-        }
-    }
-
-    private boolean isNumber() {
-        return token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT;
-    }
-
-    private IOException expected(String expected) {
-        return new IOException("Expected " + expected + ", but was " + token);
-    }
-
-    private void advance() throws IOException {
-        initialized = true;
-        token = parser.nextToken();
-    }
-
-    private void ensureToken() throws IOException {
-        if (!initialized) {
-            peekToken();
-        }
-    }
-
-    private static Token token(JsonToken token) {
+    private static Token _token(JsonToken token) {
         if (token == null) {
             return Token.EOF;
         }

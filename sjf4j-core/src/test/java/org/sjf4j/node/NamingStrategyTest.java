@@ -8,7 +8,6 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.path.JsonPath;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 @Execution(ExecutionMode.SAME_THREAD)
 class NamingStrategyTest {
 
-    private final Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
+    private final Sjf4j sjf4j = Sjf4j.builder().build();
 
     @NodeObject(naming = NamingStrategy.SNAKE_CASE)
     static class SnakeUser extends JsonObject {

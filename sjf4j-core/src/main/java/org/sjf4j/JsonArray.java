@@ -2,6 +2,7 @@ package org.sjf4j;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -275,17 +276,15 @@ public class JsonArray extends JsonContainer {
 
     /*
      * --------------------------------------------------------------
-     * Node Facade
+     * Structural Conversion
      * --------------------------------------------------------------
      */
 
     /**
-     * Converts an OBNT value to a JsonArray through {@link Sjf4j#fromNode(Object, Class)}.
-     * The configured node facade defines conversion and copy boundaries; returned
-     * values may retain references.
+     * Structurally converts a value to a JsonArray.
      */
     public static JsonArray fromNode(Object node) {
-        return Sjf4j.global().fromNode(node, JsonArray.class);
+        return NodeMapper.convert(node, JsonArray.class, false);
     }
 
 
@@ -976,11 +975,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Creates a deep copy of this JsonArray.
      * <p>
-     * Delegates to {@link Sjf4j#deepNode(Object)}; array elements are traversed
-     * according to the configured node facade.
+     * Delegates to {@link Sjf4j#deepcopy(Object)} and {@link NodeMapper}; array
+     * elements are copied structurally. Unsupported values, including backend-native
+     * or external nodes, may be retained by reference.
      */
     public JsonArray deepCopy() {
-        return Sjf4j.global().deepNode(this);
+        return Sjf4j.global().deepcopy(this);
     }
 
 }

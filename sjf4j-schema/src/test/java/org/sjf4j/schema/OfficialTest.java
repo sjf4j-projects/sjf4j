@@ -128,7 +128,7 @@ public final class OfficialTest {
 
             for (int i = 0; i < cases.size(); i++) {
                 JsonObject caseObj = cases.getJsonObject(i);
-                JsonSchema schema = JsonSchema.fromNode(caseObj.getNode("schema"));
+                JsonSchema schema = JsonSchema.convertFrom(caseObj.getNode("schema"));
                 groupDesc = caseObj.getString("description", "no group desc");
                 if (groupFilter != null && !groupFilter.isEmpty() && !groupDesc.contains(groupFilter))
                     continue;

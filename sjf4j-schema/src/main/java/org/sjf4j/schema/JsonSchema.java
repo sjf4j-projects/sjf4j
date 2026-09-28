@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.mapping.NodeMapper;
 
 
 /**
@@ -65,8 +66,8 @@ public interface JsonSchema {
      * <p>
      * The returned value is not compiled yet.
      */
-    static JsonSchema fromNode(Object node) {
-        return Sjf4j.global().fromNode(node, JsonSchema.class);
+    static JsonSchema convertFrom(Object node) {
+        return NodeMapper.convert(node, JsonSchema.class, false);
     }
 
 }

@@ -12,6 +12,7 @@ public final class Format {
 
     public static final Format JSON = new Format("json");
     public static final Format YAML = new Format("yaml");
+    public static final Format PROPERTIES = new Format("properties");
 
     private final String id;
 

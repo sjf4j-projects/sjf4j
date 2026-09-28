@@ -6,7 +6,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.Patches;
 
@@ -30,7 +29,7 @@ class JsonContainerPathApiSurfaceTest {
 
     @BeforeEach
     void setUp() {
-        sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
+        sjf4j = Sjf4j.builder().build();
     }
 
     @Test

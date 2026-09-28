@@ -359,7 +359,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testCreatorPojo() {
-        Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(JsonpJsonFacade.provider()).build();
+        Sjf4j sjf4j = Sjf4j.builder().build();
         String json = "{\"name\":\"Alice\",\"age\":18}";
         CreatorPojo pojo = sjf4j.fromJson(json, CreatorPojo.class);
         assertEquals("Alice", pojo.getName());

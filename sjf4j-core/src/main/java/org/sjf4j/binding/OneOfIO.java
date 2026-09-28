@@ -85,7 +85,7 @@ public final class OneOfIO {
             if (oneOfInfo.fallbackNull) return null;
             throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
         }
-        return NodeMapper.convert(rawMap, targetClazz, context);
+        return NodeMapper.convert(rawMap, targetClazz, false, context);
     }
 
 
@@ -240,7 +240,7 @@ public final class OneOfIO {
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, ci.argTypes[argIdx]);
-            Object value = NodeMapper.convert(rawValue, argType, context);
+            Object value = NodeMapper.convert(rawValue, argType, false, context);
             state.acceptCtorArg(argIdx, value);
             return;
         }
@@ -248,7 +248,7 @@ public final class OneOfIO {
         FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
         if (fi != null) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
-            Object value = NodeMapper.convert(rawValue, argType, context);
+            Object value = NodeMapper.convert(rawValue, argType, false, context);
             if (state.isCreated()) {
                 fi.invokeSetter(state.pojo(), value);
             } else {

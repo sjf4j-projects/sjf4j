@@ -1,6 +1,5 @@
 package org.sjf4j;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -8,9 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.binding.BinderProvider;
+import org.sjf4j.binding.Format;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,15 +29,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Slf4j
 public class Sjf4jTest {
 
+    private static final BinderProvider SIMPLE_JSON =
+            BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new);
 
     @Test
-    void testExplicitJsonFacadeStillUsesSharedNodeFacade() {
-        Sjf4j first = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
+    void testExplicitJsonBinderCreatesIsolatedRuntime() {
+        Sjf4j first = Sjf4j.builder().jsonBinderProvider(SIMPLE_JSON).build();
         Sjf4j second = Sjf4j.builder().build();
 
-        // The runtime now owns an isolated node facade per configuration context.
-        assertNotSame(first.nodeFacade(), second.nodeFacade());
-        assertNotSame(first.nodeFacade(), Sjf4j.global().nodeFacade());
+        assertNotSame(first.jsonBinder(), second.jsonBinder());
+        assertNotSame(first.jsonBinder(), Sjf4j.global().jsonBinder());
     }
 
 
@@ -72,21 +72,21 @@ public class Sjf4jTest {
         Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
-        JsonObject jo1 = JsonObject.fromNode(p1);
+        JsonObject jo1 = JsonObject.convertFrom(p1);
         log.info("jo1={}", jo1);
 
-        JsonObject jo2 = JsonObject.fromNode(p1);
+        JsonObject jo2 = JsonObject.convertFrom(p1);
         log.info("jo2={}", jo2);
         assertEquals(jo1, jo2);
 
         JsonObject jo3 = Sjf4j.global().fromJson(JSON_DATA, JsonObject.class);
         log.info("jo3={}", jo3);
 
-        Person p2 = Sjf4j.global().fromNode(jo3, Person.class);
+        Person p2 = Sjf4j.global().convert(jo3, Person.class, true);
         log.info("p2={}", p2);
         assertNotEquals(p1, p2);
 
-        assertEquals(Sjf4j.global().toRaw(p1), Sjf4j.global().toRaw(p2));
+        assertEquals(Sjf4j.global().convertToRaw(p1), Sjf4j.global().convertToRaw(p2));
     }
 
     @Test
@@ -94,10 +94,10 @@ public class Sjf4jTest {
         Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
-        JsonObject jo2 = JsonObject.fromNode(p1);
+        JsonObject jo2 = JsonObject.convertFrom(p1);
         log.info("jo2={}", jo2);
 
-        Object n3 = Sjf4j.global().toRaw(p1);
+        Object n3 = Sjf4j.global().convertToRaw(p1);
         log.info("n3={}", n3);
 
         assertTrue(Nodes.equals(p1, n3));
@@ -147,7 +147,7 @@ public class Sjf4jTest {
     @Test
     void testBuilderCreatesUsableRuntime() {
         Sjf4j runtime = Sjf4j.builder()
-                .jsonFacadeProvider(SimpleJsonFacade.provider())
+                .jsonBinderProvider(SIMPLE_JSON)
                 .build();
 
         JsonObject user = runtime.fromJson("{\"name\":\"han\",\"age\":18}", JsonObject.class);
@@ -155,7 +155,8 @@ public class Sjf4jTest {
         assertEquals(18, user.getInt("age"));
         assertEquals("{\"name\":\"han\",\"age\":18}", runtime.toJsonString(user));
 
-        Map<String, Object> map = runtime.fromNode(user, new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> map = runtime.convert(
+                user, new TypeReference<Map<String, Object>>() {}, true);
         assertEquals("han", map.get("name"));
 
         Properties properties = runtime.toProperties(JsonObject.of("appName", "sjf4j"));
@@ -169,7 +170,7 @@ public class Sjf4jTest {
         Sjf4j global = Sjf4j.global();
 
         assertSame(global, Sjf4j.global());
-        assertSame(global.jsonFacade(), Sjf4j.global().jsonFacade());
+        assertSame(global.jsonBinder(), Sjf4j.global().jsonBinder());
     }
 
 //    @Test
@@ -205,7 +206,7 @@ public class Sjf4jTest {
         Sjf4j runtime = Sjf4j.builder().build();
 
         BindingException error = findBindingException(assertThrows(NodeException.class,
-                () -> runtime.fromNode(invalidNode, RuntimeOuter.class)));
+                () -> runtime.convert(invalidNode, RuntimeOuter.class, true)));
 
         assertNotNull(error);
         assertTrue(error.hasPathSegment());
@@ -213,12 +214,12 @@ public class Sjf4jTest {
     }
 
     @Test
-    void testDefaultNodeFacadeIsGlobalSingleton() {
+    void testDefaultJsonBindersAreIsolated() {
         Sjf4j first = Sjf4j.builder().build();
         Sjf4j second = Sjf4j.builder().build();
 
-        assertNotSame(first.nodeFacade(), second.nodeFacade());
-        assertNotSame(first.nodeFacade(), Sjf4j.global().nodeFacade());
+        assertNotSame(first.jsonBinder(), second.jsonBinder());
+        assertNotSame(first.jsonBinder(), Sjf4j.global().jsonBinder());
     }
 
 //    @Test
@@ -253,29 +254,29 @@ public class Sjf4jTest {
 //    }
 
     @Test
-    void testBuilderDefaultValueFormatAppliesAcrossJsonAndNodeFacade() {
+    void testBuilderDefaultValueFormatAppliesAcrossJsonAndNodeMapping() {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         long epochMillis = instant.toEpochMilli();
 
         Sjf4j runtime = Sjf4j.builder()
-                .jsonFacadeProvider(SimpleJsonFacade.provider())
+                .jsonBinderProvider(SIMPLE_JSON)
                 .defaultValueFormat(Instant.class, "epochMillis")
                 .build();
 
         assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
-        assertEquals(epochMillis, runtime.toRaw(instant));
+        assertEquals(epochMillis, runtime.convertToRaw(instant));
         assertEquals(instant, runtime.fromJson(String.valueOf(epochMillis), Instant.class));
-        assertEquals(instant, runtime.fromNode(epochMillis, Instant.class));
+        assertEquals(instant, runtime.convert(epochMillis, Instant.class, true));
     }
 
     @Test
-    void testJsonFacadeProviderReceivesBuilderValueFormatMapping() {
+    void testJsonBinderProviderReceivesBuilderValueFormatMapping() {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         long epochMillis = instant.toEpochMilli();
 
         Sjf4j runtime = Sjf4j.builder()
                 .defaultValueFormat(Instant.class, "epochMillis")
-                .jsonFacadeProvider(SimpleJsonFacade.provider())
+                .jsonBinderProvider(SIMPLE_JSON)
                 .build();
 
         assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
@@ -283,22 +284,12 @@ public class Sjf4jTest {
     }
 
     @Test
-    void testJsonFacadeProviderReceivesBuilderStreamingMode() {
-        Sjf4j runtime = Sjf4j.builder()
-                .streamingMode(StreamingContext.StreamingMode.SHARED_IO)
-                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
-                .build();
-
-        assertEquals(StreamingContext.StreamingMode.SHARED_IO, runtime.jsonFacade().realStreamingMode());
-    }
-
-    @Test
-    void testJsonFacadeProviderCanUseBuilderValueFormatMapping() {
+    void testJsonBinderProviderCanUseBuilderValueFormatMapping() {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         long epochMillis = instant.toEpochMilli();
 
         Sjf4j runtime = Sjf4j.builder()
-                .jsonFacadeProvider(SimpleJsonFacade.provider())
+                .jsonBinderProvider(SIMPLE_JSON)
                 .defaultValueFormat(Instant.class, "epochMillis")
                 .build();
 
@@ -307,23 +298,13 @@ public class Sjf4jTest {
     }
 
     @Test
-    void testJsonFacadeProviderCanUseBuilderStreamingMode() {
-        Sjf4j runtime = Sjf4j.builder()
-                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
-                .streamingMode(StreamingContext.StreamingMode.PLUGIN_MODULE)
-                .build();
-
-        assertEquals(StreamingContext.StreamingMode.PLUGIN_MODULE, runtime.jsonFacade().realStreamingMode());
-    }
-
-    @Test
-    void testJsonFacadeProviderReceivesBuilderIncludeNulls() {
+    void testJsonBinderProviderReceivesBuilderIncludeNulls() {
         RuntimeNullableHolder holder = new RuntimeNullableHolder();
         holder.name = "han";
 
         Sjf4j runtime = Sjf4j.builder()
                 .includeNulls(false)
-                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
+                .jsonBinderProvider(SIMPLE_JSON)
                 .build();
 
         JsonObject json = runtime.fromJson(runtime.toJsonString(holder), JsonObject.class);
@@ -338,7 +319,7 @@ public class Sjf4jTest {
 
         Sjf4j base = Sjf4j.builder()
                 .includeNulls(false)
-                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
+                .jsonBinderProvider(SIMPLE_JSON)
                 .build();
         Sjf4j derived = Sjf4j.builder(base).build();
 

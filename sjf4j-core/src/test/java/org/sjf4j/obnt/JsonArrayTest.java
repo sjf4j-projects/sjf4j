@@ -253,17 +253,11 @@ class JsonArrayTest {
     }
 
     @Test
-    public void testYaml1() {
+    public void testYamlUnavailableWithoutOptionalBackend() {
         String json1 = "[\"number\",5,null,[\"gaga\",\"haha\"],45,{\"aa\":\"bb\"}]";
         JsonArray ja1 = JsonArray.fromJson(json1);
-        String ya1 = ja1.toYaml();
-        log.info("ya1: \n{}", ya1);
-
-        JsonArray ja2 = JsonArray.fromYaml(ya1);
-        log.info("ja1: {}", ja1);
-        log.info("ja2: {}", ja2);
-
-        assertEquals(ja1, ja2);
+        BindingException error = assertThrows(BindingException.class, ja1::toYaml);
+        assertTrue(error.getMessage().contains("YAML writing is unavailable"));
     }
 
     // ========== test case by ai ==========

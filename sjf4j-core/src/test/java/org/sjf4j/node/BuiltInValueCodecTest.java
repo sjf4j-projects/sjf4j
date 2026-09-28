@@ -3,7 +3,6 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
 
 import java.io.File;
 import java.net.URI;
@@ -28,9 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BuiltInValueCodecTest {
 
-    private static final Sjf4j SIMPLE_RUNTIME = Sjf4j.builder()
-            .jsonFacadeProvider(SimpleJsonFacade.provider())
-            .build();
+    private static final Sjf4j SIMPLE_RUNTIME = Sjf4j.builder().build();
 
     static class BuiltinCodecBean {
         public URI uri;
@@ -96,7 +93,6 @@ class BuiltInValueCodecTest {
     @Test
     void testDefaultValueFormatAppliesInsideContainers() {
         Sjf4j epochMillisRuntime = Sjf4j.builder()
-                .jsonFacadeProvider(SimpleJsonFacade.provider())
                 .defaultValueFormat(Instant.class, "epochMillis")
                 .build();
 

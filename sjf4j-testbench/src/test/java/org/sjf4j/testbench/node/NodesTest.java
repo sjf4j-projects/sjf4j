@@ -4,8 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.Nodes;
+import org.sjf4j.binding.BinderProvider;
+import org.sjf4j.binding.Format;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import java.time.LocalDate;
 
@@ -17,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class NodesTest {
 
     private final Sjf4j sjf4j = Sjf4j.builder()
-            .jsonFacadeProvider(SimpleJsonFacade.provider())
+            .jsonBinderProvider(BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new))
             .build();
 
     record PlainRecord(String msg, LocalDate date) {}
@@ -49,7 +51,7 @@ public class NodesTest {
 
         Object node = sjf4j.fromJson(json);
         log.info("node={}", Nodes.inspect(node));
-        User user2 = sjf4j.fromNode(node, User.class);
+        User user2 = sjf4j.convert(node, User.class, true);
         log.info("user2={}", Nodes.inspect(user2));
         assertEquals("2026-02-04", user2.records[0].date.toString());
     }
@@ -72,7 +74,7 @@ public class NodesTest {
         String json = "{\"name\":\"n\",\"records\":[{\"msg\":\"m\",\"date\":\"2026-02-04\"}]}";
         User user1 = sjf4j.fromJson(json, User.class);
 
-        User user2 = sjf4j.deepNode(user1);
+        User user2 = sjf4j.deepcopy(user1);
         user1.records[0] = new PlainRecord("m2m", LocalDate.parse("2026-02-05"));
         log.info("user1={}", Nodes.inspect(user1));
         log.info("user2={}", Nodes.inspect(user2));

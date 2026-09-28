@@ -1,5 +1,6 @@
 package org.sjf4j.testbench.processor.binding;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -34,6 +35,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end tests for compiled JSON binders across supported backends. */
@@ -210,6 +212,22 @@ public class CompiledBinderTest {
         assertEquals(ArrayList.class, holderValues.getClass());
         assertEquals(LinkedHashMap.class, holderValues.get(1).getClass());
         assertEquals(ArrayList.class, holderValues.get(2).getClass());
+    }
+
+    @Test
+    public void jackson2ReadsExactObjectMapAsRawGraph() throws IOException {
+        BinderContract binder = CompiledInstances.of(Jackson2Binder.class);
+
+        assertNull(binder.readObjectMap("null"));
+        assertThrows(IOException.class, () -> binder.readObjectMap("[]"));
+
+        Map<String, Object> value = binder.readObjectMap(
+                "{\"name\":\"Ada\",\"nested\":{\"enabled\":true},\"items\":[1,null]}");
+
+        assertEquals(LinkedHashMap.class, value.getClass());
+        assertEquals("Ada", value.get("name"));
+        assertEquals(LinkedHashMap.class, value.get("nested").getClass());
+        assertEquals(ArrayList.class, value.get("items").getClass());
     }
 
     @ParameterizedTest(name = "{0}")

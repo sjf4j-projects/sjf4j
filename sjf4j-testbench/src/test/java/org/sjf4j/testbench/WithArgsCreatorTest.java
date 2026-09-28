@@ -7,12 +7,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2BinderProvider;
+import org.sjf4j.backend.gson.binding.GsonBinderProvider;
+import org.sjf4j.backend.jackson2.binding.Jackson2BinderProvider;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.binding.BinderProvider;
+import org.sjf4j.binding.Format;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import java.util.stream.Stream;
 
@@ -23,22 +25,25 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class WithArgsCreatorTest {
 
+    private static final BinderProvider SIMPLE_JSON =
+            BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new);
+
     private Sjf4j sjf4j = Sjf4j.global();
 
     private void useSimpleJson() {
-        sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
+        sjf4j = Sjf4j.builder().jsonBinderProvider(SIMPLE_JSON).build();
     }
 
     private void useJackson2() {
-        sjf4j = Sjf4j.builder().jsonFacadeProvider(Jackson2JsonFacade.provider()).build();
+        sjf4j = Sjf4j.builder().jsonBinderProvider(new Jackson2BinderProvider()).build();
     }
 
     private void useGson() {
-        sjf4j = Sjf4j.builder().jsonFacadeProvider(GsonJsonFacade.provider()).build();
+        sjf4j = Sjf4j.builder().jsonBinderProvider(new GsonBinderProvider()).build();
     }
 
     private void useFastjson2() {
-        sjf4j = Sjf4j.builder().jsonFacadeProvider(Fastjson2JsonFacade.provider()).build();
+        sjf4j = Sjf4j.builder().jsonBinderProvider(new Fastjson2BinderProvider()).build();
     }
 
 

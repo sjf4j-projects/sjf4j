@@ -11,7 +11,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.RuntimeContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** SJF4J-supported JDK string-like bindings and explicit unsupported-type contracts. */
 public abstract class JDKStringLikeTypeDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
+    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
     private Object read(String json, Class<?> type) {
             return binding(RuntimeContext.EMPTY).readNode(json, type);
         }

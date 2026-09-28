@@ -8,7 +8,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Source-derived access behavior that has a public SJF4J equivalent. */
 public abstract class AccessDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
+    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
 
     /** Retained SJF4J structural coverage (no Jackson source): unknown values are deliberately discarded. */
     @Test void testCreatorUnknownFieldsDoNotPreventLaterCreatorAndSetterValues() {

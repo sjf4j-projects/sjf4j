@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -67,7 +66,7 @@ public class CreatorPojoBindingTest {
 
     @Test
     public void bindsAnnotatedCreatorParametersByTheirAliases() {
-        Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
+        Sjf4j sjf4j = Sjf4j.builder().build();
         String json = "{\"name\":\"Alice\",\"decimal\":12.5,\"anEnum\":\"THIS\"," +
                 "\"list\":[\"a\",\"b\"],\"polymorphicTypes\":[1,2]}";
         TestModel model = sjf4j.fromJson(json, TestModel.class);

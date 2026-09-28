@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.binding.simple.SimplePropertiesBinder;
 import org.sjf4j.binding.simple.SimpleYamlBinder;
 
 import java.util.ArrayList;

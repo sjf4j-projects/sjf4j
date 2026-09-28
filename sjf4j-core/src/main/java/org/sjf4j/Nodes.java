@@ -5,6 +5,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.FacadeNodes;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.PojoInfo;
@@ -567,13 +568,12 @@ public final class Nodes {
      * This is a binding conversion, not a forced deep copy. Nested containers may
      * still alias source values when the target binding allows reuse.
      */
-    @SuppressWarnings("unchecked")
     public static <T> T toJojo(Object node, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
             throw new BindingException("expected JOJO subtype, but was " + clazz.getName());
         if (node == null) return null;
-        return (T) Sjf4j.global().nodeFacade().readNode(node, clazz, false);
+        return NodeMapper.convert(node, clazz, false);
     }
 
     /**
@@ -621,14 +621,13 @@ public final class Nodes {
      * This is a binding conversion, not a forced deep copy. Nested containers may
      * still alias source values when the target binding allows reuse.
      */
-    @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.pojoInfo == null && ti.oneOfInfo == null) {
             throw new BindingException("class '" + clazz.getName() + "' is not a registered POJO");
         }
-        return (T) Sjf4j.global().nodeFacade().readNode(node, clazz, false);
+        return NodeMapper.convert(node, clazz, false);
     }
 
     /**
@@ -689,7 +688,7 @@ public final class Nodes {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (!ti.isNone()) {
-            return Sjf4j.global().nodeFacade().readNode(node, clazz, false);
+            return NodeMapper.convert(node, clazz, false);
         }
 
         throw new BindingException("expected " + clazz.getName() + ", but was " + Types.name(node));
@@ -709,17 +708,20 @@ public final class Nodes {
     }
 
     /**
-     * Converts a node to target generic type using strict shallow binding.
+     * Converts a node to target generic type using strict structural binding.
      * <p>
-     * When the captured type has no generic structure, semantics match
-     * {@link #to(Object, Class)}. For parameterized containers/POJOs, generic
-     * members are bound eagerly, but branches declared as {@code Object} or
-     * otherwise left untyped may still alias the source graph.
+     * This overload always uses the structural mapping pipeline, including when
+     * the captured type is a non-generic class. Conversion can therefore
+     * materialize a new target root container. Use {@link #to(Object, Class)}
+     * for the concrete node-container wrapper/view semantics.
+     * <p>
+     * For parameterized containers/POJOs, generic members are bound eagerly,
+     * but branches declared as {@code Object} or otherwise left untyped may
+     * still alias the source graph.
      */
-    @SuppressWarnings("unchecked")
     public static <T> T to(Object node, TypeReference<T> type) {
         Asserts.notNull(type, "type");
-        return (T) Sjf4j.global().nodeFacade().readNode(node, type.getType(), false);
+        return NodeMapper.convert(node, type, false);
     }
 
     /**
@@ -912,7 +914,7 @@ public final class Nodes {
         }
 
         if (FacadeNodes.isNode(node)) {
-            throw new NodeException("cannot copy facade node '" + Types.name(node) + "'");
+            throw new NodeException("cannot copy backend-native node '" + Types.name(node) + "'");
         }
 
         return node;

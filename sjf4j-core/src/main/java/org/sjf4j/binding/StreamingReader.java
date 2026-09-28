@@ -336,4 +336,10 @@ public interface StreamingReader extends Closeable {
      * Consumes exactly one complete value at the current position.
      */
     void skipNext() throws IOException;
+
+
+    default Object readRawNode() throws IOException {
+        return StreamingIO.readRawNode(this);
+    }
+
 }

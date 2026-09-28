@@ -107,13 +107,13 @@ class JsonObjectApiSurfaceTest {
         assertThrowsExactly(IllegalArgumentException.class, () -> object.getAs("string", 1));
         assertThrowsExactly(NullPointerException.class, () -> object.get("number", (Integer[]) null));
         assertThrowsExactly(NullPointerException.class, () -> object.getAs("string", (Integer[]) null));
-        assertEquals(object.toMap(), object.toNode(Map.class));
+        assertEquals(object.toMap(), object.convertTo(Map.class, true));
         JsonObject nested = JsonObject.of("k", "v");
-        Map<?, ?> boundMap = JsonObject.of("nested", nested).bindNode(Map.class);
+        Map<?, ?> boundMap = JsonObject.of("nested", nested).convertTo(Map.class, false);
         assertSame(nested, boundMap.get("nested"));
-        Map<?, ?> copiedMap = JsonObject.of("nested", nested).toNode(Map.class);
+        Map<?, ?> copiedMap = JsonObject.of("nested", nested).convertTo(Map.class, true);
         assertNotSame(nested, copiedMap.get("nested"));
-        assertInstanceOf(Map.class, object.toRaw());
+        assertInstanceOf(Map.class, object.convertToRaw());
 
         JsonObject dynamic = new JsonObject();
         dynamic.put("present", "value");
@@ -173,9 +173,9 @@ class JsonObjectApiSurfaceTest {
         assertEquals(5, built.getIntByPath("$.nested.other"));
         assertEquals(1, built.stream().count());
 
-        Person pojo = JsonObject.of("name", "Alice", "age", 30).bindNode(Person.class);
+        Person pojo = JsonObject.of("name", "Alice", "age", 30).convertTo(Person.class, false);
         assertEquals("Alice", pojo.name);
-        JsonObject pojoNode = JsonObject.fromNode(new ExtraPojo());
+        JsonObject pojoNode = JsonObject.convertFrom(new ExtraPojo());
         assertEquals("ok", pojoNode.getString("code"));
         assertTrue(object.copy().nodeEquals(object));
 

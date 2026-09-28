@@ -1,13 +1,13 @@
 package org.sjf4j;
 
 
-import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.FacadeFactory;
-import org.sjf4j.facade.FacadeProvider;
-import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.facade.NodeFacade;
-import org.sjf4j.facade.PropertiesFacade;
-import org.sjf4j.facade.YamlFacade;
+import org.sjf4j.binding.BinderProvider;
+import org.sjf4j.binding.BindingFactory;
+import org.sjf4j.binding.Format;
+import org.sjf4j.binding.PropertiesBinder;
+import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.simple.SimplePropertiesBinder;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.Types;
 import org.sjf4j.util.Asserts;
 
@@ -17,12 +17,11 @@ import java.io.Reader;
 import java.io.Writer;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 
 
 /**
- * Main instance entry point for JSON/YAML/properties IO and node conversion.
+ * Main instance entry point for format IO and node conversion.
  * <p>
  * Typical object targets are regular POJOs, {@link JsonObject}/{@link JsonArray},
  * and their structured subtypes such as JOJO and JAJO models.
@@ -32,21 +31,19 @@ import java.util.Properties;
  * across runtimes.
  * <p>
  * Use {@link #global()} for the shared process-wide default instance, or {@link #builder()}
- * to create an isolated instance with custom facades and formatting behavior.
+ * to create an isolated instance with custom binders and formatting behavior.
  */
 public final class Sjf4j {
 
     private static final Sjf4j GLOBAL = new Builder().build();
 
-    private final StreamingContext streamingContext;
-    private final FacadeProvider<? extends NodeFacade> nodeFacadeProvider;
-    private final FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider;
-    private final FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider;
-    private final FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider;
-    private final NodeFacade nodeFacade;
-    private final JsonFacade<?, ?> jsonFacade;
-    private final YamlFacade<?, ?> yamlFacade;
-    private final PropertiesFacade propertiesFacade;
+    private final RuntimeContext runtimeContext;
+    private final BinderProvider jsonBinderProvider;
+    private final BinderProvider yamlBinderProvider;
+
+    private final StreamingBinder<?, ?> jsonBinder;
+    private final StreamingBinder<?, ?> yamlBinder;
+    private final PropertiesBinder propertiesBinder;
 
     /**
      * Creates a runtime instance with the framework-default configuration.
@@ -56,23 +53,18 @@ public final class Sjf4j {
     }
 
     private Sjf4j(Builder builder) {
-        StreamingContext.StreamingMode streamingMode = builder.streamingMode == null ?
-                StreamingContext.StreamingMode.AUTO : builder.streamingMode;
-        this.streamingContext = new StreamingContext(builder.defaultValueFormats, streamingMode, builder.includeNulls);
+        this.runtimeContext = new RuntimeContext(builder.defaultValueFormats, builder.includeNulls);
 
-        this.nodeFacadeProvider = builder.nodeFacadeProvider == null
-                ? FacadeFactory.nodeFacadeProvider() : builder.nodeFacadeProvider;
-        this.jsonFacadeProvider = builder.jsonFacadeProvider == null
-                ? FacadeFactory.jsonFacadeProvider() : builder.jsonFacadeProvider;
-        this.yamlFacadeProvider = builder.yamlFacadeProvider == null
-                ? FacadeFactory.yamlFacadeProvider() : builder.yamlFacadeProvider;
-        this.propertiesFacadeProvider = builder.propertiesFacadeProvider == null
-                ? FacadeFactory.propertiesFacadeProvider() : builder.propertiesFacadeProvider;
+        this.jsonBinderProvider = builder.jsonBinderProvider == null
+                ? BindingFactory.jsonBinderProvider() : builder.jsonBinderProvider;
+        this.jsonBinder = jsonBinderProvider.create(this.runtimeContext);
 
-        this.nodeFacade = Asserts.notNull(nodeFacadeProvider.create(streamingContext), "nodeFacade");
-        this.jsonFacade = Asserts.notNull(jsonFacadeProvider.create(streamingContext), "jsonFacade");
-        this.yamlFacade = Asserts.notNull(yamlFacadeProvider.create(streamingContext), "yamlFacade");
-        this.propertiesFacade = Asserts.notNull(propertiesFacadeProvider.create(streamingContext), "propertiesFacade");
+        this.yamlBinderProvider = builder.yamlBinderProvider == null
+                ? BindingFactory.yamlBinderProvider() : builder.yamlBinderProvider;
+        this.yamlBinder = yamlBinderProvider.create(this.runtimeContext);
+
+        this.propertiesBinder = builder.propertiesBinder == null
+                ? new SimplePropertiesBinder() : builder.propertiesBinder;
     }
 
     /**
@@ -103,43 +95,36 @@ public final class Sjf4j {
      */
 
     /**
-     * Returns the immutable streaming configuration used by this runtime.
+     * Returns the immutable runtime settings used by this instance.
      */
-    public StreamingContext streamingContext() {
-        return streamingContext;
+    public RuntimeContext runtimeContext() {
+        return runtimeContext;
     }
 
     /**
-     * Returns the node-conversion facade used by this runtime.
+     * Returns the JSON binder provider used by this runtime.
      */
-    public NodeFacade nodeFacade() {
-        return nodeFacade;
+    public BinderProvider jsonProvider() {
+        return jsonBinderProvider;
     }
 
     /**
-     * Returns the JSON facade used by this runtime.
+     * Returns the JSON binder used by this runtime.
      */
-    public JsonFacade<?, ?> jsonFacade() {
-        return jsonFacade;
+    public StreamingBinder<?, ?> jsonBinder() {
+        return jsonBinder;
     }
 
     /**
-     * Returns the YAML facade used by this runtime.
+     * Returns the properties binder used by this runtime.
      */
-    public YamlFacade<?, ?> yamlFacade() {
-        return yamlFacade;
-    }
-
-    /**
-     * Returns the properties facade used by this runtime.
-     */
-    public PropertiesFacade propertiesFacade() {
-        return propertiesFacade;
+    public PropertiesBinder propertiesBinder() {
+        return propertiesBinder;
     }
 
     /*
      * --------------------------------------------------------------
-     * JSON
+     * JSON Binding
      * --------------------------------------------------------------
      */
 
@@ -148,7 +133,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
+        return (T) jsonBinder.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -156,7 +141,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
+        return (T) jsonBinder.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -171,7 +156,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
+        return (T) jsonBinder.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -179,7 +164,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
+        return (T) jsonBinder.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -194,7 +179,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
+        return (T) jsonBinder.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -202,7 +187,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
+        return (T) jsonBinder.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -217,7 +202,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, Class<T> clazz) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
+        return (T) jsonBinder.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -225,7 +210,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, TypeReference<T> type) {
-        return (T) jsonFacade.readNode(input, Asserts.notNull(type, "type").getType());
+        return (T) jsonBinder.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -239,33 +224,34 @@ public final class Sjf4j {
      * Writes a value as JSON to a character stream.
      */
     public void toJson(Writer output, Object node) {
-        jsonFacade.writeNode(output, node);
+        jsonBinder.writeNode(output, node);
     }
 
     /**
      * Writes a value as JSON to a byte stream.
      */
     public void toJson(OutputStream output, Object node) {
-        jsonFacade.writeNode(output, node);
+        jsonBinder.writeNode(output, node);
     }
 
     /**
      * Serializes a value to a JSON string.
      */
     public String toJsonString(Object node) {
-        return jsonFacade.writeNodeAsString(node);
+        return jsonBinder.writeNodeAsString(node);
     }
 
     /**
      * Serializes a value to JSON bytes.
      */
     public byte[] toJsonBytes(Object node) {
-        return jsonFacade.writeNodeAsBytes(node);
+        return jsonBinder.writeNodeAsBytes(node);
     }
+
 
     /*
      * --------------------------------------------------------------
-     * YAML
+     * YAML Binding
      * --------------------------------------------------------------
      */
 
@@ -274,7 +260,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, Class<T> clazz) {
-        return (T) yamlFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
+        return (T) yamlBinder.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -282,7 +268,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, TypeReference<T> type) {
-        return (T) yamlFacade.readNode(input, Asserts.notNull(type, "type").getType());
+        return (T) yamlBinder.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -297,7 +283,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, Class<T> clazz) {
-        return (T) yamlFacade.readNode(input, Asserts.notNull(clazz, "clazz"));
+        return (T) yamlBinder.readNode(input, Asserts.notNull(clazz, "clazz"));
     }
 
     /**
@@ -305,7 +291,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, TypeReference<T> type) {
-        return (T) yamlFacade.readNode(input, Asserts.notNull(type, "type").getType());
+        return (T) yamlBinder.readNode(input, Asserts.notNull(type, "type").getType());
     }
 
     /**
@@ -319,98 +305,64 @@ public final class Sjf4j {
      * Writes a value as YAML to a character stream.
      */
     public void toYaml(Writer output, Object node) {
-        yamlFacade.writeNode(output, node);
+        yamlBinder.writeNode(output, node);
     }
 
     /**
      * Serializes a value to a YAML string.
      */
     public String toYamlString(Object node) {
-        return yamlFacade.writeNodeAsString(node);
+        return yamlBinder.writeNodeAsString(node);
     }
 
     /**
      * Serializes a value to YAML bytes.
      */
     public byte[] toYamlBytes(Object node) {
-        return yamlFacade.writeNodeAsBytes(node);
+        return yamlBinder.writeNodeAsBytes(node);
     }
+
+
 
     /*
      * --------------------------------------------------------------
-     * Node
+     * Mapping
      * --------------------------------------------------------------
      */
 
     /**
      * Converts an existing OBNT value into the requested target type.
      * <p>
-     * Delegates to the configured {@link NodeFacade} with deep conversion
-     * requested. The framework-default facade recursively binds its recognized
-     * built-in containers and POJO representations, but converter results can
-     * retain references. The configured facade defines compatible-value identity,
-     * converter selection, and copy behavior.
+     * Uses {@link NodeMapper} for structural conversion. When {@code deepCopy} is
+     * true, compatible structures are copied recursively and {@code @NodeValue}
+     * types use their configured value-copy behavior.
      */
     @SuppressWarnings("unchecked")
-    public <T> T fromNode(Object node, Class<T> clazz) {
-        return (T) nodeFacade.readNode(node, Asserts.notNull(clazz, "clazz"), true);
+    public <T> T convert(Object node, Class<T> clazz, boolean deepCopy) {
+        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), deepCopy, runtimeContext);
     }
 
     /**
      * Converts an existing OBNT value into the requested generic target type.
      * <p>
-     * Delegates to the configured {@link NodeFacade} with deep conversion
-     * requested. The framework-default facade recursively binds its recognized
-     * built-in containers and POJO representations, but converter results can
-     * retain references. The configured facade defines compatible-value identity,
-     * converter selection, and copy behavior.
+     * Uses {@link NodeMapper} for structural conversion. When {@code deepCopy} is
+     * true, compatible structures are copied recursively and {@code @NodeValue}
+     * types use their configured value-copy behavior.
      */
     @SuppressWarnings("unchecked")
-    public <T> T fromNode(Object node, TypeReference<T> type) {
-        return (T) nodeFacade.readNode(node, Asserts.notNull(type, "type").getType(), true);
+    public <T> T convert(Object node, TypeReference<T> type, boolean deepCopy) {
+        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), deepCopy, runtimeContext);
     }
 
     /**
-     * Binds an existing OBNT value into the requested target type without forcing a deep copy.
+     * Creates a recursive copy of supported OBNT structures.
      * <p>
-     * Delegates to the configured {@link NodeFacade} without requesting deep
-     * conversion. The framework-default facade can return a compatible
-     * non-parameterized value unchanged; a custom facade defines identity,
-     * converter selection, and nested-reference behavior. Use
-     * {@link #fromNode(Object, Class)} to request the facade's deep conversion mode.
+     * Delegates to {@link NodeMapper#deepcopy(Object)}. Unsupported values,
+     * including backend-native or external node representations, may be returned
+     * unchanged.
      */
-    @SuppressWarnings("unchecked")
-    public <T> T bindNode(Object node, Class<T> clazz) {
-        return (T) nodeFacade.readNode(node, Asserts.notNull(clazz, "clazz"), false);
-    }
-
-    /**
-     * Binds an existing OBNT value into the requested generic target type without forcing a deep copy.
-     * <p>
-     * Delegates to the configured {@link NodeFacade} without requesting deep
-     * conversion. The framework-default facade can return a compatible
-     * non-parameterized value unchanged; a custom facade defines identity,
-     * converter selection, and nested-reference behavior. Use
-     * {@link #fromNode(Object, TypeReference)} to request the facade's deep
-     * conversion mode.
-     */
-    @SuppressWarnings("unchecked")
-    public <T> T bindNode(Object node, TypeReference<T> type) {
-        return (T) nodeFacade.readNode(node, Asserts.notNull(type, "type").getType(), false);
-    }
-
-    /**
-     * Creates a deep copy of the supplied OBNT value.
-     * <p>
-     * Delegates to {@link NodeFacade#deepNode(Object)}. The framework-default
-     * facade recursively copies its recognized built-in containers and POJO
-     * representations, while unrecognized values and already-instantiated
-     * {@code @NodeValue} domain values can be returned by reference. A custom
-     * facade defines its own copy boundary.
-     */
-    @SuppressWarnings("unchecked")
-    public <T> T deepNode(T node) {
-        return (T) nodeFacade.deepNode(node);
+    public <T> T deepcopy(T node) {
+        return NodeMapper.deepcopy(node);
     }
 
     /**
@@ -420,14 +372,14 @@ public final class Sjf4j {
      * representations. {@code @NodeValue} types are encoded by their configured
      * value binding; scalar raw values may be returned unchanged.
      */
-    public Object toRaw(Object node) {
-        return nodeFacade.writeNode(node);
+    public Object convertToRaw(Object node) {
+        return NodeMapper.convertToRaw(node, runtimeContext);
     }
 
 
     /*
      * --------------------------------------------------------------
-     * Properties
+     * Properties Binding
      * --------------------------------------------------------------
      */
 
@@ -435,7 +387,7 @@ public final class Sjf4j {
      * Reads flat {@link Properties} data into the default object node representation.
      */
     public Object fromProperties(Properties props) {
-        return propertiesFacade.readNode(props);
+        return propertiesBinder.readNode(props);
     }
 
     /**
@@ -443,8 +395,8 @@ public final class Sjf4j {
      */
     public <T> T fromProperties(Properties props, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
-        JsonObject jo = propertiesFacade.readNode(props);
-        return fromNode(jo, clazz);
+        JsonObject jo = propertiesBinder.readNode(props);
+        return convert(jo, clazz, false);
     }
 
     /**
@@ -452,8 +404,8 @@ public final class Sjf4j {
      */
     public <T> T fromProperties(Properties props, TypeReference<T> type) {
         Asserts.notNull(type, "type");
-        JsonObject jo = propertiesFacade.readNode(props);
-        return fromNode(jo, type);
+        JsonObject jo = propertiesBinder.readNode(props);
+        return convert(jo, type, false);
     }
 
     /**
@@ -461,7 +413,7 @@ public final class Sjf4j {
      */
     public Properties toProperties(Object node) {
         Properties props = new Properties();
-        propertiesFacade.writeNode(props, node);
+        propertiesBinder.writeNode(props, node);
         return props;
     }
 
@@ -472,85 +424,68 @@ public final class Sjf4j {
      */
 
     public static final class Builder {
-        private FacadeProvider<? extends NodeFacade> nodeFacadeProvider;
-        private FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider;
-        private FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider;
-        private FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider;
-        private StreamingContext.StreamingMode streamingMode;
+        private BinderProvider jsonBinderProvider;
+        private BinderProvider yamlBinderProvider;
+        private PropertiesBinder propertiesBinder;
+
         private final Map<Class<?>, String> defaultValueFormats = new LinkedHashMap<>();
         private boolean includeNulls = true;
 
         /**
-         * Creates a builder with framework-default facade providers and serialization behavior.
+         * Creates a builder with framework-default binder providers and runtime settings.
          */
         public Builder() {}
 
         /**
          * Creates a builder initialized from an existing runtime instance.
          * <p>
-         * This copies facade providers, streaming mode, default value-format mappings,
-         * and null-serialization behavior so callers can derive a slightly adjusted runtime.
+         * This copies binder providers and the current {@link RuntimeContext}
+         * settings so callers can derive a slightly adjusted runtime.
          */
         public Builder(Sjf4j sjf4j) {
             Asserts.notNull(sjf4j, "sjf4j");
-            this.nodeFacadeProvider = sjf4j.nodeFacadeProvider;
-            this.jsonFacadeProvider = sjf4j.jsonFacadeProvider;
-            this.yamlFacadeProvider = sjf4j.yamlFacadeProvider;
-            this.propertiesFacadeProvider = sjf4j.propertiesFacadeProvider;
-            this.streamingMode = sjf4j.streamingContext.streamingMode;
-            sjf4j.streamingContext.copyDefaultValueFormatsTo(this.defaultValueFormats);
-            this.includeNulls = sjf4j.streamingContext.includeNulls;
+            this.jsonBinderProvider = sjf4j.jsonBinderProvider;
+            this.yamlBinderProvider = sjf4j.yamlBinderProvider;
+            this.propertiesBinder = sjf4j.propertiesBinder;
+            sjf4j.runtimeContext.copyDefaultValueFormatsTo(this.defaultValueFormats);
+            this.includeNulls = sjf4j.runtimeContext.includeNulls;
         }
 
         /**
-         * Overrides the provider used to create the runtime {@link NodeFacade}.
-         * <p>
-         * Use this when you want a custom node-conversion implementation for this
-         * {@link Sjf4j} instance instead of the auto-detected framework default.
-         */
-        public Builder nodeFacadeProvider(FacadeProvider<? extends NodeFacade> nodeFacadeProvider) {
-            this.nodeFacadeProvider = Asserts.notNull(nodeFacadeProvider, "nodeFacadeProvider");
-            return this;
-        }
-
-        /**
-         * Overrides the provider used to create the runtime JSON facade.
+         * Overrides the provider used to create the runtime JSON binder.
          * <p>
          * This controls which JSON backend implementation the instance uses, such as
-         * Jackson, Gson, Fastjson2, or a custom facade.
+         * Jackson, Gson, Fastjson2, or a custom binder.
          */
-        public Builder jsonFacadeProvider(FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider) {
-            this.jsonFacadeProvider = Asserts.notNull(jsonFacadeProvider, "jsonFacadeProvider");
+        public Builder jsonBinderProvider(BinderProvider provider) {
+            Asserts.notNull(provider, "provider");
+            if (!Format.JSON.equals(provider.format())) {
+                throw new IllegalArgumentException(
+                        "expected a JSON binder provider, but got format: " + provider.format());
+            }
+            this.jsonBinderProvider = provider;
             return this;
         }
 
         /**
-         * Overrides the provider used to create the runtime YAML facade.
+         * Overrides the provider used to create the runtime YAML binder.
          */
-        public Builder yamlFacadeProvider(FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider) {
-            this.yamlFacadeProvider = Asserts.notNull(yamlFacadeProvider, "yamlFacadeProvider");
+        public Builder yamlBinderProvider(BinderProvider provider) {
+            Asserts.notNull(provider, "provider");
+            if (!Format.YAML.equals(provider.format())) {
+                throw new IllegalArgumentException(
+                        "expected a YAML binder provider, but got format: " + provider.format());
+            }
+            this.yamlBinderProvider = provider;
             return this;
         }
 
-        /**
-         * Overrides the provider used to create the runtime properties facade.
-         */
-        public Builder propertiesFacadeProvider(FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider) {
-            this.propertiesFacadeProvider = Asserts.notNull(propertiesFacadeProvider,
-                    "propertiesFacadeProvider");
+        public Builder propertiesBinder(PropertiesBinder propertiesBinder) {
+            Asserts.notNull(propertiesBinder, "propertiesBinder");
+            this.propertiesBinder = propertiesBinder;
             return this;
         }
 
-        /**
-         * Sets the streaming mode for this runtime.
-         * <p>
-         * {@link StreamingContext.StreamingMode#AUTO} lets the facade choose the preferred
-         * strategy, while other modes can force shared or backend-native streaming paths.
-         */
-        public Builder streamingMode(StreamingContext.StreamingMode streamingMode) {
-            this.streamingMode = Asserts.notNull(streamingMode, "streamingMode");
-            return this;
-        }
 
         /**
          * Registers the default named {@code ValueCodec} format for a value type.

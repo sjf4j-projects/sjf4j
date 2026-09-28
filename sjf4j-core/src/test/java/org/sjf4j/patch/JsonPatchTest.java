@@ -6,7 +6,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.path.JsonPointer;
 
 import java.util.ArrayList;
@@ -286,7 +285,7 @@ public class JsonPatchTest {
         JsonPatch patch = JsonPatch.diff(a, b);
         System.out.println("patch=" + patch.toJson());
 
-        List<Integer> c = Sjf4j.global().deepNode(a);
+        List<Integer> c = Sjf4j.global().deepcopy(a);
         patch.apply(c);
 
         assertEquals(b, c);
@@ -325,7 +324,7 @@ public class JsonPatchTest {
                 "  { \"op\": \"replace\", \"path\": \"/meta/active\", \"value\": false }\n" +
                 "]";
 
-        Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(Fastjson2JsonFacade.provider()).build();
+        Sjf4j sjf4j = Sjf4j.builder().build();
         JsonObject jo1 = sjf4j.fromJson(json1, JsonObject.class);
         log.info("jo1={}", jo1);
         JsonPatch patch = sjf4j.fromJson(jsonPatch, JsonPatch.class);

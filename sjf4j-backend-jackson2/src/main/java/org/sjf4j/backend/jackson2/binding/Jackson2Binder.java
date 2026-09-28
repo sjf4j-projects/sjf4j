@@ -7,7 +7,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
 import org.sjf4j.binding.FastStringWriter;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 import org.sjf4j.binding.PreparedName;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.StreamingIO;
@@ -21,7 +21,7 @@ import java.io.Reader;
 import java.io.Writer;
 
 /** JSON binder backed directly by a Jackson 2 {@link JsonFactory}. */
-public final class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
+public final class Jackson2Binder extends StreamingBinder<Jackson2Reader, Jackson2Writer> {
 
     private final JsonFactory factory;
 

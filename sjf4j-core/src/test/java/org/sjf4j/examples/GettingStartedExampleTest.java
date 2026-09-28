@@ -249,12 +249,12 @@ public class GettingStartedExampleTest {
         JsonObject tmpJo = new JsonObject(map);     // Just wrap it
 
         // JsonObject <==> POJO/JOJO
-        User tmpUser = jo.bindNode(User.class);
-        tmpJo = JsonObject.fromNode(user2);
+        User tmpUser = jo.convertTo(User.class, false);
+        tmpJo = JsonObject.convertFrom(user2);
 
         // JOJO <==> POJO
-        tmpUser = user2.bindNode(User.class);
-        User2 tmpUser2 = Sjf4j.global().fromNode(user, User2.class);
+        tmpUser = user2.convertTo(User.class, false);
+        User2 tmpUser2 = Sjf4j.global().convert(user, User2.class, true);
 
         System.out.println("keys=" + user2.keySet());
         // ["id",  "name",  "friends",  "age"]

@@ -2,6 +2,7 @@ package org.sjf4j;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.FieldInfo;
@@ -435,17 +436,15 @@ public class JsonObject extends JsonContainer {
 
     /*
      * --------------------------------------------------------------
-     * Node Facade
+     * Mapping
      * --------------------------------------------------------------
      */
 
     /**
-     * Converts an OBNT value to a JsonObject through {@link Sjf4j#fromNode(Object, Class)}.
-     * The configured node facade defines conversion and copy boundaries; returned
-     * values may retain references.
+     * Structurally converts a value to a JsonObject.
      */
-    public static JsonObject fromNode(Object node) {
-        return Sjf4j.global().fromNode(node, JsonObject.class);
+    public static JsonObject convertFrom(Object node) {
+        return NodeMapper.convert(node, JsonObject.class, false);
     }
 
 
@@ -1125,11 +1124,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Creates a deep copy of this JsonObject.
      * <p>
-     * Delegates to {@link Sjf4j#deepNode(Object)}. Declared and dynamic entries
-     * are traversed according to the configured node facade.
+     * Delegates to {@link Sjf4j#deepcopy(Object)} and {@link NodeMapper}.
+     * Declared and dynamic entries are copied structurally; unsupported values,
+     * including backend-native or external nodes, may be retained by reference.
      */
     public JsonObject deepCopy() {
-        return Sjf4j.global().deepNode(this);
+        return Sjf4j.global().deepcopy(this);
     }
 
     /*

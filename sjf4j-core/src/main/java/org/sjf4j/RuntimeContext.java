@@ -1,14 +1,12 @@
 package org.sjf4j;
 
-import org.sjf4j.binding.NodeBinder;
-import org.sjf4j.binding.simple.SimpleNodeBinder;
 import org.sjf4j.node.Types;
 import org.sjf4j.util.Asserts;
 
 import java.util.Map;
 
 /**
- * Shared runtime streaming context assembled by {@code Sjf4j.Builder}.
+ * Immutable runtime settings assembled by {@link Sjf4j.Builder}.
  */
 public final class RuntimeContext {
     public final boolean includeNulls;

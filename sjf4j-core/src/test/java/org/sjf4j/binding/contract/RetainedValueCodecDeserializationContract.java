@@ -5,13 +5,13 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Retained SJF4J NodeValue dispatch contract; it is not Jackson-derived. */
 public abstract class RetainedValueCodecDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
+    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
 
     @Test void testBooleanCodecAtRoot() {
         assertEquals(true, ((BooleanCode) binding(RuntimeContext.EMPTY).readNode("true", BooleanCode.class)).value);

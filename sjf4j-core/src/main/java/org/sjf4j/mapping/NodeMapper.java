@@ -49,72 +49,43 @@ public final class NodeMapper {
     /**
      * Converts a node to the target class using the default runtime context.
      */
-    public static <T> T convert(Object node, Class<T> type) {
-        return convert(node, type, RuntimeContext.EMPTY);
+    @SuppressWarnings("unchecked")
+    public static <T> T convert(Object node, Class<T> type, boolean deepCopy) {
+        return (T) convert(node, type, deepCopy, RuntimeContext.EMPTY);
     }
 
-    /**
-     * Converts a node to the target class using the supplied runtime context.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T convert(Object node, Class<T> type, RuntimeContext context) {
-        Asserts.notNull(type, "type");
-        return (T) convert(node, (Type) type, context);
-    }
 
     /**
      * Converts a node to the captured generic target type using the default
      * runtime context.
      */
-    public static <T> T convert(Object node, TypeReference<T> type) {
-        return convert(node, type, RuntimeContext.EMPTY);
-    }
-
-    /**
-     * Converts a node to the captured generic target type using the supplied
-     * runtime context.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T convert(Object node, TypeReference<T> type, RuntimeContext context) {
-        Asserts.notNull(type, "type");
-        return (T) convert(node, type.getType(), context);
+    public static <T> T convert(Object node, TypeReference<T> type, boolean deepCopy) {
+        return (T) convert(node, type.getType(), deepCopy, RuntimeContext.EMPTY);
     }
 
-    /**
-     * Converts a node to the target type using the default runtime context.
-     */
-    public static Object convert(Object node, Type type) {
-        return convert(node, type, RuntimeContext.EMPTY);
-    }
 
-    /**
-     * Converts a node to the target type using the supplied runtime context.
-     */
-    public static Object convert(Object node, Type type, RuntimeContext context) {
-        Asserts.notNull(type, "type");
-        Asserts.notNull(context, "context");
-        return _convert(node, type, false, context);
-    }
-
-    /**
-     * Creates a deep structural copy using the default runtime context.
-     */
-    public static <T> T copy(T node) {
-        return copy(node, RuntimeContext.EMPTY);
-    }
-
-    /**
-     * Creates a deep structural copy using the supplied runtime context.
-     *
-     * <p>Container and object nodes are recreated recursively. Immutable JSON
-     * scalar values may be reused. Node values are copied through their
-     * configured value codecs.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T copy(T node, RuntimeContext context) {
-        Asserts.notNull(context, "context");
+    public static <T> T deepcopy(T node) {
         if (node == null) return null;
-        return (T) _convert(node, node.getClass(), true, context);
+        return (T) convert(node, node.getClass(), true, RuntimeContext.EMPTY);
+    }
+
+
+    /**
+     * Root conversion entry with deep-copy control.
+     */
+    public static Object convert(Object node, Type type, boolean deepCopy, RuntimeContext context) {
+        Asserts.notNull(type, "type");
+        Asserts.notNull(context, "context");
+        try {
+            Class<?> rawBox = Types.rawBox(type);
+            return _convert(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE, context);
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("failed to convert node from '" + Types.name(node) + "' to '" + type + "'", e);
+        }
     }
 
     /**
@@ -137,21 +108,6 @@ public final class NodeMapper {
         return _convertToRaw(node, PathSegment.Root.INSTANCE, context);
     }
 
-
-    /**
-     * Root conversion entry with deep-copy control.
-     */
-    private static Object _convert(Object node, Type type, boolean deepCopy, RuntimeContext context) {
-        try {
-            Class<?> rawBox = Types.rawBox(type);
-            return _convert(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE, context);
-        } catch (BindingException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BindingException("failed to convert node from '" +
-                    Types.name(node) + "' to '" + type + "'", e);
-        }
-    }
 
     /**
      * Internal conversion with path support.

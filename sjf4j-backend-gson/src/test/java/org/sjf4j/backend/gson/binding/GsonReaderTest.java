@@ -128,6 +128,18 @@ class GsonReaderTest {
         }
     }
 
+    @Test
+    void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
+        try (GsonReader reader = reader("[{\"id\":7},\"next\"]")) {
+            reader.startArray();
+            assertEquals(Token.START_OBJECT, reader.peekToken());
+            assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
+            assertEquals(Token.STRING, reader.peekToken());
+            assertEquals("next", reader.nextString());
+            reader.endArray();
+        }
+    }
+
     private static GsonReader reader(String json) {
         return new GsonReader(new JsonReader(new StringReader(json)));
     }

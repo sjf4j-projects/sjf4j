@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeObject;
-import org.sjf4j.binding.JsonBinder;
+import org.sjf4j.binding.StreamingBinder;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** SJF4J NodeBinding dynamic-storage and StreamingContext null-inclusion behavior. */
 public abstract class DynamicPropertyDeserializationContract {
-    protected abstract JsonBinder<?, ?> binding(RuntimeContext context);
+    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
     /** No Jackson mapping: disabling NodeBinding readDynamic leaves undeclared input out of JsonObject storage. */
     @Test void testReadDynamicDisabled() {
         StaticRead bean = (StaticRead) binding(RuntimeContext.EMPTY).readNode("{\"id\":1,\"extra\":2}", StaticRead.class);
@@ -37,7 +37,7 @@ public abstract class DynamicPropertyDeserializationContract {
     /** No Jackson mapping: StreamingContext can omit null map values during serialization. */
     @Test void testNullMapValueOmittedWhenContextExcludesNulls() {
         Map<String, Object> value = new LinkedHashMap<>(); value.put("keep", 1); value.put("drop", null);
-        JsonBinder<?, ?> binder = binding(new RuntimeContext(false));
+        StreamingBinder<?, ?> binder = binding(new RuntimeContext(false));
         Map<?, ?> output = (Map<?, ?>) binder.readNode(binder.writeNodeAsString(value), Map.class);
         assertEquals(1, output.size()); assertEquals(1, ((Number) output.get("keep")).intValue());
     }

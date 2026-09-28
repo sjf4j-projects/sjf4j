@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.patch.Patches;
@@ -51,35 +52,18 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Converts this container into the target Java representation.
-     * <p>
-     * Delegates to {@link Sjf4j#fromNode(Object, Class)} with deep conversion
-     * requested. The configured node facade defines conversion and copy boundaries;
-     * results, including converter results, may retain references.
+     * Structurally converts this container with {@link NodeMapper}.
      */
-    public <T> T toNode(Class<T> clazz) {
+    public <T> T convertTo(Class<T> clazz, boolean deepCopy) {
         Asserts.notNull(clazz, "clazz");
-        return Sjf4j.global().fromNode(this, clazz);
+        return NodeMapper.convert(this, clazz, deepCopy);
     }
 
     /**
-     * Binds this container into the target Java representation without requesting
-     * deep conversion. The configured node facade defines aliasing and copy
-     * boundaries; use {@link #toNode(Class)} to request its deep conversion mode.
+     * Converts this container to its raw JSON-compatible representation.
      */
-    public <T> T bindNode(Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        return Sjf4j.global().bindNode(this, clazz);
-    }
-
-    /**
-     * Converts this container into a raw Java representation.
-     * <p>
-     * This delegates to {@link Sjf4j#toRaw(Object)}; it is a raw OBNT
-     * conversion, not a shallow view of this container.
-     */
-    public Object toRaw() {
-        return Sjf4j.global().toRaw(this);
+    public Object convertToRaw() {
+        return NodeMapper.convertToRaw(this);
     }
 
 
