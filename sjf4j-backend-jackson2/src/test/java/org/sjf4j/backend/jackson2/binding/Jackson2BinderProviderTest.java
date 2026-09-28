@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
-import org.sjf4j.binding.BindingFactory;
+import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -27,7 +27,7 @@ class Jackson2BinderProviderTest {
 
     @Test
     void isDiscoveredAsTheDefaultJsonBinderProvider() {
-        BinderProvider provider = BindingFactory.provider(Format.JSON);
+        BinderProvider provider = BinderFactory.provider(Format.JSON);
 
         assertInstanceOf(Jackson2BinderProvider.class, provider);
         assertInstanceOf(Jackson2Binder.class, provider.create(RuntimeContext.EMPTY));

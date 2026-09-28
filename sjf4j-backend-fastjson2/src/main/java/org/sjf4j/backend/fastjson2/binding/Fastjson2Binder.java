@@ -4,7 +4,7 @@ import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -15,7 +15,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 
 /** JSON binder backed directly by Fastjson2's streaming reader and writer. */
-public final class Fastjson2Binder extends StreamingBinder<Fastjson2Reader, Fastjson2Writer> {
+public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writer> {
 
     private final JSONReader.Context readerContext;
     private final JSONWriter.Context writerContext;

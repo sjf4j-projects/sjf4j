@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
 /** Service provider for the Gson JSON binder. */
@@ -42,7 +42,7 @@ public final class GsonBinderProvider implements BinderProvider {
     }
 
     @Override
-    public StreamingBinder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(RuntimeContext context) {
         return new GsonBinder(new Gson(), context);
     }
 }

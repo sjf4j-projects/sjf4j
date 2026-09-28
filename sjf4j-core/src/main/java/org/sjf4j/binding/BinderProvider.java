@@ -23,7 +23,7 @@ public interface BinderProvider {
     /**
      * Creates a binder using the supplied immutable runtime configuration.
      */
-    StreamingBinder<?, ?> create(RuntimeContext context);
+    Binder<?, ?> create(RuntimeContext context);
 
     /**
      * Returns whether this optional provider can create its backend binder.
@@ -33,7 +33,7 @@ public interface BinderProvider {
     }
 
     /**
-     * Selection priority used by {@link BindingFactory}; higher values win.
+     * Selection priority used by {@link BinderFactory}; higher values win.
      */
     default int priority() {
         return 100;
@@ -59,7 +59,7 @@ public interface BinderProvider {
      * Creates a provider with the supplied format, priority, and binder factory.
      */
     static BinderProvider of(Format format, int priority,
-                             Function<RuntimeContext, ? extends StreamingBinder<?, ?>> factory) {
+                             Function<RuntimeContext, ? extends Binder<?, ?>> factory) {
         Objects.requireNonNull(format, "format");
         Objects.requireNonNull(factory, "factory");
         return new BinderProvider() {
@@ -69,7 +69,7 @@ public interface BinderProvider {
             }
 
             @Override
-            public StreamingBinder<?, ?> create(RuntimeContext context) {
+            public Binder<?, ?> create(RuntimeContext context) {
                 return factory.apply(context);
             }
 

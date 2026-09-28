@@ -3,7 +3,7 @@ package org.sjf4j.backend.jackson3.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
-import org.sjf4j.binding.BindingFactory;
+import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
 import tools.jackson.core.json.JsonFactory;
 import tools.jackson.core.json.JsonReadFeature;
@@ -35,13 +35,13 @@ class Jackson3BinderProviderTest {
 
     @Test
     void listsCachedDiscoveredProviders() {
-        BinderProvider provider = BindingFactory.provider(Format.JSON);
+        BinderProvider provider = BinderFactory.provider(Format.JSON);
 
-        assertTrue(BindingFactory.providers().contains(provider));
-        assertTrue(BindingFactory.providers(Format.JSON).contains(provider));
+        assertTrue(BinderFactory.providers().contains(provider));
+        assertTrue(BinderFactory.providers(Format.JSON).contains(provider));
         assertThrows(UnsupportedOperationException.class,
-                () -> BindingFactory.providers().add(provider));
+                () -> BinderFactory.providers().add(provider));
         assertThrows(UnsupportedOperationException.class,
-                () -> BindingFactory.providers(Format.JSON).add(provider));
+                () -> BinderFactory.providers(Format.JSON).add(provider));
     }
 }

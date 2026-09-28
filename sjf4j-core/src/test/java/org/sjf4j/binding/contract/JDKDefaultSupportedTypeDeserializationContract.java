@@ -6,13 +6,13 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** JDK types supplied by SJF4J's built-in value codecs. */
 public abstract class JDKDefaultSupportedTypeDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
     /** SJF4J supplies Optional through its default value codec. */
     @Test void testOptionalUsesBuiltInCodec() {
         assertEquals(Optional.of("value"), binding(RuntimeContext.EMPTY).readNode("\"value\"", new TypeReference<Optional<String>>() {}.getType()));

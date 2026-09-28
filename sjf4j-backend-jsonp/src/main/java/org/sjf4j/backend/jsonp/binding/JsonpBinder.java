@@ -3,7 +3,7 @@ package org.sjf4j.backend.jsonp.binding;
 import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.util.Asserts;
 
@@ -18,7 +18,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 
 /** JSON binder backed directly by a Jakarta JSON-P {@link JsonProvider}. */
-public final class JsonpBinder extends StreamingBinder<JsonpReader, JsonpWriter> {
+public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
 
     private final JsonProvider provider;
 

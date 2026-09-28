@@ -6,7 +6,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
-import org.sjf4j.binding.BindingFactory;
+import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,7 +30,7 @@ class Fastjson2BinderProviderTest {
 
     @Test
     void isDiscoveredAsTheDefaultJsonBinderProvider() {
-        BinderProvider provider = BindingFactory.provider(Format.JSON);
+        BinderProvider provider = BinderFactory.provider(Format.JSON);
 
         assertInstanceOf(Fastjson2BinderProvider.class, provider);
         assertInstanceOf(Fastjson2Binder.class, provider.create(RuntimeContext.EMPTY));

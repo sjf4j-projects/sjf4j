@@ -3,12 +3,11 @@ package org.sjf4j.exception;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
-import org.sjf4j.binding.simple.SimpleNodeBinder;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
@@ -152,7 +151,6 @@ class ExceptionContractTest {
         assertThrowsExactly(NullPointerException.class, () -> binder.readNode(jsonBytes, nullTarget));
         assertThrowsExactly(NullPointerException.class,
                 () -> new SimpleNodeFacade().readNode(new ThrowingGetter(), nullTarget, false));
-        assertThrowsExactly(NullPointerException.class, () -> new SimpleNodeBinder().readNode(null, nullTarget, false));
         assertThrowsExactly(NullPointerException.class,
                 () -> new FailingBinder(new BindingException("reader")).readNode("null", nullTarget));
         assertThrowsExactly(NullPointerException.class,
@@ -218,7 +216,7 @@ class ExceptionContractTest {
         }
     }
 
-    private static final class FailingBinder extends StreamingBinder<StreamingReader, StreamingWriter> {
+    private static final class FailingBinder extends Binder<StreamingReader, StreamingWriter> {
         private final RuntimeException failure;
 
         private FailingBinder(RuntimeException failure) {

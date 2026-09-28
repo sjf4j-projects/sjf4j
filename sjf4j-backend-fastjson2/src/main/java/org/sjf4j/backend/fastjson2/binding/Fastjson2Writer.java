@@ -1,7 +1,7 @@
 package org.sjf4j.backend.fastjson2.binding;
 
 import com.alibaba.fastjson2.JSONWriter;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
@@ -10,14 +10,13 @@ import java.io.OutputStream;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /** StreamingWriter backed directly by a Fastjson2 {@link JSONWriter}. */
 public final class Fastjson2Writer extends StreamingWriter {
 
     private final JSONWriter writer;
 
-    public Fastjson2Writer(StreamingBinder<?, ?> binder, JSONWriter writer) {
+    public Fastjson2Writer(Binder<?, ?> binder, JSONWriter writer) {
         super(binder);
         this.writer = Asserts.notNull(writer, "writer");
     }

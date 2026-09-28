@@ -1,21 +1,20 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.stream.JsonGenerator;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /** Streaming writer backed directly by a JSON-P {@link JsonGenerator}. */
 public final class JsonpWriter extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    public JsonpWriter(StreamingBinder<?, ?> binder, JsonGenerator generator) {
+    public JsonpWriter(Binder<?, ?> binder, JsonGenerator generator) {
         super(binder);
         this.generator = Asserts.notNull(generator, "generator");
     }

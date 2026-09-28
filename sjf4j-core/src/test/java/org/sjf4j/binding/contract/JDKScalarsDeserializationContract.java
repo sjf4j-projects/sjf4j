@@ -2,7 +2,7 @@ package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.exception.BindingException;
 
 import java.math.BigDecimal;
@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Portable scalar cases from Jackson's JDKScalarsDeserTest. */
 public abstract class JDKScalarsDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
     /** Source: JDKScalarsDeserTest#testBooleanWrapper. */
     @Test void testBooleanWrapper() {
         assertEquals(Boolean.TRUE, binding(RuntimeContext.EMPTY).readNode("true", Boolean.class));

@@ -7,7 +7,6 @@ import java.io.OutputStream;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /**
  * Unified streaming writer for structured data.
@@ -25,13 +24,13 @@ public abstract class StreamingWriter implements Closeable, Flushable {
      * Prepared Property Names
      * --------------------------------------------------------------
      */
-    private final StreamingBinder<?, ?> binder;
+    private final Binder<?, ?> binder;
 
-    protected StreamingWriter(StreamingBinder<?, ?> binder) {
+    protected StreamingWriter(Binder<?, ?> binder) {
         this.binder = binder;
     }
 
-    public final StreamingBinder<?, ?> binder() {
+    public final Binder<?, ?> binder() {
         return binder;
     }
 

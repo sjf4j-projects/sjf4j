@@ -1,7 +1,7 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
@@ -14,7 +14,7 @@ import java.io.Reader;
 import java.io.Writer;
 
 /** YAML binder backed by SnakeYAML's event parser and emitter. */
-public final class SnakeBinder extends StreamingBinder<SnakeReader, SnakeWriter> {
+public final class SnakeBinder extends Binder<SnakeReader, SnakeWriter> {
     private final LoaderOptions loaderOptions;
     private final DumperOptions dumperOptions;
 

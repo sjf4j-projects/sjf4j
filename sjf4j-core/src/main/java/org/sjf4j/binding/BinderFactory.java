@@ -1,7 +1,6 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.binding.simple.SimpleJsonBinder;
-import org.sjf4j.binding.simple.SimplePropertiesBinder;
 import org.sjf4j.binding.simple.SimpleYamlBinder;
 
 import java.util.ArrayList;
@@ -21,7 +20,7 @@ import java.util.ServiceLoader;
  * back to the built-in simple binder and YAML to the built-in unavailable YAML
  * binder when no optional provider is available.</p>
  */
-public final class BindingFactory {
+public final class BinderFactory {
 
     private static final BinderProvider SIMPLE_JSON =
             BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new);
@@ -31,7 +30,7 @@ public final class BindingFactory {
     private static final List<BinderProvider> PROVIDERS = load();
     private static final Map<Format, BinderProvider> SELECTED_PROVIDERS = select(PROVIDERS);
 
-    private BindingFactory() {
+    private BinderFactory() {
     }
 
     /**

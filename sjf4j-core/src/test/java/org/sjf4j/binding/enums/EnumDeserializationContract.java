@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.annotation.node.NodeProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Plain Jackson enum defaults, adapted through SJF4J's public binding API. */
 public abstract class EnumDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
 
     /** Source: EnumDeserializationTest#testSimple. */
     @Test void testSimple() {

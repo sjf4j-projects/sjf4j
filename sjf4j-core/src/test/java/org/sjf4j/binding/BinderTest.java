@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class StreamingBinderTest {
+class BinderTest {
     @Test
     void readsUtf8BytesAndWritesUtf8Bytes() {
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);

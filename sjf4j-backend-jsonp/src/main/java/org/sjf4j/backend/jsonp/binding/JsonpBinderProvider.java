@@ -4,7 +4,7 @@ import jakarta.json.spi.JsonProvider;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
 /** Service provider for the JSON-P JSON binder. */
@@ -42,7 +42,7 @@ public final class JsonpBinderProvider implements BinderProvider {
     }
 
     @Override
-    public StreamingBinder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(RuntimeContext context) {
         return new JsonpBinder(JsonProvider.provider(), context);
     }
 }

@@ -47,7 +47,7 @@ class StreamingIOWriteTest {
         private int properties;
         private int elements;
 
-        SeparatorWriter(StreamingBinder<?, ?> binder) {
+        SeparatorWriter(Binder<?, ?> binder) {
             super(binder);
         }
 

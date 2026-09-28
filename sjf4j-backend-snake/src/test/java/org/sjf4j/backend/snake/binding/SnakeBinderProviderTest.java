@@ -3,7 +3,7 @@ package org.sjf4j.backend.snake.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
-import org.sjf4j.binding.BindingFactory;
+import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
@@ -30,7 +30,7 @@ class SnakeBinderProviderTest {
 
     @Test
     void isDiscoveredAsTheDefaultYamlBinderProvider() {
-        BinderProvider provider = BindingFactory.provider(Format.YAML);
+        BinderProvider provider = BinderFactory.provider(Format.YAML);
 
         assertInstanceOf(SnakeBinderProvider.class, provider);
         assertInstanceOf(SnakeBinder.class, provider.create(RuntimeContext.EMPTY));

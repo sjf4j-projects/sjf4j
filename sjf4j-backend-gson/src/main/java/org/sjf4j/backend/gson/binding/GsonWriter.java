@@ -1,18 +1,17 @@
 package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
-import java.util.Objects;
 
 public final class GsonWriter extends StreamingWriter {
 
     private final JsonWriter writer;
 
-    public GsonWriter(StreamingBinder<?, ?> binder, JsonWriter writer) {
+    public GsonWriter(Binder<?, ?> binder, JsonWriter writer) {
         super(binder);
         Asserts.notNull(writer, "writer");
         this.writer = writer;

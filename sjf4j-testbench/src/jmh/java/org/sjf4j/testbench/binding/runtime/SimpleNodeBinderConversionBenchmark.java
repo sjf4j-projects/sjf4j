@@ -15,7 +15,6 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonArray;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.simple.SimpleNodeBinder;
 
 import java.lang.reflect.Type;
 import java.util.LinkedHashSet;

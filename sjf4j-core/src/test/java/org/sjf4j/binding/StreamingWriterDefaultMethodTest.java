@@ -19,7 +19,7 @@ class StreamingWriterDefaultMethodTest {
     private static final class RecordingWriter extends StreamingWriter {
         private final List<String> events = new ArrayList<>();
 
-        RecordingWriter(StreamingBinder<?, ?> binder) {
+        RecordingWriter(Binder<?, ?> binder) {
             super(binder);
         }
 

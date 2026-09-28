@@ -1,15 +1,12 @@
 package org.sjf4j.binding.simple;
 
-import org.sjf4j.binding.PreparedName;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Asserts;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Objects;
 
 /**
  * Minimal JSON writer for the built-in binder.
@@ -23,7 +20,7 @@ public final class SimpleJsonWriter extends StreamingWriter {
     /**
      * Creates writer over output characters.
      */
-    public SimpleJsonWriter(StreamingBinder<?, ?> binder, Writer output) {
+    public SimpleJsonWriter(Binder<?, ?> binder, Writer output) {
         super(binder);
         Asserts.notNull(output, "output");
         this.writer = output;

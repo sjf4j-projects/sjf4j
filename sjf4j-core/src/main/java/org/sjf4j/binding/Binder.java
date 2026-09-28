@@ -22,11 +22,11 @@ import java.nio.charset.StandardCharsets;
 /**
  * Base streaming binding for reading and writing structured data.
  */
-public abstract class StreamingBinder<R extends StreamingReader, W extends StreamingWriter> {
+public abstract class Binder<R extends StreamingReader, W extends StreamingWriter> {
 
     protected final RuntimeContext context;
 
-    protected StreamingBinder(RuntimeContext context) {
+    protected Binder(RuntimeContext context) {
         this.context = Asserts.notNull(context, "context");
     }
 

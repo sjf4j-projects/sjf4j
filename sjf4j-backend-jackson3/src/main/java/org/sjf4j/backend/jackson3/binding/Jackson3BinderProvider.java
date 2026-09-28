@@ -3,7 +3,7 @@ package org.sjf4j.backend.jackson3.binding;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 import tools.jackson.core.json.JsonFactory;
 
@@ -42,7 +42,7 @@ public final class Jackson3BinderProvider implements BinderProvider {
     }
 
     @Override
-    public StreamingBinder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(RuntimeContext context) {
         return new Jackson3Binder(new JsonFactory(), context);
     }
 

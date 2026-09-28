@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Portable map cases from Jackson's MapDeserializationTest. */
 public abstract class MapDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
     /** Source: MapDeserializationTest#testExactStringIntMap. */
     @Test void testExactStringIntMap() {
         Map<String, Integer> value = cast(binding(RuntimeContext.EMPTY).readNode("{\"foo\":13,\"bar\":-39,\"\":0}", new TypeReference<Map<String, Integer>>() {}.getType()));

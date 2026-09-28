@@ -2,7 +2,7 @@ package org.sjf4j.binding.beans;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 
 import java.util.List;
 import java.util.Map;
@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Ordinary and root POJO contracts sourced from Jackson's default bean reads. */
 public abstract class BeanDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
 
     /** Direct source: bean/BeanDeserializerVanillaTest#allKnownProperties. */
     @Test void readsAllOrdinaryPojoPropertiesAtTheRoot() {

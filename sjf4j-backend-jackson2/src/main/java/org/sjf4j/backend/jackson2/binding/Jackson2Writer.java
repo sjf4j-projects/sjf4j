@@ -1,23 +1,21 @@
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import org.sjf4j.backend.jackson2.binding.Jackson2PreparedName;
 import org.sjf4j.binding.PreparedName;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /** StreamingWriter backed directly by a Jackson 2 {@link JsonGenerator}. */
 public final class Jackson2Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    public Jackson2Writer(StreamingBinder<?, ?> binder, JsonGenerator generator) {
+    public Jackson2Writer(Binder<?, ?> binder, JsonGenerator generator) {
         super(binder);
         this.generator = Asserts.notNull(generator, "generator");
     }

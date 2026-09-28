@@ -2,7 +2,7 @@ package org.sjf4j.backend.jackson3.binding;
 
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.FastStringWriter;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.PreparedName;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
@@ -24,7 +24,7 @@ import java.io.Reader;
 import java.io.Writer;
 
 /** JSON binder backed directly by a Jackson 3 {@link JsonFactory}. */
-public final class Jackson3Binder extends StreamingBinder<Jackson3Reader, Jackson3Writer> {
+public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer> {
 
     private static final ObjectReadContext READ_CONTEXT = ObjectReadContext.empty();
     private static final ObjectWriteContext WRITE_CONTEXT = ObjectWriteContext.empty();

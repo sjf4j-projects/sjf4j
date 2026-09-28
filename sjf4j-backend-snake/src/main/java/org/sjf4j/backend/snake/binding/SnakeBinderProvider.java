@@ -3,7 +3,7 @@ package org.sjf4j.backend.snake.binding;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
@@ -44,7 +44,7 @@ public final class SnakeBinderProvider implements BinderProvider {
     }
 
     @Override
-    public StreamingBinder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(RuntimeContext context) {
         return new SnakeBinder(new LoaderOptions(), new DumperOptions(), context);
     }
 }

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
 /** Service provider for the Jackson 2 JSON binder. */
@@ -42,7 +42,7 @@ public final class Jackson2BinderProvider implements BinderProvider {
     }
 
     @Override
-    public StreamingBinder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(RuntimeContext context) {
         return new Jackson2Binder(new JsonFactory(), context);
     }
 

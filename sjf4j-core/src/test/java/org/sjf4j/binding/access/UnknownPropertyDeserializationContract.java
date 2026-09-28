@@ -1,14 +1,14 @@
 package org.sjf4j.binding.access;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.RuntimeContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Default SJF4J unknown-property behavior structurally compared with Jackson cases. */
 public abstract class UnknownPropertyDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
 
     /** Structural source: UnknownPropertyDeserTest#testUnknownHandlingIgnoreWithFeature. */
     @Test void testUnknownHandlingIgnoreWithFeature() {

@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added compiled binding generation with `@ReadFrom` and `@WriteTo` annotations for custom property read/write methods.
 - Added `@CompiledBinder` format and backend selection with automatic JSON backend resolution.
-- Added `Format`, `BinderProvider`, and `BindingFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
+- Added `Format`, `BinderProvider`, and `BinderFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
 
 ### Breaking Changes
 - Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.

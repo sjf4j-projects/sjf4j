@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.value.ValueRegistry;
 import org.sjf4j.value.ValueCodec;
 
@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** User-registered atomic-value bindings via SJF4J's ValueCodec extension API. */
 public abstract class JDKAtomicTypesDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
     private static final class AtomicCodecs {
         static {
             ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(

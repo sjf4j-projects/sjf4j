@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import org.sjf4j.binding.PreparedName;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonGenerator;
@@ -9,14 +9,13 @@ import tools.jackson.core.JsonGenerator;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /** StreamingWriter backed directly by a Jackson 2 {@link JsonGenerator}. */
 public final class Jackson3Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    public Jackson3Writer(StreamingBinder<?, ?> binder, JsonGenerator generator) {
+    public Jackson3Writer(Binder<?, ?> binder, JsonGenerator generator) {
         super(binder);
         this.generator = Asserts.notNull(generator, "generator");
     }

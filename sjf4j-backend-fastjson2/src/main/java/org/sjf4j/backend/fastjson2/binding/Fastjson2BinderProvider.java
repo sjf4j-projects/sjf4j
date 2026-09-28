@@ -6,7 +6,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
 /** Service provider for the Fastjson2 JSON binder. */
@@ -45,7 +45,7 @@ public final class Fastjson2BinderProvider implements BinderProvider {
     }
 
     @Override
-    public StreamingBinder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(RuntimeContext context) {
         return new Fastjson2Binder(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
     }
 }

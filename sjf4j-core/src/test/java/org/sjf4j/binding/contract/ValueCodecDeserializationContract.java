@@ -5,7 +5,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** SJF4J NodeValue contracts structurally adapted from Jackson custom-deserializer cases. */
 public abstract class ValueCodecDeserializationContract {
-    protected abstract StreamingBinder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(RuntimeContext context);
     /** Structural source: ValueAnnotationsDeserTest#testRootInterfaceUsing; NodeValue replaces JsonDeserialize(using). */
     @Test void testRootInterfaceUsing() {
         Code value = (Code) binding(RuntimeContext.EMPTY).readNode("\"alpha\"", Code.class);

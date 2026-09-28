@@ -2,10 +2,10 @@ package org.sjf4j;
 
 
 import org.sjf4j.binding.BinderProvider;
-import org.sjf4j.binding.BindingFactory;
+import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
 import org.sjf4j.binding.PropertiesBinder;
-import org.sjf4j.binding.StreamingBinder;
+import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.simple.SimplePropertiesBinder;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.Types;
@@ -41,8 +41,8 @@ public final class Sjf4j {
     private final BinderProvider jsonBinderProvider;
     private final BinderProvider yamlBinderProvider;
 
-    private final StreamingBinder<?, ?> jsonBinder;
-    private final StreamingBinder<?, ?> yamlBinder;
+    private final Binder<?, ?> jsonBinder;
+    private final Binder<?, ?> yamlBinder;
     private final PropertiesBinder propertiesBinder;
 
     /**
@@ -56,11 +56,11 @@ public final class Sjf4j {
         this.runtimeContext = new RuntimeContext(builder.defaultValueFormats, builder.includeNulls);
 
         this.jsonBinderProvider = builder.jsonBinderProvider == null
-                ? BindingFactory.jsonBinderProvider() : builder.jsonBinderProvider;
+                ? BinderFactory.jsonBinderProvider() : builder.jsonBinderProvider;
         this.jsonBinder = jsonBinderProvider.create(this.runtimeContext);
 
         this.yamlBinderProvider = builder.yamlBinderProvider == null
-                ? BindingFactory.yamlBinderProvider() : builder.yamlBinderProvider;
+                ? BinderFactory.yamlBinderProvider() : builder.yamlBinderProvider;
         this.yamlBinder = yamlBinderProvider.create(this.runtimeContext);
 
         this.propertiesBinder = builder.propertiesBinder == null
@@ -111,7 +111,7 @@ public final class Sjf4j {
     /**
      * Returns the JSON binder used by this runtime.
      */
-    public StreamingBinder<?, ?> jsonBinder() {
+    public Binder<?, ?> jsonBinder() {
         return jsonBinder;
     }
 
