@@ -18,7 +18,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 
 /** JSON binder backed directly by a Jakarta JSON-P {@link JsonProvider}. */
-public class JsonpBinder extends JsonBinder<JsonpReader, JsonpWriter> {
+public final class JsonpBinder extends JsonBinder<JsonpReader, JsonpWriter> {
 
     private final JsonProvider provider;
 

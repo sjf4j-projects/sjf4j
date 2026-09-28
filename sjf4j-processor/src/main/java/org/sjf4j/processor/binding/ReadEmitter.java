@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.BindingBackend;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
@@ -469,6 +470,22 @@ final class ReadEmitter {
                         ".nextString()))";
 
             case RUNTIME:
+                if (context.types.isObject(value.type())) {
+                    if ((backend.backend() == BindingBackend.FASTJSON2 ||
+                            backend.backend() == BindingBackend.GSON ||
+                            backend.backend() == BindingBackend.JACKSON2) &&
+                            context.typeUtils.isSameType(
+                                    value.type(),
+                                    context.types.objectType())) {
+
+                        return "(" + value.type() + ") " +
+                                reader + ".readRawNode()";
+                    }
+                    return "(" + value.type() + ") " +
+                            STREAMING_IO +
+                            ".readRawNode(" +
+                            reader + ")";
+                }
                 return "(" + value.type() + ") " +
                         STREAMING_IO +
                         ".readNode(" +

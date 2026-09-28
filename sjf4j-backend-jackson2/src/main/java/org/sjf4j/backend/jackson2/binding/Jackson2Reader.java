@@ -3,6 +3,7 @@ package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
 
@@ -10,9 +11,13 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.BindException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-public class Jackson2Reader implements StreamingReader {
+public final class Jackson2Reader implements StreamingReader {
 
     private final JsonParser parser;
     private JsonToken token;
@@ -35,6 +40,16 @@ public class Jackson2Reader implements StreamingReader {
 
     public Jackson2Reader(JsonParser parser) {
         this.parser = Objects.requireNonNull(parser, "parser");
+    }
+
+    /**
+     * Reads the next value as the raw SJF4J object graph.
+     *
+     * <p>Objects are represented by {@link LinkedHashMap} and arrays by
+     * {@link ArrayList}.</p>
+    */
+    public Object readRawNode() throws IOException {
+        return readRawNodeValue();
     }
 
     @Override
@@ -263,6 +278,63 @@ public class Jackson2Reader implements StreamingReader {
     @Override
     public void close() throws IOException {
         parser.close();
+    }
+
+    private Object readRawNodeValue() throws IOException {
+        ensureToken();
+        if (token == null) {
+            throw new BindingException("unexpected token '" + token(token) + "'");
+        }
+        switch (token) {
+            case START_OBJECT:
+                return readRawObject();
+            case START_ARRAY:
+                return readRawArray();
+            case VALUE_STRING: {
+                String value = parser.getText();
+                advance();
+                return value;
+            }
+            case VALUE_NUMBER_INT:
+            case VALUE_NUMBER_FLOAT: {
+                Number value = parser.getNumberValue();
+                advance();
+                return value;
+            }
+            case VALUE_TRUE:
+            case VALUE_FALSE: {
+                boolean value = parser.getBooleanValue();
+                advance();
+                return value;
+            }
+            case VALUE_NULL:
+                advance();
+                return null;
+            default:
+                throw new BindingException("unexpected token '" + token(token) + "'");
+        }
+    }
+
+    private Map<String, Object> readRawObject() throws IOException {
+        Map<String, Object> value = new LinkedHashMap<>();
+        advance();
+        while (token != JsonToken.END_OBJECT) {
+            String name = parser.currentName();
+            advance();
+            value.put(name, readRawNodeValue());
+        }
+        advance();
+        return value;
+    }
+
+    private List<Object> readRawArray() throws IOException {
+        List<Object> value = new ArrayList<>();
+        advance();
+        while (token != JsonToken.END_ARRAY) {
+            value.add(readRawNodeValue());
+        }
+        advance();
+        return value;
     }
 
     private void require(JsonToken expected) throws IOException {

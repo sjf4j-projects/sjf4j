@@ -6,12 +6,14 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +36,38 @@ class Fastjson2BinderTest {
             assertEquals("id", reader.nextName());
             assertEquals(7, reader.nextIntValue());
             assertTrue(reader.nextIfObjectEnd());
+        }
+    }
+
+    @Test
+    void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
+        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of(
+                "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
+                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"))) {
+
+            assertEquals(StreamingReader.Token.START_OBJECT, reader.peekToken());
+            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+
+            assertEquals(LinkedHashMap.class, value.getClass());
+            assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
+                    Arrays.asList(value.keySet().toArray()));
+            assertEquals("Ada", value.get("text"));
+            assertEquals(7, value.get("number"));
+            assertEquals(true, value.get("enabled"));
+            assertNull(value.get("empty"));
+            assertEquals(LinkedHashMap.class, value.get("nested").getClass());
+            assertEquals(ArrayList.class, value.get("items").getClass());
+            assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void rawNodeReportsEofUsingStreamingTokenSemantics() {
+        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of(""))) {
+            BindingException error = assertThrows(BindingException.class, reader::readRawNode);
+            assertEquals("unexpected token 'EOF'", error.getMessage());
         }
     }
 

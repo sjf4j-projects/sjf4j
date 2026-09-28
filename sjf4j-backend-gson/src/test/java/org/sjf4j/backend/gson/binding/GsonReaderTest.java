@@ -2,14 +2,21 @@ package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
 import org.sjf4j.binding.StreamingReader.Token;
+import org.sjf4j.exception.BindingException;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -86,6 +93,38 @@ class GsonReaderTest {
             assertEquals(Token.NUMBER, reader.peekToken());
             assertEquals(1, reader.nextIntValue());
             assertEquals(Token.EOF, reader.peekToken());
+        }
+    }
+
+    @Test
+    void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
+        try (GsonReader reader = reader(
+                "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
+                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
+
+            assertEquals(Token.START_OBJECT, reader.peekToken());
+            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+
+            assertEquals(LinkedHashMap.class, value.getClass());
+            assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
+                    Arrays.asList(value.keySet().toArray()));
+            assertEquals("Ada", value.get("text"));
+            assertEquals(7, value.get("number"));
+            assertEquals(true, value.get("enabled"));
+            assertNull(value.get("empty"));
+            assertEquals(LinkedHashMap.class, value.get("nested").getClass());
+            assertEquals(ArrayList.class, value.get("items").getClass());
+            assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
+            assertEquals(Token.EOF, reader.peekToken());
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void rawNodeReportsEofUsingStreamingTokenSemantics() throws Exception {
+        try (GsonReader reader = reader("")) {
+            BindingException error = assertThrows(BindingException.class, reader::readRawNode);
+            assertEquals("unexpected token 'EOF'", error.getMessage());
         }
     }
 

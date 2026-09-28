@@ -24,7 +24,7 @@ import java.io.Reader;
 import java.io.Writer;
 
 /** JSON binder backed directly by a Jackson 3 {@link JsonFactory}. */
-public class Jackson3Binder extends JsonBinder<Jackson3Reader, Jackson3Writer> {
+public final class Jackson3Binder extends JsonBinder<Jackson3Reader, Jackson3Writer> {
 
     private static final ObjectReadContext READ_CONTEXT = ObjectReadContext.empty();
     private static final ObjectWriteContext WRITE_CONTEXT = ObjectWriteContext.empty();

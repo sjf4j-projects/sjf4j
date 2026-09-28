@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.BindException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /** StreamingReader backed directly by a Fastjson2 {@link JSONReader}. */
@@ -35,6 +39,21 @@ public final class Fastjson2Reader implements StreamingReader {
 
     public Fastjson2Reader(JSONReader reader) {
         this.reader = Objects.requireNonNull(reader, "reader");
+    }
+
+    /**
+     * Reads the next value as the raw SJF4J object graph.
+     *
+     * <p>Objects are represented by {@link LinkedHashMap} and arrays by
+     * {@link ArrayList}.</p>
+     */
+    public Object readRawNode() throws IOException {
+        peeked = null;
+        try {
+            return readRawNode(reader);
+        } finally {
+            peeked = null;
+        }
     }
 
     @Override
@@ -233,6 +252,54 @@ public final class Fastjson2Reader implements StreamingReader {
     @Override
     public void close() {
         reader.close();
+    }
+
+    private Object readRawNode(JSONReader reader) throws IOException {
+        char current = reader.current();
+        switch (current) {
+            case '{':
+                return readRawObject(reader);
+            case '[':
+                return readRawArray(reader);
+            case '"':
+                return reader.readString();
+            case 't':
+            case 'f':
+                return reader.readBoolValue();
+            case 'n':
+                reader.readNull();
+                return null;
+            default:
+                if (current == '-' || current >= '0' && current <= '9') {
+                    return reader.readNumber();
+                }
+                Token token = reader.isEnd() ? Token.EOF : token(current);
+                throw new BindingException("unexpected token '" + token + "'");
+        }
+    }
+
+    private Map<String, Object> readRawObject(JSONReader reader) throws IOException {
+        if (!reader.nextIfObjectStart()) {
+            throw new BindingException("expected token '{', but was " + reader.current());
+        }
+
+        Map<String, Object> value = new LinkedHashMap<>();
+        while (!reader.nextIfObjectEnd()) {
+            value.put(reader.readFieldName(), readRawNode(reader));
+        }
+        return value;
+    }
+
+    private List<Object> readRawArray(JSONReader reader) throws IOException {
+        if (!reader.nextIfArrayStart()) {
+            throw new BindingException("expected token '[', but was " + reader.current());
+        }
+
+        List<Object> value = new ArrayList<>();
+        while (!reader.nextIfArrayEnd()) {
+            value.add(readRawNode(reader));
+        }
+        return value;
     }
 
     private static Token token(char ch) {

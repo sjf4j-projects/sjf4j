@@ -7,9 +7,88 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CodeGenerationIntegrationTest {
+
+    @Test
+    void readsObjectValuesAsRawNodes() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
+                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "@CompiledBinder(backend = BindingBackend.SIMPLE) public interface Binder {\n"
+                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "}\n"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(source.contains(
+                "(Object) StreamingIO.readRawNode(reader)"), source);
+        assertFalse(source.contains(
+                "StreamingIO.readNode(reader, Object.class"), source);
+    }
+
+    @Test
+    void readsObjectValuesDirectlyForFastjson2() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
+                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "@CompiledBinder(backend = BindingBackend.FASTJSON2) public interface Binder {\n"
+                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "}\n"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(source.contains("(Object) reader.readRawNode()"), source);
+        assertFalse(source.contains("StreamingIO.readRawNode(reader)"), source);
+    }
+
+    @Test
+    void readsObjectValuesDirectlyForGson() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
+                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "@CompiledBinder(backend = BindingBackend.GSON) public interface Binder {\n"
+                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "}\n"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(source.contains("(Object) reader.readRawNode()"), source);
+        assertFalse(source.contains("StreamingIO.readRawNode(reader)"), source);
+    }
+
+    @Test
+    void readsObjectValuesDirectlyForJackson2() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
+                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "@CompiledBinder(backend = BindingBackend.JACKSON2) public interface Binder {\n"
+                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "}\n"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(source.contains("(Object) reader.readRawNode()"), source);
+        assertFalse(source.contains("StreamingIO.readRawNode(reader)"), source);
+    }
 
     @Test
     void supportsRootContainerUpdates() throws Exception {

@@ -12,7 +12,7 @@ import java.math.BigInteger;
 import java.net.BindException;
 import java.util.Objects;
 
-public class Jackson3Reader implements StreamingReader {
+public final class Jackson3Reader implements StreamingReader {
 
     private final JsonParser parser;
     private JsonToken token;

@@ -21,7 +21,7 @@ import java.io.Reader;
 import java.io.Writer;
 
 /** JSON binder backed directly by a Jackson 2 {@link JsonFactory}. */
-public class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
+public final class Jackson2Binder extends JsonBinder<Jackson2Reader, Jackson2Writer> {
 
     private final JsonFactory factory;
 

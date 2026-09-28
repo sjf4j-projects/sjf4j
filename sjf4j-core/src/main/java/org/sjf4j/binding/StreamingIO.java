@@ -56,7 +56,6 @@ public final class StreamingIO {
      */
     public static Object readNode(StreamingReader reader, Type nodeType, RuntimeContext context) throws IOException {
         Asserts.notNull(reader, "reader");
-        Asserts.notNull(nodeType, "nodeType");
         Asserts.notNull(context, "context");
         if (nodeType == Object.class) {
             return readRawNode(reader);
@@ -113,7 +112,7 @@ public final class StreamingIO {
     }
 
 
-    static Object readRawNode(StreamingReader reader) throws IOException {
+    public static Object readRawNode(StreamingReader reader) throws IOException {
         switch (reader.peekToken()) {
             case START_OBJECT:
                 return readRawObject(reader);

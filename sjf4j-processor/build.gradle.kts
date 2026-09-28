@@ -25,6 +25,10 @@ dependencies {
 
     // test
     testImplementation(project.findProject(":sjf4j-schema")?.let { project(":sjf4j-schema") } ?: "org.sjf4j:sjf4j-schema:$version")
+    testImplementation(project(":sjf4j-backend-fastjson2"))
+    testImplementation(project(":sjf4j-backend-gson"))
+    testImplementation(project(":sjf4j-backend-jackson2"))
+    testImplementation("com.google.code.gson:gson:2.13.1")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     testImplementation("jakarta.json:jakarta.json-api:2.1.3")

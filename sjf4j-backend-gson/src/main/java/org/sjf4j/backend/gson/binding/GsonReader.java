@@ -3,6 +3,7 @@ package org.sjf4j.backend.gson.binding;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.util.Asserts;
 
@@ -11,9 +12,13 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.BindException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-public class GsonReader implements StreamingReader {
+public final class GsonReader implements StreamingReader {
 
     private final JsonReader reader;
     private JsonToken token;
@@ -25,6 +30,21 @@ public class GsonReader implements StreamingReader {
     public GsonReader(JsonReader reader) {
         Asserts.notNull(reader, "reader");
         this.reader = reader;
+    }
+
+    /**
+     * Reads the next value as the raw SJF4J object graph.
+     *
+     * <p>Objects are represented by {@link LinkedHashMap} and arrays by
+     * {@link ArrayList}.</p>
+     */
+    public Object readRawNode() throws IOException {
+        invalidateToken();
+        try {
+            return readRawNodeValue();
+        } finally {
+            invalidateToken();
+        }
     }
 
     @Override
@@ -219,6 +239,64 @@ public class GsonReader implements StreamingReader {
     public void close() throws IOException {
         reader.close();
     }
+
+    private Object readRawNodeValue() throws IOException {
+        ensureToken();
+        switch (token) {
+            case BEGIN_OBJECT:
+                return readRawObject();
+            case BEGIN_ARRAY:
+                return readRawArray();
+            case STRING: {
+                String value = reader.nextString();
+                invalidateToken();
+                return value;
+            }
+            case NUMBER: {
+                Number value = Numbers.parseNumber(reader.nextString());
+                invalidateToken();
+                return value;
+            }
+            case BOOLEAN: {
+                boolean value = reader.nextBoolean();
+                invalidateToken();
+                return value;
+            }
+            case NULL:
+                reader.nextNull();
+                invalidateToken();
+                return null;
+            default:
+                throw new BindingException("unexpected token '" + peekToken() + "'");
+        }
+    }
+
+    private Map<String, Object> readRawObject() throws IOException {
+        Map<String, Object> value = new LinkedHashMap<>();
+        reader.beginObject();
+        invalidateToken();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            invalidateToken();
+            value.put(name, readRawNodeValue());
+        }
+        reader.endObject();
+        invalidateToken();
+        return value;
+    }
+
+    private List<Object> readRawArray() throws IOException {
+        List<Object> value = new ArrayList<>();
+        reader.beginArray();
+        invalidateToken();
+        while (reader.hasNext()) {
+            value.add(readRawNodeValue());
+        }
+        reader.endArray();
+        invalidateToken();
+        return value;
+    }
+
 
     private void ensureToken() throws IOException {
         if (!initialized) {
