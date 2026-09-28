@@ -51,7 +51,7 @@ public class NodesTest {
 
         Object node = sjf4j.fromJson(json);
         log.info("node={}", Nodes.inspect(node));
-        User user2 = sjf4j.convert(node, User.class, true);
+        User user2 = sjf4j.fromNode(node, User.class, true);
         log.info("user2={}", Nodes.inspect(user2));
         assertEquals("2026-02-04", user2.records[0].date.toString());
     }
@@ -74,7 +74,7 @@ public class NodesTest {
         String json = "{\"name\":\"n\",\"records\":[{\"msg\":\"m\",\"date\":\"2026-02-04\"}]}";
         User user1 = sjf4j.fromJson(json, User.class);
 
-        User user2 = sjf4j.deepcopy(user1);
+        User user2 = sjf4j.copyNode(user1);
         user1.records[0] = new PlainRecord("m2m", LocalDate.parse("2026-02-05"));
         log.info("user1={}", Nodes.inspect(user1));
         log.info("user2={}", Nodes.inspect(user2));

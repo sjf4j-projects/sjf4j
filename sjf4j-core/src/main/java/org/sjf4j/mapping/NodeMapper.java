@@ -65,12 +65,6 @@ public final class NodeMapper {
     }
 
 
-    @SuppressWarnings("unchecked")
-    public static <T> T deepcopy(T node) {
-        if (node == null) return null;
-        return (T) convert(node, node.getClass(), true, RuntimeContext.EMPTY);
-    }
-
 
     /**
      * Root conversion entry with deep-copy control.
@@ -88,12 +82,10 @@ public final class NodeMapper {
         }
     }
 
-    /**
-     * Converts a node to its raw JSON-compatible representation using the
-     * default runtime context.
-     */
-    public static Object convertToRaw(Object node) {
-        return convertToRaw(node, RuntimeContext.EMPTY);
+    @SuppressWarnings("unchecked")
+    public static <T> T deepcopy(Object node) {
+        if (node == null) return null;
+        return (T) convert(node, node.getClass(), true, RuntimeContext.EMPTY);
     }
 
     /**

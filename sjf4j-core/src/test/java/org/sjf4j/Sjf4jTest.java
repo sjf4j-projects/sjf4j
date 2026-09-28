@@ -72,21 +72,21 @@ public class Sjf4jTest {
         Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
-        JsonObject jo1 = JsonObject.convertFrom(p1);
+        JsonObject jo1 = JsonObject.fromNode(p1);
         log.info("jo1={}", jo1);
 
-        JsonObject jo2 = JsonObject.convertFrom(p1);
+        JsonObject jo2 = JsonObject.fromNode(p1);
         log.info("jo2={}", jo2);
         assertEquals(jo1, jo2);
 
         JsonObject jo3 = Sjf4j.global().fromJson(JSON_DATA, JsonObject.class);
         log.info("jo3={}", jo3);
 
-        Person p2 = Sjf4j.global().convert(jo3, Person.class, true);
+        Person p2 = Sjf4j.global().fromNode(jo3, Person.class, true);
         log.info("p2={}", p2);
         assertNotEquals(p1, p2);
 
-        assertEquals(Sjf4j.global().convertToRaw(p1), Sjf4j.global().convertToRaw(p2));
+        assertEquals(Sjf4j.global().toRaw(p1), Sjf4j.global().toRaw(p2));
     }
 
     @Test
@@ -94,10 +94,10 @@ public class Sjf4jTest {
         Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
-        JsonObject jo2 = JsonObject.convertFrom(p1);
+        JsonObject jo2 = JsonObject.fromNode(p1);
         log.info("jo2={}", jo2);
 
-        Object n3 = Sjf4j.global().convertToRaw(p1);
+        Object n3 = Sjf4j.global().toRaw(p1);
         log.info("n3={}", n3);
 
         assertTrue(Nodes.equals(p1, n3));
@@ -155,7 +155,7 @@ public class Sjf4jTest {
         assertEquals(18, user.getInt("age"));
         assertEquals("{\"name\":\"han\",\"age\":18}", runtime.toJsonString(user));
 
-        Map<String, Object> map = runtime.convert(
+        Map<String, Object> map = runtime.fromNode(
                 user, new TypeReference<Map<String, Object>>() {}, true);
         assertEquals("han", map.get("name"));
 
@@ -206,7 +206,7 @@ public class Sjf4jTest {
         Sjf4j runtime = Sjf4j.builder().build();
 
         BindingException error = findBindingException(assertThrows(NodeException.class,
-                () -> runtime.convert(invalidNode, RuntimeOuter.class, true)));
+                () -> runtime.fromNode(invalidNode, RuntimeOuter.class, true)));
 
         assertNotNull(error);
         assertTrue(error.hasPathSegment());
@@ -264,9 +264,9 @@ public class Sjf4jTest {
                 .build();
 
         assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
-        assertEquals(epochMillis, runtime.convertToRaw(instant));
+        assertEquals(epochMillis, runtime.toRaw(instant));
         assertEquals(instant, runtime.fromJson(String.valueOf(epochMillis), Instant.class));
-        assertEquals(instant, runtime.convert(epochMillis, Instant.class, true));
+        assertEquals(instant, runtime.fromNode(epochMillis, Instant.class, true));
     }
 
     @Test

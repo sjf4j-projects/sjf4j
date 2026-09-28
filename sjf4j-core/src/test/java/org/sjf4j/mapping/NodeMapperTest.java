@@ -128,7 +128,7 @@ class NodeMapperTest {
 
         assertSame(source, NodeMapper.convert(source, Profile.class, false));
 
-        Profile copied = NodeMapper.deepcopy(source);
+        Profile copied = NodeMapper.convert(source, source.getClass(), true);
 
         assertNotSame(source, copied);
         assertNotSame(source.aliases, copied.aliases);
@@ -153,7 +153,7 @@ class NodeMapperTest {
         person.setBabies(Arrays.asList(new Baby("A", 6)));
         person.put("nickname", "Li");
 
-        Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(person);
+        Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(person, RuntimeContext.EMPTY);
         Map<String, Object> rawWithContext =
                 (Map<String, Object>) NodeMapper.convertToRaw(person, RuntimeContext.EMPTY);
 

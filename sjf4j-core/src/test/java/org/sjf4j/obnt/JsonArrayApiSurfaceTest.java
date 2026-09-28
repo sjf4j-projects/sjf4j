@@ -142,15 +142,15 @@ class JsonArrayApiSurfaceTest {
         assertEquals(Collections.singleton(1), JsonArray.of(1).toSet(Integer.class));
         assertEquals(Arrays.asList("a", "b"), JsonArray.of("a", "b").toList(String.class));
         assertArrayEquals(new String[]{"a", "b"}, JsonArray.of("a", "b").toArray(String.class));
-        assertEquals(Arrays.asList("x", "y"), JsonArray.fromNode(Arrays.asList("x", "y")).convertTo(List.class, true));
+        assertEquals(Arrays.asList("x", "y"), JsonArray.fromNode(Arrays.asList("x", "y")).toNode(List.class, true));
         JsonObject arrayNested = JsonObject.of("k", "v");
-        List<?> boundList = JsonArray.of(arrayNested).convertTo(List.class, false);
+        List<?> boundList = JsonArray.of(arrayNested).toNode(List.class, false);
         assertSame(arrayNested, boundList.get(0));
-        List<?> copiedList = JsonArray.of(arrayNested).convertTo(List.class, true);
+        List<?> copiedList = JsonArray.of(arrayNested).toNode(List.class, true);
         assertNotSame(arrayNested, copiedList.get(0));
         assertEquals(1, array.stream().count());
 
-        JsonArray deepCopy = JsonArray.of(JsonObject.of("k", "v")).deepCopy();
+        JsonArray deepCopy = JsonArray.of(JsonObject.of("k", "v")).deepcopy();
         array.getJsonObject(6).put("k", "changed");
         assertEquals("v", deepCopy.getJsonObject(0).getString("k"));
 

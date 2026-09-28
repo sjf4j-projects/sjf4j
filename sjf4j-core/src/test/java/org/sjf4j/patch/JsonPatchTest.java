@@ -285,7 +285,7 @@ public class JsonPatchTest {
         JsonPatch patch = JsonPatch.diff(a, b);
         System.out.println("patch=" + patch.toJson());
 
-        List<Integer> c = Sjf4j.global().deepcopy(a);
+        List<Integer> c = Sjf4j.global().copyNode(a);
         patch.apply(c);
 
         assertEquals(b, c);

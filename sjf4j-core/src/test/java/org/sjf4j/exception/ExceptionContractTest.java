@@ -131,8 +131,8 @@ class ExceptionContractTest {
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromYaml(new StringReader("null"), nullType));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromYaml("null", nullClass));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromYaml("null", nullType));
-        assertThrowsExactly(NullPointerException.class, () -> sjf4j.convert(null, nullClass, false));
-        assertThrowsExactly(NullPointerException.class, () -> sjf4j.convert(null, nullType, false));
+        assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromNode(null, nullClass, false));
+        assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromNode(null, nullType, false));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromProperties(new Properties(), nullClass));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromProperties(new Properties(), nullType));
 

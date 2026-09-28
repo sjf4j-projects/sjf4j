@@ -53,7 +53,7 @@ public final class Patches {
                     if (subTargetJt.isObject()) {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
-                        subPatch = deepCopy ? Sjf4j.global().deepcopy(subPatch) : subPatch;
+                        subPatch = deepCopy ? Sjf4j.global().copyNode(subPatch) : subPatch;
                         Nodes.putInObject(target, key, subPatch);
                     }
                 } else if (subPatchJt.isArray()) {
@@ -81,7 +81,7 @@ public final class Patches {
                     if (subTargetJt.isObject()) {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
-                        subPatch = deepCopy ? Sjf4j.global().deepcopy(subPatch) : subPatch;
+                        subPatch = deepCopy ? Sjf4j.global().copyNode(subPatch) : subPatch;
                         Nodes.putInArray(target, i, subPatch);
                     }
                 } else if (subPatchJt.isArray()) {
@@ -111,9 +111,9 @@ public final class Patches {
     private static Object _normalizeArrayPatch(Object patch, boolean deepCopy) {
         int size = Nodes.sizeInArray(patch);
         if (size == 0 || Nodes.getInArray(patch, size - 1) != null) {
-            return deepCopy ? Sjf4j.global().deepcopy(patch) : patch;
+            return deepCopy ? Sjf4j.global().copyNode(patch) : patch;
         }
-        Object value = deepCopy ? Sjf4j.global().deepcopy(patch) : Nodes.copy(patch);
+        Object value = deepCopy ? Sjf4j.global().copyNode(patch) : Nodes.copy(patch);
         for (int i = Nodes.sizeInArray(value); i > size - 1; i--) {
             Nodes.removeInArray(value, i - 1);
         }

@@ -54,7 +54,7 @@ public abstract class JsonContainer {
     /**
      * Structurally converts this container with {@link NodeMapper}.
      */
-    public <T> T convertTo(Class<T> clazz, boolean deepCopy) {
+    public <T> T toNode(Class<T> clazz, boolean deepCopy) {
         Asserts.notNull(clazz, "clazz");
         return NodeMapper.convert(this, clazz, deepCopy);
     }
@@ -62,8 +62,8 @@ public abstract class JsonContainer {
     /**
      * Converts this container to its raw JSON-compatible representation.
      */
-    public Object convertToRaw() {
-        return NodeMapper.convertToRaw(this);
+    public Object toRaw() {
+        return NodeMapper.convertToRaw(this, RuntimeContext.EMPTY);
     }
 
 

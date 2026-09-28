@@ -107,13 +107,13 @@ class JsonObjectApiSurfaceTest {
         assertThrowsExactly(IllegalArgumentException.class, () -> object.getAs("string", 1));
         assertThrowsExactly(NullPointerException.class, () -> object.get("number", (Integer[]) null));
         assertThrowsExactly(NullPointerException.class, () -> object.getAs("string", (Integer[]) null));
-        assertEquals(object.toMap(), object.convertTo(Map.class, true));
+        assertEquals(object.toMap(), object.toNode(Map.class, true));
         JsonObject nested = JsonObject.of("k", "v");
-        Map<?, ?> boundMap = JsonObject.of("nested", nested).convertTo(Map.class, false);
+        Map<?, ?> boundMap = JsonObject.of("nested", nested).toNode(Map.class, false);
         assertSame(nested, boundMap.get("nested"));
-        Map<?, ?> copiedMap = JsonObject.of("nested", nested).convertTo(Map.class, true);
+        Map<?, ?> copiedMap = JsonObject.of("nested", nested).toNode(Map.class, true);
         assertNotSame(nested, copiedMap.get("nested"));
-        assertInstanceOf(Map.class, object.convertToRaw());
+        assertInstanceOf(Map.class, object.toRaw());
 
         JsonObject dynamic = new JsonObject();
         dynamic.put("present", "value");
@@ -173,13 +173,13 @@ class JsonObjectApiSurfaceTest {
         assertEquals(5, built.getIntByPath("$.nested.other"));
         assertEquals(1, built.stream().count());
 
-        Person pojo = JsonObject.of("name", "Alice", "age", 30).convertTo(Person.class, false);
+        Person pojo = JsonObject.of("name", "Alice", "age", 30).toNode(Person.class, false);
         assertEquals("Alice", pojo.name);
-        JsonObject pojoNode = JsonObject.convertFrom(new ExtraPojo());
+        JsonObject pojoNode = JsonObject.fromNode(new ExtraPojo());
         assertEquals("ok", pojoNode.getString("code"));
         assertTrue(object.copy().nodeEquals(object));
 
-        JsonObject deepCopy = JsonObject.of("nested", JsonObject.of("k", "v")).deepCopy();
+        JsonObject deepCopy = JsonObject.of("nested", JsonObject.of("k", "v")).deepcopy();
         deepCopy.getJsonObject("nested").put("k", "changed");
         assertEquals("changed", deepCopy.getJsonObject("nested").getString("k"));
     }

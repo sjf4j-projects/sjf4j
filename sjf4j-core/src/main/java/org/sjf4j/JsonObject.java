@@ -443,7 +443,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Structurally converts a value to a JsonObject.
      */
-    public static JsonObject convertFrom(Object node) {
+    public static JsonObject fromNode(Object node) {
         return NodeMapper.convert(node, JsonObject.class, false);
     }
 
@@ -1124,12 +1124,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Creates a deep copy of this JsonObject.
      * <p>
-     * Delegates to {@link Sjf4j#deepcopy(Object)} and {@link NodeMapper}.
+     * Delegates to {@link Sjf4j#copyNode(Object)} and {@link NodeMapper}.
      * Declared and dynamic entries are copied structurally; unsupported values,
      * including backend-native or external nodes, may be retained by reference.
      */
-    public JsonObject deepCopy() {
-        return Sjf4j.global().deepcopy(this);
+    public JsonObject deepcopy() {
+        return Sjf4j.global().copyNode(this);
     }
 
     /*

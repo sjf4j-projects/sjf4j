@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
-- Renamed JSON, YAML, node, properties, and streaming binding APIs from `*Binding` to `*Binder`, including the built-in simple implementations.
+- Renamed `StreamingBinder` to `Binder` and `BindingFactory` to `BinderFactory`. Removed `JsonBinder`, `YamlBinder`, `NodeBinder`, and `SimpleNodeBinder`; use `Binder` for streaming formats and `NodeMapper` for direct structural conversion. Custom providers and writers must update their `Binder` types and be recompiled, because the changed method descriptors are not binary compatible.
 - Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
 - Moved runtime bytecode-path APIs (`BytecodePath`, `FallbackBytecodePath`, `PathCompiler`, and `BytecodeCompilers`) from `org.sjf4j.compiled` to `org.sjf4j.bytecode`, including the `PathCompiler` service-provider contract.
 - Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.

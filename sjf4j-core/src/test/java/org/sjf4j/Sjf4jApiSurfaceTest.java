@@ -77,24 +77,24 @@ class Sjf4jApiSurfaceTest {
                 () -> sjf4j.toYamlString(JsonObject.of("name", "Alice")));
         assertTrue(yamlWrite.getMessage().contains("YAML writing is unavailable"));
 
-        List<Integer> fromNode = sjf4j.convert(
+        List<Integer> fromNode = sjf4j.fromNode(
                 JsonArray.of(1, 2, 3), new TypeReference<List<Integer>>() {}, true);
         assertEquals(Arrays.asList(1, 2, 3), fromNode);
-        Person person = sjf4j.convert(JsonObject.of("name", "Alice", "age", 30), Person.class, true);
+        Person person = sjf4j.fromNode(JsonObject.of("name", "Alice", "age", 30), Person.class, true);
         assertEquals("Alice", person.name);
         assertEquals(30, person.age);
         JsonObject bindSource = JsonObject.of("nested", JsonObject.of("value", 1));
-        Map<String, Object> runtimeBound = sjf4j.convert(
+        Map<String, Object> runtimeBound = sjf4j.fromNode(
                 bindSource, new TypeReference<Map<String, Object>>() {}, false);
         assertSame(bindSource.getNode("nested"), runtimeBound.get("nested"));
-        Map<String, Object> runtimeCopied = sjf4j.convert(
+        Map<String, Object> runtimeCopied = sjf4j.fromNode(
                 bindSource, new TypeReference<Map<String, Object>>() {}, true);
         assertNotSame(bindSource.getNode("nested"), runtimeCopied.get("nested"));
         JsonObject deepSource = JsonObject.of("nested", JsonObject.of("value", 1));
-        JsonObject deepCopy = sjf4j.deepcopy(deepSource);
+        JsonObject deepCopy = sjf4j.copyNode(deepSource);
         deepSource.getJsonObject("nested").put("value", 2);
         assertEquals(1, deepCopy.getIntByPath("$.nested.value"));
-        assertInstanceOf(Map.class, sjf4j.convertToRaw(deepSource));
+        assertInstanceOf(Map.class, sjf4j.toRaw(deepSource));
 
         Properties properties = sjf4j.toProperties(JsonObject.of("app", JsonObject.of("name", "sjf4j")));
         assertEquals("sjf4j", properties.getProperty("app.name"));
@@ -109,7 +109,7 @@ class Sjf4jApiSurfaceTest {
         assertThrows(NullPointerException.class, () -> sjf4j.fromJson(json, (TypeReference<JsonObject>) null));
         assertThrows(NullPointerException.class, () -> sjf4j.fromYaml((String) null, JsonObject.class));
         assertThrows(NullPointerException.class,
-                () -> sjf4j.convert(JsonObject.of(), (TypeReference<List<Integer>>) null, false));
+                () -> sjf4j.fromNode(JsonObject.of(), (TypeReference<List<Integer>>) null, false));
         assertThrows(NullPointerException.class, () -> sjf4j.fromProperties(null));
     }
 }

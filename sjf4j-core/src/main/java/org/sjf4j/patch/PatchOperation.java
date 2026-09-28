@@ -14,7 +14,7 @@ import org.sjf4j.path.JsonPointer;
  * so a mutable target can alias the operation payload. Operations produced by
  * {@link Patches#diff(Object, Object)} likewise retain values from the target graph, which can
  * also be reachable from the source graph when the inputs alias. {@code copy} calls
- * {@link org.sjf4j.Sjf4j#deepcopy(Object)}; supported structures are copied by
+ * {@link org.sjf4j.Sjf4j#copyNode(Object)}; supported structures are copied by
  * {@link org.sjf4j.mapping.NodeMapper}.
  */
 public final class PatchOperation {

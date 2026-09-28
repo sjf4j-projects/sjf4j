@@ -1,4 +1,4 @@
-package org.sjf4j.testbench.binding.runtime;
+package org.sjf4j.testbench.mapping;
 
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -16,8 +16,10 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.CommentEvent;
 import org.sjf4j.testbench.model.Friend;
@@ -35,7 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/** Benchmarks direct tree-to-object binding using prebuilt, application-shaped nodes. */
+/** Benchmarks direct OBNT-to-object mapping using prebuilt, application-shaped nodes. */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
@@ -43,12 +45,11 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
-public class NodeBindingBenchmark {
+public class NodeMapperBenchmark {
 
     private static final Type EVENT_LIST_TYPE = new TypeReference<List<UserEvent>>() {}.getType();
     private static final Type VALUE_MAP_TYPE = new TypeReference<Map<String, StringValue>>() {}.getType();
 
-    private final NodeBinder binding = new SimpleNodeBinder();
     private JsonObject userGraphNode;
     private JsonObject usersNode;
     private JsonObject loginEventNode;
@@ -59,7 +60,7 @@ public class NodeBindingBenchmark {
     private UserGraphMapper compiledMapper;
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{NodeBindingBenchmark.class.getName()});
+        Main.main(new String[]{NodeMapperBenchmark.class.getName()});
     }
 
     @Setup(Level.Trial)
@@ -121,13 +122,13 @@ public class NodeBindingBenchmark {
                 "labels", labelNodes, "primaryLabel", "primary-production");
         compiledMapper = CompiledInstances.of(UserGraphMapper.class);
         assertGraph(compiledMapper.map(userGraphNode), userGraph);
-        assertGraph((UserGraph) binding.readNode(userGraphNode, UserGraph.class), userGraph);
+        assertGraph(NodeMapper.convert(userGraphNode, UserGraph.class, false), userGraph);
         assertGraph(readUserGraph(userGraphNode), userGraph);
     }
 
     @Benchmark
-    public Object nodeBinding_fullGraph_read() {
-        return binding.readNode(userGraphNode, UserGraph.class);
+    public Object nodeMapper_fullGraph_read() {
+        return NodeMapper.convert(userGraphNode, UserGraph.class, false);
     }
 
     @Benchmark
@@ -136,8 +137,8 @@ public class NodeBindingBenchmark {
     }
 
     @Benchmark
-    public Object nodeBinding_fullGraph_write() {
-        return binding.writeNode(userGraph);
+    public Object nodeMapper_fullGraph_write() {
+        return NodeMapper.convertToRaw(userGraph, RuntimeContext.EMPTY);
     }
 
     @Benchmark
@@ -151,28 +152,28 @@ public class NodeBindingBenchmark {
     }
 
     @Benchmark
-    public Object nodeBinding_users_nestedCollection_read() {
-        return binding.readNode(usersNode, Users.class);
+    public Object nodeMapper_users_nestedCollection_read() {
+        return NodeMapper.convert(usersNode, Users.class, false);
     }
 
     @Benchmark
-    public Object nodeBinding_oneOf_login_read() {
-        return binding.readNode(loginEventNode, UserEvent.class);
+    public Object nodeMapper_oneOf_login_read() {
+        return NodeMapper.convert(loginEventNode, UserEvent.class, false);
     }
 
     @Benchmark
-    public Object nodeBinding_oneOf_comment_read() {
-        return binding.readNode(commentEventNode, UserEvent.class);
+    public Object nodeMapper_oneOf_comment_read() {
+        return NodeMapper.convert(commentEventNode, UserEvent.class, false);
     }
 
     @Benchmark
-    public Object nodeBinding_oneOf_eventsList_read() {
-        return binding.readNode(eventsNode, EVENT_LIST_TYPE);
+    public Object nodeMapper_oneOf_eventsList_read() {
+        return NodeMapper.convert(eventsNode, EVENT_LIST_TYPE, false, RuntimeContext.EMPTY);
     }
 
     @Benchmark
-    public Object nodeBinding_nodeValue_map_read() {
-        return binding.readNode(valueMapNode, VALUE_MAP_TYPE);
+    public Object nodeMapper_nodeValue_map_read() {
+        return NodeMapper.convert(valueMapNode, VALUE_MAP_TYPE, false, RuntimeContext.EMPTY);
     }
 
     @CompiledMapper

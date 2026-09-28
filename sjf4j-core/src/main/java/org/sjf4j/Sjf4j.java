@@ -338,7 +338,7 @@ public final class Sjf4j {
      * types use their configured value-copy behavior.
      */
     @SuppressWarnings("unchecked")
-    public <T> T convert(Object node, Class<T> clazz, boolean deepCopy) {
+    public <T> T fromNode(Object node, Class<T> clazz, boolean deepCopy) {
         return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), deepCopy, runtimeContext);
     }
 
@@ -350,7 +350,7 @@ public final class Sjf4j {
      * types use their configured value-copy behavior.
      */
     @SuppressWarnings("unchecked")
-    public <T> T convert(Object node, TypeReference<T> type, boolean deepCopy) {
+    public <T> T fromNode(Object node, TypeReference<T> type, boolean deepCopy) {
         return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), deepCopy, runtimeContext);
     }
 
@@ -361,8 +361,10 @@ public final class Sjf4j {
      * including backend-native or external node representations, may be returned
      * unchanged.
      */
-    public <T> T deepcopy(T node) {
-        return NodeMapper.deepcopy(node);
+    @SuppressWarnings("unchecked")
+    public <T> T copyNode(T node) {
+        if (node == null) return null;
+        return (T) NodeMapper.convert(node, node.getClass(), true, runtimeContext);
     }
 
     /**
@@ -372,7 +374,7 @@ public final class Sjf4j {
      * representations. {@code @NodeValue} types are encoded by their configured
      * value binding; scalar raw values may be returned unchanged.
      */
-    public Object convertToRaw(Object node) {
+    public Object toRaw(Object node) {
         return NodeMapper.convertToRaw(node, runtimeContext);
     }
 
@@ -396,7 +398,7 @@ public final class Sjf4j {
     public <T> T fromProperties(Properties props, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         JsonObject jo = propertiesBinder.readNode(props);
-        return convert(jo, clazz, false);
+        return fromNode(jo, clazz, false);
     }
 
     /**
@@ -405,7 +407,7 @@ public final class Sjf4j {
     public <T> T fromProperties(Properties props, TypeReference<T> type) {
         Asserts.notNull(type, "type");
         JsonObject jo = propertiesBinder.readNode(props);
-        return convert(jo, type, false);
+        return fromNode(jo, type, false);
     }
 
     /**

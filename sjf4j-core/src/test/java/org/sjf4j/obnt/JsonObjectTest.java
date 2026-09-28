@@ -350,7 +350,7 @@ class JsonObjectTest {
         assertEquals(jo3, jo1);
 
         JsonObject jo4 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"haha\"],\"attr\":{\"aa\":\"bb\",\"cc\":\"dd\"}}");
-        JsonObject jo5 = jo4.deepCopy();
+        JsonObject jo5 = jo4.deepcopy();
         jo4.getJsonObject("attr").put("aa", "jj");
 //        System.out.println(jo5);
         assertEquals("jj", jo4.getJsonObject("attr").getString("aa"));
@@ -604,12 +604,12 @@ class JsonObjectTest {
                 "address", JsonObject.of(
                         "city", "New York",
                         "street", "5th Ave"));
-        Person p1 = jo.convertTo(Person.class, false);
+        Person p1 = jo.toNode(Person.class, false);
         assertEquals("Bob", p1.name);
         assertEquals("New York", p1.address.city);
         assertEquals("5th Ave", p1.address.street);
 
-        JsonObject back = JsonObject.convertFrom(p1);
+        JsonObject back = JsonObject.fromNode(p1);
         assertEquals("Bob", back.getString("name"));
     }
 
