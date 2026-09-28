@@ -25,8 +25,8 @@ import java.lang.annotation.Target;
  * apply only to the declaring method and take precedence when they match.</p>
  *
  * <p>{@code CompiledMapper} is a MapStruct-like compiled structural mapper. It
- * is not a compile-time replacement for {@code NodeFacade.readNode}; runtime
- * converters, private binding, and facade context are outside its scope.
+ * is not a compile-time replacement for {@code NodeMapper.convert}; runtime
+ * binding, private properties, and runtime settings are outside its scope.
  * Limited type-level {@code @OneOf} dispatch is supported for create mappings:
  * discriminator-key dispatch when the target type declares {@code key}, and
  * shape-based dispatch when it does not. Both modes require

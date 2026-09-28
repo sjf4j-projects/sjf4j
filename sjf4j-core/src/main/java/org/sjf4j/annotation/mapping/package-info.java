@@ -5,7 +5,7 @@
  * <p>{@link org.sjf4j.annotation.mapping.CompiledMapper} generates direct,
  * MapStruct-like implementations for declared Java objects and SJF4J
  * structures. It supports typed POJO, record, map, collection, array, and
- * JSON-facing mappings without runtime reflection or facade binding.</p>
+ * JSON-semantic mappings without runtime reflection or binder-driven conversion.</p>
  *
  * <h2>Customization</h2>
  * <ul>

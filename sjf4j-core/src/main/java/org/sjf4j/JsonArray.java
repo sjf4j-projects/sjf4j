@@ -249,7 +249,7 @@ public class JsonArray extends JsonContainer {
 
     /*
      * --------------------------------------------------------------
-     * JSON Facade
+     * JSON Binding
      * --------------------------------------------------------------
      */
 
@@ -262,7 +262,7 @@ public class JsonArray extends JsonContainer {
 
     /*
      * --------------------------------------------------------------
-     * YAML Facade
+     * YAML Binding
      * --------------------------------------------------------------
      */
 
@@ -907,8 +907,8 @@ public class JsonArray extends JsonContainer {
      * Copies all elements from the given array node representation.
      * <p>
      * Supported inputs follow {@link Nodes#forEachArray(Object, BiConsumer)}:
-     * {@link List}, {@link JsonArray}, Java arrays, {@link Set}, and facade-native
-     * Java representations that participate as array nodes.
+     * {@link List}, {@link JsonArray}, Java arrays, {@link Set}, and supported
+     * backend-native tree representations that participate as array nodes.
      * Values are appended through {@link #add(Object)} without deep recursion, so
      * nested child values may still be shared with the source.
      */

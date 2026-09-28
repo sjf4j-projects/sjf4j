@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Most application code does not need to call this class directly, but its
  * metadata model defines the runtime binding semantics used across
- * {@link Nodes}, {@link org.sjf4j.Sjf4j}, and facade integrations.
+ * {@link Nodes}, {@link org.sjf4j.Sjf4j}, binders, and structural processing.
  */
 public final class TypeRegistry {
     /**

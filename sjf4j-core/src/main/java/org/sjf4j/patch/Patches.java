@@ -139,7 +139,7 @@ public final class Patches {
      * assigned by reference, not copied.
      *
      * <p>Removal requires a removable object container such as {@link JsonObject}, {@link java.util.Map},
-     * or a facade-native mutable object node. POJO fields are structural and cannot be removed;
+     * or a supported backend-native mutable object tree. POJO fields are structural and cannot be removed;
      * an explicit {@code null} patch member for an existing POJO property will fail with
      * {@code NodeException} rather than silently setting the property to {@code null}. A failure
      * after earlier members were processed does not roll back those mutations.</p>

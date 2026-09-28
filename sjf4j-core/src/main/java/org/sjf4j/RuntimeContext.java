@@ -18,6 +18,7 @@ public final class RuntimeContext {
     // Empty
     private static final Class<?>[] EMPTY_VALUE_TYPES = new Class<?>[0];
     private static final String[] EMPTY_VALUE_FORMATS = new String[0];
+
     public static final RuntimeContext EMPTY = new RuntimeContext(true);
 
 

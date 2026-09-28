@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * {@link ValueToRaw} and {@link RawToValue} encode the domain instance to a raw
  * OBNT representation and decode that representation back to the instance. The
  * configured value binding owns its raw shape and is responsible for making it
- * suitable for the consuming facade or schema.
+ * suitable for the consuming binder or schema.
  *
  * <p>If a value binding uses an object node representation, it should use
  * {@code Map<String, Object>}. Binding inputs and outputs are passed at the

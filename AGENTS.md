@@ -2,7 +2,7 @@
 
 ## Mission
 
-SJF4J is a lightweight, high-performance, low-dependency JSON facade and structural processing framework for Java.
+SJF4J is a lightweight, high-performance, low-dependency data binding and structural processing framework for Java.
 The goal is consistent JSON semantics across backends, formats, paths, patches, schemas, and native object graphs without sacrificing speed, simplicity, or package size.
 
 ## Priorities

@@ -78,7 +78,7 @@ mavenPublishing {
 
     pom {
         name.set("SJF4J Core")
-        description.set("Core JSON facade and structural processing APIs for Java")
+        description.set("Core data binding and structural processing APIs for Java")
         inceptionYear.set("2025")
         url.set("https://sjf4j.org")
         licenses {

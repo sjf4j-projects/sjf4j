@@ -48,7 +48,7 @@ public final class SimpleNodeBinder implements NodeBinder {
     }
 
     /**
-     * Creates a binding with the supplied streaming configuration.
+     * Creates a binding with the supplied runtime settings.
      */
     public SimpleNodeBinder(RuntimeContext context) {
         this.context = Asserts.notNull(context, "context");

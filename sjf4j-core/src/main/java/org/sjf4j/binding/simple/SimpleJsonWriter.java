@@ -12,7 +12,7 @@ import java.io.Writer;
 import java.util.Objects;
 
 /**
- * Minimal JSON writer for the built-in facade.
+ * Minimal JSON writer for the built-in binder.
  */
 public final class SimpleJsonWriter extends StreamingWriter {
 

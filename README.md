@@ -58,7 +58,11 @@ Backends can also be configured explicitly when needed.
   - If none are available, SJF4J falls back to a built-in simple JSON parser (functional but slower).
   - Or configure a backend explicitly:
     ```java
-    Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(Jackson2JsonFacade.provider()).build();
+    import org.sjf4j.backend.jackson2.binding.Jackson2BinderProvider;
+
+    Sjf4j sjf4j = Sjf4j.builder()
+        .jsonBinderProvider(new Jackson2BinderProvider())
+        .build();
     ```
 
 - **YAML**
@@ -287,8 +291,6 @@ Sjf4j sjf4j = new Sjf4j();
 
 User user = sjf4j.fromJson(json, User.class);
 String yaml = sjf4j.toYamlString(user);
-
-Map<String, Object> map = sjf4j.fromNode(user, new TypeReference<Map<String, Object>>() {});
 ```
 
 The same binding model works with raw nodes, POJOs, JOJOs, deep generic types, 

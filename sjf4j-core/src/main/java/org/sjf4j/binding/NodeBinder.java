@@ -3,7 +3,7 @@ package org.sjf4j.binding;
 import java.lang.reflect.Type;
 
 /**
- * Facade for converting between arbitrary nodes and JSON-compatible trees.
+ * Binder contract for converting between arbitrary nodes and JSON-compatible trees.
  */
 public interface NodeBinder {
 

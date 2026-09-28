@@ -42,9 +42,9 @@ import java.util.function.Function;
  * Java object graphs composed of object nodes, array nodes, and value nodes.
  *
  * <p>It provides type conversion, inspection, traversal, equality, hashing,
- * copying, and container access with semantics shared across {@link JsonObject},
- * {@link JsonArray}, plain {@link Map}/{@link List}, and supported facade-native
- * Java representations.
+ * copying, and container access for {@link JsonObject}, {@link JsonArray}, and
+ * plain {@link Map}/{@link List} values. Backend-native or external tree
+ * representations are supported only by individual operations where documented.
  */
 public final class Nodes {
 
@@ -825,8 +825,8 @@ public final class Nodes {
      * For POJO/JOJO/JAJO representations, a new instance is created and direct field/item
      * values are transferred without deep recursion. Strings, numbers, booleans,
      * and unrecognized values are returned unchanged. {@code @NodeValue} types
-     * use their registered value-copy hook; facade-native representations are not
-     * copied and cause {@link NodeException}.
+     * use their registered value-copy hook. Recognized backend-native tree
+     * representations are not copied and cause {@link NodeException}.
      */
     @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
     public static <T> T copy(T node) {
@@ -1241,8 +1241,9 @@ public final class Nodes {
      * <p>
      * This operation applies to removable object properties only. Declared POJO
      * properties are not considered removable properties and therefore are left
-     * unchanged. For facade-native object representations, matching keys are collected first and
-     * removed afterward so live key views remain safe to traverse.
+     * unchanged. For supported backend-native object tree representations,
+     * matching keys are collected first and removed afterward so live key views
+     * remain safe to traverse.
      */
     @SuppressWarnings("unchecked")
     public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {

@@ -574,7 +574,7 @@ public final class Sjf4j {
          * <p>
          * The default is {@code true}.
          * <p>
-         * This setting is propagated to backend facades that support null filtering so the
+         * This setting is propagated to backend binders that support null filtering so the
          * behavior stays consistent within the constructed runtime instance.
          */
         public Builder includeNulls(boolean includeNulls) {

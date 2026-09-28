@@ -19,7 +19,7 @@ import java.util.Properties;
 import java.util.Set;
 
 /**
- * Properties facade based on JSONPath expansion.
+ * Properties binder based on JSONPath expansion.
  */
 public final class SimplePropertiesBinder implements PropertiesBinder {
 

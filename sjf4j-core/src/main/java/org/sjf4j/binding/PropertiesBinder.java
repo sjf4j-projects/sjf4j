@@ -5,7 +5,7 @@ import java.util.Properties;
 
 
 /**
- * Properties facade for mapping {@link Properties} to object-rooted {@link JsonObject}s.
+ * Properties binder for mapping {@link Properties} to object-rooted {@link JsonObject}s.
  *
  * <p>Warning: {@link Properties} does not preserve key order.
  * Scalar leaves are written with {@link String#valueOf(Object)} and read as

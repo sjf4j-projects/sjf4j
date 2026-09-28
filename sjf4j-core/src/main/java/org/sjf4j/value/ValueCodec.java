@@ -50,7 +50,7 @@ import java.util.regex.Pattern;
 public interface ValueCodec<V, R> {
 
     /**
-     * Encodes a domain value to the raw representation consumed by a facade or schema.
+     * Encodes a domain value to the raw representation consumed by a binder or schema.
      */
     R valueToRaw(V value);
 

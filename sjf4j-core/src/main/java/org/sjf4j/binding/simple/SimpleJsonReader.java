@@ -14,7 +14,7 @@ import java.math.BigInteger;
 
 
 /**
- * Minimal JSON reader for the built-in facade.
+ * Minimal JSON reader for the built-in binder.
  */
 public final class SimpleJsonReader implements StreamingReader {
 

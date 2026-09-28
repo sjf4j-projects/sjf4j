@@ -21,7 +21,7 @@ mavenPublishing {
 
     pom {
         name.set("SJF4J")
-        description.set("Simple JSON Facade for Java")
+        description.set("Data binding and structural processing for Java")
         inceptionYear.set("2025")
         url.set("https://sjf4j.org")
         licenses {

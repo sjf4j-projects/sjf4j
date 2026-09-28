@@ -394,7 +394,7 @@ public class JsonObject extends JsonContainer {
 
     /*
      * --------------------------------------------------------------
-     * JSON Facade
+     * JSON Binding
      * --------------------------------------------------------------
      */
 
@@ -408,7 +408,7 @@ public class JsonObject extends JsonContainer {
 
     /*
      * --------------------------------------------------------------
-     * YAML Facade
+     * YAML Binding
      * --------------------------------------------------------------
      */
 
@@ -422,7 +422,7 @@ public class JsonObject extends JsonContainer {
 
     /*
      * --------------------------------------------------------------
-     * Properties Facade
+     * Properties Binding
      * --------------------------------------------------------------
      */
 
@@ -1046,8 +1046,8 @@ public class JsonObject extends JsonContainer {
      * Copies all readable entries from the given object node representation.
      * <p>
      * Supported inputs follow {@link Nodes#forEachObject(Object, BiConsumer)}:
-     * {@link Map}, {@link JsonObject}, JOJO/POJO, and facade-native Java
-     * representations that participate as object nodes.
+     * {@link Map}, {@link JsonObject}, JOJO/POJO, and supported backend-native
+     * tree representations that participate as object nodes.
      * Values are transferred through {@link #put(String, Object)} without deep
      * recursion, so nested child values may still be shared with the source.
      */

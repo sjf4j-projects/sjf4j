@@ -34,7 +34,7 @@ import java.util.RandomAccess;
 import java.util.Set;
 
 /**
- * Streaming read/write helpers used by facade implementations.
+ * Streaming read/write helpers used by binder implementations.
  */
 public final class StreamingIO {
 
@@ -754,7 +754,7 @@ public final class StreamingIO {
 //    /**
 //     * Writes one OBNT value to the streaming writer using instance-level value formats.
 //     */
-//    public static void writeNode(StreamingWriter writer, Object node, StreamingContext context) throws IOException {
+//    public static void writeNode(StreamingWriter writer, Object node, RuntimeContext context) throws IOException {
 //        try {
 //            if (node == null) {
 //                writer.writeNull();

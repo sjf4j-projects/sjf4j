@@ -9,8 +9,8 @@
  * traversal.</p>
  *
  * <p>A {@link org.sjf4j.annotation.node.NodeValue @NodeValue} value binding may
- * use {@link ValueCodec} or annotated conversion methods. Facade writes encode
- * and facade reads decode raw OBNT representations; schema validation encodes
+ * use {@link ValueCodec} or annotated conversion methods. Binders encode and
+ * decode raw OBNT representations; schema validation encodes
  * only. A representation may have object node, array node, or value node shape;
  * the binding is responsible for its contents. These APIs support metadata and
  * extension use cases and are generally not needed for ordinary JSON reads and writes.</p>

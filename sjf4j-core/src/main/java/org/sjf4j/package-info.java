@@ -7,13 +7,13 @@
  *
  * <ul>
  *     <li>An object node has named members: {@link JsonObject}, {@link java.util.Map},
- *     POJO, JOJO, or a supported facade-native representation.</li>
+ *     POJO, JOJO, or a supported backend-native tree representation.</li>
  *     <li>An array node has elements: {@link JsonArray}, {@link java.util.List},
- *     Java arrays, {@link java.util.Set}, JAJO, or a supported facade-native
+ *     Java arrays, {@link java.util.Set}, JAJO, or a supported backend-native tree
  *     representation. Its representation determines whether ordering and indexed
  *     operations are supported.</li>
  *     <li>A value node is not a container: {@link String}, {@link Number},
- *     {@link Boolean}, {@code null}, or a supported facade-native representation.</li>
+ *     {@link Boolean}, {@code null}, or a supported backend-native tree representation.</li>
  * </ul>
  *
  * <p>POJO, JOJO, and JAJO are Java representation categories, not node shapes:
@@ -30,8 +30,8 @@
  * lower-level runtime representation and dispatch classification. A
  * {@link org.sjf4j.annotation.node.NodeValue @NodeValue} type is a logical
  * value node. Its configured value binding may be a
- * {@link org.sjf4j.value.ValueCodec} or annotated conversion methods. Facade
- * writes encode it to raw OBNT and facade reads decode it; schema validation
+ * {@link org.sjf4j.value.ValueCodec} or annotated conversion methods. Binders
+ * encode it to raw OBNT when writing and decode it when reading; schema validation
  * encodes only. The raw representation may have object node, array node, or
  * value node shape. This does not automatically expand a value in every OBNT API: JsonPath, Patch, and
  * {@link Nodes} operate on the supplied representation unless their own API
