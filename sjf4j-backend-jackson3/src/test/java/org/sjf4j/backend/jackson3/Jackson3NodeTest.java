@@ -3,10 +3,10 @@ package org.sjf4j.backend.jackson3;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.backend.jackson3.external.Jackson3NodeProvider;
+import org.sjf4j.backend.jackson3.external.Jackson3ExternalProvider;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.external.ExternalNodeRegistry;
+import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.path.JsonPath;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -36,13 +36,13 @@ class Jackson3NodeTest {
         assertEquals(JsonType.OBJECT, node().jsonTypeOfClass(ObjectNode.class));
 
         URL core = ExternalNode.class.getProtectionDomain().getCodeSource().getLocation();
-        URL classes = Jackson3NodeProvider.class.getProtectionDomain().getCodeSource().getLocation();
-        URL resources = resourceRoot(Jackson3NodeProvider.class.getResource(
-                "/META-INF/services/org.sjf4j.external.ExternalNodeProvider"));
+        URL classes = Jackson3ExternalProvider.class.getProtectionDomain().getCodeSource().getLocation();
+        URL resources = resourceRoot(Jackson3ExternalProvider.class.getResource(
+                "/META-INF/services/org.sjf4j.external.ExternalProvider"));
         try (URLClassLoader loader = new URLClassLoader(new URL[]{core, classes, resources}, null)) {
             assertThrows(ClassNotFoundException.class,
                     () -> Class.forName("tools.jackson.databind.JsonNode", false, loader));
-            Class<?> providerType = Class.forName("org.sjf4j.external.ExternalNodeProvider", true, loader);
+            Class<?> providerType = Class.forName("org.sjf4j.external.ExternalProvider", true, loader);
             Object provider = ServiceLoader.load(providerType, loader).iterator().next();
             assertNull(providerType.getMethod("externalNode").invoke(provider));
         }
@@ -217,7 +217,7 @@ class Jackson3NodeTest {
 
     @SuppressWarnings("unchecked")
     private static ExternalNode<JsonNode> node() {
-        return (ExternalNode<JsonNode>) ExternalNodeRegistry.resolve(JsonNode.class);
+        return (ExternalNode<JsonNode>) ExternalRegistry.resolve(JsonNode.class);
     }
 
     private static ObjectNode object(String json) throws Exception { return (ObjectNode) MAPPER.readTree(json); }

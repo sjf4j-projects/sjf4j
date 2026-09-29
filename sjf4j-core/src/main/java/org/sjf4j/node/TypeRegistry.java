@@ -7,7 +7,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.external.ExternalNodeRegistry;
+import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
@@ -17,7 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,7 +77,7 @@ public final class TypeRegistry {
             return ti;
         }
 
-        ExternalNode<?> externalNode = ExternalNodeRegistry.resolve(clazz);
+        ExternalNode<?> externalNode = ExternalRegistry.resolve(clazz);
         if (externalNode != null) {
             if (mustPojo) {
                 throw new BindingException("class '" + clazz.getName() + "' is an external node, not a POJO");

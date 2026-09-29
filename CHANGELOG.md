@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
 - Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
 - Replaced `StreamingWriter.PropertyName` with `PreparedName`; custom backends must implement prepared-name writing with the new type.
-- Replaced manual `ExternalNodeRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalNodeProvider` implementations; external node integrations must publish a service provider.
+- Replaced manual `ExternalRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalProvider` implementations; external node integrations must publish a service provider.
 - Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
 - Renamed `org.sjf4j.binding.FieldReader` to `FieldReader`; update streaming binding references accordingly.
 - Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.

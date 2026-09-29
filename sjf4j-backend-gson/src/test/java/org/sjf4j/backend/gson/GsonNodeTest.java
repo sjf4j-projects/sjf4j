@@ -11,8 +11,8 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.external.ExternalNodeRegistry;
-import org.sjf4j.backend.gson.external.GsonNodeProvider;
+import org.sjf4j.external.ExternalRegistry;
+import org.sjf4j.backend.gson.external.GsonExternalProvider;
 import org.sjf4j.path.JsonPath;
 
 import java.io.File;
@@ -71,19 +71,19 @@ class GsonNodeTest {
     @SuppressWarnings({"rawtypes", "unchecked"})
     void providerIsDiscoverableWithoutGson() throws Exception {
         URL coreClasses = ExternalNode.class.getProtectionDomain().getCodeSource().getLocation();
-        URL integrationClasses = GsonNodeProvider.class.getProtectionDomain().getCodeSource().getLocation();
-        URL integrationResources = resourceRoot(GsonNodeProvider.class.getResource(
-                "/META-INF/services/org.sjf4j.external.ExternalNodeProvider"));
+        URL integrationClasses = GsonExternalProvider.class.getProtectionDomain().getCodeSource().getLocation();
+        URL integrationResources = resourceRoot(GsonExternalProvider.class.getResource(
+                "/META-INF/services/org.sjf4j.external.ExternalProvider"));
 
         try (URLClassLoader loader = new URLClassLoader(
                 new URL[] { coreClasses, integrationClasses, integrationResources }, null)) {
             assertThrows(ClassNotFoundException.class,
                     () -> Class.forName("com.google.gson.JsonElement", false, loader));
-            Class providerType = Class.forName("org.sjf4j.external.ExternalNodeProvider", true, loader);
+            Class providerType = Class.forName("org.sjf4j.external.ExternalProvider", true, loader);
             ServiceLoader providers = ServiceLoader.load(providerType, loader);
             Object provider = providers.iterator().next();
 
-            assertEquals("org.sjf4j.backend.gson.external.GsonNodeProvider", provider.getClass().getName());
+            assertEquals("org.sjf4j.backend.gson.external.GsonExternalProvider", provider.getClass().getName());
             assertNull(providerType.getMethod("externalNode").invoke(provider));
         }
     }
@@ -357,7 +357,7 @@ class GsonNodeTest {
 
     @SuppressWarnings("unchecked")
     private static ExternalNode<JsonElement> node() {
-        ExternalNode<?> discovered = ExternalNodeRegistry.resolve(JsonObject.class);
+        ExternalNode<?> discovered = ExternalRegistry.resolve(JsonObject.class);
         assertNotNull(discovered);
         return (ExternalNode<JsonElement>) discovered;
     }

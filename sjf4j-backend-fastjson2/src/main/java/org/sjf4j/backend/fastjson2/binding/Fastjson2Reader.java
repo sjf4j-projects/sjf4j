@@ -5,6 +5,7 @@ import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -14,7 +15,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /** StreamingReader backed directly by a Fastjson2 {@link JSONReader}. */
 public final class Fastjson2Reader implements StreamingReader {
@@ -38,7 +38,7 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     public Fastjson2Reader(JSONReader reader) {
-        this.reader = Objects.requireNonNull(reader, "reader");
+        this.reader = Asserts.notNull(reader, "reader");
     }
 
     /**

@@ -7,7 +7,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.external.ExternalNodeRegistry;
+import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.TypeRegistry;
 
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
-class ExternalNodeRegistryTest {
+class ExternalRegistryTest {
     @Test
     void classifiesDiscoveredHierarchyWithoutPojoAnalysis() {
         TestExternalNode object = new TestExternalNode(JsonType.OBJECT);
@@ -68,13 +68,13 @@ class ExternalNodeRegistryTest {
 
     @Test
     void resolvesMostSpecificDiscoveredRootType() {
-        assertSame(TestExternalNodeProvider.ADAPTER, ExternalNodeRegistry.resolve(TestExternalNode.class));
-        assertSame(TestExternalChildNodeProvider.ADAPTER, ExternalNodeRegistry.resolve(TestExternalChildNode.class));
+        assertSame(TestExternalNodeProvider.ADAPTER, ExternalRegistry.resolve(TestExternalNode.class));
+        assertSame(TestExternalChildNodeProvider.ADAPTER, ExternalRegistry.resolve(TestExternalChildNode.class));
     }
 
     @Test
     void unavailableProviderDoesNotPreventOtherProviders() {
-        assertSame(TestExternalNodeProvider.ADAPTER, ExternalNodeRegistry.resolve(TestExternalNode.class));
+        assertSame(TestExternalNodeProvider.ADAPTER, ExternalRegistry.resolve(TestExternalNode.class));
     }
 
     @Test

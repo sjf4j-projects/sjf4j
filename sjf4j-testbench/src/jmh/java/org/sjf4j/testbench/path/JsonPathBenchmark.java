@@ -32,16 +32,16 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Warmup(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class JsonPathBenchmark {
 
     public static void main(String[] args) throws Exception {
-//        org.openjdk.jmh.Main.main(new String[]{JsonPathBenchmark.class.getName()});
-        org.openjdk.jmh.Main.main(new String[]{"JsonPathBenchmark.compile_"});
+        org.openjdk.jmh.Main.main(new String[]{JsonPathBenchmark.class.getName()});
+//        org.openjdk.jmh.Main.main(new String[]{"JsonPathBenchmark.compile_"});
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

@@ -3,7 +3,7 @@ package org.sjf4j.external;
 /**
  * Service provider for an {@link ExternalNode} adapter.
  *
- * <p>Providers are discovered once by {@link ExternalNodeRegistry} through
+ * <p>Providers are discovered once by {@link ExternalRegistry} through
  * {@link java.util.ServiceLoader}. A provider may return {@code null} when its
  * optional external Java model is not present at runtime.</p>
  *
@@ -16,7 +16,7 @@ package org.sjf4j.external;
  * configuration, and implementation failures are not treated as absence and
  * fail fast.</p>
  */
-public interface ExternalNodeProvider {
+public interface ExternalProvider {
     /**
      * Returns this provider's adapter, or {@code null} when its optional
      * external Java model is unavailable.

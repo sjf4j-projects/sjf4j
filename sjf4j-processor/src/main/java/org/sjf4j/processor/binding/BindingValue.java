@@ -1,9 +1,10 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.util.Asserts;
+
 import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /** Recursively compiled binding semantics for one Java value type. */
 final class BindingValue {
@@ -47,9 +48,9 @@ final class BindingValue {
             Kind kind,
             boolean primitive) {
 
-        this.direction = Objects.requireNonNull(direction, "direction");
-        this.type = Objects.requireNonNull(type, "type");
-        this.kind = Objects.requireNonNull(kind, "kind");
+        this.direction = Asserts.notNull(direction, "direction");
+        this.type = Asserts.notNull(type, "type");
+        this.kind = Asserts.notNull(kind, "kind");
         this.primitive = primitive;
     }
 

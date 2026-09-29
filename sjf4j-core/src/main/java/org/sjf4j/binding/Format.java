@@ -1,6 +1,6 @@
 package org.sjf4j.binding;
 
-import java.util.Objects;
+import org.sjf4j.util.Asserts;
 
 /**
  * Stable identifier for a streaming binding format.
@@ -24,7 +24,7 @@ public final class Format {
      * Creates a format identified by {@code id}.
      */
     public static Format of(String id) {
-        Objects.requireNonNull(id, "id");
+        Asserts.notNull(id, "id");
         if (id.isEmpty() || !id.equals(id.trim())) {
             throw new IllegalArgumentException("format id must not be empty or contain leading/trailing whitespace");
         }

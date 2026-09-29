@@ -2,13 +2,13 @@ package org.sjf4j.binding;
 
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.binding.simple.SimpleYamlBinder;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.ServiceLoader;
 
 /**
@@ -37,7 +37,7 @@ public final class BinderFactory {
      * Returns the selected provider for {@code format}.
      */
     public static BinderProvider provider(Format format) {
-        Objects.requireNonNull(format, "format");
+        Asserts.notNull(format, "format");
         BinderProvider provider = SELECTED_PROVIDERS.get(format);
         if (provider != null) {
             return provider;
@@ -80,7 +80,7 @@ public final class BinderFactory {
      * <p>The returned list includes unavailable providers and is immutable.</p>
      */
     public static List<BinderProvider> providers(Format format) {
-        Objects.requireNonNull(format, "format");
+        Asserts.notNull(format, "format");
         List<BinderProvider> result = new ArrayList<>();
         for (BinderProvider provider : PROVIDERS) {
             if (format.equals(provider.format())) {
@@ -102,7 +102,7 @@ public final class BinderFactory {
     private static Map<Format, BinderProvider> select(List<BinderProvider> providers) {
         Map<Format, BinderProvider> selected = new LinkedHashMap<>();
         for (BinderProvider provider : providers) {
-            Format format = Objects.requireNonNull(provider.format(), "provider.format()");
+            Format format = Asserts.notNull(provider.format(), "provider.format()");
             if (!provider.isAvailable()) {
                 continue;
             }

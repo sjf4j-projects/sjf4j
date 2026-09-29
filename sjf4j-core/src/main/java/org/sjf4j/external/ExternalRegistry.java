@@ -10,15 +10,15 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Setup-time registry for ServiceLoader-discovered external representation adapters.
  */
-public final class ExternalNodeRegistry {
+public final class ExternalRegistry {
 
-    private ExternalNodeRegistry() {}
+    private ExternalRegistry() {}
 
     private static final Map<Class<?>, ExternalNode<?>> EXTERNAL_NODES = new ConcurrentHashMap<>();
 
     static {
-        ClassLoader loader = ExternalNodeProvider.class.getClassLoader();
-        for (ExternalNodeProvider provider : ServiceLoader.load(ExternalNodeProvider.class, loader)) {
+        ClassLoader loader = ExternalProvider.class.getClassLoader();
+        for (ExternalProvider provider : ServiceLoader.load(ExternalProvider.class, loader)) {
             ExternalNode<?> externalNode = provider.externalNode();
             if (externalNode == null) continue;
 

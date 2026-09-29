@@ -9,10 +9,10 @@ import jakarta.json.JsonValue;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.backend.jsonp.external.JsonpNodeProvider;
+import org.sjf4j.backend.jsonp.external.JsonpExternalProvider;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.external.ExternalNodeRegistry;
+import org.sjf4j.external.ExternalRegistry;
 
 import java.io.File;
 import java.io.StringReader;
@@ -69,19 +69,19 @@ class JsonpNodeTest {
     @SuppressWarnings({"rawtypes", "unchecked"})
     void providerIsDiscoverableWithoutJsonp() throws Exception {
         URL coreClasses = ExternalNode.class.getProtectionDomain().getCodeSource().getLocation();
-        URL integrationClasses = JsonpNodeProvider.class.getProtectionDomain().getCodeSource().getLocation();
-        URL integrationResources = resourceRoot(JsonpNodeProvider.class.getResource(
-                "/META-INF/services/org.sjf4j.external.ExternalNodeProvider"));
+        URL integrationClasses = JsonpExternalProvider.class.getProtectionDomain().getCodeSource().getLocation();
+        URL integrationResources = resourceRoot(JsonpExternalProvider.class.getResource(
+                "/META-INF/services/org.sjf4j.external.ExternalProvider"));
 
         try (URLClassLoader loader = new URLClassLoader(
                 new URL[] { coreClasses, integrationClasses, integrationResources }, null)) {
             assertThrows(ClassNotFoundException.class,
                     () -> Class.forName("jakarta.json.JsonValue", false, loader));
-            Class providerType = Class.forName("org.sjf4j.external.ExternalNodeProvider", true, loader);
+            Class providerType = Class.forName("org.sjf4j.external.ExternalProvider", true, loader);
             ServiceLoader providers = ServiceLoader.load(providerType, loader);
             Object provider = providers.iterator().next();
 
-            assertEquals("org.sjf4j.backend.jsonp.external.JsonpNodeProvider", provider.getClass().getName());
+            assertEquals("org.sjf4j.backend.jsonp.external.JsonpExternalProvider", provider.getClass().getName());
             assertNull(providerType.getMethod("externalNode").invoke(provider));
         }
     }
@@ -221,7 +221,7 @@ class JsonpNodeTest {
 
     @SuppressWarnings("unchecked")
     private static ExternalNode<JsonValue> node() {
-        ExternalNode<?> discovered = ExternalNodeRegistry.resolve(JsonObject.class);
+        ExternalNode<?> discovered = ExternalRegistry.resolve(JsonObject.class);
         assertNotNull(discovered);
         return (ExternalNode<JsonValue>) discovered;
     }

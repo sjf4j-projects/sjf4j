@@ -1,9 +1,9 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.method.ResolvedMethod;
+import org.sjf4j.util.Asserts;
 
 import javax.lang.model.type.TypeMirror;
-import java.util.Objects;
 
 /** An analyzed @CompiledBinder operation before recursive value compilation. */
 final class BindingPlan {
@@ -40,9 +40,9 @@ final class BindingPlan {
             ReadInput readInput,
             WriteOutput writeOutput) {
 
-        this.method = Objects.requireNonNull(method, "method");
-        this.direction = Objects.requireNonNull(direction, "direction");
-        this.valueType = Objects.requireNonNull(valueType, "valueType");
+        this.method = Asserts.notNull(method, "method");
+        this.direction = Asserts.notNull(direction, "direction");
+        this.valueType = Asserts.notNull(valueType, "valueType");
         this.readInput = readInput;
         this.writeOutput = writeOutput;
     }
@@ -56,7 +56,7 @@ final class BindingPlan {
                 method,
                 Direction.READ_FROM,
                 valueType,
-                Objects.requireNonNull(input, "input"),
+                Asserts.notNull(input, "input"),
                 null);
     }
 
@@ -70,7 +70,7 @@ final class BindingPlan {
                 Direction.WRITE_TO,
                 valueType,
                 null,
-                Objects.requireNonNull(output, "output"));
+                Asserts.notNull(output, "output"));
     }
 
     ResolvedMethod method() {

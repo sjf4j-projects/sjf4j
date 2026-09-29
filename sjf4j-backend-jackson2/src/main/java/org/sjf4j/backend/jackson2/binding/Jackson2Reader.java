@@ -6,6 +6,7 @@ import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -15,7 +16,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public final class Jackson2Reader implements StreamingReader {
 
@@ -37,7 +37,7 @@ public final class Jackson2Reader implements StreamingReader {
     }
 
     public Jackson2Reader(JsonParser parser) {
-        this.parser = Objects.requireNonNull(parser, "parser");
+        this.parser = Asserts.notNull(parser, "parser");
     }
 
     @Override

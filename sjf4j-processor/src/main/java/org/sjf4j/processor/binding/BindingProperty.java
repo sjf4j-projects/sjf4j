@@ -1,8 +1,8 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.property.PropertyAccess;
+import org.sjf4j.util.Asserts;
 
-import java.util.Objects;
 
 /**
  * One compiled POJO property for a read or write binding.
@@ -18,9 +18,9 @@ final class BindingProperty {
             PropertyAccess access,
             BindingValue value) {
 
-        this.name = Objects.requireNonNull(name, "name");
-        this.access = Objects.requireNonNull(access, "access");
-        this.value = Objects.requireNonNull(value, "value");
+        this.name = Asserts.notNull(name, "name");
+        this.access = Asserts.notNull(access, "access");
+        this.value = Asserts.notNull(value, "value");
     }
 
     String name() {

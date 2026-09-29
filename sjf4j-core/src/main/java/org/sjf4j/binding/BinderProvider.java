@@ -1,8 +1,8 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.util.Asserts;
 
-import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -46,7 +46,7 @@ public interface BinderProvider {
      * configuration failures deliberately propagate.</p>
      */
     static boolean isClassAvailable(String className, ClassLoader loader) {
-        Objects.requireNonNull(className, "className");
+        Asserts.notNull(className, "className");
         try {
             Class.forName(className, false, loader);
             return true;
@@ -60,8 +60,8 @@ public interface BinderProvider {
      */
     static BinderProvider of(Format format, int priority,
                              Function<RuntimeContext, ? extends Binder<?, ?>> factory) {
-        Objects.requireNonNull(format, "format");
-        Objects.requireNonNull(factory, "factory");
+        Asserts.notNull(format, "format");
+        Asserts.notNull(factory, "factory");
         return new BinderProvider() {
             @Override
             public Format format() {

@@ -2,8 +2,8 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.BindingBackend;
 import org.sjf4j.annotation.binding.BindingFormat;
+import org.sjf4j.util.Asserts;
 
-import java.util.Objects;
 
 /** Compile-time description of one concrete binding backend. */
 final class BackendSpec {
@@ -30,11 +30,11 @@ final class BackendSpec {
             String writerType,
             String libraryMarkerType) {
 
-        this.format = Objects.requireNonNull(format, "format");
-        this.backend = Objects.requireNonNull(backend, "backend");
-        this.binderType = Objects.requireNonNull(binderType, "binderType");
-        this.readerType = Objects.requireNonNull(readerType, "readerType");
-        this.writerType = Objects.requireNonNull(writerType, "writerType");
+        this.format = Asserts.notNull(format, "format");
+        this.backend = Asserts.notNull(backend, "backend");
+        this.binderType = Asserts.notNull(binderType, "binderType");
+        this.readerType = Asserts.notNull(readerType, "readerType");
+        this.writerType = Asserts.notNull(writerType, "writerType");
         this.libraryMarkerType = libraryMarkerType;
     }
 

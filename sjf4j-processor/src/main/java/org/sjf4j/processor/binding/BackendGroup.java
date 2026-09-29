@@ -2,11 +2,11 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.BindingBackend;
 import org.sjf4j.annotation.binding.BindingFormat;
+import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Ordered backend group for one format.
@@ -24,7 +24,7 @@ final class BackendGroup {
             BindingFormat format,
             List<BackendSpec> backends) {
 
-        this.format = Objects.requireNonNull(format, "format");
+        this.format = Asserts.notNull(format, "format");
         this.backends = Collections.unmodifiableList(
                 new ArrayList<BackendSpec>(backends));
     }
