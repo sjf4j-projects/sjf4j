@@ -160,7 +160,7 @@ public interface Evaluator {
             } else {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                         "invalid 'type' keyword: expected string or array, found '" +
-                                type.getClass().getSimpleName() + "'",
+                                type.getClass().getName() + "'",
                         keywordPs, schemaUri));
             }
         }

@@ -32,6 +32,14 @@ class ValueRegistryTest {
         }
     }
 
+    @NodeValue
+    static class MissingValueToRaw {
+        @RawToValue
+        static MissingValueToRaw decode(String value) {
+            return new MissingValueToRaw();
+        }
+    }
+
     @Test
     void resolvesRawToValueConstructor() {
         ValueInfo[] infos = ValueRegistry.resolve(ConstructorValue.class);
@@ -56,5 +64,14 @@ class ValueRegistryTest {
                 Optional::toString, Optional::of);
 
         assertThrows(BindingException.class, () -> ValueRegistry.registerByCodec(codec, null, false));
+    }
+
+    @Test
+    void missingValueToRawReportsAnnotationFullyQualifiedName() {
+        BindingException error = assertThrows(BindingException.class,
+                () -> ValueRegistry.resolve(MissingValueToRaw.class));
+
+        assertEquals("missing @" + ValueToRaw.class.getName() + " method in " +
+                MissingValueToRaw.class.getName(), error.getMessage());
     }
 }

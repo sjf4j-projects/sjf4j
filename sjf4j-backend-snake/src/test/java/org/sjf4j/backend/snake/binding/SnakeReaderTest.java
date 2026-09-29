@@ -90,6 +90,15 @@ class SnakeReaderTest {
     }
 
     @Test
+    void reportsExpectedYamlEventWithFullyQualifiedName() throws Exception {
+        try (SnakeReader reader = reader("[]")) {
+            IOException error = assertThrows(IOException.class, reader::startObject);
+            assertTrue(error.getMessage().startsWith(
+                    "Expected org.yaml.snakeyaml.events.MappingStartEvent, but was "));
+        }
+    }
+
+    @Test
     void handlesDeepStructuresAndSkipsNestedValues() throws Exception {
         StringBuilder yaml = new StringBuilder();
         for (int i = 0; i < 12; i++) yaml.append("{x: ");

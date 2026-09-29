@@ -64,11 +64,19 @@ class JsonArrayTest {
         BindingException strict = assertThrows(BindingException.class, () -> array.getString(0));
         assertSame(unpathed, strict.getCause());
         assertEquals("$[0]", strict.getPathSegment().rootedPathExpr());
-        assertTrue(strict.getMessage().contains("codec failed"));
+        assertEquals("cannot get java.lang.String at [0]: codec failed, at path '$[0]'",
+                strict.getMessage());
 
         BindingException lenient = assertThrows(BindingException.class, () -> array.getAsString(0));
         assertSame(unpathed, lenient.getCause());
         assertEquals("$[0]", lenient.getPathSegment().rootedPathExpr());
+        assertEquals("cannot coerce to java.lang.String at [0]: codec failed, at path '$[0]'",
+                lenient.getMessage());
+
+        BindingException container = assertThrows(BindingException.class,
+                () -> array.getMap(0, Thread.class));
+        assertEquals("cannot get java.util.Map with element type java.lang.Thread at [0]: codec failed, " +
+                "at path '$[0]'", container.getMessage());
 
         BindingException pathed = new BindingException("nested codec failed",
                 new PathSegment.Index(PathSegment.Root.INSTANCE, 1));

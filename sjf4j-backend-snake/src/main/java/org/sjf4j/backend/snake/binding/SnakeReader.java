@@ -247,7 +247,7 @@ public final class SnakeReader implements StreamingReader {
         Event event = nextEvent();
         if (!type.isInstance(event)) {
             throw new IOException(
-                    "Expected " + type.getSimpleName() + ", but was " + event);
+                    "Expected " + type.getName() + ", but was " + event);
         }
         return type.cast(event);
     }

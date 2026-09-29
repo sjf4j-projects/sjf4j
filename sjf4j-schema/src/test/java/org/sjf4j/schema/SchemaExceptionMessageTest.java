@@ -47,6 +47,7 @@ class SchemaExceptionMessageTest {
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.invalid", "invalid 'type' keyword", "/type", SCHEMA_URI);
+        assertTrue(error.getMessage().contains("found 'java.lang.Integer'"));
     }
 
     @Test

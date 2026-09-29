@@ -197,7 +197,7 @@ public final class ValueRegistry {
                 // Decode
                 if (ctor.isAnnotationPresent(RawToValue.class)) {
                     if (rawToValueHandle != null)
-                        throw new BindingException("multiple @" + RawToValue.class.getSimpleName() +
+                        throw new BindingException("multiple @" + RawToValue.class.getName() +
                                 " definitions found in " + clazz.getName());
                     try {
                         rawToValueHandle = lookup.unreflectConstructor(ctor);
@@ -212,10 +212,10 @@ public final class ValueRegistry {
                 // Encode
                 if (m.isAnnotationPresent(ValueToRaw.class)) {
                     if (valueToRawHandle != null)
-                        throw new BindingException("multiple @" + ValueToRaw.class.getSimpleName() +
+                        throw new BindingException("multiple @" + ValueToRaw.class.getName() +
                                 " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new BindingException("cannot use @" + ValueToRaw.class.getSimpleName() +
+                        throw new BindingException("cannot use @" + ValueToRaw.class.getName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -231,10 +231,10 @@ public final class ValueRegistry {
                 // Decode
                 if (m.isAnnotationPresent(RawToValue.class)) {
                     if (rawToValueHandle != null)
-                        throw new BindingException("multiple @" + RawToValue.class.getSimpleName() +
+                        throw new BindingException("multiple @" + RawToValue.class.getName() +
                                 " definitions found in " + clazz.getName());
                     if (!Modifier.isStatic(m.getModifiers()))
-                        throw new BindingException("must use @" + RawToValue.class.getSimpleName() +
+                        throw new BindingException("must use @" + RawToValue.class.getName() +
                                 " on constructor or static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -249,10 +249,10 @@ public final class ValueRegistry {
                 // Copy
                 if (m.isAnnotationPresent(ValueCopy.class)) {
                     if (valueCopyHandle != null)
-                        throw new BindingException("multiple @" + ValueCopy.class.getSimpleName() +
+                        throw new BindingException("multiple @" + ValueCopy.class.getName() +
                                 " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new BindingException("cannot use @" + ValueCopy.class.getSimpleName() +
+                        throw new BindingException("cannot use @" + ValueCopy.class.getName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = _findOverride(m, clazz);
@@ -269,39 +269,39 @@ public final class ValueRegistry {
         }
 
         if (valueToRawHandle == null)
-            throw new BindingException("missing @" + ValueToRaw.class.getSimpleName() + " method in " + clazz.getName());
+            throw new BindingException("missing @" + ValueToRaw.class.getName() + " method in " + clazz.getName());
         if (valueToRawHandle.type().parameterCount() != 1) {
-            throw new BindingException("@" + ValueToRaw.class.getSimpleName() + " method must have no parameters, but found " +
+            throw new BindingException("@" + ValueToRaw.class.getName() + " method must have no parameters, but found " +
                     (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
         Class<?> valueToRawReturnBoxed = Types.box(valueToRawHandle.type().returnType());
         if (!NodeKind.plainOf(valueToRawReturnBoxed).isRaw())
-            throw new BindingException("@" + ValueToRaw.class.getSimpleName() + " method return invalid type " +
+            throw new BindingException("@" + ValueToRaw.class.getName() + " method return invalid type " +
                     valueToRawReturnBoxed.getName() + " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
         if (rawToValueHandle == null)
-            throw new BindingException("missing @" + RawToValue.class.getSimpleName() + " method in " + clazz.getName());
+            throw new BindingException("missing @" + RawToValue.class.getName() + " method in " + clazz.getName());
         if (rawToValueHandle.type().parameterCount() != 1)
-            throw new BindingException("@" + RawToValue.class.getSimpleName() +
+            throw new BindingException("@" + RawToValue.class.getName() +
                     " method must have exactly one parameter, but found " + rawToValueHandle.type().parameterCount());
         Class<?> rawToValueParamBoxed = Types.box(rawToValueHandle.type().parameterType(0));
         Class<?> rawToValueReturnClazz = rawToValueHandle.type().returnType();
         if (rawToValueParamBoxed != valueToRawReturnBoxed)
-            throw new BindingException("@" + RawToValue.class.getSimpleName() + " method parameter type must match @" +
-                    ValueToRaw.class.getSimpleName() + " return type. " + "Expected: " + valueToRawReturnBoxed.getName() +
+            throw new BindingException("@" + RawToValue.class.getName() + " method parameter type must match @" +
+                    ValueToRaw.class.getName() + " return type. " + "Expected: " + valueToRawReturnBoxed.getName() +
                     ", Found: " + rawToValueParamBoxed.getName());
         if (rawToValueReturnClazz != clazz)
-            throw new BindingException("@" + RawToValue.class.getSimpleName() + " method return type must be " +
+            throw new BindingException("@" + RawToValue.class.getName() + " method return type must be " +
                     clazz.getName() + ", but found " + rawToValueReturnClazz.getName());
 
         if (valueCopyHandle != null) {
             if (valueCopyHandle.type().parameterCount() != 1)
-                throw new BindingException("@" + ValueCopy.class.getSimpleName() + " method must have no parameters, but found " +
+                throw new BindingException("@" + ValueCopy.class.getName() + " method must have no parameters, but found " +
                         (valueCopyHandle.type().parameterCount() + 1));
             Class<?> copyReturnClazz = valueCopyHandle.type().returnType();
             if (copyReturnClazz != clazz)
-                throw new BindingException("@" + ValueCopy.class.getSimpleName() + " method return type must be " + clazz.getName() +
+                throw new BindingException("@" + ValueCopy.class.getName() + " method return type must be " + clazz.getName() +
                         ", but found " + copyReturnClazz.getName());
         }
 

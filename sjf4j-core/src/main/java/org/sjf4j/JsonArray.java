@@ -298,7 +298,10 @@ public class JsonArray extends JsonContainer {
      * includes the container name; for non-container value types pass {@code null}.
      */
     private NodeException _strict(int idx, Class<?> elementType, Class<?> containerType, Exception cause) {
-        String msg = containerType == null ? "cannot get " + elementType.getSimpleName() + " at [" + idx + "]" : "cannot get " + containerType.getSimpleName() + " with element type " + elementType.getSimpleName() + " at [" + idx + "]";
+        String msg = containerType == null
+                ? "cannot get " + elementType.getName() + " at [" + idx + "]"
+                : "cannot get " + containerType.getName() + " with element type " +
+                        elementType.getName() + " at [" + idx + "]";
         if (cause instanceof BindingException) {
             BindingException binding = (BindingException) cause;
             if (binding.hasPathSegment()) return binding;
@@ -312,7 +315,7 @@ public class JsonArray extends JsonContainer {
      * Lenient getter helper for value types only.
      */
     private NodeException _lenient(int idx, Class<?> type, Exception cause) {
-        String message = "cannot coerce to " + type.getSimpleName() + " at [" + idx + "]";
+        String message = "cannot coerce to " + type.getName() + " at [" + idx + "]";
         if (cause instanceof BindingException) {
             BindingException binding = (BindingException) cause;
             if (binding.hasPathSegment()) return binding;

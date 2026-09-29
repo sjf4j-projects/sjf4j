@@ -25,6 +25,12 @@ The goal is consistent JSON semantics across backends, formats, paths, patches, 
 - Do not proactively restore removed methods, overloads, or compatibility shims unless the user explicitly asks for that direction.
 - For review / changelog / commit requests, prefer reporting compatibility impact over changing code to preserve compatibility.
 
+## Java Type Names
+
+- Use `Class.getName()` for type identity and framework diagnostics.
+- Use `Class.getSimpleName()` only for compact displays, generated-class readable suffixes, and schema file-name conventions; use element simple names for non-type Java elements such as methods, fields, and parameters.
+- Use `Type.getTypeName()` only when rendering generic `Type` text.
+
 ## Before Commit
 
 - Run at minimum:

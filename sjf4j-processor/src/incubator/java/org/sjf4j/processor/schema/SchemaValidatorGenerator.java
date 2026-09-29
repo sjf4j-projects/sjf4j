@@ -3,6 +3,7 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatingOptions;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.schema.Evaluator;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.schema.SchemaPlan;
@@ -32,6 +33,32 @@ import java.util.Set;
 
 /** Generates fast-path schema validators for {@code @CompiledSchemaValidator}. */
 public final class SchemaValidatorGenerator {
+    private static final String TYPE_EVALUATOR = Evaluator.TypeEvaluator.class.getName();
+    private static final String REF_EVALUATOR = Evaluator.RefEvaluator.class.getName();
+    private static final String REQUIRED_EVALUATOR = Evaluator.RequiredEvaluator.class.getName();
+    private static final String OBJECT_EVALUATOR = Evaluator.ObjectEvaluator.class.getName();
+    private static final String PROPERTIES_EVALUATOR = Evaluator.PropertiesEvaluator.class.getName();
+    private static final String STRING_EVALUATOR = Evaluator.StringEvaluator.class.getName();
+    private static final String NUMBER_EVALUATOR = Evaluator.NumberEvaluator.class.getName();
+    private static final String ARRAY_EVALUATOR = Evaluator.ArrayEvaluator.class.getName();
+    private static final String ITEMS_EVALUATOR = Evaluator.ItemsEvaluator.class.getName();
+    private static final String CONTAINS_EVALUATOR = Evaluator.ContainsEvaluator.class.getName();
+    private static final String PROPERTY_NAMES_EVALUATOR = Evaluator.PropertyNamesEvaluator.class.getName();
+    private static final String ALL_OF_EVALUATOR = Evaluator.AllOfEvaluator.class.getName();
+    private static final String ANY_OF_EVALUATOR = Evaluator.AnyOfEvaluator.class.getName();
+    private static final String ONE_OF_EVALUATOR = Evaluator.OneOfEvaluator.class.getName();
+    private static final String NOT_EVALUATOR = Evaluator.NotEvaluator.class.getName();
+    private static final String IF_THEN_ELSE_EVALUATOR = Evaluator.IfThenElseEvaluator.class.getName();
+    private static final String PATTERN_EVALUATOR = Evaluator.PatternEvaluator.class.getName();
+    private static final String FORMAT_EVALUATOR = Evaluator.FormatEvaluator.class.getName();
+    private static final String CONTENT_EVALUATOR = Evaluator.ContentEvaluator.class.getName();
+    private static final String DEPENDENCIES_EVALUATOR = Evaluator.DependenciesEvaluator.class.getName();
+    private static final String DEPENDENT_SCHEMAS_EVALUATOR = Evaluator.DependentSchemasEvaluator.class.getName();
+    private static final String CONST_EVALUATOR = Evaluator.ConstEvaluator.class.getName();
+    private static final String ENUM_EVALUATOR = Evaluator.EnumEvaluator.class.getName();
+    private static final String MULTIPLE_OF_EVALUATOR = Evaluator.MultipleOfEvaluator.class.getName();
+    private static final String UNEVALUATED_EVALUATOR = Evaluator.UnevaluatedEvaluator.class.getName();
+
     private final ProcessorContext ctx;
 
     public SchemaValidatorGenerator(ProcessorContext ctx) {
@@ -282,8 +309,8 @@ public final class SchemaValidatorGenerator {
 
     @SuppressWarnings("unchecked")
     private CompileResult _emitEvaluator(State state, List<String> out, String var, TypeMirror type, Object e, boolean nonNull, SchemaPlan currentPlan) {
-        String n = e.getClass().getSimpleName();
-        if ("TypeEvaluator".equals(n)) {
+        String n = e.getClass().getName();
+        if (TYPE_EVALUATOR.equals(n)) {
             String single = (String) SchemaPlanIntrospector.field(e, "type");
             String[] many = (String[]) SchemaPlanIntrospector.field(e, "types");
             String check = _typeCheckExpr(var, type, single != null ? new String[]{single} : many, nonNull);
@@ -293,12 +320,12 @@ public final class SchemaValidatorGenerator {
             else if (!"true".equals(check)) out.add("if (!(" + check + ")) return false;");
             return CompileResult.OK;
         }
-        if ("RefEvaluator".equals(n)) {
+        if (REF_EVALUATOR.equals(n)) {
             SchemaPlan p = (SchemaPlan) SchemaPlanIntrospector.field(e, "plan");
             if (p == null) return CompileResult.unsupported("$ref requires runtime fallback");
             return _emitPlan(state, out, var, type, p, nonNull);
         }
-        if ("RequiredEvaluator".equals(n)) {
+        if (REQUIRED_EVALUATOR.equals(n)) {
             String[] required = (String[]) SchemaPlanIntrospector.field(e, "required");
             Map<String, String[]> dependentRequired = (Map<String, String[]>) SchemaPlanIntrospector.field(e, "dependentRequired");
             ReadsResult rr = null;
@@ -355,7 +382,7 @@ public final class SchemaValidatorGenerator {
             }
             return CompileResult.OK;
         }
-        if ("ObjectEvaluator".equals(n)) {
+        if (OBJECT_EVALUATOR.equals(n)) {
             int min = ((Integer) SchemaPlanIntrospector.field(e, "minProperties")).intValue();
             int max = ((Integer) SchemaPlanIntrospector.field(e, "maxProperties")).intValue();
             CompileJsonKind kind = _knownJsonKind(type);
@@ -377,7 +404,7 @@ public final class SchemaValidatorGenerator {
             if (guard != null) out.add("}");
             return CompileResult.OK;
         }
-        if ("PropertiesEvaluator".equals(n)) {
+        if (PROPERTIES_EVALUATOR.equals(n)) {
             Map<String, SchemaPlan> properties = (Map<String, SchemaPlan>) SchemaPlanIntrospector.field(e, "properties");
             Object patterns = SchemaPlanIntrospector.field(e, "patterns");
             SchemaPlan additional = (SchemaPlan) SchemaPlanIntrospector.field(e, "additionalPropertiesPlan");
@@ -419,7 +446,7 @@ public final class SchemaValidatorGenerator {
             }
             return CompileResult.OK;
         }
-        if ("StringEvaluator".equals(n)) {
+        if (STRING_EVALUATOR.equals(n)) {
             int min = ((Integer) SchemaPlanIntrospector.field(e, "minLength")).intValue();
             int max = ((Integer) SchemaPlanIntrospector.field(e, "maxLength")).intValue();
             CompileJsonKind kind = _knownJsonKind(type);
@@ -440,7 +467,7 @@ public final class SchemaValidatorGenerator {
             if (guard != null) out.add("}");
             return CompileResult.OK;
         }
-        if ("NumberEvaluator".equals(n)) {
+        if (NUMBER_EVALUATOR.equals(n)) {
             boolean hasMin = ((Boolean) SchemaPlanIntrospector.field(e, "hasMinimum")).booleanValue();
             boolean hasMax = ((Boolean) SchemaPlanIntrospector.field(e, "hasMaximum")).booleanValue();
             boolean hasExMin = ((Boolean) SchemaPlanIntrospector.field(e, "hasExclusiveMinimum")).booleanValue();
@@ -465,7 +492,7 @@ public final class SchemaValidatorGenerator {
             if (guard != null) out.add("}");
             return CompileResult.OK;
         }
-        if ("ArrayEvaluator".equals(n)) {
+        if (ARRAY_EVALUATOR.equals(n)) {
             int min = ((Integer) SchemaPlanIntrospector.field(e, "minItems")).intValue();
             int max = ((Integer) SchemaPlanIntrospector.field(e, "maxItems")).intValue();
             boolean unique = ((Boolean) SchemaPlanIntrospector.field(e, "uniqueItems")).booleanValue();
@@ -495,7 +522,7 @@ public final class SchemaValidatorGenerator {
             if (guard != null) out.add("}");
             return CompileResult.OK;
         }
-        if ("ItemsEvaluator".equals(n)) {
+        if (ITEMS_EVALUATOR.equals(n)) {
             SchemaPlan items = (SchemaPlan) SchemaPlanIntrospector.field(e, "itemsPlan");
             Object prefix = SchemaPlanIntrospector.field(e, "prefixItemsPlans");
             if (prefix != null) return _emitLocalPlanReturn(state, out, var, currentPlan, "prefixItems");
@@ -513,7 +540,7 @@ public final class SchemaValidatorGenerator {
             if (guard != null) out.add("}");
             return CompileResult.OK;
         }
-        if ("ContainsEvaluator".equals(n)) {
+        if (CONTAINS_EVALUATOR.equals(n)) {
             SchemaPlan contains = (SchemaPlan) SchemaPlanIntrospector.field(e, "containsPlan");
             if (contains == null) return CompileResult.OK;
             TypeMirror elem = _elementType(type);
@@ -536,11 +563,13 @@ public final class SchemaValidatorGenerator {
             if (guard != null) out.add("}");
             return CompileResult.OK;
         }
-        if ("PropertyNamesEvaluator".equals(n)) {
+        if (PROPERTY_NAMES_EVALUATOR.equals(n)) {
             return _emitLocalPlanReturn(state, out, var, currentPlan, "propertyNames");
         }
-        if ("AllOfEvaluator".equals(n) || "AnyOfEvaluator".equals(n) || "OneOfEvaluator".equals(n)) {
-            String field = "AllOfEvaluator".equals(n) ? "allOfPlans" : ("AnyOfEvaluator".equals(n) ? "anyOfPlans" : "oneOfPlans");
+        if (ALL_OF_EVALUATOR.equals(n) || ANY_OF_EVALUATOR.equals(n) || ONE_OF_EVALUATOR.equals(n)) {
+            String field = ALL_OF_EVALUATOR.equals(n)
+                    ? "allOfPlans"
+                    : ANY_OF_EVALUATOR.equals(n) ? "anyOfPlans" : "oneOfPlans";
             SchemaPlan[] plans = (SchemaPlan[]) SchemaPlanIntrospector.field(e, field);
             List<String> helpers = new ArrayList<String>();
             for (SchemaPlan p : plans) {
@@ -548,9 +577,9 @@ public final class SchemaValidatorGenerator {
                 if (h == null) return CompileResult.unsupported(state.unsupportedReason);
                 helpers.add(h);
             }
-            if ("AllOfEvaluator".equals(n)) {
+            if (ALL_OF_EVALUATOR.equals(n)) {
                 for (String h : helpers) out.add("if (!" + h + "(" + var + ")) return false;");
-            } else if ("AnyOfEvaluator".equals(n)) {
+            } else if (ANY_OF_EVALUATOR.equals(n)) {
                 StringBuilder b = new StringBuilder("if (!(");
                 for (int i = 0; i < helpers.size(); i++) {
                     if (i != 0) b.append(" || ");
@@ -565,14 +594,14 @@ public final class SchemaValidatorGenerator {
             }
             return CompileResult.OK;
         }
-        if ("NotEvaluator".equals(n)) {
+        if (NOT_EVALUATOR.equals(n)) {
             SchemaPlan p = (SchemaPlan) SchemaPlanIntrospector.field(e, "notPlan");
             String h = _compileSubHelper(state, type, p);
             if (h == null) return CompileResult.unsupported(state.unsupportedReason);
             out.add("if (" + h + "(" + var + ")) return false;");
             return CompileResult.OK;
         }
-        if ("IfThenElseEvaluator".equals(n)) {
+        if (IF_THEN_ELSE_EVALUATOR.equals(n)) {
             SchemaPlan ifPlan = (SchemaPlan) SchemaPlanIntrospector.field(e, "ifPlan");
             SchemaPlan thenPlan = (SchemaPlan) SchemaPlanIntrospector.field(e, "thenPlan");
             SchemaPlan elsePlan = (SchemaPlan) SchemaPlanIntrospector.field(e, "elsePlan");
@@ -585,7 +614,7 @@ public final class SchemaValidatorGenerator {
             if (eh != null) out.add("if (!" + ih + "(" + var + ") && !" + eh + "(" + var + ")) return false;");
             return CompileResult.OK;
         }
-        if ("PatternEvaluator".equals(n)) {
+        if (PATTERN_EVALUATOR.equals(n)) {
             String pattern = (String) SchemaPlanIntrospector.field(e, "pattern");
             String field = "_PATTERN" + state.nextField++;
             state.target.addField(outField -> outField.line("private static final java.util.regex.Pattern " + field + " = org.sjf4j.schema.SchemaUtil.compileRegexPattern(\"" + GeneratorUtil.escape(pattern) + "\", \"pattern\");"));
@@ -598,7 +627,7 @@ public final class SchemaValidatorGenerator {
             }
             return CompileResult.OK;
         }
-        if ("FormatEvaluator".equals(n)) {
+        if (FORMAT_EVALUATOR.equals(n)) {
             boolean assertion = ((Boolean) SchemaPlanIntrospector.field(e, "assertion")).booleanValue();
             if (!assertion && !state.strictFormat) return CompileResult.OK;
             String format = (String) SchemaPlanIntrospector.field(e, "format");
@@ -612,22 +641,22 @@ public final class SchemaValidatorGenerator {
             }
             return CompileResult.OK;
         }
-        if ("ContentEvaluator".equals(n)) {
+        if (CONTENT_EVALUATOR.equals(n)) {
             return _emitLocalPlanReturn(state, out, var, currentPlan, "contentEncoding/contentMediaType");
         }
-        if ("DependenciesEvaluator".equals(n)) {
+        if (DEPENDENCIES_EVALUATOR.equals(n)) {
             return _emitLocalPlanReturn(state, out, var, currentPlan, "dependencies");
         }
-        if ("DependentSchemasEvaluator".equals(n)) {
+        if (DEPENDENT_SCHEMAS_EVALUATOR.equals(n)) {
             return _emitLocalPlanReturn(state, out, var, currentPlan, "dependentSchemas");
         }
-        if ("ConstEvaluator".equals(n)) {
+        if (CONST_EVALUATOR.equals(n)) {
             String literal = _literal(SchemaPlanIntrospector.field(e, "constValue"));
             if (literal == null) return _emitLocalPlanReturn(state, out, var, currentPlan, "const value");
             out.add("if (!org.sjf4j.Nodes.equals(" + literal + ", " + var + ")) return false;");
             return CompileResult.OK;
         }
-        if ("EnumEvaluator".equals(n)) {
+        if (ENUM_EVALUATOR.equals(n)) {
             Object[] values = (Object[]) SchemaPlanIntrospector.field(e, "enumValues");
             String matched = "_e" + state.nextLocal++;
             out.add("boolean " + matched + " = false;");
@@ -639,10 +668,10 @@ public final class SchemaValidatorGenerator {
             out.add("if (!" + matched + ") return false;");
             return CompileResult.OK;
         }
-        if ("MultipleOfEvaluator".equals(n)) {
+        if (MULTIPLE_OF_EVALUATOR.equals(n)) {
             return _emitLocalPlanReturn(state, out, var, currentPlan, "multipleOf");
         }
-        if ("UnevaluatedEvaluator".equals(n)) {
+        if (UNEVALUATED_EVALUATOR.equals(n)) {
             return _emitLocalPlanReturn(state, out, var, currentPlan, "unevaluatedProperties/unevaluatedItems");
         }
         return CompileResult.unsupported(n);
@@ -663,7 +692,7 @@ public final class SchemaValidatorGenerator {
     }
 
     private boolean _provesNonNull(Object e) {
-        if (!"TypeEvaluator".equals(e.getClass().getSimpleName())) return false;
+        if (!TYPE_EVALUATOR.equals(e.getClass().getName())) return false;
         String single = (String) SchemaPlanIntrospector.field(e, "type");
         if (single != null) return !"null".equals(single);
         String[] many = (String[]) SchemaPlanIntrospector.field(e, "types");
