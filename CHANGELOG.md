@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `sjf4j-backend-fastjson2` artifact with Fastjson2 streaming reader and writer bindings.
 - Added the `sjf4j-backend-jackson2` artifact with Jackson 2 streaming reader and writer bindings.
 - Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.
+- Added ServiceLoader-discovered mutable native-node adapters for Jackson 2 and Jackson 3, with traversal, conversion, access, and mutation support.
 - Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.
 - Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
 - Added JSON, YAML, and node binding interfaces plus a reusable `FastStringReader`.

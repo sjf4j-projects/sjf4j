@@ -45,6 +45,29 @@ class GsonNodeTest {
     }
 
     @Test
+    void nodesDispatchesToGsonNodes() {
+        JsonObject object = new JsonObject();
+        object.add("name", new JsonPrimitive("value"));
+        JsonPrimitive written = new JsonPrimitive("written");
+
+        assertTrue(Nodes.keySetInObject(object).contains("name"));
+        assertNull(Nodes.putInObject(object, "written", written));
+        assertSame(written, object.get("written"));
+        assertSame(JsonObject.class, object.getClass());
+
+        JsonArray array = new JsonArray();
+        array.add(new JsonPrimitive("first"));
+        JsonPrimitive last = new JsonPrimitive("last");
+        array.add(last);
+        JsonPrimitive appended = new JsonPrimitive("appended");
+
+        assertSame(last, Nodes.getInArray(array, -1));
+        assertNull(Nodes.putInArray(array, array.size(), appended));
+        assertSame(appended, array.get(2));
+        assertSame(JsonArray.class, array.getClass());
+    }
+
+    @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
     void providerIsDiscoverableWithoutGson() throws Exception {
         URL coreClasses = ExternalNode.class.getProtectionDomain().getCodeSource().getLocation();

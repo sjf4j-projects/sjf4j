@@ -13,18 +13,39 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
- * Adapter contract for external Java representations.
- * <p>
- * An adapter exposes an external object as the corresponding OBNT object, array,
- * or value node shape; it does not introduce another OBNT shape.
+ * Optional adapter for a backend-native JSON tree.
  *
- * <p>Only {@link #nodeType()} and {@link #jsonType(Object)} are mandatory.
- * All operational defaults fail fast with {@link NodeException}; adapters must
- * override every operation they expose. Defaults never traverse, convert,
- * inspect, allocate, mutate, or infer external representations.</p>
+ * <p>{@code N} is the root external type; every child and scalar value is
+ * exposed unchanged as {@link Object}. Entry points expect a non-null Java
+ * node. JSON null is instead a native node with {@link JsonType#NULL}: scalar
+ * conversions return Java {@code null}, while object fields and array elements
+ * expose that native null node. Invalid shapes and external write values throw
+ * {@link NodeException}.</p>
  *
- * <p>{@code N} is the external root type. Child values are exposed as
- * {@link Object}.</p>
+ * <p>Strict conversions accept only their matching scalar type or JSON null.
+ * Lenient number and boolean conversions follow {@link Nodes#asNumber(Object)}
+ * and {@link Nodes#asBoolean(Object)}. Objects and arrays cannot be converted
+ * to numbers or booleans. {@link #asString(Object)} may use the native
+ * backend's normal lenient string behavior.</p>
+ *
+ * <p>Adapters may provide traversal and mutation operations. When they provide
+ * object key or entry sets, those sets are live backing views: their iterators
+ * and set removal mutate the object, and entry {@code setValue} validates
+ * writes. Array indexes normalize negative values with {@code size + index};
+ * invalid gets return {@code null}, while invalid set/remove and indexed add
+ * throw. Indexed add accepts normalized indexes from {@code 0} through
+ * {@code size}. Access helpers distinguish missing from present JSON null. A
+ * null array write index denotes append; existing indexes and {@code size} are
+ * puttable.</p>
+ *
+ * <p>Supported mutations and mapped or entry values canonicalize Java
+ * {@code null} to the native JSON null node. An adapter that supports
+ * {@link #copy(Object)} should shallow-copy only the outer container and share
+ * its children. The default {@code copy} implementation is identity. Factories
+ * create native object or array containers for the adapter root or its
+ * corresponding concrete shape. Only classification is mandatory; unsupported
+ * operations fail fast by default, except where a method specifies another
+ * default.</p>
  *
  * @param <N> external root type handled by this adapter
  */
@@ -34,22 +55,15 @@ public interface ExternalNode<N> {
      */
     Class<N> nodeType();
 
-    /**
-     * Returns the JSON-semantic type of {@code node}.
-     */
+    /** Returns the JSON-semantic type of {@code node}. */
     JsonType jsonType(N node);
 
-    /**
-     * Returns the JSON-semantic type implied by {@code nodeType}, or {@link JsonType#UNKNOWN} by default.
-     */
+    /** Returns the type implied by a concrete node class, or {@link JsonType#UNKNOWN}. */
     default JsonType jsonTypeOfClass(Class<?> nodeType) {
         return JsonType.UNKNOWN;
     }
 
-    /**
-     * Returns the runtime representation classification corresponding to
-     * {@link #jsonType(Object)} for {@code node}.
-     */
+    /** Returns the runtime classification corresponding to {@link #jsonType(Object)}. */
     default NodeKind nodeKind(N node) {
         switch (jsonType(node)) {
             case OBJECT: return NodeKind.OBJECT_EXTERNAL;
@@ -62,283 +76,176 @@ public interface ExternalNode<N> {
         }
     }
 
-    /**
-     * Returns the fail-fast exception for the named unsupported operation.
-     */
+    /** Returns the fail-fast exception for an unsupported operation. */
     static NodeException unsupported(String operation) {
         return new NodeException("unsupported external node operation '" + operation + "'");
     }
 
-    /**
-     * Returns {@code node} as a string using strict conversion.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns a strict string conversion. */
     default String toString(N node) {
         throw unsupported("toString");
     }
 
-    /**
-     * Returns {@code node} as a string using lenient conversion.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns a lenient string conversion. */
     default String asString(N node) {
         throw unsupported("asString");
     }
 
-    /**
-     * Returns {@code node} as a number using strict conversion.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns a strict number conversion. */
     default Number toNumber(N node) {
         throw unsupported("toNumber");
     }
 
-    /**
-     * Returns {@code node} as a number using lenient conversion.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns a lenient number conversion. */
     default Number asNumber(N node) {
         throw unsupported("asNumber");
     }
 
-    /**
-     * Returns {@code node} as a boolean using strict conversion.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns a strict boolean conversion. */
     default Boolean toBoolean(N node) {
         throw unsupported("toBoolean");
     }
 
-    /**
-     * Returns {@code node} as a boolean using lenient conversion.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns a lenient boolean conversion. */
     default Boolean asBoolean(N node) {
         throw unsupported("asBoolean");
     }
 
-    /**
-     * Invokes {@code consumer} for each key and value in object {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Visits object entries. */
     default void forEachObject(N node, BiConsumer<String, Object> consumer) {
         throw unsupported("forEachObject");
     }
 
-    /**
-     * Returns whether {@code predicate} matches any key and value in object {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns whether an object entry matches. */
     default boolean anyMatchObject(N node, BiPredicate<String, Object> predicate) {
         throw unsupported("anyMatchObject");
     }
 
-    /**
-     * Replaces object values with results from {@code mapper} and returns whether object {@code node} changed.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Replaces object values and reports identity changes. */
     default boolean replaceAllInObject(N node, BiFunction<String, Object, Object> mapper) {
         throw unsupported("replaceAllInObject");
     }
 
-    /**
-     * Removes entries from object {@code node} whose key and value match {@code predicate}, returning whether it changed.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Removes matching object entries. */
     default boolean removeIfInObject(N node, BiPredicate<String, Object> predicate) {
         throw unsupported("removeIfInObject");
     }
 
-    /**
-     * Invokes {@code consumer} for each index and value in array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Visits array elements. */
     default void forEachArray(N node, BiConsumer<Integer, Object> consumer) {
         throw unsupported("forEachArray");
     }
 
-    /**
-     * Returns whether {@code predicate} matches any index and value in array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns whether an array element matches. */
     default boolean anyMatchInArray(N node, BiPredicate<Integer, Object> predicate) {
         throw unsupported("anyMatchArray");
     }
 
-    /**
-     * Returns the entry count of object {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns the object entry count. */
     default int sizeInObject(N node) {
         throw unsupported("sizeInObject");
     }
 
-    /**
-     * Returns the element count of array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns the array element count. */
     default int sizeInArray(N node) {
         throw unsupported("sizeInArray");
     }
 
-    /**
-     * Returns an iterator over the values in array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns an iterator over raw array elements. */
     default Iterator<Object> iteratorInArray(N node) {
         throw unsupported("iteratorInArray");
     }
 
-    /**
-     * Returns whether object {@code node} contains {@code key}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns whether the object contains a key. */
     default boolean containsInObject(N node, String key) {
         throw unsupported("containsInObject");
     }
 
+    /** Returns a live object key view. */
     default Set<String> keySetInObject(N node) {
         throw unsupported("keySetInObject");
     }
 
+    /** Returns a live object entry view. */
     default Set<Map.Entry<String, Object>> entrySetInObject(N node) {
         throw unsupported("entrySetInObject");
     }
 
-    /**
-     * Returns the value for {@code key} in object {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns the raw value for an object key. */
     default Object getInObject(N node, String key) {
         throw unsupported("getInObject");
     }
 
-    /**
-     * Returns the value at {@code idx} in array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Returns the raw value at an array index. */
     default Object getInArray(N node, int idx) {
         throw unsupported("getInArray");
     }
 
-    /**
-     * Fills {@code out} with readable metadata for {@code key} in object {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Fills {@code out} with readable object-child metadata. */
     default void getAccessInObject(N node, String key, Nodes.Access out) {
         throw unsupported("getAccessInObject");
     }
 
-    /**
-     * Fills {@code out} with writable metadata for {@code key} in object {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Fills {@code out} with writable object-child metadata. */
     default void putAccessInObject(N node, String key, Nodes.Access out) {
         throw unsupported("putAccessInObject");
     }
 
-    /**
-     * Fills {@code out} with readable metadata for {@code idx} in array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Fills {@code out} with readable array-child metadata. */
     default void getAccessInArray(N node, int idx, Nodes.Access out) {
         throw unsupported("getAccessInArray");
     }
 
-    /**
-     * Fills {@code out} with writable metadata for {@code idx} in array {@code node}; a null index denotes
-     * append access.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Fills {@code out} with writable array-child metadata; null index means append. */
     default void putAccessInArray(N node, Integer idx, Nodes.Access out) {
         throw unsupported("putAccessInArray");
     }
 
-    /**
-     * Associates {@code value} with {@code key} in object {@code node} and returns the previous value.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Associates a value with an object key and returns the previous value. */
     default Object putInObject(N node, String key, Object value) {
         throw unsupported("putInObject");
     }
 
-    /**
-     * Replaces the value at {@code idx} in array {@code node} with {@code value} and returns the previous
-     * value.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Replaces an array value and returns the previous value. */
     default Object setInArray(N node, int idx, Object value) {
         throw unsupported("setInArray");
     }
 
-    /**
-     * Appends {@code value} to array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Appends an array value. */
     default void addInArray(N node, Object value) {
         throw unsupported("addInArray");
     }
 
-    /**
-     * Inserts {@code value} at {@code idx} in array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Inserts an array value. */
     default void addInArray(N node, int idx, Object value) {
         throw unsupported("addInArray");
     }
 
-    /**
-     * Removes and returns the value for {@code key} from object {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Removes and returns an object value. */
     default Object removeInObject(N node, String key) {
         throw unsupported("removeInObject");
     }
 
-    /**
-     * Removes and returns the value at {@code idx} from array {@code node}.
-     *
-     * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
-     */
+    /** Removes and returns an array value. */
     default Object removeInArray(N node, int idx) {
         throw unsupported("removeInArray");
     }
 
+    /**
+     * Returns a copy of {@code node}; adapters that support copying should
+     * shallow-copy containers and share their children. The default returns
+     * {@code node} unchanged.
+     */
     default N copy(N node) {
         return node;
     }
 
+    /** Creates a native object container. */
     default Object createObjectNode(Class<?> clazz) {
         throw unsupported("createObjectNode");
     }
 
+    /** Creates a native array container. */
     default Object createArrayNode(Class<?> clazz) {
         throw unsupported("createArrayNode");
     }
