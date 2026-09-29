@@ -2,8 +2,8 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.binding.FastStringReader;
-import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.Nodes;
+import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
@@ -21,7 +21,6 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 

@@ -1119,15 +1119,15 @@ public class JsonPath {
 
     /**
      * Ensures the final path location exists, and writes only when the current
-     * value is absent or {@code null}.
+     * value is absent or JSON {@code null}.
      * <p>
      * Missing parent containers are created using {@link #ensurePut(Object, Object)}.
      * For object-name and pointer-object-key targets, absent means the key is
-     * missing or currently maps to {@code null}; an unknown ordinary POJO property
+     * missing or currently maps to JSON {@code null}; an unknown ordinary POJO property
      * fails rather than becoming a new member. For array-index targets, indexes
      * are normalized first; indexes greater than the current size fail, indexes
      * equal to the current size append, and existing indexes are replaced only
-     * when their current value is {@code null}. Append targets always append.
+     * when their current value is JSON {@code null}. Append targets always append.
      *
      * @return {@code null} when a write happened at an absent/null location, or
      * the existing non-null value when no write was performed
@@ -1142,16 +1142,18 @@ public class JsonPath {
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
             Object current = Nodes.getInObject(lastContainer, name);
-            if (current == null) {
-                return Nodes.putInObject(lastContainer, name, value);
+            if (JsonType.of(current).isNull()) {
+                Nodes.putInObject(lastContainer, name, value);
+                return null;
             }
             return current;
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
             if (_isPointerObjectKey(index, lastContainer)) {
                 Object current = Nodes.getInObject(lastContainer, index.pointerToken);
-                if (current == null) {
-                    return Nodes.putInObject(lastContainer, index.pointerToken, value);
+                if (JsonType.of(current).isNull()) {
+                    Nodes.putInObject(lastContainer, index.pointerToken, value);
+                    return null;
                 }
                 return current;
             }
@@ -1165,8 +1167,9 @@ public class JsonPath {
                 return Nodes.putInArray(lastContainer, idx, value);
             }
             Object current = Nodes.getInArray(lastContainer, idx);
-            if (current == null) {
-                return Nodes.putInArray(lastContainer, idx, value);
+            if (JsonType.of(current).isNull()) {
+                Nodes.putInArray(lastContainer, idx, value);
+                return null;
             }
             return current;
         } else if (lastToken instanceof PathSegment.Append) {
@@ -1747,7 +1750,7 @@ public class JsonPath {
                 String key = ((PathSegment.Name) ps).name;
                 if (jt.isObject()) {
                     Nodes.putAccessInObject(curNode, curType, key, acc);
-                    if (acc.node != null) {
+                    if (!JsonType.of(acc.node).isNull()) {
                         curNode = acc.node;
                         curType = acc.type;
                     } else if (acc.puttable) {
@@ -1770,7 +1773,7 @@ public class JsonPath {
                 PathSegment.Index index = (PathSegment.Index) ps;
                 if (jt.isArray()) {
                     Nodes.putAccessInArray(curNode, curType, index.index, acc);
-                    if (acc.node != null) {
+                    if (!JsonType.of(acc.node).isNull()) {
                         curNode = acc.node;
                         curType = acc.type;
                     } else if (acc.puttable) {
@@ -1788,7 +1791,7 @@ public class JsonPath {
                     }
                 } else if (_isPointerObjectKey(index, jt)) {
                     Nodes.putAccessInObject(curNode, curType, index.pointerToken, acc);
-                    if (acc.node != null) {
+                    if (!JsonType.of(acc.node).isNull()) {
                         curNode = acc.node;
                         curType = acc.type;
                     } else if (acc.puttable) {

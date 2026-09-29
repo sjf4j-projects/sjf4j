@@ -1988,7 +1988,8 @@ public final class Nodes {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.externalNode != null) {
-            if (ti.externalNode.jsonTypeOfClass(clazz) == JsonType.OBJECT) {
+            if (clazz == ti.externalNode.nodeType() ||
+                    ti.externalNode.jsonTypeOfClass(clazz) == JsonType.OBJECT) {
                 return ti.externalNode.createObjectNode(clazz);
             }
         }
@@ -2017,7 +2018,8 @@ public final class Nodes {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.externalNode != null) {
-            if (ti.externalNode.jsonTypeOfClass(clazz) == JsonType.ARRAY) {
+            if (clazz == ti.externalNode.nodeType() ||
+                    ti.externalNode.jsonTypeOfClass(clazz) == JsonType.ARRAY) {
                 return ti.externalNode.createArrayNode(clazz);
             }
         }

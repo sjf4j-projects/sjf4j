@@ -2,8 +2,10 @@ package org.sjf4j.backend.gson;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
@@ -11,13 +13,17 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalNodeRegistry;
 import org.sjf4j.backend.gson.external.GsonNodeProvider;
+import org.sjf4j.path.JsonPath;
 
 import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -68,10 +74,18 @@ class GsonNodeTest {
         assertEquals(12, node.toNumber(JsonParser.parseString("12")).intValue());
         assertTrue(node.toBoolean(JsonParser.parseString("true")));
         assertEquals(12, node.asNumber(JsonParser.parseString("\"12\"")));
+        assertEquals(1, node.asNumber(JsonParser.parseString("true")));
+        assertEquals(0, node.asNumber(JsonParser.parseString("false")));
         assertTrue(node.asBoolean(JsonParser.parseString("\"true\"")));
         assertTrue(node.asBoolean(JsonParser.parseString("1")));
-        assertNull(node.asNumber(JsonParser.parseString("true")));
         assertNull(node.asBoolean(JsonParser.parseString("null")));
+        assertThrows(NodeException.class, () -> node.asNumber(JsonParser.parseString("{}")));
+        assertThrows(NodeException.class, () -> node.asNumber(JsonParser.parseString("[]")));
+        assertThrows(NodeException.class, () -> node.asBoolean(JsonParser.parseString("{}")));
+        assertThrows(NodeException.class, () -> node.asBoolean(JsonParser.parseString("[]")));
+        assertNull(node.toString(JsonNull.INSTANCE));
+        assertNull(node.toNumber(JsonNull.INSTANCE));
+        assertNull(node.toBoolean(JsonNull.INSTANCE));
 
         assertStrictRejection(() -> node.toString(JsonParser.parseString("12")), "JsonPrimitive(String)");
         assertStrictRejection(() -> node.toNumber(JsonParser.parseString("true")), "JsonPrimitive(Number)");
@@ -102,7 +116,122 @@ class GsonNodeTest {
     }
 
     @Test
-    void accessPreservesGsonReadOnlyAndArrayBoundsSemantics() {
+    void exposesLiveObjectKeyAndEntryViews() {
+        ExternalNode<JsonElement> node = node();
+        JsonObject object = JsonParser.parseString("{\"name\":\"value\"}").getAsJsonObject();
+
+        Set<String> keys = node.keySetInObject(object);
+        Set<Map.Entry<String, Object>> entries = node.entrySetInObject(object);
+        assertTrue(keys.contains("name"));
+        Map.Entry<String, Object> entry = entries.iterator().next();
+        assertEquals("value", ((JsonElement) entry.setValue(null)).getAsString());
+        assertSame(JsonNull.INSTANCE, object.get("name"));
+        assertInvalidValue(() -> entry.setValue("invalid"));
+        assertSame(JsonNull.INSTANCE, object.get("name"));
+
+        object.addProperty("added", true);
+        assertTrue(keys.contains("added"));
+        assertEquals(2, entries.size());
+        object.remove("added");
+        assertEquals(1, entries.size());
+        object.addProperty("added", true);
+        Iterator<Map.Entry<String, Object>> iterator = entries.iterator();
+        String iteratorRemoved = iterator.next().getKey();
+        iterator.remove();
+        assertFalse(object.has(iteratorRemoved));
+        Map.Entry<String, Object> setRemoved = entries.iterator().next();
+        String setRemovedKey = setRemoved.getKey();
+        assertTrue(entries.remove(setRemoved));
+        assertFalse(object.has(setRemovedKey));
+    }
+
+    @Test
+    void getsArrayElementsWithNegativeIndexesAndNullForInvalidIndexes() {
+        ExternalNode<JsonElement> node = node();
+        JsonArray array = JsonParser.parseString("[true,2]").getAsJsonArray();
+
+        assertSame(array.get(1), node.getInArray(array, -1));
+        assertSame(array.get(0), node.getInArray(array, -2));
+        assertNull(node.getInArray(array, -3));
+        assertNull(node.getInArray(array, 2));
+    }
+
+    @Test
+    void copiesOnlyOuterGsonContainers() {
+        JsonObject object = new JsonObject();
+        JsonObject childObject = new JsonObject();
+        object.add("child", childObject);
+        JsonArray array = new JsonArray();
+        JsonArray childArray = new JsonArray();
+        array.add(childArray);
+
+        JsonObject objectCopy = Nodes.copy(object);
+        JsonArray arrayCopy = Nodes.copy(array);
+        assertFalse(objectCopy == object);
+        assertSame(childObject, objectCopy.get("child"));
+        assertFalse(arrayCopy == array);
+        assertSame(childArray, arrayCopy.get(0));
+        assertSame(JsonNull.INSTANCE, Nodes.copy(JsonNull.INSTANCE));
+        JsonPrimitive primitive = new JsonPrimitive("value");
+        assertSame(primitive, Nodes.copy(primitive));
+    }
+
+    @Test
+    void createsNativeGsonContainers() {
+        assertTrue(Nodes.createObjectNode(JsonObject.class) instanceof JsonObject);
+        assertTrue(Nodes.createArrayNode(JsonArray.class) instanceof JsonArray);
+        assertTrue(Nodes.createObjectNode(JsonElement.class) instanceof JsonObject);
+        assertTrue(Nodes.createArrayNode(JsonElement.class) instanceof JsonArray);
+        assertThrows(NodeException.class, () -> Nodes.createObjectNode(JsonArray.class));
+        assertThrows(NodeException.class, () -> Nodes.createArrayNode(JsonObject.class));
+    }
+
+    @Test
+    void ensuresGsonContainersThroughJsonElementAccessType() {
+        JsonObject object = new JsonObject();
+
+        JsonPath.parse("$.a.b.c").ensurePut(object, new JsonPrimitive("value"));
+        JsonPath.parse("$.arr[+].value").ensurePut(object, new JsonPrimitive("item"));
+
+        assertTrue(object.get("a").isJsonObject());
+        assertTrue(object.getAsJsonObject("a").get("b").isJsonObject());
+        assertEquals("value", object.getAsJsonObject("a").getAsJsonObject("b").get("c").getAsString());
+        assertTrue(object.get("arr").isJsonArray());
+        assertTrue(object.getAsJsonArray("arr").get(0).isJsonObject());
+        assertEquals("item", object.getAsJsonArray("arr").get(0).getAsJsonObject().get("value").getAsString());
+    }
+
+    @Test
+    void ensurePutReplacesGsonJsonNullIntermediateContainers() {
+        JsonObject object = JsonParser.parseString("{\"a\":null}").getAsJsonObject();
+        JsonArray array = JsonParser.parseString("[null]").getAsJsonArray();
+
+        JsonPath.parse("$.a.b").ensurePut(object, new JsonPrimitive("object"));
+        JsonPath.parse("$[0].b").ensurePut(array, new JsonPrimitive("array"));
+
+        assertEquals("object", object.getAsJsonObject("a").get("b").getAsString());
+        assertEquals("array", array.get(0).getAsJsonObject().get("b").getAsString());
+    }
+
+    @Test
+    void ensurePutIfAbsentReplacesGsonJsonNull() {
+        JsonObject object = new JsonObject();
+        object.add("value", JsonNull.INSTANCE);
+        object.add("pointer", JsonNull.INSTANCE);
+        JsonArray array = new JsonArray();
+        array.add(JsonNull.INSTANCE);
+        object.add("array", array);
+
+        assertNull(JsonPath.parse("$.value").ensurePutIfAbsent(object, new JsonPrimitive("name")));
+        assertNull(JsonPath.parse("/pointer").ensurePutIfAbsent(object, new JsonPrimitive("key")));
+        assertNull(JsonPath.parse("$.array[0]").ensurePutIfAbsent(object, new JsonPrimitive("index")));
+        assertEquals("name", object.get("value").getAsString());
+        assertEquals("key", object.get("pointer").getAsString());
+        assertEquals("index", array.get(0).getAsString());
+    }
+
+    @Test
+    void accessExposesGsonWriteAndArrayBoundsSemantics() {
         ExternalNode<JsonElement> node = node();
         JsonObject object = JsonParser.parseString("{\"name\":\"value\",\"nil\":null,\"items\":[true,2]}").getAsJsonObject();
         JsonArray array = object.getAsJsonArray("items");
@@ -122,7 +251,7 @@ class GsonNodeTest {
         assertFalse(access.present);
         assertNull(access.node);
         node.putAccessInObject(object, "name", access);
-        assertFalse(access.puttable);
+        assertTrue(access.puttable);
         assertSame(JsonElement.class, access.type);
         assertEquals("value", ((JsonElement) access.node).getAsString());
 
@@ -146,23 +275,61 @@ class GsonNodeTest {
         assertSame(JsonElement.class, access.type);
         assertTrue(access.present);
         node.putAccessInArray(array, null, access);
-        assertFalse(access.puttable);
+        assertTrue(access.puttable);
         assertNull(access.node);
+        node.putAccessInArray(array, 0, access);
+        assertTrue(access.puttable);
+        assertTrue(((JsonElement) access.node).getAsBoolean());
+        node.putAccessInArray(array, 2, access);
+        assertTrue(access.puttable);
+        assertNull(access.node);
+        node.putAccessInArray(array, -1, access);
+        assertTrue(access.puttable);
+        assertEquals(2, ((JsonElement) access.node).getAsInt());
     }
 
     @Test
-    void rejectsAllUnsupportedMutationsWithLegacyMessages() {
+    void mutatesGsonContainersWithNullCanonicalizationAndNegativeIndexes() {
         ExternalNode<JsonElement> node = node();
         JsonObject object = new JsonObject();
-        JsonArray array = new JsonArray();
-        JsonElement value = JsonParser.parseString("true");
+        JsonElement value = new JsonPrimitive("value");
 
-        assertUnsupported(() -> node.putInObject(object, "value", value), "putInObject");
-        assertUnsupported(() -> node.setInArray(array, 0, value), "setInArray");
-        assertUnsupported(() -> node.addInArray(array, value), "addInArray");
-        assertUnsupported(() -> node.addInArray(array, 0, value), "addInArray");
-        assertUnsupported(() -> node.removeInObject(object, "value"), "removeInObject");
-        assertUnsupported(() -> node.removeInArray(array, 0), "removeInArray");
+        assertNull(node.putInObject(object, "value", null));
+        assertSame(JsonNull.INSTANCE, object.get("value"));
+        assertSame(JsonNull.INSTANCE, node.putInObject(object, "value", value));
+        assertSame(value, node.removeInObject(object, "value"));
+        assertNull(node.removeInObject(object, "missing"));
+
+        JsonArray array = JsonParser.parseString("[\"zero\",\"one\"]").getAsJsonArray();
+        assertEquals("one", ((JsonElement) node.setInArray(array, -1, null)).getAsString());
+        assertSame(JsonNull.INSTANCE, array.get(1));
+        node.addInArray(array, null);
+        assertSame(JsonNull.INSTANCE, array.get(2));
+        node.addInArray(array, -1, null);
+        assertSame(JsonNull.INSTANCE, array.get(2));
+        assertSame(JsonNull.INSTANCE, node.removeInArray(array, -1));
+        assertEquals(3, array.size());
+    }
+
+    @Test
+    void rejectsInvalidValuesAndArrayIndexes() {
+        ExternalNode<JsonElement> node = node();
+        JsonObject object = new JsonObject();
+        JsonArray array = JsonParser.parseString("[true]").getAsJsonArray();
+
+        assertInvalidValue(() -> node.putInObject(object, "value", "invalid"));
+        assertInvalidValue(() -> node.setInArray(array, 0, "invalid"));
+        assertInvalidValue(() -> node.addInArray(array, "invalid"));
+        assertInvalidValue(() -> node.addInArray(array, 0, "invalid"));
+        assertThrows(NodeException.class, () -> node.setInArray(array, -2, JsonNull.INSTANCE));
+        assertThrows(NodeException.class, () -> node.setInArray(array, 1, JsonNull.INSTANCE));
+        assertThrows(NodeException.class, () -> node.addInArray(array, -2, JsonNull.INSTANCE));
+        assertThrows(NodeException.class, () -> node.addInArray(array, 2, JsonNull.INSTANCE));
+        assertThrows(NodeException.class, () -> node.removeInArray(array, -2));
+        assertThrows(NodeException.class, () -> node.removeInArray(array, 1));
+
+        node.addInArray(array, -1, JsonNull.INSTANCE);
+        node.addInArray(array, array.size(), JsonNull.INSTANCE);
     }
 
     @SuppressWarnings("unchecked")
@@ -177,9 +344,9 @@ class GsonNodeTest {
         assertEquals("expected " + expected + ", but was com.google.gson.JsonPrimitive", exception.getMessage());
     }
 
-    private static void assertUnsupported(Runnable operation, String method) {
+    private static void assertInvalidValue(Runnable operation) {
         NodeException exception = assertThrows(NodeException.class, operation::run);
-        assertEquals("unsupported external node operation '" + method + "'", exception.getMessage());
+        assertEquals("expected JsonElement or null, but was java.lang.String", exception.getMessage());
     }
 
     private static URL resourceRoot(URL resource) throws Exception {
