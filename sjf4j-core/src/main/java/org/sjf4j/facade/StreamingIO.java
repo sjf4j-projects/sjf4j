@@ -15,7 +15,6 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -139,7 +138,6 @@ public final class StreamingIO {
     private static Object _readNull(StreamingReader reader, Class<?> rawClazz, StreamingContext context)
             throws IOException {
         reader.nextNull();
-        if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
         return null;
     }
 

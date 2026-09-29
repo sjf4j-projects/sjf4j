@@ -1,8 +1,6 @@
 package org.sjf4j;
 
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.facade.FacadeNodes;
-import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
 
@@ -92,20 +90,12 @@ public enum JsonType {
         } else if (ti.oneOfInfo != null) {
             return JsonType.UNKNOWN;
         } else if (ti.externalNode != null) {
-            return _externalRawOf(ti.externalNode, clazz);
+            return ti.externalNode.jsonTypeOfClass(clazz);
         } else if (ti.pojoInfo != null) {
             return OBJECT;
         }
 
-        if (FacadeNodes.isNode(clazz)) {
-            return of(FacadeNodes.kindOf(clazz));
-        }
         return UNKNOWN;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static JsonType _externalRawOf(ExternalNode<?> externalNode, Class<?> clazz) {
-        return ((ExternalNode<Object>) externalNode).jsonTypeOfClass(clazz);
     }
 
     /**

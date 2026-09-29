@@ -20,7 +20,6 @@ import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Function;
@@ -35,9 +34,11 @@ import java.util.regex.Pattern;
  *
  * <p>The codec owns the raw representation returned by {@link #valueToRaw(Object)}
  * and accepted by {@link #rawToValue(Object)}. It should use SJF4J-supported
- * OBNT forms such as
+ * fixed OBNT forms such as
  * {@link String}, {@link Number}, {@link Boolean}, {@link java.util.Map},
- * {@link java.util.List}, or {@code null}. The framework does not recursively
+ * {@link java.util.List}. {@link Object} is not a supported declared raw
+ * type. A codec may return {@code null} from {@link #valueToRaw(Object)} to
+ * write a JSON null, but null is not itself a raw class. The framework does not recursively
  * bind or copy a codec raw value at this boundary.
  * <p>
  * A map-shaped raw value should be handled as {@code Map<String, Object>}. Its
@@ -51,11 +52,13 @@ public interface ValueCodec<V, R> {
 
     /**
      * Encodes a domain value to the raw representation consumed by a binder or schema.
+     * May return {@code null} to write a JSON null.
      */
     R valueToRaw(V value);
 
     /**
-     * Decodes the raw representation back to the domain value.
+     * Decodes a non-null raw representation back to the domain value.
+     * JSON null is handled by the binding layer and does not invoke this method.
      */
     V rawToValue(R raw);
 
@@ -65,7 +68,9 @@ public interface ValueCodec<V, R> {
     Class<V> valueClazz();
 
     /**
-     * Returns the raw node type produced and consumed by this codec.
+     * Returns the fixed raw node type produced and consumed by this codec.
+     * This must not be {@link Object}; a null raw value is represented by a
+     * null result from {@link #valueToRaw(Object)}, not by a raw class.
      */
     Class<R> rawClazz();
 
@@ -198,30 +203,6 @@ public interface ValueCodec<V, R> {
 
     ValueCodec<Calendar, String> CALENDAR = new SimpleValueCodec<>(Calendar.class, String.class,
             ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw);
-
-    ValueCodec<Optional<?>, Object> OPTIONAL = new OptionalCodec();
-
-    /** Dedicated codec for Optional — null maps to Optional.empty(), not null. */
-    @SuppressWarnings("unchecked")
-    final class OptionalCodec implements ValueCodec<Optional<?>, Object> {
-        @Override
-        public Object valueToRaw(Optional<?> value) {
-            if (value == null || !value.isPresent()) return null;
-            return value.get();
-        }
-        @Override
-        public Optional<?> rawToValue(Object raw) {
-            return raw == null ? Optional.empty() : Optional.of(raw);
-        }
-        @Override
-        public Class<Optional<?>> valueClazz() {
-            return (Class) Optional.class;
-        }
-        @Override
-        public Class<Object> rawClazz() {
-            return Object.class;
-        }
-    }
 
     // calendar → string
     static String _calendarToRaw(Calendar value) {

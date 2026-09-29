@@ -1,10 +1,7 @@
 package org.sjf4j;
 
-
 import org.sjf4j.annotation.node.NodeObject;
-import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Numbers;
@@ -29,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -56,45 +54,19 @@ public final class Nodes {
      */
 
     /**
-     * Converts a node to enum using strict conversion.
-     */
-    @SuppressWarnings("unchecked")
-    public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz) {
-        Asserts.notNull(enumClazz, "enumClazz");
-        if (node == null) return null;
-        if (enumClazz.isInstance(node)) return (E) node;
-        String s = toString(node);
-        try {
-            return Enum.valueOf(enumClazz, s);
-        } catch (IllegalArgumentException e) {
-            throw new BindingException("cannot bind '" + s + "' to enum " + enumClazz.getName(), e);
-        }
-    }
-
-    /**
-     * Converts a node to enum using lenient conversion.
-     */
-    @SuppressWarnings("unchecked")
-    public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz) {
-        Asserts.notNull(enumClazz, "enumClazz");
-        if (node == null) return null;
-        if (enumClazz.isInstance(node)) return (E) node;
-        String s = asString(node);
-        try {
-            return Enum.valueOf(enumClazz, s);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
      * Converts a node to a String with strict type checking.
      */
     public static String toString(Object node) {
         if (node == null) return null;
         if (node instanceof String || node instanceof Character) return node.toString();
-        if (node.getClass().isEnum()) return ((Enum<?>) node).name();
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toString(node);
+        Class<?> clazz = node.getClass();
+        if (clazz.isEnum()) return ((Enum<?>) node).name();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+        if (ti.externalNode != null) return ti.externalNode.toString(node);
+        if (ti.valueInfos != null && ti.valueInfos[0].rawClazz == String.class) {
+            return (String) ti.valueInfos[0].valueToRaw(node);
+        }
         throw new NodeException("expected String, but was " + Types.name(node));
     }
 
@@ -103,8 +75,16 @@ public final class Nodes {
      */
     public static String asString(Object node) {
         if (node == null) return null;
-        if (node.getClass().isEnum()) return ((Enum<?>) node).name();
-        if (FacadeNodes.isNode(node)) return FacadeNodes.asString(node);
+        if (node instanceof String || node instanceof Character) return node.toString();
+        Class<?> clazz = node.getClass();
+        if (clazz.isEnum()) return ((Enum<?>) node).name();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+        if (ti.externalNode != null) return ti.externalNode.asString(node);
+        if (ti.valueInfos != null) {
+            Object raw = ti.valueInfos[0].valueToRaw(node);
+            return (raw == null) ? null : raw.toString();
+        }
         return node.toString();
     }
 
@@ -129,12 +109,49 @@ public final class Nodes {
     }
 
     /**
+     * Converts a node to enum using strict conversion.
+     */
+    @SuppressWarnings("unchecked")
+    public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz) {
+        Asserts.notNull(enumClazz, "enumClazz");
+        if (node == null) return null;
+        if (enumClazz.isInstance(node)) return (E) node;
+        String s = toString(node);
+        try {
+            return Enum.valueOf(enumClazz, s);
+        } catch (IllegalArgumentException e) {
+            throw new NodeException("cannot bind '" + s + "' to enum " + enumClazz.getName(), e);
+        }
+    }
+
+    /**
+     * Converts a node to enum using lenient conversion.
+     */
+    @SuppressWarnings("unchecked")
+    public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz) {
+        Asserts.notNull(enumClazz, "enumClazz");
+        if (node == null) return null;
+        if (enumClazz.isInstance(node)) return (E) node;
+        String s = asString(node);
+        try {
+            return Enum.valueOf(enumClazz, s);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * Converts a node to a Number with strict type checking.
      */
     public static Number toNumber(Object node) {
         if (node == null) return null;
         if (node instanceof Number) return (Number) node;
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toNumber(node);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) return ti.externalNode.toNumber(node);
+        if (ti.valueInfos != null && Number.class.isAssignableFrom(ti.valueInfos[0].rawClazz)) {
+            return (Number) ti.valueInfos[0].valueToRaw(node);
+        }
         throw new NodeException("expected Number, but was " + Types.name(node));
     }
 
@@ -145,14 +162,17 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Number) return (Number) node;
         if (node instanceof Boolean) return (Boolean) node ? 1 : 0;
-        if (node.getClass().isEnum()) return ((Enum<?>) node).ordinal();
-        if (FacadeNodes.isNode(node)) return FacadeNodes.asNumber(node);
-        try {
-            String s = toString(node);
-            return Numbers.parseNumber(s);
-        } catch (Exception e) {
-            return null;
+        if (node instanceof String || node instanceof Character) return Numbers.parseNumber(node.toString());
+        Class<?> clazz = node.getClass();
+        if (clazz.isEnum()) return ((Enum<?>) node).ordinal();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+        if (ti.externalNode != null) return ti.externalNode.asNumber(node);
+        if (ti.valueInfos != null) {
+            Object raw = ti.valueInfos[0].valueToRaw(node);
+            return asNumber(raw);
         }
+        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Number");
     }
 
 
@@ -306,7 +326,12 @@ public final class Nodes {
     public static Boolean toBoolean(Object node) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toBoolean(node);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) return ti.externalNode.toBoolean(node);
+        if (ti.valueInfos != null && ti.valueInfos[0].rawClazz == Boolean.class) {
+            return (Boolean) ti.valueInfos[0].valueToRaw(node);
+        }
         throw new NodeException("expected Boolean, but was " + Types.name(node));
     }
 
@@ -316,22 +341,26 @@ public final class Nodes {
     public static Boolean asBoolean(Object node) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
-        if (node instanceof String) {
-            String str = ((String) node).toLowerCase(Locale.ROOT);
+        if (node instanceof String || node instanceof Character) {
+            String str = node.toString().toLowerCase(Locale.ROOT);
             if ("true".equals(str) || "yes".equals(str) || "on".equals(str) || "1".equals(str)) return true;
             if ("false".equals(str) || "no".equals(str) || "off".equals(str) || "0".equals(str)) return false;
-//            throw new NodeException("cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
-            return null;
+            throw new NodeException("cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
         }
         if (node instanceof Number) {
             int i = ((Number) node).intValue();
             if (i == 1) return true;
             if (i == 0) return false;
-//            throw new NodeException("cannot convert Number to Boolean: numeric values other than 0-false or 1-true");
-            return null;
+            throw new NodeException("cannot convert Number to Boolean: numeric values other than 0-false or 1-true");
         }
-        if (FacadeNodes.isNode(node)) return FacadeNodes.asBoolean(node);
-        return null;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) return ti.externalNode.asBoolean(node);
+        if (ti.valueInfos != null) {
+            Object raw = ti.valueInfos[0].valueToRaw(node);
+            return asBoolean(raw);
+        }
+        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Boolean");
     }
 
     /**
@@ -347,8 +376,9 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof JsonObject) return (JsonObject) node;
         if (node instanceof Map) return new JsonObject((Map<String, Object>) node);
+
         JsonObject jo = new JsonObject();
-        jo.putAll(node);
+        Nodes.forEachObject(node, jo::put);
         return jo;
     }
 
@@ -364,17 +394,10 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Map) return (Map<String, Object>) node;
         if (node instanceof JsonObject) return ((JsonObject) node).toMap();
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            Map<String, Object> map = new LinkedHashMap<>();
-            for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
-                Object v = entry.getValue().invokeGetter(node);
-                map.put(entry.getKey(), v);
-            }
-            return map;
-        }
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toMap(node);
-        throw new NodeException("expected Map, but was " + Types.name(node));
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        Nodes.forEachObject(node, map::put);
+        return map;
     }
 
     /**
@@ -394,10 +417,7 @@ public final class Nodes {
             return (Map<String, T>) node;
         }
         Map<String, T> map = TypeRegistry.newMapContainer(mapType, 0, false);
-        forEachObject(node, (k, v) -> {
-            T value = to(v, valueClazz);
-            map.put(k, value);
-        });
+        Nodes.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz)));
         return map;
     }
 
@@ -414,8 +434,9 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof JsonArray) return (JsonArray) node;
         if (node instanceof List) return new JsonArray((List<Object>) node);
+
         JsonArray ja = new JsonArray();
-        ja.addAll(node);
+        Nodes.forEachArray(node, (i, value) -> ja.add(value));
         return ja;
     }
 
@@ -432,17 +453,10 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof List) return (List<Object>) node;
         if (node instanceof JsonArray) return ((JsonArray) node).toList();
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            List<Object> list = new ArrayList<>(len);
-            for (int i = 0; i < len; i++) list.add(Array.get(node, i));
-            return list;
-        }
-        if (node instanceof Set) {
-            return new ArrayList<>((Set<Object>) node);
-        }
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toList(node);
-        throw new NodeException("expected List, but was " + Types.name(node));
+
+        List<Object> list = new ArrayList<>();
+        Nodes.forEachArray(node, (i, value) -> list.add(value));
+        return list;
     }
 
     /**
@@ -461,8 +475,9 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (List<T>) node;
         }
+
         List<T> list = TypeRegistry.newListContainer(listType, 0, false);
-        forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
+        Nodes.forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
         return list;
     }
 
@@ -472,8 +487,6 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Object[] toArray(Object node) {
         if (node == null) return null;
-        if (node instanceof List) return ((List<Object>) node).toArray();
-        if (node instanceof JsonArray) return ((JsonArray) node).toArray();
         if (node.getClass().isArray()) {
             if (node.getClass().getComponentType().isPrimitive()) {
                 int length = Array.getLength(node);
@@ -483,12 +496,17 @@ public final class Nodes {
                 }
                 return arr;
             } else {
-                return (Object[]) node;
+                return ((Object[]) node);
             }
         }
+        if (node instanceof List) return ((List<Object>) node).toArray();
+        if (node instanceof JsonArray) return ((JsonArray) node).toArray();
         if (node instanceof Set) return ((Set<Object>) node).toArray();
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toArray(node);
-        throw new NodeException("expected Array, but was " + Types.name(node));
+
+        int size = Nodes.sizeInArray(node);
+        Object[] arr = new Object[size];
+        Nodes.forEachArray(node, (i, v) -> arr[i] = v);
+        return arr;
     }
 
     /**
@@ -510,9 +528,8 @@ public final class Nodes {
                 return (T[]) node;
             }
         }
-        Class<?> componentType = Types.box(clazz);
-        Object[] arr = (Object[]) Array.newInstance(componentType, sizeInArray(node));
-        forEachArray(node, (i, v) -> Array.set(arr, i, to(v, componentType)));
+        Object arr = Array.newInstance(clazz, sizeInArray(node));
+        Nodes.forEachArray(node, (i, v) -> Array.set(arr, i, to(v, clazz)));
         return (T[]) arr;
     }
 
@@ -522,17 +539,13 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Set<Object> toSet(Object node) {
         if (node == null) return null;
+        if (node instanceof Set) return (Set<Object>) node;
         if (node instanceof List) return new LinkedHashSet<>((List<Object>) node);
         if (node instanceof JsonArray) return ((JsonArray) node).toSet();
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            Set<Object> set = new LinkedHashSet<>(len);
-            for (int i = 0; i < len; i++) set.add(Array.get(node, i));
-            return set;
-        }
-        if (node instanceof Set) return (Set<Object>) node;
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toSet(node);
-        throw new NodeException("expected Set, but was " + Types.name(node));
+
+        Set<Object> set = new LinkedHashSet<>();
+        Nodes.forEachArray(node, (i, value) -> set.add(value));
+        return set;
     }
 
     /**
@@ -551,8 +564,9 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Set<T>) node;
         }
+
         Set<T> set = TypeRegistry.newSetContainer(setType, 0, false);
-        forEachArray(node, (i, v) -> set.add(to(v, valueClazz)));
+        Nodes.forEachArray(node, (i, v) -> set.add(to(v, valueClazz)));
         return set;
     }
 
@@ -571,7 +585,7 @@ public final class Nodes {
     public static <T> T toJojo(Object node, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
-            throw new BindingException("expected JOJO subtype, but was " + clazz.getName());
+            throw new IllegalArgumentException("expected JOJO subtype, but was " + clazz.getName());
         if (node == null) return null;
         return NodeMapper.convert(node, clazz, false);
     }
@@ -590,7 +604,7 @@ public final class Nodes {
     public static <T> T toJajo(Object node, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
-            throw new BindingException("expected JAJO subtype, but was " + clazz.getName());
+            throw new IllegalArgumentException("expected JAJO subtype, but was " + clazz.getName());
         if (node == null) return null;
         PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(clazz);
         JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
@@ -625,7 +639,7 @@ public final class Nodes {
         Asserts.notNull(clazz, "clazz");
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.pojoInfo == null && ti.oneOfInfo == null) {
-            throw new BindingException("class '" + clazz.getName() + "' is not a registered POJO");
+            throw new NodeException("class '" + clazz.getName() + "' is not a registered POJO");
         }
         return NodeMapper.convert(node, clazz, false);
     }
@@ -636,9 +650,13 @@ public final class Nodes {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object _to(Object node, Type type, boolean cross) {
         if (type == null || type == Object.class) return node;
-        if (node == null) return null;
 
         Class<?> clazz = Types.rawBox(type);
+        if (clazz == Optional.class) {
+            TypeRegistry.registerTypeInfo(clazz);
+        }
+        if (node == null) return null;
+
         if (clazz.isInstance(node)) return node;
 
         if (clazz == String.class) {
@@ -691,7 +709,7 @@ public final class Nodes {
             return NodeMapper.convert(node, clazz, false);
         }
 
-        throw new BindingException("expected " + clazz.getName() + ", but was " + Types.name(node));
+        throw new NodeException("expected " + clazz.getName() + ", but was " + Types.name(node));
     }
 
     /**
@@ -894,7 +912,11 @@ public final class Nodes {
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
         if (ti.valueInfos != null) {
             return (T) ti.valueInfos[0].valueCopy(node);
-        } else if (ti.pojoInfo != null) {
+        }
+        if (ti.externalNode != null) {
+            return (T) ti.externalNode.copy(node);
+        }
+        if (ti.pojoInfo != null) {
             PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(node.getClass());
             TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
 
@@ -913,10 +935,6 @@ public final class Nodes {
             return (T) pojo;
         }
 
-        if (FacadeNodes.isNode(node)) {
-            throw new NodeException("cannot copy backend-native node '" + Types.name(node) + "'");
-        }
-
         return node;
     }
 
@@ -931,13 +949,13 @@ public final class Nodes {
      * <ul>
      *   <li>{@code {..}}       - Map</li>
      *   <li>{@code J{..}}      - JsonObject</li>
-     *   <li>{@code @Type{..}}  - POJO / JOJO</li>
+     *   <li>{@code @Type{..}}  - POJO / JOJO / External Object</li>
      *   <li>{@code [..]}       - List</li>
      *   <li>{@code J[..]}      - JsonArray</li>
-     *   <li>{@code @Type[..]}  - JAJO</li>
      *   <li>{@code A[..]}      - Array</li>
      *   <li>{@code S[..]}      - Set</li>
-     *   <li>{@code @Type#raw}  - {@code @NodeValue} logical value node</li>
+     *   <li>{@code @Type[..]}  - JAJO / External Array</li>
+     *   <li>{@code @Type#raw}  - NodeValue / External value</li>
      *   <li>{@code !node}      - Unknown</li>
      * </ul>
      *
@@ -1066,6 +1084,32 @@ public final class Nodes {
             _inspect(raw, sb, shapeOnly);
             return;
         }
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonTypeOfClass(rawClazz)) {
+                case OBJECT:
+                    sb.append("@").append(node.getClass().getSimpleName()).append("{");
+                    int[] idx = new int[1];
+                    ti.externalNode.forEachObject(node, (k, v) -> {
+                        if (idx[0]++ > 0) sb.append(", ");
+                        sb.append(k).append("=");
+                        _inspect(v, sb, shapeOnly);
+                    });
+                    sb.append("}");
+                    return;
+                case ARRAY:
+                    sb.append("@").append(node.getClass().getSimpleName()).append("[");
+                    ti.externalNode.forEachArray(node, (i, v) -> {
+                        if (i > 0) sb.append(", ");
+                        _inspect(v, sb, shapeOnly);
+                    });
+                    sb.append("]");
+                    return;
+                default:
+                    sb.append("@").append(rawClazz.getSimpleName()).append("#");
+                    sb.append(ti.externalNode.asString(node));
+                    return;
+            }
+        }
         if (ti.pojoInfo != null) {
             PojoInfo pi = ti.pojoInfo;
             sb.append("@").append(rawClazz.getSimpleName()).append("{");
@@ -1138,19 +1182,22 @@ public final class Nodes {
             ((JsonObject) node).forEach(consumer);
             return;
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                ti.externalNode.forEachObject(node, consumer);
+                return;
+            }
+        }
+        if (ti.pojoInfo != null) {
+            for (Map.Entry<String, FieldInfo> entry : ti.pojoInfo.readableProperties.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
                 consumer.accept(entry.getKey(), value);
             }
             return;
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.forEachObject(node, consumer);
-            return;
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
 
@@ -1172,9 +1219,15 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).anyMatch(predicate);
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.anyMatchObject(node, predicate);
+            }
+        }
+        if (ti.pojoInfo != null) {
+            for (Map.Entry<String, FieldInfo> entry : ti.pojoInfo.readableProperties.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
                 if (predicate.test(entry.getKey(), value)) {
                     return true;
@@ -1182,10 +1235,7 @@ public final class Nodes {
             }
             return false;
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.anyMatchObject(node, predicate);
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
 
@@ -1215,10 +1265,16 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).replaceAll(replacer);
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.replaceAllInObject(node, replacer);
+            }
+        }
+        if (ti.pojoInfo != null) {
             boolean changed = false;
-            for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
+            for (Map.Entry<String, FieldInfo> entry : ti.pojoInfo.readableProperties.entrySet()) {
                 FieldInfo fi = entry.getValue();
                 if (!fi.hasSetter()) {
                     continue;
@@ -1232,10 +1288,7 @@ public final class Nodes {
             }
             return changed;
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.replaceAllInObject(node, replacer);
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1259,13 +1312,17 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).removeIf(entry -> predicate.test(entry.getKey(), entry.getValue()));
         }
-        if (TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.removeIfInObject(node, predicate);
+            }
+        }
+        if (ti.pojoInfo != null) {
             return false;
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.removeIfInObject(node, predicate);
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
 
@@ -1296,11 +1353,15 @@ public final class Nodes {
             for (Object v : set) consumer.accept(i++, v);
             return;
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.forEachArray(node, consumer);
-            return;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                ti.externalNode.forEachArray(node, consumer);
+                return;
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -1339,10 +1400,14 @@ public final class Nodes {
             }
             return false;
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.anyMatchArray(node, predicate);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                return ti.externalNode.anyMatchInArray(node, predicate);
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -1356,14 +1421,17 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).size();
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            return pi.readablePropertyCount;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.sizeInObject(node);
+            }
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.sizeInObject(node);
+        if (ti.pojoInfo != null) {
+            return ti.pojoInfo.readablePropertyCount;
         }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1383,10 +1451,14 @@ public final class Nodes {
         if (node instanceof Set) {
             return ((Set<?>) node).size();
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.sizeInArray(node);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                return ti.externalNode.sizeInArray(node);
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -1405,14 +1477,16 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).keySet();
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            return pi.readableProperties.keySet();
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.keySetInObject(node);
+            }
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.keySetInObject(node);
+        if (ti.pojoInfo != null) {
+            return ti.pojoInfo.readableProperties.keySet();
         }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1431,14 +1505,20 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).entrySet();
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.entrySetInObject(node);
+            }
+        }
+        if (ti.pojoInfo != null) {
             return new AbstractSet<Map.Entry<String, Object>>() {
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
                     return new Iterator<Map.Entry<String, Object>>() {
                         private final Iterator<Map.Entry<String, FieldInfo>> fieldIterator =
-                                pi.readableProperties.entrySet().iterator();
+                                ti.pojoInfo.readableProperties.entrySet().iterator();
                         @Override
                         public boolean hasNext() {
                             return fieldIterator.hasNext();
@@ -1455,14 +1535,11 @@ public final class Nodes {
 
                 @Override
                 public int size() {
-                    return pi.readablePropertyCount;
+                    return ti.pojoInfo.readablePropertyCount;
                 }
             };
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.entrySetInObject(node);
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1492,10 +1569,14 @@ public final class Nodes {
         if (node instanceof Set) {
             return ((Set<Object>) node).iterator();
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.iteratorInArray(node);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                return ti.externalNode.iteratorInArray(node);
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -1511,14 +1592,17 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).containsKey(key);
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            return pi.readableProperties.containsKey(key);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.containsInObject(node, key);
+            }
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.containsInObject(node, key);
+        if (ti.pojoInfo != null) {
+            return ti.pojoInfo.readableProperties.containsKey(key);
         }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1547,15 +1631,18 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).getNode(key);
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            FieldInfo fi = pi.readableProperties.get(key);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.getInObject(node, key);
+            }
+        }
+        if (ti.pojoInfo != null) {
+            FieldInfo fi = ti.pojoInfo.readableProperties.get(key);
             return fi != null ? fi.invokeGetter(node) : null;
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.getInObject(node, key);
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1603,10 +1690,14 @@ public final class Nodes {
         if (node instanceof Set) {
             throw new NodeException("cannot call getInArray() on an unordered Java Set");
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.getInArray(node, idx);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                return ti.externalNode.getInArray(node, idx);
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -1671,26 +1762,29 @@ public final class Nodes {
             out.present = out.node != null || jo.containsKey(key);
             return;
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            FieldInfo fi = pi.readableProperties.get(key);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                ti.externalNode.getAccessInObject(node, key, out);
+                return;
+            }
+        }
+        if (ti.pojoInfo != null) {
+            FieldInfo fi = ti.pojoInfo.readableProperties.get(key);
             if (fi != null) {
                 out.node = fi.invokeGetter(node);
                 out.present = true;
                 return;
             }
-            if (pi.isJojo) {
+            if (ti.pojoInfo.isJojo) {
                 JsonObject jo = (JsonObject) node;
                 out.node = jo.getNode(key);
                 out.present = out.node != null || jo.containsKey(key);
             }
             return;
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.getAccessInObject(node, key, out);
-            return;
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1719,16 +1813,23 @@ public final class Nodes {
             out.puttable = true;
             return;
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            FieldInfo fi = pi.properties.get(key);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                ti.externalNode.putAccessInObject(node, key, out);
+                return;
+            }
+        }
+        if (ti.pojoInfo != null) {
+            FieldInfo fi = ti.pojoInfo.properties.get(key);
             if (fi != null) {
                 out.node = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 out.type = fi.type;
                 out.puttable = fi.hasSetter();
                 return;
             }
-            if (pi.isJojo) {
+            if (ti.pojoInfo.isJojo) {
                 JsonObject jo = (JsonObject) node;
                 out.node = jo.getNode(key);
                 out.type = Object.class;
@@ -1740,12 +1841,7 @@ public final class Nodes {
             out.puttable = false;
             return;
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.putAccessInObject(node, type, key, out);
-            return;
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
-
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1793,11 +1889,15 @@ public final class Nodes {
         if (node instanceof Set) {
             throw new NodeException("cannot call getAccessInArray() on an unordered Java Set");
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.getAccessInArray(node, idx, out);
-            return;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                ti.externalNode.getAccessInArray(node, idx, out);
+                return;
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -1864,35 +1964,44 @@ public final class Nodes {
             if (idx == null) return;
             throw new NodeException("cannot call putAccessInArray() on an unordered Java Set");
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.putAccessInArray(node, type, idx, out);
-            return;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                ti.externalNode.putAccessInArray(node, idx, out);
+                return;
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
      * Creates a missing object node representation for path ensure operations.
      */
-    public static Object createObjectContainer(Class<?> clazz) {
+    public static Object createObjectNode(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || Map.class.isAssignableFrom(clazz)) {
             return TypeRegistry.newMapContainer(clazz, 0, false);
         }
         if (clazz == JsonObject.class) {
             return new JsonObject();
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(clazz).pojoInfo;
-        if (pi != null) {
-            return pi.creatorInfo.forceNewPojo();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonTypeOfClass(clazz) == JsonType.OBJECT) {
+                return ti.externalNode.createObjectNode(clazz);
+            }
         }
-        throw new NodeException("cannot create object node of type '" + clazz +
-                "'; only Map/JsonObject/JOJO/POJO are supported");
+        if (ti.pojoInfo != null) {
+            return ti.pojoInfo.creatorInfo.forceNewPojo();
+        }
+        throw new NodeException("cannot create object node of type '" + clazz + "'");
     }
 
     /**
      * Creates a missing array node representation for path ensure operations.
      */
-    public static Object createArrayContainer(Class<?> clazz) {
+    public static Object createArrayNode(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || List.class.isAssignableFrom(clazz)) {
             return TypeRegistry.newListContainer(clazz, 0, false);
         }
@@ -1905,8 +2014,14 @@ public final class Nodes {
         if (Set.class.isAssignableFrom(clazz)) {
             return TypeRegistry.newSetContainer(clazz, 0, false);
         }
-        throw new NodeException("cannot create array node of type '" + clazz +
-                "'; only List/JsonArray/JAJO/Set are supported");
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonTypeOfClass(clazz) == JsonType.ARRAY) {
+                return ti.externalNode.createArrayNode(clazz);
+            }
+        }
+        throw new NodeException("cannot create array node of type '" + clazz + "'");
     }
 
 
@@ -1928,21 +2043,24 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).put(key, value);
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            FieldInfo fi = pi.properties.get(key);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.putInObject(node, key, value);
+            }
+        }
+        if (ti.pojoInfo != null) {
+            FieldInfo fi = ti.pojoInfo.properties.get(key);
             if (fi != null) {
                 fi.invokeSetter(node, value);
                 return null;
             } else {
-                throw new NodeException("unknown property '" + key + "' in POJO '" +
+                throw new NodeException("unknown field '" + key + "' in POJO '" +
                         node.getClass().getName() + "'");
             }
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.putInObject(node, key, value);
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1961,14 +2079,18 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).remove(key);
         }
-        if (TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                return ti.externalNode.removeInObject(node, key);
+            }
+        }
+        if (ti.pojoInfo != null) {
             throw new NodeException("cannot remove field '" + key + "' from POJO '" +
                     node.getClass().getName() + "'");
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.removeInObject(node, key);
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -1989,9 +2111,19 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).computeIfAbsent(key, computer);
         }
-        PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null) {
-            FieldInfo fi = pi.properties.get(key);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                T old = (T) ti.externalNode.getInObject(node, key);
+                if (old != null) return old;
+                T newNode = computer.apply(key);
+                if (newNode != null) ti.externalNode.putInObject(node, key, newNode);
+                return newNode;
+            }
+        }
+        if (ti.pojoInfo != null) {
+            FieldInfo fi = ti.pojoInfo.properties.get(key);
             if (fi != null) {
                 T old = fi.hasGetter() ? (T) fi.invokeGetter(node) : null;
                 if (old != null) {
@@ -2007,18 +2139,7 @@ public final class Nodes {
                         node.getClass().getName() + "'");
             }
         }
-        if (FacadeNodes.isNode(node)) {
-            T old = (T) FacadeNodes.getInObject(node, key);
-            if (old != null) {
-                return old;
-            }
-            T newNode = computer.apply(key);
-            if (newNode != null) {
-                FacadeNodes.putInObject(node, key, newNode);
-            }
-            return newNode;
-        }
-        throw new NodeException("expected Object node, but was " + Types.name(node));
+        throw new NodeException("expected object node, but was " + Types.name(node));
     }
 
     /**
@@ -2088,14 +2209,18 @@ public final class Nodes {
         if (node instanceof Set) {
             throw new NodeException("cannot set by index on an unordered Java Set");
         }
-        if (FacadeNodes.isNode(node)) {
-            if (allowAppend && FacadeNodes.sizeInArray(node) == idx) {
-                FacadeNodes.addInArray(node, value);
-                return null;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                if (allowAppend && ti.externalNode.sizeInArray(node) == idx) {
+                    ti.externalNode.addInArray(node, value);
+                    return null;
+                }
+                return ti.externalNode.setInArray(node, idx, value);
             }
-            return FacadeNodes.setInArray(node, idx, value);
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -2121,11 +2246,15 @@ public final class Nodes {
             ((Set<Object>) node).add(value);
             return;
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.addInArray(node, value);
-            return;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                ti.externalNode.addInArray(node, value);
+                return;
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -2153,11 +2282,15 @@ public final class Nodes {
         if (node instanceof Set) {
             throw new NodeException("cannot call addInArray() with an index on an unordered Java Set");
         }
-        if (FacadeNodes.isNode(node)) {
-            FacadeNodes.addInArray(node, idx, value);
-            return;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                ti.externalNode.addInArray(node, idx, value);
+                return;
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
     /**
@@ -2184,10 +2317,14 @@ public final class Nodes {
         if (node instanceof Set) {
             throw new NodeException("cannot call removeInArray() on an unordered Java Set");
         }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.removeInArray(node, idx);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
+                return ti.externalNode.removeInArray(node, idx);
+            }
         }
-        throw new NodeException("expected Array node, but was " + Types.name(node));
+        throw new NodeException("expected array node, but was " + Types.name(node));
     }
 
 

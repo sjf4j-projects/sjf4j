@@ -1,6 +1,5 @@
 package org.sjf4j;
 
-import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.external.ExternalNode;
@@ -8,7 +7,6 @@ import org.sjf4j.util.Asserts;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -71,7 +69,7 @@ public enum NodeKind {
      */
     COMPILE_TIME_UNKNOWN;
 
-    @SuppressWarnings("unchecked")
+
     public static NodeKind of(Object node) {
         if (node == null) return VALUE_NULL;
         Class<?> clazz = node.getClass();
@@ -84,13 +82,9 @@ public enum NodeKind {
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
         } else if (ti.externalNode != null) {
-            return ((ExternalNode<Object>)ti.externalNode).nodeKind(node);
+            return ti.externalNode.nodeKind(node);
         } else if (ti.pojoInfo != null) {
             return NodeKind.OBJECT_POJO;
-        }
-
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.kindOf(node);
         }
 
         return NodeKind.UNKNOWN;

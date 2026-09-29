@@ -160,9 +160,6 @@ public final class StreamingIO {
     static Object readNull(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
                            RuntimeContext context) throws IOException {
         reader.nextNull();
-        if (nodeBoxed == Optional.class) {
-            return Optional.empty();
-        }
         return null;
     }
 
@@ -576,17 +573,12 @@ public final class StreamingIO {
 
     static Object readValueWithCodec(StreamingReader reader, Type valueType, Class<?> valueBoxed, ValueInfo valueInfo,
                                      RuntimeContext context) throws IOException {
+        // JSON null is a framework-level null and does not enter a value codec.
         if (reader.nextIfNull()) {
-            if (valueBoxed == Optional.class) {
-                return Optional.empty();
-            }
             return null;
         }
 
         Class<?> rawClazz = valueInfo.rawClazz;
-        if (rawClazz == Object.class) {
-            return valueInfo.rawToValue(readRawNode(reader));
-        }
         if (rawClazz == Map.class) {
             return valueInfo.rawToValue(readRawObject(reader));
         }

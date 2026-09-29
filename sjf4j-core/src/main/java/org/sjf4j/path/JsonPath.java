@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -1755,8 +1754,8 @@ public class JsonPath {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
                         Object subNode = nextPt instanceof PathSegment.Name
-                                ? Nodes.createObjectContainer(subClazz)
-                                : Nodes.createArrayContainer(subClazz);
+                                ? Nodes.createObjectNode(subClazz)
+                                : Nodes.createArrayNode(subClazz);
                         Nodes.putInObject(curNode, key, subNode);
                         curNode = subNode;
                         curType = acc.type;
@@ -1778,8 +1777,8 @@ public class JsonPath {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
                         Object subNode = nextPt instanceof PathSegment.Name
-                                ? Nodes.createObjectContainer(subClazz)
-                                : Nodes.createArrayContainer(subClazz);
+                                ? Nodes.createObjectNode(subClazz)
+                                : Nodes.createArrayNode(subClazz);
                         Nodes.putInArray(curNode, index.index, subNode);
                         curNode = subNode;
                         curType = acc.type;
@@ -1796,8 +1795,8 @@ public class JsonPath {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
                         Object subNode = nextPt instanceof PathSegment.Name
-                                ? Nodes.createObjectContainer(subClazz)
-                                : Nodes.createArrayContainer(subClazz);
+                                ? Nodes.createObjectNode(subClazz)
+                                : Nodes.createArrayNode(subClazz);
                         Nodes.putInObject(curNode, index.pointerToken, subNode);
                         curNode = subNode;
                         curType = acc.type;
@@ -1815,8 +1814,8 @@ public class JsonPath {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
                         Object subNode = nextPt instanceof PathSegment.Name
-                                ? Nodes.createObjectContainer(subClazz)
-                                : Nodes.createArrayContainer(subClazz);
+                                ? Nodes.createObjectNode(subClazz)
+                                : Nodes.createArrayNode(subClazz);
                         Nodes.addInArray(curNode, subNode);
                         curNode = subNode;
                         curType = acc.type;

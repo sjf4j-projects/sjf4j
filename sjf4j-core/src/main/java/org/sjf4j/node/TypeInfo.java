@@ -15,7 +15,7 @@ public class TypeInfo {
     public final OneOfInfo oneOfInfo;
     public final ContainerInfo containerInfo;
     public final PojoInfo pojoInfo;
-    public final ExternalNode<?> externalNode;
+    public final ExternalNode<Object> externalNode;
 
     static final TypeInfo NONE = new TypeInfo(Object.class, null,
             null, null, null, null);
@@ -24,6 +24,7 @@ public class TypeInfo {
      * Creates type metadata for the supplied classification, including an
      * external node classifier when applicable.
      */
+    @SuppressWarnings("unchecked")
     public TypeInfo(Class<?> clazz, ValueInfo[] valueInfos,
                     OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo,
                     ExternalNode<?> externalNode) {
@@ -32,7 +33,7 @@ public class TypeInfo {
         this.oneOfInfo = oneOfInfo;
         this.containerInfo = containerInfo;
         this.pojoInfo = pojoInfo;
-        this.externalNode = externalNode;
+        this.externalNode = (ExternalNode<Object>) externalNode;
     }
 
     public boolean isNone() {

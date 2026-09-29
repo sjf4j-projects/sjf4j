@@ -46,12 +46,10 @@ class JsonArrayTest {
     }
 
     @Test
-    void typedGetterPropagatesBindingExceptionButKeepsStructuralErrors() {
+    void typedGetterReportsNodeExceptionForUnsupportedTargets() {
         JsonArray array = JsonArray.of(1);
 
-        BindingException binding = assertThrows(BindingException.class,
-                () -> array.get(0, Thread.class));
-        assertTrue(binding.getMessage().contains("expected " + Thread.class.getName()));
+        assertThrows(NodeException.class, () -> array.get(0, Thread.class));
 
         NodeException structural = assertThrows(NodeException.class, () -> array.getString(0));
         assertEquals(NodeException.class, structural.getClass());

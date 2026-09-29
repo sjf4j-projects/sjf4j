@@ -108,8 +108,10 @@ public final class NodeMapper {
     private static Object _convert(Object node, Type type, Class<?> rawClazz,
                                    OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, RuntimeContext context) {
         try {
+            if (rawClazz == Optional.class) {
+                TypeRegistry.registerTypeInfo(rawClazz);
+            }
             if (node == null) {
-                if (rawClazz == Optional.class) return Optional.empty();
                 return null;
             }
 

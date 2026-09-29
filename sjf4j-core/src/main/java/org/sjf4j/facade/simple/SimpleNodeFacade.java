@@ -105,8 +105,10 @@ public final class SimpleNodeFacade implements NodeFacade {
     private Object _readNode(Object node, Type type, Class<?> rawClazz,
                              OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
+            if (rawClazz == Optional.class) {
+                TypeRegistry.registerTypeInfo(rawClazz);
+            }
             if (node == null) {
-                if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
                 return null;
             }
 

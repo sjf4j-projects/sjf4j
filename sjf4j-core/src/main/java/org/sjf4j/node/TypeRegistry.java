@@ -18,6 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -64,6 +65,9 @@ public final class TypeRegistry {
      * @param mustPojo when true, results without object binding are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
+        if (clazz == Optional.class) {
+            throw new BindingException("unsupported node type '" + clazz.getName() + "'");
+        }
         if (_fastNoneInfo(clazz)) return TypeInfo.NONE;
 
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
@@ -125,8 +129,9 @@ public final class TypeRegistry {
 
     private static boolean _fastNoneInfo(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
-                || clazz == Map.class || clazz == List.class || clazz == Set.class || clazz.isPrimitive()
-                || clazz == JsonObject.class || clazz == JsonArray.class;
+                || clazz == Map.class || clazz == List.class || clazz == Set.class
+                || clazz == JsonObject.class || clazz == JsonArray.class
+                || clazz.isPrimitive() || clazz.isEnum() || clazz.isArray();
     }
 
 

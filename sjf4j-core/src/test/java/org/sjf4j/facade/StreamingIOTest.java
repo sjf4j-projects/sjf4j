@@ -867,7 +867,8 @@ public class StreamingIOTest {
 
     private void assertSharedStreamingScalarContract() {
         assertNull(sjf4j.fromJson("null", String.class));
-        assertEquals(Optional.empty(), sjf4j.fromJson("null", new TypeReference<Optional<String>>() {}));
+        assertThrows(BindingException.class,
+                () -> sjf4j.fromJson("null", new TypeReference<Optional<String>>() {}));
         assertTrue(sjf4j.fromJson("true", Boolean.class));
 
         assertEquals(1, sjf4j.fromJson("1", Integer.class));

@@ -118,7 +118,7 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public boolean replaceInObject(JsonElement node, BiFunction<String, Object, Object> mapper) {
+    public boolean replaceAllInObject(JsonElement node, BiFunction<String, Object, Object> mapper) {
         boolean changed = false;
         for (Map.Entry<String, JsonElement> entry : object(node).entrySet()) {
             JsonElement oldValue = entry.getValue();
@@ -145,7 +145,7 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public boolean anyMatchArray(JsonElement node, BiPredicate<Integer, Object> predicate) {
+    public boolean anyMatchInArray(JsonElement node, BiPredicate<Integer, Object> predicate) {
         JsonArray array = array(node);
         for (int i = 0, size = array.size(); i < size; i++) {
             if (predicate.test(i, array.get(i))) return true;

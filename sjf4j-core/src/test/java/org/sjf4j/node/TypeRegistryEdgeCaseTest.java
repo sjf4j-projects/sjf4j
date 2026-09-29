@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
+import org.sjf4j.Nodes;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
@@ -15,12 +16,14 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.PatternedValueCodec;
+import org.sjf4j.value.ValueRegistry;
 
 import java.io.StringReader;
 import java.lang.invoke.MethodHandles;
@@ -72,6 +75,25 @@ class TypeRegistryEdgeCaseTest {
         @ValueCopy
         MiniValue copy() {
             return new MiniValue(value);
+        }
+    }
+
+    @NodeValue
+    static class NumericValue {
+        final Integer value;
+
+        NumericValue(Integer value) {
+            this.value = value;
+        }
+
+        @ValueToRaw
+        Integer valueToRaw() {
+            return value;
+        }
+
+        @RawToValue
+        static NumericValue rawToValue(Integer raw) {
+            return new NumericValue(raw);
         }
     }
 
@@ -387,29 +409,30 @@ class TypeRegistryEdgeCaseTest {
         assertEquals(LocalTime.of(8, 5), decoded);
     }
 
-    // ── Optional ──
-
     @Test
-    void testOptionalCodecPresent() {
-        TypeInfo ti = TypeRegistry.registerTypeInfo(Optional.class);
-        assertTrue(ti.isNodeValue());
-        ValueInfo vci = ti.getNodeValueInfo("");
-        assertNotNull(vci);
-        assertEquals(Object.class, vci.rawClazz);
+    void testObjectRawCodecIsRejected() {
+        BindingException error = assertThrows(BindingException.class, () ->
+                ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(
+                        MiniValue.class, Object.class,
+                        value -> value.value,
+                        raw -> new MiniValue((String) raw)), null, false));
 
-        Object raw = vci.valueToRaw(Optional.of("hello"));
-        assertEquals("hello", raw);
-
-        Object decoded = vci.rawToValue(raw);
-        assertInstanceOf(Optional.class, decoded);
-        assertEquals(Optional.of("hello"), decoded);
+        assertTrue(error.getMessage().contains("String, Number, Boolean, Map, or List"));
     }
 
     @Test
-    void testOptionalCodecEmpty() {
-        ValueInfo vci = TypeRegistry.registerNodeValueOrElseThrow(Optional.class, "");
-        assertNull(vci.valueToRaw(Optional.empty()));
-        assertSame(Optional.empty(), vci.rawToValue(null));
+    void nodeValueNumericRawTypeSupportsStrictNumberConversion() {
+        assertEquals(12, Nodes.toNumber(new NumericValue(12)));
+        assertThrows(NodeException.class, () -> Nodes.toNumber(new MiniValue("12")));
+    }
+
+    @Test
+    void testOptionalIsUnsupported() {
+        BindingException error = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(Optional.class));
+
+        assertEquals("unsupported node type 'java.util.Optional'", error.getMessage());
+        assertThrows(BindingException.class, () -> Nodes.to(null, Optional.class));
     }
 
     static class LocalTimeFieldPojo {
@@ -426,24 +449,6 @@ class TypeRegistryEdgeCaseTest {
         assertNotNull(fi.valueInfo);
         Object raw = fi.valueInfo.valueToRaw(LocalTime.of(14, 30, 0));
         assertEquals("14:30:00", raw);
-    }
-
-    static class OptionalFieldPojo {
-        @NodeProperty(codecName = "")
-        Optional<String> name;
-    }
-
-    @Test
-    void testOptionalFieldWithCodec() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(OptionalFieldPojo.class);
-        FieldInfo fi = pi.properties.get("name");
-        assertNotNull(fi);
-        assertNotNull(fi.valueInfo);
-        // Present
-        Object raw = fi.valueInfo.valueToRaw(Optional.of("Alice"));
-        assertEquals("Alice", raw);
-        // Empty
-        assertNull(fi.valueInfo.valueToRaw(Optional.empty()));
     }
 
     static class ThrowingHandleValue {

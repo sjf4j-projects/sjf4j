@@ -19,7 +19,6 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
-import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -135,8 +134,10 @@ public class Fastjson2StreamingIO {
 
     private static Object _readNull(JSONReader reader, Class<?> rawClazz, StreamingContext context)
             throws IOException {
+        if (rawClazz == Optional.class) {
+            throw new BindingException("unsupported node type '" + rawClazz.getName() + "'");
+        }
         reader.readNull();
-        if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
         return null;
     }
 

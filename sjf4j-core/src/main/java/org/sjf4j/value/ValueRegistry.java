@@ -18,6 +18,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -91,9 +92,13 @@ public final class ValueRegistry {
      * Registers value codec metadata. Published arrays are immutable snapshots.
      * Custom registrations must be completed during application initialization
      * before relevant metadata is analyzed.
+     * The raw class must be a fixed supported type: String, Number, Boolean,
+     * Map, or List. A JSON null is a runtime value and is not represented by
+     * a raw class.
      */
     public static void register(ValueInfo valueInfo, boolean forceDefault) {
         Asserts.notNull(valueInfo, "nodeValueInfo");
+        validateRegistration(valueInfo);
 
         NODE_VALUE_INFOS.compute(valueInfo.valueClazz, (valueClazz, oldInfos) -> {
             if (oldInfos == null) {
@@ -122,19 +127,31 @@ public final class ValueRegistry {
     /**
      * Registers a codec using its declared value and raw classes. The same
      * application-initialization requirement as {@link #register(ValueInfo, boolean)} applies.
+     * The raw class must be a fixed supported type: String, Number, Boolean,
+     * Map, or List. A JSON null is a runtime value and is not represented by
+     * a raw class.
      */
     public static <N, R> void registerByCodec(ValueCodec<N, R> codec, String valueFormat, boolean forceDefault) {
         Asserts.notNull(codec, "codec");
 
         Class<R> rawClazz = codec.rawClazz();
-        if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
-            throw new BindingException("invalid raw type in NodeValueCodec " + codec.getClass().getName() + ": " +
-                    rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
         Class<N> valueClazz = codec.valueClazz();
-        Asserts.notNull(valueClazz, "valueClazz");
 
         ValueInfo info = new ValueInfo(valueFormat, valueClazz, rawClazz, codec, null, null, null);
         register(info, forceDefault);
+    }
+
+    private static void validateRegistration(ValueInfo valueInfo) {
+        Class<?> rawClazz = Asserts.notNull(valueInfo.rawClazz, "rawClazz");
+        if (rawClazz == Object.class || !NodeKind.plainOf(rawClazz).isRaw()) {
+            throw new BindingException("invalid raw type in ValueInfo: " + rawClazz.getName() +
+                    ". The raw type must be one of String, Number, Boolean, Map, or List.");
+        }
+
+        Class<?> valueClazz = Asserts.notNull(valueInfo.valueClazz, "valueClazz");
+        if (valueClazz == Optional.class) {
+            throw new BindingException("unsupported node type '" + valueClazz.getName() + "'");
+        }
     }
 
 
@@ -163,7 +180,6 @@ public final class ValueRegistry {
         registerByCodec(ValueCodec.INET_ADDR, null, false);
         registerByCodec(ValueCodec.DATE, null, false);
         registerByCodec(ValueCodec.CALENDAR, null, false);
-        registerByCodec(ValueCodec.OPTIONAL, null, false);
     }
 
 

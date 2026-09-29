@@ -638,7 +638,7 @@ public class JsonPathTest {
 
         NodeException babyArrayFailure = assertThrows(NodeException.class,
                 () -> JsonPath.parse("$.babyArrayField[2].name").ensurePut(holder, "baby"));
-        assertTrue(babyArrayFailure.getMessage().contains("only List/JsonArray/JAJO/Set are supported"));
+        assertTrue(babyArrayFailure.getMessage().contains("cannot create array node"));
         assertNull(holder.babyArrayField);
 
         assertThrows(NodeException.class, () -> JsonPath.parse("$.setField[0].name").ensurePut(holder, "set"));

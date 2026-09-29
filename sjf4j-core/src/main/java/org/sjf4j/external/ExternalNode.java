@@ -6,6 +6,8 @@ import org.sjf4j.Nodes;
 import org.sjf4j.exception.NodeException;
 
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
@@ -144,8 +146,8 @@ public interface ExternalNode<N> {
      *
      * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
      */
-    default boolean replaceInObject(N node, BiFunction<String, Object, Object> mapper) {
-        throw unsupported("replaceInObject");
+    default boolean replaceAllInObject(N node, BiFunction<String, Object, Object> mapper) {
+        throw unsupported("replaceAllInObject");
     }
 
     /**
@@ -171,7 +173,7 @@ public interface ExternalNode<N> {
      *
      * <p>The default throws {@link NodeException} and must be overridden to expose this capability.</p>
      */
-    default boolean anyMatchArray(N node, BiPredicate<Integer, Object> predicate) {
+    default boolean anyMatchInArray(N node, BiPredicate<Integer, Object> predicate) {
         throw unsupported("anyMatchArray");
     }
 
@@ -209,6 +211,14 @@ public interface ExternalNode<N> {
      */
     default boolean containsInObject(N node, String key) {
         throw unsupported("containsInObject");
+    }
+
+    default Set<String> keySetInObject(N node) {
+        throw unsupported("keySetInObject");
+    }
+
+    default Set<Map.Entry<String, Object>> entrySetInObject(N node) {
+        throw unsupported("entrySetInObject");
     }
 
     /**
@@ -320,4 +330,18 @@ public interface ExternalNode<N> {
     default Object removeInArray(N node, int idx) {
         throw unsupported("removeInArray");
     }
+
+    default N copy(N node) {
+        return node;
+    }
+
+    default Object createObjectNode(Class<?> clazz) {
+        throw unsupported("createObjectNode");
+    }
+
+    default Object createArrayNode(Class<?> clazz) {
+        throw unsupported("createArrayNode");
+    }
+
+
 }

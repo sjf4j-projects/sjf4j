@@ -90,7 +90,7 @@ class GsonNodeTest {
         assertEquals(Arrays.asList("name:\"value\"", "drop:false", "items:[true,2]"), properties);
         assertTrue(node.anyMatchObject(object, (key, value) -> key.equals("name") &&
                 ((JsonElement) value).getAsString().equals("value")));
-        assertTrue(node.replaceInObject(object, (key, value) -> key.equals("name") ? JsonParser.parseString("\"updated\"") : value));
+        assertTrue(node.replaceAllInObject(object, (key, value) -> key.equals("name") ? JsonParser.parseString("\"updated\"") : value));
         assertEquals("updated", object.get("name").getAsString());
         assertTrue(node.removeIfInObject(object, (key, value) -> key.equals("drop")));
         assertFalse(object.has("drop"));
@@ -98,7 +98,7 @@ class GsonNodeTest {
         ArrayList<String> elements = new ArrayList<>();
         node.forEachArray(array, (index, value) -> elements.add(index + ":" + value));
         assertEquals(Arrays.asList("0:true", "1:2"), elements);
-        assertTrue(node.anyMatchArray(array, (index, value) -> index == 1 && ((JsonElement) value).getAsInt() == 2));
+        assertTrue(node.anyMatchInArray(array, (index, value) -> index == 1 && ((JsonElement) value).getAsInt() == 2));
     }
 
     @Test

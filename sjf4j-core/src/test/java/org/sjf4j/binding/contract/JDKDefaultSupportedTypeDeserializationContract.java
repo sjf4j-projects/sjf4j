@@ -7,15 +7,18 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.Binder;
+import org.sjf4j.exception.BindingException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/** JDK types supplied by SJF4J's built-in value codecs. */
+/** JDK binding behavior covered by SJF4J's defaults. */
 public abstract class JDKDefaultSupportedTypeDeserializationContract {
     protected abstract Binder<?, ?> binding(RuntimeContext context);
-    /** SJF4J supplies Optional through its default value codec. */
-    @Test void testOptionalUsesBuiltInCodec() {
-        assertEquals(Optional.of("value"), binding(RuntimeContext.EMPTY).readNode("\"value\"", new TypeReference<Optional<String>>() {}.getType()));
+
+    @Test void testOptionalIsUnsupported() {
+        assertThrows(BindingException.class, () -> binding(RuntimeContext.EMPTY)
+                .readNode("null", new TypeReference<Optional<String>>() {}.getType()));
     }
     /** SJF4J supplies Instant through its default ISO-8601 value codec. */
     @Test void testInstantUsesBuiltInCodec() {
