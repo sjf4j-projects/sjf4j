@@ -21,7 +21,7 @@ configurations {
 
 dependencies {
     compileOnly("tools.jackson.core:jackson-databind:3.2.0")
-    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.22.1")
+    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.22.2")
     compileOnly("com.google.code.gson:gson:2.13.1")
     compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
     compileOnly("jakarta.json:jakarta.json-api:2.1.3")
@@ -30,7 +30,7 @@ dependencies {
     compileOnly("com.ibm.icu:icu4j:77.1")
 
     // test
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
     testImplementation("com.google.code.gson:gson:2.13.1")
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     testImplementation("jakarta.json:jakarta.json-api:2.1.3")
