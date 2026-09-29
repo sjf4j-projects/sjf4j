@@ -63,7 +63,7 @@ dependencies {
     jmhImplementation("org.mapstruct:mapstruct:1.6.3")
     jmhAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
-    jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.1")
+    jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.2")
     jmhImplementation("tools.jackson.core:jackson-databind:3.2.0")
     jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.2.0")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
