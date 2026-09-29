@@ -105,18 +105,16 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
 
     @Override
     public void forEachObject(JsonNode node, BiConsumer<String, Object> consumer) {
-        Iterator<Map.Entry<String, JsonNode>> entries = _object(node).fields();
-        while (entries.hasNext()) {
-            Map.Entry<String, JsonNode> entry = entries.next();
+        Set<Map.Entry<String, JsonNode>> entries = _object(node).properties();
+        for (Map.Entry<String, JsonNode> entry : entries) {
             consumer.accept(entry.getKey(), entry.getValue());
         }
     }
 
     @Override
     public boolean anyMatchObject(JsonNode node, BiPredicate<String, Object> predicate) {
-        Iterator<Map.Entry<String, JsonNode>> entries = _object(node).fields();
-        while (entries.hasNext()) {
-            Map.Entry<String, JsonNode> entry = entries.next();
+        Set<Map.Entry<String, JsonNode>> entries = _object(node).properties();
+        for (Map.Entry<String, JsonNode> entry : entries) {
             if (predicate.test(entry.getKey(), entry.getValue())) return true;
         }
         return false;
@@ -125,9 +123,8 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
     @Override
     public boolean replaceAllInObject(JsonNode node, BiFunction<String, Object, Object> mapper) {
         boolean changed = false;
-        Iterator<Map.Entry<String, JsonNode>> entries = _object(node).fields();
-        while (entries.hasNext()) {
-            Map.Entry<String, JsonNode> entry = entries.next();
+        Set<Map.Entry<String, JsonNode>> entries = _object(node).properties();
+        for (Map.Entry<String, JsonNode> entry : entries) {
             JsonNode oldValue = entry.getValue();
             JsonNode newValue = _nodeValue(mapper.apply(entry.getKey(), oldValue));
             if (newValue != oldValue) {
@@ -141,11 +138,11 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
     @Override
     public boolean removeIfInObject(JsonNode node, BiPredicate<String, Object> predicate) {
         boolean changed = false;
-        Iterator<Map.Entry<String, JsonNode>> entries = _object(node).fields();
-        while (entries.hasNext()) {
-            Map.Entry<String, JsonNode> entry = entries.next();
+        Iterator<Map.Entry<String, JsonNode>> its = _object(node).properties().iterator();
+        while (its.hasNext()) {
+            Map.Entry<String, JsonNode> entry = its.next();
             if (predicate.test(entry.getKey(), entry.getValue())) {
-                entries.remove();
+                its.remove();
                 changed = true;
             }
         }
@@ -194,7 +191,7 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
         return new AbstractSet<String>() {
             @Override
             public Iterator<String> iterator() {
-                Iterator<Map.Entry<String, JsonNode>> iterator = object.fields();
+                Iterator<Map.Entry<String, JsonNode>> iterator = object.properties().iterator();
                 return new Iterator<String>() {
                     @Override public boolean hasNext() { return iterator.hasNext(); }
                     @Override public String next() { return iterator.next().getKey(); }
@@ -215,7 +212,7 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
         return new AbstractSet<Map.Entry<String, Object>>() {
             @Override
             public Iterator<Map.Entry<String, Object>> iterator() {
-                Iterator<Map.Entry<String, JsonNode>> iterator = object.fields();
+                Iterator<Map.Entry<String, JsonNode>> iterator = object.properties().iterator();
                 return new Iterator<Map.Entry<String, Object>>() {
                     @Override public boolean hasNext() { return iterator.hasNext(); }
 
