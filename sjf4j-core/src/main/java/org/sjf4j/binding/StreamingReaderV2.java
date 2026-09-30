@@ -18,9 +18,15 @@ import java.math.BigInteger;
  * <p>{@link #nextObjectField()} and {@link #nextArrayElement()} are the normal
  * cursor-moving operations. They advance from a container start, a completed
  * scalar, or the end of a completed child to the next value. At an exhausted
- * container they leave its end token current. A caller must close a completed
- * child before advancing its parent. {@link #endDocument()} advances exactly
- * once from the completed root and requires EOF.</p>
+ * container they leave its end token current. After either method reports an
+ * exhausted container, it must not be called again until the caller has called
+ * the matching end method. A caller must close a completed child before
+ * advancing its parent. {@link #endDocument()} advances exactly once from the
+ * completed root and requires EOF.</p>
+ *
+ * <p>Structural calls assume the cursor follows this protocol. Implementations
+ * may rely on the caller and backend parser rather than validate cursor
+ * position on each structural operation.</p>
  */
 public interface StreamingReaderV2 extends Closeable {
 
@@ -73,43 +79,97 @@ public interface StreamingReaderV2 extends Closeable {
         return currentToken() == Token.NULL;
     }
 
-    /** Validates that the current token starts an object without advancing. */
+    /** Assumes the current token starts an object without advancing. */
     void beginObject() throws IOException;
 
     /**
      * Advances to the next object field value and returns its name.
-     * Returns {@code null} without advancing when the current object is at
-     * END_OBJECT.
+     * Returns {@code null} when it reaches END_OBJECT, leaving that token
+     * current. After it returns {@code null}, the caller must call
+     * {@link #endObject()} before calling this method again.
      */
     String nextObjectField() throws IOException;
 
     /**
      * Advances to the next object field value and returns its matcher index,
      * {@link #UNKNOWN_FIELD}, or {@link #END_OF_OBJECT}.
+     * After it returns {@link #END_OF_OBJECT}, the caller must call
+     * {@link #endObject()} before calling any {@code nextObjectField} method
+     * again.
      */
     int nextObjectField(NameMatcher matcher) throws IOException;
 
     /**
      * Same as {@link #nextObjectField(NameMatcher)}, with an
      * optional ordered-field hint. Pass {@link #NO_EXPECTED_FIELD} when no
-     * hint is available.
+     * hint is available. After it returns {@link #END_OF_OBJECT}, the caller
+     * must call {@link #endObject()} before calling any
+     * {@code nextObjectField} method again.
      */
     int nextObjectField(NameMatcher matcher, int expectedIndex)
             throws IOException;
 
-    /** Validates the current END_OBJECT token without advancing. */
+    /**
+     * Ordered generated-reader fast path. Advances to the next field and tests
+     * the supplied expected matcher index. On success the current parser token
+     * is FIELD_NAME; on failure it is the actual FIELD_NAME or END_OBJECT.
+     */
+    boolean nextExpectedObjectField(NameMatcher matcher, int expectedIndex)
+            throws IOException;
+
+    /**
+     * Ordered generated-reader fast path. Advances to the next FIELD_NAME or
+     * END_OBJECT and returns whether a field is current.
+     */
+    boolean nextOrderedObjectField() throws IOException;
+
+    /**
+     * Ordered generated-reader fallback. Consumes the current FIELD_NAME by
+     * advancing to its value and returns its matcher index or UNKNOWN_FIELD.
+     * When END_OBJECT is current, returns END_OF_OBJECT without advancing.
+     */
+    int matchCurrentObjectField(NameMatcher matcher) throws IOException;
+
+    /**
+     * Matches the current FIELD_NAME without advancing to its value and returns
+     * its matcher index or {@link #UNKNOWN_FIELD}. When END_OBJECT is current,
+     * returns {@link #END_OF_OBJECT} without advancing.
+     */
+    int matchCurrentObjectName(NameMatcher matcher) throws IOException;
+
+    /** Advances once from a current ordered FIELD_NAME to its value token. */
+    void nextObjectValue() throws IOException;
+
+    /** Ordered generated-reader fast path: FIELD_NAME to long value. */
+    long nextLongValue() throws IOException;
+
+    /** Ordered generated-reader fast path: FIELD_NAME to int value. */
+    int nextIntValue() throws IOException;
+
+    /** Ordered generated-reader fast path: FIELD_NAME to boolean value. */
+    boolean nextBooleanValue() throws IOException;
+
+    /** Ordered generated-reader fast path: FIELD_NAME to double value. */
+    double nextDoubleValue() throws IOException;
+
+    /** Ordered generated-reader fast path: FIELD_NAME to string or null value. */
+    String nextStringOrNull() throws IOException;
+
+    /** Assumes the current token is END_OBJECT without advancing. */
     void endObject() throws IOException;
 
-    /** Validates that the current token starts an array without advancing. */
+    /** Assumes the current token starts an array without advancing. */
     void beginArray() throws IOException;
 
     /**
-     * Advances to the next array element value. Returns {@code false} without
-     * advancing when the current array is at END_ARRAY.
+     * Advances to the next array element value. Returns {@code false} when it
+     * reaches END_ARRAY, leaving that token current. After it returns
+     * {@code false}, the caller must call {@link #endArray()} before calling
+     * this method again.
      */
     boolean nextArrayElement() throws IOException;
 
-    /** Validates the current END_ARRAY token without advancing. */
+    /** Assumes the current token is END_ARRAY without advancing. */
     void endArray() throws IOException;
 
     /** Reads the current string token without advancing. */

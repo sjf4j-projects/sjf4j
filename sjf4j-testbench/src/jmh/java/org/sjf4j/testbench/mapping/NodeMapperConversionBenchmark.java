@@ -78,13 +78,13 @@ public class NodeMapperConversionBenchmark {
 
     @SuppressWarnings("unchecked")
     private void verifySources() {
-        TargetUser target = NodeMapper.convert(pojoSource, TargetUser.class, false);
+        TargetUser target = (TargetUser) NodeMapper.convert(pojoSource, TargetUser.class, false);
         if (!"Ann".equals(target.name) || target.age != 42) throw new AssertionError();
 
         List<Integer> list = (List<Integer>) NodeMapper.convert(
                 setSource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
-        int[] array = NodeMapper.convert(setSource, int[].class, false);
-        JsonArray jsonArray = NodeMapper.convert(setSource, JsonArray.class, false);
+        int[] array = (int[]) NodeMapper.convert(setSource, int[].class, false);
+        JsonArray jsonArray = (JsonArray) NodeMapper.convert(setSource, JsonArray.class, false);
         if (list.size() != 32 || array.length != 32 || jsonArray.size() != 32) throw new AssertionError();
     }
 

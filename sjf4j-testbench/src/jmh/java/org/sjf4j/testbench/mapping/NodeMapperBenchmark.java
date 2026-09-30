@@ -47,6 +47,10 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class NodeMapperBenchmark {
 
+    public static void main(String[] args) throws Exception {
+        Main.main(new String[]{NodeMapperBenchmark.class.getName()});
+    }
+
     private static final Type EVENT_LIST_TYPE = new TypeReference<List<UserEvent>>() {}.getType();
     private static final Type VALUE_MAP_TYPE = new TypeReference<Map<String, StringValue>>() {}.getType();
 
@@ -58,10 +62,6 @@ public class NodeMapperBenchmark {
     private JsonObject valueMapNode;
     private UserGraph userGraph;
     private UserGraphMapper compiledMapper;
-
-    public static void main(String[] args) throws Exception {
-        Main.main(new String[]{NodeMapperBenchmark.class.getName()});
-    }
 
     @Setup(Level.Trial)
     public void setup() {
@@ -122,7 +122,7 @@ public class NodeMapperBenchmark {
                 "labels", labelNodes, "primaryLabel", "primary-production");
         compiledMapper = CompiledInstances.of(UserGraphMapper.class);
         assertGraph(compiledMapper.map(userGraphNode), userGraph);
-        assertGraph(NodeMapper.convert(userGraphNode, UserGraph.class, false), userGraph);
+        assertGraph((UserGraph) NodeMapper.convert(userGraphNode, UserGraph.class, false), userGraph);
         assertGraph(readUserGraph(userGraphNode), userGraph);
     }
 

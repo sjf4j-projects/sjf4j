@@ -1,6 +1,8 @@
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.StreamingReaderV2;
 import org.sjf4j.binding.StreamingReaderV2.Token;
@@ -74,6 +76,106 @@ class Jackson2ReaderV2Test {
             assertEquals(StreamingReaderV2.END_OF_OBJECT, reader.nextObjectField(matcher));
             reader.endObject();
             reader.endDocument();
+        }
+    }
+
+    @Test
+    void orderedExpectedNameLeavesFieldForDirectValueConsumption() throws Exception {
+        StreamingReaderV2.NameMatcher matcher = Jackson2ReaderV2.createNameMatcher("first");
+        try (JsonParser parser = new JsonFactory().createParser("{\"first\":7}");
+             Jackson2ReaderV2 reader = new Jackson2ReaderV2(parser)) {
+            reader.startDocument();
+            reader.beginObject();
+
+            assertEquals(true, reader.nextExpectedObjectField(matcher, 0));
+            assertEquals(JsonToken.FIELD_NAME, parser.currentToken());
+            assertEquals(7, reader.nextIntValue());
+            assertEquals(Token.NUMBER, reader.currentToken());
+        }
+    }
+
+    @Test
+    void orderedExpectedNameMismatchPreservesFieldOrObjectEndForFallback() throws Exception {
+        StreamingReaderV2.NameMatcher matcher = Jackson2ReaderV2.createNameMatcher("first", "second");
+        try (JsonParser parser = new JsonFactory().createParser("{\"second\":2}");
+             Jackson2ReaderV2 reader = new Jackson2ReaderV2(parser)) {
+            reader.startDocument();
+            reader.beginObject();
+
+            assertEquals(false, reader.nextExpectedObjectField(matcher, 0));
+            assertEquals(JsonToken.FIELD_NAME, parser.currentToken());
+            assertEquals(1, reader.matchCurrentObjectField(matcher));
+            assertEquals(2, reader.readIntValue());
+            assertEquals(false, reader.nextExpectedObjectField(matcher, 0));
+            assertEquals(JsonToken.END_OBJECT, parser.currentToken());
+            assertEquals(StreamingReaderV2.END_OF_OBJECT, reader.matchCurrentObjectField(matcher));
+        }
+    }
+
+    @Test
+    void currentObjectNameMatchDoesNotAdvanceForKnownUnknownOrEnd() throws Exception {
+        StreamingReaderV2.NameMatcher matcher = Jackson2ReaderV2.createNameMatcher("known");
+        try (JsonParser parser = new JsonFactory().createParser("{\"known\":1,\"other\":2}");
+             Jackson2ReaderV2 reader = new Jackson2ReaderV2(parser)) {
+            reader.startDocument();
+            reader.beginObject();
+
+            assertEquals(true, reader.nextOrderedObjectField());
+            assertEquals(0, reader.matchCurrentObjectName(matcher));
+            assertEquals(JsonToken.FIELD_NAME, parser.currentToken());
+            assertEquals(1, reader.nextIntValue());
+
+            assertEquals(true, reader.nextOrderedObjectField());
+            assertEquals(StreamingReaderV2.UNKNOWN_FIELD, reader.matchCurrentObjectName(matcher));
+            assertEquals(JsonToken.FIELD_NAME, parser.currentToken());
+            reader.nextObjectValue();
+            assertEquals(2, reader.readIntValue());
+
+            assertEquals(false, reader.nextOrderedObjectField());
+            assertEquals(StreamingReaderV2.END_OF_OBJECT, reader.matchCurrentObjectName(matcher));
+            assertEquals(JsonToken.END_OBJECT, parser.currentToken());
+        }
+    }
+
+    @Test
+    void orderedScalarConsumersUseFusedDefaultsAndLeaveTheirValueCurrent() throws Exception {
+        StreamingReaderV2.NameMatcher matcher = Jackson2ReaderV2.createNameMatcher(
+                "long", "int", "boolean", "string", "double");
+        try (Jackson2ReaderV2 reader = reader(
+                "{\"long\":null,\"int\":null,\"boolean\":null,\"string\":null,\"double\":1.5}")) {
+            reader.startDocument();
+            reader.beginObject();
+            assertEquals(true, reader.nextExpectedObjectField(matcher, 0));
+            assertEquals(0L, reader.nextLongValue());
+            assertEquals(Token.NULL, reader.currentToken());
+            assertEquals(true, reader.nextExpectedObjectField(matcher, 1));
+            assertEquals(0, reader.nextIntValue());
+            assertEquals(Token.NULL, reader.currentToken());
+            assertEquals(true, reader.nextExpectedObjectField(matcher, 2));
+            assertEquals(false, reader.nextBooleanValue());
+            assertEquals(Token.NULL, reader.currentToken());
+            assertEquals(true, reader.nextExpectedObjectField(matcher, 3));
+            assertNull(reader.nextStringOrNull());
+            assertEquals(Token.NULL, reader.currentToken());
+            assertEquals(true, reader.nextExpectedObjectField(matcher, 4));
+            assertEquals(1.5d, reader.nextDoubleValue());
+            assertEquals(Token.NUMBER, reader.currentToken());
+        }
+    }
+
+    @Test
+    void orderedValueAdvanceLeavesContainerStartCurrent() throws Exception {
+        StreamingReaderV2.NameMatcher matcher = Jackson2ReaderV2.createNameMatcher("child");
+        try (Jackson2ReaderV2 reader = reader("{\"child\":[]}")) {
+            reader.startDocument();
+            reader.beginObject();
+            assertEquals(true, reader.nextExpectedObjectField(matcher, 0));
+
+            reader.nextObjectValue();
+            assertEquals(Token.START_ARRAY, reader.currentToken());
+            reader.beginArray();
+            assertEquals(false, reader.nextArrayElement());
+            reader.endArray();
         }
     }
 
@@ -156,6 +258,22 @@ class Jackson2ReaderV2Test {
     }
 
     @Test
+    void readStringOrNullRequiresAStringForNonNullValues() throws Exception {
+        try (Jackson2ReaderV2 reader = reader("[\"text\",7]")) {
+            reader.startDocument();
+            reader.beginArray();
+
+            assertEquals(true, reader.nextArrayElement());
+            assertEquals("text", reader.readStringOrNull());
+            assertEquals(Token.STRING, reader.currentToken());
+
+            assertEquals(true, reader.nextArrayElement());
+            assertThrows(IOException.class, reader::readStringOrNull);
+            assertEquals(Token.NUMBER, reader.currentToken());
+        }
+    }
+
+    @Test
     void skipValueAndRawNodeLeaveContainerEndTokensCurrent() throws Exception {
         try (Jackson2ReaderV2 reader = reader(
                 "{\"skip\":{\"nested\":[1]},\"raw\":{\"number\":2},\"tail\":\"done\"}")) {
@@ -175,38 +293,6 @@ class Jackson2ReaderV2Test {
             assertEquals("done", reader.readString());
             assertNull(reader.nextObjectField());
             reader.endObject();
-            reader.endDocument();
-        }
-    }
-
-    @Test
-    void rejectsSkippingAnEnteredContainerWithoutMovingTheCursor() throws Exception {
-        try (Jackson2ReaderV2 reader = reader("{\"child\":{\"value\":1}}")) {
-            reader.startDocument();
-            reader.beginObject();
-            assertEquals("child", reader.nextObjectField());
-            reader.beginObject();
-
-            assertThrows(IOException.class, reader::skipValue);
-            assertEquals(Token.START_OBJECT, reader.currentToken());
-
-            assertEquals("value", reader.nextObjectField());
-            assertEquals(1, reader.readIntValue());
-            assertNull(reader.nextObjectField());
-            reader.endObject();
-            assertNull(reader.nextObjectField());
-            reader.endObject();
-            reader.endDocument();
-        }
-    }
-
-    @Test
-    void rejectsStableWrongTokenCallsWithoutMovingTheCursor() throws Exception {
-        try (Jackson2ReaderV2 reader = reader("1")) {
-            reader.startDocument();
-
-            assertThrows(IOException.class, reader::beginObject);
-            assertEquals(Token.NUMBER, reader.currentToken());
             reader.endDocument();
         }
     }

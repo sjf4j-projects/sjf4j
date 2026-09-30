@@ -3,42 +3,44 @@ package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.SerializableString;
-import com.fasterxml.jackson.core.io.SerializedString;
-import org.sjf4j.binding.StreamingReaderV2;
+import org.sjf4j.binding.NameMatcher;
+import org.sjf4j.binding.OrderedFieldReaderV3;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.TypeRegistry;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Jackson 2 implementation of the intentionally unintegrated V2 cursor
- * sketch. The parser is advanced only by traversal, container skipping, and
- * document-boundary methods; value-positioned {@code readXxx} accessors only
- * inspect the current token. The ordered direct consumers used by generated
- * readers intentionally delegate to Jackson fused accessors instead. They
- * therefore retain Jackson's fused/default/coercion semantics, which are
- * distinct from the V2 value-positioned {@code readXxx} methods.
- * Container traversal relies on parser position and the V2 caller protocol;
- * it retains no per-container lifecycle state.
+ * Jackson 2 implementation of the standalone V3 value-positioned protocol.
+ *
+ * <p>This reader retains no container stack or lifecycle state; traversal
+ * relies on parser position and the V3 caller protocol. Base {@code readXxx}
+ * methods are strict and do not advance. Ordered {@code nextXxx} methods are
+ * deliberately direct Jackson consumers: long, int, boolean, and string use
+ * Jackson fused/default/coercion accessors, while double advances then uses
+ * Jackson's direct double accessor.</p>
  */
-public final class Jackson2ReaderV2 implements StreamingReaderV2 {
+public final class Jackson2ReaderV3 implements OrderedFieldReaderV3 {
+
+    private static final ClassValue<Jackson2NameMatcherV3> NAME_MATCHERS =
+            new ClassValue<Jackson2NameMatcherV3>() {
+                @Override
+                protected Jackson2NameMatcherV3 computeValue(Class<?> type) {
+                    PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(type);
+                    return Jackson2NameMatcherV3.of(
+                            pojoInfo.properties.keySet().toArray(new String[0]));
+                }
+            };
 
     private final JsonParser parser;
 
-    /**
-     * Creates matching metadata that retains canonical String names,
-     * Jackson SerializedString instances, and a String fallback lookup.
-     */
-    public static StreamingReaderV2.NameMatcher createNameMatcher(String... names) {
-        return new Jackson2NameMatcher(names);
-    }
-
-    public Jackson2ReaderV2(JsonParser parser) {
+    public Jackson2ReaderV3(JsonParser parser) {
         if (parser == null) {
             throw new NullPointerException("parser");
         }
@@ -71,22 +73,21 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
     }
 
     @Override
-    public void beginObject() throws IOException {
+    public NameMatcher nameMatcher(Class<?> type) {
+        return NAME_MATCHERS.get(type);
     }
 
     @Override
-    public String nextObjectField() throws IOException {
+    public void beginObject() {
+    }
+
+    @Override
+    public String nextObjectName() throws IOException {
         String name = parser.nextFieldName();
-        if (name == null) {
-            return null;
+        if (name != null) {
+            parser.nextToken();
         }
-        _advanceToFieldValue();
         return name;
-    }
-
-    @Override
-    public int nextObjectField(NameMatcher matcher) throws IOException {
-        return nextObjectField(matcher, NO_EXPECTED_FIELD);
     }
 
     @Override
@@ -97,60 +98,29 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
             throw new NullPointerException("matcher");
         }
 
-        if (matcher instanceof Jackson2NameMatcher) {
-            Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
+        if (matcher instanceof Jackson2NameMatcherV3) {
+            Jackson2NameMatcherV3 jacksonMatcher = (Jackson2NameMatcherV3) matcher;
             if (expectedIndex >= 0 && expectedIndex < jacksonMatcher.names.length) {
                 SerializableString expectedName = jacksonMatcher.serializedNames[expectedIndex];
                 if (parser.nextFieldName(expectedName)) {
-                    _advanceToFieldValue();
+                    parser.nextToken();
                     return expectedIndex;
                 }
-                return _matchCurrentField(jacksonMatcher);
+                return consumeCurrentObjectField(matcher);
             }
-            return _matchNextField(jacksonMatcher);
-        }
-
-        return _matchNextField(matcher);
-    }
-
-    @Override
-    public boolean nextExpectedObjectField(NameMatcher matcher, int expectedIndex)
-            throws IOException {
-
-        if (matcher == null) {
-            throw new NullPointerException("matcher");
-        }
-        if (expectedIndex < 0) {
-            throw new IllegalArgumentException("expectedIndex");
-        }
-
-        if (matcher instanceof Jackson2NameMatcher) {
-            Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
-            if (expectedIndex >= jacksonMatcher.names.length) {
-                throw new IllegalArgumentException("expectedIndex");
-            }
-            return parser.nextFieldName(jacksonMatcher.serializedNames[expectedIndex]);
         }
 
         String name = parser.nextFieldName();
-        return name != null && matcher.name(expectedIndex).equals(name);
-    }
-
-    @Override
-    public boolean nextOrderedObjectField() throws IOException {
-        return parser.nextFieldName() != null;
-    }
-
-    @Override
-    public int matchCurrentObjectField(NameMatcher matcher) throws IOException {
-        if (matcher == null) {
-            throw new NullPointerException("matcher");
+        if (name == null) {
+            return END_OF_OBJECT;
         }
-        return _matchCurrentField(matcher);
+        int index = matcher.match(name);
+        parser.nextToken();
+        return _fieldIndex(index);
     }
 
     @Override
-    public int matchCurrentObjectName(NameMatcher matcher) throws IOException {
+    public int consumeCurrentObjectField(NameMatcher matcher) throws IOException {
         if (matcher == null) {
             throw new NullPointerException("matcher");
         }
@@ -162,11 +132,33 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
             throw _expected("FIELD_NAME or END_OBJECT", current);
         }
         int index = matcher.match(parser.currentName());
-        return index >= 0 ? index : UNKNOWN_FIELD;
+        parser.nextToken();
+        return _fieldIndex(index);
     }
 
     @Override
-    public void nextObjectValue() throws IOException {
+    public boolean nextExpectedName(NameMatcher matcher, int expectedIndex)
+            throws IOException {
+
+        if (matcher == null) {
+            throw new NullPointerException("matcher");
+        }
+        if (expectedIndex < 0) {
+            throw new IllegalArgumentException("expectedIndex");
+        }
+        if (matcher instanceof Jackson2NameMatcherV3) {
+            Jackson2NameMatcherV3 jacksonMatcher = (Jackson2NameMatcherV3) matcher;
+            if (expectedIndex >= jacksonMatcher.names.length) {
+                throw new IllegalArgumentException("expectedIndex");
+            }
+            return parser.nextFieldName(jacksonMatcher.serializedNames[expectedIndex]);
+        }
+        String name = parser.nextFieldName();
+        return name != null && matcher.name(expectedIndex).equals(name);
+    }
+
+    @Override
+    public void nextValue() throws IOException {
         parser.nextToken();
     }
 
@@ -197,11 +189,11 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
     }
 
     @Override
-    public void endObject() throws IOException {
+    public void endObject() {
     }
 
     @Override
-    public void beginArray() throws IOException {
+    public void beginArray() {
     }
 
     @Override
@@ -210,7 +202,7 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
     }
 
     @Override
-    public void endArray() throws IOException {
+    public void endArray() {
     }
 
     @Override
@@ -336,51 +328,20 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
 
     private Map<String, Object> _readRawObject() throws IOException {
         Map<String, Object> value = new LinkedHashMap<String, Object>();
-        beginObject();
         String name;
-        while ((name = nextObjectField()) != null) {
+        while ((name = parser.nextFieldName()) != null) {
+            parser.nextToken();
             value.put(name, readRawNode());
         }
-        endObject();
         return value;
     }
 
     private List<Object> _readRawArray() throws IOException {
         List<Object> value = new ArrayList<Object>();
-        beginArray();
-        while (nextArrayElement()) {
+        while (parser.nextToken() != JsonToken.END_ARRAY) {
             value.add(readRawNode());
         }
-        endArray();
         return value;
-    }
-
-    private int _matchCurrentField(NameMatcher matcher) throws IOException {
-        JsonToken current = parser.currentToken();
-        if (current == JsonToken.END_OBJECT) {
-            return END_OF_OBJECT;
-        }
-        if (current != JsonToken.FIELD_NAME) {
-            throw _expected("FIELD_NAME or END_OBJECT", current);
-        }
-
-        int index = matcher.match(parser.currentName());
-        _advanceToFieldValue();
-        return index >= 0 ? index : UNKNOWN_FIELD;
-    }
-
-    private int _matchNextField(NameMatcher matcher) throws IOException {
-        String name = parser.nextFieldName();
-        if (name == null) {
-            return END_OF_OBJECT;
-        }
-        int index = matcher.match(name);
-        _advanceToFieldValue();
-        return index >= 0 ? index : UNKNOWN_FIELD;
-    }
-
-    private void _advanceToFieldValue() throws IOException {
-        parser.nextToken();
     }
 
     private void _require(JsonToken expected) throws IOException {
@@ -388,6 +349,10 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
         if (current != expected) {
             throw _expected(expected.name(), current);
         }
+    }
+
+    private static int _fieldIndex(int index) {
+        return index >= 0 ? index : NameMatcher.UNKNOWN_FIELD;
     }
 
     private static void _requireValue(String expected, JsonToken actual) throws IOException {
@@ -424,7 +389,7 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
             case END_OBJECT:
                 return Token.END_OBJECT;
             case FIELD_NAME:
-                return Token.UNKNOWN;
+                return Token.FIELD_NAME;
             case START_ARRAY:
                 return Token.START_ARRAY;
             case END_ARRAY:
@@ -441,41 +406,6 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
                 return Token.NULL;
             default:
                 return Token.UNKNOWN;
-        }
-    }
-
-    private static final class Jackson2NameMatcher implements NameMatcher {
-
-        private final String[] names;
-        private final SerializedString[] serializedNames;
-        private final Map<String, Integer> fallbackLookup;
-
-        private Jackson2NameMatcher(String... sourceNames) {
-            if (sourceNames == null) {
-                throw new NullPointerException("names");
-            }
-            names = sourceNames.clone();
-            serializedNames = new SerializedString[names.length];
-            fallbackLookup = new HashMap<String, Integer>(names.length * 2);
-            for (int i = 0; i < names.length; i++) {
-                String name = names[i];
-                if (name == null) {
-                    throw new NullPointerException("names[" + i + "]");
-                }
-                serializedNames[i] = new SerializedString(name);
-                fallbackLookup.put(name, i);
-            }
-        }
-
-        @Override
-        public String name(int index) {
-            return names[index];
-        }
-
-        @Override
-        public int match(String name) {
-            Integer index = fallbackLookup.get(name);
-            return index == null ? UNKNOWN : index;
         }
     }
 }

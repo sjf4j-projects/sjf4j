@@ -6,6 +6,7 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
@@ -25,6 +26,12 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.RuntimeContext;
+import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
+import org.sjf4j.backend.jackson2.binding.Jackson2ReaderV2;
+import org.sjf4j.backend.jackson2.binding.Jackson2ReaderV3;
+import org.sjf4j.binding.StreamingIO;
+import org.sjf4j.binding.StreamingIOV3;
 import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
@@ -106,6 +113,13 @@ public class HandReadBenchmark {
     public void validateHandwrittenReaders() throws IOException {
         Object jackson2Pojo = json_jackson2_pojo_native();
         validate("Jackson2 POJO", jackson2Pojo, json_jackson2_pojo_handwritten());
+        validate("Jackson2 V1 POJO", jackson2Pojo, json_jackson2_pojo_handwritten_v1());
+        validate("Jackson2 runtime V1 POJO", jackson2Pojo, json_jackson2_pojo_runtime_v1());
+        validate("Jackson2 runtime V3 POJO", jackson2Pojo, json_jackson2_pojo_runtime_v3());
+        validate("Jackson2 V2 POJO", jackson2Pojo, json_jackson2_pojo_handwritten_v2());
+        validate("Jackson2 V2 unrolled POJO", jackson2Pojo, json_jackson2_pojo_handwritten_v2_unrolled());
+        validate("Jackson2 V2 fused loop POJO", jackson2Pojo,
+                json_jackson2_pojo_handwritten_v2_fused_loop());
         validate("Jackson2 Blackbird POJO", jackson2Pojo, json_jackson2_pojo_blackbird());
         validate("Jackson2 map", json_jackson2_map_native(), json_jackson2_map_handwritten());
 
@@ -142,6 +156,60 @@ public class HandReadBenchmark {
     public Object json_jackson2_pojo_handwritten() throws IOException {
         try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
             return Jackson2HandPojoReader.readUser(parser);
+        }
+    }
+
+    @Benchmark
+    public Object json_jackson2_pojo_handwritten_v1() throws IOException {
+        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
+             Jackson2Reader reader = new Jackson2Reader(parser)) {
+            return Jackson2HandPojoReaderV1.readUser(reader);
+        }
+    }
+
+    @Benchmark
+    public Object json_jackson2_pojo_runtime_v1() throws IOException {
+        try (JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
+             Jackson2Reader reader = new Jackson2Reader(parser)) {
+            reader.startDocument();
+            Object result = StreamingIO.readNode(reader, User.class, RuntimeContext.EMPTY);
+            reader.endDocument();
+            return result;
+        }
+    }
+
+    @Benchmark
+    public Object json_jackson2_pojo_runtime_v3() throws IOException {
+        try (JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
+             Jackson2ReaderV3 reader = new Jackson2ReaderV3(parser)) {
+            reader.startDocument();
+            Object result = StreamingIOV3.readNode(reader, User.class, RuntimeContext.EMPTY);
+            reader.endDocument();
+            return result;
+        }
+    }
+
+    @Benchmark
+    public Object json_jackson2_pojo_handwritten_v2() throws IOException {
+        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
+             Jackson2ReaderV2 reader = new Jackson2ReaderV2(parser)) {
+            return Jackson2HandPojoReaderV2.readUser(reader);
+        }
+    }
+
+    @Benchmark
+    public Object json_jackson2_pojo_handwritten_v2_unrolled() throws IOException {
+        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
+             Jackson2ReaderV2 reader = new Jackson2ReaderV2(parser)) {
+            return Jackson2HandPojoReaderV2Unrolled.readUser(reader);
+        }
+    }
+
+    @Benchmark
+    public Object json_jackson2_pojo_handwritten_v2_fused_loop() throws IOException {
+        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
+             Jackson2ReaderV2 reader = new Jackson2ReaderV2(parser)) {
+            return Jackson2HandPojoReaderV2FusedLoop.readUser(reader);
         }
     }
 
