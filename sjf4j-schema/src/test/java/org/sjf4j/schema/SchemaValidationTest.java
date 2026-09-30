@@ -2,17 +2,24 @@ package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueToRaw;
 
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -42,6 +49,41 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate("ok");
         assertSame(ValidationResult.SUCCESS, result);
+    }
+
+    @Test
+    public void testValueBindingInferUsesDeclaredRawTypeExceptNull() {
+        InstancedNode reusedLeaf = InstancedNode.infer("reused");
+        StringValue stringValue = new StringValue();
+        MapValue mapValue = new MapValue();
+        ListValue listValue = new ListValue();
+
+        InstancedNode stringNode = InstancedNode.infer(stringValue, reusedLeaf);
+        InstancedNode mapNode = InstancedNode.infer(mapValue, reusedLeaf);
+        InstancedNode listNode = InstancedNode.infer(listValue, reusedLeaf);
+
+        assertEquals(JsonType.NULL, stringNode.jsonType());
+        assertEquals(JsonType.OBJECT, mapNode.jsonType());
+        assertEquals(JsonType.ARRAY, listNode.jsonType());
+        assertTrue(stringNode.converted());
+        assertTrue(mapNode.converted());
+        assertTrue(listNode.converted());
+        assertNull(stringNode.node());
+        assertNotSame(reusedLeaf, stringNode);
+        assertEquals(1, stringValue.encodes);
+        assertEquals(1, mapValue.encodes);
+        assertEquals(1, listValue.encodes);
+    }
+
+    @Test
+    public void testInferClassifiesPojoObject() {
+        PlainPojo value = new PlainPojo();
+
+        InstancedNode node = InstancedNode.infer(value);
+
+        assertSame(value, node.node());
+        assertEquals(JsonType.OBJECT, node.jsonType());
+        assertFalse(node.converted());
     }
 
     @Test
@@ -948,5 +990,56 @@ public class SchemaValidationTest {
         assertFalse(plan.isValid(JsonArray.fromJson("[1,\"x\"]")));
     }
 
+    @NodeValue
+    public static class StringValue {
+        private int encodes;
+
+        @ValueToRaw
+        public String encode() {
+            encodes++;
+            return null;
+        }
+
+        @RawToValue
+        public static StringValue decode(String raw) {
+            return new StringValue();
+        }
+    }
+
+    @NodeValue
+    public static class MapValue {
+        private int encodes;
+
+        @ValueToRaw
+        public Map<String, Object> encode() {
+            encodes++;
+            return Collections.emptyMap();
+        }
+
+        @RawToValue
+        public static MapValue decode(Map<String, Object> raw) {
+            return new MapValue();
+        }
+    }
+
+    @NodeValue
+    public static class ListValue {
+        private int encodes;
+
+        @ValueToRaw
+        public List<Object> encode() {
+            encodes++;
+            return Collections.emptyList();
+        }
+
+        @RawToValue
+        public static ListValue decode(List<Object> raw) {
+            return new ListValue();
+        }
+    }
+
+    public static class PlainPojo {
+        public String value = "value";
+    }
 
 }

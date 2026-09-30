@@ -4,6 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.value.ValueInfo;
+import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 
@@ -117,21 +118,31 @@ public final class InstancedNode {
      * validation traversal.
      */
     static InstancedNode infer(Object node, InstancedNode reusedLeaf) {
-        boolean encoded = false;
-        NodeKind kind = NodeKind.of(node);
-        if (kind == NodeKind.VALUE_BINDING) {
-            ValueInfo vi = TypeRegistry.registerTypeInfo(node.getClass()).valueInfos[0];
-            if (vi != null) {
-                node = vi.valueToRaw(node);
-                encoded = true;
-                kind = NodeKind.of(node);
+        Class<?> clazz = node == null ? null : node.getClass();
+        NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
+        if (kind == NodeKind.UNKNOWN && clazz != null) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+            if (ti.valueInfos != null) {
+                ValueInfo vi = ti.valueInfos[0];
+                if (vi != null) {
+                    node = vi.valueToRaw(node);
+                    JsonType jsonType = node == null
+                            ? JsonType.NULL
+                            : JsonType.of(NodeKind.plainOf(vi.rawClazz));
+                    return new InstancedNode(node, jsonType, true);
+                }
+                kind = NodeKind.VALUE_BINDING;
+            } else if (ti.externalNode != null) {
+                kind = ti.externalNode.nodeKind(node);
+            } else if (ti.pojoInfo != null) {
+                kind = NodeKind.OBJECT_POJO;
             }
         }
         JsonType jsonType = JsonType.of(kind);
-        if (!encoded && jsonType.isScalar() && reusedLeaf != null) {
-            return reusedLeaf.reuse(node, jsonType, encoded);
+        if (jsonType.isScalar() && reusedLeaf != null) {
+            return reusedLeaf.reuse(node, jsonType, false);
         }
-        return new InstancedNode(node, jsonType, encoded);
+        return new InstancedNode(node, jsonType, false);
     }
 
     /**
