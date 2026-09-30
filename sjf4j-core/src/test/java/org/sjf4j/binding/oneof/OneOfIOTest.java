@@ -5,6 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.exception.BindingException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -82,8 +83,51 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: FAIL reports an unmapped discriminator. */
     @Test
     void rejectsAnUnmappedDiscriminatorByDefault() {
-        assertThrows(RuntimeException.class, () -> new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        assertThrows(BindingException.class, () -> new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                 "{\"pet\":{\"kind\":\"lizard\"}}", Container.class));
+    }
+
+    @Test
+    void mapsCurrentPathDiscriminatorToMatchingSubtype() {
+        PathContainer container = (PathContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+                "{\"pet\":{\"meta\":{\"kind\":\"cat\"},\"name\":\"Mog\",\"lives\":9}}",
+                PathContainer.class);
+
+        Cat cat = assertInstanceOf(Cat.class, container.pet);
+        assertEquals("Mog", cat.name);
+        assertEquals(9, cat.lives);
+    }
+
+    @Test
+    void handlesMissingAndUnmatchedCurrentPathDiscriminators() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"name\":\"Mog\"}}", PathContainer.class));
+        assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"meta\":{\"kind\":\"lizard\"}}}", PathContainer.class));
+
+        PathFallbackContainer missing = (PathFallbackContainer) binder.readNode(
+                "{\"pet\":{\"name\":\"Mog\"},\"after\":1}", PathFallbackContainer.class);
+        PathFallbackContainer unmatched = (PathFallbackContainer) binder.readNode(
+                "{\"pet\":{\"meta\":{\"kind\":\"lizard\"}},\"after\":2}", PathFallbackContainer.class);
+        assertNull(missing.pet);
+        assertNull(unmatched.pet);
+        assertEquals(1, missing.after);
+        assertEquals(2, unmatched.after);
+    }
+
+    @Test
+    void expandsPendingKeyFieldsAndRejectsDuplicateDiscriminators() {
+        Container container = (Container) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+                "{\"pet\":{\"one\":1,\"two\":2,\"three\":3,\"four\":4,\"five\":5,"
+                        + "\"kind\":\"dog\",\"name\":\"Rex\",\"barks\":true}}", Container.class);
+
+        Dog dog = assertInstanceOf(Dog.class, container.pet);
+        assertEquals("Rex", dog.name);
+        assertEquals(5, dog.getInt("five"));
+
+        assertThrows(BindingException.class, () -> new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+                "{\"pet\":{\"kind\":\"dog\",\"kind\":\"cat\"}}", Container.class));
     }
 
     /** Retained SJF4J semantics: pending fields, unknown dynamic fields, and arrays of a type-level OneOf all bind normally. */
@@ -109,6 +153,16 @@ class OneOfIOTest {
     static class FallbackContainer {
         @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")},
                 key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
+        public int after;
+    }
+    static class PathContainer {
+        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")},
+                path = "$.meta.kind") public Animal pet;
+        public int after;
+    }
+    static class PathFallbackContainer {
+        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")},
+                path = "$.meta.kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
         public int after;
     }
     static class AnimalList { public java.util.List<Animal> pets; }

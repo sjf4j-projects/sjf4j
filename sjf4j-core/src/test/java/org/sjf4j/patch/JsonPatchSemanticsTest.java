@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -120,6 +121,65 @@ class JsonPatchSemanticsTest {
     }
 
     @Test
+    void testRootTestSucceedsAndFailsWithoutMutation() {
+        JsonObject target = JsonObject.of("a", 1);
+        PatchOperation succeeds = new PatchOperation(PatchOperation.STD_TEST,
+                JsonPointer.parse(""), JsonObject.of("a", 1), null);
+        PatchOperation fails = new PatchOperation(PatchOperation.STD_TEST,
+                JsonPointer.parse(""), JsonObject.of("a", 2), null);
+
+        assertSame(target, succeeds.apply(target));
+        assertThrows(NodeException.class, () -> fails.apply(target));
+        assertEquals(1, target.getInt("a"));
+    }
+
+    @Test
+    void testRootCopyFromChildAndCopyErrors() {
+        JsonObject target = JsonObject.of("a", JsonObject.of("x", 1));
+        PatchOperation copy = new PatchOperation(PatchOperation.STD_COPY,
+                JsonPointer.parse(""), null, JsonPointer.parse("/a"));
+
+        Object result = copy.apply(target);
+
+        assertTrue(result instanceof JsonObject);
+        assertEquals(1, ((JsonObject) result).getInt("x"));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_COPY,
+                JsonPointer.parse(""), null, null).apply(target));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_COPY,
+                JsonPointer.parse(""), null, JsonPointer.parse("/missing")).apply(target));
+    }
+
+    @Test
+    void testRootExistAcceptsNullTarget() {
+        PatchOperation operation = new PatchOperation(PatchOperation.EXT_EXIST,
+                JsonPointer.parse(""), null, null);
+
+        assertNull(operation.apply(null));
+    }
+
+    @Test
+    void testUnknownOperationAndNullNonRootTargetFail() {
+        assertThrows(NodeException.class, () -> new PatchOperation("unknown",
+                JsonPointer.parse(""), null, null).apply(new JsonObject()));
+        assertThrows(NodeException.class, () -> new PatchOperation("unknown",
+                JsonPointer.parse("/a"), null, null).apply(new JsonObject()));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_ADD,
+                JsonPointer.parse("/a"), 1, null).apply(null));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_ADD,
+                null, 1, null).apply(new JsonObject()));
+    }
+
+    @Test
+    void testRootMoveFromRootToRootIsUnchanged() {
+        JsonObject target = JsonObject.of("a", 1);
+        PatchOperation operation = new PatchOperation(PatchOperation.STD_MOVE,
+                JsonPointer.parse(""), null, JsonPointer.parse(""));
+
+        assertSame(target, operation.apply(target));
+        assertEquals(1, target.getInt("a"));
+    }
+
+    @Test
     void testCopyPreservesExplicitNull() {
         JsonObject target = JsonObject.of("a", null);
         JsonPatch patch = new JsonPatch();
@@ -224,6 +284,66 @@ class JsonPatchSemanticsTest {
                 JsonPointer.parse("/missing"), null, null));
 
         assertThrows(NodeException.class, () -> patch.apply(target));
+    }
+
+    @Test
+    void testTestAndExistTreatExplicitNullAsExistingAndReadOnly() {
+        JsonObject target = JsonObject.of("a", null);
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOperation(PatchOperation.STD_TEST,
+                JsonPointer.parse("/a"), null, null));
+        patch.add(new PatchOperation(PatchOperation.EXT_EXIST,
+                JsonPointer.parse("/a"), null, null));
+
+        assertSame(target, patch.apply(target));
+        assertTrue(target.containsKey("a"));
+        assertNull(target.getNode("a"));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.EXT_EXIST,
+                JsonPointer.parse("/missing"), null, null).apply(target));
+    }
+
+    @Test
+    void testOperationsFailForMissingParentsAndValues() {
+        JsonObject target = new JsonObject();
+
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_ADD,
+                JsonPointer.parse("/missing/a"), 1, null).apply(target));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_REMOVE,
+                JsonPointer.parse("/missing"), null, null).apply(target));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_COPY,
+                JsonPointer.parse("/copy"), null, null).apply(target));
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_COPY,
+                JsonPointer.parse("/copy"), null, JsonPointer.parse("/missing")).apply(target));
+    }
+
+    @Test
+    void testRemoveOutOfRangeArrayElementFails() {
+        JsonArray target = JsonArray.of(1, 2);
+
+        assertThrows(NodeException.class, () -> new PatchOperation(PatchOperation.STD_REMOVE,
+                JsonPointer.parse("/2"), null, null).apply(target));
+        assertEquals(JsonArray.of(1, 2), target);
+    }
+
+    @Test
+    void testJsonPatchRejectsMalformedElementOnApply() {
+        JsonPatch patch = new JsonPatch(java.util.Collections.singletonList(null));
+
+        assertThrows(NodeException.class, () -> patch.apply(new JsonObject()));
+    }
+
+    @Test
+    void testJsonPatchFromJsonRoundTrip() {
+        JsonPatch patch = JsonPatch.fromJson("[{\"op\":\"add\",\"path\":\"/a\",\"value\":1}]");
+        JsonPatch roundTrip = JsonPatch.fromJson(patch.toJson());
+
+        assertEquals(1, roundTrip.size());
+        PatchOperation operation = roundTrip.get(0, PatchOperation.class);
+        assertEquals(PatchOperation.STD_ADD, operation.getOp());
+        assertEquals("/a", operation.getPath().toString());
+        JsonObject target = new JsonObject();
+        roundTrip.apply(target);
+        assertEquals(1, target.getInt("a"));
     }
 
     @Test

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -194,6 +195,109 @@ public class PatchesTest {
         assertEquals(1, target[0]);
         assertEquals(2, target[1]);
         assertEquals(7, target[2]);
+    }
+
+    @Test
+    public void testIndexedMergeReturnsEarlyForNullArguments() {
+        Map<String, Object> target = new HashMap<>();
+        target.put("a", 1);
+        Map<String, Object> patch = new HashMap<>();
+        patch.put("a", 2);
+
+        Patches.indexedMerge(null, patch, true, false);
+        Patches.indexedMerge(target, null, true, false);
+
+        assertEquals(1, target.get("a"));
+        assertEquals(2, patch.get("a"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testIndexedMergeWithoutOverwriteFillsNullButPreservesShapes() {
+        Map<String, Object> target = new HashMap<>();
+        target.put("object", 1);
+        target.put("array", 2);
+        target.put("nullObject", null);
+        target.put("nullArray", null);
+        Map<String, Object> patch = new HashMap<>();
+        patch.put("object", new HashMap<>(Collections.singletonMap("x", 1)));
+        patch.put("array", new ArrayList<>(Arrays.asList(1, 2)));
+        patch.put("nullObject", new HashMap<>(Collections.singletonMap("x", 1)));
+        patch.put("nullArray", new ArrayList<>(Arrays.asList(1, 2)));
+
+        Patches.indexedMerge(target, patch, false, false);
+
+        assertEquals(1, target.get("object"));
+        assertEquals(2, target.get("array"));
+        assertEquals(1, ((Map<String, Object>) target.get("nullObject")).get("x"));
+        assertEquals(Arrays.asList(1, 2), target.get("nullArray"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testIndexedMergeWithOverwriteReplacesMismatchedShapes() {
+        Map<String, Object> target = new HashMap<>();
+        target.put("object", 1);
+        target.put("array", 2);
+        Map<String, Object> patch = new HashMap<>();
+        patch.put("object", new HashMap<>(Collections.singletonMap("x", 1)));
+        patch.put("array", new ArrayList<>(Arrays.asList(1, 2)));
+
+        Patches.indexedMerge(target, patch, true, false);
+
+        assertEquals(1, ((Map<String, Object>) target.get("object")).get("x"));
+        assertEquals(Arrays.asList(1, 2), target.get("array"));
+    }
+
+    @Test
+    public void testIndexedMergeAppendsLongerArrayPatchAndLeavesEmptyPatchUntouched() {
+        List<Object> target = new ArrayList<>(Collections.singletonList(1));
+
+        Patches.indexedMerge(target, new ArrayList<>(Arrays.asList(2, 3, 4)), true, false);
+        assertEquals(Arrays.asList(2, 3, 4), target);
+
+        Patches.indexedMerge(target, new ArrayList<>(), true, false);
+        assertEquals(Arrays.asList(2, 3, 4), target);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testIndexedMergeArrayWithoutOverwriteFillsNullButPreservesOtherShapes() {
+        Map<String, Object> objectPatch = new HashMap<>(Collections.singletonMap("x", 1));
+        List<Object> arrayPatch = new ArrayList<>(Arrays.asList(7, 8));
+        List<Object> target = new ArrayList<>(Arrays.asList(1, null, 2, null, 3, null));
+        List<Object> patch = new ArrayList<>(Arrays.asList(
+                objectPatch, objectPatch, arrayPatch, arrayPatch, 5, 6));
+
+        Patches.indexedMerge(target, patch, false, false);
+
+        assertEquals(1, target.get(0));
+        assertSame(objectPatch, target.get(1));
+        assertEquals(2, target.get(2));
+        assertSame(arrayPatch, target.get(3));
+        assertEquals(3, target.get(4));
+        assertEquals(6, target.get(5));
+        assertEquals(1, ((Map<String, Object>) target.get(1)).get("x"));
+        assertEquals(Arrays.asList(7, 8), target.get(3));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testIndexedMergeDeepCopyControlsAssignedContainerAliasing() {
+        Map<String, Object> patch = new HashMap<>();
+        Map<String, Object> nested = new HashMap<>();
+        nested.put("x", 1);
+        patch.put("nested", nested);
+        Map<String, Object> copiedTarget = new HashMap<>();
+        Map<String, Object> sharedTarget = new HashMap<>();
+
+        Patches.indexedMerge(copiedTarget, patch, true, true);
+        Patches.indexedMerge(sharedTarget, patch, true, false);
+        nested.put("x", 2);
+
+        assertEquals(1, ((Map<String, Object>) copiedTarget.get("nested")).get("x"));
+        assertSame(nested, sharedTarget.get("nested"));
+        assertEquals(2, ((Map<String, Object>) sharedTarget.get("nested")).get("x"));
     }
 
 }
