@@ -328,6 +328,12 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
         return node;
     }
 
+    @Override
+    public JsonNode deepCopy(JsonNode node) {
+        _node(node);
+        return node.deepCopy();
+    }
+
     @Override public Object createObjectNode(Class<?> clazz) { return JsonNodeFactory.instance.objectNode(); }
     @Override public Object createArrayNode(Class<?> clazz) { return JsonNodeFactory.instance.arrayNode(); }
 

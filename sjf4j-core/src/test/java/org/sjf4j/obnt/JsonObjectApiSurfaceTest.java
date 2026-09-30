@@ -179,7 +179,7 @@ class JsonObjectApiSurfaceTest {
         assertEquals("ok", pojoNode.getString("code"));
         assertTrue(object.copy().nodeEquals(object));
 
-        JsonObject deepCopy = JsonObject.of("nested", JsonObject.of("k", "v")).deepcopy();
+        JsonObject deepCopy = JsonObject.of("nested", JsonObject.of("k", "v")).deepCopy();
         deepCopy.getJsonObject("nested").put("k", "changed");
         assertEquals("changed", deepCopy.getJsonObject("nested").getString("k"));
     }

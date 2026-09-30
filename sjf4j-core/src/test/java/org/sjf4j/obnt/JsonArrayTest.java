@@ -210,7 +210,7 @@ class JsonArrayTest {
 
     @Test public void testCopy() {
         JsonArray a1 = JsonArray.fromJson("[2,3,[4,[5,6]]]");
-        JsonArray a2 = a1.deepcopy();
+        JsonArray a2 = a1.deepCopy();
 
         assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInt(1));
         a1.getJsonArray(2).getJsonArray(1).set(1, 7);

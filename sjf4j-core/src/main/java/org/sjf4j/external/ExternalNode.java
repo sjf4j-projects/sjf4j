@@ -240,6 +240,22 @@ public interface ExternalNode<N> {
         return node;
     }
 
+    /**
+     * Returns a recursive copy of {@code node}.
+     *
+     * <p>Adapters for mutable object or array nodes must override this method.
+     * Immutable trees may return the original node. The default rejects mutable
+     * container shapes so framework deep-copy operations never silently alias a
+     * subtree.</p>
+     */
+    default N deepCopy(N node) {
+        JsonType type = jsonType(node);
+        if (type.isObject() || type.isArray()) {
+            throw unsupported("deepCopy");
+        }
+        return node;
+    }
+
     /** Creates a native object container. */
     default Object createObjectNode(Class<?> clazz) {
         throw unsupported("createObjectNode");

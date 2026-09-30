@@ -353,7 +353,7 @@ class JsonObjectTest {
         assertEquals(jo3, jo1);
 
         JsonObject jo4 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"haha\"],\"attr\":{\"aa\":\"bb\",\"cc\":\"dd\"}}");
-        JsonObject jo5 = jo4.deepcopy();
+        JsonObject jo5 = jo4.deepCopy();
         jo4.getJsonObject("attr").put("aa", "jj");
 //        System.out.println(jo5);
         assertEquals("jj", jo4.getJsonObject("attr").getString("aa"));

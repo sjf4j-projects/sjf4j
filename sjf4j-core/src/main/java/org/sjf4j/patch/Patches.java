@@ -41,9 +41,10 @@ public final class Patches {
      * means remove), use {@link #mergePatch(Object, Object)}.</p>
      */
     public static void indexedMerge(Object target, Object patch, boolean overwrite, boolean deepCopy) {
-        if (target == null || patch == null) return;
         JsonType targetJt = JsonType.of(target);
         JsonType patchJt = JsonType.of(patch);
+        if (targetJt.isNull() || patchJt.isNull()) return;
+
         if (targetJt.isObject() && patchJt.isObject()) {
             Nodes.forEachObject(patch, (key, subPatch) -> {
                 Object subTarget = Nodes.getInObject(target, key);
@@ -52,46 +53,46 @@ public final class Patches {
                 if (subPatchJt.isObject()) {
                     if (subTargetJt.isObject()) {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
-                    } else if (overwrite || subTarget == null) {
+                    } else if (overwrite || subTargetJt.isNull()) {
                         subPatch = deepCopy ? Sjf4j.global().copyNode(subPatch) : subPatch;
                         Nodes.putInObject(target, key, subPatch);
                     }
                 } else if (subPatchJt.isArray()) {
                     if (subTargetJt.isArray()) {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
-                    } else if (overwrite || subTarget == null) {
+                    } else if (overwrite || subTargetJt.isNull()) {
                         subPatch = _normalizeArrayPatch(subPatch, deepCopy);
                         Nodes.putInObject(target, key, subPatch);
                     }
-                } else if (overwrite || subTarget == null) {
+                } else if (overwrite || subTargetJt.isNull()) {
                     Nodes.putInObject(target, key, subPatch);
                 }
             });
         } else if (targetJt.isArray() && patchJt.isArray()) {
             int patchSize = Nodes.sizeInArray(patch);
-            boolean truncate = patchSize > 0 && Nodes.getInArray(patch, patchSize - 1) == null;
+            boolean truncate = patchSize > 0 && JsonType.of(Nodes.getInArray(patch, patchSize - 1)).isNull();
             int size = truncate ? patchSize - 1 : patchSize;
             for (int i = 0; i < size; i++) {
                 Object subPatch = Nodes.getInArray(patch, i);
-                if (subPatch == null) continue;
+                if (JsonType.of(subPatch).isNull()) continue;
                 Object subTarget = Nodes.getInArray(target, i);
                 JsonType subTargetJt = JsonType.of(subTarget);
                 JsonType subPatchJt = JsonType.of(subPatch);
                 if (subPatchJt.isObject()) {
                     if (subTargetJt.isObject()) {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
-                    } else if (overwrite || subTarget == null) {
+                    } else if (overwrite || subTargetJt.isNull()) {
                         subPatch = deepCopy ? Sjf4j.global().copyNode(subPatch) : subPatch;
                         Nodes.putInArray(target, i, subPatch);
                     }
                 } else if (subPatchJt.isArray()) {
                     if (subTargetJt.isArray()) {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
-                    } else if (overwrite || subTarget == null) {
+                    } else if (overwrite || subTargetJt.isNull()) {
                         subPatch = _normalizeArrayPatch(subPatch, deepCopy);
                         Nodes.putInArray(target, i, subPatch);
                     }
-                } else if (overwrite || subTarget == null) {
+                } else if (overwrite || subTargetJt.isNull()) {
                     Nodes.putInArray(target, i, subPatch);
                 }
             }
@@ -110,7 +111,7 @@ public final class Patches {
      */
     private static Object _normalizeArrayPatch(Object patch, boolean deepCopy) {
         int size = Nodes.sizeInArray(patch);
-        if (size == 0 || Nodes.getInArray(patch, size - 1) != null) {
+        if (size == 0 || !JsonType.of(Nodes.getInArray(patch, size - 1)).isNull()) {
             return deepCopy ? Sjf4j.global().copyNode(patch) : patch;
         }
         Object value = deepCopy ? Sjf4j.global().copyNode(patch) : Nodes.copy(patch);
@@ -156,7 +157,7 @@ public final class Patches {
         JsonType targetJt = JsonType.of(target);
         Object current = targetJt.isObject() ? target : new JsonObject();
         Nodes.forEachObject(patch, (key, subPatch) -> {
-            if (subPatch == null) {
+            if (JsonType.of(subPatch).isNull()) {
                 if (Nodes.containsInObject(current, key)) {
                     Nodes.removeInObject(current, key);
                 }

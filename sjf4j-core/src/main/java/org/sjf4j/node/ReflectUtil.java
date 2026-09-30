@@ -680,6 +680,7 @@ public final class ReflectUtil {
     public static CreatorInfo analyzeCreator(Class<?> clazz,
                                              MethodHandles.Lookup lookup) {
         Executable creator = null;
+        boolean explicitCreator = false;
         MethodHandle creatorHandle = null;
         TypeRegistry.Func1 creatorLambda1 = null;
         TypeRegistry.Func2 creatorLambda2 = null;
@@ -706,6 +707,7 @@ public final class ReflectUtil {
                     try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
                     creatorHandle = lookup.unreflectConstructor(ctor);
                     creator = ctor;
+                    explicitCreator = true;
                 } catch (IllegalAccessException e) {
                     throw new BindingException("cannot access creator constructor of " + clazz.getName(), e);
                 }
@@ -725,6 +727,7 @@ public final class ReflectUtil {
                     try { method.setAccessible(true); } catch (RuntimeException ignored) {}
                     creatorHandle = lookup.unreflect(method);
                     creator = method;
+                    explicitCreator = true;
                 } catch (IllegalAccessException e) {
                     throw new BindingException("cannot access creator method '" + method.getName() +
                             "' of " + clazz.getName(), e);
@@ -832,8 +835,10 @@ public final class ReflectUtil {
             // The defined creator is no-args Constructor
             noArgsCtor = creatorHandle;
             noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
-            creator = null;
-            creatorHandle = null;
+            if (!explicitCreator) {
+                creator = null;
+                creatorHandle = null;
+            }
         }
 
         return new CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,

@@ -25,6 +25,7 @@ class NumbersTest {
         assertEquals(12L, Numbers.toLong(new BigInteger("12")));
         assertEquals(12L, Numbers.toLong(new BigDecimal("12")));
         assertThrows(ArithmeticException.class, () -> Numbers.toLong(Double.MAX_VALUE));
+        assertThrows(ArithmeticException.class, () -> Numbers.toLong(0x1.0p63));
         assertThrows(ArithmeticException.class, () -> Numbers.toLong(new BigInteger("9223372036854775808")));
         assertThrows(ArithmeticException.class, () -> Numbers.toLong(new BigDecimal("9223372036854775808")));
 
@@ -57,6 +58,7 @@ class NumbersTest {
         assertEquals(BigInteger.TEN, Numbers.toBigInteger(BigInteger.TEN));
         assertEquals(BigInteger.TEN, Numbers.toBigInteger(new BigDecimal("10.9")));
         assertEquals(BigInteger.valueOf(12), Numbers.toBigInteger(12.8d));
+        assertEquals(BigDecimal.valueOf(1e100d).toBigInteger(), Numbers.toBigInteger(1e100d));
         assertThrows(ArithmeticException.class, () -> Numbers.toBigInteger(Double.NEGATIVE_INFINITY));
 
         assertEquals(new BigDecimal("10.5"), Numbers.toBigDecimal(new BigDecimal("10.5")));
@@ -164,12 +166,25 @@ class NumbersTest {
         assertTrue(Numbers.compare(new BigInteger("12"), 11L) > 0);
         assertEquals(0, Numbers.compare(12, 12L));
         assertEquals(0, Numbers.compare(new BigDecimal("1.50"), 1.5d));
+        assertTrue(Numbers.compare(BigInteger.ONE, new BigDecimal("1.5")) < 0);
 
-        assertEquals(Long.hashCode(12L), Numbers.hash(12));
+        assertEquals(Numbers.hash(12L), Numbers.hash(12));
         assertEquals(Double.hashCode(Double.NaN), Numbers.hash(Double.NaN));
-        assertEquals(Long.hashCode(12L), Numbers.hash(12.0d));
-        assertEquals(BigInteger.TEN.hashCode(), Numbers.hash(BigInteger.TEN));
-        assertEquals(new BigDecimal("1.5").hashCode(), Numbers.hash(new BigDecimal("1.50")));
+        assertEquals(Numbers.hash(12L), Numbers.hash(12.0d));
+        assertEquals(Numbers.hash(BigInteger.TEN), Numbers.hash(new BigDecimal("10.0")));
+        assertEquals(Numbers.hash(new BigDecimal("1.5")), Numbers.hash(new BigDecimal("1.50")));
+
+        long[] integralValues = {Long.MIN_VALUE, -1_000_000L, -100L, -1L, 0L, 1L, 100L,
+                1_000_000L, Long.MAX_VALUE};
+        for (long value : integralValues) {
+            int expected = Long.hashCode(value);
+            assertEquals(expected, Numbers.hash(value));
+            assertEquals(expected, Numbers.hash(BigInteger.valueOf(value)));
+            assertEquals(expected, Numbers.hash(new BigDecimal(value + ".0")));
+            if (value != Long.MAX_VALUE) {
+                assertEquals(expected, Numbers.hash((double) value));
+            }
+        }
 
         Number custom = new Number() {
             @Override

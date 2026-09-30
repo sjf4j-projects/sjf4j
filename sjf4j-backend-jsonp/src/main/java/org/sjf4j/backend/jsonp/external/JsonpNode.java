@@ -222,6 +222,12 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
         return node;
     }
 
+    @Override
+    public JsonValue deepCopy(JsonValue node) {
+        _value(node);
+        return node;
+    }
+
     private static JsonObject _object(JsonValue node) {
         _value(node);
         if (node instanceof JsonObject) return (JsonObject) node;

@@ -371,6 +371,11 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
+    public JsonElement deepCopy(JsonElement node) {
+        return node.deepCopy();
+    }
+
+    @Override
     public Object createObjectNode(Class<?> clazz) {
         return new JsonObject();
     }

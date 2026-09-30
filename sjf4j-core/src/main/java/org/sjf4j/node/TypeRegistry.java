@@ -17,7 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -64,9 +63,6 @@ public final class TypeRegistry {
      * @param mustPojo when true, results without object binding are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
-        if (clazz == Optional.class) {
-            throw new BindingException("unsupported node type '" + clazz.getName() + "'");
-        }
         if (_fastNoneInfo(clazz)) return TypeInfo.NONE;
 
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
@@ -90,7 +86,7 @@ public final class TypeRegistry {
         ValueInfo[] valueInfos = ValueRegistry.resolve(clazz);
         if (valueInfos != null) {
             if (mustPojo) {
-                throw new BindingException("class '" + clazz.getName() + "' is a NodeValue, not a POJO");
+                throw new BindingException("class '" + clazz.getName() + "' is a value node, not a POJO");
             }
             ti = new TypeInfo(clazz, valueInfos, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -108,7 +104,7 @@ public final class TypeRegistry {
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
             if (mustPojo) {
-                throw new BindingException("class '" + clazz.getName() + "' is a container, not a POJO");
+                throw new BindingException("class '" + clazz.getName() + "' is a container node, not a POJO");
             }
             ti = new TypeInfo(clazz, null, null, ci, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);

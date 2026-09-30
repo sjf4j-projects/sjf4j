@@ -240,7 +240,10 @@ public final class OneOfIO {
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, ci.argTypes[argIdx]);
-            Object value = NodeMapper.convert(rawValue, argType, false, context);
+            ValueInfo codec = ci.argValueCodecs[argIdx];
+            Object value = rawValue != null && codec != null
+                    ? codec.rawToValue(rawValue)
+                    : NodeMapper.convert(rawValue, argType, false, context);
             state.acceptCtorArg(argIdx, value);
             return;
         }
@@ -248,7 +251,9 @@ public final class OneOfIO {
         FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
         if (fi != null) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
-            Object value = NodeMapper.convert(rawValue, argType, false, context);
+            Object value = rawValue != null && fi.valueInfo != null
+                    ? fi.valueInfo.rawToValue(rawValue)
+                    : NodeMapper.convert(rawValue, argType, false, context);
             if (state.isCreated()) {
                 fi.invokeSetter(state.pojo(), value);
             } else {

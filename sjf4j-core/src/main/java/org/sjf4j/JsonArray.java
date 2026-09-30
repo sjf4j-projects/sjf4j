@@ -978,12 +978,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Creates a deep copy of this JsonArray.
      * <p>
-     * Delegates to {@link Sjf4j#copyNode(Object)} and {@link NodeMapper}; array
+     * Delegates to {@link Sjf4j#copyNode} and {@link NodeMapper}; array
      * elements are copied structurally. Unsupported values, including backend-native
      * or external nodes, may be retained by reference.
      */
-    public JsonArray deepcopy() {
-        return Sjf4j.global().copyNode(this);
+    public JsonArray deepCopy() {
+        return Sjf4j.global().copyNode(this, true);
     }
 
 }

@@ -9,11 +9,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.backend.jackson2.external.Jackson2ExternalProvider;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.path.JsonPath;
+import org.sjf4j.patch.Patches;
 
 import java.io.File;
 import java.math.BigDecimal;
@@ -179,6 +181,23 @@ class Jackson2NodeTest {
         assertNull(JsonPath.parse("$.value").ensurePutIfAbsent(
                 nullObject, JsonNodeFactory.instance.textNode("replacement")));
         assertEquals("replacement", nullObject.get("value").textValue());
+    }
+
+    @Test
+    void coreOperationsPreserveNativeJsonSemantics() throws Exception {
+        ObjectNode number = JsonNodeFactory.instance.objectNode().put("value", 1);
+        assertTrue(Nodes.equals(number.get("value"), 1));
+        assertEquals(Nodes.hash(number.get("value")), Nodes.hash(1));
+
+        ObjectNode source = object("{\"child\":{\"value\":1}}");
+        ObjectNode copy = Sjf4j.global().copyNode(source);
+        ((ObjectNode) copy.get("child")).put("value", 2);
+        assertEquals(1, source.get("child").get("value").intValue());
+
+        ObjectNode target = object("{\"a\":1,\"b\":2}");
+        Patches.mergePatch(target, object("{\"a\":null}"));
+        assertFalse(target.has("a"));
+        assertEquals(2, target.get("b").intValue());
     }
 
     @SuppressWarnings("unchecked")

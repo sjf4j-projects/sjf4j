@@ -771,14 +771,18 @@ public final class Nodes {
      */
     public static boolean equals(Object source, Object target) {
         if (target == source) return true;
-        if (source == null || target == null) return false;
 
         JsonType jtSource = JsonType.of(source);
         JsonType jtTarget = JsonType.of(target);
+        if (jtSource.isNull() || jtTarget.isNull()) {
+            return jtSource.isNull() && jtTarget.isNull();
+        }
         if (jtSource.isNumber() && jtTarget.isNumber()) {
-            return Numbers.compare((Number) source, (Number) target) == 0;
+            return Numbers.compare(toNumber(source), toNumber(target)) == 0;
         } else if (jtSource.isString() && jtTarget.isString()) {
             return toString(source).equals(toString(target));
+        } else if (jtSource.isBoolean() && jtTarget.isBoolean()) {
+            return toBoolean(source).equals(toBoolean(target));
         } else if (jtSource.isValue() && jtTarget.isValue()) {
             return source.equals(target);
         } else if (jtSource.isObject() && jtTarget.isObject()) {
@@ -813,10 +817,14 @@ public final class Nodes {
     public static int hash(Object node) {
         if (node == null) return 0;
         JsonType jt = JsonType.of(node);
-        if (jt.isNumber()) {
-            return Numbers.hash((Number) node);
-        } else if (jt.isValue()) {
-            return node.hashCode();
+        if (jt.isNull()) {
+            return 0;
+        } else if (jt.isNumber()) {
+            return Numbers.hash(toNumber(node));
+        } else if (jt.isString()) {
+            return toString(node).hashCode();
+        } else if (jt.isBoolean()) {
+            return toBoolean(node).hashCode();
         } else if (jt.isObject()) {
             final int[] hash = {1};
             forEachObject(node, (k, v) -> {
@@ -825,15 +833,13 @@ public final class Nodes {
             });
             return hash[0];
         } else if (jt.isArray()) {
-            int hash = 1;
-            Iterator<Object> it = iteratorInArray(node);
-            while (it.hasNext()) {
-                Object item = it.next();
-                hash = 31 * hash + hash(item);
-            }
-            return hash;
+            final int[] hash = {1};
+            forEachArray(node, (i, v) -> {
+                hash[0] = 31 * hash[0] + hash(v);
+            });
+            return hash[0];
         } else if (jt.isUnknown()) {
-            return Objects.hashCode(node);
+            return node.hashCode();
         }
         return 0;
     }

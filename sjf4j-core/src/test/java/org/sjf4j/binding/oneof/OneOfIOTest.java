@@ -3,6 +3,7 @@ package org.sjf4j.binding.oneof;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
@@ -11,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.time.Instant;
 
 class OneOfIOTest {
 
@@ -130,6 +133,14 @@ class OneOfIOTest {
                 "{\"pet\":{\"kind\":\"dog\",\"kind\":\"cat\"}}", Container.class));
     }
 
+    @Test
+    void appliesPropertyCodecsToFieldsBufferedBeforeTheDiscriminator() {
+        CodecContainer container = (CodecContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+                "{\"pet\":{\"createdAt\":1704067200000,\"kind\":\"dog\"}}", CodecContainer.class);
+
+        assertEquals(Instant.ofEpochMilli(1704067200000L), container.pet.createdAt);
+    }
+
     /** Retained SJF4J semantics: pending fields, unknown dynamic fields, and arrays of a type-level OneOf all bind normally. */
     @Test
     void preservesUnknownSubtypeFieldsAndBindsOneOfContainerElements() {
@@ -166,4 +177,13 @@ class OneOfIOTest {
         public int after;
     }
     static class AnimalList { public java.util.List<Animal> pets; }
+    static class CodecContainer {
+        @OneOf(value = {@OneOf.Mapping(value = CodecDog.class, when = "dog")}, key = "kind")
+        public CodecAnimal pet;
+    }
+    @OneOf(value = {@OneOf.Mapping(value = CodecDog.class, when = "dog")}, key = "kind")
+    static class CodecAnimal extends JsonObject {
+        @NodeProperty(codecName = "epochMillis") public Instant createdAt;
+    }
+    static class CodecDog extends CodecAnimal {}
 }

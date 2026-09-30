@@ -1128,8 +1128,8 @@ public class JsonObject extends JsonContainer {
      * Declared and dynamic entries are copied structurally; unsupported values,
      * including backend-native or external nodes, may be retained by reference.
      */
-    public JsonObject deepcopy() {
-        return Sjf4j.global().copyNode(this);
+    public JsonObject deepCopy() {
+        return Sjf4j.global().copyNode(this, true);
     }
 
     /*

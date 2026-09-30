@@ -358,13 +358,13 @@ public final class Sjf4j {
      * Creates a recursive copy of supported OBNT structures.
      * <p>
      * Delegates to {@link NodeMapper#deepcopy(Object)}. Unsupported values,
-     * including backend-native or external node representations, may be returned
-     * unchanged.
+     * including external mutable containers without a deep-copy implementation,
+     * fail with {@link org.sjf4j.exception.BindingException}.
      */
     @SuppressWarnings("unchecked")
-    public <T> T copyNode(T node) {
+    public <T> T copyNode(T node, boolean deepCopy) {
         if (node == null) return null;
-        return (T) NodeMapper.convert(node, node.getClass(), true, runtimeContext);
+        return (T) NodeMapper.convert(node, node.getClass(), deepCopy, runtimeContext);
     }
 
     /**

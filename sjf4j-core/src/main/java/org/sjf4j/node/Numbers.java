@@ -60,7 +60,7 @@ public final class Numbers {
      * @return true if the number is within Long range, false otherwise
      */
     private static boolean inLongRange(double number) {
-        return (number >= Long.MIN_VALUE) && (number <= Long.MAX_VALUE);
+        return Double.isFinite(number) && number >= Long.MIN_VALUE && number < 0x1.0p63;
     }
 
 
@@ -206,7 +206,7 @@ public final class Numbers {
             if (!Double.isFinite(d)) {
                 throw new ArithmeticException("cannot convert non-finite floating-point '" + number + "' to BigInteger");
             }
-            return BigInteger.valueOf((long) d);
+            return BigDecimal.valueOf(d).toBigInteger();
         }
         return BigInteger.valueOf(number.longValue());
     }
@@ -221,7 +221,7 @@ public final class Numbers {
         if (number instanceof Double || number instanceof Float) {
             return BigDecimal.valueOf(number.doubleValue());
         }
-        return BigDecimal.valueOf(number.longValue());
+        return new BigDecimal(number.toString());
     }
 
     /**
@@ -461,10 +461,10 @@ public final class Numbers {
     public static int compare(Number source, Number target) {
         Asserts.notNull(source, "source");
         Asserts.notNull(target, "target");
-        if (source instanceof BigInteger || target instanceof BigInteger) {
-            return toBigInteger(source).compareTo(toBigInteger(target));
-        }
         if (isIntegralType(source) && isIntegralType(target)) {
+            if (source instanceof BigInteger || target instanceof BigInteger) {
+                return toBigInteger(source).compareTo(toBigInteger(target));
+            }
             return Long.compare(source.longValue(), target.longValue());
         }
         return toBigDecimal(source).compareTo(toBigDecimal(target));
@@ -474,31 +474,32 @@ public final class Numbers {
      * Computes a stable numeric hash across number implementations.
      */
     public static int hash(Number n) {
-        if (n instanceof Integer || n instanceof Long || n instanceof Short || n instanceof Byte) {
-            long v = n.longValue();
-            return Long.hashCode(v);
+        if (isIntegralType(n)) {
+            if (n instanceof BigInteger) {
+                BigInteger value = (BigInteger) n;
+                if (value.bitLength() > 63) {
+                    return new BigDecimal(value).stripTrailingZeros().hashCode();
+                }
+            }
+            return Long.hashCode(n.longValue());
         }
-
+        if (n instanceof BigDecimal) {
+            BigDecimal value = ((BigDecimal) n).stripTrailingZeros();
+            if (value.scale() <= 0 && inLongRange(value)) {
+                return Long.hashCode(value.longValue());
+            }
+            return value.hashCode();
+        }
         if (n instanceof Float || n instanceof Double) {
             double d = n.doubleValue();
             if (Double.isNaN(d) || Double.isInfinite(d)) {
                 return Double.hashCode(d);
             }
-            long lv = (long) d;
-            if (d == lv) return Long.hashCode(lv);
+            if (inLongRange(d) && d == Math.rint(d)) {
+                return Long.hashCode((long) d);
+            }
         }
-
-        if (n instanceof BigInteger) {
-            return n.hashCode();
-        }
-
-        if (n instanceof BigDecimal) {
-            BigDecimal bd = ((BigDecimal) n).stripTrailingZeros();
-            return bd.hashCode();
-        }
-
-        BigDecimal bd = new BigDecimal(n.toString()).stripTrailingZeros();
-        return bd.hashCode();
+        return toBigDecimal(n).stripTrailingZeros().hashCode();
     }
 
 }

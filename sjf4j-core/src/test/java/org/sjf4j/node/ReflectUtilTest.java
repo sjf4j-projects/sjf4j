@@ -133,6 +133,24 @@ class ReflectUtilTest {
     }
 
     @Test
+    void analyzeCreator_preservesExplicitZeroArgumentFactoryMetadata() {
+        CreatorInfo ci = ReflectUtil.analyzeCreator(ZeroArgFactoryPojo.class, MethodHandles.lookup());
+
+        assertNotNull(ci.argsCreator);
+        assertTrue(TypeRegistry.registerPojoOrElseThrow(ZeroArgFactoryPojo.class).hasCreatorBinding);
+        assertTrue(ci.newPojoNoArgs() instanceof ZeroArgFactoryPojo);
+    }
+
+    static class ZeroArgFactoryPojo {
+        private ZeroArgFactoryPojo() {}
+
+        @NodeCreator
+        static ZeroArgFactoryPojo create() {
+            return new ZeroArgFactoryPojo();
+        }
+    }
+
+    @Test
     void analyzeCreator_throwsOnMultipleCreators() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         NodeException ex = assertThrows(NodeException.class,

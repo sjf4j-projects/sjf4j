@@ -150,7 +150,7 @@ class JsonArrayApiSurfaceTest {
         assertNotSame(arrayNested, copiedList.get(0));
         assertEquals(1, array.stream().count());
 
-        JsonArray deepCopy = JsonArray.of(JsonObject.of("k", "v")).deepcopy();
+        JsonArray deepCopy = JsonArray.of(JsonObject.of("k", "v")).deepCopy();
         array.getJsonObject(6).put("k", "changed");
         assertEquals("v", deepCopy.getJsonObject(0).getString("k"));
 
