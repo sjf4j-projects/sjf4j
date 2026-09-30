@@ -78,8 +78,8 @@ public final class StreamingIO {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(nodeBoxed);
-                ValueInfo vci = ti.requireValueInfo(valueFormat);
-                return readValueWithCodec(reader, nodeType, nodeBoxed, vci, context);
+                ValueInfo vi = ti.requireValueInfo(valueFormat);
+                return readValueWithCodec(reader, nodeType, nodeBoxed, vi, context);
             }
 
             StreamingReader.Token token = reader.peekToken();
@@ -169,9 +169,9 @@ public final class StreamingIO {
 
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vci = ti.requireValueInfo(valueFormat);
+            ValueInfo vi = ti.requireValueInfo(valueFormat);
             Boolean raw = reader.nextBooleanValue();
-            return vci.rawToValue(raw);
+            return vi.rawToValue(raw);
         }
         throw new BindingException("cannot read boolean value into type '" + nodeBoxed + "'");
     }
@@ -196,9 +196,9 @@ public final class StreamingIO {
 
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vci = ti.requireValueInfo(valueFormat);
+            ValueInfo vi = ti.requireValueInfo(valueFormat);
             Number n = reader.nextNumber();
-            return vci.rawToValue(n);
+            return vi.rawToValue(n);
         }
         throw new BindingException("cannot read number value into type '" + nodeBoxed + "'");
     }
@@ -222,9 +222,9 @@ public final class StreamingIO {
         }
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vci = ti.requireValueInfo(valueFormat);
+            ValueInfo vi = ti.requireValueInfo(valueFormat);
             String raw = reader.nextString();
-            return vci.rawToValue(raw);
+            return vi.rawToValue(raw);
         }
         throw new BindingException("cannot read string value into type '" + nodeBoxed + "'");
     }
@@ -257,9 +257,9 @@ public final class StreamingIO {
 
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vci = ti.requireValueInfo(valueFormat);
+            ValueInfo vi = ti.requireValueInfo(valueFormat);
             Map<String, Object> map = readRawObject(reader);
-            return vci.rawToValue(map);
+            return vi.rawToValue(map);
         }
 
         PojoInfo pi = ti.pojoInfo;
@@ -548,9 +548,9 @@ public final class StreamingIO {
 
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vci = ti.requireValueInfo(valueFormat);
+            ValueInfo vi = ti.requireValueInfo(valueFormat);
             List<Object> list = readRawArray(reader);
-            return vci.rawToValue(list);
+            return vi.rawToValue(list);
         }
 
         throw new BindingException("cannot read array value into type '" + nodeBoxed + "'");
@@ -918,12 +918,12 @@ public final class StreamingIO {
 //
 //            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
 //            String valueFormat = context.defaultValueFormat(rawClazz);
-//            NodeValueInfo vci = ti.getNodeValueInfo(valueFormat);
-//            if (vci == null) {
-//                vci = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
+//            NodeValueInfo vi = ti.getNodeValueInfo(valueFormat);
+//            if (vi == null) {
+//                vi = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
 //            }
-//            if (vci != null) {
-//                Object raw = vci.valueToRaw(node);
+//            if (vi != null) {
+//                Object raw = vi.valueToRaw(node);
 //                writeNode(writer, raw, context);
 //                return;
 //            }

@@ -27,7 +27,7 @@ public enum JsonType {
     /**
      * Resolves the JSON-semantic shape from a {@link NodeKind}.
      * <p>
-     * {@link NodeKind#VALUE_CODEC} resolves to {@link #UNKNOWN} because the
+     * {@link NodeKind#VALUE_BINDING} resolves to {@link #UNKNOWN} because the
      * configured value binding's raw OBNT representation is not encoded in {@code NodeKind}.
      */
     public static JsonType of(NodeKind nodeKind) {
@@ -127,9 +127,9 @@ public enum JsonType {
         return this == ARRAY;
     }
     /**
-     * Returns true when this type is a JSON primitive/value.
+     * Returns true when this type is a scalar JSON shape, including null.
      */
-    public boolean isValue() {
+    public boolean isScalar() {
         return this == STRING || this == NUMBER || this == INTEGER || this == BOOLEAN || this == NULL;
     }
     /**

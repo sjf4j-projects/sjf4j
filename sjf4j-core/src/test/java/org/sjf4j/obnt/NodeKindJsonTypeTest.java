@@ -66,7 +66,7 @@ class NodeKindJsonTypeTest {
     void testNodeKindManagedTypes() {
         assertEquals(NodeKind.VALUE_NULL, NodeKind.of(null));
         assertEquals(NodeKind.OBJECT_POJO, NodeKind.of(new PlainPojo()));
-        assertEquals(NodeKind.VALUE_CODEC, NodeKind.of(URI.create("https://example.com")));
+        assertEquals(NodeKind.VALUE_BINDING, NodeKind.of(URI.create("https://example.com")));
     }
 
     @Test
@@ -103,13 +103,13 @@ class NodeKindJsonTypeTest {
 
         assertTrue(JsonType.OBJECT.isObject());
         assertTrue(JsonType.ARRAY.isArray());
-        assertTrue(JsonType.STRING.isValue());
+        assertTrue(JsonType.STRING.isScalar());
         assertTrue(JsonType.STRING.isString());
         assertTrue(JsonType.NUMBER.isNumber());
         assertTrue(JsonType.INTEGER.isNumber());
         assertTrue(JsonType.BOOLEAN.isBoolean());
         assertTrue(JsonType.NULL.isNull());
         assertTrue(JsonType.UNKNOWN.isUnknown());
-        assertFalse(JsonType.OBJECT.isValue());
+        assertFalse(JsonType.OBJECT.isScalar());
     }
 }

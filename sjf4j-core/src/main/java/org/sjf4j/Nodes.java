@@ -781,8 +781,6 @@ public final class Nodes {
             return toString(source).equals(toString(target));
         } else if (jtSource.isBoolean() && jtTarget.isBoolean()) {
             return toBoolean(source).equals(toBoolean(target));
-        } else if (jtSource.isValue() && jtTarget.isValue()) {
-            return source.equals(target);
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
             return !anyMatchInObject(source, (k, subSource) -> {

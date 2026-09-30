@@ -279,6 +279,11 @@ public final class Jackson2ReaderV2 implements StreamingReaderV2 {
         JsonToken current = parser.currentToken();
         _requireValue("value", current);
         if (current == JsonToken.START_OBJECT || current == JsonToken.START_ARRAY) {
+            Container container = containers.peek();
+            if (container != null && container.atStart
+                    && container.object == (current == JsonToken.START_OBJECT)) {
+                throw new IOException("Cannot skip a container that has already been entered");
+            }
             parser.skipChildren();
         }
     }

@@ -118,17 +118,17 @@ public final class InstancedNode {
      */
     static InstancedNode infer(Object node, InstancedNode reusedLeaf) {
         boolean encoded = false;
-        NodeKind nodeKind = NodeKind.of(node);
-        if (nodeKind == NodeKind.VALUE_CODEC) {
-            ValueInfo vci = TypeRegistry.registerTypeInfo(node.getClass()).valueInfos[0];
-            if (vci != null) {
-                node = vci.valueToRaw(node);
+        NodeKind kind = NodeKind.of(node);
+        if (kind == NodeKind.VALUE_BINDING) {
+            ValueInfo vi = TypeRegistry.registerTypeInfo(node.getClass()).valueInfos[0];
+            if (vi != null) {
+                node = vi.valueToRaw(node);
                 encoded = true;
-                nodeKind = NodeKind.of(node);
+                kind = NodeKind.of(node);
             }
         }
-        JsonType jsonType = JsonType.of(nodeKind);
-        if (!encoded && jsonType.isValue() && reusedLeaf != null) {
+        JsonType jsonType = JsonType.of(kind);
+        if (!encoded && jsonType.isScalar() && reusedLeaf != null) {
             return reusedLeaf.reuse(node, jsonType, encoded);
         }
         return new InstancedNode(node, jsonType, encoded);

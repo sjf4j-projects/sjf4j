@@ -35,8 +35,14 @@ public enum NodeKind {
     VALUE_BOOLEAN,
     VALUE_BOOLEAN_EXTERNAL,
 
-    /** Represents a {@code @NodeValue} logical value node with a registered {@link ValueCodec} binding. */
-    VALUE_CODEC,
+    /**
+     * A logical value node represented through a configured value binding.
+     *
+     * <p>The binding may be a {@link ValueCodec} or {@code @NodeValue}
+     * conversion methods. Its raw OBNT representation may have scalar,
+     * object, or array JSON shape.
+     */
+    VALUE_BINDING,
 
     /** Represents a {@link Map} object. */
     OBJECT_MAP,
@@ -78,7 +84,7 @@ public enum NodeKind {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueInfos != null) {
-            return NodeKind.VALUE_CODEC;
+            return NodeKind.VALUE_BINDING;
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
         } else if (ti.externalNode != null) {
@@ -151,7 +157,7 @@ public enum NodeKind {
 
     public boolean isValue() {
         return isNumber() || isString() || isBoolean() || isNull()
-                || this == VALUE_CODEC;
+                || this == VALUE_BINDING;
     }
 
     public boolean isObject() {

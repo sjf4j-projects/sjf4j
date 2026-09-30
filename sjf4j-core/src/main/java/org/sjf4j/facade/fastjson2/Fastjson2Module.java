@@ -72,9 +72,9 @@ public interface Fastjson2Module {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueInfo vci = ti.getValueInfo(valueFormat);
-                if (vci != null) {
-                    return new NodeValueReader<>(vci);
+                ValueInfo vi = ti.getValueInfo(valueFormat);
+                if (vi != null) {
+                    return new NodeValueReader<>(vi);
                 }
             }
             if (ti.requiresPojoReader()) {
@@ -333,9 +333,9 @@ public interface Fastjson2Module {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(objectClass);
-                ValueInfo vci = ti.getValueInfo(valueFormat);
-                if (vci != null) {
-                    return new NodeValueWriter<>(vci);
+                ValueInfo vi = ti.getValueInfo(valueFormat);
+                if (vi != null) {
+                    return new NodeValueWriter<>(vi);
                 }
             }
             if (ti.requiresPojoWriter()) {
