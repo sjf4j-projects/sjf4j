@@ -106,13 +106,14 @@ public final class OfficialTest {
     }
 
     private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow) throws Exception {
-        TestSuiteReport suite = new TestSuiteReport();
+        TestSuiteReport suite = new TestSuiteReport(registry.getDefaultDialect(), dir);
         Files.walk(dir, 1)
                 .filter(p -> p.toString().endsWith(".json"))
                 .forEach(p -> runTestFile(registry, p, strict, suite, true, null, null));
         printSuiteReport(suite);
         if (canThrow && (suite.error > 0 || suite.failed > 0)) {
-            throw new RuntimeException("JSON Schema Official tests failed " + suite.failed + " and error " + suite.error);
+            throw new RuntimeException("JSON Schema Official tests failed for " + suite.dialect + " in " + suite.directory
+                    + ": " + suite.failed + " failed and " + suite.error + " errors");
         }
     }
 
@@ -231,8 +232,15 @@ public final class OfficialTest {
 
 
     static class TestSuiteReport {
+        final SchemaDialect dialect;
+        final Path directory;
         int total, passed, failed, error;
         Map<String, TestFileReport> fileMap = new LinkedHashMap<>();
+
+        TestSuiteReport(SchemaDialect dialect, Path directory) {
+            this.dialect = dialect;
+            this.directory = directory;
+        }
 
         TestFileReport file(String name) {
             return fileMap.computeIfAbsent(name, TestFileReport::new);
@@ -263,8 +271,9 @@ public final class OfficialTest {
 
     private static void printSuiteReport(TestSuiteReport s) {
         System.out.println("================================");
-        System.out.println(" JSON Schema Test Summary");
+        System.out.println(" JSON Schema Test Summary [" + s.dialect + "]");
         System.out.println("================================");
+        System.out.println("Directory: " + s.directory);
         System.out.println("Total : " + s.total);
         System.out.println("Passed: " + s.passed);
         System.out.println("Failed: " + s.failed);

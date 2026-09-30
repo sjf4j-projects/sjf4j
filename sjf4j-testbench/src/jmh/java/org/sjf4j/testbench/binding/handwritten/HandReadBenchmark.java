@@ -39,16 +39,16 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class HandReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{HandReadBenchmark.class.getName()});
-//        Main.main(new String[]{HandReadBenchmark.class.getName() + ".json_gson"});
+//        Main.main(new String[]{HandReadBenchmark.class.getName()});
+        Main.main(new String[]{HandReadBenchmark.class.getName() + ".json_jackson"});
     }
 
     // Same User fixture as HandWriteBenchmark, including its Address and Friend values.
