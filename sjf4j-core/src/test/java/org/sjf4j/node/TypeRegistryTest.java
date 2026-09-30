@@ -27,7 +27,6 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
-import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.fixture.JsonObjectPersonFixture;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueCodec;
@@ -40,7 +39,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,7 +77,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testRegisterPojo1() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
         assertEquals(4, pi.propertyCount);
@@ -93,7 +91,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testInheritedFieldSameKeyChildWins() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildSameKey.class);
         assertNotNull(pi.properties.get("key"));
         assertEquals(int.class, pi.properties.get("key").type);
 
@@ -139,7 +137,7 @@ public class TypeRegistryTest {
     @Test
     public void testInvoke1() {
         Person p1 = new Person();
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(Person.class);
         FieldInfo fi = pi.properties.get("name");
 
         fi.invokeSetter(p1, "hahaha");

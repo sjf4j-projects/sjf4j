@@ -5,6 +5,9 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.fixture.JsonObjectPersonFixture.Baby;
 import org.sjf4j.fixture.JsonObjectPersonFixture.Person;
@@ -49,7 +52,7 @@ class NodeMapperTest {
                 JsonObject.of("name", "A", "age", 7),
                 JsonObject.of("name", "B", "age", 8));
 
-        List<User> fromReference = NodeMapper.convert(node, reference, false);
+        List<User> fromReference = (List<User>) NodeMapper.convert(node, reference.getType(), false);
         List<User> fromReferenceWithContext =
                 (List<User>) NodeMapper.convert(node, reference.getType(), false, RuntimeContext.EMPTY);
         Type type = reference.getType();
@@ -71,8 +74,8 @@ class NodeMapperTest {
                         JsonObject.of("name", "A", "age", 7),
                         JsonObject.of("name", "B", "age", 8)));
 
-        Envelope<List<User>> result = NodeMapper.convert(node,
-                new TypeReference<Envelope<List<User>>>() {}, false);
+        Envelope<List<User>> result = (Envelope<List<User>>) NodeMapper.convert(node,
+                new TypeReference<Envelope<List<User>>>() {}.getType(), false);
 
         assertEquals(200, result.code);
         assertInstanceOf(User.class, result.body.get(0));
@@ -83,16 +86,16 @@ class NodeMapperTest {
     void convertHandlesPojoMapArraySetAndJsonNodeStructures() {
         Profile source = profile();
 
-        Map<String, Object> map = NodeMapper.convert(source,
-                new TypeReference<Map<String, Object>>() {}, false);
-        JsonObject json = NodeMapper.convert(map, JsonObject.class, false);
-        Profile rebuilt = NodeMapper.convert(json, Profile.class, false);
-        String[] names = NodeMapper.convert(JsonArray.of("A", "B"), String[].class, false);
-        Set<Integer> values = NodeMapper.convert(new int[]{1, 2, 2},
-                new TypeReference<Set<Integer>>() {}, false);
-        List<String> ordered = NodeMapper.convert(
+        Map<String, Object> map = (Map<String, Object>) NodeMapper.convert(source,
+                new TypeReference<Map<String, Object>>() {}.getType(), false);
+        JsonObject json = (JsonObject) NodeMapper.convert(map, JsonObject.class, false);
+        Profile rebuilt = (Profile) NodeMapper.convert(json, Profile.class, false);
+        String[] names = (String[]) NodeMapper.convert(JsonArray.of("A", "B"), String[].class, false);
+        Set<Integer> values = (Set<Integer>) NodeMapper.convert(new int[]{1, 2, 2},
+                new TypeReference<Set<Integer>>() {}.getType(), false);
+        List<String> ordered = (List<String>) NodeMapper.convert(
                 new LinkedHashSet<>(Arrays.asList("first", "second")),
-                new TypeReference<List<String>>() {}, false);
+                new TypeReference<List<String>>() {}.getType(), false);
 
         assertEquals("Ada", map.get("name"));
         assertInstanceOf(JsonObject.class, json);
@@ -105,11 +108,11 @@ class NodeMapperTest {
 
     @Test
     void convertHandlesEmptyContainersAndNullMembers() {
-        Profile empty = NodeMapper.convert(JsonObject.of(
+        Profile empty = (Profile) NodeMapper.convert(JsonObject.of(
                 "aliases", JsonArray.of(),
                 "scores", JsonArray.of(),
                 "ranks", JsonArray.of()), Profile.class, false);
-        Profile nullable = NodeMapper.convert(JsonObject.of(
+        Profile nullable = (Profile) NodeMapper.convert(JsonObject.of(
                 "name", null,
                 "aliases", JsonArray.of("Ada", null),
                 "details", null), Profile.class, false);
@@ -128,7 +131,7 @@ class NodeMapperTest {
 
         assertSame(source, NodeMapper.convert(source, Profile.class, false));
 
-        Profile copied = NodeMapper.convert(source, source.getClass(), true);
+        Profile copied = (Profile) NodeMapper.convert(source, source.getClass(), true);
 
         assertNotSame(source, copied);
         assertNotSame(source.aliases, copied.aliases);
@@ -180,10 +183,19 @@ class NodeMapperTest {
     void convertReportsTheNestedPathForAnIncompatibleScalar() {
         BindingException error = assertThrows(BindingException.class, () ->
                 NodeMapper.convert(JsonArray.of(1, true),
-                        new TypeReference<List<Integer>>() {}, false));
+                        new TypeReference<List<Integer>>() {}.getType(), false));
 
         assertTrue(error.hasPathSegment());
         assertTrue(error.getMessage().contains("$[1]"));
+    }
+
+    @Test
+    void convertDecodesNullWithNodeValue() {
+        NullValue root = (NullValue) NodeMapper.convert(null, NullValue.class, false);
+        NullValueHolder holder = (NullValueHolder) NodeMapper.convert(JsonObject.of("value", null), NullValueHolder.class, false);
+
+        assertEquals("<null>", root.value);
+        assertEquals("<null>", holder.value.value);
     }
 
     private static Profile profile() {
@@ -211,6 +223,27 @@ class NodeMapperTest {
     static class Envelope<T> {
         public int code;
         public T body;
+    }
+
+    @NodeValue
+    static class NullValue {
+        final String value;
+
+        NullValue(String value) {
+            this.value = value;
+        }
+
+        @ValueToRaw String encode() {
+            return value;
+        }
+
+        @RawToValue static NullValue decode(String raw) {
+            return new NullValue(raw == null ? "<null>" : raw);
+        }
+    }
+
+    static class NullValueHolder {
+        public NullValue value;
     }
 
     static class Profile {

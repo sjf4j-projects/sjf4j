@@ -651,7 +651,7 @@ public final class ReflectUtil {
     static ValueInfo _resolvePatternedValueCodec(Class<?> rawType, String codecName, String codecPattern) {
         if (codecPattern != null && !codecPattern.isEmpty()) {
             // codecPattern takes precedence: get the base codec and parameterize it
-            ValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(rawType, "");
+            ValueInfo base = TypeRegistry.requireRegisteredValueInfo(rawType, null);
             if (base.codec instanceof PatternedValueCodec) {
                 PatternedValueCodec<?, ?> pvc = (PatternedValueCodec<?, ?>) base.codec;
                 ValueCodec<?, ?> codec = pvc.withPattern(codecPattern);
@@ -662,7 +662,7 @@ public final class ReflectUtil {
                     " its ValueCodec does not implement " + PatternedValueCodec.class.getName());
         }
         if (codecName != null) {
-            return TypeRegistry.registerNodeValueOrElseThrow(rawType, codecName);
+            return TypeRegistry.requireRegisteredValueInfo(rawType, codecName);
         }
         return null;
     }

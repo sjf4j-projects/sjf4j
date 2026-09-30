@@ -137,7 +137,7 @@ class ReflectUtilTest {
         CreatorInfo ci = ReflectUtil.analyzeCreator(ZeroArgFactoryPojo.class, MethodHandles.lookup());
 
         assertNotNull(ci.argsCreator);
-        assertTrue(TypeRegistry.registerPojoOrElseThrow(ZeroArgFactoryPojo.class).hasCreatorBinding);
+        assertTrue(TypeRegistry.requireRegisteredPojoInfo(ZeroArgFactoryPojo.class).hasCreatorBinding);
         assertTrue(ci.newPojoNoArgs() instanceof ZeroArgFactoryPojo);
     }
 

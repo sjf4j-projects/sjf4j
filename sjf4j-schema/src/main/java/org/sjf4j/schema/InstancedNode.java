@@ -119,7 +119,7 @@ public final class InstancedNode {
     static InstancedNode infer(Object node, InstancedNode reusedLeaf) {
         boolean encoded = false;
         NodeKind nodeKind = NodeKind.of(node);
-        if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
+        if (nodeKind == NodeKind.VALUE_CODEC) {
             ValueInfo vci = TypeRegistry.registerTypeInfo(node.getClass()).valueInfos[0];
             if (vci != null) {
                 node = vci.valueToRaw(node);

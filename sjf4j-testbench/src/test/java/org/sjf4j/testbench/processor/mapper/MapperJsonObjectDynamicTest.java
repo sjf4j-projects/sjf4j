@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -82,7 +83,7 @@ public class MapperJsonObjectDynamicTest {
         graph = mapper.map(source);
         assertEquals("eu-west", graph.labels.get("region").value);
         assertTrue(graph.labels.containsKey("unset"));
-        assertNull(graph.labels.get("unset"));
+        assertNull(graph.labels.get("unset").value);
         assertInstanceOf(Comment.class, graph.event);
         assertEquals("from-map", ((Comment) graph.event).text);
         assertEquals(5, ((Comment) graph.event).likes);
@@ -99,11 +100,14 @@ public class MapperJsonObjectDynamicTest {
 
         Graph missing = mapper.map(JsonObject.of());
         assertDefaults(missing);
+        assertNull(missing.primaryLabel);
+
         Graph nulls = mapper.map(JsonObject.of("byteValue", null, "shortValue", null, "count", null,
                 "total", null, "ratio", null, "score", null, "initial", null, "active", null,
                 "title", null, "owner", null, "children", null, "labels", null, "primaryLabel", null,
                 "events", null, "event", null));
         assertDefaults(nulls);
+        assertNotNull(nulls.primaryLabel);
     }
 
     private static void assertDefaults(Graph graph) {
@@ -119,7 +123,6 @@ public class MapperJsonObjectDynamicTest {
         assertNull(graph.owner);
         assertNull(graph.children);
         assertNull(graph.labels);
-        assertNull(graph.primaryLabel);
         assertNull(graph.events);
         assertNull(graph.event);
     }

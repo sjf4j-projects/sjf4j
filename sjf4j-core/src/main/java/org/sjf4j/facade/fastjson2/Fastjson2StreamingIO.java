@@ -30,7 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -223,7 +222,7 @@ public class Fastjson2StreamingIO {
         }
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
-            ValueInfo vci = ti.getNodeValueInfo(valueFormat);
+            ValueInfo vci = ti.getValueInfo(valueFormat);
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
@@ -294,7 +293,7 @@ public class Fastjson2StreamingIO {
                 ValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
-                    argVci = ti.getNodeValueInfo(valueFormat);
+                    argVci = ti.getValueInfo(valueFormat);
                 }
                 Object argValue;
                 if (ti.oneOfInfo == null && argVci != null) {
@@ -391,7 +390,7 @@ public class Fastjson2StreamingIO {
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            JsonArray ja = (JsonArray) TypeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
+            JsonArray ja = (JsonArray) TypeRegistry.requireRegisteredPojoInfo(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementClass();
             Class<?> elemRaw = Types.box(elemType);
             TypeInfo elemTi = TypeRegistry.registerTypeInfo(elemRaw);
@@ -409,7 +408,7 @@ public class Fastjson2StreamingIO {
             ti = TypeRegistry.registerTypeInfo(rawClazz);
         }
         ValueInfo vci = ti.isNodeValue()
-                ? ti.getNodeValueInfo(context.defaultValueFormat(rawClazz))
+                ? ti.getValueInfo(context.defaultValueFormat(rawClazz))
                 : null;
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
@@ -731,7 +730,7 @@ public class Fastjson2StreamingIO {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getValueInfo(valueFormat);
                 if (vci != null) {
                     Object raw = vci.valueToRaw(node);
                     _writeNode(writer, raw, context);

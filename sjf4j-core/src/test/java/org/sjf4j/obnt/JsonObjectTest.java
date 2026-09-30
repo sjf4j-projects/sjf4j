@@ -41,7 +41,7 @@ class JsonObjectTest {
     }
 
     static class PrecomputedMetadataJojo extends JsonObject {
-        static final PojoInfo PI = TypeRegistry.registerPojoOrElseThrow(PrecomputedMetadataJojo.class);
+        static final PojoInfo PI = TypeRegistry.requireRegisteredPojoInfo(PrecomputedMetadataJojo.class);
 
         public String name;
 

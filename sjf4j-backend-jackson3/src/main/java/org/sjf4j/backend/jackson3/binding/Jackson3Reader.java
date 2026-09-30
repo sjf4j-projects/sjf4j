@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.BindException;
-import java.util.Objects;
 
 public final class Jackson3Reader implements StreamingReader {
 
@@ -23,7 +22,7 @@ public final class Jackson3Reader implements StreamingReader {
             new ClassValue<NameMatcher>() {
                 @Override
                 protected NameMatcher computeValue(Class<?> type) {
-                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(type);
+                    PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(type);
                     return createNameMatcher(
                             pi.properties.keySet().toArray(new String[0]));
                 }

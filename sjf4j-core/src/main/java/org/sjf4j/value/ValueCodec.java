@@ -38,7 +38,8 @@ import java.util.regex.Pattern;
  * {@link String}, {@link Number}, {@link Boolean}, {@link java.util.Map},
  * {@link java.util.List}. {@link Object} is not a supported declared raw
  * type. A codec may return {@code null} from {@link #valueToRaw(Object)} to
- * write a JSON null, but null is not itself a raw class. The framework does not recursively
+ * write a JSON null, and {@link #rawToValue(Object)} receives {@code null} for
+ * a JSON null. Null is not itself a raw class. The framework does not recursively
  * bind or copy a codec raw value at this boundary.
  * <p>
  * A map-shaped raw value should be handled as {@code Map<String, Object>}. Its
@@ -57,8 +58,8 @@ public interface ValueCodec<V, R> {
     R valueToRaw(V value);
 
     /**
-     * Decodes a non-null raw representation back to the domain value.
-     * JSON null is handled by the binding layer and does not invoke this method.
+     * Decodes a raw representation back to the domain value.
+     * JSON null is passed as {@code null}.
      */
     V rawToValue(R raw);
 

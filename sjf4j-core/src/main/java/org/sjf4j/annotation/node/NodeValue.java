@@ -18,6 +18,8 @@ import java.lang.annotation.Target;
  * OBNT representation and decode that representation back to the instance. The
  * configured value binding owns its raw shape and is responsible for making it
  * suitable for the consuming binder or schema.
+ * JSON null is passed to the configured {@link RawToValue} method or codec as a
+ * {@code null} raw value.
  *
  * <p>If a value binding uses an object node representation, it should use
  * {@code Map<String, Object>}. Binding inputs and outputs are passed at the

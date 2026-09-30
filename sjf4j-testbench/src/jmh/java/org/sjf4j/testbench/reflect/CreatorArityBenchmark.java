@@ -102,7 +102,7 @@ public class CreatorArityBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            ci = TypeRegistry.registerPojoOrElseThrow(modelClass()).creatorInfo;
+            ci = TypeRegistry.requireRegisteredPojoInfo(modelClass()).creatorInfo;
             args = initArgs();
         }
     }

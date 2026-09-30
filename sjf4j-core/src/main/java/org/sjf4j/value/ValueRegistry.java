@@ -17,8 +17,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.HashSet;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,7 +32,7 @@ public final class ValueRegistry {
     private ValueRegistry() {}
 
     /* Index zero is always the default codec. */
-    private static final ConcurrentHashMap<Class<?>, ValueInfo[]> NODE_VALUE_INFOS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<?>, ValueInfo[]> VALUE_INFOS = new ConcurrentHashMap<>();
 
     /**
      * Resolves codecs registered directly for a class or declared through {@code @NodeValue}.
@@ -44,7 +42,7 @@ public final class ValueRegistry {
     public static ValueInfo[] resolve(Class<?> runtimeClazz) {
         Asserts.notNull(runtimeClazz, "runtimeClazz");
 
-        ValueInfo[] infos = NODE_VALUE_INFOS.get(runtimeClazz);
+        ValueInfo[] infos = VALUE_INFOS.get(runtimeClazz);
         if (infos != null) return infos;
 
         ValueInfo info = analyzeByAnnotation(runtimeClazz);
@@ -59,7 +57,7 @@ public final class ValueRegistry {
             Class<?> matchType = null;
             for (int count = types.size(); count > 0; count--) {
                 Class<?> type = types.remove();
-                infos = NODE_VALUE_INFOS.get(type);
+                infos = VALUE_INFOS.get(type);
                 if (infos != null) {
                     if (matched != null) {
                         throw new BindingException("ambiguous NodeValue for runtime type '" +
@@ -100,7 +98,7 @@ public final class ValueRegistry {
         Asserts.notNull(valueInfo, "nodeValueInfo");
         validateRegistration(valueInfo);
 
-        NODE_VALUE_INFOS.compute(valueInfo.valueClazz, (valueClazz, oldInfos) -> {
+        VALUE_INFOS.compute(valueInfo.valueClazz, (valueClazz, oldInfos) -> {
             if (oldInfos == null) {
                 return new ValueInfo[]{valueInfo};
             }
@@ -148,10 +146,7 @@ public final class ValueRegistry {
                     ". The raw type must be one of String, Number, Boolean, Map, or List.");
         }
 
-        Class<?> valueClazz = Asserts.notNull(valueInfo.valueClazz, "valueClazz");
-        if (valueClazz == Optional.class) {
-            throw new BindingException("unsupported node type '" + valueClazz.getName() + "'");
-        }
+        Asserts.notNull(valueInfo.valueClazz, "valueClazz");
     }
 
 

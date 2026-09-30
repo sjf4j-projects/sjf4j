@@ -27,7 +27,7 @@ public enum JsonType {
     /**
      * Resolves the JSON-semantic shape from a {@link NodeKind}.
      * <p>
-     * {@link NodeKind#VALUE_NODE_VALUE} resolves to {@link #UNKNOWN} because the
+     * {@link NodeKind#VALUE_CODEC} resolves to {@link #UNKNOWN} because the
      * configured value binding's raw OBNT representation is not encoded in {@code NodeKind}.
      */
     public static JsonType of(NodeKind nodeKind) {

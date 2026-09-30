@@ -75,7 +75,7 @@ public class ValueInfo {
     }
 
     /**
-     * Decodes a raw node representation to its domain value.
+     * Decodes a raw node representation, including JSON null, to its domain value.
      */
     public Object rawToValue(Object raw) {
         if (runtimeClazz != null && runtimeClazz != valueClazz) {

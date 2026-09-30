@@ -54,9 +54,10 @@ public abstract class JsonContainer {
     /**
      * Structurally converts this container with {@link NodeMapper}.
      */
+    @SuppressWarnings("unchecked")
     public <T> T toNode(Class<T> clazz, boolean deepCopy) {
         Asserts.notNull(clazz, "clazz");
-        return NodeMapper.convert(this, clazz, deepCopy);
+        return (T) NodeMapper.convert(this, clazz, deepCopy);
     }
 
     /**

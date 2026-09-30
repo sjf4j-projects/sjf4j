@@ -59,7 +59,7 @@ public interface GsonModule {
 
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getValueInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueAdapter<>(gson, vci);
                 }
@@ -118,7 +118,7 @@ public interface GsonModule {
          */
         public JsonArrayAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
-            this.pi = clazz == JsonArray.class ? null : TypeRegistry.registerPojoOrElseThrow(clazz);
+            this.pi = clazz == JsonArray.class ? null : TypeRegistry.requireRegisteredPojoInfo(clazz);
         }
 
         /**

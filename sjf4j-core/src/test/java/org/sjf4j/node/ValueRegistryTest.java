@@ -59,11 +59,12 @@ class ValueRegistryTest {
     }
 
     @Test
-    void rejectsOptionalCodecValueType() {
-        ValueCodec<Optional, String> codec = new ValueCodec.SimpleValueCodec<>(Optional.class, String.class,
-                Optional::toString, Optional::of);
+    void registersOptionalCodecAsANodeValue() {
+        ValueRegistry.registerByCodec(new OptionalStringCodec(), null, false);
 
-        assertThrows(BindingException.class, () -> ValueRegistry.registerByCodec(codec, null, false));
+        ValueInfo codec = ValueRegistry.resolve(Optional.class)[0];
+        assertEquals(Optional.of("value"), codec.rawToValue("value"));
+        assertEquals(Optional.empty(), codec.rawToValue(null));
     }
 
     @Test
@@ -73,5 +74,27 @@ class ValueRegistryTest {
 
         assertEquals("missing @" + ValueToRaw.class.getName() + " method in " +
                 MissingValueToRaw.class.getName(), error.getMessage());
+    }
+
+    static class OptionalStringCodec implements ValueCodec<Optional, String> {
+        @Override
+        public String valueToRaw(Optional value) {
+            return value.isPresent() ? String.valueOf(value.get()) : null;
+        }
+
+        @Override
+        public Optional rawToValue(String raw) {
+            return Optional.ofNullable(raw);
+        }
+
+        @Override
+        public Class<Optional> valueClazz() {
+            return Optional.class;
+        }
+
+        @Override
+        public Class<String> rawClazz() {
+            return String.class;
+        }
     }
 }

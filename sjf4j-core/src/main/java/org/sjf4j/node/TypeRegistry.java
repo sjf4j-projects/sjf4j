@@ -60,14 +60,14 @@ public final class TypeRegistry {
      * {@code @NodeValue}/registered codec, {@code @OneOf}, container analysis,
      * object analysis, then the none marker.
      *
-     * @param mustPojo when true, results without object binding are rejected
+     * @param requirePojo when true, results without object binding are rejected
      */
-    public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
+    public static TypeInfo registerTypeInfo(Class<?> clazz, boolean requirePojo) {
         if (_fastNoneInfo(clazz)) return TypeInfo.NONE;
 
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
-            if (mustPojo && ti.pojoInfo == null) {
+            if (requirePojo && ti.pojoInfo == null) {
                 throw new BindingException("class '" + clazz.getName() + "' is not a POJO");
             }
             return ti;
@@ -75,7 +75,7 @@ public final class TypeRegistry {
 
         ExternalNode<?> externalNode = ExternalRegistry.resolve(clazz);
         if (externalNode != null) {
-            if (mustPojo) {
+            if (requirePojo) {
                 throw new BindingException("class '" + clazz.getName() + "' is an external node, not a POJO");
             }
             ti = new TypeInfo(clazz, null, null, null, null, externalNode);
@@ -85,7 +85,7 @@ public final class TypeRegistry {
 
         ValueInfo[] valueInfos = ValueRegistry.resolve(clazz);
         if (valueInfos != null) {
-            if (mustPojo) {
+            if (requirePojo) {
                 throw new BindingException("class '" + clazz.getName() + "' is a value node, not a POJO");
             }
             ti = new TypeInfo(clazz, valueInfos, null, null, null, null);
@@ -103,7 +103,7 @@ public final class TypeRegistry {
 
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
-            if (mustPojo) {
+            if (requirePojo) {
                 throw new BindingException("class '" + clazz.getName() + "' is a container node, not a POJO");
             }
             ti = new TypeInfo(clazz, null, null, ci, null, null);
@@ -111,7 +111,7 @@ public final class TypeRegistry {
             return ti;
         }
 
-        PojoInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
+        PojoInfo pi = ReflectUtil.analyzePojo(clazz, requirePojo);
         if (pi != null) {
             ti = new TypeInfo(clazz, null, null, null, pi, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -137,18 +137,11 @@ public final class TypeRegistry {
      */
 
     /**
-     * Returns value codec metadata for a class and named format.
+     * Returns value codec metadata for a class and default or named format.
      */
-    public static ValueInfo registerNodeValueOrElseThrow(Class<?> clazz, String valueFormat) {
-        Asserts.notNull(valueFormat, "valueFormat");
-
+    public static ValueInfo requireRegisteredValueInfo(Class<?> clazz, String valueFormat) {
         TypeInfo ti = registerTypeInfo(clazz);
-        ValueInfo info = ti.getNodeValueInfo(valueFormat);
-        if (info == null) {
-            throw new BindingException("no ValueCodec registered for type '" + clazz.getName() +
-                    "' with valueFormat '" + valueFormat + "'");
-        }
-        return info;
+        return ti.requireValueInfo(valueFormat);
     }
 
 
@@ -161,7 +154,7 @@ public final class TypeRegistry {
     /**
      * Returns object binding metadata or throws when the class cannot be bound as an object.
      */
-    public static PojoInfo registerPojoOrElseThrow(Class<?> clazz) {
+    public static PojoInfo requireRegisteredPojoInfo(Class<?> clazz) {
         return registerTypeInfo(clazz, true).pojoInfo;
     }
 

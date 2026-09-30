@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -582,12 +581,13 @@ public final class Nodes {
      * This is a binding conversion, not a forced deep copy. Nested containers may
      * still alias source values when the target binding allows reuse.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T toJojo(Object node, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
             throw new IllegalArgumentException("expected JOJO subtype, but was " + clazz.getName());
         if (node == null) return null;
-        return NodeMapper.convert(node, clazz, false);
+        return (T) NodeMapper.convert(node, clazz, false);
     }
 
     /**
@@ -606,7 +606,7 @@ public final class Nodes {
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
             throw new IllegalArgumentException("expected JAJO subtype, but was " + clazz.getName());
         if (node == null) return null;
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(clazz);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(clazz);
         JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
         forEachArray(node, jajo::add);
         return (T) jajo;
@@ -635,13 +635,14 @@ public final class Nodes {
      * This is a binding conversion, not a forced deep copy. Nested containers may
      * still alias source values when the target binding allows reuse.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.pojoInfo == null && ti.oneOfInfo == null) {
             throw new NodeException("class '" + clazz.getName() + "' is not a registered POJO");
         }
-        return NodeMapper.convert(node, clazz, false);
+        return (T) NodeMapper.convert(node, clazz, false);
     }
 
     /**
@@ -650,13 +651,9 @@ public final class Nodes {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object _to(Object node, Type type, boolean cross) {
         if (type == null || type == Object.class) return node;
+        if (node == null) return NodeMapper.convert(null, type, false);
 
         Class<?> clazz = Types.rawBox(type);
-        if (clazz == Optional.class) {
-            TypeRegistry.registerTypeInfo(clazz);
-        }
-        if (node == null) return null;
-
         if (clazz.isInstance(node)) return node;
 
         if (clazz == String.class) {
@@ -737,9 +734,10 @@ public final class Nodes {
      * but branches declared as {@code Object} or otherwise left untyped may
      * still alias the source graph.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T to(Object node, TypeReference<T> type) {
         Asserts.notNull(type, "type");
-        return NodeMapper.convert(node, type, false);
+        return (T) NodeMapper.convert(node, type.getType(), false);
     }
 
     /**
@@ -879,7 +877,7 @@ public final class Nodes {
         }
         if (node instanceof JsonObject) {
             JsonObject srcJo = (JsonObject) node;
-            PojoInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(node.getClass());
+            PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(node.getClass());
             TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
 
             for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
@@ -923,7 +921,7 @@ public final class Nodes {
             return (T) ti.externalNode.copy(node);
         }
         if (ti.pojoInfo != null) {
-            PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(node.getClass());
+            PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(node.getClass());
             TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
 
             for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
@@ -2016,7 +2014,7 @@ public final class Nodes {
             return new JsonArray();
         }
         if (JsonArray.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.registerPojoOrElseThrow(clazz).creatorInfo.forceNewPojo();
+            return TypeRegistry.requireRegisteredPojoInfo(clazz).creatorInfo.forceNewPojo();
         }
         if (Set.class.isAssignableFrom(clazz)) {
             return TypeRegistry.newSetContainer(clazz, 0, false);

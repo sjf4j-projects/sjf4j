@@ -15,11 +15,9 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class StreamingIOReadTest {
@@ -84,14 +82,6 @@ class StreamingIOReadTest {
         }
     }
 
-    @Test
-    void rejectsNullForOptionalPojoField() throws Exception {
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"value\":null}"))) {
-            assertThrows(BindingException.class,
-                    () -> StreamingIO.readNode(reader, OptionalHolder.class, RuntimeContext.EMPTY));
-        }
-    }
-
     enum SampleEnum { FIRST, SECOND }
 
     abstract static class AbstractValue { }
@@ -114,7 +104,4 @@ class StreamingIOReadTest {
         }
     }
 
-    static class OptionalHolder {
-        public Optional<String> value;
-    }
 }

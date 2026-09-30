@@ -4,7 +4,10 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
 
@@ -141,6 +144,14 @@ class OneOfIOTest {
         assertEquals(Instant.ofEpochMilli(1704067200000L), container.pet.createdAt);
     }
 
+    @Test
+    void decodesNullValueFieldsBufferedBeforeTheDiscriminator() {
+        CodecContainer container = (CodecContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+                "{\"pet\":{\"marker\":null,\"kind\":\"dog\"}}", CodecContainer.class);
+
+        assertEquals("<null>", container.pet.marker.value);
+    }
+
     /** Retained SJF4J semantics: pending fields, unknown dynamic fields, and arrays of a type-level OneOf all bind normally. */
     @Test
     void preservesUnknownSubtypeFieldsAndBindsOneOfContainerElements() {
@@ -184,6 +195,23 @@ class OneOfIOTest {
     @OneOf(value = {@OneOf.Mapping(value = CodecDog.class, when = "dog")}, key = "kind")
     static class CodecAnimal extends JsonObject {
         @NodeProperty(codecName = "epochMillis") public Instant createdAt;
+        @NodeProperty(codecName = "") public NullCode marker;
     }
     static class CodecDog extends CodecAnimal {}
+    @NodeValue
+    static class NullCode {
+        final String value;
+
+        NullCode(String value) {
+            this.value = value;
+        }
+
+        @ValueToRaw String encode() {
+            return value;
+        }
+
+        @RawToValue static NullCode decode(String raw) {
+            return new NullCode(raw == null ? "<null>" : raw);
+        }
+    }
 }

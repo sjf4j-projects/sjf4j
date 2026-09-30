@@ -38,12 +38,13 @@ public class JsonPointer extends JsonPath {
     }
 
     /**
-     * Parses the supported JSON Pointer subset. The empty string denotes root;
-     * every non-root expression must start with {@code /}.
+     * Parses the supported JSON Pointer subset. A {@code null} expression maps
+     * to {@code null}; the empty string denotes root; every non-root expression
+     * must start with {@code /}.
      */
     @RawToValue
     public static JsonPointer parse(String expr) {
-        Asserts.notNull(expr, "expr");
+        if (expr == null) return null;
 
         PathSegment[] segments;
         if (expr.isEmpty()) {

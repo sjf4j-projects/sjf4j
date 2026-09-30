@@ -284,7 +284,7 @@ public class JsonArray extends JsonContainer {
      * Structurally converts a value to a JsonArray.
      */
     public static JsonArray fromNode(Object node) {
-        return NodeMapper.convert(node, JsonArray.class, false);
+        return (JsonArray) NodeMapper.convert(node, JsonArray.class, false);
     }
 
 
@@ -983,7 +983,7 @@ public class JsonArray extends JsonContainer {
      * or external nodes, may be retained by reference.
      */
     public JsonArray deepCopy() {
-        return Sjf4j.global().copyNode(this, true);
+        return Sjf4j.global().copyNode(this);
     }
 
 }

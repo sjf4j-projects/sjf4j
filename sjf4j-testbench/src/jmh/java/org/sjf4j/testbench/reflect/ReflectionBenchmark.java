@@ -110,7 +110,7 @@ public class ReflectionBenchmark {
     }
 
     // Cache PojoInfo/PropertyInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
-    private final static PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(Person.class);
+    private final static PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(Person.class);
     private final static MethodHandle ctorMethodHandle = pi.creatorInfo.noArgsCtorHandle;
     private final static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
 

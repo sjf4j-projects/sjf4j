@@ -105,57 +105,57 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void booleanIsGetterBeatsGetGetter() {
-        FieldInfo pi = TypeRegistry.registerPojoOrElseThrow(BooleanAccessorPojo.class).properties.get("active");
+        FieldInfo pi = TypeRegistry.requireRegisteredPojoInfo(BooleanAccessorPojo.class).properties.get("active");
         assertTrue((Boolean) pi.invokeGetter(new BooleanAccessorPojo()));
     }
 
     @Test
     void subclassGetterBeatsParentGetter() {
-        FieldInfo pi = TypeRegistry.registerPojoOrElseThrow(ChildGetterPojo.class).properties.get("name");
+        FieldInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildGetterPojo.class).properties.get("name");
         assertEquals("child", pi.invokeGetter(new ChildGetterPojo()));
     }
 
     @Test
     void overloadedSetterFailsFastEvenWithGetterAnchor() {
         NodeException ex = assertThrows(NodeException.class,
-                () -> TypeRegistry.registerPojoOrElseThrow(SetterAnchorPojo.class));
+                () -> TypeRegistry.requireRegisteredPojoInfo(SetterAnchorPojo.class));
         assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
 
     @Test
     void ambiguousSetterFailsFast() {
         NodeException ex = assertThrows(NodeException.class,
-                () -> TypeRegistry.registerPojoOrElseThrow(AmbiguousSetterPojo.class));
+                () -> TypeRegistry.requireRegisteredPojoInfo(AmbiguousSetterPojo.class));
         assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
 
     @Test
     void parentIgnoreDoesNotHideChildOverrideGetter() {
-        FieldInfo pi = TypeRegistry.registerPojoOrElseThrow(ChildVisibleGetterPojo.class).properties.get("name");
+        FieldInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildVisibleGetterPojo.class).properties.get("name");
         assertEquals("child", pi.invokeGetter(new ChildVisibleGetterPojo()));
     }
 
     @Test
     void childSetterOverloadDoesNotSilentlyOverrideParentSetter() {
         NodeException ex = assertThrows(NodeException.class,
-                () -> TypeRegistry.registerPojoOrElseThrow(ChildSetterOverloadPojo.class));
+                () -> TypeRegistry.requireRegisteredPojoInfo(ChildSetterOverloadPojo.class));
         assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
 
     @Test
     void mergedPropertyTypeFollowsStrategyPriority() {
         assertEquals(String.class,
-                Types.rawClazz(TypeRegistry.registerPojoOrElseThrow(BeanFieldTypePriorityPojo.class)
+                Types.rawClazz(TypeRegistry.requireRegisteredPojoInfo(BeanFieldTypePriorityPojo.class)
                         .properties.get("value").type));
         assertEquals(Object.class,
-                Types.rawClazz(TypeRegistry.registerPojoOrElseThrow(FieldBeanTypePriorityPojo.class)
+                Types.rawClazz(TypeRegistry.requireRegisteredPojoInfo(FieldBeanTypePriorityPojo.class)
                         .properties.get("value").type));
     }
 
     @Test
     void incompatibleAccessorTypesFailFast() {
         NodeException ex = assertThrows(NodeException.class,
-                () -> TypeRegistry.registerPojoOrElseThrow(IncompatibleAccessorPojo.class));
+                () -> TypeRegistry.requireRegisteredPojoInfo(IncompatibleAccessorPojo.class));
         assertTrue(ex.getMessage().contains("incompatible getter/setter types"));
     }
 }

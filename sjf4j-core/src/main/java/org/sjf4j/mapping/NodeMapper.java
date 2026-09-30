@@ -6,7 +6,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
@@ -29,7 +28,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 
@@ -46,24 +44,14 @@ public final class NodeMapper {
     }
 
 
-    /**
-     * Converts a node to the target class using the default runtime context.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T convert(Object node, Class<T> type, boolean deepCopy) {
-        return (T) convert(node, type, deepCopy, RuntimeContext.EMPTY);
-    }
-
 
     /**
      * Converts a node to the captured generic target type using the default
      * runtime context.
      */
-    @SuppressWarnings("unchecked")
-    public static <T> T convert(Object node, TypeReference<T> type, boolean deepCopy) {
-        return (T) convert(node, type.getType(), deepCopy, RuntimeContext.EMPTY);
+    public static Object convert(Object node, Type type, boolean deepCopy) {
+        return convert(node, type, deepCopy, RuntimeContext.EMPTY);
     }
-
 
 
     /**
@@ -102,10 +90,15 @@ public final class NodeMapper {
     private static Object _convert(Object node, Type toType, Class<?> toBoxed,
                                    OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, RuntimeContext context) {
         try {
-            if (toBoxed == Optional.class) {
-                TypeRegistry.registerTypeInfo(toBoxed);
-            }
             if (node == null) {
+                if (oneOfInfo == null) {
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
+                    if (ti.isNodeValue()) {
+                        String valueFormat = context.defaultValueFormat(toBoxed);
+                        ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
+                        return valueInfo.rawToValue(null);
+                    }
+                }
                 return null;
             }
 
@@ -132,12 +125,10 @@ public final class NodeMapper {
 
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(toBoxed);
-                ValueInfo valueInfo = ti.getNodeValueInfo(valueFormat);
-                if (valueInfo != null) {
-                    return toBoxed.isInstance(node)
-                            ? valueInfo.valueCopy(node)
-                            : valueInfo.rawToValue(node);
-                }
+                ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
+                return toBoxed.isInstance(node)
+                        ? valueInfo.valueCopy(node)
+                        : valueInfo.rawToValue(node);
             }
 
             if (node instanceof String) {
@@ -294,10 +285,8 @@ public final class NodeMapper {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(node.getClass());
-                ValueInfo valueInfo = ti.getNodeValueInfo(valueFormat);
-                if (valueInfo != null) {
-                    return valueInfo.valueCopy(node);
-                }
+                ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
+                return valueInfo.valueCopy(node);
             }
 
             if (node instanceof String || node instanceof Number || node instanceof Boolean) {
@@ -344,7 +333,7 @@ public final class NodeMapper {
 
             if (node instanceof JsonObject) {
                 JsonObject srcJo = (JsonObject) node;
-                PojoInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(nodeClazz);
+                PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(nodeClazz);
                 CreatorInfo ci = pojoInfo.creatorInfo;
                 TypeRegistry.PojoCreationSession session =
                         new TypeRegistry.PojoCreationSession(ci, srcJo.size());
@@ -400,7 +389,7 @@ public final class NodeMapper {
                 JsonArray srcJa = (JsonArray) node;
                 JsonArray newJa = nodeClazz == JsonArray.class
                         ? new JsonArray()
-                        : (JsonArray) TypeRegistry.registerPojoOrElseThrow(nodeClazz)
+                        : (JsonArray) TypeRegistry.requireRegisteredPojoInfo(nodeClazz)
                         .creatorInfo.forceNewPojo();
 
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
@@ -621,7 +610,7 @@ public final class NodeMapper {
                 ValueInfo argValueInfo = ci.argValueCodecs[argIdx];
                 if (argValueInfo == null && ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
-                    argValueInfo = ti.getNodeValueInfo(valueFormat);
+                    argValueInfo = ti.requireValueInfo(valueFormat);
                 }
 
                 if (ti.oneOfInfo == null && argValueInfo != null) {
@@ -779,7 +768,7 @@ public final class NodeMapper {
         }
 
         if (JsonArray.class.isAssignableFrom(toBoxed)) {
-            PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(toBoxed);
+            PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(toBoxed);
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             Class<?> valueRaw = jajo.elementClass();
             OneOfInfo valueOneOf =
@@ -867,7 +856,7 @@ public final class NodeMapper {
         }
 
         if (JsonArray.class.isAssignableFrom(toBoxed)) {
-            PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(toBoxed);
+            PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(toBoxed);
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             Class<?> valueRaw = jajo.elementClass();
             OneOfInfo valueOneOf =
@@ -1009,7 +998,7 @@ public final class NodeMapper {
                 ValueInfo argValueInfo = ci.argValueCodecs[argIdx];
                 if (argValueInfo == null && ti.isNodeValue()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
-                    argValueInfo = ti.getNodeValueInfo(valueFormat);
+                    argValueInfo = ti.requireValueInfo(valueFormat);
                 }
 
                 if (ti.oneOfInfo == null && argValueInfo != null) {
@@ -1149,7 +1138,7 @@ public final class NodeMapper {
                     return newMap;
                 }
 
-                PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
+                PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(rawClazz);
                 Map<String, Object> dynamic =
                         pi.writeDynamic
                                 ? InternalAccess.dynamicProperties(jo)
@@ -1169,7 +1158,7 @@ public final class NodeMapper {
                     Object value = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
 
-                    Object raw = fi.valueInfo != null
+                    Object raw = value != null && fi.valueInfo != null
                             ? fi.valueInfo.valueToRaw(value)
                             : _convertToRaw(value, cps, context);
 
@@ -1233,10 +1222,8 @@ public final class NodeMapper {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.isNodeValue()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                ValueInfo valueInfo = ti.getNodeValueInfo(valueFormat);
-                if (valueInfo != null) {
-                    return valueInfo.valueToRaw(node);
-                }
+                ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
+                return valueInfo.valueToRaw(node);
             }
 
             PojoInfo pi = ti.pojoInfo;
@@ -1254,7 +1241,7 @@ public final class NodeMapper {
                     Object value = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
 
-                    Object raw = fi.valueInfo != null
+                    Object raw = value != null && fi.valueInfo != null
                             ? fi.valueInfo.valueToRaw(value)
                             : _convertToRaw(value, cps, context);
 

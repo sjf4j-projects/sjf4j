@@ -14,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -117,9 +116,11 @@ class StreamingIOWriteTest {
     void rejectsUnsupportedNodeTypes() throws Exception {
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, new StringWriter())) {
             assertThrows(BindingException.class,
-                    () -> StreamingIO.writeNode(writer, Optional.of("value"), RuntimeContext.EMPTY));
+                    () -> StreamingIO.writeNode(writer, new UnsupportedNode(), RuntimeContext.EMPTY));
         }
     }
+
+    private static final class UnsupportedNode {}
 
     private static final class SeparatorWriter extends StreamingWriter {
         private int properties;

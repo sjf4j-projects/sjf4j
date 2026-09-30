@@ -18,7 +18,6 @@ import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.FieldInfo;
 import org.sjf4j.node.TypeInfo;
-import org.sjf4j.value.ValueCodec;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
@@ -31,7 +30,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -143,7 +141,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             }
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getValueInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -329,7 +327,7 @@ public final class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof JsonObject) {
                 JsonObject srcJo = (JsonObject) node;
-                PojoInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(nodeClazz);
+                PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(nodeClazz);
                 CreatorInfo ci = pojoInfo.creatorInfo;
                 TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
 
@@ -365,7 +363,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             if (node instanceof JsonArray) {
                 JsonArray srcJa = (JsonArray) node;
                 JsonArray newJa = nodeClazz == JsonArray.class ? new JsonArray()
-                        : (JsonArray) TypeRegistry.registerPojoOrElseThrow(nodeClazz).creatorInfo.forceNewPojo();
+                        : (JsonArray) TypeRegistry.requireRegisteredPojoInfo(nodeClazz).creatorInfo.forceNewPojo();
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcJa.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
@@ -566,7 +564,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 ValueInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.isNodeValue()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
-                    argVci = ti.getNodeValueInfo(valueFormat);
+                    argVci = ti.getValueInfo(valueFormat);
                 }
                 if (ti.oneOfInfo == null && argVci != null) {
                     args[argIdx] = argRaw.isInstance(rawValue) ? argVci.valueCopy(rawValue) : argVci.rawToValue(rawValue);
@@ -725,7 +723,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             return ja;
         }
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
+            PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(rawClazz);
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -867,7 +865,7 @@ public final class SimpleNodeFacade implements NodeFacade {
                 JsonObject jo = (JsonObject) node;
                 Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
                 if (rawClazz != JsonObject.class) {
-                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(rawClazz);
+                    PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(rawClazz);
                     if (!pi.writeDynamic) {
                         for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
                             String key = entry.getKey();
@@ -930,7 +928,7 @@ public final class SimpleNodeFacade implements NodeFacade {
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
             if (ti.isNodeValue()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                ValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                ValueInfo vci = ti.getValueInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }

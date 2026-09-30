@@ -58,7 +58,7 @@ public class JsonObject extends JsonContainer {
         super();
         this.pi = this.getClass() == JsonObject.class
                 ? null
-                : TypeRegistry.registerPojoOrElseThrow(this.getClass());
+                : TypeRegistry.requireRegisteredPojoInfo(this.getClass());
     }
 
     /**
@@ -444,7 +444,7 @@ public class JsonObject extends JsonContainer {
      * Structurally converts a value to a JsonObject.
      */
     public static JsonObject fromNode(Object node) {
-        return NodeMapper.convert(node, JsonObject.class, false);
+        return (JsonObject) NodeMapper.convert(node, JsonObject.class, false);
     }
 
 
@@ -1129,7 +1129,7 @@ public class JsonObject extends JsonContainer {
      * including backend-native or external nodes, may be retained by reference.
      */
     public JsonObject deepCopy() {
-        return Sjf4j.global().copyNode(this, true);
+        return Sjf4j.global().copyNode(this);
     }
 
     /*
@@ -1151,14 +1151,6 @@ public class JsonObject extends JsonContainer {
      * Builder
      * --------------------------------------------------------------
      */
-
-    /**
-     * @deprecated Use {@link #edit()} instead.
-     */
-    @Deprecated
-    public Builder toBuilder() {
-        return new Builder(this);
-    }
 
     /**
      * Returns a builder initialized from this object.

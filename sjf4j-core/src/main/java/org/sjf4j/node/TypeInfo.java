@@ -1,5 +1,6 @@
 package org.sjf4j.node;
 
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.value.ValueInfo;
 
@@ -64,7 +65,7 @@ public class TypeInfo {
      * Returns the default or named value codec metadata, or {@code null} when
      * no codec is registered for the requested format.
      */
-    public ValueInfo getNodeValueInfo(String valueFormat) {
+    public ValueInfo getValueInfo(String valueFormat) {
         if (valueInfos == null) return null;
         if (valueFormat == null) return valueInfos[0];
         for (ValueInfo info : valueInfos) {
@@ -74,5 +75,15 @@ public class TypeInfo {
         }
         return null;
     }
+
+    public ValueInfo requireValueInfo(String valueFormat) {
+        ValueInfo info = getValueInfo(valueFormat);
+        if (info == null) {
+            throw new BindingException("no ValueCodec registered for type '" +
+                    clazz.getName() + "' with format '" + valueFormat + "'");
+        }
+        return info;
+    }
+
 
 }

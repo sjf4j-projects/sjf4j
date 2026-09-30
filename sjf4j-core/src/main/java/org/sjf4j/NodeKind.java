@@ -2,8 +2,8 @@ package org.sjf4j;
 
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.TypeInfo;
-import org.sjf4j.external.ExternalNode;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.value.ValueCodec;
 
 import java.util.List;
 import java.util.Map;
@@ -35,8 +35,8 @@ public enum NodeKind {
     VALUE_BOOLEAN,
     VALUE_BOOLEAN_EXTERNAL,
 
-    /** Represents a {@code @NodeValue} logical value node with a configured value binding. */
-    VALUE_NODE_VALUE,
+    /** Represents a {@code @NodeValue} logical value node with a registered {@link ValueCodec} binding. */
+    VALUE_CODEC,
 
     /** Represents a {@link Map} object. */
     OBJECT_MAP,
@@ -78,7 +78,7 @@ public enum NodeKind {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueInfos != null) {
-            return NodeKind.VALUE_NODE_VALUE;
+            return NodeKind.VALUE_CODEC;
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
         } else if (ti.externalNode != null) {
@@ -151,7 +151,7 @@ public enum NodeKind {
 
     public boolean isValue() {
         return isNumber() || isString() || isBoolean() || isNull()
-                || this == VALUE_NODE_VALUE;
+                || this == VALUE_CODEC;
     }
 
     public boolean isObject() {

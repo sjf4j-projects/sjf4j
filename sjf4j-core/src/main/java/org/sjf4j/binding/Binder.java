@@ -236,7 +236,7 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
             new ClassValue<PreparedName[]>() {
                 @Override
                 protected PreparedName[] computeValue(Class<?> type) {
-                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(type);
+                    PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(type);
                     String[] names = pi.fieldNames;
                     PreparedName[] preparedNames = new PreparedName[names.length];
                     for (int i = 0; i < names.length; i++) {

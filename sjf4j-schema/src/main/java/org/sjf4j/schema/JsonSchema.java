@@ -67,7 +67,7 @@ public interface JsonSchema {
      * The returned value is not compiled yet.
      */
     static JsonSchema fromNode(Object node) {
-        return NodeMapper.convert(node, JsonSchema.class, false);
+        return (JsonSchema) NodeMapper.convert(node, JsonSchema.class, false);
     }
 
 }

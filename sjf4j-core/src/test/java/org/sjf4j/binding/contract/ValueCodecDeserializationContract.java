@@ -2,6 +2,8 @@ package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -11,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** SJF4J NodeValue contracts structurally adapted from Jackson custom-deserializer cases. */
 public abstract class ValueCodecDeserializationContract {
@@ -34,22 +35,35 @@ public abstract class ValueCodecDeserializationContract {
     @Test void testValueCodecMap() {
             assertEquals(Map.of("x", 3), ((MapCode) binding(RuntimeContext.EMPTY).readNode("{\"x\":3}", MapCode.class)).value);
         }
-    /** Retained SJF4J NodeValue null contract; no Jackson method mapping. */
+    /** JSON null is passed to the configured NodeValue decoder. */
     @Test void testNullValueCodec() {
-            assertNull(binding(RuntimeContext.EMPTY).readNode("null", Code.class));
+        Code root = (Code) binding(RuntimeContext.EMPTY).readNode("null", Code.class);
+        CodeHolder field = (CodeHolder) binding(RuntimeContext.EMPTY).readNode("{\"code\":null}", CodeHolder.class);
+        CreatorCodeHolder creator = (CreatorCodeHolder) binding(RuntimeContext.EMPTY).readNode("{\"code\":null}", CreatorCodeHolder.class);
+
+        assertEquals("<null>", root.value);
+        assertEquals("<null>", field.code.value);
+        assertEquals("<null>", creator.code.value);
         }
     @NodeValue static class Code { final String value;
          Code(String value) {
             this.value = value;
         }
          @ValueToRaw String encode() {
-            return value;
-        }
+             return value;
+         }
          @RawToValue static Code decode(String raw) {
-            return new Code(raw);
-        }
-     }
+            return new Code(raw == null ? "<null>" : raw);
+         }
+      }
     static class CodeHolder { public Code code; }
+    static class CreatorCodeHolder {
+        final Code code;
+
+        @NodeCreator CreatorCodeHolder(@NodeProperty("code") Code code) {
+            this.code = code;
+        }
+    }
     @NodeValue static class ListCode { final List<String> value;
          ListCode(List<String> value) {
             this.value = value;

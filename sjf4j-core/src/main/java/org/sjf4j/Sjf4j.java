@@ -362,9 +362,9 @@ public final class Sjf4j {
      * fail with {@link org.sjf4j.exception.BindingException}.
      */
     @SuppressWarnings("unchecked")
-    public <T> T copyNode(T node, boolean deepCopy) {
+    public <T> T copyNode(T node) {
         if (node == null) return null;
-        return (T) NodeMapper.convert(node, node.getClass(), deepCopy, runtimeContext);
+        return (T) NodeMapper.convert(node, node.getClass(), true, runtimeContext);
     }
 
     /**

@@ -66,7 +66,7 @@ class NodeKindJsonTypeTest {
     void testNodeKindManagedTypes() {
         assertEquals(NodeKind.VALUE_NULL, NodeKind.of(null));
         assertEquals(NodeKind.OBJECT_POJO, NodeKind.of(new PlainPojo()));
-        assertEquals(NodeKind.VALUE_NODE_VALUE, NodeKind.of(URI.create("https://example.com")));
+        assertEquals(NodeKind.VALUE_CODEC, NodeKind.of(URI.create("https://example.com")));
     }
 
     @Test

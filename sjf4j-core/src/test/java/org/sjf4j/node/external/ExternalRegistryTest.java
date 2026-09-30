@@ -34,7 +34,7 @@ class ExternalRegistryTest {
         TypeInfo typeInfo = TypeRegistry.registerTypeInfo(TestExternalChildNode.class);
         assertSame(TestExternalChildNodeProvider.ADAPTER, typeInfo.externalNode);
         assertNull(typeInfo.pojoInfo);
-        assertThrowsExactly(BindingException.class, () -> TypeRegistry.registerPojoOrElseThrow(TestExternalChildNode.class));
+        assertThrowsExactly(BindingException.class, () -> TypeRegistry.requireRegisteredPojoInfo(TestExternalChildNode.class));
     }
 
     @Test

@@ -86,7 +86,7 @@ public interface Jackson3Module {
                     }
                     if (ti.isNodeValue()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        ValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                        ValueInfo vci = ti.getValueInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueDeserializer<>(vci);
                         }
@@ -113,7 +113,7 @@ public interface Jackson3Module {
                     TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
                     if (ti.isNodeValue()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        ValueInfo vci = ti.getNodeValueInfo(valueFormat);
+                        ValueInfo vci = ti.getValueInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueSerializer<>(vci);
                         }
@@ -136,7 +136,7 @@ public interface Jackson3Module {
         public JsonObjectDeserializer(JavaType javaType, StreamingContext streamingContext) {
             this.ownerType = _toType(javaType);
             this.ownerRawClazz = Types.rawBox(ownerType);
-            this.pi = ownerRawClazz == JsonObject.class ? null : TypeRegistry.registerPojoOrElseThrow(ownerRawClazz);
+            this.pi = ownerRawClazz == JsonObject.class ? null : TypeRegistry.requireRegisteredPojoInfo(ownerRawClazz);
             this.streamingContext = streamingContext;
         }
 
@@ -201,7 +201,7 @@ public interface Jackson3Module {
         private final PojoInfo pi;
 
         public JsonArrayDeserializer(Class<?> clazz) {
-            this.pi = clazz == JsonArray.class ? null : TypeRegistry.registerPojoOrElseThrow(clazz);
+            this.pi = clazz == JsonArray.class ? null : TypeRegistry.requireRegisteredPojoInfo(clazz);
         }
 
         @SuppressWarnings("unchecked")

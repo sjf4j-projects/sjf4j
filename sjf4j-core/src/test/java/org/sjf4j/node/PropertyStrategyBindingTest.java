@@ -126,7 +126,7 @@ class PropertyStrategyBindingTest {
 
     @Test
     void defaultBeanFieldFindsBeanProperty() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(DefaultBeanFieldPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(DefaultBeanFieldPojo.class);
         assertEquals(PropertyStrategy.BEAN_FIELD, pi.propertyStrategy);
         assertTrue(pi.properties.containsKey("name"));
         assertTrue(pi.properties.get("name").hasGetter());
@@ -135,14 +135,14 @@ class PropertyStrategyBindingTest {
 
     @Test
     void beanOnlyIgnoresFieldOnlyMembers() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(BeanOnlyPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(BeanOnlyPojo.class);
         assertTrue(pi.properties.containsKey("beanName"));
         assertFalse(pi.properties.containsKey("fieldOnly"));
     }
 
     @Test
     void fieldOnlyIncludesPrivateFieldAndIgnoresGetter() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(FieldOnlyPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(FieldOnlyPojo.class);
         assertNotNull(pi.properties.get("name"));
         assertFalse(pi.readableProperties.isEmpty());
     }
@@ -157,7 +157,7 @@ class PropertyStrategyBindingTest {
     void setterOnlyIsWritableButNotReadable() {
         SetterOnlyPojo pojo = Sjf4j.global().fromJson("{\"name\":\"han\"}", SetterOnlyPojo.class);
         assertEquals("han", pojo.peek());
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(SetterOnlyPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(SetterOnlyPojo.class);
         assertTrue(pi.properties.containsKey("name"));
         assertFalse(pi.readableProperties.containsKey("name"));
         assertEquals("{}", Sjf4j.global().toJsonString(pojo));
@@ -165,7 +165,7 @@ class PropertyStrategyBindingTest {
 
     @Test
     void fieldBeanIncludesPrivateFieldFamilies() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(FieldBeanPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(FieldBeanPojo.class);
         assertTrue(pi.properties.containsKey("name"));
         assertTrue(pi.properties.get("name").hasGetter());
         assertTrue(pi.properties.get("name").hasSetter());
@@ -173,7 +173,7 @@ class PropertyStrategyBindingTest {
 
     @Test
     void methodRenameMergesPropertyFamily() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(MethodRenamePojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(MethodRenamePojo.class);
         assertTrue(pi.properties.containsKey("nick"));
         assertFalse(pi.properties.containsKey("name"));
         MethodRenamePojo pojo = Sjf4j.global().fromJson("{\"nick\":\"x\"}", MethodRenamePojo.class);
@@ -192,12 +192,12 @@ class PropertyStrategyBindingTest {
     @Test
     void creatorRenameMustMatchFinalPropertyName() {
         assertThrows(NodeException.class,
-                () -> TypeRegistry.registerPojoOrElseThrow(MethodRenameCreatorPojo.class));
+                () -> TypeRegistry.requireRegisteredPojoInfo(MethodRenameCreatorPojo.class));
     }
 
     @Test
     void nodeIgnoreRemovesThatPropertySourceOnly() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(IgnorePojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(IgnorePojo.class);
         assertFalse(pi.properties.containsKey("ignoredField"));
         assertTrue(pi.properties.containsKey("name"));
         assertFalse(pi.properties.get("name").hasGetter());

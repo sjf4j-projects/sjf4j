@@ -33,7 +33,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashMap;
-import java.util.Optional;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -291,8 +290,8 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testNamedValueCodecsAndValueFormatMetadata() {
         ValueInfo defaultCodec = TypeRegistry.registerTypeInfo(Instant.class).valueInfos[0];
-        ValueInfo isoCodec = TypeRegistry.registerNodeValueOrElseThrow(Instant.class, "iso");
-        ValueInfo epochCodec = TypeRegistry.registerNodeValueOrElseThrow(Instant.class, "epochMillis");
+        ValueInfo isoCodec = TypeRegistry.requireRegisteredValueInfo(Instant.class, "iso");
+        ValueInfo epochCodec = TypeRegistry.requireRegisteredValueInfo(Instant.class, "epochMillis");
 
         assertEquals("", defaultCodec.valueFormat);
         assertEquals("iso", isoCodec.valueFormat);
@@ -300,12 +299,12 @@ class TypeRegistryEdgeCaseTest {
         assertEquals(String.class, isoCodec.rawClazz);
         assertEquals(Long.class, epochCodec.rawClazz);
 
-        FieldInfo fi = TypeRegistry.registerPojoOrElseThrow(InstantFieldPojo.class).properties.get("createdAt");
+        FieldInfo fi = TypeRegistry.requireRegisteredPojoInfo(InstantFieldPojo.class).properties.get("createdAt");
         assertEquals("epochMillis", fi.valueFormat);
         assertNotNull(fi.valueInfo);
         assertEquals(Long.class, fi.valueInfo.rawClazz);
 
-        CreatorInfo creatorInfo = TypeRegistry.registerPojoOrElseThrow(InstantCreatorPojo.class).creatorInfo;
+        CreatorInfo creatorInfo = TypeRegistry.requireRegisteredPojoInfo(InstantCreatorPojo.class).creatorInfo;
         assertEquals("epochMillis", creatorInfo.argCodecNames[0]);
         assertNotNull(creatorInfo.argValueCodecs[0]);
         assertEquals(Long.class, creatorInfo.argValueCodecs[0].rawClazz);
@@ -314,7 +313,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void bindingMetadataFailuresUseBindingException() {
         BindingException missingCodec = assertThrows(BindingException.class,
-                () -> TypeRegistry.registerNodeValueOrElseThrow(String.class, "missing"));
+                () -> TypeRegistry.requireRegisteredValueInfo(String.class, "missing"));
         assertTrue(missingCodec.getMessage().contains("no ValueCodec registered"));
 
         assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(null, true));
@@ -332,7 +331,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testCodecPatternResolvesLocalDateCodec() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalDatePatternPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(LocalDatePatternPojo.class);
         FieldInfo fi = pi.properties.get("date");
         assertNotNull(fi);
         // codecName is null when only codecPattern is specified (separate attributes)
@@ -347,7 +346,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testCodecPatternOnCreatorParam() {
-        CreatorInfo ci = TypeRegistry.registerPojoOrElseThrow(LocalDatePatternCreatorPojo.class).creatorInfo;
+        CreatorInfo ci = TypeRegistry.requireRegisteredPojoInfo(LocalDatePatternCreatorPojo.class).creatorInfo;
         // argCodecNames stores codecName (null when only codecPattern is set)
         assertNull(ci.argCodecNames[0]);
         assertNotNull(ci.argValueCodecs[0]);
@@ -358,7 +357,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testCodecPatternOnNonPatternTypeThrows() {
         BindingException error = assertThrows(BindingException.class,
-                () -> TypeRegistry.registerPojoOrElseThrow(InvalidPatternPojo.class));
+                () -> TypeRegistry.requireRegisteredPojoInfo(InvalidPatternPojo.class));
         assertEquals(BindingException.class, error.getClass());
     }
 
@@ -387,7 +386,7 @@ class TypeRegistryEdgeCaseTest {
     void testLocalTimeCodecRoundTrip() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(LocalTime.class);
         assertTrue(ti.isNodeValue());
-        ValueInfo vci = ti.getNodeValueInfo("");
+        ValueInfo vci = ti.getValueInfo("");
         assertNotNull(vci);
         Object raw = vci.valueToRaw(LocalTime.of(10, 30, 15));
         assertEquals("10:30:15", raw);
@@ -398,7 +397,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     @SuppressWarnings("unchecked")
     void testLocalTimeCodecPattern() {
-        ValueInfo base = TypeRegistry.registerNodeValueOrElseThrow(LocalTime.class, "");
+        ValueInfo base = TypeRegistry.requireRegisteredValueInfo(LocalTime.class, "");
         assertTrue(base.codec instanceof PatternedValueCodec);
         // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
         PatternedValueCodec pc = (PatternedValueCodec) base.codec;
@@ -426,15 +425,6 @@ class TypeRegistryEdgeCaseTest {
         assertThrows(NodeException.class, () -> Nodes.toNumber(new MiniValue("12")));
     }
 
-    @Test
-    void testOptionalIsUnsupported() {
-        BindingException error = assertThrows(BindingException.class,
-                () -> TypeRegistry.registerTypeInfo(Optional.class));
-
-        assertEquals("unsupported node type 'java.util.Optional'", error.getMessage());
-        assertThrows(BindingException.class, () -> Nodes.to(null, Optional.class));
-    }
-
     static class LocalTimeFieldPojo {
         @NodeProperty(codecPattern = "HH:mm:ss")
         LocalTime time;
@@ -442,7 +432,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testLocalTimeFieldWithPattern() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(LocalTimeFieldPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(LocalTimeFieldPojo.class);
         FieldInfo fi = pi.properties.get("time");
         assertNotNull(fi);
         assertNull(fi.valueFormat);
@@ -602,7 +592,7 @@ class TypeRegistryEdgeCaseTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         CreatorInfo sessionCreator = ReflectUtil.analyzeCreator(SessionPojo.class, lookup);
-        PojoInfo sessionInfo = TypeRegistry.registerPojoOrElseThrow(SessionPojo.class);
+        PojoInfo sessionInfo = TypeRegistry.requireRegisteredPojoInfo(SessionPojo.class);
         FieldInfo extraField = sessionInfo.properties.get("extra");
 
         TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(sessionCreator, 1);
@@ -625,7 +615,7 @@ class TypeRegistryEdgeCaseTest {
         JsonObject jsonObject = (JsonObject) jsonSession.finish();
         assertEquals(1, jsonObject.getInt("extra"));
 
-        PojoInfo mixedInfo = TypeRegistry.registerPojoOrElseThrow(MixedJsonSessionPojo.class);
+        PojoInfo mixedInfo = TypeRegistry.requireRegisteredPojoInfo(MixedJsonSessionPojo.class);
         TypeRegistry.PojoCreationSession mixedSession = new TypeRegistry.PojoCreationSession(mixedInfo.creatorInfo, 2);
         mixedSession.acceptProperty(mixedInfo.properties.get("extra"), "later");
         mixedSession.acceptDynamic("dynamic", 2);
@@ -634,7 +624,7 @@ class TypeRegistryEdgeCaseTest {
         assertEquals("later", mixedPojo.extra);
         assertEquals(2, mixedPojo.getInt("dynamic"));
 
-        PojoInfo containerInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
+        PojoInfo containerInfo = TypeRegistry.requireRegisteredPojoInfo(ContainerPojo.class);
         TypeRegistry.PojoCreationSession noArgsSession = new TypeRegistry.PojoCreationSession(containerInfo.creatorInfo, 2);
         noArgsSession.acceptProperty(containerInfo.properties.get("plain"), "plain");
         assertEquals("plain", ((ContainerPojo) noArgsSession.finish()).plain);
@@ -672,7 +662,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testDuplicateCreatorBindingFailsAfterMaterialization() {
-        PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(AliasCreatorPojo.class);
+        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(AliasCreatorPojo.class);
         BindingException duplicate = assertThrowsExactly(BindingException.class,
                 () -> StreamingIO.readPojo(new SimpleJsonReader(new StringReader("{\"name\":\"first\",\"n\":\"second\"}")),
                         AliasCreatorPojo.class, AliasCreatorPojo.class, pi, StreamingContext.EMPTY));
@@ -681,7 +671,7 @@ class TypeRegistryEdgeCaseTest {
 
     @Test
     void testPropertyInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
-        PojoInfo pojoInfo = TypeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
+        PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(ContainerPojo.class);
         FieldInfo namesField = pojoInfo.properties.get("names");
         FieldInfo numbersField = pojoInfo.properties.get("numbers");
         FieldInfo mappingField = pojoInfo.properties.get("mapping");

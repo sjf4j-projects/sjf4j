@@ -25,7 +25,7 @@ public final class Jackson2Reader implements StreamingReader {
             new ClassValue<NameMatcher>() {
                 @Override
                 protected NameMatcher computeValue(Class<?> type) {
-                    PojoInfo pi = TypeRegistry.registerPojoOrElseThrow(type);
+                    PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(type);
                     return createNameMatcher(
                             pi.properties.keySet().toArray(new String[0]));
                 }
