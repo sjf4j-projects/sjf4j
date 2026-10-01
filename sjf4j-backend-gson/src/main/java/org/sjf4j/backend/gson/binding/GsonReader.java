@@ -46,7 +46,7 @@ public final class GsonReader implements StreamingReader {
     }
 
     @Override
-    public Token peekToken() throws IOException {
+    public Token currentToken() throws IOException {
         _ensureToken();
         return _token(token);
     }

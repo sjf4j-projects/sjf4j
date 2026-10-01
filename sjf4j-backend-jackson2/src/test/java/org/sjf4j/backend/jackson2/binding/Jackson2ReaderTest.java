@@ -23,7 +23,7 @@ class Jackson2ReaderTest {
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
 
-            assertEquals(Token.START_OBJECT, reader.peekToken());
+            assertEquals(Token.START_OBJECT, reader.currentToken());
             Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
 
             assertEquals(LinkedHashMap.class, value.getClass());
@@ -36,7 +36,7 @@ class Jackson2ReaderTest {
             assertEquals(LinkedHashMap.class, value.get("nested").getClass());
             assertEquals(ArrayList.class, value.get("items").getClass());
             assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
-            assertEquals(Token.EOF, reader.peekToken());
+            assertEquals(Token.EOF, reader.currentToken());
             reader.endDocument();
         }
     }

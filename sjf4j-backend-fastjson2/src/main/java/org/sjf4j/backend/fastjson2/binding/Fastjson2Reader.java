@@ -56,7 +56,7 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
-    public Token peekToken() {
+    public Token currentToken() {
         if (peeked == null) {
             peeked = reader.isEnd() ? Token.EOF
                     : _token(reader.current());
@@ -241,7 +241,7 @@ public final class Fastjson2Reader implements StreamingReader {
 
     @Override
     public void skipNext() throws IOException {
-        if (peekToken().jsonType() == org.sjf4j.JsonType.UNKNOWN) {
+        if (currentToken().jsonType() == org.sjf4j.JsonType.UNKNOWN) {
             throw new IOException("Expected value");
         }
         peeked = null;

@@ -128,7 +128,7 @@ public interface StreamingReader extends Closeable {
      * Completes a document after its root value has been consumed.
      */
     default void endDocument() throws IOException {
-        if (peekToken() != Token.EOF) {
+        if (currentToken() != Token.EOF) {
             throw new IOException("Expected end of document");
         }
     }
@@ -143,7 +143,7 @@ public interface StreamingReader extends Closeable {
     /**
      * Returns the current token without consuming it.
      */
-    Token peekToken() throws IOException;
+    Token currentToken() throws IOException;
 
 
     /*

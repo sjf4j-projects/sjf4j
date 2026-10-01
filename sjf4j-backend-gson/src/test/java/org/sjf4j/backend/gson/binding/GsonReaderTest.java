@@ -90,9 +90,9 @@ class GsonReaderTest {
     @Test
     void refreshesPeekedTokenAfterConsumption() throws Exception {
         try (GsonReader reader = reader("1")) {
-            assertEquals(Token.NUMBER, reader.peekToken());
+            assertEquals(Token.NUMBER, reader.currentToken());
             assertEquals(1, reader.nextIntValue());
-            assertEquals(Token.EOF, reader.peekToken());
+            assertEquals(Token.EOF, reader.currentToken());
         }
     }
 
@@ -102,7 +102,7 @@ class GsonReaderTest {
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
 
-            assertEquals(Token.START_OBJECT, reader.peekToken());
+            assertEquals(Token.START_OBJECT, reader.currentToken());
             Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
 
             assertEquals(LinkedHashMap.class, value.getClass());
@@ -115,7 +115,7 @@ class GsonReaderTest {
             assertEquals(LinkedHashMap.class, value.get("nested").getClass());
             assertEquals(ArrayList.class, value.get("items").getClass());
             assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
-            assertEquals(Token.EOF, reader.peekToken());
+            assertEquals(Token.EOF, reader.currentToken());
             reader.endDocument();
         }
     }
@@ -132,9 +132,9 @@ class GsonReaderTest {
     void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
         try (GsonReader reader = reader("[{\"id\":7},\"next\"]")) {
             reader.startArray();
-            assertEquals(Token.START_OBJECT, reader.peekToken());
+            assertEquals(Token.START_OBJECT, reader.currentToken());
             assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
-            assertEquals(Token.STRING, reader.peekToken());
+            assertEquals(Token.STRING, reader.currentToken());
             assertEquals("next", reader.nextString());
             reader.endArray();
         }

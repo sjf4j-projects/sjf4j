@@ -38,7 +38,7 @@ public final class Jackson3Reader implements StreamingReader {
     }
 
     @Override
-    public Token peekToken() throws IOException {
+    public Token currentToken() throws IOException {
         if (!initialized) {
             initialized = true;
             token = parser.currentToken();
@@ -303,7 +303,7 @@ public final class Jackson3Reader implements StreamingReader {
 
     private void ensureToken() throws IOException {
         if (!initialized) {
-            peekToken();
+            currentToken();
         }
     }
 

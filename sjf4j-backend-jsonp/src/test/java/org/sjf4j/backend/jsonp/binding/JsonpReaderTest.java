@@ -27,7 +27,7 @@ class JsonpReaderTest {
             assertTrue(reader.nextBooleanValue());
             reader.nextNull();
             assertTrue(reader.nextIfArrayEnd());
-            assertEquals(Token.EOF, reader.peekToken());
+            assertEquals(Token.EOF, reader.currentToken());
         }
     }
 
@@ -75,7 +75,7 @@ class JsonpReaderTest {
         }
         try (JsonpReader reader = reader("null")) {
             reader.nextNull();
-            assertEquals(Token.EOF, reader.peekToken());
+            assertEquals(Token.EOF, reader.currentToken());
             assertThrows(Exception.class, reader::skipNext);
         }
     }
@@ -115,7 +115,7 @@ class JsonpReaderTest {
 
         try (JsonpReader reader = new JsonpReader(unsupported)) {
             assertEquals(1, reader.nextIntValue());
-            assertEquals(Token.EOF, reader.peekToken());
+            assertEquals(Token.EOF, reader.currentToken());
         }
     }
 

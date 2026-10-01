@@ -49,11 +49,11 @@ class SimpleJsonReaderTest {
         SimpleJsonReader stringReader = new SimpleJsonReader("null");
         stringReader.close();
         assertThrows(IOException.class, stringReader::startDocument);
-        assertThrows(IOException.class, stringReader::peekToken);
+        assertThrows(IOException.class, stringReader::currentToken);
 
         SimpleJsonReader readerInput = new SimpleJsonReader(new StringReader("null"));
         readerInput.close();
-        assertThrows(IOException.class, readerInput::peekToken);
+        assertThrows(IOException.class, readerInput::currentToken);
     }
 
     @Test
@@ -67,13 +67,13 @@ class SimpleJsonReaderTest {
         eofReader.nextNull();
         eofReader.endDocument();
         eofReader.close();
-        assertThrows(IOException.class, eofReader::peekToken);
+        assertThrows(IOException.class, eofReader::currentToken);
 
         SimpleJsonReader readerEof = new SimpleJsonReader(new StringReader("null"));
         readerEof.nextNull();
         readerEof.endDocument();
         readerEof.close();
-        assertThrows(IOException.class, readerEof::peekToken);
+        assertThrows(IOException.class, readerEof::currentToken);
     }
 
     @Test
@@ -135,7 +135,7 @@ class SimpleJsonReaderTest {
         };
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"known\":1,\"other\":2}"))) {
             reader.startObject();
-            assertEquals(StreamingReader.Token.NAME, reader.peekToken());
+            assertEquals(StreamingReader.Token.NAME, reader.currentToken());
             assertEquals(0, reader.nextNameMatch(matcher));
             assertEquals(1, reader.nextIntValue());
             assertEquals(StreamingReader.NameMatcher.UNKNOWN, reader.nextNameMatch(matcher, 0));
@@ -148,9 +148,9 @@ class SimpleJsonReaderTest {
     void classifiesRootTokensAndReadsAllJsonEscapes() throws Exception {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(
                 " { \"name\":\"\\\"\\\\\\/\\b\\f\\n\\r\\t\\u0041\\uD83D\\uDE00\", \"n\":123, \"b\": true, \"nil\": null } "))) {
-            assertEquals(StreamingReader.Token.START_OBJECT, reader.peekToken());
+            assertEquals(StreamingReader.Token.START_OBJECT, reader.currentToken());
             reader.startObject();
-            assertEquals(StreamingReader.Token.NAME, reader.peekToken());
+            assertEquals(StreamingReader.Token.NAME, reader.currentToken());
             assertEquals("name", reader.nextName());
             assertEquals("\"\\/\b\f\n\r\tA😀", reader.nextString());
             assertEquals("n", reader.nextName());
@@ -160,13 +160,13 @@ class SimpleJsonReaderTest {
             assertEquals("nil", reader.nextName());
             reader.nextNull();
             reader.endObject();
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
         }
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(""))) {
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
         }
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("x"))) {
-            assertEquals(StreamingReader.Token.UNKNOWN, reader.peekToken());
+            assertEquals(StreamingReader.Token.UNKNOWN, reader.currentToken());
         }
     }
 
@@ -208,10 +208,10 @@ class SimpleJsonReaderTest {
     void retainsEofAfterRootScalarAndEndDocument() throws Exception {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("42"))) {
             assertEquals(42, reader.nextIntValue());
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
             reader.endDocument();
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
             reader.endDocument();
         }
     }
@@ -304,7 +304,7 @@ class SimpleJsonReaderTest {
             reader.startObject();
             reader.nextName();
             reader.startObject();
-            BindingException error = assertThrows(BindingException.class, reader::peekToken);
+            BindingException error = assertThrows(BindingException.class, reader::currentToken);
             assertEquals("$.a", error.getPathSegment().rootedPathExpr());
         }
     }
@@ -348,7 +348,7 @@ class SimpleJsonReaderTest {
             @Override
             public void close() { }
         };
-        assertThrows(IOException.class, () -> new SimpleJsonReader(failing).peekToken());
+        assertThrows(IOException.class, () -> new SimpleJsonReader(failing).currentToken());
     }
 
     @Test
@@ -367,7 +367,7 @@ class SimpleJsonReaderTest {
         };
         try (SimpleJsonReader reader = new SimpleJsonReader(failing)) {
             reader.startArray();
-            assertThrows(IOException.class, reader::peekToken);
+            assertThrows(IOException.class, reader::currentToken);
         }
     }
 }

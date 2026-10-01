@@ -41,18 +41,18 @@ public final class Jackson2Reader implements StreamingReader {
     }
 
     @Override
-    public Token peekToken() throws IOException {
-        return _token(currentToken());
+    public Token currentToken() throws IOException {
+        return _token(_currentToken());
     }
 
     @Override
     public void startDocument() throws IOException {
-        currentToken();
+        _currentToken();
     }
 
     @Override
     public void startObject() throws IOException {
-        JsonToken current = currentToken();
+        JsonToken current = _currentToken();
         if (current != JsonToken.START_OBJECT) {
             throw _expected(JsonToken.START_OBJECT.name(), current);
         }
@@ -61,7 +61,7 @@ public final class Jackson2Reader implements StreamingReader {
 
     @Override
     public void endObject() throws IOException {
-        JsonToken current = currentToken();
+        JsonToken current = _currentToken();
         if (current != JsonToken.END_OBJECT) {
             throw _expected(JsonToken.END_OBJECT.name(), current);
         }
@@ -70,7 +70,7 @@ public final class Jackson2Reader implements StreamingReader {
 
     @Override
     public void startArray() throws IOException {
-        JsonToken current = currentToken();
+        JsonToken current = _currentToken();
         if (current != JsonToken.START_ARRAY) {
             throw _expected(JsonToken.START_ARRAY.name(), current);
         }
@@ -79,7 +79,7 @@ public final class Jackson2Reader implements StreamingReader {
 
     @Override
     public void endArray() throws IOException {
-        JsonToken current = currentToken();
+        JsonToken current = _currentToken();
         if (current != JsonToken.END_ARRAY) {
             throw _expected(JsonToken.END_ARRAY.name(), current);
         }
@@ -105,7 +105,7 @@ public final class Jackson2Reader implements StreamingReader {
 
     @Override
     public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
-        JsonToken current = currentToken();
+        JsonToken current = _currentToken();
         if (current != JsonToken.FIELD_NAME) {
             throw _expected(JsonToken.FIELD_NAME.name(), current);
         }
@@ -224,28 +224,28 @@ public final class Jackson2Reader implements StreamingReader {
 
     @Override
     public boolean nextIfNull() throws IOException {
-        if (currentToken() != JsonToken.VALUE_NULL) return false;
+        if (_currentToken() != JsonToken.VALUE_NULL) return false;
         parser.nextToken();
         return true;
     }
 
     @Override
     public boolean nextIfObjectEnd() throws IOException {
-        if (currentToken() != JsonToken.END_OBJECT) return false;
+        if (_currentToken() != JsonToken.END_OBJECT) return false;
         parser.nextToken();
         return true;
     }
 
     @Override
     public boolean nextIfArrayEnd() throws IOException {
-        if (currentToken() != JsonToken.END_ARRAY) return false;
+        if (_currentToken() != JsonToken.END_ARRAY) return false;
         parser.nextToken();
         return true;
     }
 
     @Override
     public void skipNext() throws IOException {
-        JsonToken current = currentToken();
+        JsonToken current = _currentToken();
         if (current != JsonToken.START_OBJECT && current != JsonToken.START_ARRAY &&
                 current != JsonToken.VALUE_STRING &&
                 current != JsonToken.VALUE_NUMBER_INT && current != JsonToken.VALUE_NUMBER_FLOAT &&
@@ -277,7 +277,7 @@ public final class Jackson2Reader implements StreamingReader {
     }
 
     private Object _readRawNode() throws IOException {
-        JsonToken current = currentToken();
+        JsonToken current = _currentToken();
         if (current == null) {
             throw new BindingException("unexpected token '" + _token(null) + "'");
         }
@@ -319,7 +319,7 @@ public final class Jackson2Reader implements StreamingReader {
         return value;
     }
 
-    private JsonToken currentToken() throws IOException {
+    private JsonToken _currentToken() throws IOException {
         JsonToken current = parser.currentToken();
         return current == null ? parser.nextToken() : current;
     }

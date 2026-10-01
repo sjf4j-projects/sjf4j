@@ -32,7 +32,7 @@ class SnakeReaderTest {
             assertTrue(reader.nextIfNull());
             assertTrue(reader.nextIfArrayEnd());
             reader.endDocument();
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
         }
 
         try (SnakeReader reader = reader("first: text\nnested:\n  items: [1]\nnil: null\n")) {
@@ -144,7 +144,7 @@ class SnakeReaderTest {
         try (SnakeReader reader = reader("[1,{a: [true]}]")) {
             reader.skipNext();
             reader.endDocument();
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
             assertThrows(IOException.class, reader::skipNext);
         }
     }
@@ -156,7 +156,7 @@ class SnakeReaderTest {
             assertEquals("first", reader.nextName());
             reader.skipNext();
             assertEquals("second", reader.nextName());
-            assertThrows(IOException.class, reader::peekToken);
+            assertThrows(IOException.class, reader::currentToken);
             assertThrows(IOException.class, reader::skipNext);
         }
     }

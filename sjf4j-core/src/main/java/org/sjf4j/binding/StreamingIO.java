@@ -82,7 +82,7 @@ public final class StreamingIO {
                 return readValueWithCodec(reader, nodeType, nodeBoxed, vi, context);
             }
 
-            StreamingReader.Token token = reader.peekToken();
+            StreamingReader.Token token = reader.currentToken();
             switch (token) {
                 case START_OBJECT:
                     return readObject(reader, nodeType, nodeBoxed, ti, context);
@@ -108,7 +108,7 @@ public final class StreamingIO {
 
 
     public static Object readRawNode(StreamingReader reader) throws IOException {
-        switch (reader.peekToken()) {
+        switch (reader.currentToken()) {
             case START_OBJECT:
                 return readRawObject(reader);
             case START_ARRAY:
@@ -123,7 +123,7 @@ public final class StreamingIO {
                 reader.nextNull();
                 return null;
             default:
-                throw new BindingException("unexpected token '" + reader.peekToken() + "'");
+                throw new BindingException("unexpected token '" + reader.currentToken() + "'");
         }
     }
 
@@ -192,7 +192,15 @@ public final class StreamingIO {
         if (nodeBoxed == Byte.class) return reader.nextByteValue();
         if (nodeBoxed == BigInteger.class) return reader.nextBigInteger();
         if (nodeBoxed == BigDecimal.class) return reader.nextBigDecimal();
-        if (nodeBoxed.isEnum()) return enumByOrdinal(nodeBoxed, reader.nextIntValue());
+        if (nodeBoxed.isEnum()) {
+            int ordinal = reader.nextIntValue();
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Enum[] values = ((Class<? extends Enum>) nodeBoxed).getEnumConstants();
+            if (ordinal < 0 || ordinal >= values.length) {
+                throw new BindingException("enum ordinal '" + ordinal + "' out of range for type '" + nodeBoxed.getName() + "'");
+            }
+            return values[ordinal];
+        }
 
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
@@ -268,15 +276,6 @@ public final class StreamingIO {
         }
 
         throw new BindingException("cannot read object value into type '" + nodeBoxed + "'");
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object enumByOrdinal(Class<?> enumClass, int ordinal) {
-        Enum[] values = ((Class<? extends Enum>) enumClass).getEnumConstants();
-        if (ordinal < 0 || ordinal >= values.length) {
-            throw new BindingException("enum ordinal '" + ordinal + "' out of range for type '" + enumClass.getName() + "'");
-        }
-        return values[ordinal];
     }
 
 

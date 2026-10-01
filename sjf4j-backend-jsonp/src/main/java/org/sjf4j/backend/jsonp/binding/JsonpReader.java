@@ -35,7 +35,7 @@ public final class JsonpReader implements StreamingReader {
     }
 
     @Override
-    public Token peekToken() {
+    public Token currentToken() {
         if (current == null) return Token.EOF;
         switch (current) {
             case START_OBJECT: return Token.START_OBJECT;

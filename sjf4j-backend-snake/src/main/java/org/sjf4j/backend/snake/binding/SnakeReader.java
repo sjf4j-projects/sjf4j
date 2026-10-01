@@ -23,7 +23,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.BindException;
 import java.util.Locale;
-import java.util.Objects;
 
 /** Streaming reader backed directly by SnakeYAML parser events. */
 public final class SnakeReader implements StreamingReader {
@@ -54,7 +53,7 @@ public final class SnakeReader implements StreamingReader {
     }
 
     @Override
-    public Token peekToken() throws IOException {
+    public Token currentToken() throws IOException {
         Event event = peekEvent();
         if (event == null) return Token.EOF;
         if (event instanceof MappingStartEvent) return Token.START_OBJECT;
@@ -177,7 +176,7 @@ public final class SnakeReader implements StreamingReader {
 
     @Override
     public boolean nextIfNull() throws IOException {
-        if (peekToken() != Token.NULL) return false;
+        if (currentToken() != Token.NULL) return false;
         nextEvent();
         return true;
     }
@@ -198,7 +197,7 @@ public final class SnakeReader implements StreamingReader {
 
     @Override
     public void skipNext() throws IOException {
-        Token token = peekToken();
+        Token token = currentToken();
 
         switch (token) {
             case STRING:
@@ -235,7 +234,7 @@ public final class SnakeReader implements StreamingReader {
     }
 
     private ScalarEvent nextScalar(Token expected) throws IOException {
-        Token actual = peekToken();
+        Token actual = currentToken();
         if (actual != expected) {
             throw new IOException(
                     "Expected " + expected.name().toLowerCase(Locale.ROOT) + ", but was " + actual);

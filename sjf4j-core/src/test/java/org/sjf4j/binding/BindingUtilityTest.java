@@ -83,7 +83,7 @@ class BindingUtilityTest {
             this.token = token;
         }
 
-        public Token peekToken() { return token; }
+        public Token currentToken() { return token; }
         public boolean nextIfNull() { return nullValue; }
         public boolean nextIfObjectEnd() { return false; }
         public boolean nextIfArrayEnd() { return false; }

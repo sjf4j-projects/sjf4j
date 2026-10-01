@@ -32,7 +32,7 @@ class Fastjson2BinderTest {
     void peekDoesNotDistinguishFieldNamesFromStringValues() {
         try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of("{\"id\":7}"))) {
             reader.startObject();
-            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
+            assertEquals(StreamingReader.Token.STRING, reader.currentToken());
             assertEquals("id", reader.nextName());
             assertEquals(7, reader.nextIntValue());
             assertTrue(reader.nextIfObjectEnd());
@@ -45,7 +45,7 @@ class Fastjson2BinderTest {
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"))) {
 
-            assertEquals(StreamingReader.Token.START_OBJECT, reader.peekToken());
+            assertEquals(StreamingReader.Token.START_OBJECT, reader.currentToken());
             Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
 
             assertEquals(LinkedHashMap.class, value.getClass());
@@ -58,7 +58,7 @@ class Fastjson2BinderTest {
             assertEquals(LinkedHashMap.class, value.get("nested").getClass());
             assertEquals(ArrayList.class, value.get("items").getClass());
             assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
             reader.endDocument();
         }
     }
@@ -75,9 +75,9 @@ class Fastjson2BinderTest {
     void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
         try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of("[{\"id\":7},\"next\"]"))) {
             reader.startArray();
-            assertEquals(StreamingReader.Token.START_OBJECT, reader.peekToken());
+            assertEquals(StreamingReader.Token.START_OBJECT, reader.currentToken());
             assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
-            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
+            assertEquals(StreamingReader.Token.STRING, reader.currentToken());
             assertEquals("next", reader.nextString());
             reader.endArray();
         }

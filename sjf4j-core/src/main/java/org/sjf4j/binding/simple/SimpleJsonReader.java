@@ -52,7 +52,7 @@ public final class SimpleJsonReader implements StreamingReader {
      * Peeks next token from current reader state.
      */
     @Override
-    public Token peekToken() throws IOException {
+    public Token currentToken() throws IOException {
         if (bufferedToken != null) return bufferedToken;
 
         boolean fieldName = _prepareToken();
@@ -279,21 +279,21 @@ public final class SimpleJsonReader implements StreamingReader {
 
     @Override
     public boolean nextIfNull() throws IOException {
-        if (peekToken() != Token.NULL) return false;
+        if (currentToken() != Token.NULL) return false;
         nextNull();
         return true;
     }
 
     @Override
     public boolean nextIfObjectEnd() throws IOException {
-        if (peekToken() != Token.END_OBJECT) return false;
+        if (currentToken() != Token.END_OBJECT) return false;
         endObject();
         return true;
     }
 
     @Override
     public boolean nextIfArrayEnd() throws IOException {
-        if (peekToken() != Token.END_ARRAY) return false;
+        if (currentToken() != Token.END_ARRAY) return false;
         endArray();
         return true;
     }
@@ -304,7 +304,7 @@ public final class SimpleJsonReader implements StreamingReader {
      */
     @Override
     public void skipNext() throws IOException {
-        Token token = peekToken();
+        Token token = currentToken();
         if (token.jsonType() == JsonType.UNKNOWN) throw _error("expected value", _peek());
         bufferedToken = null;
         _prepareValuePath();

@@ -32,7 +32,7 @@ public final class OneOfIO {
 
     static Object readOneOfByJsonType(StreamingReader reader, OneOfInfo oneOfInfo,
                                       RuntimeContext context) throws IOException {
-        JsonType jsonType = reader.peekToken().jsonType();
+        JsonType jsonType = reader.currentToken().jsonType();
 
         Class<?> targetClazz = oneOfInfo.matchByJsonType(jsonType);
         if (targetClazz != null) {
@@ -55,7 +55,7 @@ public final class OneOfIO {
         }
 
         final boolean fallbackNull = oneOfInfo.fallbackNull;
-        if (reader.peekToken().jsonType() != JsonType.OBJECT) {
+        if (reader.currentToken().jsonType() != JsonType.OBJECT) {
             if (fallbackNull) {
                 reader.skipNext();
                 return null;
