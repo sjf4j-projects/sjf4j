@@ -164,7 +164,7 @@ public final class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as string.
      */
     @Override
-    public String nextString() throws IOException {
+    public String nextStringValue() throws IOException {
         bufferedToken = null;
         _prepareValuePath();
         try {

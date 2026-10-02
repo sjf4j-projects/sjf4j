@@ -85,7 +85,7 @@ public final class JsonpReader implements StreamingReader {
     }
 
     @Override
-    public String nextString() throws IOException {
+    public String nextStringValue() throws IOException {
         require(JsonParser.Event.VALUE_STRING, "string");
         String value = parser.getString();
         advance();

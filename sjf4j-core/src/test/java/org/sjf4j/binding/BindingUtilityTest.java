@@ -34,7 +34,7 @@ class BindingUtilityTest {
     @Test
     void readerDefaultsHandleBoxedAndNullableValues() throws Exception {
         RecordingReader values = new RecordingReader(false, StreamingReader.Token.EOF);
-        assertEquals("text", values.nextStringOrNull());
+        assertEquals("text", values.nextString());
         assertEquals(1L, values.nextLong());
         assertEquals(2, values.nextInt());
         assertEquals((short) 3, values.nextShort());
@@ -44,7 +44,7 @@ class BindingUtilityTest {
         assertEquals(true, values.nextBoolean());
 
         RecordingReader nulls = new RecordingReader(true, StreamingReader.Token.EOF);
-        assertNull(nulls.nextStringOrNull());
+        assertNull(nulls.nextString());
         assertNull(nulls.nextLong());
         assertNull(nulls.nextInt());
         assertNull(nulls.nextShort());
@@ -89,7 +89,7 @@ class BindingUtilityTest {
         public boolean nextIfArrayEnd() { return false; }
         public void startObject() {} public void endObject() {} public void startArray() {} public void endArray() {}
         public String nextName() { return "name"; }
-        public String nextString() { return "text"; }
+        public String nextStringValue() { return "text"; }
         public Number nextNumber() { return 0; }
         public long nextLongValue() { return 1L; }
         public int nextIntValue() { return 2; }

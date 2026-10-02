@@ -131,7 +131,7 @@ public final class Jackson2Reader implements StreamingReader {
     }
 
     @Override
-    public String nextString() throws IOException {
+    public String nextStringValue() throws IOException {
         String value = parser.getText();
         parser.nextToken();
         return value;

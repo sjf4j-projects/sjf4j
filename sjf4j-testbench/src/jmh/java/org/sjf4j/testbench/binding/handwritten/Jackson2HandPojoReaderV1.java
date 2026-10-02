@@ -215,6 +215,6 @@ public final class Jackson2HandPojoReaderV1 {
     }
 
     private static String readString(Jackson2Reader reader) throws IOException {
-        return reader.nextIfNull() ? null : reader.nextString();
+        return reader.nextIfNull() ? null : reader.nextStringValue();
     }
 }

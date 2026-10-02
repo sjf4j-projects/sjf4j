@@ -27,7 +27,7 @@ class GsonReaderTest {
         try (GsonReader reader = reader("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]")) {
             reader.startArray();
             reader.skipNext();
-            assertEquals("kept", reader.nextString());
+            assertEquals("kept", reader.nextStringValue());
             reader.endArray();
         }
     }
@@ -135,7 +135,7 @@ class GsonReaderTest {
             assertEquals(Token.START_OBJECT, reader.currentToken());
             assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
             assertEquals(Token.STRING, reader.currentToken());
-            assertEquals("next", reader.nextString());
+            assertEquals("next", reader.nextStringValue());
             reader.endArray();
         }
     }

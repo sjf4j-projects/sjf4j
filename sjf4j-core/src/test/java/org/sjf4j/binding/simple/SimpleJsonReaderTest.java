@@ -152,7 +152,7 @@ class SimpleJsonReaderTest {
             reader.startObject();
             assertEquals(StreamingReader.Token.NAME, reader.currentToken());
             assertEquals("name", reader.nextName());
-            assertEquals("\"\\/\b\f\n\r\tA😀", reader.nextString());
+            assertEquals("\"\\/\b\f\n\r\tA😀", reader.nextStringValue());
             assertEquals("n", reader.nextName());
             assertEquals(123, reader.nextNumber().intValue());
             assertEquals("b", reader.nextName());
@@ -318,13 +318,13 @@ class SimpleJsonReaderTest {
         }
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("[\"\\uD83D\\uDE00\",null]"))) {
             reader.startArray();
-            assertEquals("😀", reader.nextString());
+            assertEquals("😀", reader.nextStringValue());
             assertTrue(reader.nextIfNull());
             assertFalse(reader.nextIfNull());
             reader.endArray();
         }
         assertThrows(BindingException.class,
-                () -> new SimpleJsonReader(new StringReader("\"\\uDE00\"")).nextString());
+                () -> new SimpleJsonReader(new StringReader("\"\\uDE00\"")).nextStringValue());
     }
 
     @Test

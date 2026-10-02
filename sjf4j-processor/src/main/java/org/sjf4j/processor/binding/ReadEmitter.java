@@ -401,7 +401,7 @@ final class ReadEmitter {
 
         switch (value.kind()) {
             case STRING:
-                return reader + ".nextStringOrNull()";
+                return reader + ".nextString()";
 
             case CHARACTER:
                 if (value.primitive()) {
@@ -467,7 +467,7 @@ final class ReadEmitter {
                         value.type() +
                         ".valueOf(" +
                         reader +
-                        ".nextString()))";
+                        ".nextStringValue()))";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {

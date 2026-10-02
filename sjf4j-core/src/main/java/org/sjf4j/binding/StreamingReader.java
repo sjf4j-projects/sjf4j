@@ -219,7 +219,7 @@ public interface StreamingReader extends Closeable {
      *
      * <p>The current token must represent a string value.</p>
      */
-    String nextString() throws IOException;
+    String nextStringValue() throws IOException;
 
     /**
      * Reads a nullable String.
@@ -227,12 +227,12 @@ public interface StreamingReader extends Closeable {
      * <p>Implementations may override this to provide a fused null/string
      * fast path.</p>
      */
-    default String nextStringOrNull() throws IOException {
+    default String nextString() throws IOException {
         if (nextIfNull()) {
             return null;
         }
 
-        return nextString();
+        return nextStringValue();
     }
 
 
@@ -304,6 +304,11 @@ public interface StreamingReader extends Closeable {
     default Boolean nextBoolean() throws IOException {
         return nextIfNull() ? null : nextBooleanValue();
     }
+
+    default Character nextChar() throws IOException {
+        return nextIfNull() ? null : nextCharValue();
+    }
+
 
 
     /*

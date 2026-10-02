@@ -78,7 +78,7 @@ class Fastjson2BinderTest {
             assertEquals(StreamingReader.Token.START_OBJECT, reader.currentToken());
             assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
             assertEquals(StreamingReader.Token.STRING, reader.currentToken());
-            assertEquals("next", reader.nextString());
+            assertEquals("next", reader.nextStringValue());
             reader.endArray();
         }
     }

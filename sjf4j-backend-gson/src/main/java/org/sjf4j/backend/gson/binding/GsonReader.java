@@ -111,7 +111,7 @@ public final class GsonReader implements StreamingReader {
     }
 
     @Override
-    public String nextString() throws IOException {
+    public String nextStringValue() throws IOException {
         String value = reader.nextString();
         initialized = false;
         return value;

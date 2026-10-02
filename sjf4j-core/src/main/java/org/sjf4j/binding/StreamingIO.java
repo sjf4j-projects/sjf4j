@@ -82,6 +82,62 @@ public final class StreamingIO {
                 return readValueWithCodec(reader, nodeType, nodeBoxed, vi, context);
             }
 
+//            if (nodeBoxed == String.class) {
+//                return reader.nextString();
+//            }
+//            if (nodeBoxed == Integer.class) {
+//                return reader.nextInt();
+//            }
+//            if (nodeBoxed == Long.class) {
+//                return reader.nextLong();
+//            }
+//            if (nodeBoxed == Double.class) {
+//                return reader.nextDouble();
+//            }
+//            if (nodeBoxed == Float.class) {
+//                return reader.nextFloat();
+//            }
+//            if (nodeBoxed == Boolean.class) {
+//                return reader.nextBoolean();
+//            }
+//            if (nodeBoxed == Short.class) {
+//                return reader.nextShort();
+//            }
+//            if (nodeBoxed == Byte.class) {
+//                return reader.nextByte();
+//            }
+//            if (nodeBoxed == Character.class) {
+//                return reader.nextChar();
+//            }
+//            if (nodeBoxed == Number.class) {
+//                return reader.nextNumber();
+//            }
+//            if (nodeBoxed == BigInteger.class) {
+//                return reader.nextBigInteger();
+//            }
+//            if (nodeBoxed == BigDecimal.class) {
+//                return reader.nextBigDecimal();
+//            }
+//            if (nodeBoxed.isEnum()) {
+//                return readEnum(reader, nodeBoxed);
+//            }
+//
+//            if (Map.class.isAssignableFrom(nodeBoxed)) {
+//                Type valueType = Types.resolveTypeArgument(nodeType, Map.class, 1);
+//                Class<?> valueBoxed = Types.rawBox(valueType);
+//                return readMap(reader, nodeBoxed, valueType, valueBoxed,
+//                        TypeRegistry.registerTypeInfo(valueBoxed), context);
+//            }
+//            if (List.class.isAssignableFrom(nodeBoxed)) {
+//
+//            }
+//            if (Set.class.isAssignableFrom(nodeBoxed)) {
+//
+//            }
+//            if (nodeBoxed.isArray()) {
+//
+//            }
+
             StreamingReader.Token token = reader.currentToken();
             switch (token) {
                 case START_OBJECT:
@@ -106,6 +162,26 @@ public final class StreamingIO {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static Object readEnum(StreamingReader reader, Class<?> enumType) throws IOException {
+        switch (reader.currentToken()) {
+            case STRING:
+                String s = reader.nextStringValue();
+                return Enum.valueOf((Class<? extends Enum>) enumType, s);
+            case NUMBER:
+                int ordinal = reader.nextIntValue();
+                Enum[] values = ((Class<? extends Enum>) enumType).getEnumConstants();
+                if (ordinal < 0 || ordinal >= values.length) {
+                    throw new BindingException("enum ordinal '" + ordinal + "' out of range for type '" + enumType.getName() + "'");
+                }
+                return values[ordinal];
+            default:
+                throw new BindingException("cannot read enum '" + enumType.getName() + "' from token '" +
+                        reader.currentToken() + "'");
+        }
+    }
+
+
 
     public static Object readRawNode(StreamingReader reader) throws IOException {
         switch (reader.currentToken()) {
@@ -114,7 +190,7 @@ public final class StreamingIO {
             case START_ARRAY:
                 return readRawArray(reader);
             case STRING:
-                return reader.nextString();
+                return reader.nextStringValue();
             case NUMBER:
                 return reader.nextNumber();
             case BOOLEAN:
@@ -218,20 +294,20 @@ public final class StreamingIO {
     static Object readString(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
                              RuntimeContext context) throws IOException {
         if (nodeBoxed == String.class) {
-            return reader.nextString();
+            return reader.nextStringValue();
         }
         if (nodeBoxed == Character.class) {
-            String s = reader.nextString();
+            String s = reader.nextStringValue();
             return !s.isEmpty() ? s.charAt(0) : null;
         }
         if (nodeBoxed.isEnum()) {
-            String s = reader.nextString();
+            String s = reader.nextStringValue();
             return Enum.valueOf((Class<? extends Enum>) nodeBoxed, s);
         }
         if (ti.isNodeValue()) {
             String valueFormat = context.defaultValueFormat(nodeBoxed);
             ValueInfo vi = ti.requireValueInfo(valueFormat);
-            String raw = reader.nextString();
+            String raw = reader.nextStringValue();
             return vi.rawToValue(raw);
         }
         throw new BindingException("cannot read string value into type '" + nodeBoxed + "'");
@@ -569,7 +645,7 @@ public final class StreamingIO {
             return valueInfo.rawToValue(readRawArray(reader));
         }
         if (rawClazz == String.class) {
-            return valueInfo.rawToValue(reader.nextString());
+            return valueInfo.rawToValue(reader.nextStringValue());
         }
         if (rawClazz == Boolean.class) {
             return valueInfo.rawToValue(reader.nextBooleanValue());

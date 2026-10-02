@@ -85,12 +85,12 @@ class SnakeWriterTest {
 
         try (SnakeReader reader = reader(binder, output.toString())) {
             reader.startArray();
-            assertEquals("", reader.nextString());
-            assertEquals("null", reader.nextString());
-            assertEquals("~", reader.nextString());
-            assertEquals("true", reader.nextString());
-            assertEquals("123", reader.nextString());
-            assertEquals("hello: world", reader.nextString());
+            assertEquals("", reader.nextStringValue());
+            assertEquals("null", reader.nextStringValue());
+            assertEquals("~", reader.nextStringValue());
+            assertEquals("true", reader.nextStringValue());
+            assertEquals("123", reader.nextStringValue());
+            assertEquals("hello: world", reader.nextStringValue());
             assertEquals(1L, reader.nextLongValue());
             assertEquals(2, reader.nextIntValue());
             assertEquals((short) 3, reader.nextShortValue());

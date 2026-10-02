@@ -202,7 +202,7 @@ public interface FieldReader {
 
         if (fieldBoxed == String.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextStringOrNull());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextString());
             };
         }
         if (fieldBoxed == Integer.class) {
@@ -242,7 +242,7 @@ public interface FieldReader {
         }
         if (fieldBoxed == Character.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                String str = reader.nextStringOrNull();
+                String str = reader.nextString();
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner,
                         str == null || str.isEmpty() ? null : str.charAt(0));
             };
@@ -266,7 +266,7 @@ public interface FieldReader {
             @SuppressWarnings("rawtypes")
             Class<? extends Enum> enumType = fieldBoxed.asSubclass(Enum.class);
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                String str = reader.nextStringOrNull();
+                String str = reader.nextString();
                 @SuppressWarnings("unchecked")
                 Object enumValue = str == null ? null : Enum.valueOf(enumType, str);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, enumValue);

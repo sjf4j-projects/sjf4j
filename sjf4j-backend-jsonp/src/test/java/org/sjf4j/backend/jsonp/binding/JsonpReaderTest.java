@@ -40,7 +40,7 @@ class JsonpReaderTest {
             assertThrows(ArithmeticException.class, reader::nextFloatValue);
         }
         try (JsonpReader reader = reader("true")) {
-            assertThrows(Exception.class, reader::nextString);
+            assertThrows(Exception.class, reader::nextStringValue);
         }
         try (JsonpReader reader = reader("1.0")) {
             assertThrows(Exception.class, reader::nextLongValue);
@@ -70,7 +70,7 @@ class JsonpReaderTest {
         try (JsonpReader reader = reader("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]")) {
             reader.startArray();
             reader.skipNext();
-            assertEquals("kept", reader.nextString());
+            assertEquals("kept", reader.nextStringValue());
             reader.endArray();
         }
         try (JsonpReader reader = reader("null")) {

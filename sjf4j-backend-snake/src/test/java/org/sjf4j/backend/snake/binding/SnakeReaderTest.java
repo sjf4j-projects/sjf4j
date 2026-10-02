@@ -39,7 +39,7 @@ class SnakeReaderTest {
             reader.startObject();
             assertEquals("first", reader.nextName());
             assertFalse(reader.nextIfNull());
-            assertEquals("text", reader.nextString());
+            assertEquals("text", reader.nextStringValue());
             assertEquals("nested", reader.nextName());
             reader.startObject();
             assertEquals("items", reader.nextName());
@@ -66,7 +66,7 @@ class SnakeReaderTest {
             assertEquals("underscored", reader.nextName());
             assertEquals(1000.5d, reader.nextDoubleValue());
             assertEquals("string", reader.nextName());
-            assertEquals("null", reader.nextString());
+            assertEquals("null", reader.nextStringValue());
             assertEquals("integer", reader.nextName());
             assertEquals(12, reader.nextIntValue());
             assertEquals("float", reader.nextName());
@@ -81,7 +81,7 @@ class SnakeReaderTest {
         try (SnakeReader reader = reader("[text, 1]")) {
             reader.startArray();
             assertFalse(reader.nextIfNull());
-            assertEquals("text", reader.nextString());
+            assertEquals("text", reader.nextStringValue());
             assertFalse(reader.nextIfArrayEnd());
             assertEquals(1, reader.nextIntValue());
             reader.endArray();
@@ -120,7 +120,7 @@ class SnakeReaderTest {
             assertEquals("discard", reader.nextName());
             reader.skipNext();
             assertEquals("kept", reader.nextName());
-            assertEquals("value", reader.nextString());
+            assertEquals("value", reader.nextStringValue());
             reader.endObject();
             reader.endDocument();
         }

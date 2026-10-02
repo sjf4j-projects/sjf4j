@@ -98,7 +98,7 @@ public final class SnakeReader implements StreamingReader {
     }
 
     @Override
-    public String nextString() throws IOException {
+    public String nextStringValue() throws IOException {
         return nextScalar(Token.STRING).getValue();
     }
 
@@ -152,7 +152,7 @@ public final class SnakeReader implements StreamingReader {
 
     @Override
     public char nextCharValue() throws IOException {
-        String value = nextString();
+        String value = nextStringValue();
         if (value.isEmpty()) {
             throw new BindException("cannot read empty string as char");
         }

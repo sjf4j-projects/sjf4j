@@ -42,7 +42,7 @@ public abstract class JsonBindingContract {
             assertEquals("items", reader.nextName());
             reader.startArray();
             assertEquals(1, reader.nextIntValue());
-            assertEquals("x", reader.nextString());
+            assertEquals("x", reader.nextStringValue());
             reader.endArray();
             assertEquals("ok", reader.nextName());
             assertTrue(reader.nextBooleanValue());

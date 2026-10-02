@@ -132,7 +132,7 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
-    public String nextString() {
+    public String nextStringValue() {
         peeked = null;
         return reader.readString();
     }
@@ -187,7 +187,7 @@ public final class Fastjson2Reader implements StreamingReader {
 
     @Override
     public char nextCharValue() throws IOException {
-        String value = nextString();
+        String value = nextStringValue();
         if (value == null || value.isEmpty()) {
             throw new BindException("cannot read empty string as char");
         }

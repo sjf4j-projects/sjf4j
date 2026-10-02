@@ -111,7 +111,7 @@ public final class Jackson3Reader implements StreamingReader {
     }
 
     @Override
-    public String nextString() throws IOException {
+    public String nextStringValue() throws IOException {
         require(JsonToken.VALUE_STRING);
         String value = parser.getString();
         advance();
