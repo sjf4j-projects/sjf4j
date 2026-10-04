@@ -152,8 +152,8 @@ class NodesEdgeCaseTest {
 
         assertNull(Nodes.toChar(null));
         assertEquals(Character.valueOf('z'), Nodes.toChar('z'));
-        assertEquals(Character.valueOf('a'), Nodes.toChar("abc"));
-        assertNull(Nodes.toChar(""));
+        assertThrows(NodeException.class, () -> Nodes.toChar("abc"));
+        assertThrows(NodeException.class, () -> Nodes.toChar(""));
         assertEquals(Character.valueOf('b'), Nodes.asChar("bar"));
         assertNull(Nodes.asChar(""));
 

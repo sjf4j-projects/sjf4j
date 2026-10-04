@@ -94,7 +94,11 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = toString(node);
-        return !s.isEmpty() ? s.charAt(0) : null;
+        if (s.length() != 1) {
+            throw new NodeException(
+                    "cannot convert to char: expected single-character string, but length was " + s.length());
+        }
+        return s.charAt(0);
     }
 
     /**
@@ -104,7 +108,7 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = asString(node);
-        return !s.isEmpty() ? s.charAt(0) : null;
+        return s != null && !s.isEmpty() ? s.charAt(0) : null;
     }
 
     /**

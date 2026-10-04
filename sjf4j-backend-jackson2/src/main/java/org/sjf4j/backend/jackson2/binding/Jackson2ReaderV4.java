@@ -500,13 +500,13 @@ public final class Jackson2ReaderV4 implements StreamingReaderV4 {
 
     @Override
     public char readCharValue() throws IOException {
-        String value = _readStringValue();
-
-        if (value.isEmpty()) {
-            throw new IOException(
-                    "cannot read empty string as char");
+        String value = readString();
+        if (value == null) {
+            throw _expected(JsonToken.VALUE_STRING.name(), parser.currentToken());
         }
-
+        if (value.isEmpty()) {
+            throw new IOException("cannot read empty string as char");
+        }
         return value.charAt(0);
     }
 
@@ -887,30 +887,6 @@ public final class Jackson2ReaderV4 implements StreamingReaderV4 {
         }
         prefetched = true;
         return false;
-    }
-
-    /**
-     * Reads a non-null String value.
-     *
-     * <p>Used by primitive char binding. Unlike {@link #readString()},
-     * JSON {@code null} is not accepted.</p>
-     */
-    private String _readStringValue() throws IOException {
-        if (prefetched) {
-            prefetched = false;
-            JsonToken current = parser.currentToken();
-            if (current != JsonToken.VALUE_STRING) {
-                throw _expected(JsonToken.VALUE_STRING.name(), current);
-            }
-            return parser.getText();
-        }
-
-        String value = parser.nextTextValue();
-        if (value != null) {
-            return value;
-        }
-
-        throw _expected(JsonToken.VALUE_STRING.name(), parser.currentToken());
     }
 
     private static IOException _expected(String expected, JsonToken actual) {

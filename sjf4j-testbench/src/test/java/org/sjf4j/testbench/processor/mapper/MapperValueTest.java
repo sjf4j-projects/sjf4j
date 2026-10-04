@@ -136,7 +136,7 @@ public class MapperValueTest {
         public SourceStatus enumToString = SourceStatus.ACTIVE;
         public Object objectEnumToString = SourceStatus.ACTIVE;
         public String stringToCharacter = "Zed";
-        public Object objectStringToCharacter = "Yes";
+        public Object objectStringToCharacter = "Y";
         public Character characterToEnum = Character.valueOf('A');
         public String stringToEnum = "ACTIVE";
         public Object objectStringToEnum = "ACTIVE";
