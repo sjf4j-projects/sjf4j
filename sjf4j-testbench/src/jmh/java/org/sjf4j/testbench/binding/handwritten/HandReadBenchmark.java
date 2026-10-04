@@ -113,7 +113,6 @@ public class HandReadBenchmark {
         validate("Jackson2 POJO", jackson2Pojo, json_jackson2_pojo_handwritten());
         validate("Jackson2 V1 POJO", jackson2Pojo, json_jackson2_pojo_handwritten_v1());
         validate("Jackson2 runtime V1 POJO", jackson2Pojo, json_jackson2_pojo_runtime_v1());
-        validate("Jackson2 runtime V3 POJO", jackson2Pojo, json_jackson2_pojo_runtime_v3());
         validate("Jackson2 V2 POJO", jackson2Pojo, json_jackson2_pojo_handwritten_v2());
         validate("Jackson2 V2 unrolled POJO", jackson2Pojo, json_jackson2_pojo_handwritten_v2_unrolled());
         validate("Jackson2 V2 fused loop POJO", jackson2Pojo,
@@ -176,16 +175,6 @@ public class HandReadBenchmark {
         }
     }
 
-    @Benchmark
-    public Object json_jackson2_pojo_runtime_v3() throws IOException {
-        try (JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
-             Jackson2ReaderV3 reader = new Jackson2ReaderV3(parser)) {
-            reader.startDocument();
-            Object result = StreamingIOV3.readNode(reader, User.class, RuntimeContext.EMPTY);
-            reader.endDocument();
-            return result;
-        }
-    }
 
     @Benchmark
     public Object json_jackson2_pojo_handwritten_v2() throws IOException {
