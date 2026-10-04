@@ -1,6 +1,6 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.annotation.binding.BindingBackend;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.BindingFormat;
 import org.sjf4j.util.Asserts;
 
@@ -37,7 +37,7 @@ final class BackendGroup {
         return backends;
     }
 
-    BackendSpec find(BindingBackend backend) {
+    BackendSpec find(Backend backend) {
         for (BackendSpec spec : backends) {
             if (spec.backend() == backend) {
                 return spec;

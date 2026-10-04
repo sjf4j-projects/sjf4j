@@ -5,7 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.annotation.binding.BindingBackend;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.binding.WriteTo;
@@ -566,22 +566,22 @@ public class CompiledBinderTest {
         String writeAny(Object value) throws IOException;
     }
 
-    @CompiledBinder(backend = BindingBackend.SIMPLE)
+    @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleBinder extends BinderContract {}
 
-    @CompiledBinder(backend = BindingBackend.JACKSON3)
+    @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Binder extends BinderContract {}
 
-    @CompiledBinder(backend = BindingBackend.JACKSON2)
+    @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Binder extends BinderContract {}
 
-    @CompiledBinder(backend = BindingBackend.GSON)
+    @CompiledBinder(backend = Backend.GSON)
     public interface GsonBinder extends BinderContract {}
 
-    @CompiledBinder(backend = BindingBackend.FASTJSON2)
+    @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2Binder extends BinderContract {}
 
-    @CompiledBinder(backend = BindingBackend.JSONP)
+    @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpBinder extends BinderContract {}
 
     /** Leaves backend selection at AUTO to exercise compile-time resolution. */

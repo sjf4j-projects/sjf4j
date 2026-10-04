@@ -46,6 +46,35 @@ public final class StreamingIO {
 
     static final Object UNSET = new Object();
 
+    /** V4 raw-node fallback using its consuming-value reader contract. */
+    public static Object readRawNode(StreamingReaderV4 reader) throws IOException {
+        switch (reader.peekToken()) {
+            case START_OBJECT:
+                Map<String, Object> object = new LinkedHashMap<>();
+                reader.startObject();
+                while (!reader.nextIfObjectEnd()) {
+                    object.put(reader.nextName(), readRawNode(reader));
+                }
+                return object;
+            case START_ARRAY:
+                List<Object> array = new ArrayList<>();
+                reader.startArray();
+                while (!reader.nextIfArrayEnd()) array.add(readRawNode(reader));
+                return array;
+            case STRING:
+                return reader.readString();
+            case NUMBER:
+                return reader.readNumber();
+            case BOOLEAN:
+                return reader.readBoolean();
+            case NULL:
+                reader.readNull();
+                return null;
+            default:
+                throw new BindingException("unexpected token '" + reader.peekToken() + "'");
+        }
+    }
+
     /**
      * Reads one OBNT value into the requested target type.
      *

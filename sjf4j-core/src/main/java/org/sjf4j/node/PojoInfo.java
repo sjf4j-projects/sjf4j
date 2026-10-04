@@ -2,6 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.PropertyStrategy;
@@ -43,6 +44,7 @@ public class PojoInfo {
 
     public final String[] fieldNames;
     public final FieldWriter[] fieldWriters;
+    public final Object[] backendData = new Object[Backend.values().length];
 
     /**
      * Creates object binding metadata.

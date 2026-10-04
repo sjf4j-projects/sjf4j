@@ -13,7 +13,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.annotation.binding.BindingBackend;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
@@ -149,7 +149,7 @@ public class SimplePojoReadOrderBenchmark {
         return COMPILED.read(UNKNOWN_FIELD);
     }
 
-    @CompiledBinder(backend = BindingBackend.SIMPLE)
+    @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiledBinder {
 
         @ReadFrom

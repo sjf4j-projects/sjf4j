@@ -17,10 +17,10 @@ class CodeGenerationIntegrationTest {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Binder.java",
                 "package fixture;\n"
-                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
                         + "import org.sjf4j.annotation.binding.ReadFrom;\n"
-                        + "@CompiledBinder(backend = BindingBackend.SIMPLE) public interface Binder {\n"
+                        + "@CompiledBinder(backend = Backend.SIMPLE) public interface Binder {\n"
                         + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);
@@ -38,10 +38,10 @@ class CodeGenerationIntegrationTest {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Binder.java",
                 "package fixture;\n"
-                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
                         + "import org.sjf4j.annotation.binding.ReadFrom;\n"
-                        + "@CompiledBinder(backend = BindingBackend.FASTJSON2) public interface Binder {\n"
+                        + "@CompiledBinder(backend = Backend.FASTJSON2) public interface Binder {\n"
                         + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);
@@ -57,10 +57,10 @@ class CodeGenerationIntegrationTest {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Binder.java",
                 "package fixture;\n"
-                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
                         + "import org.sjf4j.annotation.binding.ReadFrom;\n"
-                        + "@CompiledBinder(backend = BindingBackend.GSON) public interface Binder {\n"
+                        + "@CompiledBinder(backend = Backend.GSON) public interface Binder {\n"
                         + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);
@@ -76,10 +76,10 @@ class CodeGenerationIntegrationTest {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Binder.java",
                 "package fixture;\n"
-                        + "import org.sjf4j.annotation.binding.BindingBackend;\n"
+                        + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
                         + "import org.sjf4j.annotation.binding.ReadFrom;\n"
-                        + "@CompiledBinder(backend = BindingBackend.JACKSON2) public interface Binder {\n"
+                        + "@CompiledBinder(backend = Backend.JACKSON2) public interface Binder {\n"
                         + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);

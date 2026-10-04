@@ -1,6 +1,6 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.annotation.binding.BindingBackend;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.BindingFormat;
 
 import java.util.Arrays;
@@ -15,42 +15,42 @@ final class BackendCatalog {
                     Arrays.asList(
                             spec(
                                     BindingFormat.JSON,
-                                    BindingBackend.JACKSON3,
+                                    Backend.JACKSON3,
                                     "org.sjf4j.backend.jackson3.binding.Jackson3Binder",
                                     "org.sjf4j.backend.jackson3.binding.Jackson3Reader",
                                     "org.sjf4j.backend.jackson3.binding.Jackson3Writer",
                                     "tools.jackson.core.json.JsonFactory"),
                             spec(
                                     BindingFormat.JSON,
-                                    BindingBackend.JACKSON2,
+                                    Backend.JACKSON2,
                                     "org.sjf4j.backend.jackson2.binding.Jackson2Binder",
                                     "org.sjf4j.backend.jackson2.binding.Jackson2Reader",
                                     "org.sjf4j.backend.jackson2.binding.Jackson2Writer",
                                     "com.fasterxml.jackson.core.JsonFactory"),
                             spec(
                                     BindingFormat.JSON,
-                                    BindingBackend.GSON,
+                                    Backend.GSON,
                                     "org.sjf4j.backend.gson.binding.GsonBinder",
                                     "org.sjf4j.backend.gson.binding.GsonReader",
                                     "org.sjf4j.backend.gson.binding.GsonWriter",
                                     "com.google.gson.Gson"),
                             spec(
                                     BindingFormat.JSON,
-                                    BindingBackend.FASTJSON2,
+                                    Backend.FASTJSON2,
                                     "org.sjf4j.backend.fastjson2.binding.Fastjson2Binder",
                                     "org.sjf4j.backend.fastjson2.binding.Fastjson2Reader",
                                     "org.sjf4j.backend.fastjson2.binding.Fastjson2Writer",
                                     "com.alibaba.fastjson2.JSONReader"),
                             spec(
                                     BindingFormat.JSON,
-                                    BindingBackend.JSONP,
+                                    Backend.JSONP,
                                     "org.sjf4j.backend.jsonp.binding.JsonpBinder",
                                     "org.sjf4j.backend.jsonp.binding.JsonpReader",
                                     "org.sjf4j.backend.jsonp.binding.JsonpWriter",
                                     "jakarta.json.spi.JsonProvider"),
                             spec(
                                     BindingFormat.JSON,
-                                    BindingBackend.SIMPLE,
+                                    Backend.SIMPLE,
                                     "org.sjf4j.binding.simple.SimpleJsonBinder",
                                     "org.sjf4j.binding.simple.SimpleJsonReader",
                                     "org.sjf4j.binding.simple.SimpleJsonWriter",
@@ -62,7 +62,7 @@ final class BackendCatalog {
                     Collections.singletonList(
                             spec(
                                     BindingFormat.YAML,
-                                    BindingBackend.SNAKE,
+                                    Backend.SNAKE,
                                     "org.sjf4j.backend.snake.binding.SnakeBinder",
                                     "org.sjf4j.backend.snake.binding.SnakeReader",
                                     "org.sjf4j.backend.snake.binding.SnakeWriter",
@@ -84,7 +84,7 @@ final class BackendCatalog {
 
     private static BackendSpec spec(
             BindingFormat format,
-            BindingBackend backend,
+            Backend backend,
             String binderType,
             String readerType,
             String writerType,

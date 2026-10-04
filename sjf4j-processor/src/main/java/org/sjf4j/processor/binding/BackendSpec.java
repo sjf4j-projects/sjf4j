@@ -1,6 +1,6 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.annotation.binding.BindingBackend;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.BindingFormat;
 import org.sjf4j.util.Asserts;
 
@@ -9,7 +9,7 @@ import org.sjf4j.util.Asserts;
 final class BackendSpec {
 
     private final BindingFormat format;
-    private final BindingBackend backend;
+    private final Backend backend;
     private final String binderType;
     private final String readerType;
     private final String writerType;
@@ -24,7 +24,7 @@ final class BackendSpec {
 
     BackendSpec(
             BindingFormat format,
-            BindingBackend backend,
+            Backend backend,
             String binderType,
             String readerType,
             String writerType,
@@ -42,7 +42,7 @@ final class BackendSpec {
         return format;
     }
 
-    BindingBackend backend() {
+    Backend backend() {
         return backend;
     }
 
@@ -74,7 +74,7 @@ final class BackendSpec {
     }
 
     boolean usesExpectedNameMatch() {
-        return backend == BindingBackend.JACKSON2;
+        return backend == Backend.JACKSON2;
     }
 
 }

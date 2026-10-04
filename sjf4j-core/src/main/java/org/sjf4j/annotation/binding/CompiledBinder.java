@@ -24,9 +24,9 @@ public @interface CompiledBinder {
     /**
      * Backend used by generated code.
      *
-     * <p>For JSON, {@link BindingBackend#AUTO} prefers Jackson 3, Jackson 2,
+     * <p>For JSON, {@link Backend#AUTO} prefers Jackson 3, Jackson 2,
      * Gson, Fastjson2, JSON-P, then the built-in simple backend, selecting the
      * first usable backend visible on the compilation classpath.</p>
      */
-    BindingBackend backend() default BindingBackend.AUTO;
+    Backend backend() default Backend.AUTO;
 }

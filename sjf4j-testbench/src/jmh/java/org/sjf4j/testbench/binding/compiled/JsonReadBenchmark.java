@@ -22,7 +22,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.annotation.binding.BindingBackend;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
@@ -35,8 +35,6 @@ import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.facade.gson.GsonModule;
-import org.sjf4j.facade.jsonp.JsonpJsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
 
@@ -180,7 +178,7 @@ public class JsonReadBenchmark {
         }
     }
 
-    @CompiledBinder(backend = BindingBackend.JACKSON2)
+    @CompiledBinder(backend = Backend.JACKSON2)
     public static interface Jackson2CompiledBinder {
 
         @ReadFrom
@@ -245,7 +243,7 @@ public class JsonReadBenchmark {
         }
     }
 
-    @CompiledBinder(backend = BindingBackend.GSON)
+    @CompiledBinder(backend = Backend.GSON)
     public static interface GsonCompiledBinder {
 
         @ReadFrom
@@ -310,7 +308,7 @@ public class JsonReadBenchmark {
     }
 
 
-    @CompiledBinder(backend = BindingBackend.FASTJSON2)
+    @CompiledBinder(backend = Backend.FASTJSON2)
     public static interface Fastjson2CompiledBinder {
 
         @ReadFrom
@@ -355,7 +353,7 @@ public class JsonReadBenchmark {
         return JSONP_COMPILED.readMap(JSON_DATA2);
     }
 
-    @CompiledBinder(backend = BindingBackend.JSONP)
+    @CompiledBinder(backend = Backend.JSONP)
     public static interface JsonpCompiledBinder {
 
         @ReadFrom
@@ -407,7 +405,7 @@ public class JsonReadBenchmark {
     }
 
 
-    @CompiledBinder(backend = BindingBackend.SIMPLE)
+    @CompiledBinder(backend = Backend.SIMPLE)
     public static interface SimpleCompiledBinder {
 
         @ReadFrom

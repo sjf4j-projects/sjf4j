@@ -7,7 +7,7 @@ package org.sjf4j.annotation.binding;
  * visible on the current compilation classpath. Backend compatibility is
  * format-specific and is validated during compilation.</p>
  */
-public enum BindingBackend {
+public enum Backend {
     AUTO,
 
     JACKSON3,
