@@ -159,7 +159,7 @@ class Jackson2NodeTest {
         assertNotSame(array, arrayCopy);
         assertSame(array.get(0), arrayCopy.get(0));
 
-        JsonNodeFactory exactFactory = JsonNodeFactory.withExactBigDecimals(true);
+        JsonNodeFactory exactFactory = new JsonNodeFactory(true);
         ObjectNode exactObjectCopy = Nodes.copy(exactFactory.objectNode());
         ArrayNode exactArrayCopy = Nodes.copy(exactFactory.arrayNode());
         assertEquals(new BigDecimal("1.0"),

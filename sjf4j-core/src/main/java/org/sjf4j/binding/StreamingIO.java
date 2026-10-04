@@ -49,14 +49,14 @@ public final class StreamingIO {
     /** V4 raw-node fallback using its consuming-value reader contract. */
     public static Object readRawNode(StreamingReaderV4 reader) throws IOException {
         switch (reader.peekToken()) {
-            case START_OBJECT:
+            case OBJECT_START:
                 Map<String, Object> object = new LinkedHashMap<>();
                 reader.startObject();
                 while (!reader.nextIfObjectEnd()) {
                     object.put(reader.nextName(), readRawNode(reader));
                 }
                 return object;
-            case START_ARRAY:
+            case ARRAY_START:
                 List<Object> array = new ArrayList<>();
                 reader.startArray();
                 while (!reader.nextIfArrayEnd()) array.add(readRawNode(reader));

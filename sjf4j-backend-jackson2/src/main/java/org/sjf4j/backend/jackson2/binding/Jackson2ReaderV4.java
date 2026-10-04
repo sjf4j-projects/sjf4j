@@ -1,6 +1,7 @@
 package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingReaderV4;
 import org.sjf4j.util.Asserts;
 
@@ -239,7 +240,7 @@ public final class Jackson2ReaderV4 implements StreamingReaderV4 {
      * Matches the next property name using the generic String path.
      *
      * <p>The object end is consumed and reported as
-     * {@link NameMatcher#END_OF_OBJECT}.</p>
+     * {@link NameMatcher#OBJECT_END}.</p>
      */
     @Override
     public int nextNameMatch(NameMatcher matcher) throws IOException {
@@ -267,12 +268,10 @@ public final class Jackson2ReaderV4 implements StreamingReaderV4 {
             JsonToken current = parser.currentToken();
             if (current == JsonToken.END_OBJECT) {
                 prefetched = false;
-                return NameMatcher.END_OF_OBJECT;
+                return NameMatcher.OBJECT_END;
             }
             if (current != JsonToken.FIELD_NAME) {
-                throw _expected(
-                        JsonToken.FIELD_NAME.name(),
-                        current);
+                throw _expected(JsonToken.FIELD_NAME.name(), current);
             }
             prefetched = false;
             return matcher.match(parser.currentName());
@@ -294,7 +293,7 @@ public final class Jackson2ReaderV4 implements StreamingReaderV4 {
 
                 JsonToken current = parser.currentToken();
                 if (current == JsonToken.END_OBJECT) {
-                    return NameMatcher.END_OF_OBJECT;
+                    return NameMatcher.OBJECT_END;
                 }
 
                 if (current != JsonToken.FIELD_NAME) {
@@ -315,7 +314,7 @@ public final class Jackson2ReaderV4 implements StreamingReaderV4 {
 
         JsonToken current = parser.currentToken();
         if (current == JsonToken.END_OBJECT) {
-            return NameMatcher.END_OF_OBJECT;
+            return NameMatcher.OBJECT_END;
         }
 
         throw _expected(JsonToken.FIELD_NAME.name(), current);
@@ -900,19 +899,19 @@ public final class Jackson2ReaderV4 implements StreamingReaderV4 {
 
         switch (token) {
             case START_OBJECT:
-                return Token.START_OBJECT;
+                return Token.OBJECT_START;
 
             case END_OBJECT:
-                return Token.END_OBJECT;
+                return Token.OBJECT_END;
 
             case FIELD_NAME:
                 return Token.NAME;
 
             case START_ARRAY:
-                return Token.START_ARRAY;
+                return Token.ARRAY_START;
 
             case END_ARRAY:
-                return Token.END_ARRAY;
+                return Token.ARRAY_END;
 
             case VALUE_STRING:
                 return Token.STRING;

@@ -77,7 +77,7 @@ public final class StreamingIOV4 {
             }
 
             if (typeInfo.isNodeValue()) {
-                return readValueWithCodec(reader, typeInfo.requireValueInfo(context.defaultValueFormat(boxed)));
+                return readValueCodec(reader, typeInfo.requireValueInfo(context.defaultValueFormat(boxed)));
             }
 
             /*
@@ -144,13 +144,13 @@ public final class StreamingIOV4 {
              */
 
             if (Map.class.isAssignableFrom(boxed)) {
-                return readMapOrNull(reader, type, boxed, context);
+                return readMap(reader, type, boxed, context);
             }
 
             if (boxed == JsonObject.class) {
                 Object raw = reader.readRawNode();
                 if (raw == null) return null;
-                return new JsonObject(asObject(raw));
+                return new JsonObject(_castMap(raw));
             }
 
             /*
@@ -158,25 +158,25 @@ public final class StreamingIOV4 {
              */
 
             if (List.class.isAssignableFrom(boxed)) {
-                return readListOrNull(reader, type, boxed, context);
+                return readList(reader, type, boxed, context);
             }
 
             if (Set.class.isAssignableFrom(boxed)) {
-                return readSetOrNull(reader, type, boxed, context);
+                return readSet(reader, type, boxed, context);
             }
 
             if (boxed.isArray()) {
-                return readArrayOrNull(reader, boxed, context);
+                return readArray(reader, boxed, context);
             }
 
             if (boxed == JsonArray.class) {
                 Object raw = reader.readRawNode();
                 if (raw == null) return null;
-                return new JsonArray(asArray(raw));
+                return new JsonArray(_castList(raw));
             }
 
             if (JsonArray.class.isAssignableFrom(boxed)) {
-                return readJsonArrayOrNull(reader, boxed, typeInfo, context);
+                return readJsonArray(reader, boxed, typeInfo, context);
             }
 
             /*
@@ -186,7 +186,7 @@ public final class StreamingIOV4 {
             PojoInfo pojoInfo = typeInfo.pojoInfo;
 
             if (pojoInfo != null && !pojoInfo.isJajo) {
-                return readPojoOrNull(reader, type, boxed, pojoInfo, context);
+                return readPojo(reader, type, boxed, pojoInfo, context);
             }
 
             /*
@@ -295,7 +295,7 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static Object readValueWithCodec(StreamingReaderV4 reader, ValueInfo valueInfo) throws IOException {
+    private static Object readValueCodec(StreamingReaderV4 reader, ValueInfo valueInfo) throws IOException {
         Class<?> raw = valueInfo.rawClazz;
 
         /*
@@ -354,7 +354,7 @@ public final class StreamingIOV4 {
             if (value == null) {
                 return valueInfo.rawToValue(null);
             }
-            return valueInfo.rawToValue(asObject(value));
+            return valueInfo.rawToValue(_castMap(value));
         }
 
         if (raw == List.class) {
@@ -362,7 +362,7 @@ public final class StreamingIOV4 {
             if (value == null) {
                 return valueInfo.rawToValue(null);
             }
-            return valueInfo.rawToValue(asArray(value));
+            return valueInfo.rawToValue(_castList(value));
         }
 
         throw new BindingException("cannot read value with ValueCodec into type '" + raw.getName() + "'");
@@ -375,15 +375,15 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static Object readPojoOrNull(StreamingReaderV4 reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
-                                         RuntimeContext context) throws IOException {
+    private static Object readPojo(StreamingReaderV4 reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+                                   RuntimeContext context) throws IOException {
 
         /*
          * Creator/parent-discriminator POJOs need streaming access to the
          * object members, so consume START_OBJECT here.
          */
         if (pojoInfo.hasParentScopeOneOf || !pojoInfo.creatorInfo.hasNoArgsCreator()) {
-            if (!startObjectOrNull(reader, boxed)) {
+            if (!startObject(reader, boxed)) {
                 return null;
             }
             return readParentOneOfPojo(reader, type, boxed, pojoInfo, context);
@@ -410,16 +410,16 @@ public final class StreamingIOV4 {
          * nextIfObjectStart() directly succeeds for Jackson and therefore
          * avoids creating prefetched state.
          */
-        if (!startObjectOrNull(reader, boxed)) {
+        if (!startObject(reader, boxed)) {
             return null;
         }
 
         Object pojo = pojoInfo.creatorInfo.newPojoNoArgs();
-        StreamingReaderV4.NameMatcher matcher = pojoInfo.aliasProperties == null ? reader.nameMatcher(boxed) : null;
+        NameMatcher matcher = pojoInfo.aliasProperties == null ? reader.nameMatcher(boxed) : null;
         if (matcher != null) {
             int expected = 0;
             int index;
-            while ((index = reader.nextNameMatch(matcher, expected)) != StreamingReaderV4.NameMatcher.END_OF_OBJECT) {
+            while ((index = reader.nextNameMatch(matcher, expected)) != NameMatcher.OBJECT_END) {
                 FieldInfo field = index >= 0 ? pojoInfo.properties.get(matcher.name(index)) : null;
                 if (field == null || !field.hasSetter()) {
                     reader.skipNode();
@@ -483,7 +483,7 @@ public final class StreamingIOV4 {
                 ValueInfo codec = creator.argValueCodecs[argIndex];
                 Object value = codec == null
                         ? readNode(reader, argType, argBoxed, TypeRegistry.registerTypeInfo(argBoxed), context)
-                        : readValueWithCodec(reader, codec);
+                        : readValueCodec(reader, codec);
 
                 state.acceptCtorArg(argIndex, value);
                 if (parentKey != null && parentKey.equals(name)) {
@@ -523,7 +523,12 @@ public final class StreamingIOV4 {
 
                 Class<?> target = oneOfInfo.matchByWhen(parentValue == UNSET ? null : parentValue);
                 if (target != null) {
-                    accept(state, field, readNode(reader, target, context));
+                    Object value = readNode(reader, target, context);
+                    if (state.isCreated()) {
+                        field.invokeSetterIfPresent(state.pojo(), value);
+                    } else {
+                        state.bufferProperty(field, value);
+                    }
                 } else if (deferred == null) {
                     deferred = field;
                     deferredRaw = reader.readRawNode();
@@ -537,14 +542,23 @@ public final class StreamingIOV4 {
             if (parentKey != null && parentKey.equals(name)) {
                 Object value = readField(reader, field, type, boxed, null, context);
                 parentValue = value;
-                accept(state, field, value);
+                if (state.isCreated()) {
+                    field.invokeSetterIfPresent(state.pojo(), value);
+                } else {
+                    state.bufferProperty(field, value);
+                }
                 continue;
             }
 
             if (!field.hasSetter()) {
                 reader.skipNode();
             } else {
-                accept(state, field, readField(reader, field, type, boxed, null, context));
+                Object value = readField(reader, field, type, boxed, null, context);
+                if (state.isCreated()) {
+                    field.invokeSetterIfPresent(state.pojo(), value);
+                } else {
+                    state.bufferProperty(field, value);
+                }
             }
         }
 
@@ -582,14 +596,6 @@ public final class StreamingIOV4 {
     }
 
 
-    private static void accept(CreatorState state, FieldInfo field, Object value) {
-        if (state.isCreated()) {
-            field.invokeSetterIfPresent(state.pojo(), value);
-        } else {
-            state.bufferProperty(field, value);
-        }
-    }
-
 
     /**
      * --------------------------------------------------------------
@@ -612,7 +618,7 @@ public final class StreamingIOV4 {
         }
 
         if (field.valueInfo != null) {
-            return readValueWithCodec(reader, field.valueInfo);
+            return readValueCodec(reader, field.valueInfo);
         }
 
         return readNode(reader, type, boxed,
@@ -627,10 +633,10 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static Map<String, Object> readMapOrNull(StreamingReaderV4 reader, Type type, Class<?> boxed,
-                                                     RuntimeContext context) throws IOException {
+    private static Map<String, Object> readMap(StreamingReaderV4 reader, Type type, Class<?> boxed,
+                                               RuntimeContext context) throws IOException {
 
-        if (!startObjectOrNull(reader, boxed)) {
+        if (!startObject(reader, boxed)) {
             return null;
         }
 
@@ -655,10 +661,10 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static List<Object> readListOrNull(StreamingReaderV4 reader, Type type, Class<?> boxed,
-                                               RuntimeContext context) throws IOException {
+    private static List<Object> readList(StreamingReaderV4 reader, Type type, Class<?> boxed,
+                                         RuntimeContext context) throws IOException {
 
-        if (!startArrayOrNull(reader, boxed)) {
+        if (!startArray(reader, boxed)) {
             return null;
         }
 
@@ -682,10 +688,10 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static Set<Object> readSetOrNull(StreamingReaderV4 reader, Type type, Class<?> boxed,
-                                             RuntimeContext context) throws IOException {
+    private static Set<Object> readSet(StreamingReaderV4 reader, Type type, Class<?> boxed,
+                                       RuntimeContext context) throws IOException {
 
-        if (!startArrayOrNull(reader, boxed)) {
+        if (!startArray(reader, boxed)) {
             return null;
         }
 
@@ -709,10 +715,10 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static Object readArrayOrNull(StreamingReaderV4 reader, Class<?> arrayType,
-                                          RuntimeContext context) throws IOException {
+    private static Object readArray(StreamingReaderV4 reader, Class<?> arrayType,
+                                    RuntimeContext context) throws IOException {
 
-        if (!startArrayOrNull(reader, arrayType)) {
+        if (!startArray(reader, arrayType)) {
             return null;
         }
 
@@ -754,10 +760,10 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static JsonArray readJsonArrayOrNull(StreamingReaderV4 reader, Class<?> boxed, TypeInfo typeInfo,
-                                                 RuntimeContext context) throws IOException {
+    private static JsonArray readJsonArray(StreamingReaderV4 reader, Class<?> boxed, TypeInfo typeInfo,
+                                           RuntimeContext context) throws IOException {
 
-        if (!startArrayOrNull(reader, boxed)) {
+        if (!startArray(reader, boxed)) {
             return null;
         }
 
@@ -788,7 +794,7 @@ public final class StreamingIOV4 {
      * @return {@code true} when an object was started,
      *         {@code false} when JSON null was consumed
      */
-    private static boolean startObjectOrNull(StreamingReaderV4 reader, Class<?> targetType) throws IOException {
+    private static boolean startObject(StreamingReaderV4 reader, Class<?> targetType) throws IOException {
         if (reader.nextIfObjectStart()) {
             return true;
         }
@@ -811,7 +817,7 @@ public final class StreamingIOV4 {
      * @return {@code true} when an array was started,
      *         {@code false} when JSON null was consumed
      */
-    private static boolean startArrayOrNull(StreamingReaderV4 reader, Class<?> targetType) throws IOException {
+    private static boolean startArray(StreamingReaderV4 reader, Class<?> targetType) throws IOException {
         if (reader.nextIfArrayStart()) {
             return true;
         }
@@ -832,7 +838,7 @@ public final class StreamingIOV4 {
      */
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> asObject(Object value) {
+    private static Map<String, Object> _castMap(Object value) {
         if (value instanceof Map) {
             return (Map<String, Object>) value;
         }
@@ -840,7 +846,7 @@ public final class StreamingIOV4 {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<Object> asArray(Object value) {
+    private static List<Object> _castList(Object value) {
         if (value instanceof List) {
             return (List<Object>) value;
         }

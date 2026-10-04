@@ -10,9 +10,9 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingIOV4;
 import org.sjf4j.binding.StreamingReaderV4;
-import org.sjf4j.binding.StreamingReaderV4.NameMatcher;
 import org.sjf4j.node.TypeRegistry;
 
 import java.io.IOException;
@@ -43,7 +43,7 @@ class Jackson2ReaderV4Test {
 
             assertEquals(name, reader.nextNameMatch(matcher, name));
             assertEquals("Ada", reader.readString());
-            assertEquals(StreamingReaderV4.Token.END_OBJECT, reader.peekToken());
+            assertEquals(StreamingReaderV4.Token.OBJECT_END, reader.peekToken());
             assertEquals(true, reader.nextIfObjectEnd());
             reader.endDocument();
         }
@@ -82,7 +82,7 @@ class Jackson2ReaderV4Test {
             assertEquals(7, reader.readIntValue());
             assertEquals(name, reader.nextNameMatch(matcher, name));
             assertEquals("Ada", reader.readString());
-            assertEquals(NameMatcher.END_OF_OBJECT, reader.nextNameMatch(matcher, -1));
+            assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher, -1));
             assertEquals(2, parser.expectedNameCalls);
             reader.endDocument();
         }

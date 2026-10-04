@@ -14,7 +14,7 @@ import java.math.BigInteger;
  * internally as long as they preserve the semantics defined by this
  * interface.</p>
  *
- * <p>Property-name traversal and value consumption are deliberately
+ * <p>Member-name traversal and value consumption are deliberately
  * separated. For example:</p>
  *
  * <pre>{@code
@@ -37,7 +37,7 @@ import java.math.BigInteger;
  * }</pre>
  *
  * <p>{@link #nextName()} and {@link #nextNameMatch(NameMatcher)} consume
- * a property name but do not consume its value. The corresponding value
+ * a member name but do not consume its value. The corresponding value
  * remains pending until consumed by a {@code readXxx()} method,
  * {@link #skipNode()}, or another value-consuming operation.</p>
  */
@@ -60,12 +60,12 @@ public interface StreamingReaderV4 extends Closeable {
         EOF,
         UNKNOWN,
 
-        START_OBJECT,
-        END_OBJECT,
+        OBJECT_START,
+        OBJECT_END,
         NAME,
 
-        START_ARRAY,
-        END_ARRAY,
+        ARRAY_START,
+        ARRAY_END,
 
         STRING,
         NUMBER,
@@ -76,14 +76,14 @@ public interface StreamingReaderV4 extends Closeable {
          * Returns the JSON-semantic type represented by this token.
          *
          * <p>Tokens that do not themselves represent a JSON value, such as
-         * {@link #NAME}, {@link #END_OBJECT}, and {@link #END_ARRAY}, map to
+         * {@link #NAME}, {@link #OBJECT_END}, and {@link #ARRAY_END}, map to
          * {@link JsonType#UNKNOWN}.</p>
          */
         public JsonType jsonType() {
             switch (this) {
-                case START_OBJECT:
+                case OBJECT_START:
                     return JsonType.OBJECT;
-                case START_ARRAY:
+                case ARRAY_START:
                     return JsonType.ARRAY;
                 case STRING:
                     return JsonType.STRING;
@@ -102,56 +102,13 @@ public interface StreamingReaderV4 extends Closeable {
 
     /**
      * --------------------------------------------------------------
-     * Property Matching
+     * Member Matching
      * --------------------------------------------------------------
      */
 
     /**
-     * Prepared property-name matcher.
-     *
-     * <p>A successful match returns a non-negative index. The canonical
-     * property name for that index can be obtained through
-     * {@link #name(int)}.</p>
-     *
-     * <p>Backend implementations may attach native matching metadata to an
-     * implementation of this interface. This allows
-     * {@link #nextNameMatch(NameMatcher)} to match directly against the
-     * underlying input without first materializing the property name as a
-     * {@link String}.</p>
-     */
-    interface NameMatcher {
-
-        /**
-         * Indicates that a property name did not match any known name.
-         */
-        int UNKNOWN = -1;
-
-        /**
-         * Indicates that object traversal reached the object end.
-         */
-        int END_OF_OBJECT = -2;
-
-        /**
-         * Returns the canonical property name associated with a matched
-         * index.
-         */
-        String name(int index);
-
-        /**
-         * Matches an already materialized property name.
-         *
-         * <p>This method is also the generic fallback used by backends that
-         * do not provide a native property-name matching fast path.</p>
-         *
-         * @param name property name
-         * @return a non-negative property index, or {@link #UNKNOWN}
-         */
-        int match(String name);
-    }
-
-    /**
      * Returns a prepared matcher for the specified type when this backend
-     * provides a specialized property-name matching path.
+     * provides a specialized member-name matching path.
      *
      * <p>The returned matcher may contain backend-specific metadata and may
      * be cached by the implementation.</p>
@@ -245,8 +202,8 @@ public interface StreamingReaderV4 extends Closeable {
     /**
      * Consumes the end of the current object when it is next.
      *
-     * <p>If another property follows, this method returns {@code false}
-     * without consuming the property name.</p>
+     * <p>If another member follows, this method returns {@code false}
+     * without consuming the member name.</p>
      *
      * @return {@code true} if the object end was consumed
      */
@@ -310,64 +267,64 @@ public interface StreamingReaderV4 extends Closeable {
 
     /**
      * --------------------------------------------------------------
-     * Property Names
+     * Member Names
      * --------------------------------------------------------------
      */
 
     /**
-     * Consumes and returns the next property name.
+     * Consumes and returns the next member name.
      *
      * <p>If the current object has ended, the object end is consumed and
      * {@code null} is returned.</p>
      *
-     * <p>When a property name is returned, its corresponding value remains
+     * <p>When a member name is returned, its corresponding value remains
      * pending and must subsequently be consumed.</p>
      *
-     * @return the next property name, or {@code null} when the current object ends
+     * @return the next member name, or {@code null} when the current object ends
      */
     String nextName() throws IOException;
 
     /**
-     * Advances to the next property name and matches it against prepared
-     * property metadata.
+     * Advances to the next member name and matches it against prepared
+     * member metadata.
      *
-     * <p>If another property is present, its name is consumed and its
+     * <p>If another member is present, its name is consumed and its
      * corresponding value remains pending. The value must subsequently be
      * consumed by a {@code readXxx()} method, {@link #skipNode()}, or another
      * value-consuming operation.</p>
      *
      * <p>If the enclosing object ends instead, the object end is consumed and
-     * {@link NameMatcher#END_OF_OBJECT} is returned.</p>
+     * {@link NameMatcher#OBJECT_END} is returned.</p>
      *
      * <p>This is the preferred object-traversal operation for generated binding
-     * code. Backends with native property-name matching should override this
+     * code. Backends with native member-name matching should override this
      * method and match directly against the underlying input without
-     * materializing the property name as a {@link String} whenever possible.</p>
+     * materializing the member name as a {@link String} whenever possible.</p>
      *
-     * @param matcher prepared property-name matcher
-     * @return a non-negative property index,
+     * @param matcher prepared member-name matcher
+     * @return a non-negative member index,
      *         {@link NameMatcher#UNKNOWN}, or
-     *         {@link NameMatcher#END_OF_OBJECT}
+     *         {@link NameMatcher#OBJECT_END}
      */
     default int nextNameMatch(NameMatcher matcher) throws IOException {
         String name = nextName();
-        return name == null ? NameMatcher.END_OF_OBJECT : matcher.match(name);
+        return name == null ? NameMatcher.OBJECT_END : matcher.match(name);
     }
 
     /**
-     * Consumes and matches the next property name, with an expected property
+     * Consumes and matches the next member name, with an expected member
      * index hint.
      *
      * <p>The hint allows implementations to optimize the common case where
-     * properties occur in a predictable order. It does not affect matching
+     * members occur in a predictable order. It does not affect matching
      * semantics and callers must not depend on the hint being honored.</p>
      *
-     * <p>The corresponding property value remains pending exactly as with
+     * <p>The corresponding member value remains pending exactly as with
      * {@link #nextNameMatch(NameMatcher)}.</p>
      *
-     * @param matcher prepared property-name matcher
-     * @param expectedIndex expected property index
-     * @return a non-negative property index, or
+     * @param matcher prepared member-name matcher
+     * @param expectedIndex expected member index
+     * @return a non-negative member index, or
      *         {@link NameMatcher#UNKNOWN}
      */
     default int nextNameMatch(
@@ -620,7 +577,7 @@ public interface StreamingReaderV4 extends Closeable {
      *
      * <p>The value may be a scalar, object, or array. When called after
      * {@link #nextName()} or {@link #nextNameMatch(NameMatcher)}, this
-     * method consumes the pending value of that property.</p>
+     * method consumes the pending value of that member.</p>
      */
     void skipNode() throws IOException;
 
