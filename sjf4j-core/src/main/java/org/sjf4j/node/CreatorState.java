@@ -18,7 +18,7 @@ public final class CreatorState {
     private Object[] args;
     private int remainingArgs;
 
-    private FieldInfo[] pendingFields;
+    private PropertyInfo[] pendingFields;
     private Object[] pendingValues;
     private int pendingSize;
 
@@ -65,13 +65,13 @@ public final class CreatorState {
     /**
      * Only used while pojo has not been created yet.
      */
-    public void bufferProperty(FieldInfo field, Object value) {
+    public void bufferProperty(PropertyInfo field, Object value) {
         if (pojo != null) {
             throw new IllegalStateException("pojo already created");
         }
 
         if (pendingFields == null) {
-            pendingFields = new FieldInfo[INITIAL_PENDING_CAPACITY];
+            pendingFields = new PropertyInfo[INITIAL_PENDING_CAPACITY];
             pendingValues = new Object[INITIAL_PENDING_CAPACITY];
 
         } else if (pendingSize == pendingFields.length) {

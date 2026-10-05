@@ -1,6 +1,6 @@
 package org.sjf4j.node;
 
-import org.sjf4j.binding.FieldReader;
+import org.sjf4j.binding.PropertyReader;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 
@@ -10,7 +10,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -18,7 +17,7 @@ import java.util.function.Function;
 /**
  * Cached binding metadata and accessors for one object property.
  */
-public class FieldInfo {
+public class PropertyInfo {
 
     public enum ContainerKind {
         NONE,
@@ -53,16 +52,16 @@ public class FieldInfo {
     public final String valueFormat;
     public final ValueInfo valueInfo;
 
-    public final FieldReader binder;
+    public final PropertyReader binder;
 
     /**
      * Creates property binding metadata and resolves its container element type.
      */
-    public FieldInfo(String name, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
-                     Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
-                     Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                     OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo,
-                     FieldReader binder) {
+    public PropertyInfo(String name, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
+                        Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
+                        Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
+                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo,
+                        PropertyReader binder) {
         this.name = name;
         this.publicField = publicField;
         this.type = type;

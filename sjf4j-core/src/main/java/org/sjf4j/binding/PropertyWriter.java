@@ -18,7 +18,7 @@ import java.util.function.Function;
 
 
 @FunctionalInterface
-public interface FieldWriter {
+public interface PropertyWriter {
 
     /**
      * Writes one POJO property.
@@ -76,10 +76,10 @@ public interface FieldWriter {
      * --------------------------------------------------------------
      */
 
-    static FieldWriter create(String fieldName, Type fieldType, Class<?> fieldBoxed,
-                              MethodHandle getterHandle, Function<Object, Object> getterLambda,
-                              ValueInfo resolvedValueCodec,
-                              MethodHandles.Lookup lookup) {
+    static PropertyWriter create(String fieldName, Type fieldType, Class<?> fieldBoxed,
+                                 MethodHandle getterHandle, Function<Object, Object> getterLambda,
+                                 ValueInfo resolvedValueCodec,
+                                 MethodHandles.Lookup lookup) {
 
         if (getterHandle == null) {
             return null;
@@ -176,8 +176,8 @@ public interface FieldWriter {
      * --------------------------------------------------------------
      */
 
-    static FieldWriter _createForPrimitiveInt(String fieldName, MethodHandle getterHandle,
-                                              MethodHandles.Lookup lookup) {
+    static PropertyWriter _createForPrimitiveInt(String fieldName, MethodHandle getterHandle,
+                                                 MethodHandles.Lookup lookup) {
         ToIntFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                         _castClass(ToIntFunction.class), int.class);
         if (getterLambda != null) {
@@ -204,8 +204,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForPrimitiveLong(String fieldName, MethodHandle getterHandle,
-                                               MethodHandles.Lookup lookup) {
+    static PropertyWriter _createForPrimitiveLong(String fieldName, MethodHandle getterHandle,
+                                                  MethodHandles.Lookup lookup) {
         ToLongFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                 _castClass(ToLongFunction.class), long.class);
         if (getterLambda != null) {
@@ -232,8 +232,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForPrimitiveDouble(String fieldName, MethodHandle getterHandle,
-                                                 MethodHandles.Lookup lookup) {
+    static PropertyWriter _createForPrimitiveDouble(String fieldName, MethodHandle getterHandle,
+                                                    MethodHandles.Lookup lookup) {
         ToDoubleFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                 _castClass(ToDoubleFunction.class), double.class);
         if (getterLambda != null) {
@@ -260,8 +260,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForPrimitiveFloat(String fieldName, MethodHandle getterHandle,
-                                              MethodHandles.Lookup lookup) {
+    static PropertyWriter _createForPrimitiveFloat(String fieldName, MethodHandle getterHandle,
+                                                   MethodHandles.Lookup lookup) {
         ToFloatFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                 _castClass(ToFloatFunction.class), float.class);
         if (getterLambda != null) {
@@ -288,8 +288,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForPrimitiveShort(String fieldName, MethodHandle getterHandle,
-                                                MethodHandles.Lookup lookup) {
+    static PropertyWriter _createForPrimitiveShort(String fieldName, MethodHandle getterHandle,
+                                                   MethodHandles.Lookup lookup) {
         ToShortFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                 _castClass(ToShortFunction.class), short.class);
         if (getterLambda != null) {
@@ -316,8 +316,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForPrimitiveByte(String fieldName, MethodHandle getterHandle,
-                                               MethodHandles.Lookup lookup) {
+    static PropertyWriter _createForPrimitiveByte(String fieldName, MethodHandle getterHandle,
+                                                  MethodHandles.Lookup lookup) {
         ToByteFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                 _castClass(ToByteFunction.class), byte.class);
         if (getterLambda != null) {
@@ -344,8 +344,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForPrimitiveBoolean(String fieldName, MethodHandle getterHandle,
-                                              MethodHandles.Lookup lookup) {
+    static PropertyWriter _createForPrimitiveBoolean(String fieldName, MethodHandle getterHandle,
+                                                     MethodHandles.Lookup lookup) {
         ToBooleanFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                 _castClass(ToBooleanFunction.class), boolean.class);
         if (getterLambda != null) {
@@ -372,7 +372,7 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForPrimitiveChar(String fieldName, MethodHandle getterHandle,
+    static PropertyWriter _createForPrimitiveChar(String fieldName, MethodHandle getterHandle,
                                                   MethodHandles.Lookup lookup) {
         ToCharFunction<Object> getterLambda = PojoAccess.createGetterLambda(lookup, getterHandle,
                 _castClass(ToCharFunction.class), char.class);
@@ -407,8 +407,8 @@ public interface FieldWriter {
      * --------------------------------------------------------------
      */
 
-    static FieldWriter _createForString(String fieldName, MethodHandle getterHandle,
-                                        Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForString(String fieldName, MethodHandle getterHandle,
+                                           Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -421,8 +421,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForInteger(String fieldName, MethodHandle getterHandle,
-                                         Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForInteger(String fieldName, MethodHandle getterHandle,
+                                            Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -435,8 +435,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForLong(String fieldName, MethodHandle getterHandle,
-                                      Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForLong(String fieldName, MethodHandle getterHandle,
+                                         Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -449,8 +449,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForDouble(String fieldName, MethodHandle getterHandle,
-                                        Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForDouble(String fieldName, MethodHandle getterHandle,
+                                           Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -463,8 +463,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForFloat(String fieldName, MethodHandle getterHandle,
-                                       Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForFloat(String fieldName, MethodHandle getterHandle,
+                                          Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -477,8 +477,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForShort(String fieldName, MethodHandle getterHandle,
-                                       Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForShort(String fieldName, MethodHandle getterHandle,
+                                          Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -491,8 +491,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForByte(String fieldName, MethodHandle getterHandle,
-                                      Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForByte(String fieldName, MethodHandle getterHandle,
+                                         Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -505,8 +505,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForBoolean(String fieldName, MethodHandle getterHandle,
-                                         Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForBoolean(String fieldName, MethodHandle getterHandle,
+                                            Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -519,8 +519,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForCharacter(String fieldName, MethodHandle getterHandle,
-                                           Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForCharacter(String fieldName, MethodHandle getterHandle,
+                                              Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -533,8 +533,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForBigInteger(String fieldName, MethodHandle getterHandle,
-                                            Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForBigInteger(String fieldName, MethodHandle getterHandle,
+                                               Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -547,8 +547,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForBigDecimal(String fieldName, MethodHandle getterHandle,
-                                            Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForBigDecimal(String fieldName, MethodHandle getterHandle,
+                                               Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -561,8 +561,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForNumber(String fieldName, MethodHandle getterHandle,
-                                        Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForNumber(String fieldName, MethodHandle getterHandle,
+                                           Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -575,8 +575,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForEnum(String fieldName, MethodHandle getterHandle,
-                                      Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForEnum(String fieldName, MethodHandle getterHandle,
+                                         Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -589,9 +589,9 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForValueCodec(String fieldName, MethodHandle getterHandle,
-                                            Function<Object, Object> getterLambda,
-                                            ValueInfo valueCodec) {
+    static PropertyWriter _createForValueCodec(String fieldName, MethodHandle getterHandle,
+                                               Function<Object, Object> getterLambda,
+                                               ValueInfo valueCodec) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -604,8 +604,8 @@ public interface FieldWriter {
         };
     }
 
-    static FieldWriter _createForObject(String fieldName, MethodHandle getterHandle,
-                                        Function<Object, Object> getterLambda) {
+    static PropertyWriter _createForObject(String fieldName, MethodHandle getterHandle,
+                                           Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {

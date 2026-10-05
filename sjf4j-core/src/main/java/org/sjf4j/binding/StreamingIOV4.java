@@ -8,7 +8,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.mapping.NodeMapper;
-import org.sjf4j.node.FieldInfo;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.CreatorInfo;
@@ -420,7 +420,7 @@ public final class StreamingIOV4 {
             int expected = 0;
             int index;
             while ((index = reader.nextNameMatch(matcher, expected)) != NameMatcher.OBJECT_END) {
-                FieldInfo field = index >= 0 ? pojoInfo.properties.get(matcher.name(index)) : null;
+                PropertyInfo field = index >= 0 ? pojoInfo.properties.get(matcher.name(index)) : null;
                 if (field == null || !field.hasSetter()) {
                     reader.skipNode();
                 } else {
@@ -446,7 +446,7 @@ public final class StreamingIOV4 {
         } else {
             String name;
             while ((name = reader.nextName()) != null) {
-                FieldInfo field = pojoInfo.aliasProperties != null ? pojoInfo.aliasProperties.get(name)
+                PropertyInfo field = pojoInfo.aliasProperties != null ? pojoInfo.aliasProperties.get(name)
                         : pojoInfo.properties.get(name);
 
                 if (field == null || !field.hasSetter()) {
@@ -469,7 +469,7 @@ public final class StreamingIOV4 {
 
         CreatorInfo creator = pojoInfo.creatorInfo;
         CreatorState state = new CreatorState(creator);
-        FieldInfo deferred = null;
+        PropertyInfo deferred = null;
         Object deferredRaw = null;
         String parentKey = null;
         Object parentValue = UNSET;
@@ -492,7 +492,7 @@ public final class StreamingIOV4 {
                 continue;
             }
 
-            FieldInfo field = pojoInfo.aliasProperties != null
+            PropertyInfo field = pojoInfo.aliasProperties != null
                     ? pojoInfo.aliasProperties.get(name)
                     : pojoInfo.properties.get(name);
 
@@ -569,7 +569,7 @@ public final class StreamingIOV4 {
 
         OneOfInfo oneOfInfo = deferred.oneOfInfo;
         if (parentValue == UNSET) {
-            FieldInfo parentField = pojoInfo.aliasProperties != null
+            PropertyInfo parentField = pojoInfo.aliasProperties != null
                     ? pojoInfo.aliasProperties.get(parentKey)
                     : pojoInfo.properties.get(parentKey);
 
@@ -603,7 +603,7 @@ public final class StreamingIOV4 {
      * --------------------------------------------------------------
      */
 
-    private static Object readField(StreamingReaderV4 reader, FieldInfo field, Type ownerType, Class<?> ownerBoxed,
+    private static Object readField(StreamingReaderV4 reader, PropertyInfo field, Type ownerType, Class<?> ownerBoxed,
                                     TypeInfo cachedTypeInfo, RuntimeContext context) throws IOException {
         Type type = field.genericDependent
                 ? Types.resolveMemberType(ownerType, ownerBoxed, field.type)

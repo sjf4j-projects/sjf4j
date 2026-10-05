@@ -299,7 +299,7 @@ class TypeRegistryEdgeCaseTest {
         assertEquals(String.class, isoCodec.rawClazz);
         assertEquals(Long.class, epochCodec.rawClazz);
 
-        FieldInfo fi = TypeRegistry.requireRegisteredPojoInfo(InstantFieldPojo.class).properties.get("createdAt");
+        PropertyInfo fi = TypeRegistry.requireRegisteredPojoInfo(InstantFieldPojo.class).properties.get("createdAt");
         assertEquals("epochMillis", fi.valueFormat);
         assertNotNull(fi.valueInfo);
         assertEquals(Long.class, fi.valueInfo.rawClazz);
@@ -332,7 +332,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testCodecPatternResolvesLocalDateCodec() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(LocalDatePatternPojo.class);
-        FieldInfo fi = pi.properties.get("date");
+        PropertyInfo fi = pi.properties.get("date");
         assertNotNull(fi);
         // codecName is null when only codecPattern is specified (separate attributes)
         assertNull(fi.valueFormat);
@@ -433,7 +433,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testLocalTimeFieldWithPattern() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(LocalTimeFieldPojo.class);
-        FieldInfo fi = pi.properties.get("time");
+        PropertyInfo fi = pi.properties.get("time");
         assertNotNull(fi);
         assertNull(fi.valueFormat);
         assertNotNull(fi.valueInfo);
@@ -593,7 +593,7 @@ class TypeRegistryEdgeCaseTest {
 
         CreatorInfo sessionCreator = ReflectUtil.analyzeCreator(SessionPojo.class, lookup);
         PojoInfo sessionInfo = TypeRegistry.requireRegisteredPojoInfo(SessionPojo.class);
-        FieldInfo extraField = sessionInfo.properties.get("extra");
+        PropertyInfo extraField = sessionInfo.properties.get("extra");
 
         TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(sessionCreator, 1);
         session.acceptProperty(extraField, "later");
@@ -672,36 +672,36 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testPropertyInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(ContainerPojo.class);
-        FieldInfo namesField = pojoInfo.properties.get("names");
-        FieldInfo numbersField = pojoInfo.properties.get("numbers");
-        FieldInfo mappingField = pojoInfo.properties.get("mapping");
-        FieldInfo typedListField = pojoInfo.properties.get("typedList");
-        FieldInfo typedMapField = pojoInfo.properties.get("typedMap");
-        FieldInfo linkedNamesField = pojoInfo.properties.get("linkedNames");
-        FieldInfo sortedNumbersField = pojoInfo.properties.get("sortedNumbers");
-        FieldInfo hashMappingField = pojoInfo.properties.get("hashMapping");
-        FieldInfo arrayField = pojoInfo.properties.get("array");
-        FieldInfo plainField = pojoInfo.properties.get("plain");
-        FieldInfo readOnlyField = pojoInfo.properties.get("readOnly");
+        PropertyInfo namesField = pojoInfo.properties.get("names");
+        PropertyInfo numbersField = pojoInfo.properties.get("numbers");
+        PropertyInfo mappingField = pojoInfo.properties.get("mapping");
+        PropertyInfo typedListField = pojoInfo.properties.get("typedList");
+        PropertyInfo typedMapField = pojoInfo.properties.get("typedMap");
+        PropertyInfo linkedNamesField = pojoInfo.properties.get("linkedNames");
+        PropertyInfo sortedNumbersField = pojoInfo.properties.get("sortedNumbers");
+        PropertyInfo hashMappingField = pojoInfo.properties.get("hashMapping");
+        PropertyInfo arrayField = pojoInfo.properties.get("array");
+        PropertyInfo plainField = pojoInfo.properties.get("plain");
+        PropertyInfo readOnlyField = pojoInfo.properties.get("readOnly");
 
-        assertEquals(FieldInfo.ContainerKind.LIST, namesField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.LIST, namesField.containerKind);
         assertEquals(String.class, namesField.argBoxed);
-        assertEquals(FieldInfo.ContainerKind.SET, numbersField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.SET, numbersField.containerKind);
         assertEquals(Integer.class, numbersField.argBoxed);
-        assertEquals(FieldInfo.ContainerKind.MAP, mappingField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.MAP, mappingField.containerKind);
         assertEquals(Long.class, mappingField.argBoxed);
-        assertEquals(FieldInfo.ContainerKind.LIST, typedListField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.LIST, typedListField.containerKind);
         assertEquals(TypedOneOf.class, typedListField.argBoxed);
         assertNotNull(typedListField.argOneOfInfo);
-        assertEquals(FieldInfo.ContainerKind.MAP, typedMapField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.MAP, typedMapField.containerKind);
         assertEquals(TypedOneOf.class, typedMapField.argBoxed);
         assertNotNull(typedMapField.argOneOfInfo);
-        assertEquals(FieldInfo.ContainerKind.LIST, linkedNamesField.containerKind);
-        assertEquals(FieldInfo.ContainerKind.SET, sortedNumbersField.containerKind);
-        assertEquals(FieldInfo.ContainerKind.MAP, hashMappingField.containerKind);
-        assertEquals(FieldInfo.ContainerKind.ARRAY, arrayField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.LIST, linkedNamesField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.SET, sortedNumbersField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.MAP, hashMappingField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.ARRAY, arrayField.containerKind);
         assertEquals(String.class, arrayField.argBoxed);
-        assertEquals(FieldInfo.ContainerKind.NONE, plainField.containerKind);
+        assertEquals(PropertyInfo.ContainerKind.NONE, plainField.containerKind);
 
         ContainerPojo pojo = new ContainerPojo();
         plainField.invokeSetter(pojo, "plain");
@@ -714,7 +714,7 @@ class TypeRegistryEdgeCaseTest {
         assertThrowsExactly(BindingException.class, () -> readOnlyField.invokeSetter(pojo, "x"));
         assertThrows(NullPointerException.class, () -> plainField.invokeGetter(null));
 
-        FieldInfo missingGetter = new FieldInfo(
+        PropertyInfo missingGetter = new PropertyInfo(
                 "name",
                 null,
                 String.class,
@@ -735,7 +735,7 @@ class TypeRegistryEdgeCaseTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         Method getterMethod = ThrowingAccessor.class.getDeclaredMethod("getName");
         Method setterMethod = ThrowingAccessor.class.getDeclaredMethod("setName", String.class);
-        FieldInfo throwingField = new FieldInfo(
+        PropertyInfo throwingField = new PropertyInfo(
                 "name",
                 null,
                 String.class,

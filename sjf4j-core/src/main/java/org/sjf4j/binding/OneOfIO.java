@@ -7,7 +7,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
-import org.sjf4j.node.FieldInfo;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoInfo;
@@ -201,7 +201,7 @@ public final class OneOfIO {
                 continue;
             }
 
-            FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 if (state.isCreated()) {
                     fi.binder.bind(reader, state.pojo(), targetClazz, targetClazz, context);
@@ -248,7 +248,7 @@ public final class OneOfIO {
             return;
         }
 
-        FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+        PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
         if (fi != null) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
             Object value = fi.valueInfo != null

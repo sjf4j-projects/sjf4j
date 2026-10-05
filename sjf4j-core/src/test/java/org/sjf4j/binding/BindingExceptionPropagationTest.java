@@ -73,9 +73,9 @@ class BindingExceptionPropagationTest {
         MethodHandle setter = lookup.unreflect(PrimitiveAccessor.class.getMethod("setValue", int.class));
         MethodHandle getter = lookup.unreflect(PrimitiveAccessor.class.getMethod("getValue"));
 
-        FieldReader reader = FieldReader.create("value", int.class, Integer.class, false, null,
+        PropertyReader reader = PropertyReader.create("value", int.class, Integer.class, false, null,
                 setter, null, null, null);
-        FieldWriter writer = FieldWriter.create("value", int.class, Integer.class, getter, null, null, null);
+        PropertyWriter writer = PropertyWriter.create("value", int.class, Integer.class, getter, null, null, null);
 
         assertSame(failure, assertThrowsExactly(BindingException.class,
                 () -> reader.bind(new SimpleJsonReader(new StringReader("1")), accessor,

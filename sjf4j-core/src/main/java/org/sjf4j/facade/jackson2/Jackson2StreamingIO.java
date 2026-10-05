@@ -18,7 +18,7 @@ import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.OneOfInfo;
-import org.sjf4j.node.FieldInfo;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.Types;
 
@@ -318,7 +318,7 @@ public class Jackson2StreamingIO {
                 String key = parser.currentName();
                 parser.nextToken();
 
-                FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+                PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
                     Object vv = _readField(parser, fi, ownerType, ownerRawClazz, context);
                     fi.invokeSetterIfPresent(pojo, vv);
@@ -339,7 +339,7 @@ public class Jackson2StreamingIO {
         }
 
         TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
-        FieldInfo deferredParentOneOfFi = null;
+        PropertyInfo deferredParentOneOfFi = null;
         Object deferredParentOneOfRaw = null;
         String parentOneOfKey = null;
         Object parentOneOfValue = UNSET;
@@ -372,7 +372,7 @@ public class Jackson2StreamingIO {
                 continue;
             }
 
-            FieldInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
+            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 Object vv;
                 OneOfInfo fieldOneOf = fi.oneOfInfo;
@@ -485,7 +485,7 @@ public class Jackson2StreamingIO {
         throw new BindingException("cannot read array value into type '" + rawClazz.getName() + "'");
     }
 
-    private static Object _readField(JsonParser parser, FieldInfo fi,
+    private static Object _readField(JsonParser parser, PropertyInfo fi,
                                      Type ownerType, Class<?> ownerRawClazz,
                                      StreamingContext context)
             throws IOException {
@@ -504,7 +504,7 @@ public class Jackson2StreamingIO {
             return _readValueWithCodec(parser, fieldType, fieldRaw, fi.valueInfo, context);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : FieldInfo.ContainerKind.NONE) {
+        switch (fieldType == fi.type ? fi.containerKind : PropertyInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMap(parser, fi.boxed, fi.argType, fi.argBoxed,
                         TypeRegistry.registerTypeInfo(fi.argBoxed), context);
@@ -898,7 +898,7 @@ public class Jackson2StreamingIO {
     public static void writePojo(JsonGenerator gen, Object node, PojoInfo pi,
                                  StreamingContext context) throws IOException {
         gen.writeStartObject();
-        for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
+        for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
             Object vv = entry.getValue().invokeGetter(node);
             if (vv == null && !context.includeNulls) continue;
             String key = entry.getKey();
@@ -906,7 +906,7 @@ public class Jackson2StreamingIO {
             if (vv == null) {
                 gen.writeNull();
             } else {
-                FieldInfo fi = entry.getValue();
+                PropertyInfo fi = entry.getValue();
                 if (fi.valueInfo != null) {
                     vv = fi.valueInfo.valueToRaw(vv);
                 }

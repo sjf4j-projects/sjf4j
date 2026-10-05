@@ -138,7 +138,7 @@ public class TypeRegistryTest {
     public void testInvoke1() {
         Person p1 = new Person();
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(Person.class);
-        FieldInfo fi = pi.properties.get("name");
+        PropertyInfo fi = pi.properties.get("name");
 
         fi.invokeSetter(p1, "hahaha");
         String name1 = (String) fi.invokeGetter(p1);

@@ -7,8 +7,8 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.binding.FieldReader;
-import org.sjf4j.binding.FieldWriter;
+import org.sjf4j.binding.PropertyReader;
+import org.sjf4j.binding.PropertyWriter;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -172,7 +172,7 @@ public final class ReflectUtil {
             curClazz = curClazz.getSuperclass();
         } while (isPojoCandidate(curClazz));
 
-        Map<String, FieldInfo> properties = new LinkedHashMap<>();
+        Map<String, PropertyInfo> properties = new LinkedHashMap<>();
         for (PropertyFamily family : families.values()) {
             hasExplicitBinding |= family.explicitName != null || family.fieldExplicitName != null;
             MethodHandle getterHandle = null;
@@ -255,15 +255,15 @@ public final class ReflectUtil {
                     PojoAccess.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
             ValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
 
-            FieldReader fieldReader = FieldReader.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
+            PropertyReader propertyReader = PropertyReader.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
                     setterHandle, setterLambda, resolvedCodec, lookup);
-            FieldInfo pi = new FieldInfo(finalName, publicField, type, genericDependent, boxed,
+            PropertyInfo pi = new PropertyInfo(finalName, publicField, type, genericDependent, boxed,
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
                     family.codecName, resolvedCodec,
-                    fieldReader);
-            FieldInfo oldPi = properties.putIfAbsent(pi.name, pi);
+                    propertyReader);
+            PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new BindingException("multiple property families resolve to JSON property '" + pi.name +
                         "' in " + clazz.getName());
@@ -279,11 +279,11 @@ public final class ReflectUtil {
             }
         } //for
 
-        Map<String, FieldInfo> aliasProperties = null;
+        Map<String, PropertyInfo> aliasProperties = null;
         if (aliasMap != null ) {
             aliasProperties = new HashMap<>(properties);
             for (Map.Entry<String, String> alias : aliasMap.entrySet()) {
-                FieldInfo fi = properties.get(alias.getValue());
+                PropertyInfo fi = properties.get(alias.getValue());
                 if (fi != null) aliasProperties.put(alias.getKey(), fi);
             }
         }
@@ -292,13 +292,13 @@ public final class ReflectUtil {
         }
 
         List<String> fieldNames = new ArrayList<>(properties.size());
-        List<FieldWriter> fieldWriters = new ArrayList<>(properties.size());
-        for (FieldInfo property : properties.values()) {
-            FieldWriter fieldWriter = FieldWriter.create(property.name, property.type, property.boxed,
+        List<PropertyWriter> propertyWriters = new ArrayList<>(properties.size());
+        for (PropertyInfo property : properties.values()) {
+            PropertyWriter propertyWriter = PropertyWriter.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.valueInfo, lookup);
-            if (fieldWriter != null) {
+            if (propertyWriter != null) {
                 fieldNames.add(property.name);
-                fieldWriters.add(fieldWriter);
+                propertyWriters.add(propertyWriter);
             }
         }
 
@@ -306,7 +306,7 @@ public final class ReflectUtil {
                 readDynamic, writeDynamic, properties, aliasProperties,
                 hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap,
                 fieldNames.toArray(new String[0]),
-                fieldWriters.toArray(new FieldWriter[0]));
+                propertyWriters.toArray(new PropertyWriter[0]));
     }
 
     private static boolean _reserveFieldFamilies(Class<?> root, Field[] fds,

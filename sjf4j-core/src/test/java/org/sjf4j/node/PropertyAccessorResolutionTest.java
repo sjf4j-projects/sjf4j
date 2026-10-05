@@ -105,13 +105,13 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void booleanIsGetterBeatsGetGetter() {
-        FieldInfo pi = TypeRegistry.requireRegisteredPojoInfo(BooleanAccessorPojo.class).properties.get("active");
+        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(BooleanAccessorPojo.class).properties.get("active");
         assertTrue((Boolean) pi.invokeGetter(new BooleanAccessorPojo()));
     }
 
     @Test
     void subclassGetterBeatsParentGetter() {
-        FieldInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildGetterPojo.class).properties.get("name");
+        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildGetterPojo.class).properties.get("name");
         assertEquals("child", pi.invokeGetter(new ChildGetterPojo()));
     }
 
@@ -131,7 +131,7 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void parentIgnoreDoesNotHideChildOverrideGetter() {
-        FieldInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildVisibleGetterPojo.class).properties.get("name");
+        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildVisibleGetterPojo.class).properties.get("name");
         assertEquals("child", pi.invokeGetter(new ChildVisibleGetterPojo()));
     }
 

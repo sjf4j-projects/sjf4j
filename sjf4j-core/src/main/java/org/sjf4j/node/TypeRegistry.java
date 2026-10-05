@@ -8,7 +8,6 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
-import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
 
@@ -242,7 +241,7 @@ public final class TypeRegistry {
         private Object[] args;
         private boolean[] argAssigned;
         private int remainingArgs;
-        private FieldInfo[] pendingProperties;
+        private PropertyInfo[] pendingProperties;
         private Object[] pendingFieldValues;
         private int pendingFieldSize;
         private String[] pendingNames;
@@ -279,12 +278,12 @@ public final class TypeRegistry {
             }
         }
 
-        public void acceptProperty(FieldInfo fieldInfo, Object value) {
+        public void acceptProperty(PropertyInfo propertyInfo, Object value) {
             if (pojo != null) {
-                fieldInfo.invokeSetterIfPresent(pojo, value);
+                propertyInfo.invokeSetterIfPresent(pojo, value);
             } else {
                 _ensurePendingPropertyCapacity();
-                pendingProperties[pendingFieldSize] = fieldInfo;
+                pendingProperties[pendingFieldSize] = propertyInfo;
                 pendingFieldValues[pendingFieldSize] = value;
                 pendingFieldSize++;
             }
@@ -330,13 +329,13 @@ public final class TypeRegistry {
         private void _ensurePendingPropertyCapacity() {
             if (pendingProperties == null || pendingFieldValues == null) {
                 int cap = pendingCapacity;
-                pendingProperties = new FieldInfo[cap];
+                pendingProperties = new PropertyInfo[cap];
                 pendingFieldValues = new Object[cap];
                 return;
             }
             if (pendingFieldSize < pendingProperties.length) return;
             int newCap = pendingProperties.length << 1;
-            FieldInfo[] newProperties = new FieldInfo[newCap];
+            PropertyInfo[] newProperties = new PropertyInfo[newCap];
             Object[] newValues = new Object[newCap];
             System.arraycopy(pendingProperties, 0, newProperties, 0, pendingFieldSize);
             System.arraycopy(pendingFieldValues, 0, newValues, 0, pendingFieldSize);

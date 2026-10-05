@@ -10,7 +10,7 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class FieldWriterTest {
+class PropertyWriterTest {
     static class Person {
         private final String name = "Ada";
         public String getName() {

@@ -10,7 +10,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
-import org.sjf4j.node.FieldInfo;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoInfo;
@@ -357,7 +357,7 @@ public final class NodeMapper {
                         continue;
                     }
 
-                    FieldInfo fi = pojoInfo.aliasProperties != null
+                    PropertyInfo fi = pojoInfo.aliasProperties != null
                             ? pojoInfo.aliasProperties.get(key)
                             : pojoInfo.properties.get(key);
 
@@ -433,9 +433,9 @@ public final class NodeMapper {
                 TypeRegistry.PojoCreationSession session =
                         new TypeRegistry.PojoCreationSession(ci, pi.readablePropertyCount);
 
-                for (Map.Entry<String, FieldInfo> entry : pi.readableProperties.entrySet()) {
+                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
-                    FieldInfo fi = entry.getValue();
+                    PropertyInfo fi = entry.getValue();
                     Object value = fi.invokeGetter(node);
 
                     int argIdx = ci.getArgIndexOrAlias(key);
@@ -625,7 +625,7 @@ public final class NodeMapper {
                 continue;
             }
 
-            FieldInfo fi = pi.aliasProperties != null
+            PropertyInfo fi = pi.aliasProperties != null
                     ? pi.aliasProperties.get(key)
                     : pi.properties.get(key);
 
@@ -927,7 +927,7 @@ public final class NodeMapper {
             OneOfInfo valueOneOf =
                     TypeRegistry.registerTypeInfo(valueRaw).oneOfInfo;
 
-            for (Map.Entry<String, FieldInfo> entry
+            for (Map.Entry<String, PropertyInfo> entry
                     : sourceInfo.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue().invokeGetter(node);
@@ -940,7 +940,7 @@ public final class NodeMapper {
 
         if (toBoxed == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (Map.Entry<String, FieldInfo> entry
+            for (Map.Entry<String, PropertyInfo> entry
                     : sourceInfo.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue().invokeGetter(node);
@@ -974,7 +974,7 @@ public final class NodeMapper {
                 new Object[sourceInfo.readablePropertyCount];
 
         int sourceIndex = 0;
-        for (FieldInfo sourceField : sourceInfo.readableProperties.values()) {
+        for (PropertyInfo sourceField : sourceInfo.readableProperties.values()) {
             sourceValues[sourceIndex++] = sourceField.invokeGetter(source);
         }
 
@@ -982,7 +982,7 @@ public final class NodeMapper {
         CreatorState state = new CreatorState(ci);
 
         sourceIndex = 0;
-        for (Map.Entry<String, FieldInfo> entry
+        for (Map.Entry<String, PropertyInfo> entry
                 : sourceInfo.readableProperties.entrySet()) {
             String key = entry.getKey();
             Object rawValue = sourceValues[sourceIndex++];
@@ -1013,7 +1013,7 @@ public final class NodeMapper {
                 continue;
             }
 
-            FieldInfo fi = targetInfo.aliasProperties != null
+            PropertyInfo fi = targetInfo.aliasProperties != null
                     ? targetInfo.aliasProperties.get(key)
                     : targetInfo.properties.get(key);
 
@@ -1151,10 +1151,10 @@ public final class NodeMapper {
                         TypeRegistry.newMapContainer(
                                 LinkedHashMap.class, size, false);
 
-                for (Map.Entry<String, FieldInfo> entry
+                for (Map.Entry<String, PropertyInfo> entry
                         : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
-                    FieldInfo fi = entry.getValue();
+                    PropertyInfo fi = entry.getValue();
                     Object value = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
 
@@ -1234,10 +1234,10 @@ public final class NodeMapper {
                                 pi.readablePropertyCount,
                                 false);
 
-                for (Map.Entry<String, FieldInfo> entry
+                for (Map.Entry<String, PropertyInfo> entry
                         : pi.readableProperties.entrySet()) {
                     String key = entry.getKey();
-                    FieldInfo fi = entry.getValue();
+                    PropertyInfo fi = entry.getValue();
                     Object value = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
 
