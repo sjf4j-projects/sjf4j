@@ -15,11 +15,10 @@ import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.binding.StreamingIO;
+import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.StreamingIO;
-import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.PatternedValueCodec;
@@ -657,15 +656,6 @@ class TypeRegistryEdgeCaseTest {
         duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("name"), "first");
         BindingException duplicate = assertThrowsExactly(BindingException.class,
                 () -> duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("n"), "second"));
-        assertTrue(duplicate.getMessage().contains("duplicate creator argument assignment"));
-    }
-
-    @Test
-    void testDuplicateCreatorBindingFailsAfterMaterialization() {
-        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(AliasCreatorPojo.class);
-        BindingException duplicate = assertThrowsExactly(BindingException.class,
-                () -> StreamingIO.readPojo(new SimpleJsonReader(new StringReader("{\"name\":\"first\",\"n\":\"second\"}")),
-                        AliasCreatorPojo.class, AliasCreatorPojo.class, pi, StreamingContext.EMPTY));
         assertTrue(duplicate.getMessage().contains("duplicate creator argument assignment"));
     }
 

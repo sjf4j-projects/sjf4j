@@ -27,17 +27,9 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
+import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.FastStringReader;
-import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.StreamingReader;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.gson.GsonModule;
-import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
-import org.sjf4j.facade.jackson2.Jackson2Module;
-import org.sjf4j.facade.jsonp.JsonpJsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonReader;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
 import org.sjf4j.testbench.model.UserJojo;
@@ -93,8 +85,8 @@ public class JsonReadBenchmark {
     private static final ObjectMapper JACKSON2_BLACKBIRD = createBlackbirdJackson2();
     private static final Gson GSON = createNativeGson();
     private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT = createFastjson2NativeContext();
-    private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
-    private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
+    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
+    private static final JsonpBinder JSONP_BINDER = new JsonpBinder();
 
     static {
         JACKSON2.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -109,8 +101,6 @@ public class JsonReadBenchmark {
 
     private static Gson createNativeGson() {
         GsonBuilder builder = new GsonBuilder();
-        builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setFieldNamingStrategy(field -> {
             String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();
@@ -121,51 +111,6 @@ public class JsonReadBenchmark {
     private static JSONReader.Context createFastjson2NativeContext() {
         ObjectReaderProvider provider = new ObjectReaderProvider();
         return JSONFactory.createReadContext(provider, JSONReader.Feature.UseDoubleForDecimals);
-    }
-
-    private static ObjectMapper createJackson2PluginMapper(SimpleModule module) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        AnnotationIntrospector serializationAi = objectMapper.getSerializationConfig().getAnnotationIntrospector();
-        AnnotationIntrospector deserializationAi = objectMapper.getDeserializationConfig().getAnnotationIntrospector();
-        objectMapper.setAnnotationIntrospectors(
-                AnnotationIntrospectorPair.create(new Jackson2Module.NodePropertyAnnotationIntrospector(), serializationAi),
-                AnnotationIntrospectorPair.create(new Jackson2Module.NodePropertyAnnotationIntrospector(), deserializationAi)
-        );
-        objectMapper.registerModule(module);
-        return objectMapper;
-    }
-
-    @State(Scope.Thread)
-    public static class FacadeState {
-        @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
-        public String streamingMode;
-
-        public Jackson2JsonFacade jackson2Facade;
-        public Fastjson2JsonFacade fastjson2Facade;
-
-        @Setup(Level.Trial)
-        public void setup() {
-            StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
-            StreamingContext context = new StreamingContext(mode);
-            jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), context);
-            fastjson2Facade = new Fastjson2JsonFacade(null, null, context);
-        }
-    }
-
-    @State(Scope.Thread)
-    public static class FacadeState2 {
-        @Param({"SHARED_IO", "PLUGIN_MODULE"})
-        public String streamingMode;
-
-        public GsonJsonFacade gsonFacade;
-
-        @Setup(Level.Trial)
-        public void setup() {
-            StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
-            StreamingContext context = new StreamingContext(mode);
-            gsonFacade = new GsonJsonFacade(new GsonBuilder(), context);
-        }
     }
 
 
@@ -180,20 +125,6 @@ public class JsonReadBenchmark {
                     bh.consume(parser.getText());
                 }
             }
-        }
-    }
-
-    @Benchmark
-    public void parse_gson_native(Blackhole bh) throws IOException {
-        try (com.google.gson.stream.JsonReader reader = GSON.newJsonReader(new StringReader(JSON_DATA2))) {
-            traverseGson(reader, bh);
-        }
-    }
-
-    @Benchmark
-    public void parse_fastjson2_native(Blackhole bh) {
-        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            traverseFastjson2(reader, bh);
         }
     }
 
@@ -213,113 +144,6 @@ public class JsonReadBenchmark {
                         break;
                 }
             }
-        }
-    }
-
-    @Benchmark
-    public void parse_simple_native(Blackhole bh) throws IOException {
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(JSON_DATA2))) {
-            traverseStreamingReader(reader, bh);
-        }
-    }
-
-    @Benchmark
-    public void parse_simple_fast_string_reader(Blackhole bh) throws IOException {
-        try (SimpleJsonReader reader = new SimpleJsonReader(new FastStringReader(JSON_DATA2))) {
-            traverseStreamingReader(reader, bh);
-        }
-    }
-
-    private static void traverseGson(com.google.gson.stream.JsonReader reader, Blackhole bh) throws IOException {
-        com.google.gson.stream.JsonToken token = reader.peek();
-        bh.consume(token);
-        switch (token) {
-            case BEGIN_OBJECT:
-                reader.beginObject();
-                while (reader.hasNext()) {
-                    bh.consume(reader.nextName());
-                    traverseGson(reader, bh);
-                }
-                reader.endObject();
-                return;
-            case BEGIN_ARRAY:
-                reader.beginArray();
-                while (reader.hasNext()) {
-                    traverseGson(reader, bh);
-                }
-                reader.endArray();
-                return;
-            case STRING:
-            case NUMBER:
-                bh.consume(reader.nextString());
-                return;
-            case BOOLEAN:
-                bh.consume(reader.nextBoolean());
-                return;
-            case NULL:
-                reader.nextNull();
-                return;
-            default:
-                throw new IOException("Unexpected token: " + token);
-        }
-    }
-
-    private static void traverseFastjson2(JSONReader reader, Blackhole bh) {
-        char ch = reader.current();
-        bh.consume(ch);
-        if (reader.nextIfObjectStart()) {
-            while (!reader.nextIfObjectEnd()) {
-                bh.consume(reader.readFieldName());
-                traverseFastjson2(reader, bh);
-            }
-        } else if (reader.nextIfArrayStart()) {
-            while (!reader.nextIfArrayEnd()) {
-                traverseFastjson2(reader, bh);
-            }
-        } else if (ch == '"') {
-            bh.consume(reader.readString());
-        } else if (ch == 't' || ch == 'f') {
-            bh.consume(reader.readBoolValue());
-        } else if (ch == 'n') {
-            reader.readNull();
-        } else {
-            bh.consume(reader.readNumber());
-        }
-    }
-
-    private static void traverseStreamingReader(StreamingReader reader, Blackhole bh) throws IOException {
-        StreamingReader.Token token = reader.peekToken();
-        bh.consume(token);
-        switch (token) {
-            case START_OBJECT:
-                reader.startObject();
-                while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
-                    bh.consume(reader.nextName());
-                    traverseStreamingReader(reader, bh);
-                }
-                reader.endObject();
-                return;
-            case START_ARRAY:
-                reader.startArray();
-                while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
-                    traverseStreamingReader(reader, bh);
-                }
-                reader.endArray();
-                return;
-            case STRING:
-                bh.consume(reader.nextString());
-                return;
-            case NUMBER:
-                bh.consume(reader.nextNumber());
-                return;
-            case BOOLEAN:
-                bh.consume(reader.nextBoolean());
-                return;
-            case NULL:
-                reader.nextNull();
-                return;
-            default:
-                throw new IOException("Unexpected token: " + token);
         }
     }
 
@@ -345,21 +169,6 @@ public class JsonReadBenchmark {
         return JACKSON2.readValue(JSON_DATA2, Map.class);
     }
 
-    @Benchmark
-    public Object json_jackson2_pojo_facade(FacadeState state) throws IOException {
-        return state.jackson2Facade.readNode(JSON_DATA2, User.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_jojo_facade(FacadeState state) throws IOException {
-        return state.jackson2Facade.readNode(JSON_DATA2, UserJojo.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_map_facade(FacadeState state) throws IOException {
-        return state.jackson2Facade.readNode(JSON_DATA2, Map.class);
-    }
-
 
     // ----- Gson baselines -----
     @Benchmark
@@ -370,21 +179,6 @@ public class JsonReadBenchmark {
     @Benchmark
     public Object json_gson_map_native() {
         return GSON.fromJson(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_gson_pojo_facade(FacadeState2 state) {
-        return state.gsonFacade.readNode(JSON_DATA2, User.class);
-    }
-
-    @Benchmark
-    public Object json_gson_jojo_facade(FacadeState2 state) {
-        return state.gsonFacade.readNode(JSON_DATA2, UserJojo.class);
-    }
-
-    @Benchmark
-    public Object json_gson_map_facade(FacadeState2 state) {
-        return state.gsonFacade.readNode(JSON_DATA2, Map.class);
     }
 
 
@@ -410,50 +204,20 @@ public class JsonReadBenchmark {
         }
     }
 
-    @Benchmark
-    public Object json_fastjson2_pojo_facade(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2, User.class);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_jojo_facade(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2, UserJojo.class);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_map_facade(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2, Map.class);
-    }
-
     // ----- JSON-P baselines -----
     @Benchmark
     public Object json_jsonp_map_native() {
         return Json.createReader(new StringReader(JSON_DATA2)).read();
     }
 
-    @Benchmark
-    public Object json_jsonp_pojo_facade() {
-        return JSONP_JSON_FACADE.readNode(JSON_DATA2, User.class);
-    }
-
-    @Benchmark
-    public Object json_jsonp_map_facade() {
-        return JSONP_JSON_FACADE.readNode(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_jsonp_jojo_facade() {
-        return JSONP_JSON_FACADE.readNode(JSON_DATA2, UserJojo.class);
-    }
-
     // ----- Simple JSON baselines -----
     @Benchmark
     public Object json_simple_pojo_facade() throws IOException {
-        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User.class);
+        return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
     public Object json_simple_jojo_facade() throws IOException {
-        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserJojo.class);
+        return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, UserJojo.class);
     }
 }

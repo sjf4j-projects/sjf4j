@@ -24,9 +24,6 @@ import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.fixture.JsonObjectPersonFixture;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueCodec;
@@ -362,20 +359,6 @@ public class TypeRegistryTest {
         CreatorPojo pojo = sjf4j.fromJson(json, CreatorPojo.class);
         assertEquals("Alice", pojo.getName());
         assertEquals(18, pojo.getAge());
-    }
-
-    @Test
-    public void testCreatorPojoMissingParamName() {
-        String json = "{\"name\":\"Alice\"}";
-
-        Fastjson2JsonFacade fastjson2 = new Fastjson2JsonFacade(new JSONReader.Feature[0], new JSONWriter.Feature[0],
-                new StreamingContext(StreamingContext.StreamingMode.PLUGIN_MODULE));
-        CreatorPojoNoMatch obj1 = (CreatorPojoNoMatch) fastjson2.readNode(json, CreatorPojoNoMatch.class);
-        log.info("obj1={}", Nodes.inspect(obj1));
-        log.info("obj1.name={}", obj1.name);
-
-        Jackson2JsonFacade jackson2 = new Jackson2JsonFacade();
-        assertThrows(NodeException.class, () -> jackson2.readNode(json, CreatorPojoNoMatch.class));
     }
 
     @Test

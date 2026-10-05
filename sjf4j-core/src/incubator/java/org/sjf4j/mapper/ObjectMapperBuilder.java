@@ -1,18 +1,15 @@
 package org.sjf4j.mapper;
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.facade.NodeConverter;
-import org.sjf4j.facade.NodeFacade;
-import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.simple.SimpleNodeFacade;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -23,7 +20,7 @@ import java.util.function.Function;
  *
  * @deprecated Use {@link org.sjf4j.annotation.mapping.CompiledMapper} instead.
  */
-public final class NodeMapperBuilder<S, T> {
+public final class ObjectMapperBuilder<S, T> {
 
     /**
      * Computes a target value from the source root object, the matched target
@@ -39,41 +36,40 @@ public final class NodeMapperBuilder<S, T> {
 
     private final Class<S> sourceType;
     private final Class<T> targetType;
-    private final StreamingContext streamingContext;
+    private final RuntimeContext runtimeContext;
     private final List<MappingAction<S, T>> actions = new ArrayList<>();
-    private final List<NodeMapper<?, ?>> nestedMappers = new ArrayList<>();
 
     /**
      * Creates a builder for the given source and target types.
      */
-    public NodeMapperBuilder(Class<S> sourceType, Class<T> targetType) {
-        this(sourceType, targetType, StreamingContext.EMPTY);
+    public ObjectMapperBuilder(Class<S> sourceType, Class<T> targetType) {
+        this(sourceType, targetType, RuntimeContext.EMPTY);
     }
 
-    public NodeMapperBuilder(Class<S> sourceType, Class<T> targetType, StreamingContext streamingContext) {
+    public ObjectMapperBuilder(Class<S> sourceType, Class<T> targetType, RuntimeContext runtimeContext) {
         this.sourceType = Asserts.notNull(sourceType, "sourceType");
         this.targetType = Asserts.notNull(targetType, "targetType");
-        this.streamingContext = Asserts.notNull(streamingContext, "streamingContext");
+        this.runtimeContext = Asserts.notNull(runtimeContext, "runtimeContext");
     }
 
     /**
      * Copies a single source path value into a single target path.
      */
-    public NodeMapperBuilder<S, T> copy(String targetPath, String sourcePath) {
+    public ObjectMapperBuilder<S, T> copy(String targetPath, String sourcePath) {
         return _addCopyAction(targetPath, sourcePath, false);
     }
 
     /**
      * Copies a single source path value and creates missing target containers.
      */
-    public NodeMapperBuilder<S, T> ensureCopy(String targetPath, String sourcePath) {
+    public ObjectMapperBuilder<S, T> ensureCopy(String targetPath, String sourcePath) {
         return _addCopyAction(targetPath, sourcePath, true);
     }
 
     /**
      * Writes a fixed value to a single target path.
      */
-    public NodeMapperBuilder<S, T> value(String targetPath, Object value) {
+    public ObjectMapperBuilder<S, T> value(String targetPath, Object value) {
         return _addValueAction(targetPath, value, false);
     }
 
@@ -81,7 +77,7 @@ public final class NodeMapperBuilder<S, T> {
      * Writes a fixed value to a single target path and creates missing target
      * containers.
      */
-    public NodeMapperBuilder<S, T> ensureValue(String targetPath, Object value) {
+    public ObjectMapperBuilder<S, T> ensureValue(String targetPath, Object value) {
         return _addValueAction(targetPath, value, true);
     }
 
@@ -91,7 +87,7 @@ public final class NodeMapperBuilder<S, T> {
      * <p>Use this overload when the mapped value depends only on the source
      * object graph and not on current target state.
      */
-    public NodeMapperBuilder<S, T> compute(String multiPath, Function<S, Object> computer) {
+    public ObjectMapperBuilder<S, T> compute(String multiPath, Function<S, Object> computer) {
         Asserts.notNull(computer, "computer");
         return _addComputeAction(multiPath, false, true,
                 (root, parent, current) -> computer.apply(root));
@@ -103,7 +99,7 @@ public final class NodeMapperBuilder<S, T> {
      *
      * <p>Single target paths and multi target paths are both supported.
      */
-    public NodeMapperBuilder<S, T> compute(String multiPath, ComputeFunction<S> computer) {
+    public ObjectMapperBuilder<S, T> compute(String multiPath, ComputeFunction<S> computer) {
         return _addComputeAction(multiPath, false, true, computer);
     }
 
@@ -111,33 +107,20 @@ public final class NodeMapperBuilder<S, T> {
      * Computes a single target-path value from the source root object only,
      * creating missing target containers when needed.
      */
-    public NodeMapperBuilder<S, T> ensureCompute(String targetPath, Function<S, Object> computer) {
+    public ObjectMapperBuilder<S, T> ensureCompute(String targetPath, Function<S, Object> computer) {
         Asserts.notNull(computer, "computer");
         return _addComputeAction(targetPath, true, false,
                 (root, parent, current) -> computer.apply(root));
     }
 
     /**
-     * Registers another mapper as an exact nested converter.
-     *
-     * <p>The nested mapper can then participate in field, element, and nested
-     * object conversion when matching source/target types are encountered.
-     */
-    public NodeMapperBuilder<S, T> with(NodeMapper<?, ?> nestedMapper) {
-        Asserts.notNull(nestedMapper, "nestedMapper");
-        nestedMappers.add(nestedMapper);
-        return this;
-    }
-
-    /**
      * Builds an immutable mapper that applies actions in declaration order.
      */
-    public NodeMapper<S, T> build() {
-        final NodeFacade facade = _buildFacade();
+    public ObjectMapper<S, T> build() {
         @SuppressWarnings("unchecked")
         final MappingAction<S, T>[] builtActions = actions.toArray(new MappingAction[0]);
 
-        return new NodeMapper<S, T>() {
+        return new ObjectMapper<S, T>() {
             @Override
             public Class<S> sourceType() {
                 return sourceType;
@@ -151,7 +134,7 @@ public final class NodeMapperBuilder<S, T> {
             @Override
             public T map(S source) {
                 if (source == null) return null;
-                T target = targetType.cast(facade.readNode(source, targetType, true));
+                T target = targetType.cast(NodeMapper.convert(source, targetType, true, runtimeContext));
                 for (MappingAction<S, T> builtAction : builtActions) {
                     builtAction.apply(source, target);
                 }
@@ -170,11 +153,10 @@ public final class NodeMapperBuilder<S, T> {
      * Otherwise they fall back to reflective access through a wrapped
      * {@link JsonPath} — same semantics, no error.
      */
-    public NodeMapper<S, T> buildCompiled() {
-        final NodeFacade facade = _buildFacade();
+    public ObjectMapper<S, T> buildCompiled() {
         final CompiledAction<S, T>[] compiled = _toCompiledActions();
 
-        return new NodeMapper<S, T>() {
+        return new ObjectMapper<S, T>() {
             @Override
             public Class<S> sourceType() {
                 return sourceType;
@@ -188,7 +170,7 @@ public final class NodeMapperBuilder<S, T> {
             @Override
             public T map(S source) {
                 if (source == null) return null;
-                T target = targetType.cast(facade.readNode(source, targetType, true));
+                T target = targetType.cast(NodeMapper.convert(source, targetType, true, runtimeContext));
                 for (CompiledAction<S, T> a : compiled) {
                     a.apply(source, target);
                 }
@@ -245,44 +227,7 @@ public final class NodeMapperBuilder<S, T> {
         throw new NodeException("unknown MappingAction: " + action.getClass().getName());
     }
 
-    private NodeFacade _buildFacade() {
-        if (nestedMappers.isEmpty()) {
-            return streamingContext.nodeFacade;
-        }
-        NodeConverter<?, ?>[] converters = new NodeConverter[nestedMappers.size()];
-        for (int i = 0; i < nestedMappers.size(); i++) {
-            NodeMapper<?, ?> nestedMapper = nestedMappers.get(i);
-            if (nestedMapper.sourceType() == sourceType && nestedMapper.targetType() == targetType) {
-                throw new NodeException("with() does not support nested mapper with same source/target types: '" +
-                        sourceType.getName() + "' -> '" + targetType.getName() + "'");
-            }
-            converters[i] = _toConverter(nestedMapper);
-        }
-        return new SimpleNodeFacade(streamingContext, converters);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static NodeConverter<?, ?> _toConverter(NodeMapper<?, ?> nestedMapper) {
-        NodeMapper<Object, Object> mapper = (NodeMapper<Object, Object>) nestedMapper;
-        return new NodeConverter<Object, Object>() {
-            @Override
-            public Class<Object> sourceType() {
-                return mapper.sourceType();
-            }
-
-            @Override
-            public Class<Object> targetType() {
-                return mapper.targetType();
-            }
-
-            @Override
-            public Object convert(Object source) {
-                return mapper.map(source);
-            }
-        };
-    }
-
-    private NodeMapperBuilder<S, T> _addCopyAction(String targetPath, String sourcePath, boolean ensure) {
+    private ObjectMapperBuilder<S, T> _addCopyAction(String targetPath, String sourcePath, boolean ensure) {
         String opName = ensure ? "ensureCopy()" : "copy()";
         JsonPath compiledTargetPath = _requireSingleTargetPath(targetPath, opName);
         JsonPath compiledSourcePath = _requireSingleSourcePath(sourcePath, opName, compiledTargetPath);
@@ -290,16 +235,16 @@ public final class NodeMapperBuilder<S, T> {
         return this;
     }
 
-    private NodeMapperBuilder<S, T> _addValueAction(String targetPath, Object value, boolean ensure) {
+    private ObjectMapperBuilder<S, T> _addValueAction(String targetPath, Object value, boolean ensure) {
         String opName = ensure ? "ensureValue()" : "value()";
         actions.add(new ValueAction<>(_requireSingleTargetPath(targetPath, opName), value, ensure));
         return this;
     }
 
-    private NodeMapperBuilder<S, T> _addComputeAction(String targetPath,
-                                                      boolean ensure,
-                                                      boolean allowMulti,
-                                                      ComputeFunction<S> computer) {
+    private ObjectMapperBuilder<S, T> _addComputeAction(String targetPath,
+                                                        boolean ensure,
+                                                        boolean allowMulti,
+                                                        ComputeFunction<S> computer) {
         Asserts.notNull(computer, "computer");
         String opName = ensure ? "ensureCompute()" : "compute()";
         JsonPath compiledTargetPath = allowMulti ? _compilePath(targetPath) : _requireSingleTargetPath(targetPath, opName);

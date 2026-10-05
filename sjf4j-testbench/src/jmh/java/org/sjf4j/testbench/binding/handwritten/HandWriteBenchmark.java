@@ -14,6 +14,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.ToNumberStrategy;
+import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -28,7 +30,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.facade.gson.GsonModule;
+import org.sjf4j.node.Numbers;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
@@ -67,8 +69,7 @@ public class HandWriteBenchmark {
 
     private static Gson createNativeGson() {
         GsonBuilder builder = new GsonBuilder();
-        builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
+        builder.setNumberToNumberStrategy(in -> Numbers.parseNumber(in.nextString()));
         builder.serializeNulls();
         builder.setFieldNamingStrategy(field -> {
             String name = ReflectUtil.getExplicitName(field);

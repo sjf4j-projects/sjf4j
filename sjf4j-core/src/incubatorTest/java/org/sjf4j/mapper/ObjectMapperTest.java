@@ -12,13 +12,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SuppressWarnings("deprecation")
-public class NodeMapperTest {
+public class ObjectMapperTest {
 
     @Test
     public void testDefaultMappingAndOverrideOrder() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = NodeMapper
+        UserDtoJojo target = ObjectMapper
                 .builder(UserSource.class, UserDtoJojo.class)
                 .copy("displayName", "name")
                 .value("displayName", "fixed")
@@ -39,7 +39,7 @@ public class NodeMapperTest {
     public void testActionOrderFollowsDeclarationOrder() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        UserDtoJojo target = new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("displayName", root -> root.name + "!")
                 .value("displayName", "fixed")
                 .copy("displayName", "name")
@@ -50,29 +50,10 @@ public class NodeMapperTest {
     }
 
     @Test
-    public void testNestedConverterAppliesToFieldAndListElements() {
-        UserSource source = sampleUser();
-
-        NodeMapper<OrderSource, OrderDtoJojo> orderConverter = new NodeMapperBuilder<OrderSource, OrderDtoJojo>(OrderSource.class, OrderDtoJojo.class)
-                .compute("label", order -> order.id + ":" + order.total)
-                .build();
-
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
-                .with(orderConverter)
-                .build()
-                .map(source);
-
-        assertEquals(2, target.orders.size());
-        assertEquals("o-1:120", target.orders.get(0).label);
-        assertEquals("o-2:80", target.orders.get(1).label);
-        assertEquals("o-1:120", target.favoriteOrder.label);
-    }
-
-    @Test
     public void testComputeWithCurrentOnWildcardPath() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        UserDtoJojo target = new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("friends[*].score", (UserSource root, Object parent, Object current) -> {
                     return ((Number) current).intValue() + 1;
                 })
@@ -92,27 +73,22 @@ public class NodeMapperTest {
     public void testPojoTargetAndCollectionProjection() {
         UserSource source = sampleUser();
 
-        NodeMapper<OrderSource, OrderDtoPojo> orderConverter = new NodeMapperBuilder<OrderSource, OrderDtoPojo>(OrderSource.class, OrderDtoPojo.class)
-                .compute("label", order -> order.id + ":" + order.total)
-                .build();
-
-        UserDtoPojo target = new NodeMapperBuilder<UserSource, UserDtoPojo>(UserSource.class, UserDtoPojo.class)
-                .with(orderConverter)
+        UserDtoPojo target = new ObjectMapperBuilder<UserSource, UserDtoPojo>(UserSource.class, UserDtoPojo.class)
                 .copy("displayName", "name")
                 .build()
                 .map(source);
 
         assertEquals("Alice", target.displayName);
         assertEquals("Shanghai", target.profile.city);
-        assertEquals("o-1:120", target.orders.get(0).label);
-        assertEquals("o-1:120", target.favoriteOrder.label);
+        assertEquals("o-1", target.orders.get(0).id);
+        assertEquals("o-1", target.favoriteOrder.id);
     }
 
     @Test
     public void testEnsureActionsCreateMissingTargetPath() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        UserDtoJojo target = new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .ensureCopy("$.meta.city", "profile.city")
                 .ensureValue("$.meta.source", "sjf4j")
                 .ensureCompute("$.meta.label", root -> root.name + ":ok")
@@ -129,17 +105,17 @@ public class NodeMapperTest {
     public void testNonEnsureActionsDoNotCreateMissingTargetPath() {
         UserSource source = sampleUser();
 
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("$.meta.city", "profile.city")
                 .build()
                 .map(source));
 
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .value("$.meta.source", "sjf4j")
                 .build()
                 .map(source));
 
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("$.meta.label", root -> root.name + ":x")
                 .build()
                 .map(source));
@@ -147,23 +123,23 @@ public class NodeMapperTest {
 
     @Test
     public void testCopyRejectsMultiSourcePath() {
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("displayName", "friends[*].name"));
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("friends[*].level", "friends[*].name"));
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("friends[*].level", "name"));
     }
 
     @Test
     public void testValueRejectsMultiTargetPath() {
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .value("friends[*].level", "A"));
     }
 
     @Test
     public void testEnsureValueRejectsMultiTargetPath() {
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .ensureValue("friends[*].level", "A"));
     }
 
@@ -173,7 +149,7 @@ public class NodeMapperTest {
     public void testBuildCompiledCopyValueCompute() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = NodeMapper
+        UserDtoJojo target = ObjectMapper
                 .builder(UserSource.class, UserDtoJojo.class)
                 .copy("displayName", "name")
                 .value("displayName", "fixed")
@@ -195,7 +171,7 @@ public class NodeMapperTest {
     public void testBuildCompiledActionOrder() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        UserDtoJojo target = new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("displayName", root -> root.name + "!")
                 .value("displayName", "fixed")
                 .copy("displayName", "name")
@@ -210,7 +186,7 @@ public class NodeMapperTest {
     public void testBuildCompiledWildcardCompute() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        UserDtoJojo target = new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("friends[*].score", (UserSource root, Object parent, Object current) ->
                         ((Number) current).intValue() + 1)
                 .compute("friends[*].level", (UserSource root, Object parent, Object current) ->
@@ -228,7 +204,7 @@ public class NodeMapperTest {
     public void testBuildCompiledEnsureCreatesMissingPath() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        UserDtoJojo target = new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .ensureCopy("$.meta.city", "profile.city")
                 .ensureValue("$.meta.source", "sjf4j")
                 .ensureCompute("$.meta.label", root -> root.name + ":ok")
@@ -245,39 +221,20 @@ public class NodeMapperTest {
     public void testBuildCompiledNonEnsureThrows() {
         UserSource source = sampleUser();
 
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .copy("$.meta.city", "profile.city")
                 .buildCompiled()
                 .map(source));
 
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .value("$.meta.source", "sjf4j")
                 .buildCompiled()
                 .map(source));
 
-        assertThrows(NodeException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        assertThrows(NodeException.class, () -> new ObjectMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .compute("$.meta.label", root -> root.name + ":x")
                 .buildCompiled()
                 .map(source));
-    }
-
-    @Test
-    public void testBuildCompiledNestedMapper() {
-        UserSource source = sampleUser();
-
-        NodeMapper<OrderSource, OrderDtoJojo> orderConverter = new NodeMapperBuilder<OrderSource, OrderDtoJojo>(OrderSource.class, OrderDtoJojo.class)
-                .compute("label", order -> order.id + ":" + order.total)
-                .buildCompiled();
-
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
-                .with(orderConverter)
-                .buildCompiled()
-                .map(source);
-
-        assertEquals(2, target.orders.size());
-        assertEquals("o-1:120", target.orders.get(0).label);
-        assertEquals("o-2:80", target.orders.get(1).label);
-        assertEquals("o-1:120", target.favoriteOrder.label);
     }
 
     // ---- inner types ----------------------------------------------------

@@ -13,9 +13,9 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.path.PathSegment;
@@ -584,7 +584,7 @@ class JsonObjectTest {
     @Test
     public void testYamlUnavailableWithoutOptionalBackend() {
         String json1 = "{\"s1\":\"haha\",\"i2\":null,\"f3\":99.9,\"b4\":true,\"s\\\"5\":\"00\"}";
-        JsonObject jo1 = (JsonObject) new Fastjson2JsonFacade().readNode(
+        JsonObject jo1 = (JsonObject) new SimpleJsonBinder().readNode(
                 new StringReader(json1), JsonObject.class);
         BindingException error = assertThrows(BindingException.class, jo1::toYaml);
         assertTrue(error.getMessage().contains("YAML writing is unavailable"));

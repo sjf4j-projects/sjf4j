@@ -8,9 +8,6 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
-import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.path.PathSegment;
 
 import java.io.ByteArrayInputStream;
@@ -59,57 +56,6 @@ class ExceptionContractTest {
     }
 
     @Test
-    void streamingFacadePreservesPathBindingExceptionsAtEveryBoundary() {
-        assertReadBoundaries(new FailingFacade(new BindingException("read", PathSegment.Root.INSTANCE)));
-        assertWriteBoundaries(new FailingFacade(new BindingException("write", PathSegment.Root.INSTANCE)));
-    }
-
-    @Test
-    void jsonFacadeModesPreservePathBindingExceptionsAtEveryBoundary() {
-        for (org.sjf4j.facade.StreamingContext.StreamingMode mode :
-                new org.sjf4j.facade.StreamingContext.StreamingMode[] {
-                        org.sjf4j.facade.StreamingContext.StreamingMode.EXCLUSIVE_IO,
-                        org.sjf4j.facade.StreamingContext.StreamingMode.PLUGIN_MODULE
-                }) {
-            assertReadBoundaries(new FailingFacade(new BindingException("read", PathSegment.Root.INSTANCE), mode));
-            assertWriteBoundaries(new FailingFacade(new BindingException("write", PathSegment.Root.INSTANCE), mode));
-        }
-    }
-
-    @Test
-    void nonBindingFailuresAreWrappedAndNativeBindingCausesKeepTheirPath() {
-        FailingBinder binder = new FailingBinder(new IllegalStateException("read"));
-        BindingException wrapped = assertThrowsExactly(BindingException.class,
-                () -> binder.readNode("null", Object.class));
-        assertEquals("failed to read streaming into node of 'class java.lang.Object'", wrapped.getMessage());
-        assertEquals("read", wrapped.getCause().getMessage());
-
-        FailingFacade facade = new FailingFacade(new BindingException("unused"));
-        IllegalStateException cause = new IllegalStateException("native");
-        BindingException nativeFailure = assertThrowsExactly(BindingException.class,
-                () -> facade.failedToRead(Object.class, cause));
-        assertSame(cause, nativeFailure.getCause());
-
-        BindingException pathFailure = new BindingException("nested", PathSegment.Root.INSTANCE);
-        IllegalStateException nestedRead = new IllegalStateException(pathFailure);
-        BindingException contextual = assertThrowsExactly(BindingException.class,
-                () -> facade.failedToRead(Object.class, nestedRead));
-        assertSame(pathFailure.getPathSegment(), contextual.getPathSegment());
-        assertSame(nestedRead, contextual.getCause());
-        assertTrue(contextual.getMessage().contains("at path '$'"));
-        assertSame(pathFailure, assertThrowsExactly(BindingException.class,
-                () -> facade.failedToRead(Object.class, pathFailure)));
-
-        IllegalStateException nestedWrite = new IllegalStateException(pathFailure);
-        BindingException writeContext = assertThrowsExactly(BindingException.class,
-                () -> facade.failedToWrite(new Object(), nestedWrite));
-        assertSame(pathFailure.getPathSegment(), writeContext.getPathSegment());
-        assertSame(nestedWrite, writeContext.getCause());
-        assertSame(pathFailure, assertThrowsExactly(BindingException.class,
-                () -> facade.failedToWrite(new Object(), pathFailure)));
-    }
-
-    @Test
     void typedTargetsRejectNullBeforeBindingOrNullInputValues() {
         Sjf4j sjf4j = Sjf4j.global();
         Class<String> nullClass = null;
@@ -136,25 +82,6 @@ class ExceptionContractTest {
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromProperties(new Properties(), nullClass));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromProperties(new Properties(), nullType));
 
-        Type nullTarget = null;
-        SimpleJsonFacade facade = new SimpleJsonFacade();
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
-        assertThrowsExactly(NullPointerException.class, () -> facade.readNode(new StringReader("null"), nullTarget));
-        assertThrowsExactly(NullPointerException.class,
-                () -> facade.readNode(new ByteArrayInputStream(jsonBytes), nullTarget));
-        assertThrowsExactly(NullPointerException.class, () -> facade.readNode("null", nullTarget));
-        assertThrowsExactly(NullPointerException.class, () -> facade.readNode(jsonBytes, nullTarget));
-        assertThrowsExactly(NullPointerException.class, () -> binder.readNode(new StringReader("null"), nullTarget));
-        assertThrowsExactly(NullPointerException.class,
-                () -> binder.readNode(new ByteArrayInputStream(jsonBytes), nullTarget));
-        assertThrowsExactly(NullPointerException.class, () -> binder.readNode("null", nullTarget));
-        assertThrowsExactly(NullPointerException.class, () -> binder.readNode(jsonBytes, nullTarget));
-        assertThrowsExactly(NullPointerException.class,
-                () -> new SimpleNodeFacade().readNode(new ThrowingGetter(), nullTarget, false));
-        assertThrowsExactly(NullPointerException.class,
-                () -> new FailingBinder(new BindingException("reader")).readNode("null", nullTarget));
-        assertThrowsExactly(NullPointerException.class,
-                () -> new FailingFacade(new BindingException("reader")).readNode("null", nullTarget));
     }
 
     private static void assertException(BindingException error, String message, Throwable cause, PathSegment path) {
@@ -175,28 +102,12 @@ class ExceptionContractTest {
         assertFailure(failure, () -> binder.readNode(new byte[0], Object.class));
     }
 
-    private static void assertReadBoundaries(FailingFacade facade) {
-        BindingException failure = (BindingException) facade.failure;
-        assertFailure(failure, () -> facade.readNode(new StringReader("null"), Object.class));
-        assertFailure(failure, () -> facade.readNode(new ByteArrayInputStream(new byte[0]), Object.class));
-        assertFailure(failure, () -> facade.readNode("null", Object.class));
-        assertFailure(failure, () -> facade.readNode(new byte[0], Object.class));
-    }
-
     private static void assertWriteBoundaries(FailingBinder binder) {
         BindingException failure = (BindingException) binder.failure;
         assertFailure(failure, () -> binder.writeNode(new StringWriter(), new Object()));
         assertFailure(failure, () -> binder.writeNode(new ByteArrayOutputStream(), new Object()));
         assertFailure(failure, () -> binder.writeNodeAsString(new Object()));
         assertFailure(failure, () -> binder.writeNodeAsBytes(new Object()));
-    }
-
-    private static void assertWriteBoundaries(FailingFacade facade) {
-        BindingException failure = (BindingException) facade.failure;
-        assertFailure(failure, () -> facade.writeNode(new StringWriter(), new Object()));
-        assertFailure(failure, () -> facade.writeNode(new ByteArrayOutputStream(), new Object()));
-        assertFailure(failure, () -> facade.writeNodeAsString(new Object()));
-        assertFailure(failure, () -> facade.writeNodeAsBytes(new Object()));
     }
 
     private static void assertFailure(BindingException expected, ThrowingOperation operation) {
@@ -235,54 +146,4 @@ class ExceptionContractTest {
         }
     }
 
-    private static final class FailingFacade implements JsonFacade<org.sjf4j.facade.StreamingReader,
-            org.sjf4j.facade.StreamingWriter> {
-        private final RuntimeException failure;
-        private final org.sjf4j.facade.StreamingContext.StreamingMode mode;
-
-        private FailingFacade(RuntimeException failure) {
-            this(failure, org.sjf4j.facade.StreamingContext.StreamingMode.SHARED_IO);
-        }
-
-        private FailingFacade(RuntimeException failure,
-                              org.sjf4j.facade.StreamingContext.StreamingMode mode) {
-            this.failure = failure;
-            this.mode = mode;
-        }
-
-        @Override
-        public org.sjf4j.facade.StreamingContext.StreamingMode realStreamingMode() {
-            return mode;
-        }
-
-        @Override
-        public org.sjf4j.facade.StreamingReader createReader(Reader input) {
-            throw failure;
-        }
-
-        @Override
-        public org.sjf4j.facade.StreamingWriter createWriter(Writer output) {
-            throw failure;
-        }
-
-        @Override
-        public Object readNodeExclusive(Reader input, Type type) {
-            throw failure;
-        }
-
-        @Override
-        public Object readNodePlugin(Reader input, Type type) {
-            throw failure;
-        }
-
-        @Override
-        public void writeNodeExclusive(Writer output, Object node) {
-            throw failure;
-        }
-
-        @Override
-        public void writeNodePlugin(Writer output, Object node) {
-            throw failure;
-        }
-    }
 }

@@ -36,14 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
-- Renamed `StreamingBinder` to `Binder` and `BindingFactory` to `BinderFactory`. Removed `JsonBinder`, `YamlBinder`, `NodeBinder`, and `SimpleNodeBinder`; use `Binder` for streaming formats and `NodeMapper` for direct structural conversion. Custom providers and writers must update their `Binder` types and be recompiled, because the changed method descriptors are not binary compatible.
+- Renamed `StreamingBinder` to `Binder` and `BindingFactory` to `BinderFactory`. Removed `JsonBinder`, `YamlBinder`, `NodeBinder`, and `SimpleNodeBinder`; use `Binder` for streaming formats and `ObjectMapper` for direct structural conversion. Custom providers and writers must update their `Binder` types and be recompiled, because the changed method descriptors are not binary compatible.
 - Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
 - Moved runtime bytecode-path APIs (`BytecodePath`, `FallbackBytecodePath`, `PathCompiler`, and `BytecodeCompilers`) from `org.sjf4j.compiled` to `org.sjf4j.bytecode`, including the `PathCompiler` service-provider contract.
 - Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.
-- Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `NodeMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
+- Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `ObjectMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
 - Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
 - Removed the built-in `Optional` codec; `Optional` may still be used through an explicitly registered `ValueCodec`.
 - Removed support for `Object.class` as a `ValueCodec` raw type; codecs must declare a fixed supported raw type.
+- Removed the `org.sjf4j.facade` package and its backend-specific facade APIs; use the corresponding `Binder` implementations and backend integration packages instead.
 
 ### Added
 - Added the `@CompiledBinder` annotation marker.
@@ -303,7 +304,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed JSON Patch and RFC 7386 root-application APIs so `JsonPatch.apply(...)`, `PatchOperation.apply(...)`, `Patches.mergeRfc7386(...)`, and the `JsonContainer` wrappers return the possibly replaced root document.
 
 ### Removed
-- Breaking: removed `Sjf4j.toPojo(...)` and `Sjf4j.mapperBuilder(...)` from the `Sjf4j` entry point; use `fromNode(...)` and `NodeMapperBuilder` directly instead.
+- Breaking: removed `Sjf4j.toPojo(...)` and `Sjf4j.mapperBuilder(...)` from the `Sjf4j` entry point; use `fromNode(...)` and `ObjectMapperBuilder` directly instead.
 
 ### Fixed
 - Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.
@@ -320,7 +321,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.6] - 2026.04.02
 ### Added
 - Added `JsonPath.compute(...)` overloads to update every matched target from its current content.
-- Added `NodeConverter`, `NodeMapper`, and `NodeMapperBuilder` for path-driven object graph mapping.
+- Added `NodeConverter`, `ObjectMapper`, and `ObjectMapperBuilder` for path-driven object graph mapping.
 - Added `NamingStrategy` and `@NodeNaming` to map JSON property names like `snake_case` to Java fields without per-field annotations.
 
 ### Improved

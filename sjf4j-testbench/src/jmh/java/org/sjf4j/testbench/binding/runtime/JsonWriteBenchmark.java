@@ -26,13 +26,7 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.gson.GsonModule;
-import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
-import org.sjf4j.facade.jsonp.JsonpJsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.TypeReference;
@@ -79,12 +73,11 @@ public class JsonWriteBenchmark {
             "}\n";
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
-    private static final Gson GSON = createNativeGson();
+    private static final Gson GSON = new Gson();
     private static final JSONWriter.Context FASTJSON2_WRITER_CONTEXT =
             JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
-    private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
-    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder(RuntimeContext.EMPTY);
-    private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
+    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
+    private static final JsonpBinder JSONP_BINDER = new JsonpBinder();
 
     private static final User USER;
     private static final UserJojo USER_JOJO;
@@ -102,51 +95,6 @@ public class JsonWriteBenchmark {
         }
     }
 
-    private static Gson createNativeGson() {
-        GsonBuilder builder = new GsonBuilder();
-        builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        builder.serializeNulls();
-        builder.setFieldNamingStrategy(field -> {
-            String name = ReflectUtil.getExplicitName(field);
-            return name != null ? name : field.getName();
-        });
-        return builder.create();
-    }
-
-    @State(Scope.Thread)
-    public static class FacadeState {
-        @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
-        public String streamingMode;
-
-        public Jackson2JsonFacade jackson2Facade;
-        public Fastjson2JsonFacade fastjson2Facade;
-
-        @Setup(Level.Trial)
-        public void setup() {
-            StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
-            StreamingContext context = new StreamingContext(mode);
-            jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), context);
-            fastjson2Facade = new Fastjson2JsonFacade(new JSONReader.Feature[0], new JSONWriter.Feature[0], context);
-        }
-    }
-
-    @State(Scope.Thread)
-    public static class GsonFacadeState {
-        @Param({"SHARED_IO", "PLUGIN_MODULE"})
-        public String streamingMode;
-
-        public GsonJsonFacade gsonFacade;
-
-        @Setup(Level.Trial)
-        public void setup() {
-            StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
-            StreamingContext context = new StreamingContext(mode);
-            gsonFacade = new GsonJsonFacade(new GsonBuilder(), context);
-        }
-    }
-
-
     // ----- Jackson2 baselines -----
     @Benchmark
     public Object json_jackson2_pojo_native() throws Exception {
@@ -156,21 +104,6 @@ public class JsonWriteBenchmark {
     @Benchmark
     public Object json_jackson2_map_native() throws Exception {
         return JACKSON2.writeValueAsString(MAP_NODE);
-    }
-
-    @Benchmark
-    public Object json_jackson2_pojo_facade(FacadeState state) {
-        return state.jackson2Facade.writeNodeAsString(USER);
-    }
-
-    @Benchmark
-    public Object json_jackson2_jojo_facade(FacadeState state) {
-        return state.jackson2Facade.writeNodeAsString(USER_JOJO);
-    }
-
-    @Benchmark
-    public Object json_jackson2_map_facade(FacadeState state) {
-        return state.jackson2Facade.writeNodeAsString(MAP_NODE);
     }
 
 
@@ -185,21 +118,6 @@ public class JsonWriteBenchmark {
         return GSON.toJson(MAP_NODE);
     }
 
-    @Benchmark
-    public Object json_gson_pojo_facade(GsonFacadeState state) {
-        return state.gsonFacade.writeNodeAsString(USER);
-    }
-
-    @Benchmark
-    public Object json_gson_jojo_facade(GsonFacadeState state) {
-        return state.gsonFacade.writeNodeAsString(USER_JOJO);
-    }
-
-    @Benchmark
-    public Object json_gson_map_facade(GsonFacadeState state) {
-        return state.gsonFacade.writeNodeAsString(MAP_NODE);
-    }
-
 
     // ----- Fastjson2 baselines -----
     @Benchmark
@@ -212,21 +130,6 @@ public class JsonWriteBenchmark {
         return JSON.toJSONString(MAP_NODE, FASTJSON2_WRITER_CONTEXT);
     }
 
-    @Benchmark
-    public Object json_fastjson2_pojo_facade(FacadeState state) {
-        return state.fastjson2Facade.writeNodeAsString(USER);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_jojo_facade(FacadeState state) {
-        return state.fastjson2Facade.writeNodeAsString(USER_JOJO);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_map_facade(FacadeState state) {
-        return state.fastjson2Facade.writeNodeAsString(MAP_NODE);
-    }
-
     // ----- JSON-P baselines -----
     @Benchmark
     public Object json_jsonp_map_native() {
@@ -237,33 +140,33 @@ public class JsonWriteBenchmark {
 
     @Benchmark
     public Object json_jsonp_pojo_facade() {
-        return JSONP_JSON_FACADE.writeNodeAsString(USER);
+        return JSONP_BINDER.writeNodeAsString(USER);
     }
 
     @Benchmark
     public Object json_jsonp_map_facade() {
-        return JSONP_JSON_FACADE.writeNodeAsString(MAP_NODE);
+        return JSONP_BINDER.writeNodeAsString(MAP_NODE);
     }
 
     @Benchmark
     public Object json_jsonp_jojo_facade() {
-        return JSONP_JSON_FACADE.writeNodeAsString(USER_JOJO);
+        return JSONP_BINDER.writeNodeAsString(USER_JOJO);
     }
 
     // ----- Simple JSON baselines -----
     @Benchmark
     public Object json_simple_pojo_facade() {
-        return SIMPLE_JSON_FACADE.writeNodeAsString(USER);
+        return SIMPLE_JSON_BINDER.writeNodeAsString(USER);
     }
 
     @Benchmark
     public Object json_simple_jojo_facade() {
-        return SIMPLE_JSON_FACADE.writeNodeAsString(USER_JOJO);
+        return SIMPLE_JSON_BINDER.writeNodeAsString(USER_JOJO);
     }
 
     @Benchmark
     public Object json_simple_map_facade() {
-        return SIMPLE_JSON_FACADE.writeNodeAsString(MAP_NODE);
+        return SIMPLE_JSON_BINDER.writeNodeAsString(MAP_NODE);
     }
 
     @Benchmark

@@ -13,7 +13,7 @@ import org.sjf4j.path.JsonPath;
  * monomorphic. Each instance stores only the fields needed for its kind.
  *
  * <p>This class is intentionally package-private; users interact through
- * {@link NodeMapperBuilder#buildCompiled()}.
+ * {@link ObjectMapperBuilder#buildCompiled()}.
  *
  * @deprecated Use {@link org.sjf4j.annotation.mapping.CompiledMapper} instead.
  */
@@ -29,7 +29,7 @@ final class CompiledAction<S, T> {
     final BytecodePath<Object, Object> targetPath; // COPY, VALUE, COMPUTE
     final BytecodePath<Object, Object> parentPath; // COMPUTE only
     final Object fixedValue;                         // VALUE only
-    final NodeMapperBuilder.ComputeFunction<S> computer; // COMPUTE, WILDCARD_COMPUTE
+    final ObjectMapperBuilder.ComputeFunction<S> computer; // COMPUTE, WILDCARD_COMPUTE
     final boolean ensure;                            // all except WILDCARD_COMPUTE
     final JsonPath wildcardPath;                     // WILDCARD_COMPUTE only
 
@@ -38,7 +38,7 @@ final class CompiledAction<S, T> {
                            BytecodePath<Object, Object> targetPath,
                            BytecodePath<Object, Object> parentPath,
                            Object fixedValue,
-                           NodeMapperBuilder.ComputeFunction<S> computer,
+                           ObjectMapperBuilder.ComputeFunction<S> computer,
                            boolean ensure,
                            JsonPath wildcardPath) {
         this.kind = kind;
@@ -70,14 +70,14 @@ final class CompiledAction<S, T> {
     static <S, T> CompiledAction<S, T> compute(
             BytecodePath<Object, Object> targetPath,
             BytecodePath<Object, Object> parentPath,
-            NodeMapperBuilder.ComputeFunction<S> computer,
+            ObjectMapperBuilder.ComputeFunction<S> computer,
             boolean ensure) {
         return new CompiledAction<>(COMPUTE, null, targetPath, parentPath, null, computer, ensure, null);
     }
 
     static <S, T> CompiledAction<S, T> wildcardCompute(
             JsonPath path,
-            NodeMapperBuilder.ComputeFunction<S> computer) {
+            ObjectMapperBuilder.ComputeFunction<S> computer) {
         return new CompiledAction<>(WILDCARD_COMPUTE, null, null, null, null, computer, false, path);
     }
 

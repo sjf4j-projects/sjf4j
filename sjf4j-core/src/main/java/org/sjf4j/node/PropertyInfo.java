@@ -28,8 +28,9 @@ public class PropertyInfo {
     }
 
     public final String name;
-    public final Field publicField;
+//    public final String[] alias;
 
+    public final Field publicField;
     public final Type type;
     public final boolean genericDependent;
     public final Class<?> boxed;

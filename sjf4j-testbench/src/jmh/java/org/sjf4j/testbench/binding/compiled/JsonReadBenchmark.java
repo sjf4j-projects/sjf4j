@@ -34,7 +34,6 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
-import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
 
@@ -107,8 +106,6 @@ public class JsonReadBenchmark {
 
     private static Gson createNativeGson() {
         GsonBuilder builder = new GsonBuilder();
-        builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setFieldNamingStrategy(field -> {
             String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();

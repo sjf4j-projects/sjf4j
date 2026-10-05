@@ -30,7 +30,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
 import org.sjf4j.backend.jackson2.binding.Jackson2ReaderV2;
 import org.sjf4j.binding.StreamingIO;
-import org.sjf4j.facade.gson.GsonModule;
+import org.sjf4j.node.Numbers;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
 
@@ -93,8 +93,7 @@ public class HandReadBenchmark {
 
     private static Gson createNativeGson() {
         GsonBuilder builder = new GsonBuilder();
-        builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
+        builder.setNumberToNumberStrategy(in -> Numbers.parseNumber(in.nextString()));
         builder.setFieldNamingStrategy(field -> {
             String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();
