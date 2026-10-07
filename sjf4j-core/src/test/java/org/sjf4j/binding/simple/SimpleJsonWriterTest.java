@@ -1,7 +1,7 @@
 package org.sjf4j.binding.simple;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.PreparedName;
+import org.sjf4j.binding.CompiledName;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 
@@ -60,7 +60,7 @@ class SimpleJsonWriterTest {
             writer.writeName("a\n");
             writer.writeInt(1);
             writer.separateProperty();
-            writer.writeName(new PreparedName.SimplePreparedName("foreign"));
+            writer.writeName(new CompiledName.SimplePreparedName("foreign"));
             writer.startArray();
             writer.writeStringValue("x");
             writer.separateElement();
@@ -79,7 +79,7 @@ class SimpleJsonWriterTest {
     void validatesNamesAndSupportsBufferedWriters() throws Exception {
         assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(null, null));
         assertThrows(BindingException.class, () -> new SimpleJsonWriter(null, new StringWriter()).writeName((String) null));
-        assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(null, new StringWriter()).writeName((PreparedName) null));
+        assertThrows(NullPointerException.class, () -> new SimpleJsonWriter(null, new StringWriter()).writeName((CompiledName) null));
 
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, new BufferedWriter(output))) {

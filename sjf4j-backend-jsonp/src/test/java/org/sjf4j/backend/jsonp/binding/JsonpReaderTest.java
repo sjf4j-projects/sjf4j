@@ -2,7 +2,6 @@ package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.Json;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingReader.Token;
 
 import java.io.StringReader;
 import java.math.BigInteger;

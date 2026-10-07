@@ -93,7 +93,7 @@ public final class NodeMapper {
             if (node == null) {
                 if (oneOfInfo == null) {
                     TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
-                    if (ti.isNodeValue()) {
+                    if (ti.valueInfos != null) {
                         String valueFormat = context.defaultValueFormat(toBoxed);
                         ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                         return valueInfo.rawToValue(null);
@@ -123,7 +123,7 @@ public final class NodeMapper {
                 return _convertOneOf(node, toBoxed, oneOfInfo, deepCopy, ps, context);
             }
 
-            if (ti.isNodeValue()) {
+            if (ti.valueInfos != null) {
                 String valueFormat = context.defaultValueFormat(toBoxed);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return toBoxed.isInstance(node)
@@ -266,217 +266,229 @@ public final class NodeMapper {
                 null, deepCopy, ps, context);
     }
 
-
     /**
      * Internal deep structural copy with path support.
      */
     @SuppressWarnings("unchecked")
-    private static Object _deepCopy(Object node, Type toType, Class<?> toBoxed, PathSegment ps, RuntimeContext context) {
+    private static Object _deepCopy(Object node, Type toType, Class<?> toBoxed, PathSegment ps,
+                                    RuntimeContext context) {
         try {
             if (node == null) return null;
 
+            /*
+             * Target representation differs from the runtime value.
+             *
+             * In that case this is no longer a pure copy: let conversion
+             * establish the requested target representation first.
+             */
             if (toBoxed != Object.class && !toBoxed.isInstance(node)) {
                 return _convert(node, toType, toBoxed, null, true, ps, context);
             }
 
-            TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+            Class<?> nodeClazz = node.getClass();
+            TypeInfo ti = TypeRegistry.registerTypeInfo(nodeClazz);
+
+            /*
+             * External node.
+             */
             if (ti.externalNode != null) {
                 return ti.externalNode.deepCopy(node);
             }
-            if (ti.isNodeValue()) {
-                String valueFormat = context.defaultValueFormat(node.getClass());
+
+            /*
+             * Node value.
+             */
+            if (ti.valueInfos != null) {
+                String valueFormat = context.defaultValueFormat(nodeClazz);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueCopy(node);
             }
 
+            /*
+             * Immutable JSON scalar values.
+             */
             if (node instanceof String || node instanceof Number || node instanceof Boolean) {
                 return node;
             }
 
-            Class<?> nodeClazz = node.getClass();
-
+            /*
+             * Map.
+             */
             if (node instanceof Map) {
-                Map<String, Object> srcMap = (Map<String, Object>) node;
-                Map<String, Object> newMap =
-                        TypeRegistry.newMapContainer(nodeClazz, srcMap.size(), true);
+                Map<String, Object> src = (Map<String, Object>) node;
+                Map<String, Object> target = TypeRegistry.newMapContainer(nodeClazz, src.size(), true);
                 Type valueType = Types.resolveTypeArgument(toType, Map.class, 1);
                 Class<?> valueBoxed = Types.rawBox(valueType);
-                for (Map.Entry<String, Object> entry : srcMap.entrySet()) {
+                for (Map.Entry<String, Object> entry : src.entrySet()) {
                     PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                    newMap.put(entry.getKey(), _deepCopy(entry.getValue(), valueType, valueBoxed, cps, context));
+                    target.put(entry.getKey(), _deepCopy(entry.getValue(), valueType, valueBoxed, cps, context));
                 }
-                return newMap;
+                return target;
             }
 
+            /*
+             * List.
+             */
             if (node instanceof List) {
-                List<Object> srcList = (List<Object>) node;
-                List<Object> newList =
-                        TypeRegistry.newListContainer(nodeClazz, srcList.size(), true);
+                List<Object> src = (List<Object>) node;
+                List<Object> target = TypeRegistry.newListContainer(nodeClazz, src.size(), true);
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
-                for (int i = 0; i < srcList.size(); i++) {
+                for (int i = 0; i < src.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    newList.add(_deepCopy(srcList.get(i), elemType, elemBoxed, cps, context));
+                    target.add(_deepCopy(src.get(i), elemType, elemBoxed, cps, context));
                 }
-                return newList;
+                return target;
             }
 
+            /*
+             * Plain JsonObject.
+             *
+             * JOJO is handled together with normal POJOs below.
+             */
             if (nodeClazz == JsonObject.class) {
-                JsonObject srcJo = (JsonObject) node;
-                JsonObject newJo = new JsonObject();
-                srcJo.forEach((k, v) -> {
-                    PathSegment cps = new PathSegment.Name(ps, k);
-                    newJo.put(k, _deepCopy(v, Object.class, Object.class, cps, context));
-                });
-                return newJo;
-            }
-
-            if (node instanceof JsonObject) {
-                JsonObject srcJo = (JsonObject) node;
-                PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(nodeClazz);
-                CreatorInfo ci = pojoInfo.creatorInfo;
-                TypeRegistry.PojoCreationSession session =
-                        new TypeRegistry.PojoCreationSession(ci, srcJo.size());
-
-                for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
-                    String key = entry.getKey();
-                    Object value = entry.getValue();
-
-                    int argIdx = ci.getArgIndexOrAlias(key);
-                    if (argIdx >= 0) {
-                        PathSegment cps = new PathSegment.Name(ps, key);
-                        Type argType = Types.resolveMemberType(toType, toBoxed, ci.argTypes[argIdx]);
-                        Class<?> argBoxed = Types.rawBox(argType);
-
-                        ValueInfo valueInfo = ci.argValueCodecs[argIdx];
-                        Object vv = value != null && valueInfo != null
-                                ? valueInfo.valueCopy(value)
-                                : _deepCopy(value, argType, argBoxed, cps, context);
-
-                        session.acceptCtorArg(argIdx, vv);
-                        continue;
-                    }
-
-                    PropertyInfo fi = pojoInfo.aliasProperties != null
-                            ? pojoInfo.aliasProperties.get(key)
-                            : pojoInfo.properties.get(key);
-
-                    if (fi != null) {
-                        PathSegment cps = new PathSegment.Name(ps, key);
-                        Type fieldType = fi.genericDependent
-                                ? Types.resolveMemberType(toType, toBoxed, fi.type)
-                                : fi.type;
-                        Class<?> fieldBoxed = Types.rawBox(fieldType);
-
-                        Object vv = value != null
-                                && fi.oneOfInfo == null
-                                && fi.valueInfo != null
-                                ? fi.valueInfo.valueCopy(value)
-                                : _deepCopy(value, fieldType, fieldBoxed, cps, context);
-
-                        session.acceptProperty(fi, vv);
-                        continue;
-                    }
-
+                JsonObject src = (JsonObject) node;
+                JsonObject target = new JsonObject();
+                src.forEach((key, value) -> {
                     PathSegment cps = new PathSegment.Name(ps, key);
-                    session.acceptDynamic(key, _deepCopy(value, Object.class, Object.class, cps, context));
-                }
-
-                return session.finish();
+                    target.put(key, _deepCopy(value, Object.class, Object.class, cps, context));
+                });
+                return target;
             }
 
+            /*
+             * JsonArray / JAJO.
+             */
             if (node instanceof JsonArray) {
-                JsonArray srcJa = (JsonArray) node;
-                JsonArray newJa = nodeClazz == JsonArray.class
+                JsonArray src = (JsonArray) node;
+                JsonArray target = nodeClazz == JsonArray.class
                         ? new JsonArray()
-                        : (JsonArray) TypeRegistry.requireRegisteredPojoInfo(nodeClazz)
-                        .creatorInfo.forceNewPojo();
-
+                        : (JsonArray) TypeRegistry.requireRegisteredPojoInfo(nodeClazz).creatorInfo.forceNewPojo();
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
-                for (int i = 0; i < srcJa.size(); i++) {
+                for (int i = 0; i < src.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    newJa.add(_deepCopy(srcJa.getNode(i), elemType, elemBoxed, cps, context));
+                    target.add(_deepCopy(src.getNode(i), elemType, elemBoxed, cps, context));
                 }
-                return newJa;
+                return target;
             }
 
+            /*
+             * Java array.
+             */
             if (nodeClazz.isArray()) {
                 int len = Array.getLength(node);
-                Object newArr = Array.newInstance(nodeClazz.getComponentType(), len);
-                Type compType = nodeClazz.getComponentType();
-                Class<?> compBoxed = Types.rawBox(compType);
+                Class<?> componentClass = nodeClazz.getComponentType();
+                Object target = Array.newInstance(componentClass, len);
+                Class<?> componentBoxed = Types.rawBox(componentClass);
                 for (int i = 0; i < len; i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    Array.set(newArr, i, _deepCopy(Array.get(node, i), compType, compBoxed, cps, context));
+                    Array.set(target, i, _deepCopy(Array.get(node, i), componentClass, componentBoxed, cps, context));
                 }
-                return newArr;
+                return target;
             }
 
+            /*
+             * Set.
+             */
             if (node instanceof Set) {
-                Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet =
-                        TypeRegistry.newSetContainer(nodeClazz, srcSet.size(), true);
+                Set<Object> src = (Set<Object>) node;
+                Set<Object> target = TypeRegistry.newSetContainer(nodeClazz, src.size(), true);
                 Type elemType = Types.resolveTypeArgument(toType, Set.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
                 int i = 0;
-                for (Object value : srcSet) {
+                for (Object value : src) {
                     PathSegment cps = new PathSegment.Index(ps, i++);
-                    newSet.add(_deepCopy(value, elemType, elemBoxed, cps, context));
+                    target.add(_deepCopy(value, elemType, elemBoxed, cps, context));
                 }
-                return newSet;
+                return target;
             }
 
-            PojoInfo pi = ti.pojoInfo;
-            if (pi != null) {
-                CreatorInfo ci = pi.creatorInfo;
-                TypeRegistry.PojoCreationSession session =
-                        new TypeRegistry.PojoCreationSession(ci, pi.readablePropertyCount);
-
-                for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
-                    String key = entry.getKey();
-                    PropertyInfo fi = entry.getValue();
-                    Object value = fi.invokeGetter(node);
-
-                    int argIdx = ci.getArgIndexOrAlias(key);
-                    if (argIdx >= 0) {
-                        PathSegment cps = new PathSegment.Name(ps, key);
-                        Type argType = Types.resolveMemberType(toType, toBoxed, ci.argTypes[argIdx]);
-                        Class<?> argBoxed = Types.rawBox(argType);
-                        ValueInfo valueInfo = ci.argValueCodecs[argIdx];
-                        Object vv = value != null && valueInfo != null
-                                ? valueInfo.valueCopy(value)
-                                : _deepCopy(value, argType, argBoxed, cps, context);
-
-                        session.acceptCtorArg(argIdx, vv);
-                        continue;
-                    }
-
-                    PathSegment cps = new PathSegment.Name(ps, key);
-                    Type fieldType = fi.genericDependent
-                            ? Types.resolveMemberType(toType, toBoxed, fi.type)
-                            : fi.type;
-                    Class<?> fieldBoxed = Types.rawBox(fieldType);
-
-                    Object vv = value != null
-                            && fi.oneOfInfo == null
-                            && fi.valueInfo != null
-                            ? fi.valueInfo.valueCopy(value)
-                            : _deepCopy(value, fieldType, fieldBoxed, cps, context);
-
-                    session.acceptProperty(fi, vv);
-                }
-
-                return session.finish();
+            /*
+             * POJO / JOJO.
+             */
+            PojoInfo pojoInfo = ti.pojoInfo;
+            if (pojoInfo != null) {
+                /*
+                 * If the declared target is a supertype (Object/interface/base
+                 * class), the runtime POJO is what is actually being recreated.
+                 *
+                 * Its member types therefore need to be resolved against the
+                 * runtime class rather than against the declared supertype.
+                 */
+                Type pojoType = nodeClazz == toBoxed ? toType : nodeClazz;
+                return _deepCopyPojo(node, pojoType, nodeClazz, pojoInfo, ps, context);
             }
 
+            /*
+             * Unknown immutable / unsupported value.
+             */
             return node;
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException(
-                    "failed to deep copy node '" + Types.name(node) + "'", ps, e);
+            throw new BindingException("failed to deep copy node '" + Types.name(node) + "'", ps, e);
         }
+    }
+
+    private static Object _deepCopyPojo(Object source, Type type, Class<?> boxed, PojoInfo pojoInfo, PathSegment ps,
+                                        RuntimeContext context) {
+        CreatorInfo ci = pojoInfo.creatorInfo;
+        int expected = pojoInfo.readableProperties.length;
+        if (source instanceof JsonObject) {
+            expected += ((JsonObject) source).size();
+        }
+        TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(ci, expected);
+
+        /*
+         * Static POJO properties.
+         */
+        for (PropertyInfo property : pojoInfo.readableProperties) {
+            String name = property.name;
+            Object value = property.invokeGetter(source);
+            PathSegment cps = new PathSegment.Name(ps, name);
+            int argIdx = ci.getArgIndexOrAlias(name);
+            if (argIdx >= 0) {
+                Type argType = Types.resolveMemberType(type, boxed, ci.argTypes[argIdx]);
+                Class<?> argBoxed = Types.rawBox(argType);
+                ValueInfo valueInfo = ci.argValueCodecs[argIdx];
+                Object copied = value != null && valueInfo != null
+                        ? valueInfo.valueCopy(value)
+                        : _deepCopy(value, argType, argBoxed, cps, context);
+                session.acceptCtorArg(argIdx, copied);
+                continue;
+            }
+
+            if (!property.writable) {
+                continue;
+            }
+
+            Type propertyType = property.genericDependent
+                    ? Types.resolveMemberType(type, boxed, property.type)
+                    : property.type;
+            Class<?> propertyBoxed = Types.rawBox(propertyType);
+            Object copied = value != null && property.oneOfInfo == null && property.valueInfo != null
+                    ? property.valueInfo.valueCopy(value)
+                    : _deepCopy(value, propertyType, propertyBoxed, cps, context);
+            session.acceptProperty(property, copied);
+        }
+
+        /*
+         * JOJO dynamic properties.
+         *
+         * JsonObject itself was handled before reaching this method, so a
+         * JsonObject here necessarily represents a JOJO.
+         */
+        if (source instanceof JsonObject) {
+            JsonObject jo = (JsonObject) source;
+            for (Map.Entry<String, Object> entry : jo.entrySet()) {
+                String key = entry.getKey();
+                PathSegment cps = new PathSegment.Name(ps, key);
+                session.acceptDynamic(key, _deepCopy(entry.getValue(), Object.class, Object.class, cps, context));
+            }
+        }
+
+        return session.finish();
     }
 
 
@@ -583,15 +595,9 @@ public final class NodeMapper {
                 "cannot convert " + sourceName + " to '" + toBoxed.getName() + "'", ps);
     }
 
-    private static Object _convertPojoFromEntries(
-            Iterable<Map.Entry<String, Object>> entries,
-            Type type,
-            Class<?> toBoxed,
-            PojoInfo pi,
-            boolean deepCopy,
-            PathSegment ps,
-            RuntimeContext context) {
-
+    private static Object _convertPojoFromEntries(Iterable<Map.Entry<String, Object>> entries, Type type, Class<?> toBoxed,
+                                                  PojoInfo pi, boolean deepCopy, PathSegment ps,
+                                                  RuntimeContext context) {
         CreatorInfo ci = pi.creatorInfo;
         CreatorState state = new CreatorState(ci);
 
@@ -601,14 +607,13 @@ public final class NodeMapper {
 
             int argIdx = ci.getArgIndexOrAlias(key);
             if (argIdx >= 0) {
-                Type argType =
-                        Types.resolveMemberType(type, toBoxed, ci.argTypes[argIdx]);
+                Type argType = Types.resolveMemberType(type, toBoxed, ci.argTypes[argIdx]);
                 PathSegment cps = new PathSegment.Name(ps, key);
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
                 ValueInfo argValueInfo = ci.argValueCodecs[argIdx];
-                if (argValueInfo == null && ti.isNodeValue()) {
+                if (argValueInfo == null && ti.valueInfos != null) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argValueInfo = ti.requireValueInfo(valueFormat);
                 }
@@ -618,50 +623,43 @@ public final class NodeMapper {
                             ? argValueInfo.valueCopy(rawValue)
                             : argValueInfo.rawToValue(rawValue));
                 } else {
-                    state.acceptCtorArg(argIdx, _convert(
-                            rawValue, argType, argRaw,
-                            ti.oneOfInfo, deepCopy, cps, context));
+                    state.acceptCtorArg(argIdx, _convert(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context));
                 }
                 continue;
             }
 
-            PropertyInfo fi = pi.aliasProperties != null
-                    ? pi.aliasProperties.get(key)
-                    : pi.properties.get(key);
-
-            if (fi != null) {
-                if (!fi.hasSetter()) continue;
+            PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
+            if (propertyInfo != null) {
+                if (!propertyInfo.writable) continue;
 
                 PathSegment cps = new PathSegment.Name(ps, key);
-                Type fieldType = fi.genericDependent
-                        ? Types.resolveMemberType(type, toBoxed, fi.type)
-                        : fi.type;
-                Class<?> fieldRaw = fi.genericDependent
+                Type fieldType = propertyInfo.genericDependent
+                        ? Types.resolveMemberType(type, toBoxed, propertyInfo.type)
+                        : propertyInfo.type;
+                Class<?> fieldRaw = propertyInfo.genericDependent
                         ? Types.rawBox(fieldType)
-                        : fi.boxed;
+                        : propertyInfo.boxed;
 
                 Object value;
-                if (fi.oneOfInfo == null && fi.valueInfo != null) {
+                if (propertyInfo.oneOfInfo == null && propertyInfo.valueInfo != null) {
                     value = fieldRaw.isInstance(rawValue)
-                            ? fi.valueInfo.valueCopy(rawValue)
-                            : fi.valueInfo.rawToValue(rawValue);
+                            ? propertyInfo.valueInfo.valueCopy(rawValue)
+                            : propertyInfo.valueInfo.rawToValue(rawValue);
                 } else {
-                    value = _convert(rawValue, fieldType, fieldRaw,
-                            fi.oneOfInfo, deepCopy, cps, context);
+                    value = _convert(rawValue, fieldType, fieldRaw, propertyInfo.oneOfInfo, deepCopy, cps, context);
                 }
 
                 if (state.isCreated()) {
-                    fi.invokeSetter(state.pojo(), value);
+                    propertyInfo.invokeSetter(state.pojo(), value);
                 } else {
-                    state.bufferProperty(fi, value);
+                    state.bufferProperty(propertyInfo, value);
                 }
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
                 PathSegment cps = new PathSegment.Name(ps, key);
-                Object value = _convert(rawValue,
-                        Object.class, Object.class, null, deepCopy, cps, context);
+                Object value = _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, context);
                 state.acceptDynamic(key, value);
             }
         }
@@ -918,48 +916,38 @@ public final class NodeMapper {
                                            PathSegment ps,
                                            RuntimeContext context) {
         if (Map.class.isAssignableFrom(toBoxed)) {
-            Map<String, Object> map =
-                    TypeRegistry.newMapContainer(
-                            toBoxed, sourceInfo.readablePropertyCount, false);
+            Map<String, Object> map = TypeRegistry.newMapContainer(
+                    toBoxed, sourceInfo.readableProperties.length, false);
 
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueRaw = Types.rawBox(valueType);
-            OneOfInfo valueOneOf =
-                    TypeRegistry.registerTypeInfo(valueRaw).oneOfInfo;
-
-            for (Map.Entry<String, PropertyInfo> entry
-                    : sourceInfo.readableProperties.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue().invokeGetter(node);
-                PathSegment cps = new PathSegment.Name(ps, key);
-                map.put(key, _convert(value, valueType, valueRaw,
-                        valueOneOf, deepCopy, cps, context));
+            OneOfInfo valueOneOf = TypeRegistry.registerTypeInfo(valueRaw).oneOfInfo;
+            for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
+                Object value = propertyInfo.invokeGetter(node);
+                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
+                map.put(propertyInfo.name,
+                        _convert(value, valueType, valueRaw, valueOneOf, deepCopy, cps, context));
             }
             return map;
         }
 
         if (toBoxed == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (Map.Entry<String, PropertyInfo> entry
-                    : sourceInfo.readableProperties.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue().invokeGetter(node);
-                PathSegment cps = new PathSegment.Name(ps, key);
-                jo.put(key, _convert(value,
-                        Object.class, Object.class, null, deepCopy, cps, context));
+            for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
+                Object value = propertyInfo.invokeGetter(node);
+                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
+                jo.put(propertyInfo.name,
+                        _convert(value, Object.class, Object.class, null, deepCopy, cps, context));
             }
             return jo;
         }
 
         PojoInfo targetInfo = TypeRegistry.registerTypeInfo(toBoxed).pojoInfo;
         if (targetInfo != null && !targetInfo.isJajo) {
-            return _convertPojoFromProperties(
-                    node, sourceInfo, type, toBoxed,
-                    targetInfo, deepCopy, ps, context);
+            return _convertPojoFromProperties(node, sourceInfo, type, toBoxed, targetInfo, deepCopy, ps, context);
         }
 
-        throw new BindingException(
-                "cannot convert POJO to '" + toBoxed.getName() + "'", ps);
+        throw new BindingException("cannot convert POJO to '" + toBoxed.getName() + "'", ps);
     }
 
     private static Object _convertPojoFromProperties(Object source,
@@ -970,86 +958,76 @@ public final class NodeMapper {
                                                      boolean deepCopy,
                                                      PathSegment ps,
                                                      RuntimeContext context) {
-        Object[] sourceValues =
-                new Object[sourceInfo.readablePropertyCount];
+        Object[] sourceValues = new Object[sourceInfo.readableProperties.length];
 
         int sourceIndex = 0;
-        for (PropertyInfo sourceField : sourceInfo.readableProperties.values()) {
-            sourceValues[sourceIndex++] = sourceField.invokeGetter(source);
+        for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
+            sourceValues[sourceIndex++] = propertyInfo.invokeGetter(source);
         }
 
         CreatorInfo ci = targetInfo.creatorInfo;
         CreatorState state = new CreatorState(ci);
 
         sourceIndex = 0;
-        for (Map.Entry<String, PropertyInfo> entry
-                : sourceInfo.readableProperties.entrySet()) {
-            String key = entry.getKey();
+        for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
             Object rawValue = sourceValues[sourceIndex++];
 
-            int argIdx = ci.getArgIndexOrAlias(key);
+            int argIdx = ci.getArgIndexOrAlias(propertyInfo.name);
             if (argIdx >= 0) {
-                Type argType =
-                        Types.resolveMemberType(type, toBoxed, ci.argTypes[argIdx]);
-                PathSegment cps = new PathSegment.Name(ps, key);
+                Type argType = Types.resolveMemberType(type, toBoxed, ci.argTypes[argIdx]);
+                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
                 Class<?> argRaw = Types.rawBox(argType);
 
                 TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
                 ValueInfo argValueInfo = ci.argValueCodecs[argIdx];
-                if (argValueInfo == null && ti.isNodeValue()) {
+                if (argValueInfo == null && ti.valueInfos != null) {
                     String valueFormat = context.defaultValueFormat(argRaw);
                     argValueInfo = ti.requireValueInfo(valueFormat);
                 }
 
                 if (ti.oneOfInfo == null && argValueInfo != null) {
-                    state.acceptCtorArg(argIdx, argRaw.isInstance(rawValue)
-                            ? argValueInfo.valueCopy(rawValue)
-                            : argValueInfo.rawToValue(rawValue));
+                    state.acceptCtorArg(argIdx,
+                            argRaw.isInstance(rawValue) ? argValueInfo.valueCopy(rawValue) : argValueInfo.rawToValue(rawValue));
                 } else {
-                    state.acceptCtorArg(argIdx, _convert(
-                            rawValue, argType, argRaw,
-                            ti.oneOfInfo, deepCopy, cps, context));
+                    state.acceptCtorArg(argIdx,
+                            _convert(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context));
                 }
                 continue;
             }
 
-            PropertyInfo fi = targetInfo.aliasProperties != null
-                    ? targetInfo.aliasProperties.get(key)
-                    : targetInfo.properties.get(key);
+            PropertyInfo targetPropertyInfo = targetInfo.getPropertyNoAlias(propertyInfo.name);
+            if (targetPropertyInfo != null) {
+                if (!targetPropertyInfo.writable) continue;
 
-            if (fi != null) {
-                if (!fi.hasSetter()) continue;
-
-                PathSegment cps = new PathSegment.Name(ps, key);
-                Type fieldType = fi.genericDependent
-                        ? Types.resolveMemberType(type, toBoxed, fi.type)
-                        : fi.type;
-                Class<?> fieldRaw = fi.genericDependent
+                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
+                Type fieldType = targetPropertyInfo.genericDependent
+                        ? Types.resolveMemberType(type, toBoxed, targetPropertyInfo.type)
+                        : targetPropertyInfo.type;
+                Class<?> fieldRaw = targetPropertyInfo.genericDependent
                         ? Types.rawBox(fieldType)
-                        : fi.boxed;
+                        : targetPropertyInfo.boxed;
 
                 Object value;
-                if (fi.oneOfInfo == null && fi.valueInfo != null) {
+                if (targetPropertyInfo.oneOfInfo == null && targetPropertyInfo.valueInfo != null) {
                     value = fieldRaw.isInstance(rawValue)
-                            ? fi.valueInfo.valueCopy(rawValue)
-                            : fi.valueInfo.rawToValue(rawValue);
+                            ? targetPropertyInfo.valueInfo.valueCopy(rawValue)
+                            : targetPropertyInfo.valueInfo.rawToValue(rawValue);
                 } else {
-                    value = _convert(rawValue, fieldType, fieldRaw,
-                            fi.oneOfInfo, deepCopy, cps, context);
+                    value = _convert(rawValue, fieldType, fieldRaw, targetPropertyInfo.oneOfInfo, deepCopy, cps, context);
                 }
 
                 if (state.isCreated()) {
-                    fi.invokeSetter(state.pojo(), value);
+                    targetPropertyInfo.invokeSetter(state.pojo(), value);
                 } else {
-                    state.bufferProperty(fi, value);
+                    state.bufferProperty(targetPropertyInfo, value);
                 }
                 continue;
             }
 
             if (targetInfo.isJojo && targetInfo.readDynamic) {
-                PathSegment cps = new PathSegment.Name(ps, key);
-                state.acceptDynamic(key, _convert(rawValue,
-                        Object.class, Object.class, null, deepCopy, cps, context));
+                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
+                state.acceptDynamic(propertyInfo.name,
+                        _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, context));
             }
         }
 
@@ -1095,15 +1073,11 @@ public final class NodeMapper {
 
             if (node instanceof Map) {
                 Map<String, Object> oldMap = (Map<String, Object>) node;
-                Map<String, Object> newMap =
-                        TypeRegistry.newMapContainer(
-                                LinkedHashMap.class, oldMap.size(), false);
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class, oldMap.size(), false);
 
                 for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
-                    PathSegment cps =
-                            new PathSegment.Name(ps, entry.getKey());
-                    newMap.put(entry.getKey(),
-                            _convertToRaw(entry.getValue(), cps, context));
+                    PathSegment cps = new PathSegment.Name(ps, entry.getKey());
+                    newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, context));
                 }
                 return newMap;
             }
@@ -1125,52 +1099,37 @@ public final class NodeMapper {
                 JsonObject jo = (JsonObject) node;
 
                 if (rawClazz == JsonObject.class) {
-                    Map<String, Object> newMap =
-                            TypeRegistry.newMapContainer(
-                                    LinkedHashMap.class, jo.size(), false);
+                    Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class, jo.size(), false);
 
                     for (Map.Entry<String, Object> entry : jo.entrySet()) {
-                        PathSegment cps =
-                                new PathSegment.Name(ps, entry.getKey());
-                        newMap.put(entry.getKey(),
-                                _convertToRaw(entry.getValue(), cps, context));
+                        PathSegment cps = new PathSegment.Name(ps, entry.getKey());
+                        newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, context));
                     }
                     return newMap;
                 }
 
                 PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(rawClazz);
-                Map<String, Object> dynamic =
-                        pi.writeDynamic
-                                ? InternalAccess.dynamicProperties(jo)
-                                : null;
+                Map<String, Object> dynamic = pi.writeDynamic ? InternalAccess.dynamicProperties(jo) : null;
 
-                int size = pi.readablePropertyCount +
-                        (dynamic == null ? 0 : dynamic.size());
+                int size = pi.readableProperties.length + (dynamic == null ? 0 : dynamic.size());
 
-                Map<String, Object> newMap =
-                        TypeRegistry.newMapContainer(
-                                LinkedHashMap.class, size, false);
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class, size, false);
 
-                for (Map.Entry<String, PropertyInfo> entry
-                        : pi.readableProperties.entrySet()) {
-                    String key = entry.getKey();
-                    PropertyInfo fi = entry.getValue();
-                    Object value = fi.invokeGetter(node);
-                    PathSegment cps = new PathSegment.Name(ps, key);
+                for (PropertyInfo propertyInfo : pi.readableProperties) {
+                    Object value = propertyInfo.invokeGetter(node);
+                    PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
 
-                    Object raw = value != null && fi.valueInfo != null
-                            ? fi.valueInfo.valueToRaw(value)
+                    Object raw = value != null && propertyInfo.valueInfo != null
+                            ? propertyInfo.valueInfo.valueToRaw(value)
                             : _convertToRaw(value, cps, context);
 
-                    newMap.put(key, raw);
+                    newMap.put(propertyInfo.name, raw);
                 }
 
                 if (dynamic != null) {
                     for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
-                        PathSegment cps =
-                                new PathSegment.Name(ps, entry.getKey());
-                        newMap.put(entry.getKey(),
-                                _convertToRaw(entry.getValue(), cps, context));
+                        PathSegment cps = new PathSegment.Name(ps, entry.getKey());
+                        newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, context));
                     }
                 }
 
@@ -1220,7 +1179,7 @@ public final class NodeMapper {
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-            if (ti.isNodeValue()) {
+            if (ti.valueInfos != null) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueToRaw(node);
@@ -1228,39 +1187,29 @@ public final class NodeMapper {
 
             PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                Map<String, Object> newMap =
-                        TypeRegistry.newMapContainer(
-                                LinkedHashMap.class,
-                                pi.readablePropertyCount,
-                                false);
+                Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class,
+                        pi.readableProperties.length, false);
 
-                for (Map.Entry<String, PropertyInfo> entry
-                        : pi.readableProperties.entrySet()) {
-                    String key = entry.getKey();
-                    PropertyInfo fi = entry.getValue();
-                    Object value = fi.invokeGetter(node);
-                    PathSegment cps = new PathSegment.Name(ps, key);
+                for (PropertyInfo propertyInfo : pi.readableProperties) {
+                    Object value = propertyInfo.invokeGetter(node);
+                    PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
 
-                    Object raw = value != null && fi.valueInfo != null
-                            ? fi.valueInfo.valueToRaw(value)
+                    Object raw = value != null && propertyInfo.valueInfo != null
+                            ? propertyInfo.valueInfo.valueToRaw(value)
                             : _convertToRaw(value, cps, context);
 
-                    newMap.put(key, raw);
+                    newMap.put(propertyInfo.name, raw);
                 }
 
                 return newMap;
             }
 
-            throw new BindingException(
-                    "unsupported node type '" + Types.name(node) + "'", ps);
+            throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException(
-                    "cannot convert node from '" + Types.name(node) +
-                            "' to raw (Map/List/String/Number/Boolean/null)",
-                    ps,
-                    e);
+            throw new BindingException("cannot convert node from '" + Types.name(node) +
+                    "' to raw (Map/List/String/Number/Boolean/null)", ps, e);
         }
     }
 

@@ -8,9 +8,8 @@ import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
 import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.PreparedName;
+import org.sjf4j.binding.CompiledName;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Types;
 import org.sjf4j.util.Asserts;
@@ -112,7 +111,7 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
 
 
     @Override
-    public PreparedName createPreparedName(String name) {
+    public CompiledName createPreparedName(String name) {
         return new Jackson2PreparedName(name);
     }
 

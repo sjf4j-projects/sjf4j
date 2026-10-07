@@ -2,7 +2,6 @@ package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.util.Asserts;

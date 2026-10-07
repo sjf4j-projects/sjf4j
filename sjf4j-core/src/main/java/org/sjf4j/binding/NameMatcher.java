@@ -1,6 +1,11 @@
 package org.sjf4j.binding;
 
 
+import org.sjf4j.node.PropertyInfo;
+
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Prepared member-name matcher.
  *
@@ -10,36 +15,49 @@ package org.sjf4j.binding;
  *
  * <p>Backend implementations may attach native matching metadata to an
  * implementation of this interface. This allows
- * {@link StreamingReaderV4#nextNameMatch(NameMatcher)} to match directly against the
+ * {@link StreamingReader#nextNameMatch(NameMatcher)} to match directly against the
  * underlying input without first materializing the member name as a
  * {@link String}.</p>
  */
-public interface NameMatcher {
+public class NameMatcher {
 
     /**
      * Indicates that a member name did not match any known name.
      */
-    int UNKNOWN = -1;
+    public static final int UNKNOWN = -1;
 
     /**
      * Indicates that object traversal reached the object end.
      */
-    int OBJECT_END = -2;
+    public static final int OBJECT_END = -2;
 
-    /**
-     * Returns the canonical member name associated with a matched
-     * index.
-     */
-    String name(int index);
+    protected final PropertyInfo[] writableProperties;
+    private final Map<String, Integer> fallback;
 
-    /**
-     * Matches an already materialized member name.
-     *
-     * <p>This method is also the generic fallback used by backends that
-     * do not provide a native member-name matching fast path.</p>
-     *
-     * @param name member name
-     * @return a non-negative member index, or {@link #UNKNOWN}
-     */
-    int match(String name);
+    public NameMatcher(PropertyInfo[] writableProperties) {
+        this.writableProperties = writableProperties;
+        Map<String, Integer> fallback = new HashMap<>(Math.max(16, (int) (writableProperties.length / 0.75f) + 1));
+        for (int i = 0; i < writableProperties.length; i++) {
+            fallback.put(writableProperties[i].name, i);
+        }
+        this.fallback = fallback;
+    }
+
+    public final int size() {
+        return writableProperties.length;
+    }
+
+    public final String name(int index) {
+        return writableProperties[index].name;
+    }
+
+    public final PropertyInfo property(int index) {
+        return writableProperties[index];
+    }
+
+    public int fallback(String name) {
+        Integer index = fallback.get(name);
+        return index != null ? index : UNKNOWN;
+    }
+
 }

@@ -42,26 +42,6 @@ public class TypeInfo {
     }
 
     /**
-     * Returns true when object reads must stay on the framework-owned path.
-     * Native backend modules may only bypass SJF4J when this is false.
-     */
-    public boolean requiresPojoReader() {
-        return pojoInfo != null && pojoInfo.requiresPojoReader;
-    }
-
-    /**
-     * Returns true when object writes must stay on the framework-owned path.
-     * Native backend modules may only bypass SJF4J when this is false.
-     */
-    public boolean requiresPojoWriter() {
-        return pojoInfo != null && pojoInfo.requiresPojoWriter;
-    }
-
-    public boolean isNodeValue() {
-        return valueInfos != null;
-    }
-
-    /**
      * Returns the default or named value codec metadata, or {@code null} when
      * no codec is registered for the requested format.
      */

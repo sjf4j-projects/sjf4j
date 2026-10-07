@@ -1,5 +1,7 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueInfo;
@@ -27,7 +29,7 @@ import java.util.function.ObjLongConsumer;
 @FunctionalInterface
 public interface PropertyReader {
 
-    void bind(StreamingReader reader, Object owner, Type ownerType, Class<?> ownerBoxed,
+    void read(StreamingReader reader, Object owner, Type ownerType, Class<?> ownerBoxed,
               RuntimeContext context) throws IOException;
 
 
@@ -70,8 +72,7 @@ public interface PropertyReader {
                                  MethodHandles.Lookup lookup) {
 
         if (setterHandle == null) {
-            return (reader, owner, ownerType, ownerBoxed, context) ->
-                    reader.skipNext();
+            return null;
         }
 
         if (genericDependent) {
@@ -91,7 +92,7 @@ public interface PropertyReader {
 
         if (resolvedValueCodec != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Object value = StreamingIO.readValueWithCodec(reader, fieldType, fieldBoxed, resolvedValueCodec, context);
+                Object value = StreamingIO.readValueCodec(reader, resolvedValueCodec, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -133,6 +134,30 @@ public interface PropertyReader {
          * --------------------------------------------------------------
          */
 
+        if (Map.class.isAssignableFrom(fieldBoxed)) {
+            Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
+            Class<?> valueBoxed = Types.rawBox(valueType);
+            TypeInfo[] valueTiRef = new TypeInfo[1];
+            return (reader, owner, ownerType, ownerBoxed, context) -> {
+                TypeInfo valueTi = valueTiRef[0];
+                if (valueTi == null) {
+                    valueTi = TypeRegistry.registerTypeInfo(valueBoxed);
+                    valueTiRef[0] = valueTi;
+                }
+                Object value = StreamingIO.readMap(reader, fieldType, fieldBoxed, valueType, valueBoxed, valueTi, context);
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+            };
+        }
+
+        if (fieldType == JsonObject.class) {
+            return (reader, owner, ownerType, ownerBoxed, context) -> {
+                Object value = null;
+                Object raw = reader.readRawNode();
+                if (raw != null) value = new JsonObject(StreamingIO.castMap(raw));
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+            };
+        }
+
         if (List.class.isAssignableFrom(fieldBoxed)) {
             Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
             Class<?> elementBoxed = Types.rawBox(elementType);
@@ -143,7 +168,16 @@ public interface PropertyReader {
                     elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
                     elementTiRef[0] = elementTi;
                 }
-                Object value = StreamingIO.readListOrNull(reader, fieldBoxed, elementType, elementBoxed, elementTi, context);
+                Object value = StreamingIO.readList(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+            };
+        }
+
+        if (fieldType == JsonArray.class) {
+            return (reader, owner, ownerType, ownerBoxed, context) -> {
+                Object value = null;
+                Object raw = reader.readRawNode();
+                if (raw != null) value = new JsonArray(StreamingIO.castList(raw));
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -158,22 +192,7 @@ public interface PropertyReader {
                     elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
                     elementTiRef[0] = elementTi;
                 }
-                Object value = StreamingIO.readSetOrNull(reader, fieldBoxed, elementType, elementBoxed, elementTi, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
-            };
-        }
-
-        if (Map.class.isAssignableFrom(fieldBoxed)) {
-            Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
-            Class<?> valueBoxed = Types.rawBox(valueType);
-            TypeInfo[] valueTiRef = new TypeInfo[1];
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo valueTi = valueTiRef[0];
-                if (valueTi == null) {
-                    valueTi = TypeRegistry.registerTypeInfo(valueBoxed);
-                    valueTiRef[0] = valueTi;
-                }
-                Object value = StreamingIO.readMapOrNull(reader, fieldBoxed, valueType, valueBoxed, valueTi, context);
+                Object value = StreamingIO.readSet(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -188,7 +207,7 @@ public interface PropertyReader {
                     componentTi = TypeRegistry.registerTypeInfo(componentClazz);
                     componentTiRef[0] = componentTi;
                 }
-                Object value = StreamingIO.readJavaArrayOrNull(reader, fieldBoxed, componentClazz, componentBoxed,
+                Object value = StreamingIO.readArray(reader, fieldType, fieldBoxed, componentClazz, componentBoxed,
                         componentTi, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -202,73 +221,69 @@ public interface PropertyReader {
 
         if (fieldBoxed == String.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextString());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readString());
             };
         }
         if (fieldBoxed == Integer.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextInt());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readInt());
             };
         }
         if (fieldBoxed == Long.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextLong());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readLong());
             };
         }
         if (fieldBoxed == Double.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextDouble());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readDouble());
             };
         }
         if (fieldBoxed == Float.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextFloat());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readFloat());
             };
         }
         if (fieldBoxed == Short.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextShort());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readShort());
             };
         }
         if (fieldBoxed == Byte.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextByte());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readByte());
             };
         }
         if (fieldBoxed == Boolean.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextBoolean());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBoolean());
             };
         }
         if (fieldBoxed == Character.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                String str = reader.nextString();
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner,
-                        str == null || str.isEmpty() ? null : str.charAt(0));
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readChar());
             };
         }
         if (fieldBoxed == Number.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextNumber());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readNumber());
             };
         }
         if (fieldBoxed == BigInteger.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextBigInteger());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigInteger());
             };
         }
         if (fieldBoxed == BigDecimal.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.nextBigDecimal());
+                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigDecimal());
             };
         }
         if (fieldBoxed.isEnum()) {
             @SuppressWarnings("rawtypes")
             Class<? extends Enum> enumType = fieldBoxed.asSubclass(Enum.class);
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                String str = reader.nextString();
-                @SuppressWarnings("unchecked")
-                Object enumValue = str == null ? null : Enum.valueOf(enumType, str);
+                Object enumValue = StreamingIO.readEnum(reader, fieldBoxed, context);
                 PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, enumValue);
             };
         }
@@ -299,14 +314,14 @@ public interface PropertyReader {
                 _castClass(ObjIntConsumer.class), int.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextIntValue());
+                setterLambda.accept(owner, reader.readIntValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, int.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextIntValue());
+                setter.invokeExact(receiver, reader.readIntValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -321,14 +336,14 @@ public interface PropertyReader {
                 _castClass(ObjLongConsumer.class), long.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextLongValue());
+                setterLambda.accept(owner, reader.readLongValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, long.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextLongValue());
+                setter.invokeExact(receiver, reader.readLongValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -343,14 +358,14 @@ public interface PropertyReader {
                 _castClass(ObjDoubleConsumer.class), double.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextDoubleValue());
+                setterLambda.accept(owner, reader.readDoubleValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, double.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextDoubleValue());
+                setter.invokeExact(receiver, reader.readDoubleValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -365,14 +380,14 @@ public interface PropertyReader {
                 _castClass(ObjFloatConsumer.class), float.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextFloatValue());
+                setterLambda.accept(owner, reader.readFloatValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, float.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextFloatValue());
+                setter.invokeExact(receiver, reader.readFloatValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -387,14 +402,14 @@ public interface PropertyReader {
                 _castClass(ObjShortConsumer.class), short.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextShortValue());
+                setterLambda.accept(owner, reader.readShortValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, short.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextShortValue());
+                setter.invokeExact(receiver, reader.readShortValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -409,14 +424,14 @@ public interface PropertyReader {
                 _castClass(ObjByteConsumer.class), byte.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextByteValue());
+                setterLambda.accept(owner, reader.readByteValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, byte.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextByteValue());
+                setter.invokeExact(receiver, reader.readByteValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -431,14 +446,14 @@ public interface PropertyReader {
                 _castClass(ObjBooleanConsumer.class), boolean.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextBooleanValue());
+                setterLambda.accept(owner, reader.readBooleanValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, boolean.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextBooleanValue());
+                setter.invokeExact(receiver, reader.readBooleanValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -453,14 +468,14 @@ public interface PropertyReader {
                 _castClass(ObjCharConsumer.class), char.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.nextCharValue());
+                setterLambda.accept(owner, reader.readCharValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, char.class));
         return (reader, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.nextCharValue());
+                setter.invokeExact(receiver, reader.readCharValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {

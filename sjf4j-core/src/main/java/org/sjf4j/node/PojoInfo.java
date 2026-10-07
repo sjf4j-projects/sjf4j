@@ -3,14 +3,17 @@ package org.sjf4j.node;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.PropertyStrategy;
+import org.sjf4j.binding.BackendCache;
+import org.sjf4j.binding.PropertyReader;
 import org.sjf4j.binding.PropertyWriter;
 
+import java.util.AbstractSet;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 /**
  * Cached binding metadata for an object type.
@@ -21,104 +24,118 @@ import java.util.Map;
 public class PojoInfo {
     public final Class<?> clazz;
     public final CreatorInfo creatorInfo;
-    public final NamingStrategy namingStrategy;
-    public final PropertyStrategy propertyStrategy;
+
     public final boolean readDynamic;
     public final boolean writeDynamic;
-    public final Map<String, PropertyInfo> properties;
-    public final int propertyCount;
-    public final Map<String, PropertyInfo> readableProperties;
-    public final int readablePropertyCount;
-    public final Map<String, PropertyInfo> aliasProperties;
     public final boolean isJojo;
     public final boolean isJajo;
     public final boolean hasParentScopeOneOf;
-    public final boolean hasExplicitBinding;
-    public final boolean hasCreatorBinding;
-    public final boolean hasNonPublicFields;
-    public final boolean hasNonPublicReaderGap;
-    public final boolean hasNonPublicWriterGap;
-    public final boolean hasPropertyCodecNameBinding;
-    public final boolean requiresPojoReader;
-    public final boolean requiresPojoWriter;
 
-    public final String[] fieldNames;
+    public final Map<String, PropertyInfo> propertyLookup;
+
+    public final PropertyInfo[] writableProperties;
+    public final PropertyReader[] propertyReaders;
+
+    public final PropertyInfo[] readableProperties;
     public final PropertyWriter[] propertyWriters;
-    public final Object[] backendData = new Object[Backend.values().length];
+
+    public final BackendCache[] backendCache = new BackendCache[Backend.values().length];
 
     /**
      * Creates object binding metadata.
      */
     public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
-                    NamingStrategy namingStrategy,
-                    PropertyStrategy propertyStrategy,
                     boolean readDynamic,
                     boolean writeDynamic,
-                    Map<String, PropertyInfo> properties,
-                    Map<String, PropertyInfo> aliasProperties,
-                    boolean hasExplicitBinding,
-                    boolean hasNonPublicFields,
-                    boolean hasNonPublicReaderGap,
-                    boolean hasNonPublicWriterGap,
-                    String[] fieldNames,
+                    Map<String, PropertyInfo> propertyLookup,
+                    PropertyInfo[] writableProperties,
+                    PropertyReader[] propertyReaders,
+                    PropertyInfo[] readableProperties,
                     PropertyWriter[] propertyWriters) {
         this.clazz = clazz;
         this.creatorInfo = creatorInfo;
-        this.namingStrategy = namingStrategy;
-        this.propertyStrategy = propertyStrategy;
         this.readDynamic = readDynamic;
         this.writeDynamic = writeDynamic;
-        this.properties = properties;
-        this.propertyCount = properties.size();
-        Map<String, PropertyInfo> readableProperties = null;
-        for (Map.Entry<String, PropertyInfo> entry : properties.entrySet()) {
-            if (!entry.getValue().hasGetter()) {
-                continue;
-            }
-            if (readableProperties == null) {
-                readableProperties = new LinkedHashMap<>();
-            }
-            readableProperties.put(entry.getKey(), entry.getValue());
-        }
-        this.readableProperties = readableProperties == null ? Collections.emptyMap() : readableProperties;
-        this.readablePropertyCount = this.readableProperties.size();
-        this.aliasProperties = aliasProperties;
         this.isJojo = JsonObject.class.isAssignableFrom(clazz);
         this.isJajo = JsonArray.class.isAssignableFrom(clazz);
+
         boolean hasParentScopeOneOf = false;
-        for (PropertyInfo fi : properties.values()) {
-            OneOfInfo aoi = fi.oneOfInfo;
-            if (aoi != null && aoi.scope == OneOf.Scope.PARENT) {
+        for (PropertyInfo propertyInfo : readableProperties) {
+            if (propertyInfo.oneOfInfo != null && propertyInfo.oneOfInfo.scope == OneOf.Scope.PARENT) {
                 hasParentScopeOneOf = true;
                 break;
             }
         }
         this.hasParentScopeOneOf = hasParentScopeOneOf;
-        this.hasExplicitBinding = hasExplicitBinding;
-        this.hasCreatorBinding = creatorInfo != null && creatorInfo.argsCreator != null;
-        this.hasNonPublicFields = hasNonPublicFields;
-        this.hasNonPublicReaderGap = hasNonPublicReaderGap;
-        this.hasNonPublicWriterGap = hasNonPublicWriterGap;
-        boolean hasPropertyCodecNameBinding = false;
-        for (PropertyInfo fi : properties.values()) {
-            if (fi.valueInfo != null) {
-                hasPropertyCodecNameBinding = true;
-                break;
-            }
-        }
-        this.hasPropertyCodecNameBinding = hasPropertyCodecNameBinding;
-        boolean hasTypeOwnedBinding = namingStrategy != null || propertyStrategy != PropertyStrategy.BEAN_FIELD;
-        boolean hasCustomDynamicReader = this.isJojo && !readDynamic;
-        boolean hasCustomDynamicWriter = this.isJojo && !writeDynamic;
-        this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeOneOf
-                || hasExplicitBinding || this.hasCreatorBinding
-                || (creatorInfo != null && creatorInfo.hasCodecNameBinding)
-                || hasNonPublicFields || hasNonPublicReaderGap || hasCustomDynamicReader || hasPropertyCodecNameBinding;
-        this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicFields || hasNonPublicWriterGap
-                || hasCustomDynamicWriter || hasPropertyCodecNameBinding;
 
-        this.fieldNames = fieldNames;
+        this.propertyLookup = propertyLookup;   // TODO: canonical + alias
+        this.readableProperties = readableProperties;
+        this.writableProperties = writableProperties;
+        this.propertyReaders = propertyReaders;
         this.propertyWriters = propertyWriters;
+
+    }
+
+
+    public Set<String> readablePropertyNameSet() {
+        if (readableProperties.length == 0) {
+            return Collections.emptySet();
+        }
+
+        return new AbstractSet<String>() {
+            @Override
+            public Iterator<String> iterator() {
+                return new Iterator<String>() {
+                    private int index;
+
+                    @Override
+                    public boolean hasNext() {
+                        return index < readableProperties.length;
+                    }
+
+                    @Override
+                    public String next() {
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
+                        return readableProperties[index++].name;
+                    }
+                };
+            }
+
+            @Override
+            public int size() {
+                return readableProperties.length;
+            }
+
+            @Override
+            public boolean contains(Object key) {
+                if (!(key instanceof String)) {
+                    return false;
+                }
+
+                PropertyInfo property = getPropertyNoAlias((String) key);
+                return property != null && property.readable;
+            }
+        };
+    }
+
+    public PropertyInfo getPropertyNoAlias(String key) {
+        PropertyInfo propertyInfo = propertyLookup.get(key);
+        if (propertyInfo != null && (propertyInfo.alias.length == 0 || propertyInfo.name.equals(key))) {
+            return propertyInfo;
+        }
+        return null;
+    }
+
+    public BackendCache backendCache(Backend backend) {
+        int index = backend.ordinal();
+        BackendCache cache = backendCache[index];
+        if (cache == null) {
+            cache = new BackendCache();
+            backendCache[index] = cache;
+        }
+        return cache;
     }
 
 }

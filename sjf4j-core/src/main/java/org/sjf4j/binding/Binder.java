@@ -2,8 +2,6 @@ package org.sjf4j.binding;
 
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Types;
 import org.sjf4j.util.Asserts;
 
@@ -225,35 +223,5 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
         }
     }
 
-
-    /*
-     * --------------------------------------------------------------
-     * PreparedName/NameMatcher Cache
-     * --------------------------------------------------------------
-     */
-
-    private final ClassValue<PreparedName[]> preparedNameCache =
-            new ClassValue<PreparedName[]>() {
-                @Override
-                protected PreparedName[] computeValue(Class<?> type) {
-                    PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(type);
-                    String[] names = pi.fieldNames;
-                    PreparedName[] preparedNames = new PreparedName[names.length];
-                    for (int i = 0; i < names.length; i++) {
-                        preparedNames[i] = createPreparedName(names[i]);
-                    }
-
-                    return preparedNames;
-                }
-            };
-
-
-    public PreparedName createPreparedName(String name) {
-        return new PreparedName.SimplePreparedName(name);
-    }
-
-    public PreparedName[] getPreparedNames(Class<?> type) {
-        return preparedNameCache.get(type);
-    }
 
 }

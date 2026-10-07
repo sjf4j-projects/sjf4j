@@ -446,23 +446,23 @@ public class AsmPathCompiler implements PathCompiler {
                         "' from " + currentClazz.getName() + " at '" + expr + "'");
             }
 
-            PropertyInfo propInfo = pi.readableProperties.get(name);
-            if (propInfo != null) {
-                Type vvt = propInfo.type;
+            PropertyInfo property = pi.getPropertyNoAlias(name);
+            if (property != null && property.readable) {
+                Type vvt = property.type;
                 Class<?> vvc = Types.rawClazz(vvt);
-                if (propInfo.publicField != null) {
+                if (property.publicField != null) {
                     // V _2 = _1.xxx;
                     mv.visitVarInsn(Opcodes.ALOAD, srcLocal);
                     mv.visitFieldInsn(Opcodes.GETFIELD, AsmUtil.toInternalName(currentClazz),
-                            propInfo.publicField.getName(),
+                            property.publicField.getName(),
                             org.objectweb.asm.Type.getDescriptor(vvc));
                     vvc = AsmUtil.emitCastOrBox(mv, vvc);
                     mv.visitVarInsn(Opcodes.ASTORE, dstLocal);
-                } else if (propInfo.publicGetter != null) {
+                } else if (property.publicGetter != null) {
                     // V _2 = _1.getXxx();
                     mv.visitVarInsn(Opcodes.ALOAD, srcLocal);
                     mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.toInternalName(currentClazz),
-                            propInfo.publicGetter.getName(),
+                            property.publicGetter.getName(),
                             "()" + org.objectweb.asm.Type.getDescriptor(vvc),
                             false);
                     vvc = AsmUtil.emitCastOrBox(mv, vvc);
@@ -779,7 +779,7 @@ public class AsmPathCompiler implements PathCompiler {
                         "' on " + currentClazz.getName() + " at '" + expr + "'");
             }
 
-            PropertyInfo propInfo = pi.properties.get(name);
+            PropertyInfo propInfo = pi.propertyLookup.get(name);
             if (propInfo != null) {
                 Type vvt = propInfo.type;
                 Class<?> vvc = Types.rawClazz(vvt);
@@ -1135,7 +1135,7 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitInsn(returnValue ? Opcodes.ARETURN : Opcodes.POP);
         } else {
             PojoInfo pi = TypeRegistry.registerTypeInfo(parentClazz).pojoInfo;
-            PropertyInfo propInfo = pi == null ? null : pi.properties.get(name);
+            PropertyInfo propInfo = pi == null ? null : pi.propertyLookup.get(name);
             if (propInfo != null && propInfo.publicField != null) {
                 Class<?> fieldClazz = propInfo.publicField.getType();
                 // parent.field = value;

@@ -1,5 +1,6 @@
 package org.sjf4j.binding.simple;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.exception.BindingException;
@@ -21,9 +22,8 @@ public final class SimpleJsonWriter extends StreamingWriter {
      * Creates writer over output characters.
      */
     public SimpleJsonWriter(Binder<?, ?> binder, Writer output) {
-        super(binder);
-        Asserts.notNull(output, "output");
-        this.writer = output;
+        super(Backend.SIMPLE);
+        this.writer = Asserts.notNull(output, "output");
     }
 
     /**

@@ -32,17 +32,17 @@ public final class OneOfIO {
 
     static Object readOneOfByJsonType(StreamingReader reader, OneOfInfo oneOfInfo,
                                       RuntimeContext context) throws IOException {
-        JsonType jsonType = reader.currentToken().jsonType();
-
+        JsonType jsonType = reader.peekToken().jsonType();
         Class<?> targetClazz = oneOfInfo.matchByJsonType(jsonType);
         if (targetClazz != null) {
             return StreamingIO.readNode(reader, targetClazz, context);
         }
 
         if (oneOfInfo.fallbackNull) {
-            reader.skipNext();
+            reader.skipNode();
             return null;
         }
+
         throw new BindingException("oneOf mapping does not support jsonType=" + jsonType +
                 " for type '" + oneOfInfo.clazz.getName() + "'");
     }
@@ -55,9 +55,9 @@ public final class OneOfIO {
         }
 
         final boolean fallbackNull = oneOfInfo.fallbackNull;
-        if (reader.currentToken().jsonType() != JsonType.OBJECT) {
+        if (reader.peekToken().jsonType() != JsonType.OBJECT) {
             if (fallbackNull) {
-                reader.skipNext();
+                reader.skipNode();
                 return null;
             }
             throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
@@ -71,9 +71,8 @@ public final class OneOfIO {
 
 
     private static Object _readByDtorPath(StreamingReader reader, OneOfInfo oneOfInfo,
-                                         RuntimeContext context) throws IOException {
-        Map<String, Object> rawMap = StreamingIO.readRawObject(reader);
-
+                                          RuntimeContext context) throws IOException {
+        Map<String, Object> rawMap = StreamingIO.castMap(reader.readRawNode());
         Object discriminatorValue = oneOfInfo.compiledPath.getNode(rawMap);
         if (discriminatorValue == null) {
             if (oneOfInfo.fallbackNull) return null;
@@ -91,7 +90,6 @@ public final class OneOfIO {
 
     private static Object _readByDtorKey(StreamingReader reader, OneOfInfo oneOfInfo,
                                          RuntimeContext context) throws IOException {
-
         final boolean fallbackNull = oneOfInfo.fallbackNull;
         final String discriminatorKey = oneOfInfo.key;
         String[] pendingNames = null;
@@ -101,9 +99,8 @@ public final class OneOfIO {
         reader.startObject();
         while (!reader.nextIfObjectEnd()) {
             String name = reader.nextName();
-
             if (discriminatorKey.equals(name)) {
-                Object discriminatorValue = StreamingIO.readRawNode(reader);
+                Object discriminatorValue = reader.readRawNode();
                 if (discriminatorValue == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(reader);
@@ -125,7 +122,7 @@ public final class OneOfIO {
                         discriminatorKey, discriminatorValue, context);
             }
 
-            Object value = StreamingIO.readRawNode(reader);
+            Object value = reader.readRawNode();
             if (pendingNames == null) {
                 pendingNames = new String[INITIAL_PENDING_CAPACITY];
                 pendingValues = new Object[INITIAL_PENDING_CAPACITY];
@@ -145,7 +142,6 @@ public final class OneOfIO {
         }
         throw new BindingException("not found value for discriminator key '" + discriminatorKey + "'");
     }
-
 
 
     private static Object _readRemainingObject(StreamingReader reader, Class<?> targetClazz,
@@ -193,7 +189,7 @@ public final class OneOfIO {
                 Object value;
                 ValueInfo codec = ci.argValueCodecs[argIdx];
                 if (codec != null) {
-                    value = StreamingIO.readValueWithCodec(reader, argType, argBoxed, codec, context);
+                    value = StreamingIO.readValueCodec(reader, codec, context);
                 } else {
                     value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
                 }
@@ -201,24 +197,24 @@ public final class OneOfIO {
                 continue;
             }
 
-            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
-            if (fi != null) {
+            PropertyInfo fi = pi.propertyLookup.get(key);
+            if (fi != null && fi.reader != null) {
                 if (state.isCreated()) {
-                    fi.binder.bind(reader, state.pojo(), targetClazz, targetClazz, context);
+                    fi.reader.read(reader, state.pojo(), targetClazz, targetClazz, context);
                 } else {
-                    Object value = StreamingIO.readFieldValue(reader, fi, targetClazz, targetClazz, context);
+                    Object value = StreamingIO.readProperty(reader, fi, targetClazz, targetClazz, context);
                     state.bufferProperty(fi, value);
                 }
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
-                Object value = StreamingIO.readRawNode(reader);
+                Object value = reader.readRawNode();
                 state.acceptDynamic(key, value);
                 continue;
             }
 
-            reader.skipNext();
+            reader.skipNode();
         }
 
         return state.finish();
@@ -228,7 +224,7 @@ public final class OneOfIO {
     private static void _skipRemainingObject(StreamingReader reader) throws IOException {
         while (!reader.nextIfObjectEnd()) {
             reader.nextName();
-            reader.skipNext();
+            reader.skipNode();
         }
     }
 
@@ -248,8 +244,8 @@ public final class OneOfIO {
             return;
         }
 
-        PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
-        if (fi != null) {
+        PropertyInfo fi = pi.propertyLookup.get(key);
+        if (fi != null && fi.writable) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
             Object value = fi.valueInfo != null
                     ? fi.valueInfo.rawToValue(rawValue)

@@ -562,7 +562,7 @@ public interface Evaluator {
                     }
                     SimpleJsonReader reader = new SimpleJsonReader(new FastStringReader(content));
                     reader.startDocument();
-                    reader.skipNext();
+                    reader.skipNode();
                     reader.endDocument();
                 } catch (Exception e) {
                     ctx.addError(instance, ps, contentMediaTypeKeywordPs, schemaUri, "contentMediaType",

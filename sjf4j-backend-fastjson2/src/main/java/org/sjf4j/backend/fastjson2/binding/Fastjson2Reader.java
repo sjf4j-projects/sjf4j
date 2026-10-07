@@ -1,7 +1,6 @@
 package org.sjf4j.backend.fastjson2.binding;
 
 import com.alibaba.fastjson2.JSONReader;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
@@ -28,7 +27,7 @@ public final class Fastjson2Reader implements StreamingReader {
                 protected NameMatcher computeValue(Class<?> type) {
                     PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(type);
                     return createNameMatcher(
-                            pi.properties.keySet().toArray(new String[0]));
+                            pi.propertyLookup.keySet().toArray(new String[0]));
                 }
             };
 

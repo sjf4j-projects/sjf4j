@@ -26,7 +26,7 @@ public interface PropertyWriter {
      * @param count number of properties already written
      * @return updated property count
      */
-    int write(StreamingWriter writer, PreparedName preparedName, Object owner, RuntimeContext context, int count) throws IOException;
+    int write(StreamingWriter writer, CompiledName compiledName, Object owner, RuntimeContext context, int count) throws IOException;
 
 
     @FunctionalInterface
@@ -630,22 +630,18 @@ public interface PropertyWriter {
         return (Class<T>) clazz;
     }
 
-    static int _writeName(StreamingWriter writer, PreparedName preparedName, int count) throws IOException {
-        if (count > 0) {
-            writer.separateProperty();
-        }
-
-        writer.writeName(preparedName);
+    static int _writeName(StreamingWriter writer, CompiledName compiledName, int count) throws IOException {
+        writer.writeName(compiledName, count > 0);
         return count + 1;
     }
 
-    static int _writeNullValueField(StreamingWriter writer, PreparedName preparedName,
+    static int _writeNullValueField(StreamingWriter writer, CompiledName compiledName,
                                     RuntimeContext context, int count) throws IOException {
         if (!context.includeNulls) {
             return count;
         }
 
-        count = _writeName(writer, preparedName, count);
+        count = _writeName(writer, compiledName, count);
         writer.writeNull();
         return count;
     }

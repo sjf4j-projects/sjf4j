@@ -11,8 +11,8 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.NameMatcher;
-import org.sjf4j.binding.StreamingIOV4;
-import org.sjf4j.binding.StreamingReaderV4;
+import org.sjf4j.binding.StreamingIO;
+import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.node.TypeRegistry;
 
 import java.io.IOException;
@@ -39,11 +39,11 @@ class Jackson2ReaderV4Test {
             int name = matcher.match("name");
             assertEquals(id, reader.nextNameMatch(matcher, id));
             assertEquals(7, reader.readIntValue());
-            assertEquals(StreamingReaderV4.Token.NAME, reader.peekToken());
+            assertEquals(StreamingReader.Token.NAME, reader.peekToken());
 
             assertEquals(name, reader.nextNameMatch(matcher, name));
             assertEquals("Ada", reader.readString());
-            assertEquals(StreamingReaderV4.Token.OBJECT_END, reader.peekToken());
+            assertEquals(StreamingReader.Token.OBJECT_END, reader.peekToken());
             assertEquals(true, reader.nextIfObjectEnd());
             reader.endDocument();
         }
@@ -94,7 +94,7 @@ class Jackson2ReaderV4Test {
                 "{\"id\":7,\"name\":\"Ada\",\"tags\":[\"a\",\"b\"]," +
                         "\"address\":{\"city\":\"Paris\"},\"ignored\":true}")) {
             reader.startDocument();
-            User user = (User) StreamingIOV4.readNode(reader, User.class, RuntimeContext.EMPTY);
+            User user = (User) StreamingIO.readNode(reader, User.class, RuntimeContext.EMPTY);
             reader.endDocument();
 
             assertEquals(7, user.id);
@@ -108,7 +108,7 @@ class Jackson2ReaderV4Test {
     void targetDirectedIoKeepsBoxedCharacterEmptyStringCompatibility() throws Exception {
         try (Jackson2ReaderV4 reader = reader("{\"value\":\"\"}")) {
             reader.startDocument();
-            CharacterValue value = (CharacterValue) StreamingIOV4.readNode(
+            CharacterValue value = (CharacterValue) StreamingIO.readNode(
                     reader, CharacterValue.class, RuntimeContext.EMPTY);
             reader.endDocument();
             assertNull(value.value);
@@ -135,14 +135,14 @@ class Jackson2ReaderV4Test {
     void targetDirectedIoSupportsCurrentAndParentOneOfFields() throws Exception {
         try (Jackson2ReaderV4 currentReader = reader("{\"pet\":{\"kind\":\"dog\",\"barks\":true}}")) {
             currentReader.startDocument();
-            CurrentOneOf value = (CurrentOneOf) StreamingIOV4.readNode(
+            CurrentOneOf value = (CurrentOneOf) StreamingIO.readNode(
                     currentReader, CurrentOneOf.class, RuntimeContext.EMPTY);
             currentReader.endDocument();
             assertEquals(true, assertInstanceOf(Dog.class, value.pet).barks);
         }
         try (Jackson2ReaderV4 parentReader = reader("{\"pet\":{\"barks\":true},\"kind\":\"dog\"}")) {
             parentReader.startDocument();
-            ParentOneOf value = (ParentOneOf) StreamingIOV4.readNode(
+            ParentOneOf value = (ParentOneOf) StreamingIO.readNode(
                     parentReader, ParentOneOf.class, RuntimeContext.EMPTY);
             parentReader.endDocument();
             assertEquals(true, assertInstanceOf(Dog.class, value.pet).barks);
@@ -153,7 +153,7 @@ class Jackson2ReaderV4Test {
     void targetDirectedIoReadsJsonArraySubclasses() throws Exception {
         try (Jackson2ReaderV4 reader = reader("[1,2]")) {
             reader.startDocument();
-            IntegerArray value = (IntegerArray) StreamingIOV4.readNode(
+            IntegerArray value = (IntegerArray) StreamingIO.readNode(
                     reader, IntegerArray.class, RuntimeContext.EMPTY);
             reader.endDocument();
             assertEquals(2, value.size());
@@ -165,7 +165,7 @@ class Jackson2ReaderV4Test {
     void creatorArgumentsKeepDuplicatePropertyValidation() throws Exception {
         try (Jackson2ReaderV4 reader = reader("{\"name\":\"first\",\"name\":\"second\"}")) {
             reader.startDocument();
-            assertThrows(Exception.class, () -> StreamingIOV4.readNode(
+            assertThrows(Exception.class, () -> StreamingIO.readNode(
                     reader, CreatorValue.class, RuntimeContext.EMPTY));
         }
     }
@@ -176,9 +176,9 @@ class Jackson2ReaderV4Test {
              Jackson2ReaderV4 arrayReader = reader("{}")) {
             objectReader.startDocument();
             arrayReader.startDocument();
-            assertThrows(Exception.class, () -> StreamingIOV4.readNode(
+            assertThrows(Exception.class, () -> StreamingIO.readNode(
                     objectReader, org.sjf4j.JsonObject.class, RuntimeContext.EMPTY));
-            assertThrows(Exception.class, () -> StreamingIOV4.readNode(
+            assertThrows(Exception.class, () -> StreamingIO.readNode(
                     arrayReader, JsonArray.class, RuntimeContext.EMPTY));
         }
     }

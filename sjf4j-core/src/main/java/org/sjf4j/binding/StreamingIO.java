@@ -3,28 +3,32 @@ package org.sjf4j.binding;
 import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.JsonType;
+import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.external.ExternalNode;
 import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.OneOfInfo;
+import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
-import org.sjf4j.value.ValueInfo;
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.OneOfInfo;
-import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.TypeInfo;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.Types;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.value.ValueInfo;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.lang.reflect.Type;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -32,1118 +36,981 @@ import java.util.Map;
 import java.util.RandomAccess;
 import java.util.Set;
 
-/**
- * Streaming read/write helpers used by binder implementations.
- */
+/** Target-directed V4 streaming binding helpers. */
 public final class StreamingIO {
 
+    private static final Object UNSET = new Object();
 
-    /*
+    private StreamingIO() {
+    }
+
+
+    /**
      * --------------------------------------------------------------
      * Read
      * --------------------------------------------------------------
      */
 
-    static final Object UNSET = new Object();
-
-    /** V4 raw-node fallback using its consuming-value reader contract. */
-    public static Object readRawNode(StreamingReaderV4 reader) throws IOException {
-        switch (reader.peekToken()) {
-            case OBJECT_START:
-                Map<String, Object> object = new LinkedHashMap<>();
-                reader.startObject();
-                while (!reader.nextIfObjectEnd()) {
-                    object.put(reader.nextName(), readRawNode(reader));
-                }
-                return object;
-            case ARRAY_START:
-                List<Object> array = new ArrayList<>();
-                reader.startArray();
-                while (!reader.nextIfArrayEnd()) array.add(readRawNode(reader));
-                return array;
-            case STRING:
-                return reader.readString();
-            case NUMBER:
-                return reader.readNumber();
-            case BOOLEAN:
-                return reader.readBoolean();
-            case NULL:
-                reader.readNull();
-                return null;
-            default:
-                throw new BindingException("unexpected token '" + reader.peekToken() + "'");
-        }
-    }
-
-    /**
-     * Reads one OBNT value into the requested target type.
-     *
-     * <p>OneOf resolution precedes normal token dispatch. A configured
-     * discriminator selects the concrete target type; otherwise OneOf resolves
-     * from the next token's JSON-semantic type.</p>
-     */
-    public static Object readNode(StreamingReader reader, Type nodeType, RuntimeContext context) throws IOException {
+    public static Object readNode(StreamingReader reader, Type type,
+                                  RuntimeContext context) throws IOException {
         Asserts.notNull(reader, "reader");
+        Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
-        if (nodeType == Object.class) {
-            return readRawNode(reader);
-        }
-        Class<?> nodeBoxed = Types.rawBox(nodeType);
-        TypeInfo ti = TypeRegistry.registerTypeInfo(nodeBoxed);
-        return readNode(reader, nodeType, nodeBoxed, ti, context);
+
+        Class<?> boxed = Types.rawBox(type);
+        TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
+        return readNode(reader, type, boxed, ti, context);
     }
 
-    /**
-     * Reads the next token and dispatches to the resolved target reader.
-     */
-    static Object readNode(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
-                           RuntimeContext context) {
+
+    static Object readNode(StreamingReader reader, Type type, Class<?> boxed, TypeInfo typeInfo,
+                           RuntimeContext context) throws IOException {
         try {
-            if (ti.oneOfInfo != null) {
-                return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
-            }
-            if (nodeBoxed == Object.class) {
-                return readRawNode(reader);
-            }
-            if (ti.isNodeValue()) {
-                String valueFormat = context.defaultValueFormat(nodeBoxed);
-                ValueInfo vi = ti.requireValueInfo(valueFormat);
-                return readValueWithCodec(reader, nodeType, nodeBoxed, vi, context);
+            /*
+             * Do NOT probe null here.
+             *
+             * A failed nextIfNull() would physically advance token-based
+             * parsers such as Jackson and force all following reads through
+             * their prefetched path.
+             *
+             * Null handling is therefore delegated to the target-specific
+             * operation below.
+             */
+
+            if (boxed == Object.class) {
+                return reader.readRawNode();
             }
 
-//            if (nodeBoxed == String.class) {
-//                return reader.nextString();
-//            }
-//            if (nodeBoxed == Integer.class) {
-//                return reader.nextInt();
-//            }
-//            if (nodeBoxed == Long.class) {
-//                return reader.nextLong();
-//            }
-//            if (nodeBoxed == Double.class) {
-//                return reader.nextDouble();
-//            }
-//            if (nodeBoxed == Float.class) {
-//                return reader.nextFloat();
-//            }
-//            if (nodeBoxed == Boolean.class) {
-//                return reader.nextBoolean();
-//            }
-//            if (nodeBoxed == Short.class) {
-//                return reader.nextShort();
-//            }
-//            if (nodeBoxed == Byte.class) {
-//                return reader.nextByte();
-//            }
-//            if (nodeBoxed == Character.class) {
-//                return reader.nextChar();
-//            }
-//            if (nodeBoxed == Number.class) {
-//                return reader.nextNumber();
-//            }
-//            if (nodeBoxed == BigInteger.class) {
-//                return reader.nextBigInteger();
-//            }
-//            if (nodeBoxed == BigDecimal.class) {
-//                return reader.nextBigDecimal();
-//            }
-//            if (nodeBoxed.isEnum()) {
-//                return readEnum(reader, nodeBoxed);
-//            }
-//
-//            if (Map.class.isAssignableFrom(nodeBoxed)) {
-//                Type valueType = Types.resolveTypeArgument(nodeType, Map.class, 1);
-//                Class<?> valueBoxed = Types.rawBox(valueType);
-//                return readMap(reader, nodeBoxed, valueType, valueBoxed,
-//                        TypeRegistry.registerTypeInfo(valueBoxed), context);
-//            }
-//            if (List.class.isAssignableFrom(nodeBoxed)) {
-//
-//            }
-//            if (Set.class.isAssignableFrom(nodeBoxed)) {
-//
-//            }
-//            if (nodeBoxed.isArray()) {
-//
-//            }
-
-            StreamingReader.Token token = reader.currentToken();
-            switch (token) {
-                case START_OBJECT:
-                    return readObject(reader, nodeType, nodeBoxed, ti, context);
-                case START_ARRAY:
-                    return readArray(reader, nodeType, nodeBoxed, ti, context);
-                case STRING:
-                    return readString(reader, nodeBoxed, ti, context);
-                case NUMBER:
-                    return readNumber(reader, nodeBoxed, ti, context);
-                case BOOLEAN:
-                    return readBoolean(reader, nodeBoxed, ti, context);
-                case NULL:
-                    return readNull(reader, nodeBoxed, ti, context);
-                default:
-                    throw new BindingException("unexpected token '" + token + "'");
+            // Polymorphic resolution is uncommon and needs the complete source shape.
+            if (typeInfo.oneOfInfo != null) {
+                return readOneOf(reader, typeInfo.oneOfInfo, context);
             }
+
+            if (typeInfo.valueInfos != null) {
+                return readValueCodec(reader, typeInfo.requireValueInfo(context.defaultValueFormat(boxed)), context);
+            }
+
+            /*
+             * Scalars.
+             *
+             * Primitive targets use the non-null Value variant directly.
+             * Boxed/reference targets use the nullable variant.
+             */
+
+            if (boxed == String.class) {
+                return reader.readString();
+            }
+
+            if (boxed == Character.class) {
+                return reader.readChar();
+            }
+
+            if (boxed == Boolean.class) {
+                return reader.readBoolean();
+            }
+
+            if (boxed == Integer.class) {
+                return reader.readInt();
+            }
+
+            if (boxed == Long.class) {
+                return reader.readLong();
+            }
+
+            if (boxed == Short.class) {
+                return reader.readShort();
+            }
+
+            if (boxed == Byte.class) {
+                return reader.readByte();
+            }
+
+            if (boxed == Float.class) {
+                return reader.readFloat();
+            }
+
+            if (boxed == Double.class) {
+                return reader.readDouble();
+            }
+
+            if (boxed == Number.class) {
+                return reader.readNumber();
+            }
+
+            if (boxed == BigInteger.class) {
+                return reader.readBigInteger();
+            }
+
+            if (boxed == BigDecimal.class) {
+                return reader.readBigDecimal();
+            }
+
+            if (boxed.isEnum()) {
+                return readEnum(reader, boxed, context);
+            }
+
+            /*
+             * Object nodes.
+             */
+
+            if (Map.class.isAssignableFrom(boxed)) {
+                return readMap(reader, type, boxed, null, null, null, context);
+            }
+
+            if (boxed == JsonObject.class) {
+                Object raw = reader.readRawNode();
+                if (raw == null) return null;
+                return new JsonObject(castMap(raw));
+            }
+
+            /*
+             * Array nodes.
+             */
+
+            if (List.class.isAssignableFrom(boxed)) {
+                return readList(reader, type, boxed, null, null, null, context);
+            }
+
+            if (boxed == JsonArray.class) {
+                Object raw = reader.readRawNode();
+                if (raw == null) return null;
+                return new JsonArray(castList(raw));
+            }
+
+            if (JsonArray.class.isAssignableFrom(boxed)) {
+                return readJsonArray(reader, type, boxed, typeInfo, context);
+            }
+
+            if (Set.class.isAssignableFrom(boxed)) {
+                return readSet(reader, type, boxed, null, null, null, context);
+            }
+
+            if (boxed.isArray()) {
+                return readArray(reader, type, boxed, null, null, null, context);
+            }
+
+            /*
+             * POJO nodes.
+             */
+
+            PojoInfo pojoInfo = typeInfo.pojoInfo;
+            if (pojoInfo != null && !pojoInfo.isJajo) {
+                return readPojo(reader, type, boxed, pojoInfo, context);
+            }
+
+            /*
+             * Preserve null semantics even for otherwise unsupported
+             * reference targets.
+             */
+            if (reader.nextIfNull()) {
+                return null;
+            }
+
+            if (!boxed.isInterface() && Modifier.isAbstract(boxed.getModifiers())) {
+                throw new BindingException("cannot read object value into abstract type '" + boxed.getName() + "'");
+            }
+
+            throw new BindingException("cannot read value into type '" + boxed.getName() + "'");
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("failed to read streaming into '" + nodeType + "'", e);
+            throw new BindingException("failed to read streaming into '" + type + "'", e);
         }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    static Object readEnum(StreamingReader reader, Class<?> enumType) throws IOException {
-        switch (reader.currentToken()) {
-            case STRING:
-                String s = reader.nextStringValue();
-                return Enum.valueOf((Class<? extends Enum>) enumType, s);
-            case NUMBER:
-                int ordinal = reader.nextIntValue();
-                Enum[] values = ((Class<? extends Enum>) enumType).getEnumConstants();
-                if (ordinal < 0 || ordinal >= values.length) {
-                    throw new BindingException("enum ordinal '" + ordinal + "' out of range for type '" + enumType.getName() + "'");
+
+    private static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
+                                    RuntimeContext context) throws IOException {
+
+        /*
+         * readRawNode() is already nullable, so probing null beforehand
+         * would only create unnecessary lookahead state.
+         */
+        Object raw = reader.readRawNode();
+        if (raw == null) {
+            return null;
+        }
+
+        Class<?> target;
+        if (!oneOfInfo.hasDiscriminator) {
+            target = oneOfInfo.matchByJsonType(JsonType.of(raw));
+        } else {
+            if (oneOfInfo.scope != OneOf.Scope.CURRENT) {
+                throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + oneOfInfo.scope);
+            }
+            if (!JsonType.of(raw).isObject()) {
+                if (oneOfInfo.fallbackNull) {
+                    return null;
                 }
+                throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
+            }
+            Object discriminator = oneOfInfo.keyDiscriminator ? Nodes.getInObject(raw, oneOfInfo.key)
+                    : oneOfInfo.compiledPath.getNode(raw);
+            target = oneOfInfo.matchByWhen(discriminator);
+        }
+
+        if (target != null) {
+            return NodeMapper.convert(raw, target, false, context);
+        }
+
+        if (oneOfInfo.fallbackNull) {
+            return null;
+        }
+
+        throw new BindingException("oneOf mapping has no matching target for type '" + oneOfInfo.clazz.getName() + "'");
+    }
+
+
+    /**
+     * --------------------------------------------------------------
+     * Enum
+     * --------------------------------------------------------------
+     */
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object readEnum(StreamingReader reader, Class<?> enumType,
+                                  RuntimeContext context) throws IOException {
+        StreamingReader.Token token = reader.peekToken();
+        if (token == StreamingReader.Token.NULL) {
+            return null;
+        }
+
+        if (token == StreamingReader.Token.STRING) {
+            return Enum.valueOf((Class<? extends Enum>) enumType, reader.readString());
+        }
+
+        if (token == StreamingReader.Token.NUMBER) {
+            int ordinal = reader.readIntValue();
+            Enum[] values = ((Class<? extends Enum>) enumType).getEnumConstants();
+            if (ordinal >= 0 && ordinal < values.length) {
                 return values[ordinal];
-            default:
-                throw new BindingException("cannot read enum '" + enumType.getName() + "' from token '" +
-                        reader.currentToken() + "'");
+            }
+            throw new BindingException("enum ordinal '" + ordinal + "' out of range for type '" + enumType.getName() + "'");
         }
+
+        throw new BindingException("cannot read enum '" + enumType.getName() + "' from token '" + token + "'");
     }
 
 
+    /**
+     * --------------------------------------------------------------
+     * ValueCodec
+     * --------------------------------------------------------------
+     */
 
-    public static Object readRawNode(StreamingReader reader) throws IOException {
-        switch (reader.currentToken()) {
-            case START_OBJECT:
-                return readRawObject(reader);
-            case START_ARRAY:
-                return readRawArray(reader);
-            case STRING:
-                return reader.nextStringValue();
-            case NUMBER:
-                return reader.nextNumber();
-            case BOOLEAN:
-                return reader.nextBoolean();
-            case NULL:
-                reader.nextNull();
+    public static Object readValueCodec(StreamingReader reader, ValueInfo valueInfo,
+                                        RuntimeContext context) throws IOException {
+        Class<?> raw = valueInfo.rawClazz;
+
+        /*
+         * Use nullable read APIs directly instead of probing null first.
+         *
+         * This preserves backend fused read paths for non-null scalar
+         * values.
+         */
+
+        if (raw == String.class) {
+            return valueInfo.rawToValue(reader.readString());
+        }
+
+        if (raw == Boolean.class) {
+            return valueInfo.rawToValue(reader.readBoolean());
+        }
+
+        if (raw == Integer.class) {
+            return valueInfo.rawToValue(reader.readInt());
+        }
+
+        if (raw == Long.class) {
+            return valueInfo.rawToValue(reader.readLong());
+        }
+
+        if (raw == Double.class) {
+            return valueInfo.rawToValue(reader.readDouble());
+        }
+
+        if (raw == Float.class) {
+            return valueInfo.rawToValue(reader.readFloat());
+        }
+
+        if (raw == Short.class) {
+            return valueInfo.rawToValue(reader.readShort());
+        }
+
+        if (raw == Byte.class) {
+            return valueInfo.rawToValue(reader.readByte());
+        }
+
+        if (raw == BigInteger.class) {
+            return valueInfo.rawToValue(reader.readBigInteger());
+        }
+
+        if (raw == BigDecimal.class) {
+            return valueInfo.rawToValue(reader.readBigDecimal());
+        }
+
+        if (raw == Number.class) {
+            return valueInfo.rawToValue(reader.readNumber());
+        }
+
+        if (raw == Map.class) {
+            Object value = reader.readRawNode();
+            if (value == null) {
+                return valueInfo.rawToValue(null);
+            }
+            return valueInfo.rawToValue(castMap(value));
+        }
+
+        if (raw == List.class) {
+            Object value = reader.readRawNode();
+            if (value == null) {
+                return valueInfo.rawToValue(null);
+            }
+            return valueInfo.rawToValue(castList(value));
+        }
+
+        throw new BindingException("cannot read value with ValueCodec into type '" + raw.getName() + "'");
+    }
+
+    /**
+     * --------------------------------------------------------------
+     * POJO
+     * --------------------------------------------------------------
+     */
+
+    public static Object readPojo(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+                                   RuntimeContext context) throws IOException {
+        /*
+         * Creator/parent-discriminator POJOs need streaming access to the
+         * object members, so consume START_OBJECT here.
+         */
+        if (pojoInfo.hasParentScopeOneOf || !pojoInfo.creatorInfo.hasNoArgsCreator()) {
+            if (reader.nextIfNull()) {
                 return null;
-            default:
-                throw new BindingException("unexpected token '" + reader.currentToken() + "'");
-        }
-    }
-
-
-    static Map<String, Object> readRawObject(StreamingReader reader) throws IOException {
-        Map<String, Object> map = new LinkedHashMap<>();
-        reader.startObject();
-        while (!reader.nextIfObjectEnd()) {
-            String key = reader.nextName();
-            Object value = readRawNode(reader);
-            map.put(key, value);
-        }
-        return map;
-    }
-
-    static List<Object> readRawArray(StreamingReader reader) throws IOException {
-        List<Object> list = new ArrayList<>();
-        reader.startArray();
-        while (!reader.nextIfArrayEnd()) {
-            Object value = readRawNode(reader);
-            list.add(value);
-        }
-        return list;
-    }
-
-    /**
-     * Reads null token and decodes via value codec when needed.
-     */
-    static Object readNull(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                           RuntimeContext context) throws IOException {
-        reader.nextNull();
-        return null;
-    }
-
-    /**
-     * Reads boolean token into target type.
-     */
-    static Object readBoolean(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                              RuntimeContext context) throws IOException {
-        if (nodeBoxed == Boolean.class) {
-            return reader.nextBooleanValue();
-        }
-
-        if (ti.isNodeValue()) {
-            String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vi = ti.requireValueInfo(valueFormat);
-            Boolean raw = reader.nextBooleanValue();
-            return vi.rawToValue(raw);
-        }
-        throw new BindingException("cannot read boolean value into type '" + nodeBoxed + "'");
-    }
-
-    /**
-     * Reads number token into target numeric or codec type.
-     */
-    static Object readNumber(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                             RuntimeContext context) throws IOException {
-        if (nodeBoxed == Number.class) {
-            return reader.nextNumber();
-        }
-        if (nodeBoxed == Integer.class) return reader.nextIntValue();
-        if (nodeBoxed == Long.class) return reader.nextLongValue();
-        if (nodeBoxed == Float.class) return reader.nextFloatValue();
-        if (nodeBoxed == Double.class) return reader.nextDoubleValue();
-        if (nodeBoxed == Short.class) return reader.nextShortValue();
-        if (nodeBoxed == Byte.class) return reader.nextByteValue();
-        if (nodeBoxed == BigInteger.class) return reader.nextBigInteger();
-        if (nodeBoxed == BigDecimal.class) return reader.nextBigDecimal();
-        if (nodeBoxed.isEnum()) {
-            int ordinal = reader.nextIntValue();
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            Enum[] values = ((Class<? extends Enum>) nodeBoxed).getEnumConstants();
-            if (ordinal < 0 || ordinal >= values.length) {
-                throw new BindingException("enum ordinal '" + ordinal + "' out of range for type '" + nodeBoxed.getName() + "'");
             }
-            return values[ordinal];
+            if (!reader.nextIfObjectStart()) {
+                throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
+                        type.getTypeName() + "'");
+            }
+            return readParentOneOfPojo(reader, type, boxed, pojoInfo, context);
         }
 
-        if (ti.isNodeValue()) {
-            String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vi = ti.requireValueInfo(valueFormat);
-            Number n = reader.nextNumber();
-            return vi.rawToValue(n);
+        /*
+         * Dynamic objects remain a raw fallback because property names
+         * themselves are data.
+         *
+         * Do not pre-consume START_OBJECT here: readRawNode() owns the
+         * complete node.
+         */
+        if (pojoInfo.isJojo) {
+            Object raw = reader.readRawNode();
+            if (raw == null) {
+                return null;
+            }
+            return NodeMapper.convert(raw, type, false, context);
         }
-        throw new BindingException("cannot read number value into type '" + nodeBoxed + "'");
+
+        /*
+         * Fast non-null path.
+         */
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        if (!reader.nextIfObjectStart()) {
+            throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
+                    type.getTypeName() + "'");
+        }
+
+        Object pojo = pojoInfo.creatorInfo.newPojoNoArgs();
+        PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
+        NameMatcher matcher = reader.nameMatcher(pojoInfo);
+
+        int index;
+        while ((index = reader.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
+            if (index >= 0) {
+                propertyReaders[index].read(reader, pojo, type, boxed, context);
+            } else {
+                reader.skipNode();
+            }
+        }
+
+        return pojo;
+
+//        /*
+//         * String-name fallback for backends without a prepared matcher.
+//         */
+//        String name;
+//        while ((name = reader.nextName()) != null) {
+//            PropertyInfo property = pojoInfo.propertyLookup.get(name);
+//            if (property == null || !property.writable) {
+//                reader.skipNode();
+//                continue;
+//            }
+//
+//            Object value = readProperty(reader, property, type, boxed, null, context);
+//            property.invokeSetter(pojo, value);
+//        }
+//
+//        return pojo;
     }
+
 
     /**
-     * Reads string token into target scalar or codec type.
+     * Reads a POJO whose object start has already been consumed.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    static Object readString(StreamingReader reader, Class<?> nodeBoxed, TypeInfo ti,
-                             RuntimeContext context) throws IOException {
-        if (nodeBoxed == String.class) {
-            return reader.nextStringValue();
-        }
-        if (nodeBoxed == Character.class) {
-            String s = reader.nextStringValue();
-            return !s.isEmpty() ? s.charAt(0) : null;
-        }
-        if (nodeBoxed.isEnum()) {
-            String s = reader.nextStringValue();
-            return Enum.valueOf((Class<? extends Enum>) nodeBoxed, s);
-        }
-        if (ti.isNodeValue()) {
-            String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vi = ti.requireValueInfo(valueFormat);
-            String raw = reader.nextStringValue();
-            return vi.rawToValue(raw);
-        }
-        throw new BindingException("cannot read string value into type '" + nodeBoxed + "'");
-    }
+    public static Object readParentOneOfPojo(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+                                             RuntimeContext context) throws IOException {
 
-    /*
-     * --------------------------------------------------------------
-     * Read Objects
-     * --------------------------------------------------------------
-     */
+        CreatorInfo creator = pojoInfo.creatorInfo;
+        CreatorState state = new CreatorState(creator);
 
-    /**
-     * Reads an object node into a Map, JsonObject, or POJO target.
-     */
-    static Object readObject(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
-                             RuntimeContext context) throws IOException {
-        if (Map.class.isAssignableFrom(nodeBoxed)) {
-            Type valueType = Types.resolveTypeArgument(nodeType, Map.class, 1);
-            Class<?> valueClazz = Types.rawBox(valueType);
-            return readMap(reader, nodeBoxed, valueType, valueClazz,
-                    TypeRegistry.registerTypeInfo(valueClazz), context);
-        }
+        PropertyInfo deferred = null;
+        Object deferredRaw = null;
+        String parentKey = null;
+        Object parentValue = UNSET;
 
-        if (nodeBoxed == JsonObject.class) {
-            return new JsonObject(readRawObject(reader));
-        }
+        String name;
+        while ((name = reader.nextName()) != null) {
 
-        if (!nodeBoxed.isInterface() && Modifier.isAbstract(nodeBoxed.getModifiers())) {
-            throw new BindingException("cannot read object value into abstract type '" + nodeBoxed.getName() + "'");
-        }
+            /*
+             * Creator arguments have priority over ordinary properties.
+             */
+            int argIndex = creator.getArgIndexOrAlias(name);
+            if (argIndex >= 0) {
+                Type argType = Types.resolveMemberType(type, boxed, creator.argTypes[argIndex]);
+                Class<?> argBoxed = Types.rawBox(argType);
+                ValueInfo codec = creator.argValueCodecs[argIndex];
 
-        if (ti.isNodeValue()) {
-            String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vi = ti.requireValueInfo(valueFormat);
-            Map<String, Object> map = readRawObject(reader);
-            return vi.rawToValue(map);
-        }
-
-        PojoInfo pi = ti.pojoInfo;
-        if (pi != null && !pi.isJajo) {
-            return readPojo(reader, nodeType, nodeBoxed, pi, context);
-        }
-
-        throw new BindingException("cannot read object value into type '" + nodeBoxed + "'");
-    }
-
-
-    static Object readPojo(StreamingReader reader, Type pojoType, Class<?> pojoBoxed,
-                           PojoInfo pi, RuntimeContext context) throws IOException {
-        CreatorInfo ci = pi.creatorInfo;
-        boolean hasParentOneOf = pi.hasParentScopeOneOf;
-
-        // Fast path: no-args POJO + no parent-scope OneOf
-        if (!hasParentOneOf && ci.hasNoArgsCreator()
-                && (ci.argNames == null || ci.argNames.length == 0)) {
-
-            Object pojo = ci.newPojoNoArgs();
-            Map<String, Object> dynamicMap = null;
-
-            reader.startObject();
-            while (!reader.nextIfObjectEnd()) {
-                String key = reader.nextName();
-                PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
-                if (fi != null) {
-                    fi.binder.bind(reader, pojo, pojoType, pojoBoxed, context);
-                    continue;
+                Object value = codec == null
+                        ? readNode(reader, argType, argBoxed, TypeRegistry.registerTypeInfo(argBoxed), context)
+                        : readValueCodec(reader, codec, context);
+                state.acceptCtorArg(argIndex, value);
+                if (parentKey != null && parentKey.equals(name)) {
+                    parentValue = value;
                 }
+                continue;
+            }
 
-                if (pi.isJojo && pi.readDynamic) {
-                    if (dynamicMap == null) {
-                        dynamicMap = new LinkedHashMap<>();
+            /*
+             * Unknown property.
+             */
+            PropertyInfo property = pojoInfo.propertyLookup.get(name);
+            if (property == null) {
+                if (pojoInfo.isJojo && pojoInfo.readDynamic) {
+                    Object value = reader.readRawNode();
+                    state.acceptDynamic(name, value);
+                    if (parentKey != null && parentKey.equals(name)) {
+                        parentValue = value;
                     }
-                    dynamicMap.put(key, readRawNode(reader));
                     continue;
                 }
-
-                reader.skipNext();
+                reader.skipNode();
+                continue;
             }
 
-            if (pi.isJojo) {
-                InternalAccess.dynamicProperties((JsonObject) pojo, dynamicMap);
+            /*
+             * Parent-scope OneOf property.
+             */
+            OneOfInfo oneOfInfo = property.oneOfInfo;
+            if (oneOfInfo != null && oneOfInfo.scope == OneOf.Scope.PARENT) {
+                if (!oneOfInfo.path.isEmpty()) {
+                    throw new BindingException("oneOf scope=PARENT does not support path discriminator");
+                }
+
+                if (parentKey == null) {
+                    parentKey = oneOfInfo.key;
+                } else if (!parentKey.equals(oneOfInfo.key)) {
+                    throw new BindingException("at most one OneOf parent discriminator key is supported per class");
+                }
+
+                Class<?> target = oneOfInfo.matchByWhen(parentValue == UNSET ? null : parentValue);
+                if (target != null) {
+                    Object value = readNode(reader, target, context);
+                    if (state.isCreated()) {
+                        property.invokeSetterIfPresent(state.pojo(), value);
+                    } else {
+                        state.bufferProperty(property, value);
+                    }
+                } else if (deferred == null) {
+                    deferred = property;
+                    deferredRaw = reader.readRawNode();
+                } else {
+                    throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
+                }
+                continue;
             }
+
+            /*
+             * The discriminator property itself must be read even if it has
+             * no setter, because its value may still select a deferred OneOf.
+             */
+            if (parentKey != null && parentKey.equals(name)) {
+                Object value = readProperty(reader, property, type, boxed, context);
+                parentValue = value;
+
+                if (state.isCreated()) {
+                    property.invokeSetterIfPresent(state.pojo(), value);
+                } else {
+                    state.bufferProperty(property, value);
+                }
+                continue;
+            }
+
+            /*
+             * Ordinary property.
+             */
+            if (!property.writable) {
+                reader.skipNode();
+                continue;
+            }
+
+            Object value = readProperty(reader, property, type, boxed, context);
+            if (state.isCreated()) {
+                property.invokeSetter(state.pojo(), value);
+            } else {
+                state.bufferProperty(property, value);
+            }
+        }
+
+        Object pojo = state.finish();
+        if (deferred == null) {
             return pojo;
         }
 
+        OneOfInfo oneOfInfo = deferred.oneOfInfo;
 
-        // Slow path: Creator / parent-OneOf path
-        CreatorState state = new CreatorState(ci);
+        /*
+         * The discriminator may have been supplied by a constructor/default
+         * property value rather than appearing in the input stream.
+         */
+        if (parentValue == UNSET) {
+            PropertyInfo parentProperty = pojoInfo.propertyLookup.get(parentKey);
 
-        PropertyInfo deferredParentOneOfFi = null;
-        Object deferredParentOneOfRaw = null;
-        String parentOneOfKey = null;
-        Object parentOneOfValue = UNSET;
-
-        reader.startObject();
-        while (!reader.nextIfObjectEnd()) {
-            String key = reader.nextName();
-            int argIdx = ci.getArgIndexOrAlias(key);
-            if (argIdx >= 0) {
-                Type argType = Types.resolveMemberType(pojoType, pojoBoxed, ci.argTypes[argIdx]);
-                Class<?> argBoxed = Types.rawBox(argType);
-
-                TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
-                ValueInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null && argTi.isNodeValue()) {
-                    String valueFormat = context.defaultValueFormat(argBoxed);
-                    argVci = argTi.requireValueInfo(valueFormat);
-                }
-
-                Object argValue;
-                if (argTi.oneOfInfo == null && argVci != null) {
-                    argValue = readValueWithCodec(reader, argType, argBoxed, argVci, context);
-                } else {
-                    argValue = readNode(reader, argType, argBoxed, argTi, context);
-                }
-                state.acceptCtorArg(argIdx, argValue);
-
-                // The constructor argument itself may be the discriminator of a previously encountered PARENT OneOf field.
-                if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
-                    parentOneOfValue = argValue;
-                }
-                continue;
+            if (parentProperty != null && parentProperty.readable) {
+                parentValue = parentProperty.invokeGetter(pojo);
+            } else if (pojoInfo.isJojo) {
+                parentValue = ((JsonObject) pojo).getNode(parentKey);
             }
-
-            // Known field
-            PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
-            if (fi != null) {
-                OneOfInfo fieldOneOf = fi.oneOfInfo;
-
-                // PARENT-scope OneOf field
-                if (hasParentOneOf && fieldOneOf != null && fieldOneOf.scope == OneOf.Scope.PARENT) {
-                    if (!fieldOneOf.path.isEmpty()) {
-                        throw new BindingException("oneOf scope=PARENT does not support path discriminator");
-                    }
-
-                    String parentKey = fieldOneOf.key;
-                    if (parentOneOfKey == null) {
-                        parentOneOfKey = parentKey;
-                    } else if (!parentOneOfKey.equals(parentKey)) {
-                        throw new BindingException("at most one OneOf parent discriminator key is supported per class");
-                    }
-                    Class<?> targetClazz = fieldOneOf.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
-
-                    if (targetClazz != null) {
-                        Object value = readNode(reader, targetClazz, context);
-                        if (state.isCreated()) {
-                            fi.invokeSetterIfPresent(state.pojo(), value);
-                        } else {
-                            state.bufferProperty(fi, value);
-                        }
-                        continue;
-                    }
-
-                    // The discriminator has not appeared yet.
-                    if (deferredParentOneOfFi != null) {
-                        throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
-                    }
-                    deferredParentOneOfFi = fi;
-                    deferredParentOneOfRaw = readRawNode(reader);
-
-                    continue;
-                }
-
-                // Known PARENT discriminator field
-                if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
-                    Object value = readFieldValue(reader, fi, pojoType, pojoBoxed, context);
-                    parentOneOfValue = value;
-                    if (state.isCreated()) {
-                        fi.invokeSetter(state.pojo(), value);
-                    } else {
-                        state.bufferProperty(fi, value);
-                    }
-                    continue;
-                }
-
-                // POJO already exists
-                if (state.isCreated()) {
-                    fi.binder.bind(reader, state.pojo(), pojoType, pojoBoxed, context);
-                    continue;
-                }
-
-                // POJO does not exist yet
-                if (fi.hasSetter()) {
-                    Object value = readFieldValue(reader, fi, pojoType, pojoBoxed, context);
-                    state.bufferProperty(fi, value);
-                } else {
-                    reader.skipNext();
-                }
-
-                continue;
-            }
-
-            // Dynamic object property
-            if (pi.isJojo && pi.readDynamic) {
-                Object value = readRawNode(reader);
-                state.acceptDynamic(key, value);
-                if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
-                    parentOneOfValue = value;
-                }
-                continue;
-            }
-
-            // Unknown property
-            reader.skipNext();
-
-        }// while
-
-        Object pojo = state.finish();
-        if (deferredParentOneOfFi != null) {
-            OneOfInfo oneOfInfo = deferredParentOneOfFi.oneOfInfo;
-            String parentKey = oneOfInfo.key;
-            if (parentOneOfValue == UNSET) {
-                Object discriminator = null;
-                PropertyInfo parentFi = pi.aliasProperties != null
-                        ? pi.aliasProperties.get(parentKey) : pi.properties.get(parentKey);
-                if (parentFi != null) {
-                    discriminator = parentFi.invokeGetter(pojo);
-                } else if (pi.isJojo) {
-                    discriminator = ((JsonObject) pojo).getNode(parentKey);
-                }
-                if (discriminator != null) {
-                    parentOneOfValue = discriminator;
-                }
-            }
-
-            Class<?> targetClazz = oneOfInfo.matchByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
-            Object value;
-            if (targetClazz != null) {
-                value = NodeMapper.convert(deferredParentOneOfRaw, targetClazz, false, context);
-            } else if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
-                value = null;
-            } else {
-                throw new BindingException("oneOf discriminator has no matching mapping: key='" +
-                        oneOfInfo.key + "', value='" + (parentOneOfValue == UNSET ? null : parentOneOfValue) + "'");
-            }
-            deferredParentOneOfFi.invokeSetterIfPresent(pojo, value);
         }
 
+        Class<?> target = oneOfInfo.matchByWhen(parentValue == UNSET ? null : parentValue);
+        Object value;
+        if (target != null) {
+            value = NodeMapper.convert(deferredRaw, target, false, context);
+        } else if (oneOfInfo.fallbackNull) {
+            value = null;
+        } else {
+            throw new BindingException("oneOf discriminator has no matching mapping: key='" + oneOfInfo.key +
+                    "', value='" + (parentValue == UNSET ? null : parentValue) + "'");
+        }
+        deferred.invokeSetterIfPresent(pojo, value);
         return pojo;
     }
 
 
-
-    static Object readFieldValue(StreamingReader reader, PropertyInfo fi, Type ownerType,
-                                 Class<?> ownerBoxed, RuntimeContext context) throws IOException {
-        Type fieldType = fi.type;
-        Class<?> fieldBoxed = fi.boxed;
-        if (fi.genericDependent) {
-            fieldType = Types.resolveMemberType(ownerType, ownerBoxed, fi.type);
-            fieldBoxed = Types.rawBox(fieldType);
-        }
-
-        if (fi.oneOfInfo != null) {
-            return OneOfIO.readOneOf(reader, fi.oneOfInfo, context);
-        }
-
-        if (fi.valueInfo != null) {
-            return readValueWithCodec(reader, fieldType, fieldBoxed, fi.valueInfo, context);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(fieldBoxed);
-        return readNode(reader, fieldType, fieldBoxed, ti, context);
-    }
-
-
-    /*
+    /**
      * --------------------------------------------------------------
-     * Read Containers
+     * Property
      * --------------------------------------------------------------
      */
+
+    public static Object readProperty(StreamingReader reader, PropertyInfo property, Type ownerType, Class<?> ownerBoxed,
+                                      RuntimeContext context) throws IOException {
+        Type type = property.genericDependent
+                ? Types.resolveMemberType(ownerType, ownerBoxed, property.type)
+                : property.type;
+
+        Class<?> boxed = property.genericDependent
+                ? Types.rawBox(type)
+                : property.boxed;
+
+        if (property.oneOfInfo != null) {
+            return readOneOf(reader, property.oneOfInfo, context);
+        }
+
+        if (property.valueInfo != null) {
+            return readValueCodec(reader, property.valueInfo, context);
+        }
+
+        return readNode(reader, type, boxed, TypeRegistry.registerTypeInfo(boxed), context);
+    }
+
 
     /**
-     * Reads an array node into a List, JsonArray, Java array, or Set target.
+     * --------------------------------------------------------------
+     * Map
+     * --------------------------------------------------------------
      */
-    static Object readArray(StreamingReader reader, Type nodeType, Class<?> nodeBoxed, TypeInfo ti,
-                            RuntimeContext context) throws IOException {
-        if (List.class.isAssignableFrom(nodeBoxed)) {
-            Type elementType = Types.resolveTypeArgument(nodeType, List.class, 0);
-            Class<?> elementBoxed = Types.rawBox(elementType);
-            return readList(reader, nodeBoxed, elementType, elementBoxed,
-                    TypeRegistry.registerTypeInfo(elementBoxed), context);
-        }
-
-        if (nodeBoxed == JsonArray.class) {
-            return new JsonArray(readRawArray(reader));
-        }
-
-        if (Set.class.isAssignableFrom(nodeBoxed)) {
-            Type valueType = Types.resolveTypeArgument(nodeType, Set.class, 0);
-            Class<?> valueBoxed = Types.rawBox(valueType);
-            return readSet(reader, nodeBoxed, valueType, valueBoxed,
-                    TypeRegistry.registerTypeInfo(valueBoxed), context);
-        }
-
-        if (nodeBoxed.isArray()) {
-            Class<?> componentClazz = nodeBoxed.getComponentType();
-            Class<?> componentBoxed = Types.box(componentClazz);
-            return readJavaArray(reader, nodeBoxed, componentClazz, componentBoxed,
-                    TypeRegistry.registerTypeInfo(componentClazz), context);
-        }
-
-        if (JsonArray.class.isAssignableFrom(nodeBoxed)) {
-            JsonArray ja = (JsonArray) ti.pojoInfo.creatorInfo.forceNewPojo();
-            Class<?> elementClazz = ja.elementClass();
-            TypeInfo elementTi = TypeRegistry.registerTypeInfo(elementClazz);
-            reader.startArray();
-            while (!reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, elementClazz, elementClazz, elementTi, context);
-                ja.add(value);
-            }
-            return ja;
-        }
-
-        if (ti.isNodeValue()) {
-            String valueFormat = context.defaultValueFormat(nodeBoxed);
-            ValueInfo vi = ti.requireValueInfo(valueFormat);
-            List<Object> list = readRawArray(reader);
-            return vi.rawToValue(list);
-        }
-
-        throw new BindingException("cannot read array value into type '" + nodeBoxed + "'");
-    }
-
-    static Object readValueWithCodec(StreamingReader reader, Type valueType, Class<?> valueBoxed, ValueInfo valueInfo,
-                                     RuntimeContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return valueInfo.rawToValue(null);
-        }
-
-        Class<?> rawClazz = valueInfo.rawClazz;
-        if (rawClazz == Map.class) {
-            return valueInfo.rawToValue(readRawObject(reader));
-        }
-        if (rawClazz == List.class) {
-            return valueInfo.rawToValue(readRawArray(reader));
-        }
-        if (rawClazz == String.class) {
-            return valueInfo.rawToValue(reader.nextStringValue());
-        }
-        if (rawClazz == Boolean.class) {
-            return valueInfo.rawToValue(reader.nextBooleanValue());
-        }
-        if (rawClazz == Integer.class) {
-            return valueInfo.rawToValue(reader.nextIntValue());
-        }
-        if (rawClazz == Long.class) {
-            return valueInfo.rawToValue(reader.nextLongValue());
-        }
-        if (rawClazz == Double.class) {
-            return valueInfo.rawToValue(reader.nextDoubleValue());
-        }
-        if (rawClazz == Float.class) {
-            return valueInfo.rawToValue(reader.nextFloatValue());
-        }
-        if (rawClazz == Short.class) {
-            return valueInfo.rawToValue(reader.nextShortValue());
-        }
-        if (rawClazz == Byte.class) {
-            return valueInfo.rawToValue(reader.nextByteValue());
-        }
-        if (rawClazz == BigInteger.class) {
-            return valueInfo.rawToValue(reader.nextBigInteger());
-        }
-        if (rawClazz == BigDecimal.class) {
-            return valueInfo.rawToValue(reader.nextBigDecimal());
-        }
-        if (rawClazz == Number.class) {
-            return valueInfo.rawToValue(reader.nextNumber());
-        }
-        throw new BindingException("cannot read value with ValueCodec into type '" + rawClazz.getName() + "'");
-
-    }
-
-    static Map<String, Object> readMapOrNull(StreamingReader reader, Class<?> mapClazz, Type valueType, Class<?> valueBoxed,
-                                       TypeInfo ti, RuntimeContext context) throws IOException {
+    public static Map<String, Object> readMap(StreamingReader reader, Type type, Class<?> boxed,
+                                              Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
+                                              RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
-        return readMap(reader, mapClazz, valueType, valueBoxed, ti, context);
-    }
+        if (!reader.nextIfObjectStart()) {
+            throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
+                    type.getTypeName() + "'");
+        }
 
-    /**
-     * Reads an object node into a map with typed values.
-     */
-    static Map<String, Object> readMap(StreamingReader reader, Class<?> mapClazz, Type valueType, Class<?> valueBoxed,
-                                       TypeInfo ti, RuntimeContext context) throws IOException {
-        Map<String, Object> map = (mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class)
+        if (valueType == null) {
+            valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            valueBoxed = Types.rawBox(valueType);
+            valueTi = TypeRegistry.registerTypeInfo(valueBoxed);
+        }
+
+        Map<String, Object> map = boxed == Map.class || boxed == LinkedHashMap.class
                 ? new LinkedHashMap<>()
-                : TypeRegistry.newMapContainer(mapClazz, 0, false);
-        reader.startObject();
-        while (!reader.nextIfObjectEnd()) {
-            String key = reader.nextName();
-            Object value = readNode(reader, valueType, valueBoxed, ti, context);
-            map.put(key, value);
+                : TypeRegistry.newMapContainer(boxed, 0, false);
+        String name;
+        while ((name = reader.nextName()) != null) {
+            map.put(name, readNode(reader, valueType, valueBoxed, valueTi, context));
         }
         return map;
     }
 
 
-    static List<Object> readListOrNull(StreamingReader reader, Class<?> listClazz, Type elementType, Class<?> elementBoxed,
-                                 TypeInfo ti, RuntimeContext context) throws IOException {
+    /**
+     * --------------------------------------------------------------
+     * List
+     * --------------------------------------------------------------
+     */
+
+    public static List<Object> readList(StreamingReader reader, Type type, Class<?> boxed,
+                                        Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
+                                        RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
-        return readList(reader, listClazz, elementType, elementBoxed, ti, context);
-    }
+        if (!reader.nextIfArrayStart()) {
+            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+                    type.getTypeName() + "'");
+        }
 
-    /**
-     * Reads an array node into a list with typed elements.
-     */
-    static List<Object> readList(StreamingReader reader, Class<?> listClazz, Type elementType, Class<?> elementBoxed,
-                                 TypeInfo ti, RuntimeContext context) throws IOException {
-        List<Object> list = (listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class)
+        if (elementType == null) {
+            elementType = Types.resolveTypeArgument(type, List.class, 0);
+            elementBoxed = Types.rawBox(elementType);
+            elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
+        }
+
+        List<Object> list = boxed == List.class || boxed == ArrayList.class
                 ? new ArrayList<>()
-                : TypeRegistry.newListContainer(listClazz, 0, false);
-        reader.startArray();
+                : TypeRegistry.newListContainer(boxed, 0, false);
         while (!reader.nextIfArrayEnd()) {
-            Object value = readNode(reader, elementType, elementBoxed, ti, context);
-            list.add(value);
+            list.add(readNode(reader, elementType, elementBoxed, elementTi, context));
         }
         return list;
     }
 
+    /**
+     * --------------------------------------------------------------
+     * Set
+     * --------------------------------------------------------------
+     */
 
-    static Set<Object> readSetOrNull(StreamingReader reader, Class<?> setClazz, Type valueType, Class<?> valueClazz,
-                                     TypeInfo ti, RuntimeContext context) throws IOException {
+    public static Set<Object> readSet(StreamingReader reader, Type type, Class<?> boxed,
+                                      Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
+                                      RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
-        return readSet(reader, setClazz, valueType, valueClazz, ti, context);
-    }
+        if (!reader.nextIfArrayStart()) {
+            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+                    type.getTypeName() + "'");
+        }
 
-    /**
-     * Reads an array node into a set with typed elements.
-     */
-    static Set<Object> readSet(StreamingReader reader, Class<?> setClazz, Type valueType, Class<?> valueClazz,
-                               TypeInfo ti, RuntimeContext context) throws IOException {
-        Set<Object> set = (setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class)
+        if (elementType == null) {
+            elementType = Types.resolveTypeArgument(type, Set.class, 0);
+            elementBoxed = Types.rawBox(elementType);
+            elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
+        }
+
+        Set<Object> set = boxed == Set.class || boxed == LinkedHashSet.class
                 ? new LinkedHashSet<>()
-                : TypeRegistry.newSetContainer(setClazz, 0, false);
-        reader.startArray();
+                : TypeRegistry.newSetContainer(boxed, 0, false);
         while (!reader.nextIfArrayEnd()) {
-            Object value = readNode(reader, valueType, valueClazz, ti, context);
+            Object value = readNode(reader, elementType, elementBoxed, elementTi, context);
             set.add(value);
         }
         return set;
     }
 
-    static Object readJavaArrayOrNull(StreamingReader reader, Class<?> arrClazz, Class<?> componentClazz, Class<?> componentBoxed,
-                                      TypeInfo ti, RuntimeContext context) throws IOException {
+    /**
+     * --------------------------------------------------------------
+     * Java Array
+     * --------------------------------------------------------------
+     */
+
+    public static Object readArray(StreamingReader reader, Type type, Class<?> boxed,
+                                      Type componentType, Class<?> componentBoxed, TypeInfo componentTi,
+                                      RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
-        return readJavaArray(reader, arrClazz, componentClazz, componentBoxed, ti, context);
-    }
+        if (!reader.nextIfArrayStart()) {
+            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+                    type.getTypeName() + "'");
+        }
 
-    @SuppressWarnings("SuspiciousSystemArraycopy")
-    static Object readJavaArray(StreamingReader reader, Class<?> arrClazz, Class<?> componentClazz, Class<?> componentBoxed,
-                                TypeInfo ti, RuntimeContext context) throws IOException {
+        if (componentType == null) {
+            componentType = boxed.getComponentType();
+            componentBoxed = Types.box(componentType.getClass());
+            componentTi = TypeRegistry.registerTypeInfo(componentBoxed);
+        }
+
         Object array = null;
         int size = 0;
-        reader.startArray();
         while (!reader.nextIfArrayEnd()) {
             if (array == null) {
-                array = Array.newInstance(componentClazz, 8);
+                array = Array.newInstance(componentBoxed, 8);
             } else if (size == Array.getLength(array)) {
-                int capacity = size << 1;
-                Object expanded = Array.newInstance(componentClazz, capacity);
+                Object expanded = Array.newInstance(componentBoxed, size << 1);
                 System.arraycopy(array, 0, expanded, 0, size);
                 array = expanded;
             }
-            Array.set(array, size++, readNode(reader, componentClazz, componentBoxed, ti, context));
+
+            Array.set(array, size++, readNode(reader, componentType, componentBoxed, componentTi, context));
         }
 
         if (array == null) {
-            return Array.newInstance(componentClazz, 0);
+            return Array.newInstance(componentBoxed, 0);
         }
+
         if (size == Array.getLength(array)) {
             return array;
         }
 
-        Object exact = Array.newInstance(componentClazz, size);
+        Object exact = Array.newInstance(componentBoxed, size);
         System.arraycopy(array, 0, exact, 0, size);
         return exact;
     }
 
 
-    /*
+    /**
+     * --------------------------------------------------------------
+     * JsonArray subclasses
+     * --------------------------------------------------------------
+     */
+
+    public static JsonArray readJsonArray(StreamingReader reader, Type type, Class<?> boxed, TypeInfo ti,
+                                          RuntimeContext context) throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        if (!reader.nextIfArrayStart()) {
+            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+                    type.getTypeName() + "'");
+        }
+        JsonArray array = (JsonArray) ti.pojoInfo.creatorInfo.forceNewPojo();
+        Class<?> element = array.elementClass();
+        TypeInfo elementInfo = TypeRegistry.registerTypeInfo(element);
+        while (!reader.nextIfArrayEnd()) {
+            Object value = readNode(reader, element, element, elementInfo, context);
+            array.add(value);
+        }
+        return array;
+    }
+
+
+    /**
+     * --------------------------------------------------------------
+     * Raw node validation
+     * --------------------------------------------------------------
+     */
+
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> castMap(Object value) {
+        if (value instanceof Map) {
+            return (Map<String, Object>) value;
+        }
+        throw new BindingException("cannot read non-object value as JsonObject");
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<Object> castList(Object value) {
+        if (value instanceof List) {
+            return (List<Object>) value;
+        }
+        throw new BindingException("cannot read non-array value as JsonArray");
+    }
+
+
+    /**
      * --------------------------------------------------------------
      * Write
      * --------------------------------------------------------------
      */
 
+    public static void writeNode(StreamingWriter writer, Object node,
+                                 RuntimeContext context) throws IOException {
+        Asserts.notNull(writer, "writer");
+        Asserts.notNull(context, "context");
 
-//    /**
-//     * Writes one OBNT value to the streaming writer using instance-level value formats.
-//     */
-//    public static void writeNode(StreamingWriter writer, Object node, RuntimeContext context) throws IOException {
-//        try {
-//            if (node == null) {
-//                writer.writeNull();
-//                return;
-//            }
-//
-//            if (node instanceof String) {
-//                writer.writeStringValue((String) node);
-//                return;
-//            }
-//            if (node instanceof Number) {
-//                writer.writeNumberValue((Number) node);
-//                return;
-//            }
-//            if (node instanceof Boolean) {
-//                writer.writeBooleanValue((Boolean) node);
-//                return;
-//            }
-//
-//            if (node instanceof Map) {
-//                writer.startObject();
-//                int cnt = 0;
-//                for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-//                    Object value = entry.getValue();
-//                    if (value == null && !context.includeNulls) continue;
-//                    if (cnt++ > 0) writer.separateProperty();
-//                    String key = entry.getKey().toString();
-//                    writer.writeName(key);
-//                    writeNode(writer, value, context);
-//                }
-//                writer.endObject();
-//                return;
-//            }
-//
-//            if (node instanceof List) {
-//                writer.startArray();
-//                List<?> list = (List<?>) node;
-//                if (list instanceof RandomAccess) {
-//                    for (int i = 0, size = list.size(); i < size; i++) {
-//                        if (i > 0) writer.separateElement();
-//                        writeNode(writer, list.get(i), context);
-//                    }
-//                } else {
-//                    boolean first = true;
-//                    for (Object value : list) {
-//                        if (first) {
-//                            first = false;
-//                        } else {
-//                            writer.separateElement();
-//                        }
-//                        writeNode(writer, value, context);
-//                    }
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//
-//            Class<?> rawClazz = node.getClass();
-//            if (rawClazz == JsonObject.class) {
-//                writer.startObject();
-//                int cnt = 0;
-//                for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
-//                    Object value = entry.getValue();
-//                    if (value == null && !context.includeNulls) continue;
-//                    if (cnt++ > 0) writer.separateProperty();
-//                    writer.writeName(entry.getKey());
-//                    writeNode(writer, value, context);
-//                }
-//                writer.endObject();
-//                return;
-//            }
-//
-//            if (node instanceof JsonArray) {
-//                writer.startArray();
-//                JsonArray ja = (JsonArray) node;
-//                for (int i = 0, len = ja.size(); i < len; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writeNode(writer, ja.getNode(i), context);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//
-//            if (rawClazz == boolean[].class) {
-//                writer.startArray();
-//                boolean[] array = (boolean[]) node;
-//                for (int i = 0; i < array.length; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writer.writeBooleanValue(array[i]);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//            if (rawClazz == byte[].class) {
-//                writer.startArray();
-//                byte[] array = (byte[]) node;
-//                for (int i = 0; i < array.length; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writer.writeByteValue(array[i]);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//            if (rawClazz == short[].class) {
-//                writer.startArray();
-//                short[] array = (short[]) node;
-//                for (int i = 0; i < array.length; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writer.writeShortValue(array[i]);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//            if (rawClazz == int[].class) {
-//                writer.startArray();
-//                int[] array = (int[]) node;
-//                for (int i = 0; i < array.length; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writer.writeIntValue(array[i]);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//            if (rawClazz == long[].class) {
-//                writer.startArray();
-//                long[] array = (long[]) node;
-//                for (int i = 0; i < array.length; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writer.writeLongValue(array[i]);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//            if (rawClazz == float[].class) {
-//                writer.startArray();
-//                float[] array = (float[]) node;
-//                for (int i = 0; i < array.length; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writer.writeFloatValue(array[i]);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//            if (rawClazz == double[].class) {
-//                writer.startArray();
-//                double[] array = (double[]) node;
-//                for (int i = 0; i < array.length; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writer.writeDoubleValue(array[i]);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//            if (node instanceof Object[]) {
-//                Object[] array = (Object[]) node;
-//                writer.startArray();
-//                for (int i = 0, len = array.length; i < len; i++) {
-//                    if (i > 0) writer.separateElement();
-//                    writeNode(writer, array[i], context);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//
-//            if (node instanceof Set) {
-//                writer.startArray();
-//                boolean veryStart = true;
-//                for (Object v : (Set<?>) node) {
-//                    if (veryStart) veryStart = false;
-//                    else writer.separateElement();
-//                    writeNode(writer, v, context);
-//                }
-//                writer.endArray();
-//                return;
-//            }
-//
-//            if (node instanceof Character) {
-//                writer.writeCharValue((Character) node);
-//                return;
-//            }
-//            if (node instanceof Enum) {
-//                writer.writeStringValue(((Enum<?>) node).name());
-//                return;
-//            }
-//
-//            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-//            String valueFormat = context.defaultValueFormat(rawClazz);
-//            NodeValueInfo vi = ti.getNodeValueInfo(valueFormat);
-//            if (vi == null) {
-//                vi = TypeRegistry.resolveValueCodecForRuntimeClass(rawClazz, valueFormat);
-//            }
-//            if (vi != null) {
-//                Object raw = vi.valueToRaw(node);
-//                writeNode(writer, raw, context);
-//                return;
-//            }
-//
-//            PojoInfo pi = ti.pojoInfo;
-//            if (pi != null) {
-//                writePojo(writer, node, pi, context);
-//                return;
-//            }
-//            throw new BindingException("unsupported node type '" + Types.name(node) + "'");
-//
-//        } catch (BindingException e) {
-//            throw e;
-//        } catch (Exception e) {
-//            throw new BindingException("failed to write node of type '" + Types.name(node) + "'", null, e);
-//        }
-//    }
-
-    /**
-     * Writes one OBNT value, preserving object and array traversal in the
-     * streaming writer rather than materializing an intermediate object node.
-     */
-    public static void writeNode(StreamingWriter writer, Object node, RuntimeContext context) throws IOException {
         try {
-            if (node == null) {
-                writer.writeNull();
-                return;
-            }
-
-            // Value nodes
-            if (node instanceof String) {
-                writer.writeStringValue((String) node);
-                return;
-            }
-            if (node instanceof Number) {
-                writer.writeNumberValue((Number) node);
-                return;
-            }
-            if (node instanceof Boolean) {
-                writer.writeBooleanValue((Boolean) node);
-                return;
-            }
-            if (node instanceof Character) {
-                writer.writeCharValue((Character) node);
-                return;
-            }
-            if (node instanceof Enum) {
-                writer.writeStringValue(((Enum<?>) node).name());
-                return;
-            }
-
-            // Object and array nodes
-            if (node instanceof Map) {
-                writeMap(writer, (Map<?, ?>) node, context);
-                return;
-            }
-            if (node instanceof List) {
-                writeList(writer, (List<?>) node, context);
-                return;
-            }
-
-            Class<?> rawClazz = node.getClass();
-
-            if (rawClazz == JsonObject.class) {
-                writeJsonObject(writer, (JsonObject) node, context);
-                return;
-            }
-            if (node instanceof JsonArray) {
-                writeJsonArray(writer, (JsonArray) node, context);
-                return;
-            }
-            if (node instanceof Set) {
-                writeSet(writer, (Set<?>) node, context);
-                return;
-            }
-
-            // Array nodes
-            if (rawClazz.isArray()) {
-                writeArray(writer, node, rawClazz, context);
-                return;
-            }
-
-            // Registered value and object nodes
-            TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-
-            if (ti.isNodeValue()) {
-                String valueFormat = context.defaultValueFormat(rawClazz);
-                ValueInfo info = ti.requireValueInfo(valueFormat);
-                writeNode(writer, info.valueToRaw(node), context);
-                return;
-            }
-
-            PojoInfo pi = ti.pojoInfo;
-            if (pi != null) {
-                writePojo(writer, node, pi, context);
-                return;
-            }
-
-            throw new BindingException("unsupported node type '" + Types.name(node) + "'");
-
-        } catch (BindingException e) {
+            _writeNode(writer, node, context);
+        } catch (BindingException | IOException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException(
-                    "failed to write node of type '" + Types.name(node) + "'", null, e);
+            throw new BindingException("failed to write node of type '" + Types.name(node) + "'", e);
         }
     }
 
+
+    private static void _writeNode(StreamingWriter writer, Object node,
+                                   RuntimeContext context) throws IOException {
+        if (node == null) {
+            writer.writeNull();
+            return;
+        }
+
+        Class<?> clazz = node.getClass();
+        if (clazz == String.class) {
+            writer.writeStringValue((String) node);
+            return;
+        }
+        if (clazz == Boolean.class) {
+            writer.writeBooleanValue((Boolean) node);
+            return;
+        }
+        if (clazz == Integer.class) {
+            writer.writeIntValue((Integer) node);
+            return;
+        }
+        if (clazz == Long.class) {
+            writer.writeLongValue((Long) node);
+            return;
+        }
+        if (clazz == Double.class) {
+            writer.writeDoubleValue((Double) node);
+            return;
+        }
+        if (clazz == Float.class) {
+            writer.writeFloatValue((Float) node);
+            return;
+        }
+        if (clazz == Short.class) {
+            writer.writeShortValue((Short) node);
+            return;
+        }
+        if (clazz == Byte.class) {
+            writer.writeByteValue((Byte) node);
+            return;
+        }
+        if (clazz == BigInteger.class) {
+            writer.writeBigIntegerValue((BigInteger) node);
+            return;
+        }
+        if (clazz == BigDecimal.class) {
+            writer.writeBigDecimalValue((BigDecimal) node);
+            return;
+        }
+        if (node instanceof Number) {
+            writer.writeNumberValue((Number) node);
+            return;
+        }
+
+        if (clazz == Character.class) {
+            writer.writeCharValue((Character) node);
+            return;
+        }
+
+        if (node instanceof Enum) {
+            writer.writeStringValue(((Enum<?>) node).name());
+            return;
+        }
+
+
+        /*
+         * --------------------------------------------------------------
+         * Built-in object / array nodes
+         * --------------------------------------------------------------
+         */
+
+        if (node instanceof Map) {
+            writeMap(writer, (Map<?, ?>) node, context);
+            return;
+        }
+
+        if (node instanceof List) {
+            writeList(writer, (List<?>) node, context);
+            return;
+        }
+
+        /*
+         * Exact JsonObject only.
+         *
+         * A JsonObject subclass is a JOJO and must go through PojoInfo so
+         * declared properties are written before dynamic properties.
+         */
+        if (clazz == JsonObject.class) {
+            writeJsonObject(writer, (JsonObject) node, context);
+            return;
+        }
+
+        if (node instanceof JsonArray) {
+            writeJsonArray(writer, (JsonArray) node, context);
+            return;
+        }
+
+        if (node instanceof Set) {
+            writeSet(writer, (Set<?>) node, context);
+            return;
+        }
+
+        if (clazz.isArray()) {
+            writeArray(writer, node, clazz, context);
+            return;
+        }
+
+
+        /*
+         * --------------------------------------------------------------
+         * Registered nodes
+         * --------------------------------------------------------------
+         */
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+
+        /*
+         * External JSON tree.
+         *
+         * Do this before POJO fallback. An external JsonNode / JsonElement
+         * is already an OBNT tree and must not be reflected as a POJO.
+         */
+        if (ti.externalNode != null) {
+            writeExternalNode(writer, node, ti.externalNode, context);
+            return;
+        }
+
+        /*
+         * NodeValue / ValueCodec.
+         */
+        if (ti.valueInfos != null) {
+            String valueFormat = context.defaultValueFormat(clazz);
+            ValueInfo vi = ti.requireValueInfo(valueFormat);
+            _writeNode(writer, vi.valueToRaw(node), context);
+            return;
+        }
+
+        /*
+         * POJO / JOJO.
+         */
+        if (ti.pojoInfo != null) {
+            writePojo(writer, node, ti.pojoInfo, context);
+            return;
+        }
+
+        throw new BindingException("unsupported node type '" + Types.name(node) + "'");
+    }
+
+
     /*
      * --------------------------------------------------------------
-     * Write Containers
+     * Object nodes
      * --------------------------------------------------------------
      */
 
-    private static void writeMap(StreamingWriter writer, Map<?, ?> map,
-                                 RuntimeContext context) throws IOException {
+    public static void writeMap(StreamingWriter writer, Map<?, ?> map,
+                                RuntimeContext context) throws IOException {
         writer.startObject();
         int count = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -1151,41 +1018,16 @@ public final class StreamingIO {
             if (value == null && !context.includeNulls) {
                 continue;
             }
-            if (count++ > 0) {
-                writer.separateProperty();
-            }
-            writer.writeName(entry.getKey().toString());
-            writeNode(writer, value, context);
+            writer.writeName(entry.getKey().toString(), count > 0);
+            count++;
+            _writeNode(writer, value, context);
         }
         writer.endObject();
     }
 
-    private static void writeList(StreamingWriter writer, List<?> list,
-                                  RuntimeContext context) throws IOException {
-        writer.startArray();
-        if (list instanceof RandomAccess) {
-            for (int i = 0, size = list.size(); i < size; i++) {
-                if (i > 0) {
-                    writer.separateElement();
-                }
-                writeNode(writer, list.get(i), context);
-            }
-        } else {
-            boolean first = true;
-            for (Object value : list) {
-                if (first) {
-                    first = false;
-                } else {
-                    writer.separateElement();
-                }
-                writeNode(writer, value, context);
-            }
-        }
-        writer.endArray();
-    }
 
-    private static void writeJsonObject(StreamingWriter writer, JsonObject object,
-                                        RuntimeContext context) throws IOException {
+    public static void writeJsonObject(StreamingWriter writer, JsonObject object,
+                                       RuntimeContext context) throws IOException {
         writer.startObject();
         int count = 0;
         for (Map.Entry<String, Object> entry : object.entrySet()) {
@@ -1193,168 +1035,240 @@ public final class StreamingIO {
             if (value == null && !context.includeNulls) {
                 continue;
             }
-            if (count++ > 0) {
-                writer.separateProperty();
-            }
-            writer.writeName(entry.getKey());
-            writeNode(writer, value, context);
+            writer.writeName(entry.getKey(), count > 0);
+            count++;
+            _writeNode(writer, value, context);
         }
         writer.endObject();
     }
 
-    private static void writeJsonArray(StreamingWriter writer, JsonArray array,
-                                       RuntimeContext context) throws IOException {
+
+    /*
+     * --------------------------------------------------------------
+     * Array nodes
+     * --------------------------------------------------------------
+     */
+
+    public static void writeList(StreamingWriter writer, List<?> list,
+                                 RuntimeContext context) throws IOException {
+        writer.startArray();
+        if (list instanceof RandomAccess) {
+            for (int i = 0, size = list.size(); i < size; i++) {
+                if (i > 0) {
+                    writer.separateElement();
+                }
+                _writeNode(writer, list.get(i), context);
+            }
+        } else {
+            boolean separated = false;
+            for (Object value : list) {
+                if (separated) {
+                    writer.separateElement();
+                } else {
+                    separated = true;
+                }
+                _writeNode(writer, value, context);
+            }
+        }
+        writer.endArray();
+    }
+
+
+    public static void writeJsonArray(StreamingWriter writer, JsonArray array,
+                                      RuntimeContext context) throws IOException {
         writer.startArray();
         for (int i = 0, size = array.size(); i < size; i++) {
             if (i > 0) {
                 writer.separateElement();
             }
-            writeNode(writer, array.getNode(i), context);
+            _writeNode(writer, array.getNode(i), context);
         }
         writer.endArray();
     }
 
-    private static void writeSet(StreamingWriter writer, Set<?> set,
-                                 RuntimeContext context) throws IOException {
+
+    public static void writeSet(StreamingWriter writer, Set<?> set,
+                                RuntimeContext context) throws IOException {
         writer.startArray();
-        boolean first = true;
+        boolean separated = false;
         for (Object value : set) {
-            if (first) {
-                first = false;
-            } else {
+            if (separated) {
                 writer.separateElement();
+            } else {
+                separated = true;
             }
-            writeNode(writer, value, context);
+            _writeNode(writer, value, context);
         }
         writer.endArray();
     }
 
-    private static void writeArray(StreamingWriter writer, Object node, Class<?> rawClazz,
-                                      RuntimeContext context) throws IOException {
-        if (rawClazz == boolean[].class) {
+
+    /*
+     * --------------------------------------------------------------
+     * Java arrays
+     * --------------------------------------------------------------
+     */
+
+    public static void writeArray(StreamingWriter writer, Object node, Class<?> clazz,
+                                  RuntimeContext context) throws IOException {
+        writer.startArray();
+        if (clazz == boolean[].class) {
             boolean[] array = (boolean[]) node;
-            writer.startArray();
             for (int i = 0; i < array.length; i++) {
                 if (i > 0) writer.separateElement();
                 writer.writeBooleanValue(array[i]);
             }
-            writer.endArray();
-            return;
-        }
-
-        if (rawClazz == int[].class) {
-            int[] array = (int[]) node;
-            writer.startArray();
-            for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeIntValue(array[i]);
-            }
-            writer.endArray();
-            return;
-        }
-
-        if (rawClazz == long[].class) {
-            long[] array = (long[]) node;
-            writer.startArray();
-            for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeLongValue(array[i]);
-            }
-            writer.endArray();
-            return;
-        }
-
-        if (rawClazz == double[].class) {
-            double[] array = (double[]) node;
-            writer.startArray();
-            for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeDoubleValue(array[i]);
-            }
-            writer.endArray();
-            return;
-        }
-
-        if (rawClazz == float[].class) {
-            float[] array = (float[]) node;
-            writer.startArray();
-            for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeFloatValue(array[i]);
-            }
-            writer.endArray();
-            return;
-        }
-
-        if (rawClazz == byte[].class) {
+        } else if (clazz == byte[].class) {
             byte[] array = (byte[]) node;
-            writer.startArray();
             for (int i = 0; i < array.length; i++) {
                 if (i > 0) writer.separateElement();
                 writer.writeByteValue(array[i]);
             }
-            writer.endArray();
-            return;
-        }
-
-        if (rawClazz == short[].class) {
+        } else if (clazz == short[].class) {
             short[] array = (short[]) node;
-            writer.startArray();
             for (int i = 0; i < array.length; i++) {
                 if (i > 0) writer.separateElement();
                 writer.writeShortValue(array[i]);
             }
-            writer.endArray();
-            return;
-        }
-
-        if (rawClazz == char[].class) {
+        } else if (clazz == int[].class) {
+            int[] array = (int[]) node;
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeIntValue(array[i]);
+            }
+        } else if (clazz == long[].class) {
+            long[] array = (long[]) node;
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeLongValue(array[i]);
+            }
+        } else if (clazz == float[].class) {
+            float[] array = (float[]) node;
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeFloatValue(array[i]);
+            }
+        } else if (clazz == double[].class) {
+            double[] array = (double[]) node;
+            for (int i = 0; i < array.length; i++) {
+                if (i > 0) writer.separateElement();
+                writer.writeDoubleValue(array[i]);
+            }
+        } else if (clazz == char[].class) {
             char[] array = (char[]) node;
-            writer.startArray();
             for (int i = 0; i < array.length; i++) {
                 if (i > 0) writer.separateElement();
                 writer.writeCharValue(array[i]);
             }
-            writer.endArray();
-            return;
-        }
-
-        if (node instanceof Object[]) {
+        } else {
             Object[] array = (Object[]) node;
-            writer.startArray();
-            for (int i = 0, len = array.length; i < len; i++) {
+            for (int i = 0; i < array.length; i++) {
                 if (i > 0) writer.separateElement();
-                writeNode(writer, array[i], context);
+                _writeNode(writer, array[i], context);
             }
-            writer.endArray();
-            return;
+        }
+        writer.endArray();
+    }
+
+
+    /*
+     * --------------------------------------------------------------
+     * External nodes
+     * --------------------------------------------------------------
+     */
+
+    public static void writeExternalNode(StreamingWriter writer, Object node, ExternalNode<Object> external,
+                                         RuntimeContext context) throws IOException {
+        JsonType type = external.jsonType(node);
+        switch (type) {
+            case OBJECT: {
+                writer.startObject();
+                int count = 0;
+                for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
+                    /*
+                     * External nodes represent an already materialized JSON tree.
+                     * Do not apply includeNulls filtering here.
+                     *
+                     * Native JSON null should normally be represented by a native
+                     * null node anyway, rather than Java null.
+                     */
+                    writer.writeName(entry.getKey(), count > 0);
+                    count++;
+                    _writeNode(writer, entry.getValue(), context);
+                }
+                writer.endObject();
+                return;
+            }
+            case ARRAY: {
+                writer.startArray();
+                Iterator<Object> it = external.iteratorInArray(node);
+                boolean separated = false;
+                while (it.hasNext()) {
+                    if (separated) {
+                        writer.separateElement();
+                    } else {
+                        separated = true;
+                    }
+                    _writeNode(writer, it.next(), context);
+                }
+                writer.endArray();
+                return;
+            }
+            case STRING:
+                writer.writeString(external.toString(node));
+                return;
+            case NUMBER:
+                writer.writeNumber(external.toNumber(node));
+                return;
+            case BOOLEAN:
+                writer.writeBoolean(external.toBoolean(node));
+                return;
+            case NULL:
+                writer.writeNull();
+                return;
+            default:
+                throw new BindingException("unsupported external node type '" + Types.name(node) + "'");
         }
     }
 
 
-    static void writePojo(StreamingWriter writer, Object node, PojoInfo pi,
-                          RuntimeContext context) throws IOException {
+    /*
+     * --------------------------------------------------------------
+     * POJO / JOJO
+     * --------------------------------------------------------------
+     */
+
+    public static void writePojo(StreamingWriter writer, Object node, PojoInfo pojoInfo,
+                                 RuntimeContext context) throws IOException {
         writer.startObject();
-        int cnt = 0;
-        PropertyWriter[] propertyWriters = pi.propertyWriters;
-        PreparedName[] preparedNames = writer.binder().getPreparedNames(node.getClass());
+        PropertyWriter[] propertyWriters = pojoInfo.propertyWriters;
+        CompiledName[] compiledNames = writer.compiledNames(pojoInfo);
+        int count = 0;
         for (int i = 0, len = propertyWriters.length; i < len; i++) {
-            cnt = propertyWriters[i].write(writer, preparedNames[i], node, context, cnt);
+            count = propertyWriters[i].write(writer, compiledNames[i], node, context, count);
         }
 
-        if (pi.isJojo && pi.writeDynamic) {
-            Map<String, Object> dynamicMap = InternalAccess.dynamicProperties((JsonObject) node);
-            if (dynamicMap != null) {
-                for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
+        /*
+         * JOJO dynamic properties come after declared properties.
+         */
+        if (pojoInfo.isJojo && pojoInfo.writeDynamic) {
+            Map<String, Object> dynamic = InternalAccess.dynamicProperties((JsonObject) node);
+            if (dynamic != null) {
+                for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
                     Object value = entry.getValue();
-                    if (value == null && !context.includeNulls) continue;
-                    if (cnt++ > 0) writer.separateProperty();
-                    writer.writeName(entry.getKey());
-                    writeNode(writer, value, context);
+                    if (value == null && !context.includeNulls) {
+                        continue;
+                    }
+
+                    writer.writeName(entry.getKey(), count > 0);
+                    count++;
+                    _writeNode(writer, value, context);
                 }
             }
         }
         writer.endObject();
     }
+
+
 
 }

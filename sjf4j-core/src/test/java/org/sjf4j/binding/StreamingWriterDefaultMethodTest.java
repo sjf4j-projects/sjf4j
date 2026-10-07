@@ -36,7 +36,7 @@ class StreamingWriterDefaultMethodTest {
         writer.writeBigInteger(null);
         writer.writeBigDecimal(BigDecimal.valueOf(9));
         writer.writeBigDecimal(null);
-        writer.writeName(new PreparedName.SimplePreparedName("prepared"));
+        writer.writeName(new CompiledName.SimplePreparedName("prepared"));
 
         assertEquals(List.of(
                 "string:text", "null",

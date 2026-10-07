@@ -1,7 +1,5 @@
 package org.sjf4j.node;
 
-import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,11 +10,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.RawToValue;
@@ -78,19 +74,19 @@ public class TypeRegistryTest {
         log.info("pi={}", pi);
         assertNotNull(pi);
         assertEquals(4, pi.propertyCount);
-        assertNotNull(pi.properties.get("name").getterHandle);
-        assertNotNull(pi.properties.get("name").setterHandle);
-        assertEquals(int.class, pi.properties.get("age").type);
-        assertEquals(JsonObject.class, pi.properties.get("info").type);
+        assertNotNull(pi.propertyLookup.get("name").getterHandle);
+        assertNotNull(pi.propertyLookup.get("name").setterHandle);
+        assertEquals(int.class, pi.propertyLookup.get("age").type);
+        assertEquals(JsonObject.class, pi.propertyLookup.get("info").type);
         assertEquals(new TypeReference<List<JsonObjectPersonFixture.Person>>(){}.getType(),
-                pi.properties.get("friends").type);
+                pi.propertyLookup.get("friends").type);
     }
 
     @Test
     public void testInheritedFieldSameKeyChildWins() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildSameKey.class);
-        assertNotNull(pi.properties.get("key"));
-        assertEquals(int.class, pi.properties.get("key").type);
+        assertNotNull(pi.propertyLookup.get("key"));
+        assertEquals(int.class, pi.propertyLookup.get("key").type);
 
         ChildSameKey pojo = Sjf4j.global().fromJson("{\"key\":123}", ChildSameKey.class);
         assertEquals(123, pojo.key);
@@ -135,7 +131,7 @@ public class TypeRegistryTest {
     public void testInvoke1() {
         Person p1 = new Person();
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(Person.class);
-        PropertyInfo fi = pi.properties.get("name");
+        PropertyInfo fi = pi.propertyLookup.get("name");
 
         fi.invokeSetter(p1, "hahaha");
         String name1 = (String) fi.invokeGetter(p1);

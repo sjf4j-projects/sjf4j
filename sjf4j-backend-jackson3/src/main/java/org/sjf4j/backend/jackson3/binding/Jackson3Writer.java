@@ -1,6 +1,6 @@
 package org.sjf4j.backend.jackson3.binding;
 
-import org.sjf4j.binding.PreparedName;
+import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
@@ -120,8 +120,8 @@ public final class Jackson3Writer extends StreamingWriter {
 
 
     @Override
-    public void writeName(PreparedName preparedName) throws IOException {
-        generator.writeName(((Jackson3Name) preparedName).serializedName);
+    public void writeName(CompiledName compiledName) throws IOException {
+        generator.writeName(((Jackson3Name) compiledName).serializedName);
     }
 
 

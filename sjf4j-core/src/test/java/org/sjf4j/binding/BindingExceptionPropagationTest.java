@@ -78,11 +78,11 @@ class BindingExceptionPropagationTest {
         PropertyWriter writer = PropertyWriter.create("value", int.class, Integer.class, getter, null, null, null);
 
         assertSame(failure, assertThrowsExactly(BindingException.class,
-                () -> reader.bind(new SimpleJsonReader(new StringReader("1")), accessor,
+                () -> reader.read(new SimpleJsonReader(new StringReader("1")), accessor,
                         Object.class, PrimitiveAccessor.class, RuntimeContext.EMPTY)));
         assertSame(failure, assertThrowsExactly(BindingException.class,
                 () -> writer.write(new SimpleJsonWriter(null, new StringWriter()),
-                        new PreparedName.SimplePreparedName("value"), accessor, RuntimeContext.EMPTY, 0)));
+                        new CompiledName.SimplePreparedName("value"), accessor, RuntimeContext.EMPTY, 0)));
     }
 
     public static Object throwCreator() {

@@ -1,5 +1,10 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.util.Asserts;
+
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
@@ -14,58 +19,37 @@ import java.math.BigInteger;
  * <p>The interface defines common structural semantics while allowing
  * implementations to provide backend-specific fast paths.</p>
  *
- * <p>Generated binders should prefer prepared {@link PreparedName}s,
+ * <p>Generated binders should prefer prepared {@link CompiledName}s,
  * primitive value methods, and property-value fused methods where possible.</p>
  */
 public abstract class StreamingWriter implements Closeable, Flushable {
 
-    /*
-     * --------------------------------------------------------------
-     * Prepared Property Names
-     * --------------------------------------------------------------
-     */
-    private final Binder<?, ?> binder;
+    protected final Backend backend;
 
-    protected StreamingWriter(Binder<?, ?> binder) {
-        this.binder = binder;
+    protected StreamingWriter(Backend backend) {
+        this.backend = Asserts.notNull(backend, "backend");
     }
 
-    public final Binder<?, ?> binder() {
-        return binder;
-    }
 
     /*
-     * --------------------------------------------------------------
      * Document
-     * --------------------------------------------------------------
      */
 
-    /**
-     * Prepares this writer to write one document.
-     */
-    public void startDocument() throws IOException {};
+    public void startDocument() throws IOException {
+    }
 
-    /**
-     * Completes the current document.
-     *
-     * <p>This method does not imply {@link #flush()} or {@link #close()}.</p>
-     */
-    public void endDocument() throws IOException {};
+    public void endDocument() throws IOException {
+    }
 
-    /**
-     * Transfers buffered output to {@code output}.
-     *
-     * <p>For implementations whose native writer is not backed by a
-     * {@link Writer} or {@link OutputStream}. The default implementation does nothing.</p>
-     */
-    public void flushTo(Writer output) throws IOException {}
-    public void flushTo(OutputStream output) throws IOException {}
+    public void flushTo(Writer output) throws IOException {
+    }
+
+    public void flushTo(OutputStream output) throws IOException {
+    }
 
 
     /*
-     * --------------------------------------------------------------
      * Structure
-     * --------------------------------------------------------------
      */
 
     public abstract void startObject() throws IOException;
@@ -76,44 +60,64 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
     public abstract void endArray() throws IOException;
 
-    public void separateProperty() throws IOException {};
+    protected void separateProperty() throws IOException {
+    }
 
-    public void separateElement() throws IOException {};
+    public void separateElement() throws IOException {
+    }
+
 
     /*
-     * --------------------------------------------------------------
-     * Property Names
-     * --------------------------------------------------------------
+     * Property name
      */
 
-    /**
-     * Writes an object property name.
-     */
     public abstract void writeName(String name) throws IOException;
 
+    public void writeName(String name, boolean separated) throws IOException {
+        if (separated) {
+            separateProperty();
+        }
+        writeName(name);
+    }
+
+    public final CompiledName[] compiledNames(PojoInfo pojoInfo) {
+        BackendCache cache = pojoInfo.backendCache(backend);
+        CompiledName[] compiledNames = cache.compiledNames;
+        if (compiledNames == null) {
+            PropertyInfo[] properties = pojoInfo.readableProperties;
+            compiledNames = new CompiledName[properties.length];
+            for (int i = 0; i < properties.length; i++) {
+                compiledNames[i] = createCompiledName(properties[i].name);
+            }
+            cache.compiledNames = compiledNames;
+        }
+        return compiledNames;
+    }
+
+    protected CompiledName createCompiledName(String name) {
+        return new CompiledName(name);
+    }
+
+    public void writeName(CompiledName name) throws IOException {
+        writeName(name.name());
+    }
+
+    public void writeName(CompiledName name, boolean separated) throws IOException {
+        if (separated) {
+            separateProperty();
+        }
+        writeName(name);
+    }
+
+
     /*
-     * --------------------------------------------------------------
-     * Null
-     * --------------------------------------------------------------
+     * Null / String
      */
 
     public abstract void writeNull() throws IOException;
 
-
-    /*
-     * --------------------------------------------------------------
-     * String
-     * --------------------------------------------------------------
-     */
-
-    /**
-     * Writes a non-null String value.
-     */
     public abstract void writeStringValue(String value) throws IOException;
 
-    /**
-     * Writes a nullable String value.
-     */
     public void writeString(String value) throws IOException {
         if (value == null) {
             writeNull();
@@ -124,9 +128,7 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
 
     /*
-     * --------------------------------------------------------------
-     * Primitive Values
-     * --------------------------------------------------------------
+     * Primitive
      */
 
     public abstract void writeLongValue(long value) throws IOException;
@@ -147,81 +149,54 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
 
     /*
-     * --------------------------------------------------------------
-     * Boxed Values
-     * --------------------------------------------------------------
+     * Boxed
      */
 
     public void writeLong(Long value) throws IOException {
-        if (value == null) {
-            writeNull();
-        } else {
-            writeLongValue(value);
-        }
+        if (value == null) writeNull();
+        else writeLongValue(value);
     }
 
     public void writeInt(Integer value) throws IOException {
-        if (value == null) {
-            writeNull();
-        } else {
-            writeIntValue(value);
-        }
+        if (value == null) writeNull();
+        else writeIntValue(value);
     }
 
     public void writeShort(Short value) throws IOException {
-        if (value == null) {
-            writeNull();
-        } else {
-            writeShortValue(value);
-        }
+        if (value == null) writeNull();
+        else writeShortValue(value);
     }
 
     public void writeByte(Byte value) throws IOException {
-        if (value == null) {
-            writeNull();
-        } else {
-            writeByteValue(value);
-        }
+        if (value == null) writeNull();
+        else writeByteValue(value);
     }
 
     public void writeDouble(Double value) throws IOException {
-        if (value == null) {
-            writeNull();
-        } else {
-            writeDoubleValue(value);
-        }
+        if (value == null) writeNull();
+        else writeDoubleValue(value);
     }
 
     public void writeFloat(Float value) throws IOException {
-        if (value == null) {
-            writeNull();
-        } else {
-            writeFloatValue(value);
-        }
+        if (value == null) writeNull();
+        else writeFloatValue(value);
     }
 
     public void writeBoolean(Boolean value) throws IOException {
-        if (value == null) {
-            writeNull();
-        } else {
-            writeBooleanValue(value);
-        }
+        if (value == null) writeNull();
+        else writeBooleanValue(value);
+    }
+
+    public void writeChar(Character value) throws IOException {
+        if (value == null) writeNull();
+        else writeCharValue(value);
     }
 
 
     /*
-     * --------------------------------------------------------------
-     * Generic / Arbitrary Precision Numbers
-     * --------------------------------------------------------------
+     * Number
      */
 
-    /**
-     * Writes a non-null Number using the backend's natural numeric
-     * representation.
-     *
-     * <p>This method is primarily intended for dynamic binding where
-     * the exact numeric Java type is not statically known.</p>
-     */
     public abstract void writeNumberValue(Number value) throws IOException;
 
     public void writeNumber(Number value) throws IOException {
@@ -255,31 +230,5 @@ public abstract class StreamingWriter implements Closeable, Flushable {
             writeBigDecimalValue(value);
         }
     }
-
-
-    /*
-     * --------------------------------------------------------------
-     * Fused Property-Value Fast Paths
-     * --------------------------------------------------------------
-     */
-
-    /*
-     * Generated binders should prefer these methods for object properties.
-     * Default implementations preserve correctness. Backends may override
-     * individual methods when their native API provides a faster path.
-     */
-
-    /**
-     * Writes a prepared object property name.
-     *
-     * <p>This is the preferred API for generated and cached runtime
-     * bindings. Backends should override this method when they can use
-     * the prepared representation directly.</p>
-     */
-    public void writeName(PreparedName preparedName) throws IOException {
-        PreparedName.SimplePreparedName snw = (PreparedName.SimplePreparedName) preparedName;
-        writeName(snw.name);
-    }
-
 
 }

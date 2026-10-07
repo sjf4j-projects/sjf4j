@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import org.sjf4j.binding.PreparedName;
+import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
@@ -120,8 +120,8 @@ public final class Jackson2Writer extends StreamingWriter {
 
 
     @Override
-    public void writeName(PreparedName preparedName) throws IOException {
-        Jackson2PreparedName jackson2NameWriter = (Jackson2PreparedName) preparedName;
+    public void writeName(CompiledName compiledName) throws IOException {
+        Jackson2PreparedName jackson2NameWriter = (Jackson2PreparedName) compiledName;
         generator.writeFieldName(jackson2NameWriter.serializedName);
     }
 

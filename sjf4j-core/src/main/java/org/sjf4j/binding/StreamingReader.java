@@ -1,6 +1,8 @@
 package org.sjf4j.binding;
-
 import org.sjf4j.JsonType;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.PropertyInfo;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -8,57 +10,82 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /**
- * Unified streaming reader for structured data.
+ * Streaming reader for JSON-semantic structured data.
  *
- * <p>The interface defines common structural semantics while allowing
- * implementations to provide backend-specific fast paths.</p>
+ * <p>The reader operates on a logical stream of object, array, and value
+ * tokens. Backend implementations may use different physical parser states
+ * internally as long as they preserve the semantics defined by this
+ * interface.</p>
  *
- * <p>Generated binders should prefer primitive value methods and
- * {@link #nextNameMatch(NameMatcher)} where possible.</p>
+ * <p>Member-name traversal and value consumption are deliberately
+ * separated. For example:</p>
+ *
+ * <pre>{@code
+ * reader.startObject();
+ *
+ * int index;
+ * while ((index = reader.nextNameMatch(matcher)) != NameMatcher.END_OF_OBJECT) {
+ *
+ *     switch (index) {
+ *         case 0:
+ *             bean.id = reader.readIntValue();
+ *             break;
+ *         case 1:
+ *             bean.name = reader.readString();
+ *             break;
+ *         default:
+ *             reader.skipValue();
+ *     }
+ * }
+ * }</pre>
+ *
+ * <p>{@link #nextName()} and {@link #nextNameMatch(NameMatcher)} consume
+ * a member name but do not consume its value. The corresponding value
+ * remains pending until consumed by a {@code readXxx()} method,
+ * {@link #skipNode()}, or another value-consuming operation.</p>
  */
-public interface StreamingReader extends Closeable {
+public abstract class StreamingReader implements Closeable {
 
-    /*
-     * --------------------------------------------------------------
-     * Tokens
-     * --------------------------------------------------------------
+    final Backend backend;
+
+    public StreamingReader(Backend backend) {
+        this.backend = backend;
+    }
+
+    /**
+     * Logical token types exposed by the streaming reader.
+     *
+     * <p>These tokens describe the SJF4J reader state rather than the
+     * physical token state of a backend parser.</p>
      */
+    public enum Token {
+        EOF,
+        UNKNOWN,
 
-    enum Token {
+        OBJECT_START,
+        OBJECT_END,
+        NAME,
 
-        EOF(0),
-        UNKNOWN(1),
+        ARRAY_START,
+        ARRAY_END,
 
-        START_OBJECT(2),
-        END_OBJECT(3),
-        NAME(4),
-
-        START_ARRAY(5),
-        END_ARRAY(6),
-
-        STRING(7),
-        NUMBER(8),
-        BOOLEAN(9),
-        NULL(10);
-
-        private final int id;
-
-        Token(int id) {
-            this.id = id;
-        }
+        STRING,
+        NUMBER,
+        BOOLEAN,
+        NULL;
 
         /**
-         * Stable integer token id for hot-path dispatch.
+         * Returns the JSON-semantic type represented by this token.
+         *
+         * <p>Tokens that do not themselves represent a JSON value, such as
+         * {@link #NAME}, {@link #OBJECT_END}, and {@link #ARRAY_END}, map to
+         * {@link JsonType#UNKNOWN}.</p>
          */
-        public int id() {
-            return id;
-        }
-
         public JsonType jsonType() {
             switch (this) {
-                case START_OBJECT:
+                case OBJECT_START:
                     return JsonType.OBJECT;
-                case START_ARRAY:
+                case ARRAY_START:
                     return JsonType.ARRAY;
                 case STRING:
                     return JsonType.STRING;
@@ -74,277 +101,400 @@ public interface StreamingReader extends Closeable {
         }
     }
 
+    public final NameMatcher nameMatcher(PojoInfo pojoInfo) {
+        BackendCache cache = pojoInfo.backendCache(backend);
+        NameMatcher matcher = cache.nameMatcher;
+        if (matcher == null) {
+            matcher = createNameMatcher(pojoInfo.writableProperties);
+            cache.nameMatcher = matcher;
+        }
+        return matcher;
+    }
 
-    /*
-     * --------------------------------------------------------------
-     * Property Matching
-     * --------------------------------------------------------------
-     */
+    protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
+        return new NameMatcher(writableProperties);
+    }
 
     /**
-     * Prepared backend-specific property-name matcher.
+     * Prepares this reader to consume one document.
      *
-     * <p>The index returned by {@link #match(String)} corresponds to the
-     * canonical name returned by {@link #name(int)}.</p>
+     * <p>The root value is not consumed.</p>
      */
-    interface NameMatcher {
-
-        int UNKNOWN = -1;
-
-        /** Canonical property name for a matched index. */
-        String name(int index);
-
-        /** Generic String fallback. */
-        int match(String name);
+    public void startDocument() throws IOException {
     }
 
     /**
-     * Returns a cached matcher for the specified POJO type when this reader
-     * has a backend-specific matching fast path, or {@code null} otherwise.
+     * Completes the current document after its root value has been consumed.
      *
-     * <p>The default is deliberately {@code null}: backends such as Gson keep
-     * the ordinary String-name path instead of paying for an extra matcher
-     * layer.</p>
+     * <p>The default implementation verifies that the logical input has
+     * reached the end of the document.</p>
      */
-    default NameMatcher nameMatcher(Class<?> type) {
-        return null;
-    }
-
-
-    /*
-     * --------------------------------------------------------------
-     * Document
-     * --------------------------------------------------------------
-     */
-
-    /**
-     * Prepares this reader to consume one document without consuming
-     * its root value.
-     */
-    default void startDocument() throws IOException {
-    }
-
-    /**
-     * Completes a document after its root value has been consumed.
-     */
-    default void endDocument() throws IOException {
-        if (currentToken() != Token.EOF) {
-            throw new IOException("Expected end of document");
+    public void endDocument() throws IOException {
+        if (peekToken() != Token.EOF) {
+            throw new IOException("expected end of document");
         }
     }
 
 
-    /*
-     * --------------------------------------------------------------
-     * Token Inspection
-     * --------------------------------------------------------------
-     */
-
     /**
-     * Returns the current token without consuming it.
-     */
-    Token currentToken() throws IOException;
-
-
-    /*
-     * --------------------------------------------------------------
-     * Structural Fast Paths
-     * --------------------------------------------------------------
-     */
-
-    boolean nextIfNull() throws IOException;
-
-    boolean nextIfObjectEnd() throws IOException;
-
-    boolean nextIfArrayEnd() throws IOException;
-
-
-    /*
-     * --------------------------------------------------------------
-     * Structural Tokens
-     * --------------------------------------------------------------
-     */
-
-    void startObject() throws IOException;
-
-    void endObject() throws IOException;
-
-    void startArray() throws IOException;
-
-    void endArray() throws IOException;
-
-
-    /*
-     * --------------------------------------------------------------
-     * Property Names
-     * --------------------------------------------------------------
-     */
-
-    /**
-     * Reads and consumes the next property name.
+     * Returns the next logical token without consuming it.
      *
-     * <p>After this method returns, the reader is positioned so that
-     * the corresponding property value can be consumed.</p>
+     * <p>This method exposes the logical state of this reader, not
+     * necessarily the current physical token of the underlying parser.</p>
+     *
+     * <p>It is primarily intended for dynamic or runtime dispatch.
+     * Generated binding code should normally prefer specialized operations
+     * such as {@link #readIntValue()}, {@link #readString()}, and
+     * {@link #nextNameMatch(NameMatcher)} so that backend-specific fast
+     * paths remain available.</p>
      */
-    String nextName() throws IOException;
+    public abstract Token peekToken() throws IOException;
+
 
     /**
-     * Matches the next property name against prepared backend-specific
-     * metadata. The default path materializes the String name.
+     * Consumes a {@code null} value when it is next.
+     *
+     * <p>If the next logical value is not {@code null}, this method returns
+     * {@code false} without consuming input.</p>
+     *
+     * @return {@code true} if {@code null} was consumed
      */
-    default int nextNameMatch(NameMatcher matcher) throws IOException {
-        return matcher.match(nextName());
+    public abstract boolean nextIfNull() throws IOException;
+
+    /**
+     * Consumes an object start when it is next.
+     *
+     * <p>If the next logical token is not an object start, this method
+     * returns {@code false} without consuming input.</p>
+     *
+     * @return {@code true} if an object start was consumed
+     */
+    public abstract boolean nextIfObjectStart() throws IOException;
+
+    /**
+     * Consumes the end of the current object when it is next.
+     *
+     * <p>If another member follows, this method returns {@code false}
+     * without consuming the member name.</p>
+     *
+     * @return {@code true} if the object end was consumed
+     */
+    public abstract boolean nextIfObjectEnd() throws IOException;
+
+    /**
+     * Consumes an array start when it is next.
+     *
+     * <p>If the next logical token is not an array start, this method
+     * returns {@code false} without consuming input.</p>
+     *
+     * @return {@code true} if an array start was consumed
+     */
+    public abstract boolean nextIfArrayStart() throws IOException;
+
+    /**
+     * Consumes the end of the current array when it is next.
+     *
+     * <p>If another array element follows, this method returns {@code false}
+     * without consuming that element.</p>
+     *
+     * @return {@code true} if the array end was consumed
+     */
+    public abstract boolean nextIfArrayEnd() throws IOException;
+
+
+    /**
+     * Consumes the start of an object.
+     *
+     * @throws IOException if the next logical token is not an object start
+     */
+    public abstract void startObject() throws IOException;
+
+    /**
+     * Consumes the end of the current object.
+     *
+     * @throws IOException if the next logical token is not an object end
+     */
+    public abstract void endObject() throws IOException;
+
+    /**
+     * Consumes the start of an array.
+     *
+     * @throws IOException if the next logical token is not an array start
+     */
+    public abstract void startArray() throws IOException;
+
+    /**
+     * Consumes the end of the current array.
+     *
+     * @throws IOException if the next logical token is not an array end
+     */
+    public abstract void endArray() throws IOException;
+
+
+    /**
+     * Consumes and returns the next member name.
+     *
+     * <p>If the current object has ended, the object end is consumed and
+     * {@code null} is returned.</p>
+     *
+     * <p>When a member name is returned, its corresponding value remains
+     * pending and must subsequently be consumed.</p>
+     *
+     * @return the next member name, or {@code null} when the current object ends
+     */
+    public abstract String nextName() throws IOException;
+
+    /**
+     * Advances to the next member name and matches it against prepared
+     * member metadata.
+     *
+     * <p>If another member is present, its name is consumed and its
+     * corresponding value remains pending. The value must subsequently be
+     * consumed by a {@code readXxx()} method, {@link #skipNode()}, or another
+     * value-consuming operation.</p>
+     *
+     * <p>If the enclosing object ends instead, the object end is consumed and
+     * {@link NameMatcher#OBJECT_END} is returned.</p>
+     *
+     * <p>This is the preferred object-traversal operation for generated binding
+     * code. Backends with native member-name matching should override this
+     * method and match directly against the underlying input without
+     * materializing the member name as a {@link String} whenever possible.</p>
+     *
+     * @param matcher prepared member-name matcher
+     * @return a non-negative member index,
+     *         {@link NameMatcher#UNKNOWN}, or
+     *         {@link NameMatcher#OBJECT_END}
+     */
+    public int nextNameMatch(NameMatcher matcher) throws IOException {
+        String name = nextName();
+        return name == null ? NameMatcher.OBJECT_END : matcher.fallback(name);
     }
 
     /**
-     * Same as {@link #nextNameMatch(NameMatcher)}, with an optional expected
-     * property index hint for backends that can exploit ordered names.
+     * Consumes and matches the next member name, with an expected member
+     * index hint.
+     *
+     * <p>The hint allows implementations to optimize the common case where
+     * members occur in a predictable order. It does not affect matching
+     * semantics and callers must not depend on the hint being honored.</p>
+     *
+     * <p>The corresponding member value remains pending exactly as with
+     * {@link #nextNameMatch(NameMatcher)}.</p>
+     *
+     * @param matcher prepared member-name matcher
+     * @param expectedIndex expected member index
+     * @return a non-negative member index, or
+     *         {@link NameMatcher#UNKNOWN}
      */
-    default int nextNameMatch(
-            NameMatcher matcher,
-            int expectedIndex) throws IOException {
-
+    public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
         return nextNameMatch(matcher);
     }
 
 
-    /*
-     * --------------------------------------------------------------
-     * String
-     * --------------------------------------------------------------
-     */
-
     /**
-     * Reads the current value as a String.
+     * Reads and consumes the current logical value as a {@link String}.
      *
-     * <p>The current token must represent a string value.</p>
-     */
-    String nextStringValue() throws IOException;
-
-    /**
-     * Reads a nullable String.
+     * <p>Returns {@code null} when the current logical value is JSON
+     * {@code null}.</p>
      *
-     * <p>Implementations may override this to provide a fused null/string
-     * fast path.</p>
+     * @return string value, or {@code null}
      */
-    default String nextString() throws IOException {
-        if (nextIfNull()) {
-            return null;
-        }
+    public abstract String readString() throws IOException;
 
-        return nextStringValue();
-    }
-
-
-    /*
-     * --------------------------------------------------------------
-     * Generic Number
-     * --------------------------------------------------------------
-     */
 
     /**
-     * Reads the current numeric value using the backend's natural
-     * Number representation.
+     * Reads and consumes the current logical numeric value using the
+     * backend's natural {@link Number} representation.
+     *
+     * <p>Returns {@code null} when the current logical value is JSON
+     * {@code null}.</p>
+     *
+     * @return numeric value, or {@code null}
      */
-    Number nextNumber() throws IOException;
+    public abstract Number readNumber() throws IOException;
 
-
-    /*
-     * --------------------------------------------------------------
-     * Primitive Fast Paths
-     * --------------------------------------------------------------
-     */
-
-    long nextLongValue() throws IOException;
-
-    int nextIntValue() throws IOException;
-
-    short nextShortValue() throws IOException;
-
-    byte nextByteValue() throws IOException;
-
-    double nextDoubleValue() throws IOException;
-
-    float nextFloatValue() throws IOException;
-
-    boolean nextBooleanValue() throws IOException;
-
-    char nextCharValue() throws IOException;
-
-    /*
-     * --------------------------------------------------------------
-     * Boxed Compatibility APIs
-     * --------------------------------------------------------------
-     */
-
-    default Long nextLong() throws IOException {
-        return nextIfNull() ? null : nextLongValue();
-    }
-
-    default Integer nextInt() throws IOException {
-        return nextIfNull() ? null : nextIntValue();
-    }
-
-    default Short nextShort() throws IOException {
-        return nextIfNull() ? null : nextShortValue();
-    }
-
-    default Byte nextByte() throws IOException {
-        return nextIfNull() ? null : nextByteValue();
-    }
-
-    default Double nextDouble() throws IOException {
-        return nextIfNull() ? null : nextDoubleValue();
-    }
-
-    default Float nextFloat() throws IOException {
-        return nextIfNull() ? null : nextFloatValue();
-    }
-
-    default Boolean nextBoolean() throws IOException {
-        return nextIfNull() ? null : nextBooleanValue();
-    }
-
-    default Character nextChar() throws IOException {
-        return nextIfNull() ? null : nextCharValue();
-    }
-
-
-
-    /*
-     * --------------------------------------------------------------
-     * Arbitrary Precision Numbers
-     * --------------------------------------------------------------
-     */
-
-    BigInteger nextBigInteger() throws IOException;
-
-    BigDecimal nextBigDecimal() throws IOException;
-
-
-    /*
-     * --------------------------------------------------------------
-     * Null
-     * --------------------------------------------------------------
-     */
-
-    void nextNull() throws IOException;
-
-
-    /*
-     * --------------------------------------------------------------
-     * Skipping
-     * --------------------------------------------------------------
-     */
 
     /**
-     * Consumes exactly one complete value at the current position.
+     * Reads and consumes the current logical value as a primitive
+     * {@code long}.
+     *
+     * <p>JSON {@code null} is not accepted.</p>
      */
-    void skipNext() throws IOException;
+    public abstract long readLongValue() throws IOException;
 
+    /**
+     * Reads and consumes the current logical value as a primitive
+     * {@code int}.
+     *
+     * <p>JSON {@code null} is not accepted.</p>
+     */
+    public abstract int readIntValue() throws IOException;
 
-    default Object readRawNode() throws IOException {
-        return StreamingIO.readRawNode(this);
+    /**
+     * Reads and consumes the current logical value as a primitive
+     * {@code short}.
+     *
+     * <p>JSON {@code null} is not accepted.</p>
+     */
+    public abstract short readShortValue() throws IOException;
+
+    /**
+     * Reads and consumes the current logical value as a primitive
+     * {@code byte}.
+     *
+     * <p>JSON {@code null} is not accepted.</p>
+     */
+    public abstract byte readByteValue() throws IOException;
+
+    /**
+     * Reads and consumes the current logical value as a primitive
+     * {@code double}.
+     *
+     * <p>JSON {@code null} is not accepted.</p>
+     */
+    public abstract double readDoubleValue() throws IOException;
+
+    /**
+     * Reads and consumes the current logical value as a primitive
+     * {@code float}.
+     *
+     * <p>JSON {@code null} is not accepted.</p>
+     */
+    public abstract float readFloatValue() throws IOException;
+
+    /**
+     * Reads and consumes the current logical value as a primitive
+     * {@code boolean}.
+     *
+     * <p>JSON {@code null} is not accepted.</p>
+     */
+    public abstract boolean readBooleanValue() throws IOException;
+
+    /**
+     * Reads and consumes the current logical value as a primitive
+     * {@code char}.
+     *
+     * <p>JSON {@code null} is not accepted. The accepted string
+     * representation follows SJF4J binding semantics.</p>
+     */
+    public abstract char readCharValue() throws IOException;
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Long}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Long readLong() throws IOException {
+        return nextIfNull() ? null : readLongValue();
     }
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Integer}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Integer readInt() throws IOException {
+        return nextIfNull() ? null : readIntValue();
+    }
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Short}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Short readShort() throws IOException {
+        return nextIfNull() ? null : readShortValue();
+    }
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Byte}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Byte readByte() throws IOException {
+        return nextIfNull() ? null : readByteValue();
+    }
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Double}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Double readDouble() throws IOException {
+        return nextIfNull() ? null : readDoubleValue();
+    }
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Float}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Float readFloat() throws IOException {
+        return nextIfNull() ? null : readFloatValue();
+    }
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Boolean}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Boolean readBoolean() throws IOException {
+        return nextIfNull() ? null : readBooleanValue();
+    }
+
+    /**
+     * Reads and consumes the current logical value as a boxed
+     * {@link Character}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public Character readChar() throws IOException {
+        return nextIfNull() ? null : readCharValue();
+    }
+
+
+    /**
+     * Reads and consumes the current logical numeric value as a
+     * {@link BigInteger}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public abstract BigInteger readBigInteger() throws IOException;
+
+    /**
+     * Reads and consumes the current logical numeric value as a
+     * {@link BigDecimal}.
+     *
+     * @return the value, or {@code null} for JSON {@code null}
+     */
+    public abstract BigDecimal readBigDecimal() throws IOException;
+
+
+    /**
+     * Consumes exactly one complete logical value.
+     *
+     * <p>The value may be a scalar, object, or array. When called after
+     * {@link #nextName()} or {@link #nextNameMatch(NameMatcher)}, this
+     * method consumes the pending value of that member.</p>
+     */
+    public abstract void skipNode() throws IOException;
+
+
+    /**
+     * Reads and consumes one complete value as its natural raw OBNT node.
+     *
+     * <p>This is primarily a dynamic fallback operation. Statically known
+     * binding code should prefer the specialized typed methods whenever
+     * possible.</p>
+     */
+    public abstract Object readRawNode() throws IOException;
 
 }

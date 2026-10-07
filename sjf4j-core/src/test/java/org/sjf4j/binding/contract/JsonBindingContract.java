@@ -3,7 +3,6 @@ package org.sjf4j.binding.contract;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
 import java.io.StringReader;
 import java.io.StringWriter;

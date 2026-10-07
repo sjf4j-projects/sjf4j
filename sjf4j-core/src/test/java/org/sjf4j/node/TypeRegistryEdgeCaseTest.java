@@ -15,8 +15,6 @@ import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.binding.StreamingIO;
-import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.value.ValueCodec;
@@ -24,7 +22,6 @@ import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.PatternedValueCodec;
 import org.sjf4j.value.ValueRegistry;
 
-import java.io.StringReader;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -298,7 +295,7 @@ class TypeRegistryEdgeCaseTest {
         assertEquals(String.class, isoCodec.rawClazz);
         assertEquals(Long.class, epochCodec.rawClazz);
 
-        PropertyInfo fi = TypeRegistry.requireRegisteredPojoInfo(InstantFieldPojo.class).properties.get("createdAt");
+        PropertyInfo fi = TypeRegistry.requireRegisteredPojoInfo(InstantFieldPojo.class).propertyLookup.get("createdAt");
         assertEquals("epochMillis", fi.valueFormat);
         assertNotNull(fi.valueInfo);
         assertEquals(Long.class, fi.valueInfo.rawClazz);
@@ -331,7 +328,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testCodecPatternResolvesLocalDateCodec() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(LocalDatePatternPojo.class);
-        PropertyInfo fi = pi.properties.get("date");
+        PropertyInfo fi = pi.propertyLookup.get("date");
         assertNotNull(fi);
         // codecName is null when only codecPattern is specified (separate attributes)
         assertNull(fi.valueFormat);
@@ -384,7 +381,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testLocalTimeCodecRoundTrip() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(LocalTime.class);
-        assertTrue(ti.isNodeValue());
+        assertNotNull(ti.valueInfos);
         ValueInfo vci = ti.getValueInfo("");
         assertNotNull(vci);
         Object raw = vci.valueToRaw(LocalTime.of(10, 30, 15));
@@ -432,7 +429,7 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testLocalTimeFieldWithPattern() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(LocalTimeFieldPojo.class);
-        PropertyInfo fi = pi.properties.get("time");
+        PropertyInfo fi = pi.propertyLookup.get("time");
         assertNotNull(fi);
         assertNull(fi.valueFormat);
         assertNotNull(fi.valueInfo);
@@ -592,7 +589,7 @@ class TypeRegistryEdgeCaseTest {
 
         CreatorInfo sessionCreator = ReflectUtil.analyzeCreator(SessionPojo.class, lookup);
         PojoInfo sessionInfo = TypeRegistry.requireRegisteredPojoInfo(SessionPojo.class);
-        PropertyInfo extraField = sessionInfo.properties.get("extra");
+        PropertyInfo extraField = sessionInfo.propertyLookup.get("extra");
 
         TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(sessionCreator, 1);
         session.acceptProperty(extraField, "later");
@@ -616,7 +613,7 @@ class TypeRegistryEdgeCaseTest {
 
         PojoInfo mixedInfo = TypeRegistry.requireRegisteredPojoInfo(MixedJsonSessionPojo.class);
         TypeRegistry.PojoCreationSession mixedSession = new TypeRegistry.PojoCreationSession(mixedInfo.creatorInfo, 2);
-        mixedSession.acceptProperty(mixedInfo.properties.get("extra"), "later");
+        mixedSession.acceptProperty(mixedInfo.propertyLookup.get("extra"), "later");
         mixedSession.acceptDynamic("dynamic", 2);
         mixedSession.acceptCtorArg(0, "mixed-id");
         MixedJsonSessionPojo mixedPojo = (MixedJsonSessionPojo) mixedSession.finish();
@@ -625,7 +622,7 @@ class TypeRegistryEdgeCaseTest {
 
         PojoInfo containerInfo = TypeRegistry.requireRegisteredPojoInfo(ContainerPojo.class);
         TypeRegistry.PojoCreationSession noArgsSession = new TypeRegistry.PojoCreationSession(containerInfo.creatorInfo, 2);
-        noArgsSession.acceptProperty(containerInfo.properties.get("plain"), "plain");
+        noArgsSession.acceptProperty(containerInfo.propertyLookup.get("plain"), "plain");
         assertEquals("plain", ((ContainerPojo) noArgsSession.finish()).plain);
 
         TypeRegistry.PojoCreationSession growthSession = new TypeRegistry.PojoCreationSession(sessionCreator, 0);
@@ -662,17 +659,17 @@ class TypeRegistryEdgeCaseTest {
     @Test
     void testPropertyInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(ContainerPojo.class);
-        PropertyInfo namesField = pojoInfo.properties.get("names");
-        PropertyInfo numbersField = pojoInfo.properties.get("numbers");
-        PropertyInfo mappingField = pojoInfo.properties.get("mapping");
-        PropertyInfo typedListField = pojoInfo.properties.get("typedList");
-        PropertyInfo typedMapField = pojoInfo.properties.get("typedMap");
-        PropertyInfo linkedNamesField = pojoInfo.properties.get("linkedNames");
-        PropertyInfo sortedNumbersField = pojoInfo.properties.get("sortedNumbers");
-        PropertyInfo hashMappingField = pojoInfo.properties.get("hashMapping");
-        PropertyInfo arrayField = pojoInfo.properties.get("array");
-        PropertyInfo plainField = pojoInfo.properties.get("plain");
-        PropertyInfo readOnlyField = pojoInfo.properties.get("readOnly");
+        PropertyInfo namesField = pojoInfo.propertyLookup.get("names");
+        PropertyInfo numbersField = pojoInfo.propertyLookup.get("numbers");
+        PropertyInfo mappingField = pojoInfo.propertyLookup.get("mapping");
+        PropertyInfo typedListField = pojoInfo.propertyLookup.get("typedList");
+        PropertyInfo typedMapField = pojoInfo.propertyLookup.get("typedMap");
+        PropertyInfo linkedNamesField = pojoInfo.propertyLookup.get("linkedNames");
+        PropertyInfo sortedNumbersField = pojoInfo.propertyLookup.get("sortedNumbers");
+        PropertyInfo hashMappingField = pojoInfo.propertyLookup.get("hashMapping");
+        PropertyInfo arrayField = pojoInfo.propertyLookup.get("array");
+        PropertyInfo plainField = pojoInfo.propertyLookup.get("plain");
+        PropertyInfo readOnlyField = pojoInfo.propertyLookup.get("readOnly");
 
         assertEquals(PropertyInfo.ContainerKind.LIST, namesField.containerKind);
         assertEquals(String.class, namesField.argBoxed);

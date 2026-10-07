@@ -1,6 +1,5 @@
 package org.sjf4j.backend.jackson3.binding;
 
-import org.sjf4j.binding.StreamingReader;
 import tools.jackson.core.sym.BinaryNameMatcher;
 import tools.jackson.core.sym.PropertyNameMatcher;
 

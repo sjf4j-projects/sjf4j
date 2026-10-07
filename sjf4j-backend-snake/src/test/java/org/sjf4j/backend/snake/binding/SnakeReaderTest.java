@@ -1,7 +1,6 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingReader;
 
 import java.io.IOException;
 import java.io.StringReader;

@@ -1,7 +1,6 @@
 package org.sjf4j.binding.simple;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 
 import java.io.IOException;

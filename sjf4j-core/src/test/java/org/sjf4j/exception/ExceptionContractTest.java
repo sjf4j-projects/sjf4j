@@ -5,9 +5,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
-import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.path.PathSegment;
 
 import java.io.ByteArrayInputStream;
@@ -16,7 +14,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 

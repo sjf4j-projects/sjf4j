@@ -4,7 +4,6 @@ import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 

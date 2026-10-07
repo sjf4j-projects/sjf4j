@@ -105,13 +105,13 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void booleanIsGetterBeatsGetGetter() {
-        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(BooleanAccessorPojo.class).properties.get("active");
+        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(BooleanAccessorPojo.class).propertyLookup.get("active");
         assertTrue((Boolean) pi.invokeGetter(new BooleanAccessorPojo()));
     }
 
     @Test
     void subclassGetterBeatsParentGetter() {
-        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildGetterPojo.class).properties.get("name");
+        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildGetterPojo.class).propertyLookup.get("name");
         assertEquals("child", pi.invokeGetter(new ChildGetterPojo()));
     }
 
@@ -131,7 +131,7 @@ class PropertyAccessorResolutionTest {
 
     @Test
     void parentIgnoreDoesNotHideChildOverrideGetter() {
-        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildVisibleGetterPojo.class).properties.get("name");
+        PropertyInfo pi = TypeRegistry.requireRegisteredPojoInfo(ChildVisibleGetterPojo.class).propertyLookup.get("name");
         assertEquals("child", pi.invokeGetter(new ChildVisibleGetterPojo()));
     }
 
@@ -146,10 +146,10 @@ class PropertyAccessorResolutionTest {
     void mergedPropertyTypeFollowsStrategyPriority() {
         assertEquals(String.class,
                 Types.rawClazz(TypeRegistry.requireRegisteredPojoInfo(BeanFieldTypePriorityPojo.class)
-                        .properties.get("value").type));
+                        .propertyLookup.get("value").type));
         assertEquals(Object.class,
                 Types.rawClazz(TypeRegistry.requireRegisteredPojoInfo(FieldBeanTypePriorityPojo.class)
-                        .properties.get("value").type));
+                        .propertyLookup.get("value").type));
     }
 
     @Test

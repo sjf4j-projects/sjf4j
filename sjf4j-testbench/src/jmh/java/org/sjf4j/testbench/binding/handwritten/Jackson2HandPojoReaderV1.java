@@ -1,7 +1,5 @@
 package org.sjf4j.testbench.binding.handwritten;
 
-import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;

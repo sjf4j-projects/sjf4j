@@ -19,12 +19,14 @@ import java.math.BigInteger;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.AbstractMap;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -924,17 +926,16 @@ public final class Nodes {
         }
         if (ti.pojoInfo != null) {
             PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(node.getClass());
-            TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
+            TypeRegistry.PojoCreationSession session =
+                    new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.readableProperties.length);
 
-            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
-                String key = entry.getKey();
-                PropertyInfo fi = entry.getValue();
-                Object v = fi.invokeGetter(node);
-                int argIdx = pi.creatorInfo.getArgIndexOrAlias(key);
+            for (PropertyInfo propertyInfo : pi.readableProperties) {
+                Object v = propertyInfo.invokeGetter(node);
+                int argIdx = pi.creatorInfo.getArgIndexOrAlias(propertyInfo.name);
                 if (argIdx >= 0) {
                     session.acceptCtorArg(argIdx, v);
                 } else {
-                    session.acceptProperty(fi, v);
+                    session.acceptProperty(propertyInfo, v);
                 }
             }
             Object pojo = session.finish();
@@ -1030,8 +1031,11 @@ public final class Nodes {
             int[] idx = new int[1];
             jo.forEach((k, v) -> {
                 if (idx[0]++ > 0) sb.append(", ");
-                if (pi != null && pi.properties.containsKey(k)) {
-                    sb.append("*");
+                if (pi != null) {
+                    PropertyInfo propertyInfo = pi.getPropertyNoAlias(k);
+                    if (propertyInfo != null && propertyInfo.readable) {
+                        sb.append("*");
+                    }
                 }
                 sb.append(k).append("=");
                 _inspect(v, sb, shapeOnly);
@@ -1120,10 +1124,10 @@ public final class Nodes {
             PojoInfo pi = ti.pojoInfo;
             sb.append("@").append(rawClazz.getSimpleName()).append("{");
             int idx = 0;
-            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()) {
+            for (PropertyInfo propertyInfo : pi.readableProperties) {
                 if (idx++ > 0) sb.append(", ");
-                sb.append("*").append(entry.getKey()).append("=");
-                Object v = entry.getValue().invokeGetter(node);
+                sb.append("*").append(propertyInfo.name).append("=");
+                Object v = propertyInfo.invokeGetter(node);
                 _inspect(v, sb, shapeOnly);
             }
             sb.append("}");
@@ -1197,9 +1201,9 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            for (Map.Entry<String, PropertyInfo> entry : ti.pojoInfo.readableProperties.entrySet()) {
-                Object value = entry.getValue().invokeGetter(node);
-                consumer.accept(entry.getKey(), value);
+            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
+                Object value = propertyInfo.invokeGetter(node);
+                consumer.accept(propertyInfo.name, value);
             }
             return;
         }
@@ -1233,9 +1237,9 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            for (Map.Entry<String, PropertyInfo> entry : ti.pojoInfo.readableProperties.entrySet()) {
-                Object value = entry.getValue().invokeGetter(node);
-                if (predicate.test(entry.getKey(), value)) {
+            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
+                Object value = propertyInfo.invokeGetter(node);
+                if (predicate.test(propertyInfo.name, value)) {
                     return true;
                 }
             }
@@ -1280,15 +1284,12 @@ public final class Nodes {
         }
         if (ti.pojoInfo != null) {
             boolean changed = false;
-            for (Map.Entry<String, PropertyInfo> entry : ti.pojoInfo.readableProperties.entrySet()) {
-                PropertyInfo fi = entry.getValue();
-                if (!fi.hasSetter()) {
-                    continue;
-                }
-                Object oldValue = fi.invokeGetter(node);
-                Object newValue = replacer.apply(entry.getKey(), oldValue);
+            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
+                if (!propertyInfo.writable) continue;
+                Object oldValue = propertyInfo.invokeGetter(node);
+                Object newValue = replacer.apply(propertyInfo.name, oldValue);
                 if (oldValue != newValue) {
-                    fi.invokeSetter(node, newValue);
+                    propertyInfo.invokeSetter(node, newValue);
                     changed = true;
                 }
             }
@@ -1435,7 +1436,7 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            return ti.pojoInfo.readablePropertyCount;
+            return ti.pojoInfo.readableProperties.length;
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
     }
@@ -1490,7 +1491,42 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            return ti.pojoInfo.readableProperties.keySet();
+            PojoInfo pi = ti.pojoInfo;
+            if (pi.readableProperties.length == 0) return Collections.emptySet();
+            return new AbstractSet<String>() {
+                @Override
+                public Iterator<String> iterator() {
+                    return new Iterator<String>() {
+                        private int index;
+
+                        @Override
+                        public boolean hasNext() {
+                            return index < pi.readableProperties.length;
+                        }
+
+                        @Override
+                        public String next() {
+                            return pi.readableProperties[index++].name;
+                        }
+                    };
+                }
+
+                @Override
+                public int size() {
+                    return pi.readableProperties.length;
+                }
+
+                @Override
+                public boolean contains(Object key) {
+                    if (!(key instanceof String)) {
+                        return false;
+                    }
+
+                    PropertyInfo property = pi.getPropertyNoAlias((String) key);
+                    return property != null && property.readable;
+                }
+            };
+
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
     }
@@ -1519,29 +1555,33 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
+            PojoInfo pi = ti.pojoInfo;
+            if (pi.readableProperties.length == 0) {
+                return Collections.emptySet();
+            }
             return new AbstractSet<Map.Entry<String, Object>>() {
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
                     return new Iterator<Map.Entry<String, Object>>() {
-                        private final Iterator<Map.Entry<String, PropertyInfo>> fieldIterator =
-                                ti.pojoInfo.readableProperties.entrySet().iterator();
+                        private int index;
                         @Override
                         public boolean hasNext() {
-                            return fieldIterator.hasNext();
+                            return index < pi.readableProperties.length;
                         }
-
                         @Override
                         public Map.Entry<String, Object> next() {
-                            Map.Entry<String, PropertyInfo> entry = fieldIterator.next();
-                            Object value = entry.getValue().invokeGetter(node);
-                            return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
+                            if (!hasNext()) {
+                                throw new NoSuchElementException();
+                            }
+                            PropertyInfo propertyInfo = pi.readableProperties[index++];
+                            return new AbstractMap.SimpleImmutableEntry<>(propertyInfo.name, propertyInfo.invokeGetter(node));
                         }
                     };
                 }
 
                 @Override
                 public int size() {
-                    return ti.pojoInfo.readablePropertyCount;
+                    return pi.readableProperties.length;
                 }
             };
         }
@@ -1606,7 +1646,8 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            return ti.pojoInfo.readableProperties.containsKey(key);
+            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
+            return propertyInfo != null && propertyInfo.readable;
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
     }
@@ -1645,8 +1686,8 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            PropertyInfo fi = ti.pojoInfo.readableProperties.get(key);
-            return fi != null ? fi.invokeGetter(node) : null;
+            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
+            return propertyInfo != null && propertyInfo.readable ? propertyInfo.invokeGetter(node) : null;
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
     }
@@ -1777,9 +1818,10 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            PropertyInfo fi = ti.pojoInfo.readableProperties.get(key);
-            if (fi != null) {
-                out.node = fi.invokeGetter(node);
+            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
+            if (propertyInfo != null) {
+                if (!propertyInfo.readable) return;
+                out.node = propertyInfo.invokeGetter(node);
                 out.present = true;
                 return;
             }
@@ -1805,6 +1847,8 @@ public final class Nodes {
         Asserts.notNull(key, "key");
         Asserts.notNull(out, "out");
 
+        out.node = null;
+        out.puttable = false;
         if (node instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) node;
             out.node = map.get(key);
@@ -1828,11 +1872,13 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            PropertyInfo fi = ti.pojoInfo.properties.get(key);
-            if (fi != null) {
-                out.node = fi.hasGetter() ? fi.invokeGetter(node) : null;
-                out.type = fi.type;
-                out.puttable = fi.hasSetter();
+            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
+            if (propertyInfo != null) {
+                if (propertyInfo.readable) {
+                    out.node = propertyInfo.invokeGetter(node);
+                    out.type = propertyInfo.type;
+                    out.puttable = propertyInfo.writable;
+                }
                 return;
             }
             if (ti.pojoInfo.isJojo) {
@@ -2059,8 +2105,8 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            PropertyInfo fi = ti.pojoInfo.properties.get(key);
-            if (fi != null) {
+            PropertyInfo fi = ti.pojoInfo.getPropertyNoAlias(key);
+            if (fi != null && fi.readable) {
                 fi.invokeSetter(node, value);
                 return null;
             } else {
@@ -2131,15 +2177,15 @@ public final class Nodes {
             }
         }
         if (ti.pojoInfo != null) {
-            PropertyInfo fi = ti.pojoInfo.properties.get(key);
-            if (fi != null) {
-                T old = fi.hasGetter() ? (T) fi.invokeGetter(node) : null;
+            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
+            if (propertyInfo != null) {
+                T old = propertyInfo.readable ? (T) propertyInfo.invokeGetter(node) : null;
                 if (old != null) {
                     return old;
                 }
                 T newNode = computer.apply(key);
                 if (newNode != null) {
-                    fi.invokeSetter(node, newNode);
+                    propertyInfo.invokeSetter(node, newNode);
                 }
                 return newNode;
             } else {

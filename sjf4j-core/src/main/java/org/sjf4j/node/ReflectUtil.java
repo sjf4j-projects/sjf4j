@@ -257,7 +257,8 @@ public final class ReflectUtil {
 
             PropertyReader propertyReader = PropertyReader.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
                     setterHandle, setterLambda, resolvedCodec, lookup);
-            PropertyInfo pi = new PropertyInfo(finalName, publicField, type, genericDependent, boxed,
+            PropertyInfo pi = new PropertyInfo(finalName, family.aliases.toArray(new String[0]), publicField,
+                    type, genericDependent, boxed,
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
@@ -291,22 +292,28 @@ public final class ReflectUtil {
             hasNonPublicFields = true;
         }
 
-        List<String> fieldNames = new ArrayList<>(properties.size());
+        List<PropertyInfo> writableProperties = new ArrayList<>(properties.size());
+        List<PropertyReader> propertyReaders = new ArrayList<>(properties.size());
+        List<PropertyInfo> readableProperties = new ArrayList<>(properties.size());
         List<PropertyWriter> propertyWriters = new ArrayList<>(properties.size());
         for (PropertyInfo property : properties.values()) {
+            // TODO: configuration order
+            if (property.reader != null) {
+                writableProperties.add(property);
+                propertyReaders.add(property.reader);
+            }
+
             PropertyWriter propertyWriter = PropertyWriter.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.valueInfo, lookup);
             if (propertyWriter != null) {
-                fieldNames.add(property.name);
+                readableProperties.add(property);
                 propertyWriters.add(propertyWriter);
             }
         }
 
-        return new PojoInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
-                readDynamic, writeDynamic, properties, aliasProperties,
-                hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap,
-                fieldNames.toArray(new String[0]),
-                propertyWriters.toArray(new PropertyWriter[0]));
+        return new PojoInfo(clazz, creatorInfo, readDynamic, writeDynamic, properties,
+                writableProperties.toArray(new PropertyInfo[0]), propertyReaders.toArray(new PropertyReader[0]),
+                readableProperties.toArray(new PropertyInfo[0]), propertyWriters.toArray(new PropertyWriter[0]));
     }
 
     private static boolean _reserveFieldFamilies(Class<?> root, Field[] fds,
@@ -551,7 +558,7 @@ public final class ReflectUtil {
         String explicitName;
         String codecName;
         String codecPattern;
-        List<String> aliases;
+        List<String> aliases = new ArrayList<>();
         OneOfInfo oneOfInfo;
 
         PropertyFamily(String implicitName) {
@@ -564,7 +571,6 @@ public final class ReflectUtil {
         }
         void addAliases(String[] src) {
             if (src == null || src.length == 0) return;
-            if (aliases == null) aliases = new ArrayList<>();
             for (String alias : src) if (alias != null && !alias.isEmpty()) aliases.add(alias);
         }
         void mergeCodecName(String cn, Class<?> owner) {

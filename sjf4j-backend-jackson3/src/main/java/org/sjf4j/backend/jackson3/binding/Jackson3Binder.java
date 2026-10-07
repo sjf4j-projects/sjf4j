@@ -3,8 +3,7 @@ package org.sjf4j.backend.jackson3.binding;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.PreparedName;
-import org.sjf4j.binding.StreamingIO;
+import org.sjf4j.binding.CompiledName;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Types;
 import org.sjf4j.util.Asserts;
@@ -122,7 +121,7 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
     }
 
     @Override
-    public PreparedName createPreparedName(String name) {
+    public CompiledName createPreparedName(String name) {
         return new Jackson3Name(name);
     }
 }

@@ -16,6 +16,7 @@ import java.util.AbstractSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -122,9 +123,9 @@ public class JsonObject extends JsonContainer {
     public int hashCode() {
         int hash = dynamicProperties == null ? 0 : dynamicProperties.hashCode();
         if (pi != null) {
-            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
-                hash += Objects.hashCode(entry.getKey()) ^
-                        Objects.hashCode(entry.getValue().invokeGetter(this));
+            for (PropertyInfo propertyInfo : pi.readableProperties){
+                hash += Objects.hashCode(propertyInfo.name) ^
+                        Objects.hashCode(propertyInfo.invokeGetter(this));
             }
         }
         return hash;
@@ -160,7 +161,8 @@ public class JsonObject extends JsonContainer {
      * Returns the number of readable declared properties and dynamic entries.
      */
     public int size() {
-        return (pi == null ? 0 : pi.readablePropertyCount) + (dynamicProperties == null ? 0 : dynamicProperties.size());
+        return (pi == null ? 0 : pi.readableProperties.length) +
+                (dynamicProperties == null ? 0 : dynamicProperties.size());
     }
 
     /**
@@ -175,8 +177,11 @@ public class JsonObject extends JsonContainer {
      */
     public boolean containsKey(String key) {
         if (key == null) return false;
-        return (pi != null && pi.readableProperties.containsKey(key))
-                || (dynamicProperties != null && dynamicProperties.containsKey(key));
+        if (pi != null) {
+            PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
+            if (propertyInfo != null && propertyInfo.readable) return true;
+        }
+        return dynamicProperties != null && dynamicProperties.containsKey(key);
     }
 
     /**
@@ -191,109 +196,91 @@ public class JsonObject extends JsonContainer {
      * Returns a merged key set of readable declared properties and dynamic entries.
      */
     public Set<String> keySet() {
-        if (pi == null) {
+        if (pi == null || pi.readableProperties.length == 0) {
             return dynamicProperties == null ? Collections.emptySet() : dynamicProperties.keySet();
-        } else if (dynamicProperties == null) {
-            return pi.readableProperties.keySet();
-        } else {
-            return new AbstractSet<String>() {
-                @SuppressWarnings("NullableProblems")
-                @Override
-                public Iterator<String> iterator() {
-                    return new Iterator<String>() {
-                        private final Iterator<String> propertyIterator = pi.readableProperties.keySet().iterator();
-                        private final Iterator<String> dynamicIterator = dynamicProperties.keySet().iterator();
-
-                        @Override
-                        public boolean hasNext() {
-                            if (propertyIterator.hasNext()) return true;
-                            return dynamicIterator.hasNext();
-                        }
-
-                        @Override
-                        public String next() {
-                            if (propertyIterator.hasNext()) return propertyIterator.next();
-                            return dynamicIterator.next();
-                        }
-                    };
-                }
-
-                @Override
-                public int size() {
-                    return pi.readablePropertyCount + dynamicProperties.size();
-                }
-            };
         }
+
+        if (dynamicProperties == null) {
+            return pi.readablePropertyNameSet();
+        }
+
+        return new AbstractSet<String>() {
+
+            @Override
+            public Iterator<String> iterator() {
+                return new Iterator<String>() {
+                    private int propertyIndex;
+                    private final Iterator<String> dynamicIterator = dynamicProperties == null
+                            ? Collections.<String>emptySet().iterator()
+                            : dynamicProperties.keySet().iterator();
+
+                    @Override
+                    public boolean hasNext() {
+                        return propertyIndex < pi.readableProperties.length || dynamicIterator.hasNext();
+                    }
+
+                    @Override
+                    public String next() {
+                        if (propertyIndex < pi.readableProperties.length) {
+                            return pi.readableProperties[propertyIndex++].name;
+                        }
+                        return dynamicIterator.next();
+                    }
+                };
+            }
+
+            @Override
+            public int size() {
+                return pi.readableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
+            }
+
+            @Override
+            public boolean contains(Object key) {
+                return key instanceof String && JsonObject.this.containsKey((String) key);
+            }
+        };
     }
 
     /**
      * Returns a merged entry set of readable declared properties and dynamic entries.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
-        if (pi == null) {
+        if (pi == null || pi.readableProperties.length == 0) {
             return dynamicProperties == null ? Collections.emptySet() : dynamicProperties.entrySet();
-        } else if (dynamicProperties == null) {
-            return new AbstractSet<Map.Entry<String, Object>>() {
-                @SuppressWarnings("NullableProblems")
-                @Override
-                public Iterator<Map.Entry<String, Object>> iterator() {
-                    final Iterator<Map.Entry<String, PropertyInfo>> propertyIterator =
-                            pi.readableProperties.entrySet().iterator();
-                    return new Iterator<Map.Entry<String, Object>>() {
-                        @Override
-                        public boolean hasNext() {
-                            return propertyIterator.hasNext();
-                        }
-
-                        @Override
-                        public Map.Entry<String, Object> next() {
-                            Map.Entry<String, PropertyInfo> entry = propertyIterator.next();
-                            Object value = entry.getValue().invokeGetter(JsonObject.this);
-                            return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
-                        }
-                    };
-                }
-
-                @Override
-                public int size() {
-                    return pi.readablePropertyCount;
-                }
-            };
-        } else {
-            return new AbstractSet<Map.Entry<String, Object>>() {
-                @SuppressWarnings("NullableProblems")
-                @Override
-                public Iterator<Map.Entry<String, Object>> iterator() {
-                    return new Iterator<Map.Entry<String, Object>>() {
-                        private final Iterator<Map.Entry<String, PropertyInfo>> propertyIterator =
-                                pi.readableProperties.entrySet().iterator();
-                        private final Iterator<Map.Entry<String, Object>> dynamicIterator =
-                                dynamicProperties.entrySet().iterator();
-
-                        @Override
-                        public boolean hasNext() {
-                            if (propertyIterator.hasNext()) return true;
-                            return dynamicIterator.hasNext();
-                        }
-
-                        @Override
-                        public Map.Entry<String, Object> next() {
-                            if (propertyIterator.hasNext()) {
-                                Map.Entry<String, PropertyInfo> entry = propertyIterator.next();
-                                Object value = entry.getValue().invokeGetter(JsonObject.this);
-                                return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
-                            }
-                            return dynamicIterator.next();
-                        }
-                    };
-                }
-
-                @Override
-                public int size() {
-                    return pi.readablePropertyCount + dynamicProperties.size();
-                }
-            };
         }
+
+        return new AbstractSet<Map.Entry<String, Object>>() {
+
+            @Override
+            public Iterator<Map.Entry<String, Object>> iterator() {
+                return new Iterator<Map.Entry<String, Object>>() {
+                    private int propertyIndex;
+                    private final Iterator<Map.Entry<String, Object>> dynamicIterator = dynamicProperties == null
+                            ? Collections.<Map.Entry<String, Object>>emptySet().iterator()
+                            : dynamicProperties.entrySet().iterator();
+
+                    @Override
+                    public boolean hasNext() {
+                        return propertyIndex < pi.readableProperties.length || dynamicIterator.hasNext();
+                    }
+
+                    @Override
+                    public Map.Entry<String, Object> next() {
+                        if (propertyIndex < pi.readableProperties.length) {
+                            PropertyInfo property = pi.readableProperties[propertyIndex++];
+                            return new AbstractMap.SimpleImmutableEntry<>(property.name,
+                                    property.invokeGetter(JsonObject.this));
+                        }
+                        return dynamicIterator.next();
+                    }
+                };
+            }
+
+            @Override
+            public int size() {
+                return pi.readableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
+            }
+        };
     }
 
     /**
@@ -302,8 +289,8 @@ public class JsonObject extends JsonContainer {
     public void forEach(BiConsumer<String, Object> visitor) {
         Asserts.notNull(visitor, "visitor");
         if (pi != null) {
-            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
-                visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
+            for (PropertyInfo propertyInfo : pi.readableProperties){
+                visitor.accept(propertyInfo.name, propertyInfo.invokeGetter(this));
             }
         }
         if (dynamicProperties != null) {
@@ -319,8 +306,8 @@ public class JsonObject extends JsonContainer {
     public boolean anyMatch(BiPredicate<String, Object> predicate) {
         Asserts.notNull(predicate, "predicate");
         if (pi != null) {
-            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
-                if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
+            for (PropertyInfo propertyInfo : pi.readableProperties){
+                if (predicate.test(propertyInfo.name, propertyInfo.invokeGetter(this))) {
                     return true;
                 }
             }
@@ -343,15 +330,14 @@ public class JsonObject extends JsonContainer {
         Asserts.notNull(mapper, "mapper");
         boolean changed = false;
         if (pi != null) {
-            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
-                PropertyInfo fi = entry.getValue();
-                if (!fi.hasSetter()) {
+            for (PropertyInfo propertyInfo : pi.readableProperties){
+                if (!propertyInfo.writable) {
                     continue;
                 }
-                Object oldValue = fi.invokeGetter(this);
-                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                Object oldValue = propertyInfo.invokeGetter(this);
+                Object newValue = mapper.apply(propertyInfo.name, oldValue);
                 if (newValue != oldValue) {
-                    fi.invokeSetter(this, newValue);
+                    propertyInfo.invokeSetter(this, newValue);
                     changed = true;
                 }
             }
@@ -376,8 +362,8 @@ public class JsonObject extends JsonContainer {
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
         if (pi != null) {
-            for (Map.Entry<String, PropertyInfo> entry : pi.readableProperties.entrySet()){
-                merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
+            for (PropertyInfo propertyInfo : pi.readableProperties){
+                merged.put(propertyInfo.name, propertyInfo.invokeGetter(this));
             }
         }
         if (dynamicProperties != null) {
@@ -499,9 +485,9 @@ public class JsonObject extends JsonContainer {
     public Object getNode(String key) {
         if (key == null) return null;
         if (pi != null) {
-            PropertyInfo fi = pi.readableProperties.get(key);
-            if (fi != null) {
-                return fi.invokeGetter(this);
+            PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
+            if (propertyInfo != null && propertyInfo.readable) {
+                return propertyInfo.invokeGetter(this);
             }
         }
         if (dynamicProperties != null) {
@@ -1007,8 +993,8 @@ public class JsonObject extends JsonContainer {
     public Object put(String key, Object object) {
         Asserts.notNull(key, "key");
         if (pi != null) {
-            PropertyInfo fi = pi.properties.get(key);
-            if (fi != null) {
+            PropertyInfo fi = pi.getPropertyNoAlias(key);
+            if (fi != null && fi.readable) {
                 fi.invokeSetter(this, object);
                 return null;
             }
@@ -1025,16 +1011,19 @@ public class JsonObject extends JsonContainer {
         Asserts.notNull(key, "key");
         Asserts.notNull(computer, "computer");
 
-        if (pi != null && pi.properties.containsKey(key)) {
-            T old = (T) getNode(key);
-            if (old != null) {
-                return old;
+        if (pi != null) {
+            PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
+            if (propertyInfo != null && propertyInfo.readable) {
+                T old = (T) propertyInfo.invokeGetter(this);
+                if (old != null) {
+                    return old;
+                }
+                T newNode = computer.apply(key);
+                if (newNode != null) {
+                    put(key, newNode);
+                }
+                return newNode;
             }
-            T newNode = computer.apply(key);
-            if (newNode != null) {
-                put(key, newNode);
-            }
-            return newNode;
         }
 
         if (dynamicProperties == null) dynamicProperties = new LinkedHashMap<>();
@@ -1062,7 +1051,7 @@ public class JsonObject extends JsonContainer {
      */
     public Object remove(String key) {
         Asserts.notNull(key, "key");
-        if (pi != null && pi.properties.containsKey(key)) {
+        if (pi != null && pi.getPropertyNoAlias(key) != null) {
             throw new NodeException("cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
                     "'. Only dynamic properties in JsonObject are removable.");
         }

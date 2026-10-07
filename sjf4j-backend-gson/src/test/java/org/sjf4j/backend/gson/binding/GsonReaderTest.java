@@ -1,7 +1,6 @@
 package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
-import org.sjf4j.binding.StreamingReader.Token;
 import org.sjf4j.exception.BindingException;
 import org.junit.jupiter.api.Test;
 

@@ -1,22 +1,29 @@
 package org.sjf4j.binding.simple;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.FastStringReader;
+import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 
 /**
  * Minimal JSON reader for the built-in binder.
  */
-public final class SimpleJsonReader implements StreamingReader {
+public final class SimpleJsonReader extends StreamingReader {
 
     private final Reader reader;
 
@@ -24,6 +31,7 @@ public final class SimpleJsonReader implements StreamingReader {
      * Creates reader over input characters.
      */
     public SimpleJsonReader(Reader input) {
+        super(Backend.SIMPLE);
         this.reader = input;
         this.inputBuffer = new char[BUFFER_SIZE];
     }
@@ -32,6 +40,7 @@ public final class SimpleJsonReader implements StreamingReader {
      * Creates reader over input string.
      */
     public SimpleJsonReader(String input) {
+        super(Backend.SIMPLE);
         if (input.length() <= BUFFER_SIZE) {
             this.reader = null;
             this.inputBuffer = input.toCharArray();
@@ -52,17 +61,18 @@ public final class SimpleJsonReader implements StreamingReader {
      * Peeks next token from current reader state.
      */
     @Override
-    public Token currentToken() throws IOException {
+    public Token peekToken() throws IOException {
         if (bufferedToken != null) return bufferedToken;
 
         boolean fieldName = _prepareToken();
         int c = _peek();
         if (c == -1) return bufferedToken = Token.EOF;
+
         switch (c) {
-            case '{': return bufferedToken = Token.START_OBJECT;
-            case '}': return bufferedToken = Token.END_OBJECT;
-            case '[': return bufferedToken = Token.START_ARRAY;
-            case ']': return bufferedToken = Token.END_ARRAY;
+            case '{': return bufferedToken = Token.OBJECT_START;
+            case '}': return bufferedToken = Token.OBJECT_END;
+            case '[': return bufferedToken = Token.ARRAY_START;
+            case ']': return bufferedToken = Token.ARRAY_END;
             case '"': return bufferedToken = fieldName ? Token.NAME : Token.STRING;
             case 't':
             case 'f': return bufferedToken = Token.BOOLEAN;
@@ -90,12 +100,16 @@ public final class SimpleJsonReader implements StreamingReader {
     @Override
     public void startObject() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareToken();
+        _prepareValuePathUnchecked();
+
         int c = _read();
         if (c != '{') throw _error("expected '{'", c);
+
         _pushContainer(true);
         _clearActivePath();
     }
+
 
     /**
      * Consumes and exits object scope.
@@ -103,10 +117,12 @@ public final class SimpleJsonReader implements StreamingReader {
     @Override
     public void endObject() throws IOException {
         bufferedToken = null;
+        _prepareToken();
         _activateContainerPath();
-        _beforeEnd(true);
+
         int c = _read();
         if (c != '}') throw _error("expected '}'", c);
+
         _popContainer();
         _valueDone();
         _clearActivePath();
@@ -118,9 +134,12 @@ public final class SimpleJsonReader implements StreamingReader {
     @Override
     public void startArray() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareToken();
+        _prepareValuePathUnchecked();
+
         int c = _read();
         if (c != '[') throw _error("expected '['", c);
+
         _pushContainer(false);
         _clearActivePath();
     }
@@ -131,13 +150,73 @@ public final class SimpleJsonReader implements StreamingReader {
     @Override
     public void endArray() throws IOException {
         bufferedToken = null;
+        _prepareToken();
         _activateContainerPath();
-        _beforeEnd(false);
+
         int c = _read();
         if (c != ']') throw _error("expected ']'", c);
+
         _popContainer();
         _valueDone();
         _clearActivePath();
+    }
+
+    @Override
+    public boolean nextIfObjectStart() throws IOException {
+        _prepareToken();
+        if (_peek() != '{') return false;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        _read();
+
+        _pushContainer(true);
+        _clearActivePath();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() throws IOException {
+        _prepareToken();
+        if (_peek() != '}') return false;
+
+        bufferedToken = null;
+        _activateContainerPath();
+        _read();
+
+        _popContainer();
+        _valueDone();
+        _clearActivePath();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayStart() throws IOException {
+        _prepareToken();
+        if (_peek() != '[') return false;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        _read();
+
+        _pushContainer(false);
+        _clearActivePath();
+        return true;
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() throws IOException {
+        _prepareToken();
+        if (_peek() != ']') return false;
+
+        bufferedToken = null;
+        _activateContainerPath();
+        _read();
+
+        _popContainer();
+        _valueDone();
+        _clearActivePath();
+        return true;
     }
 
     /**
@@ -145,28 +224,35 @@ public final class SimpleJsonReader implements StreamingReader {
      */
     @Override
     public String nextName() throws IOException {
+        if (nextIfObjectEnd()) {
+            return null;
+        }
+
         bufferedToken = null;
         _beforeName();
         _activateContainerPath();
-        String s = _readString();
-        _activateNamePath(s);
+
+        String name = _readString();
+        _activateNamePath(name);
         _skipWhitespace();
+
         int c = _read();
         if (c != ':') throw _error("expected ':'", c);
-        pendingName = s;
+
+        pendingName = name;
         containerStateStack[depth - 1] = OBJECT_VALUE;
         bufferedToken = null;
         _clearActivePath();
-        return s;
+
+        return name;
     }
 
     /**
      * Reads next scalar as string.
      */
-    @Override
-    public String nextStringValue() throws IOException {
+    private String _readStringValue() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             String value = _readString();
             _checkValueEnd();
@@ -177,42 +263,49 @@ public final class SimpleJsonReader implements StreamingReader {
         }
     }
 
+    @Override
+    public String readString() throws IOException {
+        if (nextIfNull()) return null;
+        return _readStringValue();
+    }
+
     /**
-     * Reads next scalar as number.
+     * Reads scalar as number.
      */
 
     @Override
-    public Number nextNumber() throws IOException {
+    public Number readNumber() throws IOException {
+        if (nextIfNull()) return null;
         return _readNumberValue();
     }
 
     @Override
-    public long nextLongValue() throws IOException {
+    public long readLongValue() throws IOException {
         return _readLongValue(Long.MIN_VALUE, Long.MAX_VALUE, "invalid long literal");
     }
 
     @Override
-    public int nextIntValue() throws IOException {
+    public int readIntValue() throws IOException {
         return (int) _readLongValue(Integer.MIN_VALUE, Integer.MAX_VALUE, "invalid int literal");
     }
 
     @Override
-    public short nextShortValue() throws IOException {
+    public short readShortValue() throws IOException {
         return (short) _readLongValue(Short.MIN_VALUE, Short.MAX_VALUE, "invalid short literal");
     }
 
     @Override
-    public byte nextByteValue() throws IOException {
+    public byte readByteValue() throws IOException {
         return (byte) _readLongValue(Byte.MIN_VALUE, Byte.MAX_VALUE, "invalid byte literal");
     }
 
     @Override
-    public double nextDoubleValue() throws IOException {
+    public double readDoubleValue() throws IOException {
         return _readDoubleValue(false);
     }
 
     @Override
-    public float nextFloatValue() throws IOException {
+    public float readFloatValue() throws IOException {
         return (float) _readDoubleValue(true);
     }
 
@@ -220,7 +313,8 @@ public final class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as BigInteger.
      */
     @Override
-    public BigInteger nextBigInteger() throws IOException {
+    public BigInteger readBigInteger() throws IOException {
+        if (nextIfNull()) return null;
         return _readBigIntegerValue();
     }
 
@@ -228,14 +322,15 @@ public final class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as BigDecimal.
      */
     @Override
-    public BigDecimal nextBigDecimal() throws IOException {
+    public BigDecimal readBigDecimal() throws IOException {
+        if (nextIfNull()) return null;
         return _readBigDecimalValue();
     }
 
     @Override
-    public boolean nextBooleanValue() throws IOException {
+    public boolean readBooleanValue() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             boolean value = _readBoolean();
             _checkValueEnd();
@@ -247,9 +342,9 @@ public final class SimpleJsonReader implements StreamingReader {
     }
 
     @Override
-    public char nextCharValue() throws IOException {
+    public char readCharValue() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             String value = _readString();
             _checkValueEnd();
@@ -260,42 +355,22 @@ public final class SimpleJsonReader implements StreamingReader {
             _valueDone();
         }
     }
-
-    /**
-     * Consumes next null token.
-     */
     @Override
-    public void nextNull() throws IOException {
+    public boolean nextIfNull() throws IOException {
+        _prepareToken();
+        if (_peek() != 'n') return false;
+
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
+
         try {
             _readNull();
             _checkValueEnd();
+            return true;
         } finally {
             _clearActivePath();
             _valueDone();
         }
-    }
-
-    @Override
-    public boolean nextIfNull() throws IOException {
-        if (currentToken() != Token.NULL) return false;
-        nextNull();
-        return true;
-    }
-
-    @Override
-    public boolean nextIfObjectEnd() throws IOException {
-        if (currentToken() != Token.END_OBJECT) return false;
-        endObject();
-        return true;
-    }
-
-    @Override
-    public boolean nextIfArrayEnd() throws IOException {
-        if (currentToken() != Token.END_ARRAY) return false;
-        endArray();
-        return true;
     }
 
 
@@ -303,16 +378,48 @@ public final class SimpleJsonReader implements StreamingReader {
      * Skips next scalar or nested value.
      */
     @Override
-    public void skipNext() throws IOException {
-        Token token = currentToken();
+    public void skipNode() throws IOException {
+        Token token = peekToken();
         if (token.jsonType() == JsonType.UNKNOWN) throw _error("expected value", _peek());
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             _skipValue();
         } finally {
             _clearActivePath();
             _valueDone();
+        }
+    }
+
+    @Override
+    public Object readRawNode() throws IOException {
+        if (nextIfNull()) return null;
+        switch (peekToken()) {
+            case OBJECT_START: {
+                Map<String, Object> value = new LinkedHashMap<>();
+                startObject();
+                String name;
+                while ((name = nextName()) != null) {
+                    value.put(name, readRawNode());
+                }
+                return value;
+            }
+            case ARRAY_START: {
+                List<Object> value = new ArrayList<>();
+                startArray();
+                while (!nextIfArrayEnd()) {
+                    value.add(readRawNode());
+                }
+                return value;
+            }
+            case STRING:
+                return _readStringValue();
+            case NUMBER:
+                return _readNumberValue();
+            case BOOLEAN:
+                return readBooleanValue();
+            default:
+                throw new BindingException("unexpected token '" + peekToken() + "'");
         }
     }
 
@@ -424,23 +531,26 @@ public final class SimpleJsonReader implements StreamingReader {
         activePathName = null;
     }
 
-    private void _prepareValuePath() throws IOException {
-        _beforeValue();
+    private void _prepareValuePathUnchecked() {
         if (depth == 0) {
             _activateContainerPath();
             return;
         }
+
         if (pendingName != null) {
             _activateNamePath(pendingName);
             pendingName = null;
             return;
         }
+
         int idx = depth - 1;
         int state = containerStateStack[idx];
+
         if (state < 0) {
             _activateContainerPath();
             return;
         }
+
         containerStateStack[idx] = -state - 4;
         _activateIndexPath(state);
     }
@@ -453,15 +563,13 @@ public final class SimpleJsonReader implements StreamingReader {
 
     private Number _readNumberValue() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             _scanNumber(true);
             Number value = Numbers.parseNumber(new String(numberBuffer, 0, numberLength));
             _checkValueEnd();
             return value;
-        } catch (IOException e) {
-            throw e;
-        } catch (BindingException e) {
+        } catch (IOException | BindingException e) {
             throw e;
         } catch (Exception e) {
             throw new BindingException("invalid number literal", _path(), e);
@@ -474,7 +582,7 @@ public final class SimpleJsonReader implements StreamingReader {
 
     private long _readLongValue(long min, long max, String error) throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             _scanNumber(false);
             if (numberFraction || numberExponent || numberOverflow || numberValue < min || numberValue > max) {
@@ -491,7 +599,7 @@ public final class SimpleJsonReader implements StreamingReader {
 
     private double _readDoubleValue(boolean floatValue) throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             _scanNumber(true);
             // The JDK floating parsers are substantially faster than BigDecimal for
@@ -517,7 +625,7 @@ public final class SimpleJsonReader implements StreamingReader {
 
     private BigInteger _readBigIntegerValue() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             _scanNumber(true);
             if (numberFraction || numberExponent) throw new BindingException("invalid BigInteger literal", _path());
@@ -531,7 +639,7 @@ public final class SimpleJsonReader implements StreamingReader {
 
     private BigDecimal _readBigDecimalValue() throws IOException {
         bufferedToken = null;
-        _prepareValuePath();
+        _prepareValuePathUnchecked();
         try {
             _scanNumber(true);
             BigDecimal value = new BigDecimal(numberBuffer, 0, numberLength);
@@ -612,30 +720,11 @@ public final class SimpleJsonReader implements StreamingReader {
         return state == OBJECT_FIRST_NAME;
     }
 
-    private void _beforeValue() throws IOException {
-        _prepareToken();
-        if (depth == 0) return;
-        int state = containerStateStack[depth - 1];
-        int c = _peek();
-        if (state == OBJECT_FIRST_NAME) throw _error("expected field name", c);
-        if (state >= 0 && c == ']') throw _error("expected value", c);
-    }
-
     private void _beforeName() throws IOException {
         _prepareToken();
         int c = _peek();
         if (depth == 0 || containerStateStack[depth - 1] != OBJECT_FIRST_NAME || c != '"') {
             throw _error("expected field name", c);
-        }
-    }
-
-    private void _beforeEnd(boolean object) throws IOException {
-        _prepareToken();
-        int c = _peek();
-        int state = depth == 0 ? 0 : containerStateStack[depth - 1];
-        if (depth == 0 || (object ? (state != OBJECT_FIRST_NAME && state != OBJECT_NEXT_NAME)
-                : state < 0 && state > -4) || c != (object ? '}' : ']')) {
-            throw _error(object ? "expected '}'" : "expected ']'", c);
         }
     }
 

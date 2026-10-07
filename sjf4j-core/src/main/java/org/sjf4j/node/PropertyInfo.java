@@ -19,23 +19,14 @@ import java.util.function.Function;
  */
 public class PropertyInfo {
 
-    public enum ContainerKind {
-        NONE,
-        LIST,
-        SET,
-        MAP,
-        ARRAY
-    }
-
     public final String name;
-//    public final String[] alias;
+    public final String[] alias;
 
     public final Field publicField;
     public final Type type;
     public final boolean genericDependent;
     public final Class<?> boxed;
 
-    public final ContainerKind containerKind;
     public final Type argType;
     public final Class<?> argClazz;
     public final Class<?> argBoxed;
@@ -53,43 +44,40 @@ public class PropertyInfo {
     public final String valueFormat;
     public final ValueInfo valueInfo;
 
-    public final PropertyReader binder;
+    public final boolean readable;
+    public final boolean writable;
+
+    public final PropertyReader reader;
 
     /**
      * Creates property binding metadata and resolves its container element type.
      */
-    public PropertyInfo(String name, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
+    public PropertyInfo(String name, String[] alias, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                         Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                         Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo,
-                        PropertyReader binder) {
+                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo, PropertyReader reader) {
         this.name = name;
+        this.alias = alias;
         this.publicField = publicField;
         this.type = type;
         this.genericDependent = genericDependent;
         this.boxed = boxed;
 
-        ContainerKind kind = ContainerKind.NONE;
         Type argType = null;
         Class<?> argClazz = null;
         if (List.class.isAssignableFrom(this.boxed)) {
-            kind = ContainerKind.LIST;
             argType = Types.resolveTypeArgument(type, List.class, 0);
             argClazz = Types.rawBox(argType);
         } else if (Set.class.isAssignableFrom(this.boxed)) {
-            kind = ContainerKind.SET;
             argType = Types.resolveTypeArgument(type, Set.class, 0);
             argClazz = Types.rawBox(argType);
         } else if (Map.class.isAssignableFrom(this.boxed)) {
-            kind = ContainerKind.MAP;
             argType = Types.resolveTypeArgument(type, Map.class, 1);
             argClazz = Types.rawBox(argType);
         } else if (this.boxed.isArray()) {
-            kind = ContainerKind.ARRAY;
             argType = this.boxed.getComponentType();
             argClazz = Types.box((Class<?>) argType);
         }
-        this.containerKind = kind;
         this.argType = argType;
         this.argClazz = argClazz;
         this.argBoxed = Types.rawBox(argClazz);
@@ -106,21 +94,10 @@ public class PropertyInfo {
         this.oneOfInfo = oneOfInfo;
         this.valueFormat = valueFormat;
         this.valueInfo = valueInfo;
-        this.binder = binder;
-    }
+        this.readable = getterHandle != null || getterLambda != null;
+        this.writable = setterHandle != null || setterLambda != null;
 
-    /**
-     * Returns true when a getter is available.
-     */
-    public boolean hasGetter() {
-        return getterHandle != null || getterLambda != null;
-    }
-
-    /**
-     * Returns true when a setter is available.
-     */
-    public boolean hasSetter() {
-        return setterHandle != null || setterLambda != null;
+        this.reader = reader;
     }
 
 
@@ -145,7 +122,6 @@ public class PropertyInfo {
      * Invokes this property's setter.
      */
     public void invokeSetter(Object receiver, Object value) {
-        Asserts.notNull(receiver, "receiver");
         PojoAccess.invokeSetter(name, setterHandle, setterLambda, receiver, value);
     }
 

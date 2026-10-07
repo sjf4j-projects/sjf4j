@@ -1,6 +1,5 @@
 package org.sjf4j.backend.jackson3.binding;
 
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.util.Asserts;
@@ -24,7 +23,7 @@ public final class Jackson3Reader implements StreamingReader {
                 protected NameMatcher computeValue(Class<?> type) {
                     PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(type);
                     return createNameMatcher(
-                            pi.properties.keySet().toArray(new String[0]));
+                            pi.propertyLookup.keySet().toArray(new String[0]));
                 }
             };
 

@@ -1,14 +1,12 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.stream.JsonParser;
-import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /** Streaming reader backed directly by a JSON-P {@link JsonParser}. */
 public final class JsonpReader implements StreamingReader {
