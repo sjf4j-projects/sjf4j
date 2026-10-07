@@ -1,7 +1,7 @@
 package org.sjf4j.backend.fastjson2.binding;
 
 import com.alibaba.fastjson2.JSONWriter;
-import org.sjf4j.binding.Binder;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
@@ -16,8 +16,8 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     private final JSONWriter writer;
 
-    public Fastjson2Writer(Binder<?, ?> binder, JSONWriter writer) {
-        super(binder);
+    public Fastjson2Writer(JSONWriter writer) {
+        super(Backend.FASTJSON2);
         this.writer = Asserts.notNull(writer, "writer");
     }
 

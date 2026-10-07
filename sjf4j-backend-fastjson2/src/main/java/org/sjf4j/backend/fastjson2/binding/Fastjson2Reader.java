@@ -1,9 +1,12 @@
 package org.sjf4j.backend.fastjson2.binding;
 
 import com.alibaba.fastjson2.JSONReader;
+import org.sjf4j.JsonType;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.binding.NameMatcher;
+import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -16,28 +19,19 @@ import java.util.List;
 import java.util.Map;
 
 /** StreamingReader backed directly by a Fastjson2 {@link JSONReader}. */
-public final class Fastjson2Reader implements StreamingReader {
+public final class Fastjson2Reader extends StreamingReader {
 
     private final JSONReader reader;
     private Token peeked;
 
-    private static final ClassValue<NameMatcher> NAME_MATCHERS =
-            new ClassValue<NameMatcher>() {
-                @Override
-                protected NameMatcher computeValue(Class<?> type) {
-                    PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(type);
-                    return createNameMatcher(
-                            pi.propertyLookup.keySet().toArray(new String[0]));
-                }
-            };
-
-    /** Creates prepared Fastjson2 name-matching metadata. */
-    public static NameMatcher createNameMatcher(String... names) {
-        return new Fastjson2NameMatcher(names);
+    public Fastjson2Reader(JSONReader reader) {
+        super(Backend.FASTJSON2);
+        this.reader = Asserts.notNull(reader, "reader");
     }
 
-    public Fastjson2Reader(JSONReader reader) {
-        this.reader = Asserts.notNull(reader, "reader");
+    @Override
+    protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
+        return new Fastjson2NameMatcher(writableProperties);
     }
 
     /**
@@ -55,7 +49,7 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
-    public Token currentToken() {
+    public Token peekToken() {
         if (peeked == null) {
             peeked = reader.isEnd() ? Token.EOF
                     : _token(reader.current());
@@ -74,7 +68,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public void startObject() {
         peeked = null;
         if (!reader.nextIfObjectStart()) {
-            throw _expected("START_OBJECT");
+            throw _expected("OBJECT_START");
         }
     }
 
@@ -82,7 +76,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public void endObject() {
         peeked = null;
         if (!reader.nextIfObjectEnd()) {
-            throw _expected("END_OBJECT");
+            throw _expected("OBJECT_END");
         }
     }
 
@@ -90,7 +84,7 @@ public final class Fastjson2Reader implements StreamingReader {
     public void startArray() {
         peeked = null;
         if (!reader.nextIfArrayStart()) {
-            throw _expected("START_ARRAY");
+            throw _expected("ARRAY_START");
         }
     }
 
@@ -98,31 +92,37 @@ public final class Fastjson2Reader implements StreamingReader {
     public void endArray() {
         peeked = null;
         if (!reader.nextIfArrayEnd()) {
-            throw _expected("END_ARRAY");
+            throw _expected("ARRAY_END");
         }
     }
 
     @Override
     public String nextName() {
+        if (nextIfObjectEnd()) {
+            return null;
+        }
         peeked = null;
         return reader.readFieldName();
     }
 
     @Override
-    public NameMatcher nameMatcher(Class<?> type) {
-        return NAME_MATCHERS.get(type);
-    }
-
-    @Override
     public int nextNameMatch(NameMatcher matcher) {
-        peeked = null;
-        Fastjson2NameMatcher fastMatcher = (Fastjson2NameMatcher) matcher;
+        if (nextIfObjectEnd()) {
+            return NameMatcher.OBJECT_END;
+        }
+
         long hash = reader.readFieldNameHashCode();
+        peeked = null;
+
+        Fastjson2NameMatcher fastMatcher = (Fastjson2NameMatcher) matcher;
         if (fastMatcher.hashSafe()) {
             return fastMatcher.matchHash(hash);
         }
 
-        return fastMatcher.match(reader.getFieldName());
+        int index = fastMatcher.matchHash(hash);
+        return index == Fastjson2NameMatcher.HASH_COLLISION
+                ? matcher.fallback(reader.getFieldName())
+                : index;
     }
 
     @Override
@@ -131,62 +131,62 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
-    public String nextStringValue() {
+    public String readString() {
         peeked = null;
         return reader.readString();
     }
 
     @Override
-    public Number nextNumber() {
+    public Number readNumber() {
         peeked = null;
         return reader.readNumber();
     }
 
     @Override
-    public long nextLongValue() {
+    public long readLongValue() {
         peeked = null;
         return reader.readInt64Value();
     }
 
     @Override
-    public int nextIntValue() {
+    public int readIntValue() {
         peeked = null;
         return reader.readInt32Value();
     }
 
     @Override
-    public short nextShortValue() {
+    public short readShortValue() {
         peeked = null;
         return reader.readInt16Value();
     }
 
     @Override
-    public byte nextByteValue() {
+    public byte readByteValue() {
         peeked = null;
         return reader.readInt8Value();
     }
 
     @Override
-    public double nextDoubleValue() {
+    public double readDoubleValue() {
         peeked = null;
         return reader.readDoubleValue();
     }
 
     @Override
-    public float nextFloatValue() {
+    public float readFloatValue() {
         peeked = null;
         return reader.readFloatValue();
     }
 
     @Override
-    public boolean nextBooleanValue() {
+    public boolean readBooleanValue() {
         peeked = null;
         return reader.readBoolValue();
     }
 
     @Override
-    public char nextCharValue() throws IOException {
-        String value = nextStringValue();
+    public char readCharValue() throws IOException {
+        String value = readString();
         if (value == null || value.isEmpty()) {
             throw new BindException("cannot read empty string as char");
         }
@@ -194,26 +194,29 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
-    public BigInteger nextBigInteger() {
+    public BigInteger readBigInteger() {
         peeked = null;
         return reader.readBigInteger();
     }
 
     @Override
-    public BigDecimal nextBigDecimal() {
+    public BigDecimal readBigDecimal() {
         peeked = null;
         return reader.readBigDecimal();
     }
 
     @Override
-    public void nextNull() {
+    public boolean nextIfNull() {
+        if (!reader.nextIfNull()) {
+            return false;
+        }
         peeked = null;
-        reader.readNull();
+        return true;
     }
 
     @Override
-    public boolean nextIfNull() {
-        if (!reader.nextIfNull()) {
+    public boolean nextIfObjectStart() {
+        if (!reader.nextIfObjectStart()) {
             return false;
         }
         peeked = null;
@@ -230,6 +233,15 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
+    public boolean nextIfArrayStart() {
+        if (!reader.nextIfArrayStart()) {
+            return false;
+        }
+        peeked = null;
+        return true;
+    }
+
+    @Override
     public boolean nextIfArrayEnd() {
         if (!reader.nextIfArrayEnd()) {
             return false;
@@ -239,8 +251,8 @@ public final class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
-    public void skipNext() throws IOException {
-        if (currentToken().jsonType() == org.sjf4j.JsonType.UNKNOWN) {
+    public void skipNode() throws IOException {
+        if (peekToken().jsonType() == JsonType.UNKNOWN) {
             throw new IOException("Expected value");
         }
         peeked = null;
@@ -303,13 +315,13 @@ public final class Fastjson2Reader implements StreamingReader {
     private static Token _token(char ch) {
         switch (ch) {
             case '{':
-                return Token.START_OBJECT;
+                return Token.OBJECT_START;
             case '}':
-                return Token.END_OBJECT;
+                return Token.OBJECT_END;
             case '[':
-                return Token.START_ARRAY;
+                return Token.ARRAY_START;
             case ']':
-                return Token.END_ARRAY;
+                return Token.ARRAY_END;
             case '"':
                 return Token.STRING;
             case 't':

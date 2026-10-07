@@ -87,19 +87,19 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
     /** Creates a streaming writer that wraps the supplied Fastjson2 writer. */
     public Fastjson2Writer createWriter(JSONWriter writer) {
         Asserts.notNull(writer, "writer");
-        return new Fastjson2Writer(this, writer);
+        return new Fastjson2Writer(writer);
     }
 
     @Override
     public Fastjson2Writer createWriter(Writer output) throws IOException {
         Asserts.notNull(output, "output");
-        return new Fastjson2Writer(this, JSONWriter.of(writerContext));
+        return new Fastjson2Writer(JSONWriter.of(writerContext));
     }
 
     @Override
     public Fastjson2Writer createWriter(OutputStream output) throws IOException {
         Asserts.notNull(output, "output");
-        return new Fastjson2Writer(this, JSONWriter.ofUTF8(writerContext));
+        return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext));
     }
 
 }
