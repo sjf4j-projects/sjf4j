@@ -1,8 +1,11 @@
 package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -48,7 +51,7 @@ import java.util.Map;
  * its hot object-binding path and use {@code nextNameMatch() + readXxx()}
  * directly.
  */
-public final class Jackson2Reader implements StreamingReader {
+public final class Jackson2Reader extends StreamingReader {
 
     private final JsonParser parser;
 
@@ -63,7 +66,8 @@ public final class Jackson2Reader implements StreamingReader {
     private boolean prefetched;
 
 
-    public Jackson2ReaderV4(JsonParser parser) {
+    public Jackson2Reader(JsonParser parser) {
+        super(Backend.JACKSON2);
         Asserts.notNull(parser, "parser");
         this.parser = parser;
     }
@@ -127,8 +131,8 @@ public final class Jackson2Reader implements StreamingReader {
      */
 
     @Override
-    public NameMatcher nameMatcher(Class<?> type) {
-        return Jackson2NameMatcher.get(type);
+    protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
+        return new Jackson2NameMatcher(writableProperties);
     }
 
 
@@ -274,7 +278,7 @@ public final class Jackson2Reader implements StreamingReader {
                 throw _expected(JsonToken.FIELD_NAME.name(), current);
             }
             prefetched = false;
-            return matcher.match(parser.currentName());
+            return matcher.fallback(parser.currentName());
         }
 
         /*
@@ -300,7 +304,7 @@ public final class Jackson2Reader implements StreamingReader {
                     throw _expected(JsonToken.FIELD_NAME.name(), current);
                 }
 
-                return matcher.match(parser.currentName());
+                return matcher.fallback(parser.currentName());
             }
         }
 
@@ -309,7 +313,7 @@ public final class Jackson2Reader implements StreamingReader {
          */
         String name = parser.nextFieldName();
         if (name != null) {
-            return matcher.match(name);
+            return matcher.fallback(name);
         }
 
         JsonToken current = parser.currentToken();
@@ -497,19 +501,6 @@ public final class Jackson2Reader implements StreamingReader {
         return parser.getBooleanValue();
     }
 
-    @Override
-    public char readCharValue() throws IOException {
-        String value = readString();
-        if (value == null) {
-            throw _expected(JsonToken.VALUE_STRING.name(), parser.currentToken());
-        }
-        if (value.isEmpty()) {
-            throw new IOException("cannot read empty string as char");
-        }
-        return value.charAt(0);
-    }
-
-
     /**
      * --------------------------------------------------------------
      * Boxed Primitive Values
@@ -687,8 +678,11 @@ public final class Jackson2Reader implements StreamingReader {
     @Override
     public Character readChar() throws IOException {
         String value = readString();
-        if (value == null || value.isEmpty()) {
+        if (value == null) {
             return null;
+        }
+        if (value.length() != 1) {
+            throw new BindingException("cannot read char: expected single-character string, but length was " + value.length());
         }
         return value.charAt(0);
     }
@@ -734,22 +728,6 @@ public final class Jackson2Reader implements StreamingReader {
         }
 
         return parser.getDecimalValue();
-    }
-
-
-    /**
-     * --------------------------------------------------------------
-     * Null
-     * --------------------------------------------------------------
-     */
-
-    @Override
-    public void readNull() throws IOException {
-        if (!nextIfNull()) {
-            throw _expected(
-                    JsonToken.VALUE_NULL.name(),
-                    parser.currentToken());
-        }
     }
 
 

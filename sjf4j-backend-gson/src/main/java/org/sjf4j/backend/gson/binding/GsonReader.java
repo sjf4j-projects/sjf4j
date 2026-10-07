@@ -12,7 +12,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.BindException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -104,7 +103,11 @@ public final class GsonReader extends StreamingReader {
 
     @Override
     public String nextName() throws IOException {
-        return nextIfObjectEnd() ? null : reader.nextName();
+        if (!reader.hasNext()) {
+            reader.endObject();
+            return null;
+        }
+        return reader.nextName();
     }
 
     @Override
@@ -150,18 +153,6 @@ public final class GsonReader extends StreamingReader {
     @Override
     public boolean readBooleanValue() throws IOException {
         return reader.nextBoolean();
-    }
-
-    @Override
-    public char readCharValue() throws IOException {
-        if (nextIfNull()) {
-            throw new BindingException("cannot read null as char");
-        }
-        String value = reader.nextString();
-        if (value.isEmpty()) {
-            throw new BindException("cannot read empty string as char");
-        }
-        return value.charAt(0);
     }
 
     @Override

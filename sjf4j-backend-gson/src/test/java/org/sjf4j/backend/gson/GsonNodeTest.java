@@ -109,6 +109,8 @@ class GsonNodeTest {
         assertNull(node.toString(JsonNull.INSTANCE));
         assertNull(node.toNumber(JsonNull.INSTANCE));
         assertNull(node.toBoolean(JsonNull.INSTANCE));
+        assertNull(node.asString(JsonNull.INSTANCE));
+        assertNull(node.asNumber(JsonNull.INSTANCE));
 
         assertStrictRejection(() -> node.toString(JsonParser.parseString("12")), "JsonPrimitive(String)");
         assertStrictRejection(() -> node.toNumber(JsonParser.parseString("true")), "JsonPrimitive(Number)");

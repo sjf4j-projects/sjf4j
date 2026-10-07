@@ -5,6 +5,8 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.Binder;
+import org.sjf4j.binding.StreamingIO;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -98,6 +100,26 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
     public Fastjson2Writer createWriter(OutputStream output) throws IOException {
         Asserts.notNull(output, "output");
         return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext), output);
+    }
+
+    /**
+     * Serializes through the SJF4J binding pipeline while retaining Fastjson2's
+     * native in-memory output buffer.  The base implementation writes through
+     * a {@code Writer} and copies the completed document into a String.
+     */
+    @Override
+    public String writeNodeAsString(Object node) {
+        try (JSONWriter output = JSONWriter.of(writerContext)) {
+            Fastjson2Writer writer = new Fastjson2Writer(output);
+            writer.startDocument();
+            StreamingIO.writeNode(writer, node, context);
+            writer.endDocument();
+            return output.toString();
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException(e);
+        }
     }
 
 }

@@ -343,21 +343,6 @@ public final class SimpleJsonReader extends StreamingReader {
     }
 
     @Override
-    public char readCharValue() throws IOException {
-        bufferedToken = null;
-        _prepareToken();
-        _prepareValuePathUnchecked();
-        try {
-            String value = _readString();
-            _checkValueEnd();
-            if (value.isEmpty()) throw new BindingException("cannot read empty string as char", _path());
-            return value.charAt(0);
-        } finally {
-            _clearActivePath();
-            _valueDone();
-        }
-    }
-    @Override
     public boolean nextIfNull() throws IOException {
         _prepareToken();
         if (_peek() != 'n') return false;

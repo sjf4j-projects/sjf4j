@@ -5,7 +5,13 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,6 +50,35 @@ class Jackson2BinderTest {
         assertEquals(Arrays.asList("one", "two"), value.tags);
         assertEquals(false, value.related.get("first").active);
         assertNull(value.nullable);
+    }
+
+    @Test
+    void bindsCurrentAndParentOneOfFields() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+
+        CurrentOneOf current = (CurrentOneOf) binder.readNode(
+                "{\"pet\":{\"kind\":\"dog\",\"barks\":true}}", CurrentOneOf.class);
+        ParentOneOf parent = (ParentOneOf) binder.readNode(
+                "{\"pet\":{\"barks\":true},\"kind\":\"dog\"}", ParentOneOf.class);
+
+        assertTrue(assertInstanceOf(Dog.class, current.pet).barks);
+        assertTrue(assertInstanceOf(Dog.class, parent.pet).barks);
+    }
+
+    @Test
+    void rejectsDuplicateCreatorProperties() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+
+        assertThrows(BindingException.class, () -> binder.readNode(
+                "{\"name\":\"first\",\"name\":\"second\"}", CreatorValue.class));
+    }
+
+    @Test
+    void rejectsMismatchedJsonContainerShapes() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+
+        assertThrows(BindingException.class, () -> binder.readNode("[]", JsonObject.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonArray.class));
     }
 
     @Test
@@ -101,7 +136,7 @@ class Jackson2BinderTest {
         Jackson2Binder binder = new Jackson2Binder(factory);
 
         try (Jackson2Reader reader = binder.createReader("null")) {
-            reader.nextNull();
+            assertTrue(reader.nextIfNull());
         }
         assertEquals("string", factory.parserSource);
 
@@ -124,7 +159,7 @@ class Jackson2BinderTest {
         assertEquals("héllo", fromBytes.title);
         assertEquals("héllo", fromStream.title);
         try (Jackson2Reader reader = binder.createReader("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE))) {
-            assertThrows(Exception.class, reader::nextNull);
+            assertThrows(Exception.class, reader::nextIfNull);
         }
     }
 
@@ -132,7 +167,7 @@ class Jackson2BinderTest {
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
         JsonParser parser = new JsonFactory().createParser("null");
         try (Jackson2Reader reader = new Jackson2Binder(new JsonFactory()).createReader(parser)) {
-            reader.nextNull();
+            assertTrue(reader.nextIfNull());
         }
         assertTrue(parser.isClosed());
 
@@ -194,6 +229,35 @@ class Jackson2BinderTest {
 
         Details(boolean active) {
             this.active = active;
+        }
+    }
+
+    static class CurrentOneOf {
+        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")}, key = "kind")
+        public Animal pet;
+    }
+
+    static class ParentOneOf {
+        public String kind;
+
+        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")},
+                key = "kind", scope = OneOf.Scope.PARENT)
+        public Animal pet;
+    }
+
+    static class Animal {
+    }
+
+    static class Dog extends Animal {
+        public boolean barks;
+    }
+
+    static class CreatorValue {
+        final String name;
+
+        @NodeCreator
+        CreatorValue(@NodeProperty("name") String name) {
+            this.name = name;
         }
     }
 

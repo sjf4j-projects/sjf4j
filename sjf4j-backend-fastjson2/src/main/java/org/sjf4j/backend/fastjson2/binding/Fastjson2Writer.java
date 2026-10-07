@@ -2,6 +2,7 @@ package org.sjf4j.backend.fastjson2.binding;
 
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
@@ -68,6 +69,20 @@ public final class Fastjson2Writer extends StreamingWriter {
     public void writeName(String name) {
         writer.writeName(Asserts.notNull(name, "name"));
         writer.writeColon();
+    }
+
+    @Override
+    public void writeName(CompiledName compiledName) {
+        if (compiledName instanceof Fastjson2CompiledName) {
+            writer.writeNameRaw(((Fastjson2CompiledName) compiledName).rawName);
+        } else {
+            writeName(compiledName.name());
+        }
+    }
+
+    @Override
+    protected CompiledName createCompiledName(String name) {
+        return isRawNameSafe(name) ? new Fastjson2CompiledName(name) : new CompiledName(name);
     }
 
     @Override
@@ -167,6 +182,17 @@ public final class Fastjson2Writer extends StreamingWriter {
     public void close() throws IOException {
         flush();
         writer.close();
+    }
+
+    private static boolean isRawNameSafe(String name) {
+        for (int i = 0; i < name.length(); i++) {
+            char ch = name.charAt(i);
+            if (ch < ' ' || ch > '~' || ch == '"' || ch == '\\'
+                    || ch == '<' || ch == '>' || ch == '(' || ch == ')') {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

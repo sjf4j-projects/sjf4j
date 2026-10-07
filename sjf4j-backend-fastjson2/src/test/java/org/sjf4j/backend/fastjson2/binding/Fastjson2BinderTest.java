@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 
@@ -110,6 +111,20 @@ class Fastjson2BinderTest {
     }
 
     @Test
+    void writesCompiledNamesAndFallsBackForEscapedOrSingleQuotedNames() {
+        assertEquals("{\"value\":1}", new Fastjson2Binder().writeNodeAsString(new NamedValue()));
+        assertEquals("{\"a\\\"b\":1}", new Fastjson2Binder().writeNodeAsString(new EscapedNameValue()));
+
+        Fastjson2Binder singleQuotes = new Fastjson2Binder(JSONFactory.createReadContext(),
+                JSONFactory.createWriteContext(JSONWriter.Feature.UseSingleQuotes));
+        assertEquals("{'value':1}", singleQuotes.writeNodeAsString(new NamedValue()));
+
+        Fastjson2Binder unquoted = new Fastjson2Binder(JSONFactory.createReadContext(),
+                JSONFactory.createWriteContext(JSONWriter.Feature.UnquoteFieldName));
+        assertEquals("{value:1}", unquoted.writeNodeAsString(new NamedValue()));
+    }
+
+    @Test
     void createsNativeReadersWritersAndFlushesToSuppliedOutputs() throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder();
         StringWriter text = new StringWriter();
@@ -211,5 +226,14 @@ class Fastjson2BinderTest {
         Details(boolean active) {
             this.active = active;
         }
+    }
+
+    static class NamedValue {
+        public int value = 1;
+    }
+
+    static class EscapedNameValue {
+        @NodeProperty("a\"b")
+        public int value = 1;
     }
 }

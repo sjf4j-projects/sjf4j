@@ -6,9 +6,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
-import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.CompiledName;
+import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Types;
@@ -68,17 +67,17 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
 
     @Override
     public Jackson2Writer createWriter(Writer output) throws IOException {
-        return new Jackson2Writer(this, factory.createGenerator(Asserts.notNull(output, "output")));
+        return new Jackson2Writer(factory.createGenerator(Asserts.notNull(output, "output")));
     }
 
     /** Creates a streaming writer that wraps the supplied Jackson generator. */
     public Jackson2Writer createWriter(JsonGenerator generator) {
-        return new Jackson2Writer(this, Asserts.notNull(generator, "generator"));
+        return new Jackson2Writer(Asserts.notNull(generator, "generator"));
     }
 
     @Override
     public Jackson2Writer createWriter(OutputStream output) throws IOException {
-        return new Jackson2Writer(this, factory.createGenerator(Asserts.notNull(output, "output"), JsonEncoding.UTF8));
+        return new Jackson2Writer(factory.createGenerator(Asserts.notNull(output, "output"), JsonEncoding.UTF8));
     }
 
     @Override
@@ -86,7 +85,7 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         final BufferRecycler br = factory._getBufferRecycler();
         try (SegmentedStringWriter sw = new SegmentedStringWriter(br)) {
             JsonGenerator gen = factory.createGenerator(sw);
-            StreamingIO.writeNode(new Jackson2Writer(this, gen), node, context);
+            StreamingIO.writeNode(new Jackson2Writer(gen), node, context);
             gen.flush();
             return sw.getAndClear();
         } catch (BindingException e) {
@@ -97,23 +96,4 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
             br.releaseToPool();
         }
     }
-
-    public String writeNodeAsStringFast(Object node) {
-        try (FastStringWriter output = new FastStringWriter()) {
-            writeNode(output, node);
-            return output.toString();
-        } catch (BindingException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BindingException(e);
-        }
-    }
-
-
-    @Override
-    public CompiledName createPreparedName(String name) {
-        return new Jackson2PreparedName(name);
-    }
-
-
 }

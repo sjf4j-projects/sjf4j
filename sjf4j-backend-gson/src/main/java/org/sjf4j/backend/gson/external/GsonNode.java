@@ -59,6 +59,7 @@ public final class GsonNode implements ExternalNode<JsonElement> {
 
     @Override
     public String asString(JsonElement node) {
+        if (node.isJsonNull()) return null;
         return node.getAsString();
     }
 

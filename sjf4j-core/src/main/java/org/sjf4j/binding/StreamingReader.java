@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.PropertyInfo;
 
@@ -378,7 +379,16 @@ public abstract class StreamingReader implements Closeable {
      * <p>JSON {@code null} is not accepted. The accepted string
      * representation follows SJF4J binding semantics.</p>
      */
-    public abstract char readCharValue() throws IOException;
+    public char readCharValue() throws IOException {
+        String value = readString();
+        if (value == null) {
+            throw new BindingException("cannot read null as char");
+        }
+        if (value.length() != 1) {
+            throw new BindingException("cannot read char: expected single-character string, but length was " + value.length());
+        }
+        return value.charAt(0);
+    }
 
     /**
      * Reads and consumes the current logical value as a boxed
