@@ -67,8 +67,7 @@ public class PojoInfo {
             }
         }
         this.hasParentScopeOneOf = hasParentScopeOneOf;
-
-        this.propertyLookup = propertyLookup;   // TODO: canonical + alias
+        this.propertyLookup = propertyLookup;
         this.readableProperties = readableProperties;
         this.writableProperties = writableProperties;
         this.propertyReaders = propertyReaders;

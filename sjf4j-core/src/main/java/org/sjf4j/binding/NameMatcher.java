@@ -39,6 +39,9 @@ public class NameMatcher {
         Map<String, Integer> fallback = new HashMap<>(Math.max(16, (int) (writableProperties.length / 0.75f) + 1));
         for (int i = 0; i < writableProperties.length; i++) {
             fallback.put(writableProperties[i].name, i);
+            for (String alias : writableProperties[i].alias) {
+                fallback.put(alias, i);
+            }
         }
         this.fallback = fallback;
     }

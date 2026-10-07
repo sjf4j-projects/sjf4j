@@ -994,9 +994,12 @@ public class JsonObject extends JsonContainer {
         Asserts.notNull(key, "key");
         if (pi != null) {
             PropertyInfo fi = pi.getPropertyNoAlias(key);
-            if (fi != null && fi.readable) {
-                fi.invokeSetter(this, object);
-                return null;
+            if (fi != null) {
+                if (fi.writable) {
+                    fi.invokeSetter(this, object);
+                    return null;
+                }
+                throw new NodeException("property '" + key + "' is not writable");
             }
         }
         if (dynamicProperties == null) dynamicProperties = new LinkedHashMap<>();

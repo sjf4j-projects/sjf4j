@@ -152,20 +152,16 @@ public final class ReflectUtil {
         }
 
         Map<String, PropertyFamily> families = new LinkedHashMap<>();
-        Map<String, String> aliasMap = creatorInfo.aliasMap;
-        boolean hasExplicitBinding = false;
-        boolean hasNonPublicFields = false;
-        boolean hasNonPublicReaderGap = false;
-        boolean hasNonPublicWriterGap = false;
-        boolean hasHiddenDeclaredFields = false;
         boolean includeBeans = propertyStrategy != PropertyStrategy.FIELD_ONLY;
         boolean includeFields = propertyStrategy != PropertyStrategy.BEAN_ONLY;
-        Class<?> curClazz = clazz;
         Type curType = clazz;
+        Class<?> curClazz = clazz;
         do {
             Field[] declared = curClazz.getDeclaredFields();
-            try { AccessibleObject.setAccessible(declared, true); } catch (RuntimeException ignored) {}
-            hasHiddenDeclaredFields |= _reserveFieldFamilies(clazz, declared, propertyStrategy, families, includeFields);
+            try {
+                AccessibleObject.setAccessible(declared, true);
+            } catch (RuntimeException ignored) {}
+            if (includeFields) _reserveFieldFamilies(declared, families);
             if (includeBeans) _collectBeanFamilies(clazz, curClazz, curType, families);
             if (includeFields) _collectFieldFamilies(clazz, declared, curType, propertyStrategy, families);
             curType = curClazz.getGenericSuperclass();
@@ -174,23 +170,18 @@ public final class ReflectUtil {
 
         Map<String, PropertyInfo> properties = new LinkedHashMap<>();
         for (PropertyFamily family : families.values()) {
-            hasExplicitBinding |= family.explicitName != null || family.fieldExplicitName != null;
             MethodHandle getterHandle = null;
             MethodHandle setterHandle = null;
             Field publicField = null;
-            boolean fieldGetter = false;
-            boolean fieldSetter = false;
             boolean fieldPrimary = propertyStrategy == PropertyStrategy.FIELD_ONLY
                     || propertyStrategy == PropertyStrategy.FIELD_BEAN;
             if (fieldPrimary && family.field != null) {
                 try {
                     getterHandle = lookup.unreflectGetter(family.field);
-                    fieldGetter = true;
                 } catch (Exception ignored) {}
                 if (!Modifier.isFinal(family.field.getModifiers())) {
                     try {
                         setterHandle = lookup.unreflectSetter(family.field);
-                        fieldSetter = true;
                     } catch (Exception ignored) {}
                 }
             }
@@ -204,13 +195,11 @@ public final class ReflectUtil {
                 if (getterHandle == null) {
                     try {
                         getterHandle = lookup.unreflectGetter(family.field);
-                        fieldGetter = true;
                     } catch (Exception ignored) {}
                 }
                 if (setterHandle == null && !Modifier.isFinal(family.field.getModifiers())) {
                     try {
                         setterHandle = lookup.unreflectSetter(family.field);
-                        fieldSetter = true;
                     } catch (Exception ignored) {}
                 }
             }
@@ -218,11 +207,7 @@ public final class ReflectUtil {
             if (family.field != null) {
                 if (Modifier.isPublic(family.field.getModifiers())) {
                     publicField = family.field;
-                } else if (fieldGetter || fieldSetter) {
-                    hasNonPublicFields = true;
                 }
-                if (getterHandle == null && !family.canUseGetter()) hasNonPublicWriterGap = true;
-                if (setterHandle == null && !family.canUseSetter()) hasNonPublicReaderGap = true;
             }
             _assertCompatiblePropertyTypes(family, clazz);
 
@@ -270,27 +255,7 @@ public final class ReflectUtil {
                         "' in " + clazz.getName());
             }
 
-            if (family.aliases != null) for (String alias : family.aliases) {
-                if (alias == null || alias.isEmpty() || alias.equals(pi.name)) continue;
-                if (aliasMap == null) aliasMap = new HashMap<>();
-                String old = aliasMap.put(alias, pi.name);
-                if (old != null && !old.equals(pi.name)) {
-                    throw new BindingException("alias '" + alias + "' is mapped to multiple properties in " + clazz.getName());
-                }
-            }
         } //for
-
-        Map<String, PropertyInfo> aliasProperties = null;
-        if (aliasMap != null ) {
-            aliasProperties = new HashMap<>(properties);
-            for (Map.Entry<String, String> alias : aliasMap.entrySet()) {
-                PropertyInfo fi = properties.get(alias.getValue());
-                if (fi != null) aliasProperties.put(alias.getKey(), fi);
-            }
-        }
-        if (!hasNonPublicFields && properties.isEmpty() && hasHiddenDeclaredFields) {
-            hasNonPublicFields = true;
-        }
 
         List<PropertyInfo> writableProperties = new ArrayList<>(properties.size());
         List<PropertyReader> propertyReaders = new ArrayList<>(properties.size());
@@ -311,35 +276,36 @@ public final class ReflectUtil {
             }
         }
 
-        return new PojoInfo(clazz, creatorInfo, readDynamic, writeDynamic, properties,
+        Map<String, PropertyInfo> propertyLookup = new LinkedHashMap<>(properties);
+        for (PropertyInfo property : properties.values()) {
+            for (String alias : property.alias) {
+                if (alias == null || alias.isEmpty() || alias.equals(property.name)) continue;
+
+                PropertyInfo old = propertyLookup.putIfAbsent(alias, property);
+                if (old != null && old != property) {
+                    throw new BindingException("property alias '" + alias + "' conflicts in " + clazz.getName());
+                }
+            }
+        }
+
+        return new PojoInfo(clazz, creatorInfo, readDynamic, writeDynamic, propertyLookup,
                 writableProperties.toArray(new PropertyInfo[0]), propertyReaders.toArray(new PropertyReader[0]),
                 readableProperties.toArray(new PropertyInfo[0]), propertyWriters.toArray(new PropertyWriter[0]));
     }
 
-    private static boolean _reserveFieldFamilies(Class<?> root, Field[] fds,
-                                                 PropertyStrategy strategy,
-                                                 Map<String, PropertyFamily> families,
-                                                 boolean includeFields) {
-        boolean hasHiddenDeclaredFields = false;
-        for (Field field : fds) {
-            int mod = field.getModifiers();
-            if (Modifier.isStatic(mod) || field.isSynthetic()) continue;
-            if (Modifier.isTransient(mod)) {
+    private static void _reserveFieldFamilies(Field[] fields, Map<String, PropertyFamily> families) {
+        for (Field field : fields) {
+            int modifiers = field.getModifiers();
+            if (Modifier.isStatic(modifiers) || field.isSynthetic()) continue;
+            if (Modifier.isTransient(modifiers)) {
                 if (field.getAnnotation(NodeProperty.class) != null) {
-                    throw new BindingException("transient field '" + field.getName() + "' in " + root.getName() +
-                            " cannot use @NodeProperty");
+                    throw new BindingException("transient field '" + field.getName() + "' cannot use @NodeProperty");
                 }
                 continue;
             }
-            if (!Modifier.isPublic(mod)) {
-                hasHiddenDeclaredFields = true;
-            }
-            if (!includeFields) continue;
-            if (field.getAnnotation(NodeIgnore.class) != null) continue;
-            if (field.getType().isAnnotationPresent(NodeIgnore.class)) continue;
+            if (field.getAnnotation(NodeIgnore.class) != null || field.getType().isAnnotationPresent(NodeIgnore.class)) continue;
             families.computeIfAbsent(field.getName(), PropertyFamily::new);
         }
-        return hasHiddenDeclaredFields;
     }
 
     private static void _collectFieldFamilies(Class<?> root, Field[] fds, Type ownerType,

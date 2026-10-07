@@ -1874,10 +1874,10 @@ public final class Nodes {
         if (ti.pojoInfo != null) {
             PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
             if (propertyInfo != null) {
+                out.type = propertyInfo.type;
+                out.puttable = propertyInfo.writable;
                 if (propertyInfo.readable) {
                     out.node = propertyInfo.invokeGetter(node);
-                    out.type = propertyInfo.type;
-                    out.puttable = propertyInfo.writable;
                 }
                 return;
             }
@@ -2106,9 +2106,12 @@ public final class Nodes {
         }
         if (ti.pojoInfo != null) {
             PropertyInfo fi = ti.pojoInfo.getPropertyNoAlias(key);
-            if (fi != null && fi.readable) {
-                fi.invokeSetter(node, value);
-                return null;
+            if (fi != null) {
+                if (fi.writable) {
+                    fi.invokeSetter(node, value);
+                    return null;
+                }
+                throw new NodeException("property '" + key + "' is not writable");
             } else {
                 throw new NodeException("unknown field '" + key + "' in POJO '" +
                         node.getClass().getName() + "'");

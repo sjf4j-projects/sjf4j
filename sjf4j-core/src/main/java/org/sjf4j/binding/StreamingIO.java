@@ -270,8 +270,10 @@ public final class StreamingIO {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readEnum(StreamingReader reader, Class<?> enumType,
                                   RuntimeContext context) throws IOException {
+
         StreamingReader.Token token = reader.peekToken();
         if (token == StreamingReader.Token.NULL) {
+            reader.nextIfNull();
             return null;
         }
 
