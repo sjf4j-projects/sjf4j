@@ -2,13 +2,21 @@ package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -48,7 +56,7 @@ class GsonBinderTest {
     }
 
     @Test
-    void documentsIntentionalDefaultNullPolicyDifference() {
+    void runtimeContextControlsNullSerialization() {
         Document value = document();
         Gson gson = new Gson();
 
@@ -63,6 +71,61 @@ class GsonBinderTest {
     }
 
     @Test
+    void createsReadersAndWritersForAllSupportedInputsAndOutputs() throws Exception {
+        GsonBinder binder = new GsonBinder();
+        byte[] json = "\"héllo\"".getBytes(StandardCharsets.UTF_8);
+
+        try (GsonReader reader = binder.createReader("\"héllo\"")) {
+            assertEquals("héllo", reader.readString());
+        }
+        try (GsonReader reader = binder.createReader(json)) {
+            assertEquals("héllo", reader.readString());
+        }
+        try (GsonReader reader = binder.createReader(new ByteArrayInputStream(json))) {
+            assertEquals("héllo", reader.readString());
+        }
+        try (GsonReader reader = binder.createReader(new StringReader("\"héllo\""))) {
+            assertEquals("héllo", reader.readString());
+        }
+        try (GsonReader reader = binder.createReader(new JsonReader(new StringReader("\"héllo\"")))) {
+            assertEquals("héllo", reader.readString());
+        }
+
+        StringWriter text = new StringWriter();
+        try (GsonWriter writer = binder.createWriter(text)) {
+            writer.writeStringValue("héllo");
+            writer.flush();
+        }
+        assertEquals("\"héllo\"", text.toString());
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (GsonWriter writer = binder.createWriter(bytes)) {
+            writer.writeStringValue("héllo");
+            writer.flush();
+        }
+        assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
+
+        StringWriter nativeOutput = new StringWriter();
+        try (GsonWriter writer = binder.createWriter(new JsonWriter(nativeOutput))) {
+            writer.writeStringValue("héllo");
+            writer.flush();
+        }
+        assertEquals("\"héllo\"", nativeOutput.toString());
+    }
+
+    @Test
+    void preservesExternalJsonNullsWhenContextOmitsOrdinaryNulls() {
+        JsonObject object = new JsonObject();
+        object.add("empty", JsonNull.INSTANCE);
+
+        JsonObject output = JsonParser.parseString(
+                new GsonBinder(new Gson(), new RuntimeContext(false)).writeNodeAsString(object))
+                .getAsJsonObject();
+
+        assertTrue(output.get("empty").isJsonNull());
+    }
+
+    @Test
     void rejectsNullDependenciesAndIo() {
         assertThrows(NullPointerException.class, () -> new GsonBinder(null));
         assertThrows(NullPointerException.class, () -> new GsonBinder(new Gson(), null));
@@ -70,6 +133,8 @@ class GsonBinderTest {
         GsonBinder binder = new GsonBinder(new Gson());
         assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
         assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
+        assertThrows(NullPointerException.class, () -> binder.createReader((JsonReader) null));
+        assertThrows(NullPointerException.class, () -> binder.createWriter((JsonWriter) null));
     }
 
     private static Document document() {

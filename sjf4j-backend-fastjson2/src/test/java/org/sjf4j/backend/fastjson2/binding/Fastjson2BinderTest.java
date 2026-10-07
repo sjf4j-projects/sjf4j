@@ -29,17 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Fastjson2BinderTest {
 
     @Test
-    void peekDoesNotDistinguishFieldNamesFromStringValues() {
-        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of("{\"id\":7}"))) {
-            reader.startObject();
-            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
-            assertEquals("id", reader.nextName());
-            assertEquals(7, reader.readIntValue());
-            assertTrue(reader.nextIfObjectEnd());
-        }
-    }
-
-    @Test
     void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
         try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
@@ -131,7 +120,6 @@ class Fastjson2BinderTest {
         }
         Fastjson2Writer writer = binder.createWriter(text);
         writer.writeStringValue("héllo");
-        writer.flushTo(text);
         writer.close();
         assertEquals("\"héllo\"", text.toString());
 
@@ -139,7 +127,6 @@ class Fastjson2BinderTest {
         try (Fastjson2Writer byteWriter = binder.createWriter(bytes)) {
             byteWriter.writeStringValue("héllo");
             byteWriter.flush();
-            byteWriter.flushTo(bytes);
         }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
     }
@@ -166,11 +153,9 @@ class Fastjson2BinderTest {
 
         try (Fastjson2Writer writer = binder.createWriter(text)) {
             writer.writeNull();
-            writer.flushTo(text);
         }
         try (Fastjson2Writer writer = binder.createWriter(bytes)) {
             writer.writeNull();
-            writer.flushTo(bytes);
         }
 
         assertFalse(text.closed);

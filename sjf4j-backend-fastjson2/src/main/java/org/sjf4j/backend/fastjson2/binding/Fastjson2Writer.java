@@ -15,10 +15,26 @@ import java.math.BigInteger;
 public final class Fastjson2Writer extends StreamingWriter {
 
     private final JSONWriter writer;
+    private final Writer charOutput;
+    private final OutputStream byteOutput;
 
     public Fastjson2Writer(JSONWriter writer) {
+        this(writer, null, null);
+    }
+
+    public Fastjson2Writer(JSONWriter writer, Writer output) {
+        this(writer, Asserts.notNull(output, "output"), null);
+    }
+
+    public Fastjson2Writer(JSONWriter writer, OutputStream output) {
+        this(writer, null, Asserts.notNull(output, "output"));
+    }
+
+    private Fastjson2Writer(JSONWriter writer, Writer charOutput, OutputStream byteOutput) {
         super(Backend.FASTJSON2);
         this.writer = Asserts.notNull(writer, "writer");
+        this.charOutput = charOutput;
+        this.byteOutput = byteOutput;
     }
 
     @Override
@@ -139,21 +155,18 @@ public final class Fastjson2Writer extends StreamingWriter {
     }
 
     @Override
-    public void flush() throws IOException {}
+    public void flush() throws IOException {
+        if (charOutput != null) {
+            writer.flushTo(charOutput);
+        } else if (byteOutput != null) {
+            writer.flushTo(byteOutput);
+        }
+    }
 
     @Override
     public void close() throws IOException {
+        flush();
         writer.close();
-    }
-
-    @Override
-    public void flushTo(Writer output) throws IOException {
-        writer.flushTo(output);
-    }
-
-    @Override
-    public void flushTo(OutputStream output) throws IOException {
-        writer.flushTo(output);
     }
 
 }

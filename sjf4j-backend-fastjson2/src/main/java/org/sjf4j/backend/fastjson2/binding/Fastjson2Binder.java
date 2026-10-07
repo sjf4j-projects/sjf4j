@@ -34,9 +34,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         this.readerContext = Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
-        if (context.includeNulls) {
-            this.writerContext.config(JSONWriter.Feature.WriteNulls);
-        }
+        this.writerContext.config(JSONWriter.Feature.WriteNulls);
     }
 
 
@@ -93,13 +91,13 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
     @Override
     public Fastjson2Writer createWriter(Writer output) throws IOException {
         Asserts.notNull(output, "output");
-        return new Fastjson2Writer(JSONWriter.of(writerContext));
+        return new Fastjson2Writer(JSONWriter.of(writerContext), output);
     }
 
     @Override
     public Fastjson2Writer createWriter(OutputStream output) throws IOException {
         Asserts.notNull(output, "output");
-        return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext));
+        return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext), output);
     }
 
 }

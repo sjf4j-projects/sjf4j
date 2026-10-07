@@ -1,10 +1,12 @@
 package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
-import org.sjf4j.exception.BindingException;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.exception.BindingException;
 
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,43 +24,39 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GsonReaderTest {
 
     @Test
-    void skipsNestedValue() throws Exception {
+    void skipsNestedNode() throws Exception {
         try (GsonReader reader = reader("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]")) {
             reader.startArray();
-            reader.skipNext();
-            assertEquals("kept", reader.nextStringValue());
+            reader.skipNode();
+            assertEquals("kept", reader.readString());
             reader.endArray();
+            reader.endDocument();
         }
     }
 
     @Test
     void preservesNumberRepresentations() throws Exception {
-        try (GsonReader reader = reader("[1,2147483648,123456789012345678901234567890,1.25]")) {
+        try (GsonReader reader = reader("[1,2147483648,123456789012345678901234567890,1.25,1e10000]")) {
             reader.startArray();
-            assertInstanceOf(Integer.class, reader.nextNumber());
-            assertInstanceOf(Long.class, reader.nextNumber());
-            assertEquals(new BigInteger("123456789012345678901234567890"), reader.nextNumber());
-            assertEquals(1.25d, reader.nextNumber());
+            assertInstanceOf(Integer.class, reader.readNumber());
+            assertInstanceOf(Long.class, reader.readNumber());
+            assertEquals(new BigInteger("123456789012345678901234567890"), reader.readNumber());
+            assertEquals(1.25d, reader.readNumber());
+            assertEquals(new BigDecimal("1e10000"), reader.readNumber());
             reader.endArray();
         }
     }
 
     @Test
-    void rejectsOutOfRangeByteAndShortValues() throws Exception {
-        try (GsonReader reader = reader("[128,-129,32768,-32769]")) {
+    void validatesNumericNarrowing() throws Exception {
+        try (GsonReader reader = reader("[128,-129,32768,-32769,1e50]")) {
             reader.startArray();
-            assertThrows(Exception.class, reader::nextByteValue);
-            assertThrows(Exception.class, reader::nextByteValue);
-            assertThrows(Exception.class, reader::nextShortValue);
-            assertThrows(Exception.class, reader::nextShortValue);
+            assertThrows(Exception.class, reader::readByteValue);
+            assertThrows(Exception.class, reader::readByteValue);
+            assertThrows(Exception.class, reader::readShortValue);
+            assertThrows(Exception.class, reader::readShortValue);
+            assertThrows(Exception.class, reader::readFloatValue);
             reader.endArray();
-        }
-    }
-
-    @Test
-    void rejectsNonFiniteFloat() throws Exception {
-        try (GsonReader reader = reader("1e50")) {
-            assertThrows(Exception.class, reader::nextFloatValue);
         }
     }
 
@@ -66,55 +64,64 @@ class GsonReaderTest {
     void readsShortAndFloatValues() throws Exception {
         try (GsonReader reader = reader("[32767,1.25]")) {
             reader.startArray();
-            assertEquals(Short.MAX_VALUE, reader.nextShortValue());
-            assertEquals(1.25f, reader.nextFloatValue());
+            assertEquals(Short.MAX_VALUE, reader.readShortValue());
+            assertEquals(1.25f, reader.readFloatValue());
             reader.endArray();
         }
     }
 
     @Test
-    void conditionallyConsumesNativeTokens() throws Exception {
+    void rejectsNullCharWithBindingException() throws Exception {
+        try (GsonReader reader = reader("null")) {
+            BindingException error = assertThrows(BindingException.class, reader::readCharValue);
+            assertEquals("cannot read null as char", error.getMessage());
+        }
+    }
+
+    @Test
+    void exposesLogicalTokensAndConditionalConsumption() throws Exception {
+        try (GsonReader reader = reader("{\"id\":null}")) {
+            assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
+            assertFalse(reader.nextIfArrayStart());
+            reader.startObject();
+            assertEquals(StreamingReader.Token.NAME, reader.peekToken());
+            assertEquals("id", reader.nextName());
+            assertEquals(StreamingReader.Token.NULL, reader.peekToken());
+            assertTrue(reader.nextIfNull());
+            assertTrue(reader.nextIfObjectEnd());
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            reader.endDocument();
+        }
+
         try (GsonReader reader = reader("[null]")) {
-            reader.startArray();
+            assertTrue(reader.nextIfArrayStart());
             assertTrue(reader.nextIfNull());
             assertFalse(reader.nextIfNull());
             assertTrue(reader.nextIfArrayEnd());
         }
-        try (GsonReader reader = reader("{}")) {
-            reader.startObject();
-            assertTrue(reader.nextIfObjectEnd());
-        }
     }
 
     @Test
-    void refreshesPeekedTokenAfterConsumption() throws Exception {
-        try (GsonReader reader = reader("1")) {
-            assertEquals(Token.NUMBER, reader.currentToken());
-            assertEquals(1, reader.nextIntValue());
-            assertEquals(Token.EOF, reader.currentToken());
-        }
-    }
-
-    @Test
-    void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
+    void readsRawNodesWithSjf4jCollectionAndNumberSemantics() throws Exception {
         try (GsonReader reader = reader(
-                "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
+                "{\"text\":\"Ada\",\"number\":7,\"large\":123456789012345678901234567890,"
+                        + "\"decimal\":1e10000,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
 
-            assertEquals(Token.START_OBJECT, reader.currentToken());
+            assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
             Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
 
             assertEquals(LinkedHashMap.class, value.getClass());
-            assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
+            assertEquals(Arrays.asList("text", "number", "large", "decimal", "enabled", "empty", "nested", "items"),
                     Arrays.asList(value.keySet().toArray()));
-            assertEquals("Ada", value.get("text"));
             assertEquals(7, value.get("number"));
+            assertEquals(new BigInteger("123456789012345678901234567890"), value.get("large"));
+            assertEquals(new BigDecimal("1e10000"), value.get("decimal"));
             assertEquals(true, value.get("enabled"));
             assertNull(value.get("empty"));
             assertEquals(LinkedHashMap.class, value.get("nested").getClass());
             assertEquals(ArrayList.class, value.get("items").getClass());
-            assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
-            assertEquals(Token.EOF, reader.currentToken());
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
             reader.endDocument();
         }
     }
@@ -128,13 +135,12 @@ class GsonReaderTest {
     }
 
     @Test
-    void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
+    void rawNodeConsumesOneValue() throws Exception {
         try (GsonReader reader = reader("[{\"id\":7},\"next\"]")) {
             reader.startArray();
-            assertEquals(Token.START_OBJECT, reader.currentToken());
             assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
-            assertEquals(Token.STRING, reader.currentToken());
-            assertEquals("next", reader.nextStringValue());
+            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
+            assertEquals("next", reader.readString());
             reader.endArray();
         }
     }

@@ -41,12 +41,6 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     public void endDocument() throws IOException {
     }
 
-    public void flushTo(Writer output) throws IOException {
-    }
-
-    public void flushTo(OutputStream output) throws IOException {
-    }
-
 
     /*
      * Structure

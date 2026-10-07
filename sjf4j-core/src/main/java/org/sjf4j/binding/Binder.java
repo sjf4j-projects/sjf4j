@@ -168,7 +168,6 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
             StreamingIO.writeNode(writer, node, context);
             writer.endDocument();
             writer.flush();
-            writer.flushTo(output);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -187,7 +186,6 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
             StreamingIO.writeNode(writer, node, context);
             writer.endDocument();
             writer.flush();
-            writer.flushTo(output);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {

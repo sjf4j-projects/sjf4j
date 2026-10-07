@@ -12,7 +12,6 @@ import org.sjf4j.util.Asserts;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.BindException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,8 +50,7 @@ public final class Fastjson2Reader extends StreamingReader {
     @Override
     public Token peekToken() {
         if (peeked == null) {
-            peeked = reader.isEnd() ? Token.EOF
-                    : _token(reader.current());
+            peeked = reader.isEnd() ? Token.EOF : _token(reader.current());
         }
         return peeked;
     }
@@ -126,11 +124,6 @@ public final class Fastjson2Reader extends StreamingReader {
     }
 
     @Override
-    public int nextNameMatch(NameMatcher matcher, int expectedIndex) {
-        return nextNameMatch(matcher);
-    }
-
-    @Override
     public String readString() {
         peeked = null;
         return reader.readString();
@@ -187,8 +180,11 @@ public final class Fastjson2Reader extends StreamingReader {
     @Override
     public char readCharValue() throws IOException {
         String value = readString();
-        if (value == null || value.isEmpty()) {
-            throw new BindException("cannot read empty string as char");
+        if (value == null) {
+            throw new BindingException("cannot read null as char");
+        }
+        if (value.length() != 1) {
+            throw new BindingException("cannot read char: expected single-character string, but length was " + value.length());
         }
         return value.charAt(0);
     }

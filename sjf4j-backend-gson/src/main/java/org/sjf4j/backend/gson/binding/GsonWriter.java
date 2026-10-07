@@ -1,20 +1,20 @@
 package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.binding.Binder;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 
+/** StreamingWriter backed directly by a Gson {@link JsonWriter}. */
 public final class GsonWriter extends StreamingWriter {
 
     private final JsonWriter writer;
 
-    public GsonWriter(Binder<?, ?> binder, JsonWriter writer) {
-        super(binder);
-        Asserts.notNull(writer, "writer");
-        this.writer = writer;
+    public GsonWriter(JsonWriter writer) {
+        super(Backend.GSON);
+        this.writer = Asserts.notNull(writer, "writer");
     }
 
     @Override
@@ -92,19 +92,18 @@ public final class GsonWriter extends StreamingWriter {
         writer.value(Character.toString(value));
     }
 
-
     @Override
     public void writeNumberValue(Number value) throws IOException {
         writer.value(value);
     }
 
     @Override
-    public void close() throws IOException {
-        writer.close();
+    public void flush() throws IOException {
+        writer.flush();
     }
 
     @Override
-    public void flush() throws IOException {
-        writer.flush();
+    public void close() throws IOException {
+        writer.close();
     }
 }
