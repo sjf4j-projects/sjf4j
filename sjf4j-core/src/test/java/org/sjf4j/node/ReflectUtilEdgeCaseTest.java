@@ -303,10 +303,6 @@ class ReflectUtilEdgeCaseTest {
 
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(null));
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(IdentityNamingPojo.class));
-        assertEquals(PropertyStrategy.FIELD_ONLY,
-                ReflectUtil.analyzePojo(FieldBindingPojo.class, true).propertyStrategy);
-        assertEquals(PropertyStrategy.BEAN_FIELD,
-                ReflectUtil.analyzePojo(IdentityNamingPojo.class, true).propertyStrategy);
         assertThrows(BindingException.class,
                 () -> ReflectUtil.analyzePojo(TransientNodePropertyPojo.class, true));
 

@@ -415,7 +415,7 @@ public final class SchemaUtil {
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (NoSuchFileException e) {
             return null;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
                     "failed to load schema from file", PathSegment.Root.INSTANCE, uri), e);
         }

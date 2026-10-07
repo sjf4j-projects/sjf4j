@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
-class SimpleJsonBindingTest {
+class SimpleJsonBinderTest {
 
     @Test
     void requiresAStreamingContext() {
@@ -42,7 +42,7 @@ class SimpleJsonBindingTest {
         }
         try (SimpleJsonReader reader = binding.createReader("null")) {
             assertInstanceOf(SimpleJsonReader.class, reader);
-            reader.nextNull();
+            reader.nextIfNull();
             reader.endDocument();
         }
         try (SimpleJsonReader reader = binding.createReader("null".getBytes(StandardCharsets.UTF_8))) {

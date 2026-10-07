@@ -7,7 +7,7 @@ public class CompiledName {
 
     private final String name;
 
-    protected CompiledName(String name) {
+    public CompiledName(String name) {
         this.name = Asserts.notNull(name, "name");
     }
 

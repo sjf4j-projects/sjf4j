@@ -60,7 +60,7 @@ class SimpleJsonWriterTest {
             writer.writeName("a\n");
             writer.writeInt(1);
             writer.separateProperty();
-            writer.writeName(new CompiledName.SimplePreparedName("foreign"));
+            writer.writeName(new CompiledName("foreign"));
             writer.startArray();
             writer.writeStringValue("x");
             writer.separateElement();

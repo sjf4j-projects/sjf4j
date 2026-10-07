@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.binding.Backend;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -36,7 +37,7 @@ class StreamingWriterDefaultMethodTest {
         writer.writeBigInteger(null);
         writer.writeBigDecimal(BigDecimal.valueOf(9));
         writer.writeBigDecimal(null);
-        writer.writeName(new CompiledName.SimplePreparedName("prepared"));
+        writer.writeName(new CompiledName("prepared"));
 
         assertEquals(List.of(
                 "string:text", "null",
@@ -57,7 +58,7 @@ class StreamingWriterDefaultMethodTest {
         private final List<String> events = new ArrayList<>();
 
         RecordingWriter(Binder<?, ?> binder) {
-            super(binder);
+            super(Backend.AUTO);
         }
 
         public void startObject() {} public void endObject() {} public void startArray() {} public void endArray() {}

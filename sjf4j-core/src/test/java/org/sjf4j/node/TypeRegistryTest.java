@@ -73,7 +73,7 @@ public class TypeRegistryTest {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
-        assertEquals(4, pi.propertyCount);
+        assertEquals(4, pi.readableProperties.length);
         assertNotNull(pi.propertyLookup.get("name").getterHandle);
         assertNotNull(pi.propertyLookup.get("name").setterHandle);
         assertEquals(int.class, pi.propertyLookup.get("age").type);

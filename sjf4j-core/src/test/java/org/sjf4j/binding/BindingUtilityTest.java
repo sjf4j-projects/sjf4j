@@ -2,6 +2,7 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
+import org.sjf4j.annotation.binding.Backend;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -34,30 +35,30 @@ class BindingUtilityTest {
     @Test
     void readerDefaultsHandleBoxedAndNullableValues() throws Exception {
         RecordingReader values = new RecordingReader(false, StreamingReader.Token.EOF);
-        assertEquals("text", values.nextString());
-        assertEquals(1L, values.nextLong());
-        assertEquals(2, values.nextInt());
-        assertEquals((short) 3, values.nextShort());
-        assertEquals((byte) 4, values.nextByte());
-        assertEquals(5.5d, values.nextDouble());
-        assertEquals(6.5f, values.nextFloat());
-        assertEquals(true, values.nextBoolean());
+        assertEquals("text", values.readString());
+        assertEquals(1L, values.readLong());
+        assertEquals(2, values.readInt());
+        assertEquals((short) 3, values.readShort());
+        assertEquals((byte) 4, values.readByte());
+        assertEquals(5.5d, values.readDouble());
+        assertEquals(6.5f, values.readFloat());
+        assertEquals(true, values.readBoolean());
 
         RecordingReader nulls = new RecordingReader(true, StreamingReader.Token.EOF);
-        assertNull(nulls.nextString());
-        assertNull(nulls.nextLong());
-        assertNull(nulls.nextInt());
-        assertNull(nulls.nextShort());
-        assertNull(nulls.nextByte());
-        assertNull(nulls.nextDouble());
-        assertNull(nulls.nextFloat());
-        assertNull(nulls.nextBoolean());
+        assertNull(nulls.readString());
+        assertNull(nulls.readLong());
+        assertNull(nulls.readInt());
+        assertNull(nulls.readShort());
+        assertNull(nulls.readByte());
+        assertNull(nulls.readDouble());
+        assertNull(nulls.readFloat());
+        assertNull(nulls.readBoolean());
     }
 
     @Test
     void readerTokenAndDocumentDefaultsUseExpectedSemantics() throws Exception {
-        assertEquals(JsonType.OBJECT, StreamingReader.Token.START_OBJECT.jsonType());
-        assertEquals(JsonType.ARRAY, StreamingReader.Token.START_ARRAY.jsonType());
+        assertEquals(JsonType.OBJECT, StreamingReader.Token.OBJECT_START.jsonType());
+        assertEquals(JsonType.ARRAY, StreamingReader.Token.ARRAY_START.jsonType());
         assertEquals(JsonType.STRING, StreamingReader.Token.STRING.jsonType());
         assertEquals(JsonType.NUMBER, StreamingReader.Token.NUMBER.jsonType());
         assertEquals(JsonType.BOOLEAN, StreamingReader.Token.BOOLEAN.jsonType());
@@ -68,39 +69,54 @@ class BindingUtilityTest {
         RecordingReader eof = new RecordingReader(false, StreamingReader.Token.EOF);
         eof.startDocument();
         eof.endDocument();
-        assertNull(eof.nameMatcher(Object.class));
 
         RecordingReader data = new RecordingReader(false, StreamingReader.Token.STRING);
         assertThrows(IOException.class, data::endDocument);
     }
 
-    private static final class RecordingReader implements StreamingReader {
+    private static final class RecordingReader extends StreamingReader {
         private final boolean nullValue;
         private final Token token;
 
         private RecordingReader(boolean nullValue, Token token) {
+            super(Backend.AUTO);
             this.nullValue = nullValue;
             this.token = token;
         }
 
-        public Token currentToken() { return token; }
+        public Token peekToken() { return token; }
         public boolean nextIfNull() { return nullValue; }
+        public boolean nextIfObjectStart() { return false; }
         public boolean nextIfObjectEnd() { return false; }
+        public boolean nextIfArrayStart() { return false; }
         public boolean nextIfArrayEnd() { return false; }
-        public void startObject() {} public void endObject() {} public void startArray() {} public void endArray() {}
+        public void startObject() {} 
+        public void endObject() {} 
+        public void startArray() {} 
+        public void endArray() {}
         public String nextName() { return "name"; }
-        public String nextStringValue() { return "text"; }
-        public Number nextNumber() { return 0; }
-        public long nextLongValue() { return 1L; }
-        public int nextIntValue() { return 2; }
-        public short nextShortValue() { return 3; }
-        public byte nextByteValue() { return 4; }
-        public double nextDoubleValue() { return 5.5d; }
-        public float nextFloatValue() { return 6.5f; }
-        public boolean nextBooleanValue() { return true; }
-        public char nextCharValue() { return 'x'; }
-        public BigInteger nextBigInteger() { return BigInteger.ZERO; }
-        public BigDecimal nextBigDecimal() { return BigDecimal.ZERO; }
-        public void nextNull() {} public void skipNext() {} public void close() {}
+        @Override
+        public String readString() { return nullValue ? null : "text"; }
+        @Override
+        public Number readNumber() { return nullValue ? null : 1; }
+        @Override
+        public long readLongValue() { return 1L; }
+        public int readIntValue() { return 2; }
+        public short readShortValue() { return 3; }
+        public byte readByteValue() { return 4; }
+        public double readDoubleValue() { return 5.5d; }
+        public float readFloatValue() { return 6.5f; }
+        public boolean readBooleanValue() { return true; }
+        public char readCharValue() { return 'x'; }
+        public BigInteger readBigInteger() { return BigInteger.ZERO; }
+        public BigDecimal readBigDecimal() { return BigDecimal.ZERO; }
+        public void skipNode() {}
+
+        @Override
+        public Object readRawNode() throws IOException {
+            return null;
+        }
+
+        public void close() {}
     }
 }

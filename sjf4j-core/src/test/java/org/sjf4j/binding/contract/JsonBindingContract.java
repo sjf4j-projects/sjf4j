@@ -3,6 +3,7 @@ package org.sjf4j.binding.contract;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.Binder;
+import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -28,8 +29,7 @@ public abstract class JsonBindingContract {
             writer.separateElement();
             writer.writeStringValue("x");
             writer.endArray();
-            writer.separateProperty();
-            writer.writeName("ok");
+            writer.writeName("ok", true);
             writer.writeBoolean(true);
             writer.endObject();
             writer.endDocument();
@@ -40,11 +40,11 @@ public abstract class JsonBindingContract {
             reader.startObject();
             assertEquals("items", reader.nextName());
             reader.startArray();
-            assertEquals(1, reader.nextIntValue());
-            assertEquals("x", reader.nextStringValue());
+            assertEquals(1, reader.readIntValue());
+            assertEquals("x", reader.readString());
             reader.endArray();
             assertEquals("ok", reader.nextName());
-            assertTrue(reader.nextBooleanValue());
+            assertTrue(reader.readBooleanValue());
             reader.endObject();
             reader.endDocument();
         }

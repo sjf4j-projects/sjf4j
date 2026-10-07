@@ -330,6 +330,7 @@ public final class SimpleJsonReader extends StreamingReader {
     @Override
     public boolean readBooleanValue() throws IOException {
         bufferedToken = null;
+        _prepareToken();
         _prepareValuePathUnchecked();
         try {
             boolean value = _readBoolean();
@@ -344,6 +345,7 @@ public final class SimpleJsonReader extends StreamingReader {
     @Override
     public char readCharValue() throws IOException {
         bufferedToken = null;
+        _prepareToken();
         _prepareValuePathUnchecked();
         try {
             String value = _readString();
@@ -582,6 +584,7 @@ public final class SimpleJsonReader extends StreamingReader {
 
     private long _readLongValue(long min, long max, String error) throws IOException {
         bufferedToken = null;
+        _prepareToken();
         _prepareValuePathUnchecked();
         try {
             _scanNumber(false);
@@ -599,6 +602,7 @@ public final class SimpleJsonReader extends StreamingReader {
 
     private double _readDoubleValue(boolean floatValue) throws IOException {
         bufferedToken = null;
+        _prepareToken();
         _prepareValuePathUnchecked();
         try {
             _scanNumber(true);
@@ -1154,3 +1158,4 @@ public final class SimpleJsonReader extends StreamingReader {
         }
     }
 }
+

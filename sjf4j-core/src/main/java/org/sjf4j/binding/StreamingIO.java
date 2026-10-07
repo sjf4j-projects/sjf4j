@@ -213,7 +213,7 @@ public final class StreamingIO {
             throw new BindingException("cannot read value into type '" + boxed.getName() + "'");
         } catch (BindingException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new BindingException("failed to read streaming into '" + type + "'", e);
         }
     }
@@ -741,7 +741,7 @@ public final class StreamingIO {
      */
 
     public static Object readArray(StreamingReader reader, Type type, Class<?> boxed,
-                                      Type componentType, Class<?> componentBoxed, TypeInfo componentTi,
+                                      Class<?> componentClazz, Class<?> componentBoxed, TypeInfo componentTi,
                                       RuntimeContext context) throws IOException {
         if (reader.nextIfNull()) {
             return null;
@@ -751,36 +751,37 @@ public final class StreamingIO {
                     type.getTypeName() + "'");
         }
 
-        if (componentType == null) {
-            componentType = boxed.getComponentType();
-            componentBoxed = Types.box(componentType.getClass());
-            componentTi = TypeRegistry.registerTypeInfo(componentBoxed);
+        if (componentClazz == null) {
+            componentClazz = boxed.getComponentType();
+            componentBoxed = Types.box(componentClazz);
+            componentTi = TypeRegistry.registerTypeInfo(componentClazz);
         }
 
-        Object array = null;
+        Object arr = null;
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
-            if (array == null) {
-                array = Array.newInstance(componentBoxed, 8);
-            } else if (size == Array.getLength(array)) {
-                Object expanded = Array.newInstance(componentBoxed, size << 1);
-                System.arraycopy(array, 0, expanded, 0, size);
-                array = expanded;
+            if (arr == null) {
+                arr = Array.newInstance(componentClazz, 8);
+            } else if (size == Array.getLength(arr)) {
+                Object expanded = Array.newInstance(componentClazz, size << 1);
+                System.arraycopy(arr, 0, expanded, 0, size);
+                arr = expanded;
             }
 
-            Array.set(array, size++, readNode(reader, componentType, componentBoxed, componentTi, context));
+            Object value = readNode(reader, componentClazz, componentBoxed, componentTi, context);
+            Array.set(arr, size++, value);
         }
 
-        if (array == null) {
-            return Array.newInstance(componentBoxed, 0);
+        if (arr == null) {
+            return Array.newInstance(componentClazz, 0);
         }
 
-        if (size == Array.getLength(array)) {
-            return array;
+        if (size == Array.getLength(arr)) {
+            return arr;
         }
 
-        Object exact = Array.newInstance(componentBoxed, size);
-        System.arraycopy(array, 0, exact, 0, size);
+        Object exact = Array.newInstance(componentClazz, size);
+        System.arraycopy(arr, 0, exact, 0, size);
         return exact;
     }
 
@@ -849,7 +850,7 @@ public final class StreamingIO {
             _writeNode(writer, node, context);
         } catch (BindingException | IOException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new BindingException("failed to write node of type '" + Types.name(node) + "'", e);
         }
     }

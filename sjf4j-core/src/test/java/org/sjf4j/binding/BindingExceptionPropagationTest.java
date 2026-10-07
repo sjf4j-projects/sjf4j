@@ -82,7 +82,7 @@ class BindingExceptionPropagationTest {
                         Object.class, PrimitiveAccessor.class, RuntimeContext.EMPTY)));
         assertSame(failure, assertThrowsExactly(BindingException.class,
                 () -> writer.write(new SimpleJsonWriter(null, new StringWriter()),
-                        new CompiledName.SimplePreparedName("value"), accessor, RuntimeContext.EMPTY, 0)));
+                        new CompiledName("value"), accessor, RuntimeContext.EMPTY, 0)));
     }
 
     public static Object throwCreator() {

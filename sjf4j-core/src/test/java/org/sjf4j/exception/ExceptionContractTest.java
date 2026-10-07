@@ -5,6 +5,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.path.PathSegment;
 

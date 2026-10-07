@@ -8,8 +8,11 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.PropertyStrategy;
 
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -125,15 +128,6 @@ class PropertyStrategyBindingTest {
     }
 
     @Test
-    void defaultBeanFieldFindsBeanProperty() {
-        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(DefaultBeanFieldPojo.class);
-        assertEquals(PropertyStrategy.BEAN_FIELD, pi.propertyStrategy);
-        assertTrue(pi.propertyLookup.containsKey("name"));
-        assertTrue(pi.propertyLookup.get("name").hasGetter());
-        assertTrue(pi.propertyLookup.get("name").hasSetter());
-    }
-
-    @Test
     void beanOnlyIgnoresFieldOnlyMembers() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(BeanOnlyPojo.class);
         assertTrue(pi.propertyLookup.containsKey("beanName"));
@@ -144,7 +138,7 @@ class PropertyStrategyBindingTest {
     void fieldOnlyIncludesPrivateFieldAndIgnoresGetter() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(FieldOnlyPojo.class);
         assertNotNull(pi.propertyLookup.get("name"));
-        assertFalse(pi.readableProperties.isEmpty());
+        assertNotEquals(0, pi.readableProperties.length);
     }
 
     @Test
@@ -159,7 +153,7 @@ class PropertyStrategyBindingTest {
         assertEquals("han", pojo.peek());
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(SetterOnlyPojo.class);
         assertTrue(pi.propertyLookup.containsKey("name"));
-        assertFalse(pi.readableProperties.containsKey("name"));
+        assertFalse(Arrays.stream(pi.readableProperties).anyMatch(property -> "name".equals(property.name)));
         assertEquals("{}", Sjf4j.global().toJsonString(pojo));
     }
 
@@ -167,8 +161,8 @@ class PropertyStrategyBindingTest {
     void fieldBeanIncludesPrivateFieldFamilies() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(FieldBeanPojo.class);
         assertTrue(pi.propertyLookup.containsKey("name"));
-        assertTrue(pi.propertyLookup.get("name").hasGetter());
-        assertTrue(pi.propertyLookup.get("name").hasSetter());
+        assertTrue(pi.propertyLookup.get("name").readable);
+        assertTrue(pi.propertyLookup.get("name").writable);
     }
 
     @Test
@@ -200,7 +194,7 @@ class PropertyStrategyBindingTest {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(IgnorePojo.class);
         assertFalse(pi.propertyLookup.containsKey("ignoredField"));
         assertTrue(pi.propertyLookup.containsKey("name"));
-        assertFalse(pi.propertyLookup.get("name").hasGetter());
-        assertTrue(pi.propertyLookup.get("name").hasSetter());
+        assertFalse(pi.propertyLookup.get("name").readable);
+        assertTrue(pi.propertyLookup.get("name").writable);
     }
 }

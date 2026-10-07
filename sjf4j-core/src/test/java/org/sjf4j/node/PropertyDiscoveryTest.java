@@ -205,10 +205,9 @@ class PropertyDiscoveryTest {
     @Test
     void defaultIsBeanFieldAndFindsGetterSetter() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(DefaultBeanFieldPojo.class);
-        assertEquals(PropertyStrategy.BEAN_FIELD, pi.propertyStrategy);
         assertNotNull(pi.propertyLookup.get("name"));
-        assertTrue(pi.propertyLookup.get("name").hasGetter());
-        assertTrue(pi.propertyLookup.get("name").hasSetter());
+        assertTrue(pi.propertyLookup.get("name").readable);
+        assertTrue(pi.propertyLookup.get("name").writable);
     }
 
     @Test
@@ -236,13 +235,13 @@ class PropertyDiscoveryTest {
     void nodeIgnoreOnFieldAndMethodWorks() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(IgnorePojo.class);
         assertFalse(pi.propertyLookup.containsKey("ignoredField"));
-        assertFalse(pi.propertyLookup.get("name").hasGetter());
+        assertFalse(pi.propertyLookup.get("name").readable);
     }
 
     @Test
     void nodeIgnoreTypeOnFieldExcludesProperty() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(TypeIgnoreContainer.class);
-        assertEquals(1, pi.propertyCount);
+        assertEquals(1, pi.readableProperties.length);
         assertTrue(pi.propertyLookup.containsKey("name"));
         assertNull(pi.propertyLookup.get("address"));
     }
@@ -263,7 +262,6 @@ class PropertyDiscoveryTest {
     @Test
     void fieldOnlyAnnotationWorks() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(AccessCompatPojo.class);
-        assertEquals(PropertyStrategy.FIELD_ONLY, pi.propertyStrategy);
         assertNotNull(pi.propertyLookup.get("name"));
     }
 
@@ -279,8 +277,8 @@ class PropertyDiscoveryTest {
         assertTrue(beanField.propertyLookup.containsKey("publicField"));
 
         PojoInfo fieldBean = TypeRegistry.requireRegisteredPojoInfo(FieldBeanPojo.class);
-        assertTrue(fieldBean.propertyLookup.get("name").hasGetter());
-        assertTrue(fieldBean.propertyLookup.get("name").hasSetter());
+        assertTrue(fieldBean.propertyLookup.get("name").readable);
+        assertTrue(fieldBean.propertyLookup.get("name").writable);
     }
 
     @Test
