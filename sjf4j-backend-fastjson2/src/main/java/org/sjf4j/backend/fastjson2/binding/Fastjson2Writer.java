@@ -18,6 +18,8 @@ public final class Fastjson2Writer extends StreamingWriter {
     private final JSONWriter writer;
     private final Writer charOutput;
     private final OutputStream byteOutput;
+
+    private final boolean utf8;
     private final boolean useRawName;
 
     public Fastjson2Writer(JSONWriter writer) {
@@ -37,7 +39,10 @@ public final class Fastjson2Writer extends StreamingWriter {
         this.writer = Asserts.notNull(writer, "writer");
         this.charOutput = charOutput;
         this.byteOutput = byteOutput;
-        this.useRawName = !writer.isUseSingleQuotes()
+
+        this.utf8 = writer.isUTF8();
+        this.useRawName = (utf8 || writer.isUTF16())
+                && !writer.isUseSingleQuotes()
                 && !writer.isEnabled(JSONWriter.Feature.UnquoteFieldName)
                 && !writer.isEnabled(JSONWriter.Feature.BrowserSecure)
                 && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
@@ -72,16 +77,22 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeName(String name) {
-        writer.writeName(Asserts.notNull(name, "name"));
+        writer.writeName(name);
         writer.writeColon();
     }
 
     @Override
     public void writeName(CompiledName compiledName) {
-        if (useRawName) {
-            writer.writeNameRaw(((Fastjson2CompiledName) compiledName).rawName);
-        } else {
+        if (!useRawName) {
             writeName(compiledName.name());
+            return;
+        }
+
+        Fastjson2CompiledName name = (Fastjson2CompiledName) compiledName;
+        if (utf8) {
+            writer.writeNameRaw(name.rawNameUtf8);
+        } else {
+            writer.writeNameRaw(name.rawNameUtf16);
         }
     }
 
@@ -97,7 +108,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeStringValue(String value) {
-        writer.writeString(Asserts.notNull(value, "value"));
+        writer.writeString(value);
     }
 
     @Override
@@ -142,7 +153,6 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeNumberValue(Number value) {
-        Asserts.notNull(value, "value");
         if (value instanceof Integer) {
             writer.writeInt32(value.intValue());
         } else if (value instanceof Long) {
@@ -166,12 +176,12 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeBigIntegerValue(BigInteger value) {
-        writer.writeBigInt(Asserts.notNull(value, "value"));
+        writer.writeBigInt(value);
     }
 
     @Override
     public void writeBigDecimalValue(BigDecimal value) {
-        writer.writeDecimal(Asserts.notNull(value, "value"));
+        writer.writeDecimal(value);
     }
 
     @Override

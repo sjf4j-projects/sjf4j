@@ -73,6 +73,31 @@ class StreamingIOWriteTest {
     }
 
     @Test
+    void writesSubclassArraysInPojoFields() throws Exception {
+        Student student1 = new Student("Ada", "mathematics");
+        Student student2 = new Student("Bob", "physics");
+        Holder holder = new Holder();
+        holder.students = new Student[]{student1, student2};
+        holder.objects = new Student[]{student1, student2};
+        holder.matrix = new Student[][]{{student1}, {student2}};
+        holder.people = new Student[]{student1, student2};
+
+        StringWriter output = new StringWriter();
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
+            StreamingIO.writeNode(writer, holder, RuntimeContext.EMPTY);
+            writer.flush();
+        }
+        assertEquals("{\"students\":[{\"subject\":\"mathematics\",\"name\":\"Ada\"},"
+                        + "{\"subject\":\"physics\",\"name\":\"Bob\"}],"
+                        + "\"objects\":[{\"subject\":\"mathematics\",\"name\":\"Ada\"},"
+                        + "{\"subject\":\"physics\",\"name\":\"Bob\"}],"
+                        + "\"matrix\":[[{\"subject\":\"mathematics\",\"name\":\"Ada\"}],"
+                        + "[{\"subject\":\"physics\",\"name\":\"Bob\"}]],"
+                        + "\"people\":[{\"subject\":\"mathematics\",\"name\":\"Ada\"},"
+                        + "{\"subject\":\"physics\",\"name\":\"Bob\"}]}", output.toString());
+    }
+
+    @Test
     void writesListsSetsAndMapsWithConfiguredNullHandling() throws Exception {
         StringWriter randomAccessOutput = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, randomAccessOutput)) {
@@ -125,6 +150,36 @@ class StreamingIOWriteTest {
     }
 
     private static final class UnsupportedNode {}
+
+    static class Person {
+        public String name;
+
+        Person() {
+        }
+
+        Person(String name) {
+            this.name = name;
+        }
+    }
+
+    static class Student extends Person {
+        public String subject;
+
+        Student() {
+        }
+
+        Student(String name, String subject) {
+            super(name);
+            this.subject = subject;
+        }
+    }
+
+    static class Holder {
+        public Student[] students;
+        public Object[] objects;
+        public Student[][] matrix;
+        public Person[] people;
+    }
 
     private static final class SeparatorWriter extends StreamingWriter {
         private int properties;

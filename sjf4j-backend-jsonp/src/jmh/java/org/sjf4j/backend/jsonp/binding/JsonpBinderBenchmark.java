@@ -1,7 +1,9 @@
-package org.sjf4j.backend.gson.binding;
+package org.sjf4j.backend.jsonp.binding;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonStructure;
+import jakarta.json.JsonWriter;
+import jakarta.json.spi.JsonProvider;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -15,6 +17,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.binding.FastStringReader;
+import org.sjf4j.binding.FastStringWriter;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -29,24 +33,26 @@ import java.util.concurrent.TimeUnit;
 @Fork(1)
 @Threads(1)
 @State(Scope.Thread)
-public class GsonBinderBenchmark {
+public class JsonpBinderBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{GsonBinderBenchmark.class.getName()});
+        Main.main(new String[]{JsonpBinderBenchmark.class.getName()});
     }
 
     @State(Scope.Thread)
     public static class BenchmarkState {
-        Gson gson;
-        GsonBinder binder;
+        JsonProvider provider;
+        JsonpBinder binder;
         String document;
         Document value;
         Map<String, Object> mapValue;
+        JsonStructure nativeValue;
+        JsonStructure nativeMapValue;
 
         @Setup(Level.Trial)
         public void setup() {
-            gson = new GsonBuilder().serializeNulls().disableHtmlEscaping().create();
-            binder = new GsonBinder(gson);
+            provider = JsonProvider.provider();
+            binder = new JsonpBinder(provider);
             value = new Document(
                     7,
                     20260319L,
@@ -65,7 +71,8 @@ public class GsonBinderBenchmark {
                                     new Entry(5, 42.0d, false)), attributes("source", "import", "region", "eu-west"))),
                     counters(12, 3, 7),
                     null);
-            document = gson.toJson(value);
+            document = binder.writeNodeAsString(value);
+            nativeValue = parse(provider, document);
 
             mapValue = new LinkedHashMap<>();
             mapValue.put("id", 7);
@@ -114,6 +121,13 @@ public class GsonBinderBenchmark {
             mapValue.put("sections", Arrays.asList(overview, history));
             mapValue.put("counters", counters(12, 3, 7));
             mapValue.put("nullable", null);
+            nativeMapValue = parse(provider, binder.writeNodeAsString(mapValue));
+        }
+
+        private static JsonStructure parse(JsonProvider provider, String document) {
+            try (JsonReader reader = provider.createReader(new FastStringReader(document))) {
+                return reader.read();
+            }
         }
 
         private static Map<String, String> attributes(String key1, String value1, String key2, String value2) {
@@ -133,8 +147,10 @@ public class GsonBinderBenchmark {
     }
 
     @Benchmark
-    public Document pojo_read_native(BenchmarkState state) {
-        return state.gson.fromJson(state.document, Document.class);
+    public JsonStructure pojo_read_native(BenchmarkState state) {
+        try (JsonReader reader = state.provider.createReader(new FastStringReader(state.document))) {
+            return reader.read();
+        }
     }
 
     @Benchmark
@@ -144,7 +160,11 @@ public class GsonBinderBenchmark {
 
     @Benchmark
     public String pojo_write_native(BenchmarkState state) {
-        return state.gson.toJson(state.value);
+        FastStringWriter output = new FastStringWriter();
+        try (JsonWriter writer = state.provider.createWriter(output)) {
+            writer.write(state.nativeValue);
+        }
+        return output.toString();
     }
 
     @Benchmark
@@ -153,8 +173,10 @@ public class GsonBinderBenchmark {
     }
 
     @Benchmark
-    public Map map_read_native(BenchmarkState state) {
-        return state.gson.fromJson(state.document, Map.class);
+    public JsonStructure map_read_native(BenchmarkState state) {
+        try (JsonReader reader = state.provider.createReader(new FastStringReader(state.document))) {
+            return reader.read();
+        }
     }
 
     @Benchmark
@@ -164,7 +186,11 @@ public class GsonBinderBenchmark {
 
     @Benchmark
     public String map_write_native(BenchmarkState state) {
-        return state.gson.toJson(state.mapValue);
+        FastStringWriter output = new FastStringWriter();
+        try (JsonWriter writer = state.provider.createWriter(output)) {
+            writer.write(state.nativeMapValue);
+        }
+        return output.toString();
     }
 
     @Benchmark

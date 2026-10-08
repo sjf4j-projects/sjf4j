@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated JSON-P streaming bindings and optimized structured property serialization; Jackson 2 benchmarks now include Blackbird comparisons.
 - Aligned streaming backends with the current reader/writer APIs, added primitive-array binding paths, and improved SnakeYAML JSON-compatible validation.
 - Improved typed serialization for map, collection, and array property values.
+- Fixed serialization of runtime-subclass arrays and optimized Fastjson2 compiled property names for UTF-8 output.
 
 ### Breaking Changes
 - Updated streaming reader/writer APIs and backend adapters; custom implementations must migrate to the current token, read, write, and direct-output methods.

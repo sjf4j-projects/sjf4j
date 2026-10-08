@@ -731,7 +731,7 @@ public interface PropertyWriter {
     static PropertyWriter _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
         Class<?> compClazz = fieldBoxed.getComponentType();
-        TypeInfo[] typeInfoRef = new TypeInfo[1];
+        TypeInfo[] typeInfoRef = {compClazz.isPrimitive() ? TypeInfo.NONE : null};
 
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -745,7 +745,7 @@ public interface PropertyWriter {
                 typeInfo = TypeRegistry.registerTypeInfo(compClazz);
                 typeInfoRef[0] = typeInfo;
             }
-            StreamingIO.writeArray(writer, value, fieldBoxed, typeInfo, context);
+            StreamingIO.writeArray(writer, value, value.getClass(), typeInfo, context);
             return count;
         };
     }
