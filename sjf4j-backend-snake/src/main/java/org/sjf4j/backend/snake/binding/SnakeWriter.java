@@ -1,6 +1,7 @@
 package org.sjf4j.backend.snake.binding;
 
-import org.sjf4j.binding.Binder;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
@@ -20,6 +21,7 @@ import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.resolver.Resolver;
 
 import java.io.IOException;
+import java.io.Writer;
 
 public final class SnakeWriter extends StreamingWriter {
 
@@ -30,11 +32,12 @@ public final class SnakeWriter extends StreamingWriter {
     private static final String TAG_STRING = Tag.STR.getValue();
 
     private final Emitter emitter;
+    private final Writer output;
 
-    public SnakeWriter(Binder<?, ?> binder, Emitter emitter) throws IOException {
-        super(binder);
-        Asserts.notNull(emitter, "emitter");
-        this.emitter = emitter;
+    public SnakeWriter(Writer output, DumperOptions options) {
+        super(Backend.SNAKE);
+        this.output = Asserts.notNull(output, "output");
+        this.emitter = new Emitter(this.output, Asserts.notNull(options, "options"));
     }
 
 
@@ -95,7 +98,12 @@ public final class SnakeWriter extends StreamingWriter {
      */
     @Override
     public void writeName(String name) throws IOException {
-        writeStringValue(name);
+        writeStringValue(Asserts.notNull(name, "name"));
+    }
+
+    @Override
+    public void writeName(CompiledName name) throws IOException {
+        writeName(name.name());
     }
 
     /**
@@ -103,6 +111,7 @@ public final class SnakeWriter extends StreamingWriter {
      */
     @Override
     public void writeStringValue(String value) throws IOException {
+        Asserts.notNull(value, "value");
         ImplicitTuple implicit = Tag.STR.equals(RESOLVER.resolve(NodeId.scalar, value, true))
                 ? STRING_IMPLICIT
                 : QUOTED_STRING_IMPLICIT;
@@ -112,6 +121,13 @@ public final class SnakeWriter extends StreamingWriter {
 
     @Override
     public void writeNumberValue(Number value) throws IOException {
+        value = Asserts.notNull(value, "value");
+        if (value instanceof Double && !Double.isFinite(value.doubleValue())) {
+            throw new IOException("JSON numbers must be finite: " + value);
+        }
+        if (value instanceof Float && !Float.isFinite(value.floatValue())) {
+            throw new IOException("JSON numbers must be finite: " + value);
+        }
         writePlain(value.toString());
     }
 
@@ -137,11 +153,17 @@ public final class SnakeWriter extends StreamingWriter {
 
     @Override
     public void writeDoubleValue(double value) throws IOException {
+        if (!Double.isFinite(value)) {
+            throw new IOException("JSON numbers must be finite: " + value);
+        }
         writePlain(Double.toString(value));
     }
 
     @Override
     public void writeFloatValue(float value) throws IOException {
+        if (!Float.isFinite(value)) {
+            throw new IOException("JSON numbers must be finite: " + value);
+        }
         writePlain(Float.toString(value));
     }
 
@@ -161,10 +183,11 @@ public final class SnakeWriter extends StreamingWriter {
     }
 
     /**
-     * Flush is no-op for event emitter.
+     * Flushes the caller-owned output without closing it.
      */
     @Override
     public void flush() throws IOException {
+        output.flush();
     }
 
     /**

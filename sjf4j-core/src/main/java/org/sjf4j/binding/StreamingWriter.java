@@ -54,10 +54,10 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
     public abstract void endArray() throws IOException;
 
-    protected void separateProperty() throws IOException {
+    public void separateProperty() throws IOException {
     }
 
-    protected void separateElement() throws IOException {
+    public void separateElement() throws IOException {
     }
 
 
@@ -88,7 +88,7 @@ public abstract class StreamingWriter implements Closeable, Flushable {
         return compiledNames;
     }
 
-    protected CompiledName createCompiledName(String name) {
+    public CompiledName createCompiledName(String name) {
         return new CompiledName(name);
     }
 

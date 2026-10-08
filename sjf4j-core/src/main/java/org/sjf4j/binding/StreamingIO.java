@@ -29,6 +29,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -756,6 +757,24 @@ public final class StreamingIO {
             componentTi = TypeRegistry.registerTypeInfo(componentClazz);
         }
 
+        if (componentClazz == int.class) {
+            return _readIntArray(reader);
+        } else if (componentClazz == long.class) {
+            return _readLongArray(reader);
+        } else if (componentClazz == double.class) {
+            return _readDoubleArray(reader);
+        } else if (componentClazz == float.class) {
+            return _readFloatArray(reader);
+        } else if (componentClazz == boolean.class) {
+            return _readBooleanArray(reader);
+        } else if (componentClazz == short.class) {
+            return _readShortArray(reader);
+        } else if (componentClazz == byte.class) {
+            return _readByteArray(reader);
+        } else if (componentClazz == char.class) {
+            return _readCharArray(reader);
+        }
+
         Object arr = null;
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -784,6 +803,101 @@ public final class StreamingIO {
         return exact;
     }
 
+    private static boolean[] _readBooleanArray(StreamingReader reader) throws IOException {
+        boolean[] array = new boolean[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readBooleanValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
+
+    private static int[] _readIntArray(StreamingReader reader) throws IOException {
+        int[] array = new int[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readIntValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
+
+    private static long[] _readLongArray(StreamingReader reader) throws IOException {
+        long[] array = new long[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readLongValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
+
+    private static double[] _readDoubleArray(StreamingReader reader) throws IOException {
+        double[] array = new double[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readDoubleValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
+
+    private static float[] _readFloatArray(StreamingReader reader) throws IOException {
+        float[] array = new float[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readFloatValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
+
+    private static short[] _readShortArray(StreamingReader reader) throws IOException {
+        short[] array = new short[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readShortValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
+
+    private static byte[] _readByteArray(StreamingReader reader) throws IOException {
+        byte[] array = new byte[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readByteValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
+
+    private static char[] _readCharArray(StreamingReader reader) throws IOException {
+        char[] array = new char[8];
+        int size = 0;
+        while (!reader.nextIfArrayEnd()) {
+            if (size == array.length) {
+                array = Arrays.copyOf(array, size << 1);
+            }
+            array[size++] = reader.readCharValue();
+        }
+        return size == array.length ? array : Arrays.copyOf(array, size);
+    }
 
     /**
      * --------------------------------------------------------------

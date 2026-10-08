@@ -86,7 +86,7 @@ public final class Fastjson2Writer extends StreamingWriter {
     }
 
     @Override
-    protected CompiledName createCompiledName(String name) {
+    public CompiledName createCompiledName(String name) {
         return new Fastjson2CompiledName(name);
     }
 

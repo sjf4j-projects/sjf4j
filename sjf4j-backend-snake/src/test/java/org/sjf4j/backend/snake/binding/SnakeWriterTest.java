@@ -1,6 +1,7 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.binding.CompiledName;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.StringWriter;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SnakeWriterTest {
@@ -23,7 +25,7 @@ class SnakeWriterTest {
         try (SnakeWriter writer = binder.createWriter(output)) {
             writer.startDocument();
             writer.startObject();
-            writer.writeName("nullLike");
+            writer.writeName(new CompiledName("nullLike"));
             writer.writeStringValue("null");
             writer.writeName("nested");
             writer.startObject();
@@ -85,25 +87,37 @@ class SnakeWriterTest {
 
         try (SnakeReader reader = reader(binder, output.toString())) {
             reader.startArray();
-            assertEquals("", reader.nextStringValue());
-            assertEquals("null", reader.nextStringValue());
-            assertEquals("~", reader.nextStringValue());
-            assertEquals("true", reader.nextStringValue());
-            assertEquals("123", reader.nextStringValue());
-            assertEquals("hello: world", reader.nextStringValue());
-            assertEquals(1L, reader.nextLongValue());
-            assertEquals(2, reader.nextIntValue());
-            assertEquals((short) 3, reader.nextShortValue());
-            assertEquals((byte) 4, reader.nextByteValue());
-            assertEquals(5.5d, reader.nextDoubleValue());
-            assertEquals(6.5f, reader.nextFloatValue());
-            assertTrue(reader.nextBooleanValue());
-            assertEquals('x', reader.nextCharValue());
-            assertEquals(new BigInteger("12345678901234567890"), reader.nextBigInteger());
-            assertEquals(new BigDecimal("7.25"), reader.nextBigDecimal());
-            reader.nextNull();
+            assertEquals("", reader.readString());
+            assertEquals("null", reader.readString());
+            assertEquals("~", reader.readString());
+            assertEquals("true", reader.readString());
+            assertEquals("123", reader.readString());
+            assertEquals("hello: world", reader.readString());
+            assertEquals(1L, reader.readLongValue());
+            assertEquals(2, reader.readIntValue());
+            assertEquals((short) 3, reader.readShortValue());
+            assertEquals((byte) 4, reader.readByteValue());
+            assertEquals(5.5d, reader.readDoubleValue());
+            assertEquals(6.5f, reader.readFloatValue());
+            assertTrue(reader.readBooleanValue());
+            assertEquals('x', reader.readCharValue());
+            assertEquals(new BigInteger("12345678901234567890"), reader.readBigInteger());
+            assertEquals(new BigDecimal("7.25"), reader.readBigDecimal());
+            assertTrue(reader.nextIfNull());
             reader.endArray();
             reader.endDocument();
+        }
+    }
+
+    @Test
+    void rejectsNonFiniteJsonNumbers() throws Exception {
+        try (SnakeWriter writer = new SnakeBinder().createWriter(new StringWriter())) {
+            assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.NaN));
+            assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
+            assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NaN));
+            assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
+            assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Double.NaN));
+            assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
         }
     }
 

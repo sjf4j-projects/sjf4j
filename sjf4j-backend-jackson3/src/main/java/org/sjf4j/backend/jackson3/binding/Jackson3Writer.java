@@ -129,7 +129,7 @@ public final class Jackson3Writer extends StreamingWriter {
     }
 
     @Override
-    protected CompiledName createCompiledName(String name) {
+    public CompiledName createCompiledName(String name) {
         return new Jackson3Name(name);
     }
 

@@ -1,168 +1,227 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.binding.NameMatcher;
+import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.TypeRegistry;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SnakeReaderTest {
 
     @Test
-    void readsPrimitiveScalarsAndStructures() throws Exception {
-        try (SnakeReader reader = reader("[1,2,3,4,5.5,6.5,true,\"x\",12345678901234567890,7.25,null]")) {
-            reader.startArray();
-            assertEquals(1L, reader.nextLongValue());
-            assertEquals(2, reader.nextIntValue());
-            assertEquals((short) 3, reader.nextShortValue());
-            assertEquals((byte) 4, reader.nextByteValue());
-            assertEquals(5.5d, reader.nextDoubleValue());
-            assertEquals(6.5f, reader.nextFloatValue());
-            assertTrue(reader.nextBooleanValue());
-            assertEquals('x', reader.nextCharValue());
-            assertEquals(new BigInteger("12345678901234567890"), reader.nextBigInteger());
-            assertEquals(new BigDecimal("7.25"), reader.nextBigDecimal());
+    void exposesLogicalTokensAndConditionalConsumption() throws Exception {
+        try (SnakeReader reader = reader("id: null\n")) {
+            assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
+            assertFalse(reader.nextIfArrayStart());
+            reader.startObject();
+            assertEquals(StreamingReader.Token.NAME, reader.peekToken());
+            assertEquals("id", reader.nextName());
+            assertEquals(StreamingReader.Token.NULL, reader.peekToken());
             assertTrue(reader.nextIfNull());
-            assertTrue(reader.nextIfArrayEnd());
-            reader.endDocument();
-            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
-        }
-
-        try (SnakeReader reader = reader("first: text\nnested:\n  items: [1]\nnil: null\n")) {
-            reader.startObject();
-            assertEquals("first", reader.nextName());
-            assertFalse(reader.nextIfNull());
-            assertEquals("text", reader.nextStringValue());
-            assertEquals("nested", reader.nextName());
-            reader.startObject();
-            assertEquals("items", reader.nextName());
-            reader.startArray();
-            assertEquals(1, reader.nextIntValue());
-            reader.endArray();
-            reader.endObject();
-            assertEquals("nil", reader.nextName());
-            reader.nextNull();
             assertTrue(reader.nextIfObjectEnd());
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
             reader.endDocument();
         }
     }
 
     @Test
-    void readsYamlDecimalFormsAndExplicitTags() throws Exception {
-        String yaml = "plus: +12\nunderscored: 1_000.5_0\n"
-                + "string: !!str null\ninteger: !!int \"12\"\nfloat: !!float \"1.5\"\n";
+    void matchesNamesThroughTheCoreFallbackAndSkipsStructures() throws Exception {
+        PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(User.class);
+        NameMatcher matcher = new NameMatcher(pojoInfo.writableProperties);
 
-        try (SnakeReader reader = reader(yaml)) {
+        try (SnakeReader reader = reader("unknown: [1, {nested: true}]\nlegacyName: Ada\nid: 7\n")) {
             reader.startObject();
-            assertEquals("plus", reader.nextName());
-            assertEquals(12, reader.nextIntValue());
-            assertEquals("underscored", reader.nextName());
-            assertEquals(1000.5d, reader.nextDoubleValue());
-            assertEquals("string", reader.nextName());
-            assertEquals("null", reader.nextStringValue());
-            assertEquals("integer", reader.nextName());
-            assertEquals(12, reader.nextIntValue());
-            assertEquals("float", reader.nextName());
-            assertEquals(1.5d, reader.nextDoubleValue());
-            reader.endObject();
+            assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
+            reader.skipNode();
+            assertEquals(matcher.fallback("name"), reader.nextNameMatch(matcher));
+            assertEquals("Ada", reader.readString());
+            assertEquals(matcher.fallback("id"), reader.nextNameMatch(matcher));
+            assertEquals(7, reader.readIntValue());
+            assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
             reader.endDocument();
         }
     }
 
     @Test
-    void falseProbesLeaveNextValuesConsumable() throws Exception {
-        try (SnakeReader reader = reader("[text, 1]")) {
+    void readsYamlScalarsWithCoreNumericAndCharacterSemantics() throws Exception {
+        String yaml = "[+1, 1_000.5_0, 128, 1.25e2, 123456789012345678901234567890, "
+                + "1.20e-3, x, null, '', xy]";
+        try (SnakeReader reader = reader(yaml)) {
             reader.startArray();
-            assertFalse(reader.nextIfNull());
-            assertEquals("text", reader.nextStringValue());
-            assertFalse(reader.nextIfArrayEnd());
-            assertEquals(1, reader.nextIntValue());
+            assertEquals(1, reader.readIntValue());
+            assertEquals(1000.5d, reader.readDoubleValue());
+            assertThrows(ArithmeticException.class, reader::readByteValue);
+            assertEquals(125d, reader.readDoubleValue());
+            assertEquals(new BigInteger("123456789012345678901234567890"), reader.readBigInteger());
+            assertEquals(new BigDecimal("0.0012"), reader.readBigDecimal());
+            assertEquals('x', reader.readCharValue());
+            assertThrows(BindingException.class, reader::readCharValue);
+            assertThrows(BindingException.class, reader::readCharValue);
+            assertThrows(BindingException.class, reader::readCharValue);
             reader.endArray();
             reader.endDocument();
         }
     }
 
     @Test
-    void reportsExpectedYamlEventWithFullyQualifiedName() throws Exception {
-        try (SnakeReader reader = reader("[]")) {
-            IOException error = assertThrows(IOException.class, reader::startObject);
-            assertTrue(error.getMessage().startsWith(
-                    "Expected org.yaml.snakeyaml.events.MappingStartEvent, but was "));
+    void readsBoxedValuesAndNulls() throws Exception {
+        try (SnakeReader reader = reader("[null, 1, null, true, null, x]")) {
+            reader.startArray();
+            assertNull(reader.readInt());
+            assertEquals(1L, reader.readLong());
+            assertNull(reader.readBoolean());
+            assertEquals(true, reader.readBoolean());
+            assertNull(reader.readChar());
+            assertEquals(Character.valueOf('x'), reader.readChar());
+            reader.endArray();
+            reader.endDocument();
         }
     }
 
     @Test
-    void handlesDeepStructuresAndSkipsNestedValues() throws Exception {
-        StringBuilder yaml = new StringBuilder();
-        for (int i = 0; i < 12; i++) yaml.append("{x: ");
-        yaml.append('1');
-        for (int i = 0; i < 12; i++) yaml.append('}');
-
-        try (SnakeReader reader = reader(yaml.toString())) {
-            for (int i = 0; i < 12; i++) {
-                reader.startObject();
-                assertEquals("x", reader.nextName());
-            }
-            assertEquals(1, reader.nextIntValue());
-            for (int i = 0; i < 12; i++) reader.endObject();
+    void preservesYamlStringQuotingAndExplicitTags() throws Exception {
+        try (SnakeReader reader = reader("[\"null\", 'true', \"123\", !!str null, !!int \"12\", !!float \"1.5\"]")) {
+            reader.startArray();
+            assertEquals("null", reader.readString());
+            assertEquals("true", reader.readString());
+            assertEquals("123", reader.readString());
+            assertEquals("null", reader.readString());
+            assertEquals(12, reader.readIntValue());
+            assertEquals(1.5d, reader.readDoubleValue());
+            reader.endArray();
             reader.endDocument();
         }
+    }
 
-        try (SnakeReader reader = reader("discard: {items: [1, {nested: true}, null]}\nkept: value\n")) {
+    @Test
+    void readsRawNodesInInsertionOrder() throws Exception {
+        try (SnakeReader reader = reader("text: Ada\nnumber: 7\nenabled: true\nempty: null\nnested: {first: one}\nitems: [false, {second: 2}]\n")) {
+            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+            assertEquals(LinkedHashMap.class, value.getClass());
+            assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
+                    new ArrayList<>(value.keySet()));
+            assertEquals("Ada", value.get("text"));
+            assertEquals(7, value.get("number"));
+            assertEquals(true, value.get("enabled"));
+            assertNull(value.get("empty"));
+            assertEquals(LinkedHashMap.class, value.get("nested").getClass());
+            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void skipsAndReadsDeeplyNestedNodesWithoutRecursion() throws Exception {
+        String nested = nestedContainers(2_000);
+        try (SnakeReader reader = reader("unknown: " + nested + "\nid: 7\n")) {
             reader.startObject();
-            assertEquals("discard", reader.nextName());
-            reader.skipNext();
-            assertEquals("kept", reader.nextName());
-            assertEquals("value", reader.nextStringValue());
+            assertEquals("unknown", reader.nextName());
+            reader.skipNode();
+            assertEquals("id", reader.nextName());
+            assertEquals(7, reader.readIntValue());
             reader.endObject();
             reader.endDocument();
         }
-    }
 
-    @Test
-    void enforcesSingleCompleteDocument() throws Exception {
-        try (SnakeReader reader = new SnakeBinder().createReader("1")) {
-            reader.startDocument();
-            assertThrows(IOException.class, reader::endDocument);
-        }
-        try (SnakeReader reader = new SnakeBinder().createReader("[1")) {
-            reader.startDocument();
-            assertThrows(IOException.class, reader::skipNext);
-        }
-        try (SnakeReader reader = new SnakeBinder().createReader("--- 1\n--- 2")) {
-            reader.startDocument();
-            reader.skipNext();
-            assertThrows(IOException.class, reader::endDocument);
-        }
-        try (SnakeReader reader = reader("[1,{a: [true]}]")) {
-            reader.skipNext();
+        try (SnakeReader reader = reader(nested)) {
+            Object value = reader.readRawNode();
+            for (int i = 0; i < 2_000; i++) {
+                if ((i & 1) == 0) {
+                    assertEquals(ArrayList.class, value.getClass());
+                    value = ((List<?>) value).get(0);
+                } else {
+                    assertEquals(LinkedHashMap.class, value.getClass());
+                    value = ((Map<?, ?>) value).get("value");
+                }
+            }
+            assertEquals(0, value);
             reader.endDocument();
-            assertEquals(StreamingReader.Token.EOF, reader.currentToken());
-            assertThrows(IOException.class, reader::skipNext);
         }
     }
 
     @Test
-    void rejectsYamlAliases() throws Exception {
-        try (SnakeReader reader = reader("first: &value 1\nsecond: *value\n")) {
+    void rejectsNonJsonYamlConstructsAndMultipleDocuments() throws Exception {
+        try (SnakeReader reader = reader("1: value\n")) {
             reader.startObject();
-            assertEquals("first", reader.nextName());
-            reader.skipNext();
-            assertEquals("second", reader.nextName());
-            assertThrows(IOException.class, reader::currentToken);
-            assertThrows(IOException.class, reader::skipNext);
+            assertThrows(IOException.class, reader::peekToken);
         }
+        try (SnakeReader reader = reader("? [complex]\n: value\n")) {
+            reader.startObject();
+            assertThrows(IOException.class, reader::nextName);
+        }
+        try (SnakeReader reader = reader("*value")) {
+            assertThrows(IOException.class, reader::peekToken);
+        }
+        try (SnakeReader reader = reader("--- 1\n--- 2\n")) {
+            reader.skipNode();
+            assertThrows(IOException.class, reader::endDocument);
+        }
+        try (SnakeReader reader = reader("value: 2024-01-01\n")) {
+            reader.startObject();
+            reader.nextName();
+            assertThrows(IOException.class, reader::peekToken);
+        }
+    }
+
+    @Test
+    void rejectsNonJsonCollectionTagsAndAnchors() throws Exception {
+        assertRejected("!!set {one: null}");
+        assertRejected("!!omap [{one: 1}]");
+
+        assertRejected("&value text");
+        assertRejected("&value {name: Ada}");
+        assertRejected("&value [one]");
+    }
+
+    private static void assertRejected(String yaml) throws Exception {
+        try (SnakeReader reader = reader(yaml)) {
+            assertThrows(IOException.class, reader::peekToken);
+        }
+    }
+
+    private static String nestedContainers(int depth) {
+        StringBuilder yaml = new StringBuilder(depth * 7 + 1);
+        for (int i = 0; i < depth; i++) {
+            if ((i & 1) == 0) {
+                yaml.append('[');
+            } else {
+                yaml.append("{value: ");
+            }
+        }
+        yaml.append('0');
+        for (int i = depth - 1; i >= 0; i--) {
+            yaml.append((i & 1) == 0 ? ']' : '}');
+        }
+        return yaml.toString();
     }
 
     private static SnakeReader reader(String yaml) throws IOException {
-        SnakeReader reader = new SnakeBinder().createReader(new StringReader(yaml));
+        SnakeReader reader = new SnakeBinder().createReader(yaml);
         reader.startDocument();
         return reader;
+    }
+
+    static class User {
+        public int id;
+
+        @NodeProperty(aliases = "legacyName")
+        public String name;
     }
 }

@@ -5,12 +5,15 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.TypeReference;
 
 import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SnakeBinderTest {
@@ -86,6 +89,21 @@ class SnakeBinderTest {
         assertEquals("Jack", user.name);
     }
 
+    @Test
+    void doesNotCloseCallerOwnedReadersOrWriters() {
+        SnakeBinder binder = new SnakeBinder();
+        TrackingReader input = new TrackingReader("name: Ada\n");
+        TrackingWriter output = new TrackingWriter();
+
+        NameOnlyUser user = (NameOnlyUser) binder.readNode(input, NameOnlyUser.class);
+        binder.writeNode(output, user);
+
+        assertEquals("Ada", user.name);
+        assertFalse(input.closed);
+        assertFalse(output.closed);
+        assertTrue(output.flushed);
+    }
+
     private static void assertPerson(PersonObject person) {
         assertEquals(123, person.id);
         assertEquals("han", person.name);
@@ -119,5 +137,36 @@ class SnakeBinderTest {
 
     public static class NameOnlyUser {
         public String name;
+    }
+
+    private static final class TrackingReader extends StringReader {
+        boolean closed;
+
+        TrackingReader(String value) {
+            super(value);
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+            super.close();
+        }
+    }
+
+    private static final class TrackingWriter extends StringWriter {
+        boolean closed;
+        boolean flushed;
+
+        @Override
+        public void flush() {
+            flushed = true;
+            super.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            super.close();
+        }
     }
 }

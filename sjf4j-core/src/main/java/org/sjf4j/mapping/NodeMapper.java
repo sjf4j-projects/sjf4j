@@ -286,6 +286,16 @@ public final class NodeMapper {
             }
 
             Class<?> nodeClazz = node.getClass();
+            /*
+             * Immutable JSON scalar values.
+             */
+            if (nodeClazz == String.class || nodeClazz == Boolean.class ||
+                    nodeClazz == Integer.class || nodeClazz == Long.class ||
+                    nodeClazz == Double.class || nodeClazz == Float.class ||
+                    nodeClazz == Short.class || nodeClazz == Byte.class) {
+                return node;
+            }
+
             TypeInfo ti = TypeRegistry.registerTypeInfo(nodeClazz);
 
             /*
@@ -304,12 +314,6 @@ public final class NodeMapper {
                 return valueInfo.valueCopy(node);
             }
 
-            /*
-             * Immutable JSON scalar values.
-             */
-            if (node instanceof String || node instanceof Number || node instanceof Boolean) {
-                return node;
-            }
 
             /*
              * Map.

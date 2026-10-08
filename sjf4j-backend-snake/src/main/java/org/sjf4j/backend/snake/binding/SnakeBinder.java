@@ -5,7 +5,6 @@ import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
-import org.yaml.snakeyaml.emitter.Emitter;
 import org.yaml.snakeyaml.parser.ParserImpl;
 import org.yaml.snakeyaml.reader.StreamReader;
 
@@ -38,7 +37,7 @@ public final class SnakeBinder extends Binder<SnakeReader, SnakeWriter> {
     @Override
     public SnakeWriter createWriter(Writer output) throws IOException {
         Asserts.notNull(output, "output");
-        return new SnakeWriter(this, new Emitter(output, dumperOptions));
+        return new SnakeWriter(output, dumperOptions);
     }
 
 }
