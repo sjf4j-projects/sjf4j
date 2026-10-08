@@ -57,7 +57,7 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     protected void separateProperty() throws IOException {
     }
 
-    public void separateElement() throws IOException {
+    protected void separateElement() throws IOException {
     }
 
 

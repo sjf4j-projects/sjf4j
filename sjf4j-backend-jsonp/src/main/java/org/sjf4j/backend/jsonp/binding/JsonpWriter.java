@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.stream.JsonGenerator;
-import org.sjf4j.binding.Binder;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 
@@ -14,8 +14,8 @@ public final class JsonpWriter extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    public JsonpWriter(Binder<?, ?> binder, JsonGenerator generator) {
-        super(binder);
+    public JsonpWriter(JsonGenerator generator) {
+        super(Backend.JSONP);
         this.generator = Asserts.notNull(generator, "generator");
     }
 

@@ -56,12 +56,12 @@ class JsonpBinderTest {
                 "\uFEFFnull".getBytes(StandardCharsets.UTF_16LE), Object.class));
         try (JsonpReader reader = binder.createReader(new StringReader("null"))) {
             assertInstanceOf(JsonpReader.class, reader);
-            reader.nextNull();
+            assertTrue(reader.nextIfNull());
         }
 
         JsonParser parser = Json.createParser(new StringReader("null"));
         try (JsonpReader reader = binder.createReader(parser)) {
-            reader.nextNull();
+            assertTrue(reader.nextIfNull());
         }
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();

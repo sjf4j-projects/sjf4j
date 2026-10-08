@@ -26,6 +26,7 @@ dependencies {
 
     // JMH
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
+    jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.2")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.36")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }

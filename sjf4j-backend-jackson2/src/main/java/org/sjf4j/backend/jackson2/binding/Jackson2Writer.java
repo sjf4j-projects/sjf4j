@@ -46,6 +46,11 @@ public final class Jackson2Writer extends StreamingWriter {
     }
 
     @Override
+    public void writeName(CompiledName name, boolean separated) throws IOException {
+        generator.writeFieldName(((Jackson2PreparedName) name).serializedName);
+    }
+
+    @Override
     public void writeNull() throws IOException {
         generator.writeNull();
     }

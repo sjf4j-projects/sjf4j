@@ -1,6 +1,7 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.binding.CompiledName;
 
 import java.io.StringWriter;
 import java.math.BigDecimal;
@@ -40,5 +41,21 @@ class JsonpWriterTest {
         assertEquals("{\"values\":[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null]}",
                 output.toString());
         writer.close();
+    }
+
+    @Test
+    void writesCompiledNames() throws Exception {
+        StringWriter output = new StringWriter();
+        JsonpWriter writer = new JsonpBinder().createWriter(output);
+
+        writer.startObject();
+        writer.writeName(new CompiledName("te\"xt"));
+        writer.writeString("value");
+        writer.writeName(new CompiledName("number"));
+        writer.writeIntValue(42);
+        writer.endObject();
+        writer.close();
+
+        assertEquals("{\"te\\\"xt\":\"value\",\"number\":42}", output.toString());
     }
 }

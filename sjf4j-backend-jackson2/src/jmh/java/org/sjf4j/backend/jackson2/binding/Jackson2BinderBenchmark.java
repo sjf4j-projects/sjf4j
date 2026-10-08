@@ -2,6 +2,7 @@ package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -24,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 20, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
@@ -38,6 +39,7 @@ public class Jackson2BinderBenchmark {
     @State(Scope.Thread)
     public static class BenchmarkState {
         ObjectMapper mapper;
+        ObjectMapper blackbirdMapper;
         Jackson2Binder binder;
         String document;
         Document value;
@@ -47,6 +49,7 @@ public class Jackson2BinderBenchmark {
         public void setup() throws Exception {
             JsonFactory factory = new JsonFactory();
             mapper = new ObjectMapper(factory);
+            blackbirdMapper = new ObjectMapper().registerModule(new BlackbirdModule());
             binder = new Jackson2Binder(factory);
             value = new Document(
                     7,
@@ -139,6 +142,11 @@ public class Jackson2BinderBenchmark {
     }
 
     @Benchmark
+    public Document pojo_read_blackbird(BenchmarkState state) throws Exception {
+        return state.blackbirdMapper.readValue(state.document, Document.class);
+    }
+
+    @Benchmark
     public Document pojo_read_binder(BenchmarkState state) {
         return (Document) state.binder.readNode(state.document, Document.class);
     }
@@ -146,6 +154,11 @@ public class Jackson2BinderBenchmark {
     @Benchmark
     public String pojo_write_native(BenchmarkState state) throws Exception {
         return state.mapper.writeValueAsString(state.value);
+    }
+
+    @Benchmark
+    public String pojo_write_blackbird(BenchmarkState state) throws Exception {
+        return state.blackbirdMapper.writeValueAsString(state.value);
     }
 
     @Benchmark

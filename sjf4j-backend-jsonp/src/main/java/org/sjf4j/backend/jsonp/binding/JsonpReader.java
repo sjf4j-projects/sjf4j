@@ -1,27 +1,28 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.stream.JsonParser;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-/** Streaming reader backed directly by a JSON-P {@link JsonParser}. */
-public final class JsonpReader implements StreamingReader {
+/** StreamingReader backed directly by a JSON-P {@link JsonParser}. */
+public final class JsonpReader extends StreamingReader {
 
     private final JsonParser parser;
     private JsonParser.Event current;
 
-    /**
-     * Creates a reader around a JSON-P parser.
-     *
-     * <p>When {@link JsonParser#currentEvent()} is supported, an already-positioned parser is preserved.
-     * Providers that do not support this JSON-P 2.1 method must be supplied an untouched parser because its
-     * current event cannot be recovered.</p>
-     */
     public JsonpReader(JsonParser parser) {
+        super(Backend.JSONP);
         this.parser = Asserts.notNull(parser, "parser");
         try {
             current = parser.currentEvent();
@@ -29,119 +30,143 @@ public final class JsonpReader implements StreamingReader {
             advance();
             return;
         }
-        if (current == null) advance();
-    }
-
-    @Override
-    public Token currentToken() {
-        if (current == null) return Token.EOF;
-        switch (current) {
-            case START_OBJECT: return Token.START_OBJECT;
-            case END_OBJECT: return Token.END_OBJECT;
-            case KEY_NAME: return Token.NAME;
-            case START_ARRAY: return Token.START_ARRAY;
-            case END_ARRAY: return Token.END_ARRAY;
-            case VALUE_STRING: return Token.STRING;
-            case VALUE_NUMBER: return Token.NUMBER;
-            case VALUE_TRUE:
-            case VALUE_FALSE: return Token.BOOLEAN;
-            case VALUE_NULL: return Token.NULL;
-            default: return Token.UNKNOWN;
+        if (current == null) {
+            advance();
         }
     }
 
     @Override
+    public Token peekToken() {
+        return token(current);
+    }
+
+    @Override
+    public boolean nextIfNull() {
+        return nextIf(JsonParser.Event.VALUE_NULL);
+    }
+
+    @Override
+    public boolean nextIfObjectStart() {
+        return nextIf(JsonParser.Event.START_OBJECT);
+    }
+
+    @Override
+    public boolean nextIfObjectEnd() {
+        return nextIf(JsonParser.Event.END_OBJECT);
+    }
+
+    @Override
+    public boolean nextIfArrayStart() {
+        return nextIf(JsonParser.Event.START_ARRAY);
+    }
+
+    @Override
+    public boolean nextIfArrayEnd() {
+        return nextIf(JsonParser.Event.END_ARRAY);
+    }
+
+    @Override
     public void startObject() throws IOException {
-        require(JsonParser.Event.START_OBJECT, "start object");
+        require(JsonParser.Event.START_OBJECT, "object start");
         advance();
     }
 
     @Override
     public void endObject() throws IOException {
-        require(JsonParser.Event.END_OBJECT, "end object");
+        require(JsonParser.Event.END_OBJECT, "object end");
         advance();
     }
 
     @Override
     public void startArray() throws IOException {
-        require(JsonParser.Event.START_ARRAY, "start array");
+        require(JsonParser.Event.START_ARRAY, "array start");
         advance();
     }
 
     @Override
     public void endArray() throws IOException {
-        require(JsonParser.Event.END_ARRAY, "end array");
+        require(JsonParser.Event.END_ARRAY, "array end");
         advance();
     }
 
     @Override
     public String nextName() throws IOException {
+        if (current == JsonParser.Event.END_OBJECT) {
+            advance();
+            return null;
+        }
         require(JsonParser.Event.KEY_NAME, "name");
+        String name = parser.getString();
+        advance();
+        return name;
+    }
+
+    @Override
+    public String readString() throws IOException {
+        if (nextIfNull()) {
+            return null;
+        }
+        require(JsonParser.Event.VALUE_STRING, "string or null");
         String value = parser.getString();
         advance();
         return value;
     }
 
     @Override
-    public String nextStringValue() throws IOException {
-        require(JsonParser.Event.VALUE_STRING, "string");
-        String value = parser.getString();
+    public Number readNumber() throws IOException {
+        if (nextIfNull()) {
+            return null;
+        }
+        require(JsonParser.Event.VALUE_NUMBER, "number or null");
+        Number value = Numbers.parseNumber(parser.getString());
         advance();
         return value;
     }
 
     @Override
-    public Number nextNumber() throws IOException {
+    public long readLongValue() throws IOException {
         BigDecimal value = number();
-        boolean integral = parser.isIntegralNumber();
         advance();
-        return normalize(value, integral);
+        return Numbers.toLong(value);
     }
 
     @Override
-    public long nextLongValue() throws IOException {
-        long value = integralNumber().longValueExact();
+    public int readIntValue() throws IOException {
+        BigDecimal value = number();
         advance();
-        return value;
+        return Numbers.toInt(value);
     }
 
     @Override
-    public int nextIntValue() throws IOException {
-        int value = integralNumber().intValueExact();
+    public short readShortValue() throws IOException {
+        BigDecimal value = number();
         advance();
-        return value;
+        return Numbers.toShort(value);
     }
 
     @Override
-    public short nextShortValue() throws IOException {
-        short value = Numbers.toShort(integralNumber().longValueExact());
+    public byte readByteValue() throws IOException {
+        BigDecimal value = number();
         advance();
-        return value;
+        return Numbers.toByte(value);
     }
 
     @Override
-    public byte nextByteValue() throws IOException {
-        byte value = Numbers.toByte(integralNumber().longValueExact());
+    public double readDoubleValue() throws IOException {
+        BigDecimal value = number();
         advance();
-        return value;
+        return Numbers.toDouble(value);
     }
 
     @Override
-    public double nextDoubleValue() throws IOException {
-        double value = Numbers.toDouble(number());
+    public float readFloatValue() throws IOException {
+        BigDecimal value = number();
         advance();
-        return value;
+        return Numbers.toFloat(value);
     }
 
     @Override
-    public float nextFloatValue() throws IOException {
-        float value = Numbers.toFloat(number());
-        advance();
-        return value;
-    }
-
-    @Override
-    public boolean nextBooleanValue() throws IOException {
+    public boolean readBooleanValue() throws IOException {
         if (current != JsonParser.Event.VALUE_TRUE && current != JsonParser.Event.VALUE_FALSE) {
             throw expected("boolean");
         }
@@ -151,58 +176,30 @@ public final class JsonpReader implements StreamingReader {
     }
 
     @Override
-    public char nextCharValue() throws IOException {
-        require(JsonParser.Event.VALUE_STRING, "string");
-        String value = parser.getString();
-        if (value.isEmpty()) throw new IOException("cannot read empty string as char");
-        advance();
-        return value.charAt(0);
-    }
-
-    @Override
-    public BigInteger nextBigInteger() throws IOException {
-        BigInteger value = integralNumber().toBigIntegerExact();
+    public BigInteger readBigInteger() throws IOException {
+        if (nextIfNull()) {
+            return null;
+        }
+        BigInteger value = Numbers.toBigInteger(number());
         advance();
         return value;
     }
 
     @Override
-    public BigDecimal nextBigDecimal() throws IOException {
+    public BigDecimal readBigDecimal() throws IOException {
+        if (nextIfNull()) {
+            return null;
+        }
         BigDecimal value = number();
         advance();
         return value;
     }
 
     @Override
-    public void nextNull() throws IOException {
-        require(JsonParser.Event.VALUE_NULL, "null");
-        advance();
-    }
-
-    @Override
-    public boolean nextIfNull() {
-        if (current != JsonParser.Event.VALUE_NULL) return false;
-        advance();
-        return true;
-    }
-
-    @Override
-    public boolean nextIfObjectEnd() {
-        if (current != JsonParser.Event.END_OBJECT) return false;
-        advance();
-        return true;
-    }
-
-    @Override
-    public boolean nextIfArrayEnd() {
-        if (current != JsonParser.Event.END_ARRAY) return false;
-        advance();
-        return true;
-    }
-
-    @Override
-    public void skipNext() throws IOException {
-        if (current == null) throw expected("value");
+    public void skipNode() throws IOException {
+        if (current == null) {
+            throw expected("value");
+        }
         switch (current) {
             case VALUE_STRING:
             case VALUE_NUMBER:
@@ -221,18 +218,56 @@ public final class JsonpReader implements StreamingReader {
     }
 
     @Override
+    public Object readRawNode() throws IOException {
+        if (current == null) {
+            throw new BindingException("unexpected token 'EOF'");
+        }
+        switch (current) {
+            case START_OBJECT:
+                return readRawObject();
+            case START_ARRAY:
+                return readRawArray();
+            case VALUE_STRING:
+                return readString();
+            case VALUE_NUMBER:
+                return readNumber();
+            case VALUE_TRUE:
+            case VALUE_FALSE:
+                return readBooleanValue();
+            case VALUE_NULL:
+                advance();
+                return null;
+            default:
+                throw new BindingException("unexpected token '" + peekToken() + "'");
+        }
+    }
+
+    @Override
     public void close() {
         parser.close();
     }
 
-    private BigDecimal number() throws IOException {
-        require(JsonParser.Event.VALUE_NUMBER, "number");
-        return parser.getBigDecimal();
+    private Map<String, Object> readRawObject() throws IOException {
+        Map<String, Object> value = new LinkedHashMap<>();
+        startObject();
+        String name;
+        while ((name = nextName()) != null) {
+            value.put(name, readRawNode());
+        }
+        return value;
     }
 
-    private BigDecimal integralNumber() throws IOException {
-        require(JsonParser.Event.VALUE_NUMBER, "integer number");
-        if (!parser.isIntegralNumber()) throw expected("integer number");
+    private List<Object> readRawArray() throws IOException {
+        List<Object> value = new ArrayList<>();
+        startArray();
+        while (!nextIfArrayEnd()) {
+            value.add(readRawNode());
+        }
+        return value;
+    }
+
+    private BigDecimal number() throws IOException {
+        require(JsonParser.Event.VALUE_NUMBER, "number");
         return parser.getBigDecimal();
     }
 
@@ -248,32 +283,44 @@ public final class JsonpReader implements StreamingReader {
         } while (depth != 0);
     }
 
+    private boolean nextIf(JsonParser.Event event) {
+        if (current != event) {
+            return false;
+        }
+        advance();
+        return true;
+    }
+
     private void require(JsonParser.Event event, String name) throws IOException {
-        if (current != event) throw expected(name);
+        if (current != event) {
+            throw expected(name);
+        }
     }
 
     private IOException expected(String name) {
-        return new IOException("Expected " + name + ", but was " + current);
+        return new IOException("expected " + name + ", but was " + peekToken());
     }
 
     private void advance() {
         current = parser.hasNext() ? parser.next() : null;
     }
 
-    private static Number normalize(BigDecimal value, boolean integral) {
-        if (integral) {
-            try {
-                return value.intValueExact();
-            } catch (ArithmeticException ignored) {
-            }
-            try {
-                return value.longValueExact();
-            } catch (ArithmeticException ignored) {
-            }
-            return value.toBigIntegerExact();
+    private static Token token(JsonParser.Event event) {
+        if (event == null) {
+            return Token.EOF;
         }
-        double doubleValue = value.doubleValue();
-        return Double.isFinite(doubleValue) && BigDecimal.valueOf(doubleValue).compareTo(value) == 0
-                ? doubleValue : value;
+        switch (event) {
+            case START_OBJECT: return Token.OBJECT_START;
+            case END_OBJECT: return Token.OBJECT_END;
+            case KEY_NAME: return Token.NAME;
+            case START_ARRAY: return Token.ARRAY_START;
+            case END_ARRAY: return Token.ARRAY_END;
+            case VALUE_STRING: return Token.STRING;
+            case VALUE_NUMBER: return Token.NUMBER;
+            case VALUE_TRUE:
+            case VALUE_FALSE: return Token.BOOLEAN;
+            case VALUE_NULL: return Token.NULL;
+            default: return Token.UNKNOWN;
+        }
     }
 }

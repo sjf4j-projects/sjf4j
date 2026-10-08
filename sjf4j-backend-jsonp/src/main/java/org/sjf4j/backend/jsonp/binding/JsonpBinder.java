@@ -7,15 +7,9 @@ import org.sjf4j.binding.Binder;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.util.Asserts;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.Reader;
-import java.io.StringReader;
 import java.io.Writer;
-import java.nio.charset.StandardCharsets;
 
 /** JSON binder backed directly by a Jakarta JSON-P {@link JsonProvider}. */
 public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
@@ -35,45 +29,23 @@ public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
         this.provider = Asserts.notNull(provider, "provider");
     }
 
-    @Override
-    public JsonpReader createReader(Reader input) throws IOException {
-        return new JsonpReader(provider.createParser(Asserts.notNull(input, "input")));
-    }
-
-    @Override
-    public JsonpReader createReader(InputStream input) throws IOException {
-        return createReader(new InputStreamReader(
-                Asserts.notNull(input, "input"), StandardCharsets.UTF_8));
-    }
-
-    @Override
-    public JsonpReader createReader(String input) throws IOException {
-        return createReader(new StringReader(Asserts.notNull(input, "input")));
-    }
-
-    @Override
-    public JsonpReader createReader(byte[] input) throws IOException {
-        return createReader(new InputStreamReader(
-                new ByteArrayInputStream(Asserts.notNull(input, "input")), StandardCharsets.UTF_8));
-    }
-
     /** Creates a streaming reader that wraps the supplied JSON-P parser. */
     public JsonpReader createReader(JsonParser parser) {
         return new JsonpReader(Asserts.notNull(parser, "parser"));
     }
 
     @Override
-    public JsonpWriter createWriter(Writer output) throws IOException {
-        return new JsonpWriter(this, provider.createGenerator(Asserts.notNull(output, "output")));
-    }
-
-    @Override
-    public JsonpWriter createWriter(OutputStream output) throws IOException {
-        return new JsonpWriter(this, provider.createGenerator(Asserts.notNull(output, "output")));
+    public JsonpReader createReader(Reader input) throws IOException {
+        return createReader(provider.createParser(Asserts.notNull(input, "input")));
     }
 
     /** Creates a streaming writer that wraps the supplied JSON-P generator. */
     public JsonpWriter createWriter(JsonGenerator generator) {
-        return new JsonpWriter(this, Asserts.notNull(generator, "generator"));
+        return new JsonpWriter(Asserts.notNull(generator, "generator"));
+    }
+
+    @Override
+    public JsonpWriter createWriter(Writer output) throws IOException {
+        return createWriter(provider.createGenerator(Asserts.notNull(output, "output")));
     }
 }

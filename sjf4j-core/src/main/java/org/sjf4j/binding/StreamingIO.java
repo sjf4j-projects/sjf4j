@@ -388,10 +388,10 @@ public final class StreamingIO {
          * object members, so consume START_OBJECT here.
          */
         if (pojoInfo.hasParentScopeOneOf || !pojoInfo.creatorInfo.hasNoArgsCreator()) {
-            if (reader.nextIfNull()) {
-                return null;
-            }
             if (!reader.nextIfObjectStart()) {
+                if (reader.nextIfNull()) {
+                    return null;
+                }
                 throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
                         type.getTypeName() + "'");
             }
@@ -416,10 +416,10 @@ public final class StreamingIO {
         /*
          * Fast non-null path.
          */
-        if (reader.nextIfNull()) {
-            return null;
-        }
         if (!reader.nextIfObjectStart()) {
+            if (reader.nextIfNull()) {
+                return null;
+            }
             throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
                     type.getTypeName() + "'");
         }
@@ -643,10 +643,10 @@ public final class StreamingIO {
     public static Map<String, Object> readMap(StreamingReader reader, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
                                               RuntimeContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
         if (!reader.nextIfObjectStart()) {
+            if (reader.nextIfNull()) {
+                return null;
+            }
             throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
                     type.getTypeName() + "'");
         }
@@ -677,10 +677,10 @@ public final class StreamingIO {
     public static List<Object> readList(StreamingReader reader, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                         RuntimeContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
         if (!reader.nextIfArrayStart()) {
+            if (reader.nextIfNull()) {
+                return null;
+            }
             throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
@@ -709,10 +709,10 @@ public final class StreamingIO {
     public static Set<Object> readSet(StreamingReader reader, Type type, Class<?> boxed,
                                       Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                       RuntimeContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
         if (!reader.nextIfArrayStart()) {
+            if (reader.nextIfNull()) {
+                return null;
+            }
             throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
@@ -742,10 +742,10 @@ public final class StreamingIO {
     public static Object readArray(StreamingReader reader, Type type, Class<?> boxed,
                                       Class<?> componentClazz, Class<?> componentBoxed, TypeInfo componentTi,
                                       RuntimeContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
         if (!reader.nextIfArrayStart()) {
+            if (reader.nextIfNull()) {
+                return null;
+            }
             throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
@@ -793,10 +793,10 @@ public final class StreamingIO {
 
     public static JsonArray readJsonArray(StreamingReader reader, Type type, Class<?> boxed, TypeInfo ti,
                                           RuntimeContext context) throws IOException {
-        if (reader.nextIfNull()) {
-            return null;
-        }
         if (!reader.nextIfArrayStart()) {
+            if (reader.nextIfNull()) {
+                return null;
+            }
             throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }

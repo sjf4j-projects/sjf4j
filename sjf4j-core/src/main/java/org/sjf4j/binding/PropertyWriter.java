@@ -1,8 +1,13 @@
 package org.sjf4j.binding;
 
 
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.node.PojoInfo;
+import org.sjf4j.node.TypeInfo;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.PojoAccess;
 import org.sjf4j.node.Types;
@@ -14,6 +19,9 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 
@@ -80,7 +88,6 @@ public interface PropertyWriter {
                                  MethodHandle getterHandle, Function<Object, Object> getterLambda,
                                  ValueInfo resolvedValueCodec,
                                  MethodHandles.Lookup lookup) {
-
         if (getterHandle == null) {
             return null;
         }
@@ -166,7 +173,37 @@ public interface PropertyWriter {
             return _createForEnum(fieldName, getterHandle, getterLambda);
         }
 
-        return _createForObject(fieldName, getterHandle, getterLambda);
+        /*
+         * --------------------------------------------------------------
+         * Structured fast paths
+         * --------------------------------------------------------------
+         */
+
+        if (Map.class.isAssignableFrom(fieldBoxed)) {
+            return _createForMap(fieldName, getterHandle, getterLambda);
+        }
+
+        if (fieldBoxed == JsonObject.class) {
+            return _createForJsonObject(fieldName, getterHandle, getterLambda);
+        }
+
+        if (List.class.isAssignableFrom(fieldBoxed)) {
+            return _createForList(fieldName, getterHandle, getterLambda);
+        }
+
+        if (JsonArray.class.isAssignableFrom(fieldBoxed)) {
+            return _createForJsonArray(fieldName, getterHandle, getterLambda);
+        }
+
+        if (Set.class.isAssignableFrom(fieldBoxed)) {
+            return _createForSet(fieldName, getterHandle, getterLambda);
+        }
+
+        if (fieldBoxed.isArray()) {
+            return _createForArray(fieldName, fieldBoxed, getterHandle, getterLambda);
+        }
+
+        return _createForObject(fieldName, fieldBoxed, getterHandle, getterLambda);
     }
 
 
@@ -589,6 +626,93 @@ public interface PropertyWriter {
         };
     }
 
+    static PropertyWriter _createForMap(String fieldName, MethodHandle getterHandle,
+                                        Function<Object, Object> getterLambda) {
+        return (writer, preparedName, owner, context, count) -> {
+            Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
+            if (value == null) {
+                return _writeNullValueField(writer, preparedName, context, count);
+            }
+
+            count = _writeName(writer, preparedName, count);
+            StreamingIO.writeMap(writer, (Map<?, ?>) value, context);
+            return count;
+        };
+    }
+
+    static PropertyWriter _createForJsonObject(String fieldName, MethodHandle getterHandle,
+                                               Function<Object, Object> getterLambda) {
+        return (writer, preparedName, owner, context, count) -> {
+            Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
+            if (value == null) {
+                return _writeNullValueField(writer, preparedName, context, count);
+            }
+
+            count = _writeName(writer, preparedName, count);
+            Class<?> valueClazz = value.getClass();
+            if (valueClazz == JsonObject.class) {
+                StreamingIO.writeJsonObject(writer, (JsonObject) value, context);
+            } else {
+                PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(valueClazz);
+                StreamingIO.writePojo(writer, value, pi, context);
+            }
+            return count;
+        };
+    }
+
+    static PropertyWriter _createForList(String fieldName, MethodHandle getterHandle,
+                                         Function<Object, Object> getterLambda) {
+        return (writer, preparedName, owner, context, count) -> {
+            Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
+            if (value == null) {
+                return _writeNullValueField(writer, preparedName, context, count);
+            }
+            count = _writeName(writer, preparedName, count);
+            StreamingIO.writeList(writer, (List<?>) value, context);
+            return count;
+        };
+    }
+
+    static PropertyWriter _createForJsonArray(String fieldName, MethodHandle getterHandle,
+                                              Function<Object, Object> getterLambda) {
+        return (writer, preparedName, owner, context, count) -> {
+            Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
+            if (value == null) {
+                return _writeNullValueField(writer, preparedName, context, count);
+            }
+            count = _writeName(writer, preparedName, count);
+            StreamingIO.writeJsonArray(writer, (JsonArray) value, context);
+            return count;
+        };
+    }
+
+    static PropertyWriter _createForSet(String fieldName, MethodHandle getterHandle,
+                                        Function<Object, Object> getterLambda) {
+        return (writer, preparedName, owner, context, count) -> {
+            Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
+            if (value == null) {
+                return _writeNullValueField(writer, preparedName, context, count);
+            }
+            count = _writeName(writer, preparedName, count);
+            StreamingIO.writeSet(writer, (Set<?>) value, context);
+            return count;
+        };
+    }
+
+    static PropertyWriter _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
+                                          Function<Object, Object> getterLambda) {
+        return (writer, preparedName, owner, context, count) -> {
+            Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
+            if (value == null) {
+                return _writeNullValueField(writer, preparedName, context, count);
+            }
+            count = _writeName(writer, preparedName, count);
+            StreamingIO.writeArray(writer, value, fieldBoxed, context);
+            return count;
+        };
+    }
+
+
     static PropertyWriter _createForValueCodec(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda,
                                                ValueInfo valueCodec) {
@@ -604,8 +728,9 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForObject(String fieldName, MethodHandle getterHandle,
+    static PropertyWriter _createForObject(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
+        TypeInfo[] typeInfoRef = new TypeInfo[1];
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -613,11 +738,30 @@ public interface PropertyWriter {
             }
 
             count = _writeName(writer, preparedName, count);
+
+            /*
+             * Exact runtime type: bypass StreamingIO's complete
+             * source-type dispatch when this is an ordinary POJO.
+             *
+             * Subclasses retain normal runtime-polymorphic semantics.
+             */
+            if (value.getClass() == fieldBoxed) {
+                TypeInfo typeInfo = typeInfoRef[0];
+                if (typeInfo == null) {
+                    typeInfo = TypeRegistry.registerTypeInfo(fieldBoxed);
+                    typeInfoRef[0] = typeInfo;
+                }
+
+                if (typeInfo.pojoInfo != null) {
+                    StreamingIO.writePojo(writer, value, typeInfo.pojoInfo, context);
+                    return count;
+                }
+            }
+
             StreamingIO.writeNode(writer, value, context);
             return count;
         };
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -640,7 +784,6 @@ public interface PropertyWriter {
         if (!context.includeNulls) {
             return count;
         }
-
         count = _writeName(writer, compiledName, count);
         writer.writeNull();
         return count;
