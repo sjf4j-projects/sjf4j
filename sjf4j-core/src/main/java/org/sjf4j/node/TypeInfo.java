@@ -18,8 +18,8 @@ public class TypeInfo {
     public final PojoInfo pojoInfo;
     public final ExternalNode<Object> externalNode;
 
-    static final TypeInfo NONE = new TypeInfo(Object.class, null,
-            null, null, null, null);
+    public static final TypeInfo NONE = new TypeInfo(Object.class,
+            null, null, null, null, null);
 
     /**
      * Creates type metadata for the supplied classification, including an

@@ -180,7 +180,7 @@ public interface PropertyWriter {
          */
 
         if (Map.class.isAssignableFrom(fieldBoxed)) {
-            return _createForMap(fieldName, getterHandle, getterLambda);
+            return _createForMap(fieldName, fieldType, getterHandle, getterLambda);
         }
 
         if (fieldBoxed == JsonObject.class) {
@@ -196,7 +196,7 @@ public interface PropertyWriter {
         }
 
         if (Set.class.isAssignableFrom(fieldBoxed)) {
-            return _createForSet(fieldName, getterHandle, getterLambda);
+            return _createForSet(fieldName, fieldType, getterHandle, getterLambda);
         }
 
         if (fieldBoxed.isArray()) {
@@ -626,16 +626,25 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForMap(String fieldName, MethodHandle getterHandle,
+    static PropertyWriter _createForMap(String fieldName, Type fieldType, MethodHandle getterHandle,
                                         Function<Object, Object> getterLambda) {
+        Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
+        Class<?> valueClazz = Types.rawBox(valueType);
+        TypeInfo[] typeInfoRef = new TypeInfo[1];
+
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
                 return _writeNullValueField(writer, preparedName, context, count);
             }
 
+            TypeInfo typeInfo = typeInfoRef[0];
+            if (typeInfo == null) {
+                typeInfo = TypeRegistry.registerTypeInfo(valueClazz);
+                typeInfoRef[0] = typeInfo;
+            }
             count = _writeName(writer, preparedName, count);
-            StreamingIO.writeMap(writer, (Map<?, ?>) value, context);
+            StreamingIO.writeMap(writer, (Map<?, ?>) value, typeInfo, context);
             return count;
         };
     }
@@ -678,10 +687,7 @@ public interface PropertyWriter {
                 typeInfo = TypeRegistry.registerTypeInfo(elementClazz);
                 typeInfoRef[0] = typeInfo;
             }
-            PojoInfo pi = typeInfo.pojoInfo;
-
-
-            StreamingIO.writeList(writer, (List<?>) value, context);
+            StreamingIO.writeList(writer, (List<?>) value, typeInfo, context);
             return count;
         };
     }
@@ -699,28 +705,47 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForSet(String fieldName, MethodHandle getterHandle,
+    static PropertyWriter _createForSet(String fieldName, Type fieldType, MethodHandle getterHandle,
                                         Function<Object, Object> getterLambda) {
+        Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
+        Class<?> elementClazz = Types.rawBox(elementType);
+        TypeInfo[] typeInfoRef = new TypeInfo[1];
+
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
                 return _writeNullValueField(writer, preparedName, context, count);
             }
             count = _writeName(writer, preparedName, count);
-            StreamingIO.writeSet(writer, (Set<?>) value, context);
+
+            TypeInfo typeInfo = typeInfoRef[0];
+            if (typeInfo == null) {
+                typeInfo = TypeRegistry.registerTypeInfo(elementClazz);
+                typeInfoRef[0] = typeInfo;
+            }
+            StreamingIO.writeSet(writer, (Set<?>) value, typeInfo, context);
             return count;
         };
     }
 
     static PropertyWriter _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
+        Class<?> compClazz = fieldBoxed.getComponentType();
+        TypeInfo[] typeInfoRef = new TypeInfo[1];
+
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
                 return _writeNullValueField(writer, preparedName, context, count);
             }
             count = _writeName(writer, preparedName, count);
-            StreamingIO.writeArray(writer, value, fieldBoxed, context);
+
+            TypeInfo typeInfo = typeInfoRef[0];
+            if (typeInfo == null) {
+                typeInfo = TypeRegistry.registerTypeInfo(compClazz);
+                typeInfoRef[0] = typeInfo;
+            }
+            StreamingIO.writeArray(writer, value, fieldBoxed, typeInfo, context);
             return count;
         };
     }

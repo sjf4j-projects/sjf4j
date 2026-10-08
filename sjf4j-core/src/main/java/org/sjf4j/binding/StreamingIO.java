@@ -960,7 +960,7 @@ public final class StreamingIO {
         Asserts.notNull(context, "context");
 
         try {
-            _writeNode(writer, node, context);
+            _writeNode(writer, node, TypeInfo.NONE, context);
         } catch (BindingException | IOException e) {
             throw e;
         } catch (Throwable e) {
@@ -969,7 +969,7 @@ public final class StreamingIO {
     }
 
 
-    private static void _writeNode(StreamingWriter writer, Object node,
+    private static void _writeNode(StreamingWriter writer, Object node, TypeInfo typeInfo,
                                    RuntimeContext context) throws IOException {
         if (node == null) {
             writer.writeNull();
@@ -977,6 +977,25 @@ public final class StreamingIO {
         }
 
         Class<?> clazz = node.getClass();
+        if (typeInfo.clazz == clazz) {
+            if (typeInfo.pojoInfo != null && !typeInfo.pojoInfo.isJajo) {
+                writePojo(writer, node, typeInfo.pojoInfo, context);
+                return;
+            }
+
+            if (typeInfo.externalNode != null) {
+                writeExternalNode(writer, node, typeInfo.externalNode, context);
+                return;
+            }
+
+            if (typeInfo.valueInfos != null) {
+                String valueFormat = context.defaultValueFormat(clazz);
+                ValueInfo vi = typeInfo.requireValueInfo(valueFormat);
+                _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+                return;
+            }
+        }
+
         if (clazz == String.class) {
             writer.writeStringValue((String) node);
             return;
@@ -1040,12 +1059,12 @@ public final class StreamingIO {
          */
 
         if (node instanceof Map) {
-            writeMap(writer, (Map<?, ?>) node, context);
+            writeMap(writer, (Map<?, ?>) node, TypeInfo.NONE, context);
             return;
         }
 
         if (node instanceof List) {
-            writeList(writer, (List<?>) node, context);
+            writeList(writer, (List<?>) node, TypeInfo.NONE, context);
             return;
         }
 
@@ -1066,12 +1085,12 @@ public final class StreamingIO {
         }
 
         if (node instanceof Set) {
-            writeSet(writer, (Set<?>) node, context);
+            writeSet(writer, (Set<?>) node, TypeInfo.NONE, context);
             return;
         }
 
         if (clazz.isArray()) {
-            writeArray(writer, node, clazz, context);
+            writeArray(writer, node, clazz, TypeInfo.NONE, context);
             return;
         }
 
@@ -1101,14 +1120,14 @@ public final class StreamingIO {
         if (ti.valueInfos != null) {
             String valueFormat = context.defaultValueFormat(clazz);
             ValueInfo vi = ti.requireValueInfo(valueFormat);
-            _writeNode(writer, vi.valueToRaw(node), context);
+            _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
             return;
         }
 
         /*
          * POJO / JOJO.
          */
-        if (ti.pojoInfo != null) {
+        if (ti.pojoInfo != null && !ti.pojoInfo.isJajo) {
             writePojo(writer, node, ti.pojoInfo, context);
             return;
         }
@@ -1123,7 +1142,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeMap(StreamingWriter writer, Map<?, ?> map,
+    public static void writeMap(StreamingWriter writer, Map<?, ?> map, TypeInfo valueTi,
                                 RuntimeContext context) throws IOException {
         writer.startObject();
         int count = 0;
@@ -1134,7 +1153,7 @@ public final class StreamingIO {
             }
             writer.writeName(entry.getKey().toString(), count > 0);
             count++;
-            _writeNode(writer, value, context);
+            _writeNode(writer, value, valueTi, context);
         }
         writer.endObject();
     }
@@ -1151,7 +1170,7 @@ public final class StreamingIO {
             }
             writer.writeName(entry.getKey(), count > 0);
             count++;
-            _writeNode(writer, value, context);
+            _writeNode(writer, value, TypeInfo.NONE, context);
         }
         writer.endObject();
     }
@@ -1163,7 +1182,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeList(StreamingWriter writer, List<?> list,
+    public static void writeList(StreamingWriter writer, List<?> list, TypeInfo elementTi,
                                  RuntimeContext context) throws IOException {
         writer.startArray();
         if (list instanceof RandomAccess) {
@@ -1171,7 +1190,7 @@ public final class StreamingIO {
                 if (i > 0) {
                     writer.separateElement();
                 }
-                _writeNode(writer, list.get(i), context);
+                _writeNode(writer, list.get(i), elementTi, context);
             }
         } else {
             boolean separated = false;
@@ -1181,7 +1200,7 @@ public final class StreamingIO {
                 } else {
                     separated = true;
                 }
-                _writeNode(writer, value, context);
+                _writeNode(writer, value, elementTi, context);
             }
         }
         writer.endArray();
@@ -1195,13 +1214,13 @@ public final class StreamingIO {
             if (i > 0) {
                 writer.separateElement();
             }
-            _writeNode(writer, array.getNode(i), context);
+            _writeNode(writer, array.getNode(i), TypeInfo.NONE, context);
         }
         writer.endArray();
     }
 
 
-    public static void writeSet(StreamingWriter writer, Set<?> set,
+    public static void writeSet(StreamingWriter writer, Set<?> set, TypeInfo elementTi,
                                 RuntimeContext context) throws IOException {
         writer.startArray();
         boolean separated = false;
@@ -1211,7 +1230,7 @@ public final class StreamingIO {
             } else {
                 separated = true;
             }
-            _writeNode(writer, value, context);
+            _writeNode(writer, value, elementTi, context);
         }
         writer.endArray();
     }
@@ -1223,7 +1242,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeArray(StreamingWriter writer, Object node, Class<?> clazz,
+    public static void writeArray(StreamingWriter writer, Object node, Class<?> clazz, TypeInfo compTi,
                                   RuntimeContext context) throws IOException {
         writer.startArray();
         if (clazz == boolean[].class) {
@@ -1275,10 +1294,13 @@ public final class StreamingIO {
                 writer.writeCharValue(array[i]);
             }
         } else {
+            if (compTi.isNone()) {
+                compTi = TypeRegistry.registerTypeInfo(clazz.getComponentType());
+            }
             Object[] array = (Object[]) node;
             for (int i = 0; i < array.length; i++) {
                 if (i > 0) writer.separateElement();
-                _writeNode(writer, array[i], context);
+                _writeNode(writer, array[i], compTi, context);
             }
         }
         writer.endArray();
@@ -1308,7 +1330,7 @@ public final class StreamingIO {
                      */
                     writer.writeName(entry.getKey(), count > 0);
                     count++;
-                    _writeNode(writer, entry.getValue(), context);
+                    _writeNode(writer, entry.getValue(), TypeInfo.NONE, context);
                 }
                 writer.endObject();
                 return;
@@ -1323,7 +1345,7 @@ public final class StreamingIO {
                     } else {
                         separated = true;
                     }
-                    _writeNode(writer, it.next(), context);
+                    _writeNode(writer, it.next(), TypeInfo.NONE, context);
                 }
                 writer.endArray();
                 return;
@@ -1376,7 +1398,7 @@ public final class StreamingIO {
 
                     writer.writeName(entry.getKey(), count > 0);
                     count++;
-                    _writeNode(writer, value, context);
+                    _writeNode(writer, value, TypeInfo.NONE, context);
                 }
             }
         }
