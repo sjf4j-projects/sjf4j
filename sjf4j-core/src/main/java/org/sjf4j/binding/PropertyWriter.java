@@ -188,7 +188,7 @@ public interface PropertyWriter {
         }
 
         if (List.class.isAssignableFrom(fieldBoxed)) {
-            return _createForList(fieldName, getterHandle, getterLambda);
+            return _createForList(fieldName, fieldType, getterHandle, getterLambda);
         }
 
         if (JsonArray.class.isAssignableFrom(fieldBoxed)) {
@@ -660,14 +660,27 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForList(String fieldName, MethodHandle getterHandle,
+    static PropertyWriter _createForList(String fieldName, Type fieldType, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
+        Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
+        Class<?> elementClazz = Types.rawBox(elementType);
+        TypeInfo[] typeInfoRef = new TypeInfo[1];
+
         return (writer, preparedName, owner, context, count) -> {
             Object value = PojoAccess.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
                 return _writeNullValueField(writer, preparedName, context, count);
             }
             count = _writeName(writer, preparedName, count);
+
+            TypeInfo typeInfo = typeInfoRef[0];
+            if (typeInfo == null) {
+                typeInfo = TypeRegistry.registerTypeInfo(elementClazz);
+                typeInfoRef[0] = typeInfo;
+            }
+            PojoInfo pi = typeInfo.pojoInfo;
+
+
             StreamingIO.writeList(writer, (List<?>) value, context);
             return count;
         };

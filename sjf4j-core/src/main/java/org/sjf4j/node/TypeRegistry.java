@@ -62,7 +62,12 @@ public final class TypeRegistry {
      * @param requirePojo when true, results without object binding are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean requirePojo) {
-        if (_fastNoneInfo(clazz)) return TypeInfo.NONE;
+        if (_fastNoneInfo(clazz)) {
+            if (requirePojo) {
+                throw new BindingException("class '" + Types.name(clazz) + "' is not a POJO");
+            }
+            return TypeInfo.NONE;
+        }
 
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
@@ -123,9 +128,13 @@ public final class TypeRegistry {
 
     private static boolean _fastNoneInfo(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
-                || clazz == Map.class || clazz == List.class || clazz == Set.class
-                || clazz == JsonObject.class || clazz == JsonArray.class
-                || clazz.isPrimitive() || clazz.isEnum() || clazz.isArray();
+                || Number.class.isAssignableFrom(clazz)
+                || clazz == Map.class || clazz == JsonObject.class
+                || clazz == List.class || clazz == JsonArray.class || clazz == Set.class || clazz.isArray()
+                || clazz.isPrimitive()
+                || Enum.class.isAssignableFrom(clazz)
+                || clazz == Character.class
+                || clazz == Void.class;
     }
 
 

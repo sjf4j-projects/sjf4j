@@ -78,15 +78,15 @@ class SimpleJsonReaderTest {
     }
 
     @Test
-    void readsCharValuesAndConsumesFullStrings() throws Exception {
+    void readsCharValuesAndRejectsMultiUnitStrings() throws Exception {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(
                 "[\"x\",\"\\\\\",\"\\u0041\",\"\\uD83D\\uDE00\",\"multiple\",2]"))) {
             reader.startArray();
             assertEquals('x', reader.readCharValue());
             assertEquals('\\', reader.readCharValue());
             assertEquals('A', reader.readCharValue());
-            assertEquals('\uD83D', reader.readCharValue());
-            assertEquals('m', reader.readCharValue());
+            assertThrows(BindingException.class, reader::readCharValue);
+            assertThrows(BindingException.class, reader::readCharValue);
             assertEquals(2, reader.readIntValue());
             reader.endArray();
         }

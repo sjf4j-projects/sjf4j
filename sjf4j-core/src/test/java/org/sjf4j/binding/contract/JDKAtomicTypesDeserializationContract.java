@@ -1,8 +1,6 @@
 package org.sjf4j.binding.contract;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
@@ -16,17 +14,13 @@ import org.sjf4j.value.ValueCodec;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** User-registered atomic-value bindings via SJF4J's ValueCodec extension API. */
+/** User-registered non-native atomic-value bindings via SJF4J's ValueCodec extension API. */
 public abstract class JDKAtomicTypesDeserializationContract {
     protected abstract Binder<?, ?> binding(RuntimeContext context);
     private static final class AtomicCodecs {
         static {
             ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(
                     AtomicBoolean.class, Boolean.class, AtomicBoolean::get, AtomicBoolean::new), null, false);
-            ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(
-                    AtomicInteger.class, Integer.class, AtomicInteger::get, AtomicInteger::new), null, false);
-            ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(
-                    AtomicLong.class, Long.class, AtomicLong::get, AtomicLong::new), null, false);
         }
 
         static void ensureRegistered() { }
@@ -39,14 +33,6 @@ public abstract class JDKAtomicTypesDeserializationContract {
     /** Source: JDKAtomicTypesDeserTest#testAtomicBoolean. */
     @Test void testAtomicBoolean() {
             registerAtomicCodecs(); assertEquals(true, ((AtomicBoolean) binding(RuntimeContext.EMPTY).readNode("true", AtomicBoolean.class)).get());
-        }
-    /** Source: JDKAtomicTypesDeserTest#testAtomicInt. */
-    @Test void testAtomicInt() {
-            registerAtomicCodecs(); assertEquals(13, ((AtomicInteger) binding(RuntimeContext.EMPTY).readNode("13", AtomicInteger.class)).get());
-        }
-    /** Source: JDKAtomicTypesDeserTest#testAtomicLong. */
-    @Test void testAtomicLong() {
-            registerAtomicCodecs(); assertEquals(12345678901L, ((AtomicLong) binding(RuntimeContext.EMPTY).readNode("12345678901", AtomicLong.class)).get());
         }
     /** ValueCodec cannot recursively bind AtomicReference's generic long[] payload. */
     @Disabled("TODO: design generic payload binding for ValueCodec before supporting AtomicReference<long[]>.")

@@ -146,7 +146,12 @@ public final class ValueRegistry {
                     ". The raw type must be one of String, Number, Boolean, Map, or List.");
         }
 
-        Asserts.notNull(valueInfo.valueClazz, "valueClazz");
+        Class<?> valueClazz = Asserts.notNull(valueInfo.valueClazz, "valueClazz");
+        if (NodeKind.plainOf(valueClazz) != NodeKind.UNKNOWN) {
+            throw new BindingException("cannot register ValueCodec for native OBNT type '" +
+                    valueClazz.getName() + "'");
+        }
+
     }
 
 

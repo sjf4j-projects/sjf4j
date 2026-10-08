@@ -110,7 +110,7 @@ public enum NodeKind {
             } else {
                 return VALUE_NUMBER;
             }
-        } else if (clazz == String.class || clazz == Character.class || clazz.isEnum()) {
+        } else if (clazz == String.class) {
             return VALUE_STRING;
         } else if (Number.class.isAssignableFrom(clazz)) {
             return VALUE_NUMBER;
@@ -132,6 +132,8 @@ public enum NodeKind {
             return ARRAY_ARRAY;
         } else if (Set.class.isAssignableFrom(clazz)) {
             return ARRAY_SET;
+        } else if (clazz == Character.class || Enum.class.isAssignableFrom(clazz)) {
+            return VALUE_STRING;
         } else if (clazz == Void.class) {
             return VALUE_NULL;
         }

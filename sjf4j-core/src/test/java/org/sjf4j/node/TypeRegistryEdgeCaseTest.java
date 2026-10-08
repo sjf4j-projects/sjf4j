@@ -312,9 +312,9 @@ class TypeRegistryEdgeCaseTest {
                 () -> TypeRegistry.requireRegisteredValueInfo(String.class, "missing"));
         assertTrue(missingCodec.getMessage().contains("no ValueCodec registered"));
 
-        assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(null, true));
-        assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(String.class, true));
-        assertSame(TypeInfo.NONE, TypeRegistry.registerTypeInfo(int.class, true));
+        assertThrows(BindingException.class, () -> TypeRegistry.registerTypeInfo(null, true));
+        assertThrows(BindingException.class, () -> TypeRegistry.registerTypeInfo(String.class, true));
+        assertThrows(BindingException.class, () -> TypeRegistry.registerTypeInfo(int.class, true));
 
         BindingException cold = assertThrows(BindingException.class,
                 () -> TypeRegistry.registerTypeInfo(NonPojoTarget.class, true));
