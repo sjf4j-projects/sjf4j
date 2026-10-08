@@ -15,6 +15,7 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import tools.jackson.core.json.JsonFactory;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.module.blackbird.BlackbirdModule;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -38,6 +39,7 @@ public class Jackson3BinderBenchmark {
     @State(Scope.Thread)
     public static class BenchmarkState {
         ObjectMapper mapper;
+        ObjectMapper blackbirdMapper;
         Jackson3Binder binder;
         String document;
         Document value;
@@ -47,6 +49,9 @@ public class Jackson3BinderBenchmark {
         public void setup() throws Exception {
             JsonFactory factory = new JsonFactory();
             mapper = new ObjectMapper(factory);
+            blackbirdMapper = new ObjectMapper().rebuild()
+                    .addModule(new BlackbirdModule())
+                    .build();
             binder = new Jackson3Binder(factory);
             value = new Document(
                     7,
@@ -139,6 +144,11 @@ public class Jackson3BinderBenchmark {
     }
 
     @Benchmark
+    public Document pojo_read_blackbird(BenchmarkState state) throws Exception {
+        return state.blackbirdMapper.readValue(state.document, Document.class);
+    }
+
+    @Benchmark
     public Document pojo_read_binder(BenchmarkState state) {
         return (Document) state.binder.readNode(state.document, Document.class);
     }
@@ -146,6 +156,11 @@ public class Jackson3BinderBenchmark {
     @Benchmark
     public String pojo_write_native(BenchmarkState state) throws Exception {
         return state.mapper.writeValueAsString(state.value);
+    }
+
+    @Benchmark
+    public String pojo_write_blackbird(BenchmarkState state) throws Exception {
+        return state.blackbirdMapper.writeValueAsString(state.value);
     }
 
     @Benchmark

@@ -2,7 +2,6 @@ package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 
 import java.io.StringWriter;
 import java.math.BigDecimal;
@@ -47,18 +46,18 @@ class Jackson2WriterTest {
         StringWriter output = new StringWriter();
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
         Jackson2Writer writer = binder.createWriter(output);
-        Jackson2PreparedName text = new Jackson2PreparedName("te\"xt");
-        Jackson2PreparedName number = new Jackson2PreparedName("number");
+        Jackson2CompiledName text = new Jackson2CompiledName("te\"xt");
+        Jackson2CompiledName number = new Jackson2CompiledName("number");
         writer.startObject();
         writer.writeName(text);
         writer.writeString("value");
         writer.writeName(number);
         writer.writeIntValue(42);
-        writer.writeName(new Jackson2PreparedName("decimal"));
+        writer.writeName(new Jackson2CompiledName("decimal"));
         writer.writeBigDecimal(new BigDecimal("1.20"));
-        writer.writeName(new Jackson2PreparedName("nullable"));
+        writer.writeName(new Jackson2CompiledName("nullable"));
         writer.writeString(null);
-        writer.writeName(new Jackson2PreparedName("nullValue"));
+        writer.writeName(new Jackson2CompiledName("nullValue"));
         writer.writeNull();
         writer.endObject();
         writer.close();

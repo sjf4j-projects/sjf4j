@@ -1,9 +1,9 @@
 package org.sjf4j.backend.jackson3.binding;
 
-import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.util.Asserts;
@@ -19,7 +19,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** StreamingReader backed directly by a Jackson 3 {@link JsonParser}. */
+/**
+ * Jackson 3 adapter for the consuming-value streaming protocol.
+ *
+ * <p>The normal object-binding path keeps Jackson's cursor on a property name
+ * after {@link #nextNameMatch(NameMatcher)}. The following read operation
+ * advances directly to its value, using Jackson's fused nextXxxValue methods
+ * where available. No lookahead flag is needed on that hot path.</p>
+ *
+ * <p>{@code prefetched} is used only for a failed conditional probe,
+ * {@link #peekToken()}, or a parser supplied with an existing current token.
+ * Such a token has been fetched physically but remains unconsumed logically.</p>
+ */
 public final class Jackson3Reader extends StreamingReader {
 
     private final JsonParser parser;
@@ -28,20 +39,28 @@ public final class Jackson3Reader extends StreamingReader {
     public Jackson3Reader(JsonParser parser) {
         super(Backend.JACKSON3);
         this.parser = Asserts.notNull(parser, "parser");
+        // A caller may supply a parser already positioned on the first token.
         this.prefetched = parser.currentToken() != null;
     }
 
+    /* --------------------------------------------------------------
+     * Document / inspection
+     * -------------------------------------------------------------- */
+
     @Override
     public void endDocument() throws IOException {
-        JsonToken token;
         if (prefetched) {
             prefetched = false;
-            token = parser.currentToken();
-        } else {
-            token = parser.nextToken();
+            JsonToken current = parser.currentToken();
+            if (current != null) {
+                throw expected("end of document", current);
+            }
+            return;
         }
-        if (token != null) {
-            throw expected("end of document", token);
+
+        JsonToken current = parser.nextToken();
+        if (current != null) {
+            throw expected("end of document", current);
         }
     }
 
@@ -58,6 +77,10 @@ public final class Jackson3Reader extends StreamingReader {
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
         return new Jackson3NameMatcher(writableProperties);
     }
+
+    /* --------------------------------------------------------------
+     * Conditional consumption
+     * -------------------------------------------------------------- */
 
     @Override
     public boolean nextIfNull() throws IOException {
@@ -83,6 +106,10 @@ public final class Jackson3Reader extends StreamingReader {
     public boolean nextIfArrayEnd() throws IOException {
         return nextIf(JsonToken.END_ARRAY);
     }
+
+    /* --------------------------------------------------------------
+     * Structural consumption
+     * -------------------------------------------------------------- */
 
     @Override
     public void startObject() throws IOException {
@@ -112,11 +139,15 @@ public final class Jackson3Reader extends StreamingReader {
         }
     }
 
+    /* --------------------------------------------------------------
+     * Property names
+     * -------------------------------------------------------------- */
+
     @Override
     public String nextName() throws IOException {
         if (prefetched) {
-            JsonToken current = parser.currentToken();
             prefetched = false;
+            JsonToken current = parser.currentToken();
             if (current == JsonToken.END_OBJECT) {
                 return null;
             }
@@ -136,18 +167,19 @@ public final class Jackson3Reader extends StreamingReader {
         throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
     }
 
+    /**
+     * Uses Jackson 3's native multi-name matcher. The matched property value
+     * remains pending; the parser is still on PROPERTY_NAME on return.
+     */
     @Override
     public int nextNameMatch(NameMatcher matcher) throws IOException {
-        if (!(matcher instanceof Jackson3NameMatcher)) {
-            String name = nextName();
-            return name == null ? NameMatcher.OBJECT_END : matcher.fallback(name);
-        }
-
         Jackson3NameMatcher jacksonMatcher = (Jackson3NameMatcher) matcher;
         int match;
+
         if (prefetched) {
-            JsonToken current = parser.currentToken();
+            // A probe has already advanced to the name or object end.
             prefetched = false;
+            JsonToken current = parser.currentToken();
             if (current == JsonToken.END_OBJECT) {
                 return NameMatcher.OBJECT_END;
             }
@@ -157,22 +189,31 @@ public final class Jackson3Reader extends StreamingReader {
             match = parser.currentNameMatch(jacksonMatcher.matcher);
         } else {
             match = parser.nextNameMatch(jacksonMatcher.matcher);
-            if (match == PropertyNameMatcher.MATCH_END_OBJECT) {
-                return NameMatcher.OBJECT_END;
-            }
-            if (match == PropertyNameMatcher.MATCH_ODD_TOKEN) {
-                throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
-            }
         }
 
         if (match >= 0) {
             return match;
         }
+        if (match == PropertyNameMatcher.MATCH_END_OBJECT) {
+            return NameMatcher.OBJECT_END;
+        }
         if (match == PropertyNameMatcher.MATCH_UNKNOWN_NAME) {
+            // Aliases, unrecognized members: resolve without consuming value.
             return matcher.fallback(parser.currentName());
         }
+        // MATCH_ODD_TOKEN, or any other invalid matcher result.
         throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
     }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
+        // Jackson 3's native multi-name matcher does not require an index hint.
+        return nextNameMatch(matcher);
+    }
+
+    /* --------------------------------------------------------------
+     * String / generic number
+     * -------------------------------------------------------------- */
 
     @Override
     public String readString() throws IOException {
@@ -192,10 +233,11 @@ public final class Jackson3Reader extends StreamingReader {
         if (value != null) {
             return value;
         }
-        if (parser.currentToken() == JsonToken.VALUE_NULL) {
+        JsonToken current = parser.currentToken();
+        if (current == JsonToken.VALUE_NULL) {
             return null;
         }
-        throw expected("string or null", parser.currentToken());
+        throw expected("string or null", current);
     }
 
     @Override
@@ -204,11 +246,13 @@ public final class Jackson3Reader extends StreamingReader {
         if (current == JsonToken.VALUE_NULL) {
             return null;
         }
-        if (!isNumber(current)) {
-            throw expected("number or null", current);
-        }
+        // Jackson 3 checks the token's numeric type in getNumberValue().
         return parser.getNumberValue();
     }
+
+    /* --------------------------------------------------------------
+     * Primitive values (non-null)
+     * -------------------------------------------------------------- */
 
     @Override
     public long readLongValue() throws IOException {
@@ -221,6 +265,7 @@ public final class Jackson3Reader extends StreamingReader {
         if (value != 0L || parser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
             return value;
         }
+        // Includes floating-point values and invalid tokens: defer to parser.
         return parser.getLongValue();
     }
 
@@ -240,86 +285,126 @@ public final class Jackson3Reader extends StreamingReader {
 
     @Override
     public short readShortValue() throws IOException {
-        return Numbers.toShort(requireNumber());
+        nextValue();
+        return Numbers.toShort(parser.getNumberValue());
     }
 
     @Override
     public byte readByteValue() throws IOException {
-        return Numbers.toByte(requireNumber());
+        nextValue();
+        // JSON -> Java signed byte. Do not allow Jackson's unsigned 128..255 path.
+        return Numbers.toByte(parser.getNumberValue());
     }
 
     @Override
     public double readDoubleValue() throws IOException {
-        return Numbers.toDouble(requireNumber());
+        nextValue();
+        return parser.getDoubleValue();
     }
 
     @Override
     public float readFloatValue() throws IOException {
-        return Numbers.toFloat(requireNumber());
+        nextValue();
+        return parser.getFloatValue();
     }
 
     @Override
     public boolean readBooleanValue() throws IOException {
         if (prefetched) {
             prefetched = false;
-            JsonToken current = parser.currentToken();
-            if (current == JsonToken.VALUE_TRUE || current == JsonToken.VALUE_FALSE) {
-                return parser.getBooleanValue();
-            }
-            throw expected("boolean", current);
+            return parser.getBooleanValue();
         }
 
         Boolean value = parser.nextBooleanValue();
-        if (value != null) {
-            return value;
-        }
-        throw expected("boolean", parser.currentToken());
+        return value != null ? value : parser.getBooleanValue();
     }
+
+    /* --------------------------------------------------------------
+     * Boxed primitive values (nullable)
+     * -------------------------------------------------------------- */
 
     @Override
     public Long readLong() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toLong(value);
+        if (prefetched) {
+            prefetched = false;
+            if (parser.currentToken() == JsonToken.VALUE_NULL) {
+                return null;
+            }
+            return parser.getLongValue();
+        }
+
+        long value = parser.nextLongValue(0L);
+        if (value != 0L) {
+            return value;
+        }
+        JsonToken current = parser.currentToken();
+        if (current == JsonToken.VALUE_NUMBER_INT) {
+            return 0L;
+        }
+        if (current == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        return parser.getLongValue();
     }
 
     @Override
     public Integer readInt() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toInt(value);
+        if (prefetched) {
+            prefetched = false;
+            if (parser.currentToken() == JsonToken.VALUE_NULL) {
+                return null;
+            }
+            return parser.getIntValue();
+        }
+
+        int value = parser.nextIntValue(0);
+        if (value != 0) {
+            return value;
+        }
+        JsonToken current = parser.currentToken();
+        if (current == JsonToken.VALUE_NUMBER_INT) {
+            return 0;
+        }
+        if (current == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        return parser.getIntValue();
     }
 
     @Override
     public Short readShort() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toShort(value);
+        JsonToken current = nextValue();
+        return current == JsonToken.VALUE_NULL ? null
+                : Numbers.toShort(parser.getNumberValue());
     }
 
     @Override
     public Byte readByte() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toByte(value);
+        JsonToken current = nextValue();
+        return current == JsonToken.VALUE_NULL ? null
+                : Numbers.toByte(parser.getNumberValue());
     }
 
     @Override
     public Double readDouble() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toDouble(value);
+        JsonToken current = nextValue();
+        return current == JsonToken.VALUE_NULL ? null : parser.getDoubleValue();
     }
 
     @Override
     public Float readFloat() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toFloat(value);
+        JsonToken current = nextValue();
+        return current == JsonToken.VALUE_NULL ? null : parser.getFloatValue();
     }
 
     @Override
     public Boolean readBoolean() throws IOException {
         if (prefetched) {
+            prefetched = false;
             if (parser.currentToken() == JsonToken.VALUE_NULL) {
-                prefetched = false;
                 return null;
             }
-            return readBooleanValue();
+            return parser.getBooleanValue();
         }
 
         Boolean value = parser.nextBooleanValue();
@@ -329,27 +414,48 @@ public final class Jackson3Reader extends StreamingReader {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             return null;
         }
-        throw expected("boolean or null", parser.currentToken());
+        return parser.getBooleanValue();
     }
 
     @Override
+    public Character readChar() throws IOException {
+        String value = readString();
+        if (value == null) {
+            return null;
+        }
+        if (value.length() != 1) {
+            throw new BindingException("cannot read char: expected single-character string, but length was "
+                    + value.length());
+        }
+        return value.charAt(0);
+    }
+
+    /* --------------------------------------------------------------
+     * Arbitrary-precision numbers
+     * -------------------------------------------------------------- */
+
+    @Override
     public BigInteger readBigInteger() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toBigInteger(value);
+        JsonToken current = nextValue();
+        return current == JsonToken.VALUE_NULL ? null : parser.getBigIntegerValue();
     }
 
     @Override
     public BigDecimal readBigDecimal() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toBigDecimal(value);
+        // Preserve the existing Jackson3Reader's numeric conversion semantics:
+        // a floating literal read as Double is converted using BigDecimal.valueOf.
+        // Switching to getDecimalValue() changes scale (e.g. 1.20e-3).
+        Number number = readNumber();
+        return number == null ? null : Numbers.toBigDecimal(number);
     }
+
+    /* --------------------------------------------------------------
+     * Skip / raw OBNT
+     * -------------------------------------------------------------- */
 
     @Override
     public void skipNode() throws IOException {
-        JsonToken current = nextValue();
-        if (token(current).jsonType() == JsonType.UNKNOWN) {
-            throw expected("value", current);
-        }
+        nextValue();
         parser.skipChildren();
     }
 
@@ -358,73 +464,59 @@ public final class Jackson3Reader extends StreamingReader {
         return readRawNode(nextValue());
     }
 
+    private Object readRawNode(JsonToken current) throws IOException {
+        if (current == null) {
+            throw expected("raw node", null);
+        }
+
+        switch (current) {
+            case START_OBJECT:
+                return readRawObject();
+            case START_ARRAY:
+                return readRawArray();
+            case VALUE_STRING:
+                return parser.getString();
+            case VALUE_NUMBER_INT:
+            case VALUE_NUMBER_FLOAT:
+                return parser.getNumberValue();
+            case VALUE_TRUE:
+            case VALUE_FALSE:
+                return parser.getBooleanValue();
+            case VALUE_NULL:
+                return null;
+            default:
+                throw expected("raw node", current);
+        }
+    }
+
+    private Map<String, Object> readRawObject() throws IOException {
+        Map<String, Object> value = new LinkedHashMap<>();
+        String name;
+        while ((name = parser.nextName()) != null) {
+            value.put(name, readRawNode(parser.nextToken()));
+        }
+        return value;
+    }
+
+    private List<Object> readRawArray() throws IOException {
+        List<Object> value = new ArrayList<>();
+        JsonToken current;
+        while ((current = parser.nextToken()) != JsonToken.END_ARRAY) {
+            value.add(readRawNode(current));
+        }
+        return value;
+    }
+
+    /* --------------------------------------------------------------
+     * Lifecycle / helpers
+     * -------------------------------------------------------------- */
+
     @Override
     public void close() throws IOException {
         parser.close();
     }
 
-    private Number requireNumber() throws IOException {
-        Number value = readNumber();
-        if (value == null) {
-            throw expected("number", parser.currentToken());
-        }
-        return value;
-    }
-
-    private Object readRawNode(JsonToken current) throws IOException {
-        if (current == JsonToken.START_OBJECT) {
-            Map<String, Object> value = new LinkedHashMap<>();
-            String name;
-            while ((name = parser.nextName()) != null) {
-                value.put(name, readRawNode(parser.nextToken()));
-            }
-            return value;
-        }
-        if (current == JsonToken.START_ARRAY) {
-            List<Object> value = new ArrayList<>();
-            JsonToken element;
-            while ((element = parser.nextToken()) != JsonToken.END_ARRAY) {
-                if (element == null) {
-                    throw expected("array value", null);
-                }
-                value.add(readRawNode(element));
-            }
-            return value;
-        }
-        if (current == JsonToken.VALUE_STRING) {
-            return parser.getString();
-        }
-        if (isNumber(current)) {
-            return parser.getNumberValue();
-        }
-        if (current == JsonToken.VALUE_TRUE || current == JsonToken.VALUE_FALSE) {
-            return parser.getBooleanValue();
-        }
-        if (current == JsonToken.VALUE_NULL) {
-            return null;
-        }
-        throw expected("raw node", current);
-    }
-
-    private boolean nextIf(JsonToken expected) throws IOException {
-        JsonToken current;
-        if (prefetched) {
-            current = parser.currentToken();
-            if (current != expected) {
-                return false;
-            }
-            prefetched = false;
-            return true;
-        }
-
-        current = parser.nextToken();
-        if (current == expected) {
-            return true;
-        }
-        prefetched = true;
-        return false;
-    }
-
+    /** Consumes a prefetched token, or advances the parser exactly once. */
     private JsonToken nextValue() throws IOException {
         if (prefetched) {
             prefetched = false;
@@ -433,8 +525,25 @@ public final class Jackson3Reader extends StreamingReader {
         return parser.nextToken();
     }
 
-    private static boolean isNumber(JsonToken token) {
-        return token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT;
+    /**
+     * On mismatch the physical cursor has already advanced, so retain that
+     * token for the next logical consuming operation.
+     */
+    private boolean nextIf(JsonToken expected) throws IOException {
+        if (prefetched) {
+            if (parser.currentToken() != expected) {
+                return false;
+            }
+            prefetched = false;
+            return true;
+        }
+
+        JsonToken current = parser.nextToken();
+        if (current == expected) {
+            return true;
+        }
+        prefetched = true;
+        return false;
     }
 
     private static IOException expected(String expected, JsonToken actual) {

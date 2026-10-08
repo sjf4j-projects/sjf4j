@@ -429,25 +429,14 @@ public final class StreamingIO {
         PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
         NameMatcher matcher = reader.nameMatcher(pojoInfo);
 
-        if (reader.backend == Backend.JACKSON2) {
-            int expectedIndex = 0;
-            int index;
-            while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
-                if (index >= 0) {
-                    propertyReaders[index].read(reader, pojo, type, boxed, context);
-                    expectedIndex = index + 1;
-                } else {
-                    reader.skipNode();
-                }
-            }
-        } else {
-            int index;
-            while ((index = reader.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
-                if (index >= 0) {
-                    propertyReaders[index].read(reader, pojo, type, boxed, context);
-                } else {
-                    reader.skipNode();
-                }
+        int expectedIndex = 0;
+        int index;
+        while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
+            if (index >= 0) {
+                propertyReaders[index].read(reader, pojo, type, boxed, context);
+                expectedIndex = index + 1;
+            } else {
+                reader.skipNode();
             }
         }
 
