@@ -1,29 +1,24 @@
 package org.sjf4j.backend.jackson3.binding;
 
+import org.sjf4j.binding.NameMatcher;
+import org.sjf4j.node.PropertyInfo;
 import tools.jackson.core.sym.BinaryNameMatcher;
 import tools.jackson.core.sym.PropertyNameMatcher;
 
 import java.util.Arrays;
 
-/** Prepared Jackson 3 property-name matcher. */
-final class Jackson3NameMatcher implements StreamingReader.NameMatcher {
+/** Prepared Jackson 3 property-name metadata. */
+final class Jackson3NameMatcher extends NameMatcher {
 
-    private final String[] names;
     final PropertyNameMatcher matcher;
 
-    Jackson3NameMatcher(String[] names) {
-        this.names = names.clone();
-        this.matcher = BinaryNameMatcher.construct(Arrays.asList(this.names));
-    }
+    Jackson3NameMatcher(PropertyInfo[] writableProperties) {
+        super(writableProperties);
 
-    @Override
-    public String name(int index) {
-        return names[index];
-    }
-
-    @Override
-    public int match(String name) {
-        int index = matcher.matchName(name);
-        return index >= 0 ? index : UNKNOWN;
+        String[] names = new String[writableProperties.length];
+        for (int i = 0; i < names.length; i++) {
+            names[i] = writableProperties[i].name;
+        }
+        matcher = BinaryNameMatcher.construct(Arrays.asList(names));
     }
 }

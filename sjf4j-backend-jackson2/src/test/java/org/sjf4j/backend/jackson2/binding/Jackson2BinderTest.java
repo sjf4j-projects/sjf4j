@@ -96,6 +96,23 @@ class Jackson2BinderTest {
     }
 
     @Test
+    void writesLargeUtf8NodeAsBytes() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        Document value = document();
+        StringBuilder title = new StringBuilder();
+        for (int i = 0; i < 3_000; i++) {
+            title.append("é💡");
+        }
+        value.title = title.toString();
+
+        byte[] bytes = binder.writeNodeAsBytes(value);
+        Document roundTripped = (Document) binder.readNode(bytes, Document.class);
+
+        assertTrue(bytes.length > 8_000);
+        assertEquals(value.title, roundTripped.title);
+    }
+
+    @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
         RuntimeContext context = new RuntimeContext(false);
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), context);

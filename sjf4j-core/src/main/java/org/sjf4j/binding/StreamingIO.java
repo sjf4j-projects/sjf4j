@@ -6,6 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
@@ -427,33 +428,29 @@ public final class StreamingIO {
         PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
         NameMatcher matcher = reader.nameMatcher(pojoInfo);
 
-        int index;
-        while ((index = reader.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
-            if (index >= 0) {
-                propertyReaders[index].read(reader, pojo, type, boxed, context);
-            } else {
-                reader.skipNode();
+        if (reader.backend == Backend.JACKSON2) {
+            int expectedIndex = 0;
+            int index;
+            while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
+                if (index >= 0) {
+                    propertyReaders[index].read(reader, pojo, type, boxed, context);
+                    expectedIndex = index + 1;
+                } else {
+                    reader.skipNode();
+                }
+            }
+        } else {
+            int index;
+            while ((index = reader.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
+                if (index >= 0) {
+                    propertyReaders[index].read(reader, pojo, type, boxed, context);
+                } else {
+                    reader.skipNode();
+                }
             }
         }
 
         return pojo;
-
-//        /*
-//         * String-name fallback for backends without a prepared matcher.
-//         */
-//        String name;
-//        while ((name = reader.nextName()) != null) {
-//            PropertyInfo property = pojoInfo.propertyLookup.get(name);
-//            if (property == null || !property.writable) {
-//                reader.skipNode();
-//                continue;
-//            }
-//
-//            Object value = readProperty(reader, property, type, boxed, null, context);
-//            property.invokeSetter(pojo, value);
-//        }
-//
-//        return pojo;
     }
 
 

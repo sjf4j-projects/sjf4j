@@ -18,6 +18,7 @@ public final class Fastjson2Writer extends StreamingWriter {
     private final JSONWriter writer;
     private final Writer charOutput;
     private final OutputStream byteOutput;
+    private final boolean useRawName;
 
     public Fastjson2Writer(JSONWriter writer) {
         this(writer, null, null);
@@ -36,6 +37,10 @@ public final class Fastjson2Writer extends StreamingWriter {
         this.writer = Asserts.notNull(writer, "writer");
         this.charOutput = charOutput;
         this.byteOutput = byteOutput;
+        this.useRawName = !writer.isUseSingleQuotes()
+                && !writer.isEnabled(JSONWriter.Feature.UnquoteFieldName)
+                && !writer.isEnabled(JSONWriter.Feature.BrowserSecure)
+                && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
     }
 
     @Override
@@ -73,7 +78,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     public void writeName(CompiledName compiledName) {
-        if (compiledName instanceof Fastjson2CompiledName) {
+        if (useRawName) {
             writer.writeNameRaw(((Fastjson2CompiledName) compiledName).rawName);
         } else {
             writeName(compiledName.name());
@@ -82,7 +87,7 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     @Override
     protected CompiledName createCompiledName(String name) {
-        return isRawNameSafe(name) ? new Fastjson2CompiledName(name) : new CompiledName(name);
+        return new Fastjson2CompiledName(name);
     }
 
     @Override
@@ -183,16 +188,4 @@ public final class Fastjson2Writer extends StreamingWriter {
         flush();
         writer.close();
     }
-
-    private static boolean isRawNameSafe(String name) {
-        for (int i = 0; i < name.length(); i++) {
-            char ch = name.charAt(i);
-            if (ch < ' ' || ch > '~' || ch == '"' || ch == '\\'
-                    || ch == '<' || ch == '>' || ch == '(' || ch == ')') {
-                return false;
-            }
-        }
-        return true;
-    }
-
 }

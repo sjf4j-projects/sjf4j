@@ -269,12 +269,13 @@ public final class Jackson2Reader extends StreamingReader {
          * next logical token.
          */
         if (prefetched) {
-            JsonToken current = parser.currentToken();
-            if (current == JsonToken.END_OBJECT) {
-                prefetched = false;
-                return NameMatcher.OBJECT_END;
-            }
-            if (current != JsonToken.FIELD_NAME) {
+            String name = parser.currentName();
+            if (name == null) {
+                JsonToken current = parser.currentToken();
+                if (current == JsonToken.END_OBJECT) {
+                    prefetched = false;
+                    return NameMatcher.OBJECT_END;
+                }
                 throw _expected(JsonToken.FIELD_NAME.name(), current);
             }
             prefetched = false;
@@ -288,40 +289,25 @@ public final class Jackson2Reader extends StreamingReader {
          * by Jackson 3, but nextFieldName(SerializableString) gives us a
          * direct fast path for the expected property.
          */
-        if (matcher instanceof Jackson2NameMatcher) {
-            Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
-            if (expectedIndex >= 0 && expectedIndex < jacksonMatcher.serializedNames.length) {
-                if (parser.nextFieldName(jacksonMatcher.serializedNames[expectedIndex])) {
-                    return expectedIndex;
-                }
-
-                JsonToken current = parser.currentToken();
-                if (current == JsonToken.END_OBJECT) {
-                    return NameMatcher.OBJECT_END;
-                }
-
-                if (current != JsonToken.FIELD_NAME) {
-                    throw _expected(JsonToken.FIELD_NAME.name(), current);
-                }
-
-                return matcher.fallback(parser.currentName());
+        Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
+        String name;
+        if (expectedIndex >= 0 && expectedIndex < jacksonMatcher.serializedNames.length) {
+            if (parser.nextFieldName(jacksonMatcher.serializedNames[expectedIndex])) {
+                return expectedIndex;
             }
+            name = parser.currentName();
+        } else {
+            name = parser.nextFieldName();
         }
 
-        /*
-         * Generic name path.
-         */
-        String name = parser.nextFieldName();
-        if (name != null) {
-            return matcher.fallback(name);
+        if (name == null) {
+            JsonToken current = parser.currentToken();
+            if (current == JsonToken.END_OBJECT) {
+                return NameMatcher.OBJECT_END;
+            }
+            throw _expected(JsonToken.FIELD_NAME.name(), current);
         }
-
-        JsonToken current = parser.currentToken();
-        if (current == JsonToken.END_OBJECT) {
-            return NameMatcher.OBJECT_END;
-        }
-
-        throw _expected(JsonToken.FIELD_NAME.name(), current);
+        return matcher.fallback(parser.currentName());
     }
 
 

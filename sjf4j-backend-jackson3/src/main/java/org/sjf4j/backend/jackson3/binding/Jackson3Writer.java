@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jackson3.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
-import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonGenerator;
@@ -10,13 +10,13 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-/** StreamingWriter backed directly by a Jackson 2 {@link JsonGenerator}. */
+/** StreamingWriter backed directly by a Jackson 3 {@link JsonGenerator}. */
 public final class Jackson3Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    public Jackson3Writer(Binder<?, ?> binder, JsonGenerator generator) {
-        super(binder);
+    public Jackson3Writer(JsonGenerator generator) {
+        super(Backend.JACKSON3);
         this.generator = Asserts.notNull(generator, "generator");
     }
 
@@ -121,7 +121,16 @@ public final class Jackson3Writer extends StreamingWriter {
 
     @Override
     public void writeName(CompiledName compiledName) throws IOException {
-        generator.writeName(((Jackson3Name) compiledName).serializedName);
+        if (compiledName instanceof Jackson3Name) {
+            generator.writeName(((Jackson3Name) compiledName).serializedName);
+        } else {
+            generator.writeName(compiledName.name());
+        }
+    }
+
+    @Override
+    protected CompiledName createCompiledName(String name) {
+        return new Jackson3Name(name);
     }
 
 

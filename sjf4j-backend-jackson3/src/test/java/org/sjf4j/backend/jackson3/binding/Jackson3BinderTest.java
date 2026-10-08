@@ -90,6 +90,25 @@ class Jackson3BinderTest {
     }
 
     @Test
+    void closesBinderCreatedGeneratorsWithoutClosingCallerTargets() throws Exception {
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
+        TrackingWriter writerOutput = new TrackingWriter();
+        TrackingOutputStream streamOutput = new TrackingOutputStream();
+
+        try (Jackson3Writer writer = binder.createWriter(writerOutput)) {
+            writer.writeNull();
+        }
+        try (Jackson3Writer writer = binder.createWriter(streamOutput)) {
+            writer.writeNull();
+        }
+
+        assertFalse(writerOutput.closed);
+        assertFalse(streamOutput.closed);
+        assertEquals("null", writerOutput.toString());
+        assertEquals("null", new String(streamOutput.toByteArray(), StandardCharsets.UTF_8));
+    }
+
+    @Test
     void usesSuppliedFactoryConfiguration() {
         JsonFactory factory = JsonFactory.builder()
                 .enable(JsonReadFeature.ALLOW_JAVA_COMMENTS)
@@ -120,25 +139,43 @@ class Jackson3BinderTest {
 
         assertEquals("héllo", fromBytes.title);
         assertEquals("héllo", fromStream.title);
+        assertTrue(new String(binder.writeNodeAsBytes(document()), StandardCharsets.UTF_8).contains("\"id\":7"));
         try (Jackson3Reader reader = binder.createReader("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE))) {
-            assertThrows(Exception.class, reader::nextNull);
+            assertThrows(Exception.class, reader::nextIfNull);
         }
+    }
+
+    @Test
+    void retainsLargeByteOutputAfterRecyclerReuse() {
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
+        String title = "x".repeat(100_000);
+        Document value = new Document(7, title, new Details(true), Arrays.asList("one"),
+                new LinkedHashMap<>(), null);
+
+        byte[] bytes = binder.writeNodeAsBytes(value);
+        for (int i = 0; i < 4; i++) {
+            binder.writeNodeAsBytes(document());
+        }
+        Document roundTrip = (Document) binder.readNode(bytes, Document.class);
+
+        assertEquals(title, roundTrip.title);
     }
 
     @Test
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
         JsonParser parser = new JsonFactory().createParser(ObjectReadContext.empty(), "null");
         try (Jackson3Reader reader = new Jackson3Binder(new JsonFactory()).createReader(parser)) {
-            reader.nextNull();
+            assertTrue(reader.nextIfNull());
         }
         assertTrue(parser.isClosed());
 
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        TrackingOutputStream output = new TrackingOutputStream();
         JsonGenerator generator = new JsonFactory().createGenerator(ObjectWriteContext.empty(), output);
         try (Jackson3Writer writer = new Jackson3Binder(new JsonFactory()).createWriter(generator)) {
             writer.writeNull();
         }
         assertTrue(generator.isClosed());
+        assertTrue(output.closed);
         assertEquals("null", new String(output.toByteArray(), StandardCharsets.UTF_8));
     }
 
@@ -200,6 +237,16 @@ class Jackson3BinderTest {
         @Override
         public void close() {
             closed = true;
+        }
+    }
+
+    static class TrackingOutputStream extends ByteArrayOutputStream {
+        boolean closed;
+
+        @Override
+        public void close() throws java.io.IOException {
+            closed = true;
+            super.close();
         }
     }
 
