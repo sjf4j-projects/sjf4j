@@ -398,8 +398,8 @@ final class BindingCompiler {
                 System.arraycopy(aliases, 0, keys, 1, aliases.length);
                 for (String key : keys) {
                     String previous = claimedNames.putIfAbsent(key, property.name());
-                    if (previous != null && !previous.equals(property.name())) {
-                        error(method, generated, "Ambiguous compiled property name '" + key
+                    if (previous != null) {
+                        error(method, generated, "Duplicate compiled property name '" + key
                                 + "' for " + previous + " and " + property.name());
                         return false;
                     }
