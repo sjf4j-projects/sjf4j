@@ -388,6 +388,15 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
+    public Object createValueNode(Object value) {
+        if (value == null) return JsonNull.INSTANCE;
+        if (value instanceof String) return new JsonPrimitive((String) value);
+        if (value instanceof Boolean) return new JsonPrimitive((Boolean) value);
+        if (value instanceof Number) return new JsonPrimitive((Number) value);
+        throw new NodeException("unsupported Java value for Gson node: '" + Types.name(value) + "'");
+    }
+
+    @Override
     public Object createObjectNode(Class<?> clazz) {
         return new JsonObject();
     }

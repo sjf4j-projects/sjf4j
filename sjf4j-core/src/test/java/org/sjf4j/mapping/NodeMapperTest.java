@@ -198,6 +198,72 @@ class NodeMapperTest {
         assertEquals("<null>", holder.value.value);
     }
 
+    @Test
+    void convertsBetweenNodeValuesUsingCompatibleRawRepresentations() {
+        EncodedA source = new EncodedA("hello");
+
+        EncodedB converted = (EncodedB) NodeMapper.convert(source, EncodedB.class, false);
+        assertEquals("hello", converted.value);
+
+        // No implicit String -> Number coercion at a ValueCodec boundary.
+        BindingException error = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(source, NumericValue.class, false));
+        assertTrue(error.getMessage().contains("raw type"));
+
+        assertSame(source, NodeMapper.convert(source, EncodedA.class, false));
+    }
+
+    @Test
+    void convertsNodeValueMembersOfPojoAndMapWithoutDroppingRawEncoding() {
+        SourceValueHolder source = new SourceValueHolder();
+        source.code = new EncodedA("abc");
+
+        TargetValueHolder fromPojo = (TargetValueHolder) NodeMapper.convert(
+                source, TargetValueHolder.class, false);
+        assertEquals("abc", fromPojo.code.value);
+
+        Map<String, Object> values = new java.util.LinkedHashMap<>();
+        values.put("code", new EncodedA("xyz"));
+        TargetValueHolder fromMap = (TargetValueHolder) NodeMapper.convert(
+                values, TargetValueHolder.class, false);
+        assertEquals("xyz", fromMap.code.value);
+    }
+
+    @NodeValue
+    static class EncodedA {
+        final String value;
+        EncodedA(String value) { this.value = value; }
+
+        @ValueToRaw String toRaw() { return value; }
+        @RawToValue static EncodedA fromRaw(String value) { return new EncodedA(value); }
+    }
+
+    @NodeValue
+    static class EncodedB {
+        final String value;
+        EncodedB(String value) { this.value = value; }
+
+        @ValueToRaw String toRaw() { return value; }
+        @RawToValue static EncodedB fromRaw(String value) { return new EncodedB(value); }
+    }
+
+    @NodeValue
+    static class NumericValue {
+        final Long value;
+        NumericValue(Long value) { this.value = value; }
+
+        @ValueToRaw Long toRaw() { return value; }
+        @RawToValue static NumericValue fromRaw(Long value) { return new NumericValue(value); }
+    }
+
+    static class SourceValueHolder {
+        public EncodedA code;
+    }
+
+    static class TargetValueHolder {
+        public EncodedB code;
+    }
+
     private static Profile profile() {
         Profile profile = new Profile();
         profile.name = "Ada";

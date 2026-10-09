@@ -256,6 +256,15 @@ public interface ExternalNode<N> {
         return node;
     }
 
+    /**
+     * Creates a native JSON value (including native JSON null) from a Java
+     * String, Number, Boolean, or null. Container and POJO conversion is
+     * performed by NodeMapper, not by this factory.
+     */
+    default Object createValueNode(Object value) {
+        throw unsupported("createValueNode");
+    }
+
     /** Creates a native object container. */
     default Object createObjectNode(Class<?> clazz) {
         throw unsupported("createObjectNode");

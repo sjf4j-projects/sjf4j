@@ -363,6 +363,25 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
     }
 
     @Override
+    public Object createValueNode(Object value) {
+        if (value == null) return NullNode.instance;
+        if (value instanceof String) return JsonNodeFactory.instance.textNode((String) value);
+        if (value instanceof Boolean) return BooleanNode.valueOf((Boolean) value);
+        if (value instanceof java.math.BigDecimal) return JsonNodeFactory.instance.numberNode((java.math.BigDecimal) value);
+        if (value instanceof java.math.BigInteger) return JsonNodeFactory.instance.numberNode((java.math.BigInteger) value);
+        if (value instanceof Integer) return JsonNodeFactory.instance.numberNode((Integer) value);
+        if (value instanceof Long) return JsonNodeFactory.instance.numberNode((Long) value);
+        if (value instanceof Double) return JsonNodeFactory.instance.numberNode((Double) value);
+        if (value instanceof Float) return JsonNodeFactory.instance.numberNode((Float) value);
+        if (value instanceof Short) return JsonNodeFactory.instance.numberNode((Short) value);
+        if (value instanceof Byte) return JsonNodeFactory.instance.numberNode((Byte) value);
+        if (value instanceof Number) {
+            return JsonNodeFactory.instance.numberNode(new java.math.BigDecimal(value.toString()));
+        }
+        throw new NodeException("unsupported Java value for Jackson 2 node: '" + Types.name(value) + "'");
+    }
+
+    @Override
     public Object createObjectNode(Class<?> clazz) {
         return JsonNodeFactory.instance.objectNode();
     }
