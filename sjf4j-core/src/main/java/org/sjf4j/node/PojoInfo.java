@@ -11,6 +11,7 @@ import org.sjf4j.binding.PropertyWriter;
 import java.util.AbstractSet;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -38,6 +39,11 @@ public class PojoInfo {
 
     public final PropertyInfo[] readableProperties;
     public final PropertyWriter[] propertyWriters;
+
+    /** Name matching for argument-based creators and parent-scope OneOf. */
+    public final String[] creatorMatchNames;
+    public final int[] creatorMatchArgs;
+    public final PropertyInfo[] creatorMatchProperties;
 
     public final BackendCache[] backendCache = new BackendCache[Backend.values().length];
 
@@ -73,6 +79,34 @@ public class PojoInfo {
         this.propertyReaders = propertyReaders;
         this.propertyWriters = propertyWriters;
 
+        if (hasParentScopeOneOf || !creatorInfo.hasNoArgsCreator()) {
+            // The creator has priority over declared properties, including
+            // aliases. Compute that resolution once, not per streamed field.
+            LinkedHashSet<String> keys = new LinkedHashSet<>();
+            if (creatorInfo.argNames != null) {
+                Collections.addAll(keys, creatorInfo.argNames);
+            }
+            if (creatorInfo.aliasMap != null) {
+                keys.addAll(creatorInfo.aliasMap.keySet());
+            }
+            keys.addAll(propertyLookup.keySet());
+
+            this.creatorMatchNames = keys.toArray(new String[0]);
+            this.creatorMatchArgs = new int[creatorMatchNames.length];
+            this.creatorMatchProperties = new PropertyInfo[creatorMatchNames.length];
+            for (int i = 0; i < creatorMatchNames.length; i++) {
+                String name = creatorMatchNames[i];
+                int arg = creatorInfo.getArgIndexOrAlias(name);
+                creatorMatchArgs[i] = arg;
+                if (arg < 0) {
+                    creatorMatchProperties[i] = propertyLookup.get(name);
+                }
+            }
+        } else {
+            this.creatorMatchNames = null;
+            this.creatorMatchArgs = null;
+            this.creatorMatchProperties = null;
+        }
     }
 
 
