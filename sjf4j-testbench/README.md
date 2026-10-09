@@ -2,15 +2,15 @@
 
 ## JOJO read benchmarks (JVM)
 
-\`JojoReadBenchmark\` isolates the cost of binding a \`JsonObject\` subclass versus
+`JojoReadBenchmark` isolates the cost of binding a `JsonObject` subclass versus
 a plain POJO (unknown names skipped) and native Jackson/Fastjson2 binding with
 an extra-properties map (unknown names retained).
 
 | Workload | Declared fields | Unknown fields | Purpose |
 | --- | ---: | ---: | --- |
-| \`static\` | 16 | 0 | Declared-property matching, setters, and JOJO construction overhead |
-| \`mixed\` | 8 | 8 | Alternating declared/dynamic name matching and value reading |
-| \`dynamic\` | 2 | 14 | Dynamic map fallback, including nested object/array values |
+| `static` | 16 | 0 | Declared-property matching, setters, and JOJO construction overhead |
+| `mixed` | 8 | 8 | Alternating declared/dynamic name matching and value reading |
+| `dynamic` | 2 | 14 | Dynamic map fallback, including nested object/array values |
 
 The three model types have **identical declared fields**. Each measurement
 uses identical prebuilt JSON for all backends; JMH trial setup verifies that
@@ -21,21 +21,21 @@ eagerly, whereas JOJO creates its dynamic map on demand.
 
 Build the JMH jar and run all three workloads:
 
-\`\`\`bash
+```bash
 ./gradlew :sjf4j-testbench:jmhJar
 java -jar sjf4j-testbench/build/libs/*-jmh.jar \
   '.*JojoReadBenchmark.*' -prof gc
-\`\`\`
+```
 
 For a focused Fastjson2 comparison:
 
-\`\`\`bash
+```bash
 java -jar sjf4j-testbench/build/libs/*-jmh.jar \
   '.*JojoReadBenchmark.*fastjson2.*' -p workload=mixed -prof gc
-\`\`\`
+```
 
-The benchmarks use three forks by default. Compare both latency (\`us/op\`)
-and allocation (\`gc.alloc.rate.norm\`, bytes/op); JMH warmup and measurement
+The benchmarks use three forks by default. Compare both latency (`us/op`)
+and allocation (`gc.alloc.rate.norm`, bytes/op); JMH warmup and measurement
 exclude JSON fixture creation and validation.
 
 ## GraalVM Native Image Benchmarking
