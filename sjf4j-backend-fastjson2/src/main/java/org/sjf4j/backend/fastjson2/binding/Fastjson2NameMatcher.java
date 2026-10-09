@@ -1,3 +1,4 @@
+
 package org.sjf4j.backend.fastjson2.binding;
 
 import com.alibaba.fastjson2.util.Fnv;
@@ -17,11 +18,21 @@ final class Fastjson2NameMatcher extends NameMatcher {
     private final boolean hashSafe;
 
     Fastjson2NameMatcher(PropertyInfo[] writableProperties) {
-        super(writableProperties);
+        this(writableProperties, null);
+    }
 
-        int nameCount = writableProperties.length;
-        for (PropertyInfo property : writableProperties) {
-            nameCount += property.alias.length;
+    Fastjson2NameMatcher(String... names) {
+        this(null, names);
+    }
+
+    private Fastjson2NameMatcher(PropertyInfo[] writableProperties, String[] names) {
+        super(writableProperties, names);
+
+        int nameCount = size();
+        if (writableProperties != null) {
+            for (PropertyInfo property : writableProperties) {
+                nameCount += property.alias.length;
+            }
         }
 
         int capacity = 1;
@@ -31,16 +42,16 @@ final class Fastjson2NameMatcher extends NameMatcher {
 
         this.hashes = new long[capacity];
         this.indexes = new int[capacity];
-        Arrays.fill(this.indexes, -1);
+        Arrays.fill(this.indexes, UNKNOWN);
         this.mask = capacity - 1;
 
         boolean safe = true;
-
-        for (int i = 0; i < writableProperties.length; i++) {
-            PropertyInfo property = writableProperties[i];
-            safe &= add(property.name, i);
-            for (String alias : property.alias) {
-                safe &= add(alias, i);
+        for (int i = 0; i < size(); i++) {
+            safe &= add(name(i), i);
+            if (writableProperties != null) {
+                for (String alias : writableProperties[i].alias) {
+                    safe &= add(alias, i);
+                }
             }
         }
 
@@ -83,4 +94,6 @@ final class Fastjson2NameMatcher extends NameMatcher {
 
         return UNKNOWN;
     }
+
+
 }

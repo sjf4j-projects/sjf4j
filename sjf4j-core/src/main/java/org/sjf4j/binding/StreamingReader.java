@@ -102,16 +102,6 @@ public abstract class StreamingReader implements Closeable {
         }
     }
 
-    final NameMatcher nameMatcher(PojoInfo pojoInfo) {
-        BackendCache cache = pojoInfo.backendCache(backend);
-        NameMatcher matcher = cache.nameMatcher;
-        if (matcher == null) {
-            matcher = createNameMatcher(pojoInfo.writableProperties);
-            cache.nameMatcher = matcher;
-        }
-        return matcher;
-    }
-
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
         return new NameMatcher(writableProperties);
     }

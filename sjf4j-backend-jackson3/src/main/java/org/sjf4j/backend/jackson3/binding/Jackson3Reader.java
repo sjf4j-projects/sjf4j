@@ -9,7 +9,6 @@ import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
-import tools.jackson.core.json.ReaderBasedJsonParser;
 import tools.jackson.core.sym.PropertyNameMatcher;
 
 import java.io.IOException;
@@ -37,14 +36,11 @@ public final class Jackson3Reader extends StreamingReader {
     private final JsonParser parser;
     private boolean prefetched;
 
-    private final boolean charBased;
-
     public Jackson3Reader(JsonParser parser) {
         super(Backend.JACKSON3);
         this.parser = Asserts.notNull(parser, "parser");
         // A caller may supply a parser already positioned on the first token.
         this.prefetched = parser.currentToken() != null;
-        this.charBased = parser instanceof ReaderBasedJsonParser;
     }
 
     /* --------------------------------------------------------------
@@ -211,26 +207,8 @@ public final class Jackson3Reader extends StreamingReader {
 
     @Override
     public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
-        if (!charBased || prefetched) {
-            return nextNameMatch(matcher);
-        }
-
-        Jackson3NameMatcher m = (Jackson3NameMatcher) matcher;
-        if (expectedIndex < 0 || expectedIndex >= m.serializedNames.length) {
-            return nextNameMatch(matcher);
-        }
-        if (parser.nextName(m.serializedNames[expectedIndex])) {
-            return expectedIndex;
-        }
-
-        JsonToken current = parser.currentToken();
-        if (current == JsonToken.PROPERTY_NAME) {
-            return matcher.fallback(parser.currentName());
-        }
-        if (current == JsonToken.END_OBJECT) {
-            return NameMatcher.OBJECT_END;
-        }
-        throw expected(JsonToken.PROPERTY_NAME.name(), current);
+        // Jackson 3's native multi-name matcher does not require an index hint.
+        return nextNameMatch(matcher);
     }
 
     /* --------------------------------------------------------------

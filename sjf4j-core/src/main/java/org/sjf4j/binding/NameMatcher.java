@@ -1,60 +1,90 @@
-package org.sjf4j.binding;
 
+package org.sjf4j.binding;
 
 import org.sjf4j.node.PropertyInfo;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
- * Prepared member-name matcher.
- *
- * <p>A successful match returns a non-negative index. The canonical
- * member name for that index can be obtained through
- * {@link #name(int)}.</p>
- *
- * <p>Backend implementations may attach native matching metadata to an
- * implementation of this interface. This allows
- * {@link StreamingReader#nextNameMatch(NameMatcher)} to match directly against the
- * underlying input without first materializing the member name as a
- * {@link String}.</p>
+ * Prepared member-name matcher for runtime and compiled binding.
  */
 public class NameMatcher {
 
-    /**
-     * Indicates that a member name did not match any known name.
-     */
     public static final int UNKNOWN = -1;
-
-    /**
-     * Indicates that object traversal reached the object end.
-     */
     public static final int OBJECT_END = -2;
 
+    // Null for compiled binding.
     protected final PropertyInfo[] writableProperties;
+
+    private final String[] names;
     private final Map<String, Integer> fallback;
 
+    /**
+     * Runtime binding from property metadata.
+     */
     public NameMatcher(PropertyInfo[] writableProperties) {
+        this(writableProperties, null);
+    }
+
+    /**
+     * Compiled binding from static property names.
+     */
+    public NameMatcher(String... names) {
+        this(null, names);
+    }
+
+    /**
+     * Shared initialization for backend subclasses.
+     * Exactly one argument must be non-null.
+     */
+    protected NameMatcher(PropertyInfo[] writableProperties, String[] compiledNames) {
+        if ((writableProperties == null) == (compiledNames == null)) {
+            throw new IllegalArgumentException(
+                    "Exactly one of writableProperties or compiledNames must be provided");
+        }
         this.writableProperties = writableProperties;
-        Map<String, Integer> fallback = new HashMap<>(Math.max(16, (int) (writableProperties.length / 0.75f) + 1));
-        for (int i = 0; i < writableProperties.length; i++) {
-            fallback.put(writableProperties[i].name, i);
-            for (String alias : writableProperties[i].alias) {
-                fallback.put(alias, i);
+
+        if (writableProperties != null) {
+            names = new String[writableProperties.length];
+            for (int i = 0; i < names.length; i++) {
+                names[i] = Objects.requireNonNull(writableProperties[i].name, "property name");
+            }
+        } else {
+            names = compiledNames.clone();
+            for (String name : names) {
+                Objects.requireNonNull(name, "property name");
             }
         }
-        this.fallback = fallback;
+
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 0; i < names.length; i++) {
+            map.put(names[i], i);
+            if (writableProperties != null) {
+                for (String alias : writableProperties[i].alias) {
+                    map.put(alias, i);
+                }
+            }
+        }
+        this.fallback = map;
     }
 
     public final int size() {
-        return writableProperties.length;
+        return names.length;
     }
 
     public final String name(int index) {
-        return writableProperties[index].name;
+        return names[index];
     }
 
+    /**
+     * Available only for runtime-created matchers.
+     */
     public final PropertyInfo property(int index) {
+        if (writableProperties == null) {
+            throw new IllegalStateException("Compiled NameMatcher has no PropertyInfo");
+        }
         return writableProperties[index];
     }
 
@@ -62,5 +92,6 @@ public class NameMatcher {
         Integer index = fallback.get(name);
         return index != null ? index : UNKNOWN;
     }
+
 
 }

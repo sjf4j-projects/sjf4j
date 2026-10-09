@@ -17,6 +17,7 @@ import tools.jackson.core.json.JsonFactory;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.module.blackbird.BlackbirdModule;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,8 +26,8 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 20, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
 @State(Scope.Thread)
@@ -44,6 +45,7 @@ public class Jackson3BinderBenchmark {
         String document;
         Document value;
         Map<String, Object> mapValue;
+        byte[] documentBytes;
 
         @Setup(Level.Trial)
         public void setup() throws Exception {
@@ -120,6 +122,8 @@ public class Jackson3BinderBenchmark {
             mapValue.put("sections", Arrays.asList(overview, history));
             mapValue.put("counters", counters(12, 3, 7));
             mapValue.put("nullable", null);
+
+            documentBytes = document.getBytes(StandardCharsets.UTF_8);
         }
 
         private static Map<String, String> attributes(String key1, String value1, String key2, String value2) {
@@ -169,6 +173,16 @@ public class Jackson3BinderBenchmark {
     }
 
     @Benchmark
+    public byte[] pojo_write_native_utf8(BenchmarkState state) throws Exception {
+        return state.mapper.writeValueAsBytes(state.value);
+    }
+
+    @Benchmark
+    public byte[] pojo_write_binder_utf8(BenchmarkState state) {
+        return state.binder.writeNodeAsBytes(state.value);
+    }
+
+    @Benchmark
     public Map map_read_native(BenchmarkState state) throws Exception {
         return state.mapper.readValue(state.document, Map.class);
     }
@@ -188,6 +202,15 @@ public class Jackson3BinderBenchmark {
         return state.binder.writeNodeAsString(state.mapValue);
     }
 
+    @Benchmark
+    public Document pojo_read_binder_utf8(BenchmarkState state) {
+        return (Document) state.binder.readNode(state.documentBytes, Document.class);
+    }
+
+    @Benchmark
+    public Document pojo_read_native_utf8(BenchmarkState state) throws Exception {
+        return state.mapper.readValue(state.documentBytes, Document.class);
+    }
 
 
     public static class Document {

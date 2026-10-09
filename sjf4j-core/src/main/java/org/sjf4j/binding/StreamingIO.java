@@ -427,7 +427,7 @@ public final class StreamingIO {
 
         Object pojo = pojoInfo.creatorInfo.newPojoNoArgs();
         PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
-        NameMatcher matcher = reader.nameMatcher(pojoInfo);
+        NameMatcher matcher = cacheNameMatcher(reader, pojoInfo);
 
         int expectedIndex = 0;
         int index;
@@ -934,6 +934,16 @@ public final class StreamingIO {
             return (List<Object>) value;
         }
         throw new BindingException("cannot read non-array value as JsonArray");
+    }
+
+    public static NameMatcher cacheNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
+        BackendCache cache = pojoInfo.backendCache(reader.backend);
+        NameMatcher matcher = cache.nameMatcher;
+        if (matcher == null) {
+            matcher = reader.createNameMatcher(pojoInfo.writableProperties);
+            cache.nameMatcher = matcher;
+        }
+        return matcher;
     }
 
 

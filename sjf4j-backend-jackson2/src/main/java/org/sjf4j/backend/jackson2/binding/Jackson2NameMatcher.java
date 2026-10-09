@@ -1,3 +1,4 @@
+
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.SerializableString;
@@ -11,10 +12,19 @@ final class Jackson2NameMatcher extends NameMatcher {
     final SerializableString[] serializedNames;
 
     Jackson2NameMatcher(PropertyInfo[] writableProperties) {
-        super(writableProperties);
-        serializedNames = new SerializableString[writableProperties.length];
-        for (int i = 0; i < writableProperties.length; i++) {
-            serializedNames[i] = new SerializedString(writableProperties[i].name);
+        this(writableProperties, null);
+    }
+
+    Jackson2NameMatcher(String... names) {
+        this(null, names);
+    }
+
+    private Jackson2NameMatcher(PropertyInfo[] writableProperties, String[] names) {
+        super(writableProperties, names);
+        serializedNames = new SerializableString[size()];
+        for (int i = 0; i < size(); i++) {
+            serializedNames[i] = new SerializedString(name(i));
         }
     }
+
 }
