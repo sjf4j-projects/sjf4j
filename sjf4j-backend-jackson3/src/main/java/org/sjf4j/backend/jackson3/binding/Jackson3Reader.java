@@ -73,6 +73,11 @@ public final class Jackson3Reader extends StreamingReader {
         return token(parser.currentToken());
     }
 
+    /** Prepared matcher for generated binders. */
+    public static NameMatcher compiledNameMatcher(String... names) {
+        return new Jackson3NameMatcher(names);
+    }
+
     @Override
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
         return new Jackson3NameMatcher(writableProperties);
