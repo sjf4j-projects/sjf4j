@@ -47,7 +47,6 @@ public class JsonpBinderBenchmark {
         Document value;
         Map<String, Object> mapValue;
         JsonStructure nativeValue;
-        JsonStructure nativeMapValue;
 
         @Setup(Level.Trial)
         public void setup() {
@@ -121,7 +120,6 @@ public class JsonpBinderBenchmark {
             mapValue.put("sections", Arrays.asList(overview, history));
             mapValue.put("counters", counters(12, 3, 7));
             mapValue.put("nullable", null);
-            nativeMapValue = parse(provider, binder.writeNodeAsString(mapValue));
         }
 
         private static JsonStructure parse(JsonProvider provider, String document) {
@@ -147,7 +145,7 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public JsonStructure pojo_read_native_tree(BenchmarkState state) {
+    public JsonStructure tree_read_native(BenchmarkState state) {
         try (JsonReader reader = state.provider.createReader(new FastStringReader(state.document))) {
             return reader.read();
         }
@@ -159,7 +157,7 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public String pojo_write_native_tree(BenchmarkState state) {
+    public String tree_write_native(BenchmarkState state) {
         FastStringWriter output = new FastStringWriter();
         try (JsonWriter writer = state.provider.createWriter(output)) {
             writer.write(state.nativeValue);
@@ -173,24 +171,8 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public JsonStructure map_read_native_tree(BenchmarkState state) {
-        try (JsonReader reader = state.provider.createReader(new FastStringReader(state.document))) {
-            return reader.read();
-        }
-    }
-
-    @Benchmark
     public Map map_read_binder(BenchmarkState state) {
         return (Map) state.binder.readNode(state.document, Map.class);
-    }
-
-    @Benchmark
-    public String map_write_native_tree(BenchmarkState state) {
-        FastStringWriter output = new FastStringWriter();
-        try (JsonWriter writer = state.provider.createWriter(output)) {
-            writer.write(state.nativeMapValue);
-        }
-        return output.toString();
     }
 
     @Benchmark
