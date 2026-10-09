@@ -143,7 +143,7 @@ public final class NodeMapper {
             }
 
             if (ti.externalNode != null) {
-                return _convertToExternal(node, toBoxed, ti.externalNode, ps, context);
+                return _convertToExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
             }
 
             // An external source must be dispatched before Map/List: JSON-P
@@ -256,6 +256,11 @@ public final class NodeMapper {
                     public int size() {
                         return external.sizeInObject(node);
                     }
+
+                    @Override
+                    public boolean external() {
+                        return true;
+                    }
                 }, "External object", toBoxed, type, deepCopy, ps, context);
             case ARRAY:
                 return _convertFromIndexedSource(new IndexedSource() {
@@ -267,6 +272,11 @@ public final class NodeMapper {
                     @Override
                     public Object get(int i) {
                         return external.getInArray(node, i);
+                    }
+
+                    @Override
+                    public boolean external() {
+                        return true;
                     }
                 }, "External array", toBoxed, type, deepCopy, ps, context);
             default:
@@ -281,7 +291,7 @@ public final class NodeMapper {
     @SuppressWarnings("unchecked")
     private static Object _convertToExternal(Object node, Class<?> toBoxed,
                                              ExternalNode<Object> target,
-                                             PathSegment ps, RuntimeContext context) {
+                                             boolean deepCopy, PathSegment ps, RuntimeContext context) {
         try {
             Object result;
             if (node == null) {
@@ -289,7 +299,7 @@ public final class NodeMapper {
             } else if (target.nodeType().isInstance(node)) {
                 // A compatible native subtree is safe to reuse for a non-copy
                 // conversion, even if it is nested in a different Java source.
-                result = node;
+                result = deepCopy ? target.deepCopy(node) : node;
             } else if (node instanceof String || node instanceof Number || node instanceof Boolean) {
                 result = target.createValueNode(node);
             } else if (node instanceof Character) {
@@ -301,7 +311,7 @@ public final class NodeMapper {
                 if (sourceTi.valueInfos != null) {
                     ValueInfo vi = sourceTi.requireValueInfo(context.defaultValueFormat(node.getClass()));
                     return _requireExternalTarget(_convertToExternal(
-                            vi.valueToRaw(node), target.nodeType(), target, ps, context), toBoxed, ps);
+                            vi.valueToRaw(node), target.nodeType(), target, deepCopy, ps, context), toBoxed, ps);
                 }
 
                 ExternalNode<Object> sourceExternal = sourceTi.externalNode;
@@ -320,7 +330,7 @@ public final class NodeMapper {
                     for (Map.Entry<String, Object> entry : sourceExternal.entrySetInObject(node)) {
                         PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                         target.putInObject(out, entry.getKey(), _convertToExternal(
-                                entry.getValue(), target.nodeType(), target, cps, context));
+                                entry.getValue(), target.nodeType(), target, deepCopy, cps, context));
                     }
                     result = out;
                 } else if (sourceExternal != null && shape == JsonType.ARRAY) {
@@ -328,7 +338,7 @@ public final class NodeMapper {
                     int len = sourceExternal.sizeInArray(node);
                     for (int i = 0; i < len; i++) {
                         target.addInArray(out, _convertToExternal(sourceExternal.getInArray(node, i),
-                                target.nodeType(), target, new PathSegment.Index(ps, i), context));
+                                target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
                     }
                     result = out;
                 } else if (node instanceof Map) {
@@ -336,8 +346,7 @@ public final class NodeMapper {
                     Object out = target.createObjectNode(toBoxed);
                     for (Map.Entry<String, Object> entry : map.entrySet()) {
                         target.putInObject(out, entry.getKey(), _convertToExternal(
-                                entry.getValue(), target.nodeType(), target,
-                                new PathSegment.Name(ps, entry.getKey()), context));
+                                entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
                     }
                     result = out;
                 } else if (node instanceof JsonObject && node.getClass() == JsonObject.class) {
@@ -345,8 +354,7 @@ public final class NodeMapper {
                     Object out = target.createObjectNode(toBoxed);
                     for (Map.Entry<String, Object> entry : jo.entrySet()) {
                         target.putInObject(out, entry.getKey(), _convertToExternal(
-                                entry.getValue(), target.nodeType(), target,
-                                new PathSegment.Name(ps, entry.getKey()), context));
+                                entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
                     }
                     result = out;
                 } else if (node instanceof List || node instanceof JsonArray
@@ -356,29 +364,25 @@ public final class NodeMapper {
                         List<?> list = (List<?>) node;
                         for (int i = 0; i < list.size(); i++) {
                             target.addInArray(out, _convertToExternal(
-                                    list.get(i), target.nodeType(), target,
-                                    new PathSegment.Index(ps, i), context));
+                                    list.get(i), target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
                         }
                     } else if (node instanceof JsonArray) {
                         JsonArray array = (JsonArray) node;
                         for (int i = 0; i < array.size(); i++) {
                             target.addInArray(out, _convertToExternal(
-                                    array.getNode(i), target.nodeType(), target,
-                                    new PathSegment.Index(ps, i), context));
+                                    array.getNode(i), target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
                         }
                     } else if (node.getClass().isArray()) {
                         int len = Array.getLength(node);
                         for (int i = 0; i < len; i++) {
                             target.addInArray(out, _convertToExternal(
-                                    Array.get(node, i), target.nodeType(), target,
-                                    new PathSegment.Index(ps, i), context));
+                                    Array.get(node, i), target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
                         }
                     } else {
                         int i = 0;
                         for (Object item : (Set<?>) node) {
                             target.addInArray(out, _convertToExternal(
-                                    item, target.nodeType(), target,
-                                    new PathSegment.Index(ps, i++), context));
+                                    item, target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i++), context));
                         }
                     }
                     result = out;
@@ -391,15 +395,13 @@ public final class NodeMapper {
                             value = property.valueInfo.valueToRaw(value);
                         }
                         target.putInObject(out, property.name, _convertToExternal(
-                                value, target.nodeType(), target,
-                                new PathSegment.Name(ps, property.name), context));
+                                value, target.nodeType(), target, deepCopy, new PathSegment.Name(ps, property.name), context));
                     }
                     if (pi.isJojo && pi.writeDynamic) {
                         Map<String, Object> dynamic = InternalAccess.dynamicProperties((JsonObject) node);
                         for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
                             target.putInObject(out, entry.getKey(), _convertToExternal(
-                                    entry.getValue(), target.nodeType(), target,
-                                    new PathSegment.Name(ps, entry.getKey()), context));
+                                    entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
                         }
                     }
                     result = out;
@@ -799,8 +801,8 @@ public final class NodeMapper {
 
             for (Map.Entry<String, Object> entry : source.entries()) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                Object value = _convert(entry.getValue(),
-                        valueType, valueRaw, valueOneOf, deepCopy, cps, context);
+                Object value = _convertSourceChild(entry.getValue(),
+                        valueType, valueRaw, valueOneOf, deepCopy, cps, context, source.external());
                 map.put(entry.getKey(), value);
             }
             return map;
@@ -810,8 +812,8 @@ public final class NodeMapper {
             JsonObject jo = new JsonObject();
             for (Map.Entry<String, Object> entry : source.entries()) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                Object value = _convert(entry.getValue(),
-                        Object.class, Object.class, null, deepCopy, cps, context);
+                Object value = _convertSourceChild(entry.getValue(),
+                        Object.class, Object.class, null, deepCopy, cps, context, source.external());
                 jo.put(entry.getKey(), value);
             }
             return jo;
@@ -820,7 +822,7 @@ public final class NodeMapper {
         PojoInfo pi = TypeRegistry.registerTypeInfo(toBoxed).pojoInfo;
         if (pi != null && !pi.isJajo) {
             return _convertPojoFromEntries(
-                    source.entries(), type, toBoxed, pi, deepCopy, ps, context);
+                    source.entries(), type, toBoxed, pi, deepCopy, ps, context, source.external());
         }
 
         throw new BindingException(
@@ -829,7 +831,7 @@ public final class NodeMapper {
 
     private static Object _convertPojoFromEntries(Iterable<Map.Entry<String, Object>> entries, Type type, Class<?> toBoxed,
                                                   PojoInfo pi, boolean deepCopy, PathSegment ps,
-                                                  RuntimeContext context) {
+                                                  RuntimeContext context, boolean externalSource) {
         CreatorInfo ci = pi.creatorInfo;
         CreatorState state = new CreatorState(ci);
 
@@ -855,7 +857,7 @@ public final class NodeMapper {
                             ? argValueInfo.valueCopy(rawValue)
                             : argValueInfo.rawToValue(rawValue));
                 } else {
-                    state.acceptCtorArg(argIdx, _convert(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context));
+                    state.acceptCtorArg(argIdx, _convertSourceChild(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context, externalSource));
                 }
                 continue;
             }
@@ -878,7 +880,7 @@ public final class NodeMapper {
                             ? propertyInfo.valueInfo.valueCopy(rawValue)
                             : propertyInfo.valueInfo.rawToValue(rawValue);
                 } else {
-                    value = _convert(rawValue, fieldType, fieldRaw, propertyInfo.oneOfInfo, deepCopy, cps, context);
+                    value = _convertSourceChild(rawValue, fieldType, fieldRaw, propertyInfo.oneOfInfo, deepCopy, cps, context, externalSource);
                 }
 
                 if (state.isCreated()) {
@@ -891,7 +893,7 @@ public final class NodeMapper {
 
             if (pi.isJojo && pi.readDynamic) {
                 PathSegment cps = new PathSegment.Name(ps, key);
-                Object value = _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, context);
+                Object value = _convertSourceChild(rawValue, Object.class, Object.class, null, deepCopy, cps, context, externalSource);
                 state.acceptDynamic(key, value);
             }
         }
@@ -1069,8 +1071,8 @@ public final class NodeMapper {
 
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
-                list.add(_convert(source.get(i),
-                        valueType, valueRaw, valueOneOf, deepCopy, cps, context));
+                list.add(_convertSourceChild(source.get(i),
+                        valueType, valueRaw, valueOneOf, deepCopy, cps, context, source.external()));
             }
             return list;
         }
@@ -1079,8 +1081,8 @@ public final class NodeMapper {
             JsonArray ja = new JsonArray();
             for (int i = 0, size = source.size(); i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
-                ja.add(_convert(source.get(i),
-                        Object.class, Object.class, null, deepCopy, cps, context));
+                ja.add(_convertSourceChild(source.get(i),
+                        Object.class, Object.class, null, deepCopy, cps, context, source.external()));
             }
             return ja;
         }
@@ -1094,8 +1096,8 @@ public final class NodeMapper {
 
             for (int i = 0, size = source.size(); i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
-                jajo.add(_convert(source.get(i),
-                        valueRaw, valueRaw, valueOneOf, deepCopy, cps, context));
+                jajo.add(_convertSourceChild(source.get(i),
+                        valueRaw, valueRaw, valueOneOf, deepCopy, cps, context, source.external()));
             }
             return jajo;
         }
@@ -1109,8 +1111,8 @@ public final class NodeMapper {
             Object array = Array.newInstance(valueType, source.size());
             for (int i = 0, size = source.size(); i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
-                Array.set(array, i, _convert(source.get(i),
-                        valueType, valueRaw, valueOneOf, deepCopy, cps, context));
+                Array.set(array, i, _convertSourceChild(source.get(i),
+                        valueType, valueRaw, valueOneOf, deepCopy, cps, context, source.external()));
             }
             return array;
         }
@@ -1127,8 +1129,8 @@ public final class NodeMapper {
 
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
-                set.add(_convert(source.get(i),
-                        valueType, valueRaw, valueOneOf, deepCopy, cps, context));
+                set.add(_convertSourceChild(source.get(i),
+                        valueType, valueRaw, valueOneOf, deepCopy, cps, context, source.external()));
             }
             return set;
         }
@@ -1271,12 +1273,30 @@ public final class NodeMapper {
         int size();
 
         Object get(int i);
+
+        default boolean external() {
+            return false;
+        }
     }
 
     private interface ObjectSource {
         Iterable<Map.Entry<String, Object>> entries();
 
         int size();
+
+        default boolean external() {
+            return false;
+        }
+    }
+
+    private static Object _convertSourceChild(Object value, Type type, Class<?> raw,
+                                              OneOfInfo oneOfInfo, boolean deepCopy,
+                                              PathSegment ps, RuntimeContext context,
+                                              boolean externalSource) {
+        if (externalSource && raw == Object.class && oneOfInfo == null) {
+            return _convertToRaw(value, ps, context);
+        }
+        return _convert(value, type, raw, oneOfInfo, deepCopy, ps, context);
     }
 
 
