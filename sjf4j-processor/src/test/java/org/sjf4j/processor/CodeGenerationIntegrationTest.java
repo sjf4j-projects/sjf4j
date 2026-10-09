@@ -96,19 +96,19 @@ class CodeGenerationIntegrationTest {
         for (String backend : new String[]{"SIMPLE", "JACKSON2", "FASTJSON2"}) {
             NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                     "fixture/Bean.java",
-                    "package fixture;\\n"
-                            + "public class Bean {\\n"
-                            + "  public int age;\\n"
-                            + "  public String name;\\n"
-                            + "  public Integer count;\\n"
-                            + "}\\n",
+                    "package fixture;\n"
+                            + "public class Bean {\n"
+                            + "  public int age;\n"
+                            + "  public String name;\n"
+                            + "  public Integer count;\n"
+                            + "}\n",
                     "fixture/Binder.java",
-                    "package fixture;\\n"
-                            + "import org.sjf4j.annotation.binding.*;\\n"
-                            + "@CompiledBinder(backend = Backend." + backend + ") public interface Binder {\\n"
-                            + "  @ReadFrom Bean read(String input) throws java.io.IOException;\\n"
-                            + "  @WriteTo String write(Bean bean) throws java.io.IOException;\\n"
-                            + "}\\n"
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.binding.*;\n"
+                            + "@CompiledBinder(backend = Backend." + backend + ") public interface Binder {\n"
+                            + "  @ReadFrom Bean read(String input) throws java.io.IOException;\n"
+                            + "  @WriteTo String write(Bean bean) throws java.io.IOException;\n"
+                            + "}\n"
             ), CodegenProcessor.class);
 
             assertTrue(result.success, backend + ": " + result.diagnostics());
@@ -122,7 +122,7 @@ class CodeGenerationIntegrationTest {
                 Class<?> binderClass = Class.forName("fixture.Binder_Impl", true, loader);
                 Object binder = binderClass.getConstructor().newInstance();
 
-                String input = "{\\"other\\":{\\"deep\\":[1,2]},\\"name\\":\\"Alice\\",\\"age\\":3,\\"count\\":null}";
+                String input = "{\"other\":{\"deep\":[1,2]},\"name\":\"Alice\",\"age\":3,\"count\":null}";
                 Object bean = binderClass.getMethod("read", String.class)
                         .invoke(binder, input);
 
