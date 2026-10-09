@@ -15,7 +15,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** StreamingReader backed directly by a JSON-P {@link JsonParser}. */
+/**
+ * StreamingReader backed directly by a JSON-P {@link JsonParser}.
+ *
+ * <p>Requires Jakarta JSON Processing API 2.1 or later. A supplied parser
+ * retains its current event when {@code currentEvent()} is supported. When
+ * that method is unsupported, the parser must not have been advanced before
+ * construction, since its previous position cannot be recovered.</p>
+ */
 public final class JsonpReader extends StreamingReader {
 
     private final JsonParser parser;
@@ -271,9 +278,12 @@ public final class JsonpReader extends StreamingReader {
         return parser.getBigDecimal();
     }
 
-    private void skipComposite() {
+    private void skipComposite() throws IOException {
         int depth = 0;
         do {
+            if (current == null) {
+                throw expected("composite end");
+            }
             if (current == JsonParser.Event.START_OBJECT || current == JsonParser.Event.START_ARRAY) {
                 depth++;
             } else if (current == JsonParser.Event.END_OBJECT || current == JsonParser.Event.END_ARRAY) {
