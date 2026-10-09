@@ -1,5 +1,8 @@
 package org.sjf4j.testbench.binding.handwritten;
 
+import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
+import org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher;
+import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
@@ -11,16 +14,16 @@ import java.util.List;
 /** Jackson2Reader V1 baseline for the HandReadBenchmark User fixture. */
 public final class Jackson2HandPojoReaderV1 {
 
-    private static final StreamingReader.NameMatcher USER_FIELDS =
-            Jackson2Reader.createNameMatcher(
+    private static final NameMatcher USER_FIELDS =
+            new Jackson2NameMatcher(
                     "id", "createdAt", "updatedAt", "reputation", "loginCount", "age",
                     "active", "verified", "admin", "suspended", "score", "latitude",
                     "longitude", "username", "email", "displayName", "passwordHash", "bio",
                     "website", "department", "address", "tags", "friends");
-    private static final StreamingReader.NameMatcher ADDRESS_FIELDS =
-            Jackson2Reader.createNameMatcher("street", "city", "state", "zip", "country");
-    private static final StreamingReader.NameMatcher FRIEND_FIELDS =
-            Jackson2Reader.createNameMatcher("id", "name", "since", "close");
+    private static final NameMatcher ADDRESS_FIELDS =
+            new Jackson2NameMatcher("street", "city", "state", "zip", "country");
+    private static final NameMatcher FRIEND_FIELDS =
+            new Jackson2NameMatcher("id", "name", "since", "close");
 
     private Jackson2HandPojoReaderV1() {}
 
@@ -38,43 +41,43 @@ public final class Jackson2HandPojoReaderV1 {
             int field = reader.nextNameMatch(USER_FIELDS, expected);
             switch (field) {
                 case 0:
-                    user.setId(reader.nextLongValue());
+                    user.setId(reader.readLongValue());
                     break;
                 case 1:
-                    user.setCreatedAt(reader.nextLongValue());
+                    user.setCreatedAt(reader.readLongValue());
                     break;
                 case 2:
-                    user.setUpdatedAt(reader.nextLongValue());
+                    user.setUpdatedAt(reader.readLongValue());
                     break;
                 case 3:
-                    user.setReputation(reader.nextLongValue());
+                    user.setReputation(reader.readLongValue());
                     break;
                 case 4:
-                    user.setLoginCount(reader.nextIntValue());
+                    user.setLoginCount(reader.readIntValue());
                     break;
                 case 5:
-                    user.setAge(reader.nextIntValue());
+                    user.setAge(reader.readIntValue());
                     break;
                 case 6:
-                    user.setActive(reader.nextBooleanValue());
+                    user.setActive(reader.readBooleanValue());
                     break;
                 case 7:
-                    user.setVerified(reader.nextBooleanValue());
+                    user.setVerified(reader.readBooleanValue());
                     break;
                 case 8:
-                    user.setAdmin(reader.nextBooleanValue());
+                    user.setAdmin(reader.readBooleanValue());
                     break;
                 case 9:
-                    user.setSuspended(reader.nextBooleanValue());
+                    user.setSuspended(reader.readBooleanValue());
                     break;
                 case 10:
-                    user.setScore(reader.nextDoubleValue());
+                    user.setScore(reader.readDoubleValue());
                     break;
                 case 11:
-                    user.setLatitude(reader.nextDoubleValue());
+                    user.setLatitude(reader.readDoubleValue());
                     break;
                 case 12:
-                    user.setLongitude(reader.nextDoubleValue());
+                    user.setLongitude(reader.readDoubleValue());
                     break;
                 case 13:
                     user.setUsername(readString(reader));
@@ -107,11 +110,11 @@ public final class Jackson2HandPojoReaderV1 {
                     user.setFriends(readFriends(reader));
                     break;
                 default:
-                    reader.skipNext();
+                    reader.skipNode();
                     break;
             }
             expected = field == expected && expected + 1 < 23
-                    ? expected + 1 : StreamingReader.NameMatcher.UNKNOWN;
+                    ? expected + 1 : NameMatcher.UNKNOWN;
         }
         reader.endDocument();
         return user;
@@ -144,11 +147,11 @@ public final class Jackson2HandPojoReaderV1 {
                     address.setCountry(readString(reader));
                     break;
                 default:
-                    reader.skipNext();
+                    reader.skipNode();
                     break;
             }
             expected = field == expected && expected + 1 < 5
-                    ? expected + 1 : StreamingReader.NameMatcher.UNKNOWN;
+                    ? expected + 1 : NameMatcher.UNKNOWN;
         }
         return address;
     }
@@ -191,28 +194,28 @@ public final class Jackson2HandPojoReaderV1 {
             int field = reader.nextNameMatch(FRIEND_FIELDS, expected);
             switch (field) {
                 case 0:
-                    friend.setId(reader.nextLongValue());
+                    friend.setId(reader.readLongValue());
                     break;
                 case 1:
                     friend.setName(readString(reader));
                     break;
                 case 2:
-                    friend.setSince(reader.nextLongValue());
+                    friend.setSince(reader.readLongValue());
                     break;
                 case 3:
-                    friend.setClose(reader.nextBooleanValue());
+                    friend.setClose(reader.readBooleanValue());
                     break;
                 default:
-                    reader.skipNext();
+                    reader.skipNode();
                     break;
             }
             expected = field == expected && expected + 1 < 4
-                    ? expected + 1 : StreamingReader.NameMatcher.UNKNOWN;
+                    ? expected + 1 : NameMatcher.UNKNOWN;
         }
         return friend;
     }
 
     private static String readString(Jackson2Reader reader) throws IOException {
-        return reader.nextIfNull() ? null : reader.nextStringValue();
+        return reader.readString();
     }
 }

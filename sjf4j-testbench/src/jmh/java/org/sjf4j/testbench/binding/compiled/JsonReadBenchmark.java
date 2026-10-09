@@ -30,6 +30,7 @@ import org.sjf4j.backend.fastjson2.binding.Fastjson2Reader;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.gson.binding.GsonReader;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
