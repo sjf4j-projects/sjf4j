@@ -12,6 +12,7 @@ import org.sjf4j.node.TypeRegistry;
 
 import java.io.StringReader;
 import java.lang.reflect.Proxy;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -149,6 +150,56 @@ class JsonpReaderTest {
         JsonpReader reader = new JsonpReader(tracked);
         reader.close();
         assertTrue(closed.get());
+    }
+
+    @Test
+    void skipCompositeRejectsPrematureEofFromCustomParser() throws Exception {
+        JsonParser delegate = Json.createParser(new StringReader("[1,2]"));
+        JsonParser truncated = (JsonParser) Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[]{JsonParser.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("hasNext")) {
+                        return false;
+                    }
+                    if (method.getName().equals("currentEvent")) {
+                        return JsonParser.Event.START_ARRAY;
+                    }
+                    return method.invoke(delegate, args);
+                });
+        try (JsonpReader reader = new JsonpReader(truncated)) {
+            IOException error = assertThrows(IOException.class, reader::skipNode);
+            assertTrue(error.getMessage().contains("composite end"));
+        }
+    }
+
+    @Test
+    void startsAtFirstEventWhenCurrentEventIsUnsupported() throws Exception {
+        JsonParser delegate = Json.createParser(new StringReader("[7]"));
+        JsonParser legacy = (JsonParser) Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[]{JsonParser.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("currentEvent")) {
+                        throw new UnsupportedOperationException();
+                    }
+                    return method.invoke(delegate, args);
+                });
+        try (JsonpReader reader = new JsonpReader(legacy)) {
+            reader.startArray();
+            assertEquals(7, reader.readIntValue());
+            reader.endArray();
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void readsBoundaryIntegerNumbers() throws Exception {
+        try (JsonpReader reader = reader("[9223372036854775807,-9223372036854775808,9223372036854775808]")) {
+            reader.startArray();
+            assertEquals(Long.MAX_VALUE, reader.readLongValue());
+            assertEquals(Long.MIN_VALUE, reader.readLongValue());
+            assertThrows(ArithmeticException.class, reader::readLongValue);
+            reader.endArray();
+        }
     }
 
     private static JsonpReader reader(String json) {
