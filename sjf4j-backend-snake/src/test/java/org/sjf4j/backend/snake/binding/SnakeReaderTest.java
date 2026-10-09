@@ -199,6 +199,58 @@ class SnakeReaderTest {
     }
 
     @Test
+    void readsAcrossNestedObjectArrayBoundaries() throws Exception {
+        try (SnakeReader reader = reader("{outer: [{inner: 1}, 2], next: ok}")) {
+            reader.startObject();
+            assertEquals("outer", reader.nextName());
+            reader.startArray();
+            reader.startObject();
+            assertEquals("inner", reader.nextName());
+            assertEquals(1, reader.readIntValue());
+            assertTrue(reader.nextIfObjectEnd());
+            assertEquals(2, reader.readIntValue());
+            reader.endArray();
+            assertEquals("next", reader.nextName());
+            assertEquals("ok", reader.readString());
+            reader.endObject();
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void skipsMultipleNestedSubtreesAndScalarValues() throws Exception {
+        String yaml = "first: {a: [{b: [1, 2]}, {c: true}], d: null}\\n"
+                + "keep: 7\\n"
+                + "second: [{x: {y: []}}, false]\\n"
+                + "scalar: ignored\\n"
+                + "tail: done\\n";
+        try (SnakeReader reader = reader(yaml)) {
+            reader.startObject();
+            assertEquals("first", reader.nextName());
+            reader.skipNode();
+            assertEquals("keep", reader.nextName());
+            assertEquals(7, reader.readIntValue());
+            assertEquals("second", reader.nextName());
+            reader.skipNode();
+            assertEquals("scalar", reader.nextName());
+            reader.skipNode();
+            assertEquals("tail", reader.nextName());
+            assertEquals("done", reader.readString());
+            reader.endObject();
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void rejectsNonStringKeysInsideSkippedMappings() throws Exception {
+        try (SnakeReader reader = reader("skip: {1: value}")) {
+            reader.startObject();
+            assertEquals("skip", reader.nextName());
+            assertThrows(IOException.class, reader::skipNode);
+        }
+    }
+
+    @Test
     void readsCommentsWhenParserExposesEvents() throws Exception {
         LoaderOptions options = new LoaderOptions().setProcessComments(true);
         SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
