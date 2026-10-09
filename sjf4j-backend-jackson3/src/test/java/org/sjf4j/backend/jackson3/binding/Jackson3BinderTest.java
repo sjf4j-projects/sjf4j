@@ -231,6 +231,27 @@ class Jackson3BinderTest {
         }
     }
 
+    @Test
+    void jojoUsesNativeNameMatcherForDeclaredAndUnknownProperties() {
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
+        MixedJojo result = (MixedJojo) binder.readNode(
+                "{\"unknown_before\":{\"flag\":true},\"legacy_name\":\"Ada\","
+                        + "\"id\":17,\"unknown_after\":[1,null]}", MixedJojo.class);
+
+        assertEquals(17, result.id);
+        assertEquals("Ada", result.name);
+        assertEquals(true, ((Map<?, ?>) result.getNode("unknown_before")).get("flag"));
+        assertEquals(2, ((List<?>) result.getNode("unknown_after")).size());
+        assertFalse(result.dynamicProperties().containsKey("legacy_name"));
+    }
+
+    static class MixedJojo extends org.sjf4j.JsonObject {
+        public int id;
+
+        @org.sjf4j.annotation.node.NodeProperty(value = "name", aliases = "legacy_name")
+        public String name;
+    }
+
     static class TrackingWriter extends StringWriter {
         boolean closed;
 
