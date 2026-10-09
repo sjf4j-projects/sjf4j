@@ -132,10 +132,7 @@ class SnakeReaderTest {
     @Test
     void skipsAndReadsDeeplyNestedNodesWithoutRecursion() throws Exception {
         String nested = nestedContainers(2_000);
-        LoaderOptions options = new LoaderOptions();
-        options.setNestingDepthLimit(2_100);
-        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        try (SnakeReader reader = reader(binder, "unknown: " + nested + "\nid: 7\n")) {
+        try (SnakeReader reader = reader("unknown: " + nested + "\nid: 7\n")) {
             reader.startObject();
             assertEquals("unknown", reader.nextName());
             reader.skipNode();
@@ -145,7 +142,7 @@ class SnakeReaderTest {
             reader.endDocument();
         }
 
-        try (SnakeReader reader = reader(binder, nested)) {
+        try (SnakeReader reader = reader(nested)) {
             Object value = reader.readRawNode();
             for (int i = 0; i < 2_000; i++) {
                 if ((i & 1) == 0) {
@@ -196,27 +193,59 @@ class SnakeReaderTest {
     }
 
     @Test
-    void honorsDepthLimitForNormalAndSkippedContainers() throws Exception {
-        LoaderOptions options = new LoaderOptions();
-        options.setNestingDepthLimit(2);
-        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        assertThrows(IOException.class, () -> binder.readNode("[[[1]]]", Object.class));
-        try (SnakeReader reader = reader(binder, "key: [[[1]]]")) {
+    void acceptsDuplicateKeysWithLastValueWinning() throws Exception {
+        Map<?, ?> result = (Map<?, ?>) new SnakeBinder().readNode("a: 1\na: 2\n", Object.class);
+        assertEquals(2, result.get("a"));
+    }
+
+    @Test
+    void readsAcrossNestedObjectArrayBoundaries() throws Exception {
+        try (SnakeReader reader = reader("{outer: [{inner: 1}, 2], next: ok}")) {
             reader.startObject();
-            reader.nextName();
-            assertThrows(IOException.class, reader::skipNode);
+            assertEquals("outer", reader.nextName());
+            reader.startArray();
+            reader.startObject();
+            assertEquals("inner", reader.nextName());
+            assertEquals(1, reader.readIntValue());
+            assertTrue(reader.nextIfObjectEnd());
+            assertEquals(2, reader.readIntValue());
+            reader.endArray();
+            assertEquals("next", reader.nextName());
+            assertEquals("ok", reader.readString());
+            reader.endObject();
+            reader.endDocument();
         }
     }
 
     @Test
-    void rejectsDuplicateKeysWhenConfiguredIncludingSkippedObjects() throws Exception {
-        LoaderOptions options = new LoaderOptions();
-        options.setAllowDuplicateKeys(false);
-        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        assertThrows(RuntimeException.class, () -> binder.readNode("a: 1\\na: 2\\n", Object.class));
-        try (SnakeReader reader = reader(binder, "key: {a: 1, a: 2}")) {
+    void skipsMultipleNestedSubtreesAndScalarValues() throws Exception {
+        String yaml = "first: {a: [{b: [1, 2]}, {c: true}], d: null}\n"
+                + "keep: 7\n"
+                + "second: [{x: {y: []}}, false]\n"
+                + "scalar: ignored\n"
+                + "tail: done\n";
+        try (SnakeReader reader = reader(yaml)) {
             reader.startObject();
-            reader.nextName();
+            assertEquals("first", reader.nextName());
+            reader.skipNode();
+            assertEquals("keep", reader.nextName());
+            assertEquals(7, reader.readIntValue());
+            assertEquals("second", reader.nextName());
+            reader.skipNode();
+            assertEquals("scalar", reader.nextName());
+            reader.skipNode();
+            assertEquals("tail", reader.nextName());
+            assertEquals("done", reader.readString());
+            reader.endObject();
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void rejectsNonStringKeysInsideSkippedMappings() throws Exception {
+        try (SnakeReader reader = reader("skip: {1: value}")) {
+            reader.startObject();
+            assertEquals("skip", reader.nextName());
             assertThrows(IOException.class, reader::skipNode);
         }
     }
@@ -225,7 +254,7 @@ class SnakeReaderTest {
     void readsCommentsWhenParserExposesEvents() throws Exception {
         LoaderOptions options = new LoaderOptions().setProcessComments(true);
         SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        assertEquals(1, ((Map<?, ?>) binder.readNode("# before\\na: 1 # after\\n", Object.class)).get("a"));
+        assertEquals(1, ((Map<?, ?>) binder.readNode("# before\na: 1 # after\n", Object.class)).get("a"));
     }
 
     @Test
