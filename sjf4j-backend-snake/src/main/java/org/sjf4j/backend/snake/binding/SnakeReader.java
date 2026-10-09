@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,7 +47,13 @@ public final class SnakeReader extends StreamingReader {
     private static final String TAG_SEQUENCE = Tag.SEQ.getValue();
 
     private final Parser parser;
-    private final Deque<Scope> scopes = new ArrayDeque<>();
+    private static final byte ARRAY = 0;
+    private static final byte OBJECT_NAME = 1;
+    private static final byte OBJECT_VALUE = 2;
+
+    private byte[] scopes = new byte[16];
+    private int depth;
+    private byte[] skipScopes;
     public SnakeReader(Parser parser) {
         super(Backend.SNAKE);
         this.parser = Asserts.notNull(parser, "parser");
@@ -60,7 +67,7 @@ public final class SnakeReader extends StreamingReader {
 
     @Override
     public void endDocument() throws IOException {
-        if (!scopes.isEmpty()) {
+        if (depth != 0) {
             throw new IOException("expected end of document, but a structure is still open");
         }
         require(DocumentEndEvent.class);
@@ -78,8 +85,7 @@ public final class SnakeReader extends StreamingReader {
         }
         validateNode(event);
 
-        Scope scope = scopes.peek();
-        if (scope != null && scope.object && scope.expectingName) {
+        if (depth != 0 && scopes[depth - 1] == OBJECT_NAME) {
             if (event instanceof MappingEndEvent) {
                 return Token.OBJECT_END;
             }
@@ -127,13 +133,10 @@ public final class SnakeReader extends StreamingReader {
 
     @Override
     public boolean nextIfObjectEnd() throws IOException {
-        Scope scope = scopes.peek();
-        if (scope == null || !scope.object || !scope.expectingName
-                || !(peek() instanceof MappingEndEvent)) {
-            return false;
-        }
+        if (depth == 0 || scopes[depth - 1] != OBJECT_NAME
+                || !(peek() instanceof MappingEndEvent)) return false;
         take();
-        scopes.pop();
+        depth--;
         return true;
     }
 
@@ -148,12 +151,10 @@ public final class SnakeReader extends StreamingReader {
 
     @Override
     public boolean nextIfArrayEnd() throws IOException {
-        Scope scope = scopes.peek();
-        if (scope == null || scope.object || !(peek() instanceof SequenceEndEvent)) {
-            return false;
-        }
+        if (depth == 0 || scopes[depth - 1] != ARRAY
+                || !(peek() instanceof SequenceEndEvent)) return false;
         take();
-        scopes.pop();
+        depth--;
         return true;
     }
 
@@ -164,7 +165,7 @@ public final class SnakeReader extends StreamingReader {
         }
         completeParentValue();
         take();
-        scopes.push(new Scope(true));
+        pushScope(OBJECT_NAME);
     }
 
     @Override
@@ -181,7 +182,7 @@ public final class SnakeReader extends StreamingReader {
         }
         completeParentValue();
         take();
-        scopes.push(new Scope(false));
+        pushScope(ARRAY);
     }
 
     @Override
@@ -196,12 +197,11 @@ public final class SnakeReader extends StreamingReader {
         if (nextIfObjectEnd()) {
             return null;
         }
-        Scope scope = scopes.peek();
-        if (scope == null || !scope.object || !scope.expectingName || peekToken() != Token.NAME) {
+        if (depth == 0 || scopes[depth - 1] != OBJECT_NAME || peekToken() != Token.NAME) {
             throw expected("member name");
         }
         ScalarEvent scalar = (ScalarEvent) take();
-        scope.expectingName = false;
+        scopes[depth - 1] = OBJECT_VALUE;
         return scalar.getValue();
     }
 
@@ -386,7 +386,7 @@ public final class SnakeReader extends StreamingReader {
         validateNode(event);
         if (event instanceof ScalarEvent) {
             completeParentValue();
-            skipScalar((ScalarEvent) event, null);
+            skipScalar((ScalarEvent) event);
             take();
             return;
         }
@@ -395,39 +395,54 @@ public final class SnakeReader extends StreamingReader {
         }
 
         completeParentValue();
-        Deque<SkipFrame> frames = new ArrayDeque<>();
+        byte[] frames = skipScopes;
+        if (frames == null) frames = skipScopes = new byte[16];
+        int frameDepth = 0;
         while (true) {
             event = peek();
             validateNode(event);
-            SkipFrame frame = frames.peek();
             if (event instanceof MappingEndEvent || event instanceof SequenceEndEvent) {
-                if (frame == null || (frame.object != (event instanceof MappingEndEvent))) {
+                if (frameDepth == 0 || (event instanceof MappingEndEvent
+                        ? frames[frameDepth - 1] == ARRAY : frames[frameDepth - 1] != ARRAY)) {
                     throw new IOException("unexpected YAML collection end");
                 }
-                if (frame.object && !frame.expectingName) {
+                if (frames[frameDepth - 1] == OBJECT_VALUE) {
                     throw new IOException("expected YAML mapping value");
                 }
                 take();
-                frames.pop();
-                if (frames.isEmpty()) {
-                    return;
-                }
+                if (--frameDepth == 0) return;
                 continue;
             }
             if (event instanceof ScalarEvent) {
-                skipScalar((ScalarEvent) event, frame);
+                ScalarEvent scalar = (ScalarEvent) event;
+                if (frameDepth != 0 && frames[frameDepth - 1] == OBJECT_NAME) {
+                    if (scalarToken(scalar) != Token.STRING) {
+                        throw new IOException("YAML mapping keys must be strings");
+                    }
+                    frames[frameDepth - 1] = OBJECT_VALUE;
+                } else {
+                    if (frameDepth != 0 && frames[frameDepth - 1] == OBJECT_VALUE) {
+                        frames[frameDepth - 1] = OBJECT_NAME;
+                    }
+                    skipScalar(scalar);
+                }
                 take();
                 continue;
             }
             if (event instanceof MappingStartEvent || event instanceof SequenceStartEvent) {
-                if (frame != null && frame.object) {
-                    if (frame.expectingName) {
+                if (frameDepth != 0) {
+                    if (frames[frameDepth - 1] == OBJECT_NAME) {
                         throw new IOException("YAML mapping keys must be string scalars");
                     }
-                    frame.expectingName = true;
+                    if (frames[frameDepth - 1] == OBJECT_VALUE) {
+                        frames[frameDepth - 1] = OBJECT_NAME;
+                    }
                 }
                 take();
-                frames.push(new SkipFrame(event instanceof MappingStartEvent));
+                if (frameDepth == frames.length) {
+                    frames = skipScopes = Arrays.copyOf(frames, frames.length << 1);
+                }
+                frames[frameDepth++] = event instanceof MappingStartEvent ? OBJECT_NAME : ARRAY;
                 continue;
             }
             throw expected("value");
@@ -508,14 +523,17 @@ public final class SnakeReader extends StreamingReader {
         return (ScalarEvent) event;
     }
 
+    private void pushScope(byte state) {
+        if (depth == scopes.length) scopes = Arrays.copyOf(scopes, scopes.length << 1);
+        scopes[depth++] = state;
+    }
+
     private void completeParentValue() throws IOException {
-        Scope parent = scopes.peek();
-        if (parent != null && parent.object) {
-            if (parent.expectingName) {
-                throw new IOException("expected YAML mapping key");
-            }
-            parent.expectingName = true;
+        if (depth == 0) return;
+        if (scopes[depth - 1] == OBJECT_NAME) {
+            throw new IOException("expected YAML mapping key");
         }
+        if (scopes[depth - 1] == OBJECT_VALUE) scopes[depth - 1] = OBJECT_NAME;
     }
 
     private <E extends Event> E require(Class<E> type) throws IOException {
@@ -610,19 +628,8 @@ public final class SnakeReader extends StreamingReader {
         }
     }
 
-    private static void skipScalar(ScalarEvent scalar, SkipFrame frame) throws IOException {
-        Token token = scalarToken(scalar);
-        if (frame != null && frame.object && frame.expectingName) {
-            if (token != Token.STRING) {
-                throw new IOException("YAML mapping keys must be strings");
-            }
-            frame.expectingName = false;
-            return;
-        }
-        if (frame != null && frame.object) {
-            frame.expectingName = true;
-        }
-        switch (token) {
+    private static void skipScalar(ScalarEvent scalar) throws IOException {
+        switch (scalarToken(scalar)) {
             case NUMBER:
                 parseNumber(scalar.getValue());
                 return;
@@ -635,7 +642,7 @@ public final class SnakeReader extends StreamingReader {
             case STRING:
                 return;
             default:
-                throw new IOException("expected value, but was " + token);
+                throw new IOException("expected scalar value");
         }
     }
 
@@ -735,25 +742,7 @@ public final class SnakeReader extends StreamingReader {
         return c >= '0' && c <= '9';
     }
 
-    private static final class Scope {
-        final boolean object;
-        boolean expectingName;
 
-        Scope(boolean object) {
-            this.object = object;
-            this.expectingName = object;
-        }
-    }
-
-    private static final class SkipFrame {
-        final boolean object;
-        boolean expectingName;
-
-        SkipFrame(boolean object) {
-            this.object = object;
-            this.expectingName = object;
-        }
-    }
 
     private static final class RawFrame {
         final Map<String, Object> object;
