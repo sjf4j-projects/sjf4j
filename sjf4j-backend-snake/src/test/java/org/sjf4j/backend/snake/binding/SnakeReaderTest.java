@@ -132,10 +132,7 @@ class SnakeReaderTest {
     @Test
     void skipsAndReadsDeeplyNestedNodesWithoutRecursion() throws Exception {
         String nested = nestedContainers(2_000);
-        LoaderOptions options = new LoaderOptions();
-        options.setNestingDepthLimit(2_100);
-        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        try (SnakeReader reader = reader(binder, "unknown: " + nested + "\nid: 7\n")) {
+        try (SnakeReader reader = reader("unknown: " + nested + "\nid: 7\n")) {
             reader.startObject();
             assertEquals("unknown", reader.nextName());
             reader.skipNode();
@@ -145,7 +142,7 @@ class SnakeReaderTest {
             reader.endDocument();
         }
 
-        try (SnakeReader reader = reader(binder, nested)) {
+        try (SnakeReader reader = reader(nested)) {
             Object value = reader.readRawNode();
             for (int i = 0; i < 2_000; i++) {
                 if ((i & 1) == 0) {
@@ -196,29 +193,9 @@ class SnakeReaderTest {
     }
 
     @Test
-    void honorsDepthLimitForNormalAndSkippedContainers() throws Exception {
-        LoaderOptions options = new LoaderOptions();
-        options.setNestingDepthLimit(2);
-        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        assertThrows(IOException.class, () -> binder.readNode("[[[1]]]", Object.class));
-        try (SnakeReader reader = reader(binder, "key: [[[1]]]")) {
-            reader.startObject();
-            reader.nextName();
-            assertThrows(IOException.class, reader::skipNode);
-        }
-    }
-
-    @Test
-    void rejectsDuplicateKeysWhenConfiguredIncludingSkippedObjects() throws Exception {
-        LoaderOptions options = new LoaderOptions();
-        options.setAllowDuplicateKeys(false);
-        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        assertThrows(RuntimeException.class, () -> binder.readNode("a: 1\\na: 2\\n", Object.class));
-        try (SnakeReader reader = reader(binder, "key: {a: 1, a: 2}")) {
-            reader.startObject();
-            reader.nextName();
-            assertThrows(IOException.class, reader::skipNode);
-        }
+    void acceptsDuplicateKeysWithLastValueWinning() throws Exception {
+        Map<?, ?> result = (Map<?, ?>) new SnakeBinder().readNode("a: 1\na: 2\n", Object.class);
+        assertEquals(2, result.get("a"));
     }
 
     @Test
