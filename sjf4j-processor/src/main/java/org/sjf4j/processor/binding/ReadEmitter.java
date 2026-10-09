@@ -133,8 +133,9 @@ final class ReadEmitter {
                 .append(' ')
                 .append(matcherFieldName(value))
                 .append(" = ")
-                .append(backend.readerType())
-                .append(".compiledNameMatcher(");
+                .append("new ")
+                .append(backend.matcherType())
+                .append('(');
 
         for (int i = 0; i < value.properties().size(); i++) {
             if (i > 0) {
