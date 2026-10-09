@@ -104,6 +104,11 @@ public final class Fastjson2Reader extends StreamingReader {
     }
 
     @Override
+    public String unmatchedName() {
+        return reader.getFieldName();
+    }
+
+    @Override
     public int nextNameMatch(NameMatcher matcher) {
         if (nextIfObjectEnd()) {
             return NameMatcher.OBJECT_END;
