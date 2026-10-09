@@ -80,6 +80,14 @@ public class RuntimeReadBenchmark {
             "  ]\n" +
             "}\n";
 
+    // Small immutable-object workload to compare delayed constructor dispatch
+    // independently from the larger mutable POJO/JOJO workload.
+    private static final String RECORD_JSON =
+            "{\"id\":839201,\"age\":34,\"username\":\"alice.builder\",\"active\":true}";
+
+    public record UserRecord(long id, int age, String username, boolean active) {
+    }
+
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final ObjectMapper JACKSON2_BLACKBIRD = new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Jackson2Binder JACKSON2_BINDER = new Jackson2Binder();
@@ -148,6 +156,17 @@ public class RuntimeReadBenchmark {
     }
 
 
+    @Benchmark
+    public Object record_jackson2_native() throws IOException {
+        return JACKSON2.readValue(RECORD_JSON, UserRecord.class);
+    }
+
+    @Benchmark
+    public Object record_jackson2_runtime() throws IOException {
+        return JACKSON2_BINDER.readNode(RECORD_JSON, UserRecord.class);
+    }
+
+
     // ----- Jackson3 baselines -----
     @Benchmark
     public Object pojo_jackson3_native() throws IOException {
@@ -182,6 +201,17 @@ public class RuntimeReadBenchmark {
     @Benchmark
     public Object jojo_jackson3_runtime() throws IOException {
         return JACKSON3_BINDER.readNode(JSON_DATA2, UserJojo.class);
+    }
+
+
+    @Benchmark
+    public Object record_jackson3_native() throws IOException {
+        return JACKSON3.readValue(RECORD_JSON, UserRecord.class);
+    }
+
+    @Benchmark
+    public Object record_jackson3_runtime() throws IOException {
+        return JACKSON3_BINDER.readNode(RECORD_JSON, UserRecord.class);
     }
 
 
