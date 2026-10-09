@@ -145,19 +145,31 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public JsonStructure tree_read_native(BenchmarkState state) {
+    public JsonStructure read_tree_native(BenchmarkState state) {
         try (JsonReader reader = state.provider.createReader(new FastStringReader(state.document))) {
             return reader.read();
         }
     }
 
     @Benchmark
-    public Document pojo_read_binder(BenchmarkState state) {
+    public JsonStructure read_tree_binder(BenchmarkState state) {
+        return (JsonStructure) state.binder.readNode(state.document, JsonStructure.class);
+    }
+
+    @Benchmark
+    public Document read_pojo_binder(BenchmarkState state) {
         return (Document) state.binder.readNode(state.document, Document.class);
     }
 
     @Benchmark
-    public String tree_write_native(BenchmarkState state) {
+    public Object read_map_binder(BenchmarkState state) {
+        return state.binder.readNode(state.document, Map.class);
+    }
+
+
+
+    @Benchmark
+    public String write_tree_native(BenchmarkState state) {
         FastStringWriter output = new FastStringWriter();
         try (JsonWriter writer = state.provider.createWriter(output)) {
             writer.write(state.nativeValue);
@@ -166,17 +178,17 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public String pojo_write_binder(BenchmarkState state) {
+    public String write_tree_binder(BenchmarkState state) {
+        return state.binder.writeNodeAsString(state.nativeValue);
+    }
+
+    @Benchmark
+    public String write_pojo_binder(BenchmarkState state) {
         return state.binder.writeNodeAsString(state.value);
     }
 
     @Benchmark
-    public Map map_read_binder(BenchmarkState state) {
-        return (Map) state.binder.readNode(state.document, Map.class);
-    }
-
-    @Benchmark
-    public String map_write_binder(BenchmarkState state) {
+    public String write_map_binder(BenchmarkState state) {
         return state.binder.writeNodeAsString(state.mapValue);
     }
 

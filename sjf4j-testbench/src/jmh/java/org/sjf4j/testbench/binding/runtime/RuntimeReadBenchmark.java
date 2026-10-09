@@ -9,6 +9,7 @@ import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.json.Json;
+import jakarta.json.JsonStructure;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -49,8 +50,8 @@ import java.util.concurrent.TimeUnit;
 public class RuntimeReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-//        Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
-        Main.main(new String[]{RuntimeReadBenchmark.class.getName() + ".*_jackson2"});
+        Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
+//        Main.main(new String[]{RuntimeReadBenchmark.class.getName() + ".*_jackson2"});
     }
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
@@ -138,7 +139,7 @@ public class RuntimeReadBenchmark {
     }
 
     @Benchmark
-    public Object jojo_jackson2_native() throws IOException {
+    public Object jojo_jackson2_native_extra() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, UserExtra.class);
     }
 
@@ -175,7 +176,7 @@ public class RuntimeReadBenchmark {
     }
 
     @Benchmark
-    public Object jojo_jackson3_native() throws IOException {
+    public Object jojo_jackson3_native_extra() throws IOException {
         return JACKSON3.readValue(JSON_DATA2, UserExtra.class);
     }
 
@@ -187,63 +188,80 @@ public class RuntimeReadBenchmark {
 
     // ----- Gson baselines -----
     @Benchmark
-    public Object json_gson_pojo_native() {
+    public Object pojo_gson_native() {
         return GSON.fromJson(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object json_gson_map_native() {
-        return GSON.fromJson(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_gson_pojo_runtime() throws IOException {
+    public Object pojo_gson_runtime() throws IOException {
         return GSON_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object json_gson_map_runtime() throws IOException {
+    public Object map_gson_native() {
+        return GSON.fromJson(JSON_DATA2, Map.class);
+    }
+
+    @Benchmark
+    public Object map_gson_runtime() throws IOException {
         return GSON_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
 
     // ----- Fastjson2 baselines -----
     @Benchmark
-    public Object json_fastjson2_pojo_native() {
+    public Object pojo_fastjson2_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(User.class);
         }
     }
 
     @Benchmark
-    public Object json_fastjson2_jojo_native() {
+    public Object pojo_fastjson2_runtime() throws IOException {
+        return FASTJSON2_BINDER.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object jojo_fastjson2_native_extra() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.read(UserJojo.class);
+            return reader.read(UserExtra.class);
         }
     }
 
     @Benchmark
-    public Object json_fastjson2_map_native() {
+    public Object jojo_fastjson2_runtime() throws IOException {
+        return FASTJSON2_BINDER.readNode(JSON_DATA2, UserJojo.class);
+    }
+
+    @Benchmark
+    public Object map_fastjson2_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
         }
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_runtime() throws IOException {
-        return FASTJSON2_BINDER.readNode(JSON_DATA2, User.class);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_map_runtime() throws IOException {
+    public Object map_fastjson2_runtime() throws IOException {
         return FASTJSON2_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
+
     // ----- JSON-P baselines -----
     @Benchmark
-    public Object json_jsonp_map_native() {
+    public Object tree_jsonp_native() {
         return Json.createReader(new StringReader(JSON_DATA2)).read();
     }
+
+    @Benchmark
+    public Object tree_jsonp_runtime() throws IOException {
+        return JSONP_BINDER.readNode(JSON_DATA2, JsonStructure.class);
+    }
+
+    @Benchmark
+    public Object map_jsonp_runtime() throws IOException {
+        return JSONP_BINDER.readNode(JSON_DATA2, Map.class);
+    }
+
 
     // ----- Simple JSON baselines -----
     @Benchmark

@@ -1,11 +1,18 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
+import jakarta.json.JsonStructure;
+import jakarta.json.JsonValue;
 import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.Nodes;
+import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -15,12 +22,15 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +53,57 @@ class JsonpBinderTest {
                 .writeNodeAsString(value);
         assertTrue(includingNulls.contains("\"nullable\":null"));
         assertFalse(omittingNulls.contains("\"nullable\""));
+    }
+
+    @Test
+    void readsNativeExternalTreeAndTraversesIt() {
+        JsonpBinder binder = new JsonpBinder();
+        String json = "{\"items\":[{\"name\":\"Ada\",\"active\":true},null,3],\"empty\":{}}";
+
+        JsonObject object = (JsonObject) binder.readNode(json, JsonObject.class);
+        Object first = Nodes.getInArray(Nodes.getInObject(object, "items"), 0);
+        assertEquals("Ada", ((JsonString) Nodes.getInObject(first, "name")).getString());
+        assertEquals(3, object.getJsonArray("items").size());
+        assertSame(JsonValue.NULL, Nodes.getInArray(object.getJsonArray("items"), 1));
+        assertEquals(json, binder.writeNodeAsString(object));
+
+        assertEquals(object, binder.readNode(json, JsonStructure.class));
+        assertEquals(object, binder.readNode(json, JsonValue.class));
+        JsonArray array = (JsonArray) binder.readNode("[true,{\"n\":1}]", JsonArray.class);
+        assertEquals(2, array.size());
+        assertEquals(1, array.getJsonObject(1).getInt("n"));
+        assertEquals(array, binder.readNode("[true,{\"n\":1}]".getBytes(StandardCharsets.UTF_8), JsonArray.class));
+        assertEquals("text", ((JsonString) binder.readNode("\"text\"", JsonValue.class)).getString());
+        assertNull(binder.readNode("null", JsonValue.class));
+
+        TreeDocument nested = (TreeDocument) binder.readNode(
+                "{\"before\":1,\"tree\":{\"items\":[true]},\"values\":[1,2],"
+                        + "\"entries\":{\"n\":3},\"elements\":[true,null],\"after\":2}", TreeDocument.class);
+        assertEquals(1, nested.before);
+        assertEquals(1, nested.tree.getJsonArray("items").size());
+        assertEquals(2, nested.values.size());
+        assertEquals(3, ((jakarta.json.JsonNumber) nested.entries.get("n")).intValue());
+        assertNull(nested.elements.get(1));
+        assertEquals(2, nested.after);
+
+        Map<String, Object> mixed = new LinkedHashMap<>();
+        mixed.put("tree", object);
+        mixed.put("array", array);
+        mixed.put("nil", JsonValue.NULL);
+        assertEquals("{\"tree\":" + json + ",\"array\":[true,{\"n\":1}],\"nil\":null}",
+                new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false)).writeNodeAsString(mixed));
+        assertEquals("{\"before\":1,\"tree\":{\"items\":[true]},\"values\":[1,2],"
+                        + "\"entries\":{\"n\":3},\"elements\":[true,null],\"after\":2}",
+                binder.writeNodeAsString(nested));
+        assertEquals("true", binder.writeNodeAsString(JsonValue.TRUE));
+        assertEquals("null", binder.writeNodeAsString(JsonValue.NULL));
+        String precise = "{\"decimal\":0.123456789012345678901234567890}";
+        assertEquals(precise, binder.writeNodeAsString(binder.readNode(precise, JsonValue.class)));
+
+        assertThrows(BindingException.class, () -> binder.readNode("[]", JsonObject.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonArray.class));
+        assertThrows(BindingException.class, () -> binder.readNode("true", JsonStructure.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{} []", JsonValue.class));
     }
 
     @Test
@@ -135,6 +196,15 @@ class JsonpBinderTest {
             this.tags = tags;
             this.nullable = nullable;
         }
+    }
+
+    static class TreeDocument {
+        public int before;
+        public JsonObject tree;
+        public JsonArray values;
+        public Map<String, JsonValue> entries;
+        public List<JsonValue> elements;
+        public int after;
     }
 
     static class TrackingWriter extends StringWriter {

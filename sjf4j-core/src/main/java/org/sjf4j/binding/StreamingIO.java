@@ -9,7 +9,6 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.external.ExternalNode;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.OneOfInfo;
@@ -30,7 +29,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -149,6 +147,12 @@ public final class StreamingIO {
 
             if (boxed.isEnum()) {
                 return readEnum(reader, boxed, context);
+            }
+
+            // External trees may also implement Map or List (e.g. JSON-P).
+            if (typeInfo.externalNode != null) {
+                Object raw = reader.readRawNode();
+                return NodeMapper.convert(raw, type, false, context);
             }
 
             /*
@@ -983,7 +987,8 @@ public final class StreamingIO {
             }
 
             if (typeInfo.externalNode != null) {
-                writeExternalNode(writer, node, typeInfo.externalNode, context);
+                Object raw = NodeMapper.convertToRaw(node, context);
+                _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
                 return;
             }
 
@@ -1109,7 +1114,8 @@ public final class StreamingIO {
          * is already an OBNT tree and must not be reflected as a POJO.
          */
         if (ti.externalNode != null) {
-            writeExternalNode(writer, node, ti.externalNode, context);
+            Object raw = NodeMapper.convertToRaw(node, context);
+            _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
             return;
         }
 
@@ -1303,67 +1309,6 @@ public final class StreamingIO {
             }
         }
         writer.endArray();
-    }
-
-
-    /*
-     * --------------------------------------------------------------
-     * External nodes
-     * --------------------------------------------------------------
-     */
-
-    public static void writeExternalNode(StreamingWriter writer, Object node, ExternalNode<Object> external,
-                                         RuntimeContext context) throws IOException {
-        JsonType type = external.jsonType(node);
-        switch (type) {
-            case OBJECT: {
-                writer.startObject();
-                int count = 0;
-                for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
-                    /*
-                     * External nodes represent an already materialized JSON tree.
-                     * Do not apply includeNulls filtering here.
-                     *
-                     * Native JSON null should normally be represented by a native
-                     * null node anyway, rather than Java null.
-                     */
-                    writer.writeName(entry.getKey(), count > 0);
-                    count++;
-                    _writeNode(writer, entry.getValue(), TypeInfo.NONE, context);
-                }
-                writer.endObject();
-                return;
-            }
-            case ARRAY: {
-                writer.startArray();
-                Iterator<Object> it = external.iteratorInArray(node);
-                boolean separated = false;
-                while (it.hasNext()) {
-                    if (separated) {
-                        writer.separateElement();
-                    } else {
-                        separated = true;
-                    }
-                    _writeNode(writer, it.next(), TypeInfo.NONE, context);
-                }
-                writer.endArray();
-                return;
-            }
-            case STRING:
-                writer.writeString(external.toString(node));
-                return;
-            case NUMBER:
-                writer.writeNumber(external.toNumber(node));
-                return;
-            case BOOLEAN:
-                writer.writeBoolean(external.toBoolean(node));
-                return;
-            case NULL:
-                writer.writeNull();
-                return;
-            default:
-                throw new BindingException("unsupported external node type '" + Types.name(node) + "'");
-        }
     }
 
 
