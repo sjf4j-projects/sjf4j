@@ -334,8 +334,19 @@ public final class GsonNode implements ExternalNode<JsonElement> {
         if (idx < 0 || idx > size) {
             throw new NodeException("cannot add at index " + idx + " in Gson JsonArray of size " + size);
         }
-        array.asList().add(idx, _element(value));
+
+        JsonElement element = _element(value);
+        array.add(element);
+
+        // Shift existing elements right to insert at idx.
+        for (int i = size; i > idx; i--) {
+            array.set(i, array.get(i - 1));
+        }
+        if (idx < size) {
+            array.set(idx, element);
+        }
     }
+
 
     @Override
     public Object removeInObject(JsonElement node, String key) {

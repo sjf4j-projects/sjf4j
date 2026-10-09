@@ -34,6 +34,67 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GsonNodeTest {
+
+
+    @Test
+    void insertsArrayElementsPreservingOrderAndIdentity() {
+        ExternalNode<JsonElement> node = node();
+        JsonArray array = new JsonArray();
+
+        JsonElement a = new JsonPrimitive("a");
+        JsonElement b = new JsonPrimitive("b");
+        JsonElement c = new JsonPrimitive("c");
+
+        // Empty array and append.
+        node.addInArray(array, 0, a);
+        node.addInArray(array, 1, b);
+
+        // Insert into the middle.
+        node.addInArray(array, 1, c);
+        assertEquals("[\"a\",\"c\",\"b\"]", array.toString());
+
+        // Insert at the beginning.
+        JsonElement head = new JsonPrimitive("head");
+        node.addInArray(array, 0, head);
+
+        // Negative index inserts before the last element.
+        node.addInArray(array, -1, null);
+
+        // Insert at the end.
+        JsonElement tail = new JsonPrimitive("tail");
+        node.addInArray(array, array.size(), tail);
+
+        assertEquals(
+                "[\"head\",\"a\",\"c\",null,\"b\",\"tail\"]",
+                array.toString());
+
+        assertSame(head, array.get(0));
+        assertSame(a, array.get(1));
+        assertSame(c, array.get(2));
+        assertSame(JsonNull.INSTANCE, array.get(3));
+        assertSame(b, array.get(4));
+        assertSame(tail, array.get(5));
+    }
+
+    @Test
+    void indexedInsertDoesNotMutateArrayOnInvalidInput() {
+        ExternalNode<JsonElement> node = node();
+        JsonArray array = JsonParser.parseString(
+                "[\"a\",\"b\"]").getAsJsonArray();
+
+        assertInvalidValue(() ->
+                node.addInArray(array, 1, "invalid"));
+
+        assertThrows(NodeException.class, () ->
+                node.addInArray(array, -3, JsonNull.INSTANCE));
+
+        assertThrows(NodeException.class, () ->
+                node.addInArray(array, 3, JsonNull.INSTANCE));
+
+        assertEquals("[\"a\",\"b\"]", array.toString());
+    }
+
+
     @Test
     void providerIsDiscoveredAndClassifiesGsonNodes() {
         ExternalNode<JsonElement> node = node();

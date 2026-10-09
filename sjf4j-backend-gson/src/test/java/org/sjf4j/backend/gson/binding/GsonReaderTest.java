@@ -145,6 +145,47 @@ class GsonReaderTest {
         }
     }
 
+
+    @Test
+    void preservesGsonLenientScalarConversions() throws Exception {
+        try (GsonReader reader = reader(
+                "[123,\"456\",\"789\",\"1.25\",\"12.5\"]")) {
+
+            reader.startArray();
+
+            // NUMBER -> String
+            assertEquals("123", reader.readString());
+
+            // STRING -> numeric types
+            assertEquals(456, reader.readIntValue());
+            assertEquals(new BigInteger("789"),
+                    reader.readBigInteger());
+            assertEquals(new BigDecimal("1.25"),
+                    reader.readBigDecimal());
+            assertEquals(12.5d,
+                    reader.readNumber().doubleValue());
+
+            reader.endArray();
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void rejectsTruncatedJson() {
+        GsonBinder binder = new GsonBinder();
+
+        assertThrows(BindingException.class, () ->
+                binder.readNode("{\"name\":", Object.class));
+
+        assertThrows(BindingException.class, () ->
+                binder.readNode("[1,", Object.class));
+
+        assertThrows(BindingException.class, () ->
+                binder.readNode("{\"name\":\"value\"", Object.class));
+    }
+
+
+
     private static GsonReader reader(String json) {
         return new GsonReader(new JsonReader(new StringReader(json)));
     }

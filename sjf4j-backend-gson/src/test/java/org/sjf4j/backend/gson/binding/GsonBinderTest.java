@@ -19,6 +19,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,6 +27,58 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GsonBinderTest {
+
+
+    @Test
+    void doesNotCloseCallerOwnedIo() {
+        GsonBinder binder = new GsonBinder();
+
+        AtomicBoolean readerClosed = new AtomicBoolean();
+        StringReader input = new StringReader("\"hello\"") {
+            @Override
+            public void close() {
+                readerClosed.set(true);
+            }
+        };
+
+        assertEquals("hello", binder.readNode(input, String.class));
+        assertFalse(readerClosed.get());
+
+        AtomicBoolean writerClosed = new AtomicBoolean();
+        StringWriter output = new StringWriter() {
+            @Override
+            public void close() {
+                writerClosed.set(true);
+            }
+        };
+
+        binder.writeNode(output, "hello");
+
+        assertEquals("\"hello\"", output.toString());
+        assertFalse(writerClosed.get());
+    }
+
+    @Test
+    void externalJsonWriterEnablesExplicitNullSerialization()
+            throws Exception {
+
+        GsonBinder binder = new GsonBinder();
+        StringWriter output = new StringWriter();
+        JsonWriter nativeWriter = new JsonWriter(output);
+        nativeWriter.setSerializeNulls(false);
+
+        try (GsonWriter writer = binder.createWriter(nativeWriter)) {
+            assertTrue(nativeWriter.getSerializeNulls());
+
+            writer.startObject();
+            writer.writeName("value");
+            writer.writeNull();
+            writer.endObject();
+            writer.flush();
+        }
+
+        assertEquals("{\"value\":null}", output.toString());
+    }
 
     @Test
     void readsPojoLikeNativeGsonAndIgnoresUnknownProperties() {
