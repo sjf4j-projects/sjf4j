@@ -33,11 +33,13 @@ public final class SnakeWriter extends StreamingWriter {
 
     private final Emitter emitter;
     private final Writer output;
+    private final DumperOptions options;
 
     public SnakeWriter(Writer output, DumperOptions options) {
         super(Backend.SNAKE);
         this.output = Asserts.notNull(output, "output");
-        this.emitter = new Emitter(this.output, Asserts.notNull(options, "options"));
+        this.options = Asserts.notNull(options, "options");
+        this.emitter = new Emitter(this.output, options);
     }
 
 
@@ -47,7 +49,7 @@ public final class SnakeWriter extends StreamingWriter {
     @Override
     public void startDocument() throws IOException {
         emitter.emit(new StreamStartEvent(null, null));
-        emitter.emit(new DocumentStartEvent(null, null, false, null, null));
+        emitter.emit(new DocumentStartEvent(null, null, options.isExplicitStart(), null, null));
     }
 
     /**
@@ -55,7 +57,7 @@ public final class SnakeWriter extends StreamingWriter {
      */
     @Override
     public void endDocument() throws IOException {
-        emitter.emit(new DocumentEndEvent(null, null, false));
+        emitter.emit(new DocumentEndEvent(null, null, options.isExplicitEnd()));
         emitter.emit(new StreamEndEvent(null, null));
     }
 
@@ -65,7 +67,7 @@ public final class SnakeWriter extends StreamingWriter {
     @Override
     public void startObject() throws IOException {
         emitter.emit(new MappingStartEvent(null, null, true, null, null,
-                DumperOptions.FlowStyle.BLOCK));
+                options.getDefaultFlowStyle()));
     }
 
     /**
@@ -82,7 +84,7 @@ public final class SnakeWriter extends StreamingWriter {
     @Override
     public void startArray() throws IOException {
         emitter.emit(new SequenceStartEvent(null, null, true, null, null,
-                DumperOptions.FlowStyle.BLOCK));
+                options.getDefaultFlowStyle()));
     }
 
     /**

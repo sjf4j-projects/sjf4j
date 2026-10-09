@@ -31,7 +31,7 @@ public final class SnakeBinder extends Binder<SnakeReader, SnakeWriter> {
     @Override
     public SnakeReader createReader(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new SnakeReader(new ParserImpl(new StreamReader(input), loaderOptions));
+        return new SnakeReader(new ParserImpl(new StreamReader(input), loaderOptions), loaderOptions);
     }
 
     @Override

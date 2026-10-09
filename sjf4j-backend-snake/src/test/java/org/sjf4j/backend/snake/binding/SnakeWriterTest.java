@@ -3,6 +3,8 @@ package org.sjf4j.backend.snake.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.CompiledName;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
 
 import java.io.StringWriter;
 import java.math.BigDecimal;
@@ -119,6 +121,19 @@ class SnakeWriterTest {
             assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Double.NaN));
             assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
         }
+    }
+
+    @Test
+    void honorsExplicitDocumentMarkersAndFlowStyle() {
+        DumperOptions options = new DumperOptions();
+        options.setExplicitStart(true);
+        options.setExplicitEnd(true);
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.FLOW);
+        SnakeBinder binder = new SnakeBinder(new LoaderOptions(), options, org.sjf4j.RuntimeContext.EMPTY);
+        String yaml = binder.writeNodeAsString(Map.of("values", List.of(1, 2)));
+        assertTrue(yaml.startsWith("---"));
+        assertTrue(yaml.contains("[1, 2]"));
+        assertTrue(yaml.contains("..."));
     }
 
     private static SnakeReader reader(SnakeBinder binder, String yaml) throws Exception {
