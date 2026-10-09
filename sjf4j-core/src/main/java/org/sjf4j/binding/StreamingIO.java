@@ -400,21 +400,6 @@ public final class StreamingIO {
         }
 
         /*
-         * Dynamic objects remain a raw fallback because property names
-         * themselves are data.
-         *
-         * Do not pre-consume START_OBJECT here: readRawNode() owns the
-         * complete node.
-         */
-        if (pojoInfo.isJojo) {
-            Object raw = reader.readRawNode();
-            if (raw == null) {
-                return null;
-            }
-            return NodeMapper.convert(raw, type, false, context);
-        }
-
-        /*
          * Fast non-null path.
          */
         if (!reader.nextIfObjectStart()) {
@@ -426,6 +411,43 @@ public final class StreamingIO {
         }
 
         Object pojo = pojoInfo.creatorInfo.newPojoNoArgs();
+
+        /*
+         * JOJO combines ordinary typed properties with unbounded dynamic
+         * names. Read the declared properties directly (without an
+         * intermediate Map/NodeMapper conversion) and retain unknown names
+         * only when dynamic reads are enabled.
+         *
+         * Keep name-based traversal here: a matcher reports UNKNOWN without
+         * providing the actual key required for the dynamic map.
+         */
+        if (pojoInfo.isJojo) {
+            Map<String, Object> dynamic = null;
+            String name;
+            while ((name = reader.nextName()) != null) {
+                PropertyInfo property = pojoInfo.propertyLookup.get(name);
+                if (property != null) {
+                    if (property.reader != null) {
+                        property.reader.read(reader, pojo, type, boxed, context);
+                    } else {
+                        reader.skipNode();
+                    }
+                } else if (pojoInfo.readDynamic) {
+                    if (dynamic == null) {
+                        dynamic = InternalAccess.dynamicProperties((JsonObject) pojo);
+                        if (dynamic == null) {
+                            dynamic = new LinkedHashMap<>();
+                            InternalAccess.dynamicProperties((JsonObject) pojo, dynamic);
+                        }
+                    }
+                    dynamic.put(name, reader.readRawNode());
+                } else {
+                    reader.skipNode();
+                }
+            }
+            return pojo;
+        }
+
         PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
         NameMatcher matcher = cacheNameMatcher(reader, pojoInfo);
 
