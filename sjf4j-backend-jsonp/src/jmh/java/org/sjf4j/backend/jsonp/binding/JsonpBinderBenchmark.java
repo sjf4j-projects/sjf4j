@@ -147,7 +147,7 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public JsonStructure pojo_read_native(BenchmarkState state) {
+    public JsonStructure pojo_read_native_tree(BenchmarkState state) {
         try (JsonReader reader = state.provider.createReader(new FastStringReader(state.document))) {
             return reader.read();
         }
@@ -159,7 +159,7 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public String pojo_write_native(BenchmarkState state) {
+    public String pojo_write_native_tree(BenchmarkState state) {
         FastStringWriter output = new FastStringWriter();
         try (JsonWriter writer = state.provider.createWriter(output)) {
             writer.write(state.nativeValue);
@@ -173,7 +173,7 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public JsonStructure map_read_native(BenchmarkState state) {
+    public JsonStructure map_read_native_tree(BenchmarkState state) {
         try (JsonReader reader = state.provider.createReader(new FastStringReader(state.document))) {
             return reader.read();
         }
@@ -185,7 +185,7 @@ public class JsonpBinderBenchmark {
     }
 
     @Benchmark
-    public String map_write_native(BenchmarkState state) {
+    public String map_write_native_tree(BenchmarkState state) {
         FastStringWriter output = new FastStringWriter();
         try (JsonWriter writer = state.provider.createWriter(output)) {
             writer.write(state.nativeMapValue);
