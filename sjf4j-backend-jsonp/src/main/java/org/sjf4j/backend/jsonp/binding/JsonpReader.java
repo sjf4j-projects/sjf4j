@@ -139,7 +139,6 @@ public final class JsonpReader extends StreamingReader {
 
     @Override
     public int readIntValue() throws IOException {
-        require(JsonParser.Event.VALUE_NUMBER, "number");
         int value = parser.getInt();
         advance();
         return value;
@@ -147,7 +146,6 @@ public final class JsonpReader extends StreamingReader {
 
     @Override
     public short readShortValue() throws IOException {
-        require(JsonParser.Event.VALUE_NUMBER, "number");
         int value = parser.getInt();
         advance();
         return Numbers.toShort(value);
@@ -155,7 +153,6 @@ public final class JsonpReader extends StreamingReader {
 
     @Override
     public byte readByteValue() throws IOException {
-        require(JsonParser.Event.VALUE_NUMBER, "number");
         int value = parser.getInt();
         advance();
         return Numbers.toByte(value);
