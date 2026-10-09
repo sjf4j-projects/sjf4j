@@ -73,6 +73,23 @@ final class BackendSpec {
         }
     }
 
+    /**
+     * Native matcher type instantiated directly by generated binders.
+     */
+    String matcherType() {
+        switch (backend) {
+            case JACKSON2:
+                return "org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher";
+            case JACKSON3:
+                return "org.sjf4j.backend.jackson3.binding.Jackson3NameMatcher";
+            case FASTJSON2:
+                return "org.sjf4j.backend.fastjson2.binding.Fastjson2NameMatcher";
+            default:
+                throw new IllegalStateException(
+                        "No compiled name matcher for backend " + backend);
+        }
+    }
+
     boolean usesExpectedNameMatch() {
         return backend == Backend.JACKSON2;
     }
