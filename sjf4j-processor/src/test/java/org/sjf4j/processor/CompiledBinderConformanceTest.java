@@ -6,9 +6,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.lang.reflect.Method;
 import java.net.URLClassLoader;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -20,7 +18,7 @@ class CompiledBinderConformanceTest {
             "SIMPLE", "GSON", "JACKSON2", "JACKSON3", "FASTJSON2", "JSONP"
     };
 
-    private NavigatorTestCompiler.Result compile(String backend, boolean yaml, String extra)
+    private NavigatorTestCompiler.Result compile(String backend, boolean yaml)
             throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Bean.java",
@@ -52,7 +50,7 @@ class CompiledBinderConformanceTest {
     }
 
     private void verifyBackend(String backend, boolean yaml) throws Exception {
-        NavigatorTestCompiler.Result result = compile(backend, yaml, "");
+        NavigatorTestCompiler.Result result = compile(backend, yaml);
         assertTrue(result.success, backend + ": " + result.diagnostics());
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
@@ -85,19 +83,49 @@ class CompiledBinderConformanceTest {
                     .invoke(binder, (Object) bytes);
             assertEquals("Alice", beanType.getField("name").get(fromBytes), backend);
 
-            StringWriter output = new StringWriter();
+            final boolean[] writerClosed = {false};
+            StringWriter output = new StringWriter() {
+                @Override public void close() throws java.io.IOException {
+                    writerClosed[0] = true;
+                    super.close();
+                }
+            };
             implementation.getMethod("writeWriter", beanType, java.io.Writer.class)
                     .invoke(binder, bean, output);
+            assertFalse(writerClosed[0], backend + " writer ownership");
             assertFalse(output.toString().isEmpty(), backend);
+            final boolean[] readerClosed = {false};
+            StringReader borrowedReader = new StringReader(output.toString()) {
+                @Override public void close() {
+                    readerClosed[0] = true;
+                    super.close();
+                }
+            };
             Object fromReader = implementation.getMethod("readReader", java.io.Reader.class)
-                    .invoke(binder, new StringReader(output.toString()));
+                    .invoke(binder, borrowedReader);
+            assertFalse(readerClosed[0], backend + " reader ownership");
             assertEquals("Alice", beanType.getField("name").get(fromReader), backend);
 
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            final boolean[] outputClosed = {false};
+            ByteArrayOutputStream stream = new ByteArrayOutputStream() {
+                @Override public void close() throws java.io.IOException {
+                    outputClosed[0] = true;
+                    super.close();
+                }
+            };
             implementation.getMethod("writeStream", beanType, java.io.OutputStream.class)
                     .invoke(binder, bean, stream);
+            assertFalse(outputClosed[0], backend + " output stream ownership");
+            final boolean[] inputClosed = {false};
+            ByteArrayInputStream borrowedInput = new ByteArrayInputStream(stream.toByteArray()) {
+                @Override public void close() throws java.io.IOException {
+                    inputClosed[0] = true;
+                    super.close();
+                }
+            };
             Object fromStream = implementation.getMethod("readStream", java.io.InputStream.class)
-                    .invoke(binder, new ByteArrayInputStream(stream.toByteArray()));
+                    .invoke(binder, borrowedInput);
+            assertFalse(inputClosed[0], backend + " input stream ownership");
             assertEquals("Alice", beanType.getField("name").get(fromStream), backend);
         }
     }
