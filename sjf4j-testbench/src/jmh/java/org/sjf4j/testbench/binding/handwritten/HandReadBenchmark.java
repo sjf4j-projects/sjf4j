@@ -93,6 +93,7 @@ public class HandReadBenchmark {
     private static Gson createNativeGson() {
         GsonBuilder builder = new GsonBuilder();
         builder.setNumberToNumberStrategy(in -> Numbers.parseNumber(in.nextString()));
+        builder.setObjectToNumberStrategy(in -> Numbers.parseNumber(in.nextString()));
         builder.setFieldNamingStrategy(field -> {
             String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();

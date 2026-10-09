@@ -120,8 +120,9 @@ class CodeGenerationIntegrationTest {
                 String matcherType = "JACKSON2".equals(backend)
                         ? "Jackson2NameMatcher"
                         : "Fastjson2NameMatcher";
-                assertTrue(source.contains("new org.sjf4j.backend.")
-                        && source.contains(matcherType + "("), source);
+                assertTrue(source.contains("import org.sjf4j.backend.")
+                        && source.contains("." + matcherType + ";")
+                        && source.contains("new " + matcherType + "("), source);
                 assertFalse(source.contains(".compiledNameMatcher("), source);
             }
 

@@ -3,11 +3,8 @@ package org.sjf4j.testbench.binding.runtime;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -16,19 +13,18 @@ import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
-import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.gson.binding.GsonBinder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
-import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
@@ -42,15 +38,15 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
-public class JsonReadBenchmark {
+public class RuntimeReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{JsonReadBenchmark.class.getName()});
+        Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
 //        Main.main(new String[]{"ReadBenchmark.json_fastjson2", "ReadBenchmark.json_jackson2"});
     }
 
@@ -85,6 +81,9 @@ public class JsonReadBenchmark {
     private static final ObjectMapper JACKSON2_BLACKBIRD = createBlackbirdJackson2();
     private static final Gson GSON = createNativeGson();
     private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT = createFastjson2NativeContext();
+    private static final Jackson2Binder JACKSON2_BINDER = new Jackson2Binder();
+    private static final GsonBinder GSON_BINDER = new GsonBinder();
+    private static final Fastjson2Binder FASTJSON2_BINDER = new Fastjson2Binder();
     private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
     private static final JsonpBinder JSONP_BINDER = new JsonpBinder();
 
@@ -169,6 +168,16 @@ public class JsonReadBenchmark {
         return JACKSON2.readValue(JSON_DATA2, Map.class);
     }
 
+    @Benchmark
+    public Object json_jackson2_pojo_runtime() throws IOException {
+        return JACKSON2_BINDER.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object json_jackson2_map_runtime() throws IOException {
+        return JACKSON2_BINDER.readNode(JSON_DATA2, Map.class);
+    }
+
 
     // ----- Gson baselines -----
     @Benchmark
@@ -179,6 +188,16 @@ public class JsonReadBenchmark {
     @Benchmark
     public Object json_gson_map_native() {
         return GSON.fromJson(JSON_DATA2, Map.class);
+    }
+
+    @Benchmark
+    public Object json_gson_pojo_runtime() throws IOException {
+        return GSON_BINDER.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object json_gson_map_runtime() throws IOException {
+        return GSON_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
 
@@ -204,6 +223,16 @@ public class JsonReadBenchmark {
         }
     }
 
+    @Benchmark
+    public Object json_fastjson2_pojo_runtime() throws IOException {
+        return FASTJSON2_BINDER.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_map_runtime() throws IOException {
+        return FASTJSON2_BINDER.readNode(JSON_DATA2, Map.class);
+    }
+
     // ----- JSON-P baselines -----
     @Benchmark
     public Object json_jsonp_map_native() {
@@ -219,5 +248,10 @@ public class JsonReadBenchmark {
     @Benchmark
     public Object json_simple_jojo_facade() throws IOException {
         return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, UserJojo.class);
+    }
+
+    @Benchmark
+    public Object json_simple_map_facade() throws IOException {
+        return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, Map.class);
     }
 }
