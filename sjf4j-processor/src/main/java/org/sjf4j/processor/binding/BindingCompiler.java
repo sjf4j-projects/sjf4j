@@ -1,6 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
@@ -263,6 +264,11 @@ final class BindingCompiler {
             return BindingValue.Kind.ENUM;
         }
 
+        if (context.annotations.hasOneOf(type)) {
+            return unsupported(method, generated, type,
+                    "@OneOf is not supported by direct compiled binding");
+        }
+
         NodeKind nodeKind =
                 context.types.nodeKind(type);
 
@@ -346,6 +352,8 @@ final class BindingCompiler {
                 new ArrayList<BindingProperty>(
                         properties.size());
 
+        Map<String, String> claimedNames = new LinkedHashMap<String, String>();
+
         for (Property property :
                 properties.values()) {
 
@@ -357,6 +365,53 @@ final class BindingCompiler {
 
             if (access == null) {
                 continue;
+            }
+
+            NodeProperty readAnnotation = property.read() == null ? null
+                    : property.read().member().getAnnotation(NodeProperty.class);
+            NodeProperty writeAnnotation = property.write() == null ? null
+                    : property.write().member().getAnnotation(NodeProperty.class);
+
+            if (unsupportedCodec(readAnnotation) || unsupportedCodec(writeAnnotation)) {
+                error(method, generated, "Cannot generate direct binding for "
+                        + value.type() + "." + property.name()
+                        + ": @NodeProperty codecName/codecPattern is not supported");
+                return false;
+            }
+            if (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write())) {
+                error(method, generated, "Cannot generate direct binding for "
+                        + value.type() + "." + property.name()
+                        + ": @OneOf is not supported");
+                return false;
+            }
+
+            String[] aliases = new String[0];
+            if (value.direction() == BindingPlan.Direction.READ_FROM) {
+                if (writeAnnotation != null && writeAnnotation.aliases().length != 0) {
+                    aliases = writeAnnotation.aliases();
+                } else if (readAnnotation != null) {
+                    aliases = readAnnotation.aliases();
+                }
+            }
+            if (value.direction() == BindingPlan.Direction.READ_FROM) {
+                for (String key : aliases) {
+                    if (key.isEmpty()) {
+                        error(method, generated, "Empty @NodeProperty alias on " + value.type()
+                                + "." + property.name());
+                        return false;
+                    }
+                }
+                String[] keys = new String[aliases.length + 1];
+                keys[0] = property.name();
+                System.arraycopy(aliases, 0, keys, 1, aliases.length);
+                for (String key : keys) {
+                    String previous = claimedNames.putIfAbsent(key, property.name());
+                    if (previous != null) {
+                        error(method, generated, "Duplicate compiled property name '" + key
+                                + "' for " + previous + " and " + property.name());
+                        return false;
+                    }
+                }
             }
 
             BindingValue propertyValue =
@@ -373,12 +428,24 @@ final class BindingCompiler {
             compiled.add(
                     new BindingProperty(
                             property.name(),
+                            aliases,
                             access,
                             propertyValue));
         }
 
         value.properties(compiled);
         return true;
+    }
+
+    private boolean unsupportedCodec(NodeProperty annotation) {
+        return annotation != null &&
+                (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                        || !annotation.codecPattern().isEmpty());
+    }
+
+    private boolean hasMemberOneOf(PropertyAccess access) {
+        return access != null &&
+                access.member().getAnnotation(org.sjf4j.annotation.node.OneOf.class) != null;
     }
 
     private boolean compileElement(

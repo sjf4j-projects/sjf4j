@@ -14,15 +14,19 @@ public final class Jackson3NameMatcher extends NameMatcher {
     final PropertyNameMatcher matcher;
 
     Jackson3NameMatcher(PropertyInfo[] properties) {
-        this(properties, null);
+        this(properties, null, null);
     }
 
     public Jackson3NameMatcher(String... names) {
-        this(null, names);
+        this(null, names, null);
     }
 
-    private Jackson3NameMatcher(PropertyInfo[] properties, String[] names) {
-        super(properties, names);
+    public Jackson3NameMatcher(String[] names, String[][] aliases) {
+        this(null, names, aliases);
+    }
+
+    private Jackson3NameMatcher(PropertyInfo[] properties, String[] names, String[][] aliases) {
+        super(properties, names, aliases);
 
         String[] propertyNames = new String[size()];
         for (int i = 0; i < size(); i++) {

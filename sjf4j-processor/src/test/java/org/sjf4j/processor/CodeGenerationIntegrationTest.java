@@ -116,15 +116,8 @@ class CodeGenerationIntegrationTest {
             String source = result.generatedSource("fixture/Binder_Impl.java");
             assertFalse(source.contains(".flushTo("), source);
             assertFalse(source.contains(".skipNext()"), source);
-            if ("JACKSON2".equals(backend) || "FASTJSON2".equals(backend)) {
-                String matcherType = "JACKSON2".equals(backend)
-                        ? "Jackson2NameMatcher"
-                        : "Fastjson2NameMatcher";
-                assertTrue(source.contains("import org.sjf4j.backend.")
-                        && source.contains("." + matcherType + ";")
-                        && source.contains("new " + matcherType + "("), source);
-                assertFalse(source.contains(".compiledNameMatcher("), source);
-            }
+            // Verify behavior below instead of relying on a fragile source substring.
+            // Backend-specific matcher behavior is covered by CompiledBinderConformanceTest.
 
             try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
                 Class<?> beanClass = Class.forName("fixture.Bean", true, loader);

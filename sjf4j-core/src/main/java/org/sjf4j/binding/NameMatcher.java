@@ -25,24 +25,37 @@ public class NameMatcher {
      * Runtime binding from property metadata.
      */
     public NameMatcher(PropertyInfo[] writableProperties) {
-        this(writableProperties, null);
+        this(writableProperties, null, null);
     }
 
     /**
      * Compiled binding from static property names.
      */
     public NameMatcher(String... names) {
-        this(null, names);
+        this(null, names, null);
     }
 
     /**
      * Shared initialization for backend subclasses.
      * Exactly one argument must be non-null.
      */
+    public NameMatcher(String[] names, String[][] aliases) {
+        this(null, names, aliases);
+    }
+
     protected NameMatcher(PropertyInfo[] writableProperties, String[] compiledNames) {
+        this(writableProperties, compiledNames, null);
+    }
+
+    protected NameMatcher(PropertyInfo[] writableProperties, String[] compiledNames,
+                          String[][] compiledAliases) {
         if ((writableProperties == null) == (compiledNames == null)) {
             throw new IllegalArgumentException(
                     "Exactly one of writableProperties or compiledNames must be provided");
+        }
+        if (compiledAliases != null &&
+                (compiledNames == null || compiledAliases.length != compiledNames.length)) {
+            throw new IllegalArgumentException("Compiled aliases must align with names");
         }
         this.writableProperties = writableProperties;
 
@@ -61,8 +74,11 @@ public class NameMatcher {
         Map<String, Integer> map = new HashMap<>();
         for (int i = 0; i < names.length; i++) {
             map.put(names[i], i);
-            if (writableProperties != null) {
-                for (String alias : writableProperties[i].alias) {
+            String[] aliases = writableProperties != null
+                    ? writableProperties[i].alias
+                    : compiledAliases == null ? null : compiledAliases[i];
+            if (aliases != null) {
+                for (String alias : aliases) {
                     map.put(alias, i);
                 }
             }
