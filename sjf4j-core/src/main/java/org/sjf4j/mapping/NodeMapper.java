@@ -94,9 +94,6 @@ public final class NodeMapper {
             if (node == null) {
                 if (oneOfInfo == null) {
                     TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
-                    if (ti.externalNode != null) {
-                        return _requireExternalTarget(ti.externalNode.createValueNode(null), toBoxed, ps);
-                    }
                     if (ti.valueInfos != null) {
                         String valueFormat = context.defaultValueFormat(toBoxed);
                         ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
@@ -135,14 +132,8 @@ public final class NodeMapper {
             }
 
             if (ti.valueInfos != null) {
-                String valueFormat = context.defaultValueFormat(toBoxed);
-                ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
-                if (toBoxed.isInstance(node)) return valueInfo.valueCopy(node);
-                TypeInfo sourceValueTi = TypeRegistry.registerTypeInfo(node.getClass());
-                Object rawValue = sourceValueTi.externalNode != null
-                        ? _convertToRaw(node, ps, context)
-                        : node;
-                return valueInfo.rawToValue(rawValue);
+                ValueInfo target = ti.requireValueInfo(context.defaultValueFormat(toBoxed));
+                return _convertValue(node, toBoxed, target, deepCopy, ps, context);
             }
 
             if (ti.externalNode != null) {
@@ -229,6 +220,31 @@ public final class NodeMapper {
         }
     }
 
+
+
+    /**
+     * Converts into a NodeValue through its declared raw representation.
+     * A source NodeValue is encoded once, then decoded using the target codec.
+     * Raw types must remain compatible; no coercion is performed at this boundary.
+     */
+    private static Object _convertValue(Object node, Class<?> toBoxed, ValueInfo target,
+                                        boolean deepCopy, PathSegment ps, RuntimeContext context) {
+        if (node == null) return target.rawToValue(null);
+        if (toBoxed.isInstance(node)) {
+            return deepCopy ? target.valueCopy(node) : node;
+        }
+
+        TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
+        Object raw = node;
+        if (sourceInfo.valueInfos != null) {
+            ValueInfo source = sourceInfo.requireValueInfo(
+                    context.defaultValueFormat(node.getClass()));
+            raw = source.valueToRaw(node);
+        } else if (sourceInfo.externalNode != null) {
+            raw = _convertToRaw(node, ps, context);
+        }
+        return target.rawToValue(raw);
+    }
 
 
     /**
@@ -855,10 +871,8 @@ public final class NodeMapper {
                 }
 
                 if (ti.oneOfInfo == null && argValueInfo != null) {
-                    Object codecSource = externalSource ? _convertToRaw(rawValue, cps, context) : rawValue;
-                    state.acceptCtorArg(argIdx, argRaw.isInstance(codecSource)
-                            ? argValueInfo.valueCopy(codecSource)
-                            : argValueInfo.rawToValue(codecSource));
+                    state.acceptCtorArg(argIdx,
+                            _convertValue(rawValue, argRaw, argValueInfo, deepCopy, cps, context));
                 } else {
                     state.acceptCtorArg(argIdx, _convertSourceChild(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context, externalSource));
                 }
@@ -879,10 +893,8 @@ public final class NodeMapper {
 
                 Object value;
                 if (propertyInfo.oneOfInfo == null && propertyInfo.valueInfo != null) {
-                    Object codecSource = externalSource ? _convertToRaw(rawValue, cps, context) : rawValue;
-                    value = fieldRaw.isInstance(codecSource)
-                            ? propertyInfo.valueInfo.valueCopy(codecSource)
-                            : propertyInfo.valueInfo.rawToValue(codecSource);
+                    value = _convertValue(rawValue, fieldRaw, propertyInfo.valueInfo,
+                            deepCopy, cps, context);
                 } else {
                     value = _convertSourceChild(rawValue, fieldType, fieldRaw, propertyInfo.oneOfInfo, deepCopy, cps, context, externalSource);
                 }
@@ -1225,7 +1237,7 @@ public final class NodeMapper {
 
                 if (ti.oneOfInfo == null && argValueInfo != null) {
                     state.acceptCtorArg(argIdx,
-                            argRaw.isInstance(rawValue) ? argValueInfo.valueCopy(rawValue) : argValueInfo.rawToValue(rawValue));
+                            _convertValue(rawValue, argRaw, argValueInfo, deepCopy, cps, context));
                 } else {
                     state.acceptCtorArg(argIdx,
                             _convert(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context));
@@ -1247,9 +1259,8 @@ public final class NodeMapper {
 
                 Object value;
                 if (targetPropertyInfo.oneOfInfo == null && targetPropertyInfo.valueInfo != null) {
-                    value = fieldRaw.isInstance(rawValue)
-                            ? targetPropertyInfo.valueInfo.valueCopy(rawValue)
-                            : targetPropertyInfo.valueInfo.rawToValue(rawValue);
+                    value = _convertValue(rawValue, fieldRaw, targetPropertyInfo.valueInfo,
+                            deepCopy, cps, context);
                 } else {
                     value = _convert(rawValue, fieldType, fieldRaw, targetPropertyInfo.oneOfInfo, deepCopy, cps, context);
                 }

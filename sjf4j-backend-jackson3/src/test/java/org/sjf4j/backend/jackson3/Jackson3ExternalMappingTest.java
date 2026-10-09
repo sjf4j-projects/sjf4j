@@ -40,7 +40,7 @@ class Jackson3ExternalMappingTest {
 
         Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(node, RuntimeContext.EMPTY);
         assertEquals(Arrays.asList(1, null, 3), raw.get("items"));
-        assertSame(NullNode.instance, NodeMapper.convert(null, JsonNode.class, false));
+        assertNull(NodeMapper.convert(null, JsonNode.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(source, StringNode.class, false));
     }
 

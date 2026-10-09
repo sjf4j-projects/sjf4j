@@ -35,6 +35,6 @@ class JsonpExternalMappingTest {
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("name", "Ada");
         assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonValue.class, false));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(null, JsonValue.class, false));
+        assertNull(NodeMapper.convert(null, JsonValue.class, false));
     }
 }
