@@ -411,45 +411,13 @@ public final class StreamingIO {
         }
 
         Object pojo = pojoInfo.creatorInfo.newPojoNoArgs();
-
-        /*
-         * JOJO combines ordinary typed properties with unbounded dynamic
-         * names. Read the declared properties directly (without an
-         * intermediate Map/NodeMapper conversion) and retain unknown names
-         * only when dynamic reads are enabled.
-         *
-         * Keep name-based traversal here: a matcher reports UNKNOWN without
-         * providing the actual key required for the dynamic map.
-         */
-        if (pojoInfo.isJojo) {
-            Map<String, Object> dynamic = null;
-            String name;
-            while ((name = reader.nextName()) != null) {
-                PropertyInfo property = pojoInfo.propertyLookup.get(name);
-                if (property != null) {
-                    if (property.reader != null) {
-                        property.reader.read(reader, pojo, type, boxed, context);
-                    } else {
-                        reader.skipNode();
-                    }
-                } else if (pojoInfo.readDynamic) {
-                    if (dynamic == null) {
-                        dynamic = InternalAccess.dynamicProperties((JsonObject) pojo);
-                        if (dynamic == null) {
-                            dynamic = new LinkedHashMap<>();
-                            InternalAccess.dynamicProperties((JsonObject) pojo, dynamic);
-                        }
-                    }
-                    dynamic.put(name, reader.readRawNode());
-                } else {
-                    reader.skipNode();
-                }
-            }
-            return pojo;
-        }
-
         PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
         NameMatcher matcher = cacheNameMatcher(reader, pojoInfo);
+
+        // Both POJO and JOJO use the same cached name matcher and property
+        // readers. Only a JOJO with dynamic reads enabled needs unknown keys.
+        boolean retainDynamic = pojoInfo.isJojo && pojoInfo.readDynamic;
+        Map<String, Object> dynamic = null;
 
         int expectedIndex = 0;
         int index;
@@ -457,6 +425,23 @@ public final class StreamingIO {
             if (index >= 0) {
                 propertyReaders[index].read(reader, pojo, type, boxed, context);
                 expectedIndex = index + 1;
+            } else if (retainDynamic) {
+                String name = reader.unmatchedName();
+                // Read-only declared members are not present in the writable
+                // matcher. They must not silently become dynamic properties.
+                if (pojoInfo.propertyLookup.containsKey(name)) {
+                    reader.skipNode();
+                    continue;
+                }
+                if (dynamic == null) {
+                    JsonObject jojo = (JsonObject) pojo;
+                    dynamic = InternalAccess.dynamicProperties(jojo);
+                    if (dynamic == null) {
+                        dynamic = new LinkedHashMap<>();
+                        InternalAccess.dynamicProperties(jojo, dynamic);
+                    }
+                }
+                dynamic.put(name, reader.readRawNode());
             } else {
                 reader.skipNode();
             }
