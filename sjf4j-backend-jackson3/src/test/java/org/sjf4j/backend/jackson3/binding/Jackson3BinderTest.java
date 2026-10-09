@@ -2,6 +2,7 @@ package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -193,6 +194,23 @@ class Jackson3BinderTest {
         assertThrows(NullPointerException.class, () -> binder.createWriter((OutputStream) null));
     }
 
+    @Test
+    void matchesRecordCreatorArgumentsAndAliasesWithoutFieldMapLookups() {
+        CreatorRecord value = (CreatorRecord) new Jackson3Binder(new JsonFactory()).readNode(
+                "{\"unknown\":{\"nested\":[1,2]},\"age\":7,\"legacy_name\":\"Ada\"}",
+                CreatorRecord.class);
+
+        assertEquals(new CreatorRecord("Ada", 7), value);
+        assertThrows(BindingException.class, () -> new Jackson3Binder(new JsonFactory()).readNode(
+                "{\"name\":\"first\",\"legacy_name\":\"duplicate\",\"age\":7}",
+                CreatorRecord.class));
+    }
+
+    record CreatorRecord(
+            @org.sjf4j.annotation.node.NodeProperty(value = "name", aliases = "legacy_name") String name,
+            int age) {
+    }
+
     private static Document document() {
         Map<String, Details> related = new LinkedHashMap<>();
         related.put("first", new Details(false));
@@ -229,6 +247,39 @@ class Jackson3BinderTest {
         Details(boolean active) {
             this.active = active;
         }
+    }
+
+    @Test
+    void jojoUsesNativeNameMatcherForDeclaredAndUnknownProperties() {
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
+        MixedJojo result = (MixedJojo) binder.readNode(
+                "{\"unknown_before\":{\"flag\":true},\"legacy_name\":\"Ada\","
+                        + "\"id\":17,\"unknown_after\":[1,null]}", MixedJojo.class);
+
+        assertEquals(17, result.id);
+        assertEquals("Ada", result.name);
+        assertEquals(true, ((Map<?, ?>) result.getNode("unknown_before")).get("flag"));
+        assertEquals(2, ((List<?>) result.getNode("unknown_after")).size());
+        assertFalse(result.dynamicProperties().containsKey("legacy_name"));
+    }
+
+    @Test
+    void readsPureDynamicJojoWithEmptyStaticMatcher() {
+        PureDynamicJojo jojo = (PureDynamicJojo) new Jackson3Binder(new JsonFactory()).readNode(
+                "{\"escaped\\\"key\":1,\"obj\":{\"ok\":true},\"items\":[2,3]}", PureDynamicJojo.class);
+        assertEquals(1, ((Number) jojo.getNode("escaped\"key")).intValue());
+        assertEquals(true, ((Map<?, ?>) jojo.getNode("obj")).get("ok"));
+        assertEquals(2, ((List<?>) jojo.getNode("items")).size());
+    }
+
+    static class PureDynamicJojo extends org.sjf4j.JsonObject {
+    }
+
+    static class MixedJojo extends org.sjf4j.JsonObject {
+        public int id;
+
+        @org.sjf4j.annotation.node.NodeProperty(value = "name", aliases = "legacy_name")
+        public String name;
     }
 
     static class TrackingWriter extends StringWriter {

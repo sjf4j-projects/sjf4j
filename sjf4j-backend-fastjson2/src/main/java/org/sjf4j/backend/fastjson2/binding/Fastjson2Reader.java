@@ -33,6 +33,11 @@ public final class Fastjson2Reader extends StreamingReader {
         return new Fastjson2NameMatcher(writableProperties);
     }
 
+    @Override
+    protected NameMatcher createNameMatcher(String[] names) {
+        return new Fastjson2NameMatcher(names);
+    }
+
     /**
      * Reads the next value as the raw SJF4J object graph.
      *
@@ -101,6 +106,11 @@ public final class Fastjson2Reader extends StreamingReader {
         }
         peeked = null;
         return reader.readFieldName();
+    }
+
+    @Override
+    public String currentName() {
+        return reader.getFieldName();
     }
 
     @Override
