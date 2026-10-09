@@ -116,6 +116,14 @@ class CodeGenerationIntegrationTest {
             String source = result.generatedSource("fixture/Binder_Impl.java");
             assertFalse(source.contains(".flushTo("), source);
             assertFalse(source.contains(".skipNext()"), source);
+            if ("JACKSON2".equals(backend) || "FASTJSON2".equals(backend)) {
+                String matcherType = "JACKSON2".equals(backend)
+                        ? "Jackson2NameMatcher"
+                        : "Fastjson2NameMatcher";
+                assertTrue(source.contains("new org.sjf4j.backend.")
+                        && source.contains(matcherType + "("), source);
+                assertFalse(source.contains(".compiledNameMatcher("), source);
+            }
 
             try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
                 Class<?> beanClass = Class.forName("fixture.Bean", true, loader);
