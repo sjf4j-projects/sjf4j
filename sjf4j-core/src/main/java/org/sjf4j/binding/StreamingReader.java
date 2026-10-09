@@ -257,9 +257,30 @@ public abstract class StreamingReader implements Closeable {
      *         {@link NameMatcher#UNKNOWN}, or
      *         {@link NameMatcher#OBJECT_END}
      */
+    private String unmatchedName;
+
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         String name = nextName();
-        return name == null ? NameMatcher.OBJECT_END : matcher.fallback(name);
+        if (name == null) {
+            return NameMatcher.OBJECT_END;
+        }
+        int index = matcher.fallback(name);
+        if (index == NameMatcher.UNKNOWN) {
+            unmatchedName = name;
+        }
+        return index;
+    }
+
+    /**
+     * Returns the key of the last unmatched object member.
+     *
+     * <p>Only defined immediately after {@code nextNameMatch(...)} returns
+     * {@link NameMatcher#UNKNOWN} and before its value is consumed. Native
+     * matcher backends override this to resolve the name from their parser,
+     * avoiding String materialization for matched properties.</p>
+     */
+    public String unmatchedName() throws IOException {
+        return unmatchedName;
     }
 
     /**
