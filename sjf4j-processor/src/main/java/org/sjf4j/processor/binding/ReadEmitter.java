@@ -1,6 +1,5 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
@@ -16,7 +15,7 @@ final class ReadEmitter {
             "org.sjf4j.RuntimeContext";
 
     private static final String NAME_MATCHER =
-            "org.sjf4j.binding.StreamingReader.NameMatcher";
+            "org.sjf4j.binding.NameMatcher";
 
     private final ProcessorContext context;
     private final BackendSpec backend;
@@ -123,7 +122,8 @@ final class ReadEmitter {
             BindingValue value) {
 
         if (!backend.usesNameMatcher() ||
-                value.kind() != BindingValue.Kind.POJO) {
+                value.kind() != BindingValue.Kind.POJO ||
+                value.properties().isEmpty()) {
             return;
         }
 
@@ -133,8 +133,9 @@ final class ReadEmitter {
                 .append(' ')
                 .append(matcherFieldName(value))
                 .append(" = ")
-                .append(backend.readerType())
-                .append(".createNameMatcher(");
+                .append("new ")
+                .append(backend.matcherType())
+                .append('(');
 
         for (int i = 0; i < value.properties().size(); i++) {
             if (i > 0) {
@@ -200,16 +201,26 @@ final class ReadEmitter {
                         value.type() +
                         "();");
 
-        if (backend.usesExpectedNameMatch()) {
-            out.line("int expectedNameIndex = 0;");
-        }
+        if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
+            out.line("int nameIndex;");
+            if (backend.usesExpectedNameMatch()) {
+                out.line("int expectedNameIndex = 0;");
+            }
 
-        out.beginBlock(
-                "while (!reader.nextIfObjectEnd())");
+            out.beginBlock(
+                    "while ((nameIndex = reader.nextNameMatch(" +
+                            matcherFieldName(value) +
+                            (backend.usesExpectedNameMatch()
+                                    ? ", expectedNameIndex"
+                                    : "") +
+                            ")) != " + NAME_MATCHER + ".OBJECT_END)");
 
-        if (backend.usesNameMatcher()) {
             emitMatchedPojoProperty(out, value);
         } else {
+            out.line("String name;");
+            out.beginBlock(
+                    "while ((name = reader.nextName()) != null)");
+
             emitStringPojoProperty(out, value);
         }
 
@@ -220,18 +231,6 @@ final class ReadEmitter {
     private void emitMatchedPojoProperty(
             JavaWriter out,
             BindingValue value) {
-
-        if (backend.usesExpectedNameMatch()) {
-            out.line(
-                    "int nameIndex = reader.nextNameMatch(" +
-                            matcherFieldName(value) +
-                            ", expectedNameIndex);");
-        } else {
-            out.line(
-                    "int nameIndex = reader.nextNameMatch(" +
-                            matcherFieldName(value) +
-                            ");");
-        }
 
         out.beginBlock("switch (nameIndex)");
 
@@ -259,7 +258,7 @@ final class ReadEmitter {
         if (backend.usesExpectedNameMatch()) {
             out.line("expectedNameIndex = -1;");
         }
-        out.line("reader.skipNext();");
+        out.line("reader.skipNode();");
         out.line("break;");
         out.dedent();
 
@@ -270,7 +269,6 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
-        out.line("String name = reader.nextName();");
         out.beginBlock("switch (name)");
 
         for (BindingProperty property : value.properties()) {
@@ -296,7 +294,7 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        out.line("reader.skipNext();");
+        out.line("reader.skipNode();");
         out.line("break;");
         out.dedent();
 
@@ -368,10 +366,9 @@ final class ReadEmitter {
                 value.type() +
                         " value = new java.util.LinkedHashMap<>();");
 
+        out.line("String name;");
         out.beginBlock(
-                "while (!reader.nextIfObjectEnd())");
-
-        out.line("String name = reader.nextName();");
+                "while ((name = reader.nextName()) != null)");
 
         out.line(
                 "value.put(name, " +
@@ -401,65 +398,56 @@ final class ReadEmitter {
 
         switch (value.kind()) {
             case STRING:
-                return reader + ".nextString()";
+                return reader + ".readString()";
 
             case CHARACTER:
-                if (value.primitive()) {
-                    return reader + ".nextCharValue()";
-                }
-                return "(" + reader +
-                        ".nextIfNull() ? null : java.lang.Character.valueOf(" +
-                        reader + ".nextCharValue()))";
+                return value.primitive()
+                        ? reader + ".readCharValue()"
+                        : reader + ".readChar()";
 
             case BOOLEAN:
                 return value.primitive()
-                        ? reader + ".nextBooleanValue()"
-                        : reader + ".nextBoolean()";
+                        ? reader + ".readBooleanValue()"
+                        : reader + ".readBoolean()";
 
             case BYTE:
                 return value.primitive()
-                        ? reader + ".nextByteValue()"
-                        : reader + ".nextByte()";
+                        ? reader + ".readByteValue()"
+                        : reader + ".readByte()";
 
             case SHORT:
                 return value.primitive()
-                        ? reader + ".nextShortValue()"
-                        : reader + ".nextShort()";
+                        ? reader + ".readShortValue()"
+                        : reader + ".readShort()";
 
             case INT:
                 return value.primitive()
-                        ? reader + ".nextIntValue()"
-                        : reader + ".nextInt()";
+                        ? reader + ".readIntValue()"
+                        : reader + ".readInt()";
 
             case LONG:
                 return value.primitive()
-                        ? reader + ".nextLongValue()"
-                        : reader + ".nextLong()";
+                        ? reader + ".readLongValue()"
+                        : reader + ".readLong()";
 
             case FLOAT:
                 return value.primitive()
-                        ? reader + ".nextFloatValue()"
-                        : reader + ".nextFloat()";
+                        ? reader + ".readFloatValue()"
+                        : reader + ".readFloat()";
 
             case DOUBLE:
                 return value.primitive()
-                        ? reader + ".nextDoubleValue()"
-                        : reader + ".nextDouble()";
+                        ? reader + ".readDoubleValue()"
+                        : reader + ".readDouble()";
 
             case NUMBER:
-                return "(" + reader +
-                        ".nextIfNull() ? null : " +
-                        reader + ".nextNumber())";
+                return reader + ".readNumber()";
 
             case BIG_INTEGER:
-                return "(" + reader +
-                        ".nextIfNull() ? null : " +
-                        reader + ".nextBigInteger())";
+                return reader + ".readBigInteger()";
 
             case BIG_DECIMAL:
-                return "(" + reader +
-                        ".nextIfNull() ? null : " +
-                        reader + ".nextBigDecimal())";
+                return reader + ".readBigDecimal()";
 
             case ENUM:
                 return "(" + reader +
@@ -467,24 +455,12 @@ final class ReadEmitter {
                         value.type() +
                         ".valueOf(" +
                         reader +
-                        ".nextStringValue()))";
+                        ".readString()))";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
-                    if ((backend.backend() == Backend.FASTJSON2 ||
-                            backend.backend() == Backend.GSON ||
-                            backend.backend() == Backend.JACKSON2) &&
-                            context.typeUtils.isSameType(
-                                    value.type(),
-                                    context.types.objectType())) {
-
-                        return "(" + value.type() + ") " +
-                                reader + ".readRawNode()";
-                    }
                     return "(" + value.type() + ") " +
-                            STREAMING_IO +
-                            ".readRawNode(" +
-                            reader + ")";
+                            reader + ".readRawNode()";
                 }
                 return "(" + value.type() + ") " +
                         STREAMING_IO +

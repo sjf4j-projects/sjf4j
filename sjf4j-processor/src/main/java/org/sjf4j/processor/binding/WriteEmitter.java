@@ -101,7 +101,6 @@ final class WriteEmitter {
                 source,
                 writer);
 
-        out.line(writer + ".flushTo(" + output + ");");
         out.line("return " + output + ".toString();");
         out.endBlock();
     }
@@ -133,7 +132,6 @@ final class WriteEmitter {
                 source,
                 writer);
 
-        out.line(writer + ".flushTo(" + output + ");");
         out.line("return " + output + ".toByteArray();");
         out.endBlock();
     }
@@ -160,7 +158,6 @@ final class WriteEmitter {
                 source,
                 writer);
 
-        out.line(writer + ".flushTo(" + output + ");");
     }
 
     private void emitWriteBody(
@@ -333,26 +330,12 @@ final class WriteEmitter {
                 return;
 
             case CHARACTER:
-                if (value.primitive()) {
-                    out.line(
-                            writer +
-                                    ".writeCharValue(" +
-                                    expression +
-                                    ");");
-                } else {
-                    out.beginBlock(
-                            "if (" + expression +
-                                    " == null)");
-                    out.line(writer + ".writeNull();");
-                    out.endBlock(" else {");
-                    out.indent();
-                    out.line(
-                            writer +
-                                    ".writeCharValue(" +
-                                    expression +
-                                    ".charValue());");
-                    out.endBlock();
-                }
+                emitPrimitiveOrBoxed(
+                        out,
+                        value,
+                        writer,
+                        expression,
+                        "Char");
                 return;
 
             case BOOLEAN:

@@ -28,7 +28,7 @@ class CodeGenerationIntegrationTest {
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
         assertTrue(source.contains(
-                "(Object) StreamingIO.readRawNode(reader)"), source);
+                "(Object) reader.readRawNode()"), source);
         assertFalse(source.contains(
                 "StreamingIO.readNode(reader, Object.class"), source);
     }
@@ -88,6 +88,66 @@ class CodeGenerationIntegrationTest {
         String source = result.generatedSource("fixture/Binder_Impl.java");
         assertTrue(source.contains("(Object) reader.readRawNode()"), source);
         assertFalse(source.contains("StreamingIO.readRawNode(reader)"), source);
+    }
+
+
+    @Test
+    void compiledBindersReadAndWritePojoWithNewStreamingApi() throws Exception {
+        for (String backend : new String[]{"SIMPLE", "JACKSON2", "FASTJSON2"}) {
+            NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Bean.java",
+                    "package fixture;\n"
+                            + "public class Bean {\n"
+                            + "  public int age;\n"
+                            + "  public String name;\n"
+                            + "  public Integer count;\n"
+                            + "}\n",
+                    "fixture/Binder.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.binding.*;\n"
+                            + "@CompiledBinder(backend = Backend." + backend + ") public interface Binder {\n"
+                            + "  @ReadFrom Bean read(String input) throws java.io.IOException;\n"
+                            + "  @WriteTo String write(Bean bean) throws java.io.IOException;\n"
+                            + "}\n"
+            ), CodegenProcessor.class);
+
+            assertTrue(result.success, backend + ": " + result.diagnostics());
+
+            String source = result.generatedSource("fixture/Binder_Impl.java");
+            assertFalse(source.contains(".flushTo("), source);
+            assertFalse(source.contains(".skipNext()"), source);
+            if ("JACKSON2".equals(backend) || "FASTJSON2".equals(backend)) {
+                String matcherType = "JACKSON2".equals(backend)
+                        ? "Jackson2NameMatcher"
+                        : "Fastjson2NameMatcher";
+                assertTrue(source.contains("new org.sjf4j.backend.")
+                        && source.contains(matcherType + "("), source);
+                assertFalse(source.contains(".compiledNameMatcher("), source);
+            }
+
+            try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+                Class<?> beanClass = Class.forName("fixture.Bean", true, loader);
+                Class<?> binderClass = Class.forName("fixture.Binder_Impl", true, loader);
+                Object binder = binderClass.getConstructor().newInstance();
+
+                String input = "{\"other\":{\"deep\":[1,2]},\"name\":\"Alice\",\"age\":3,\"count\":null}";
+                Object bean = binderClass.getMethod("read", String.class)
+                        .invoke(binder, input);
+
+                assertEquals(3, beanClass.getField("age").getInt(bean));
+                assertEquals("Alice", beanClass.getField("name").get(bean));
+                assertEquals(null, beanClass.getField("count").get(bean));
+
+                String json = (String) binderClass.getMethod("write", beanClass)
+                        .invoke(binder, bean);
+                Object copy = binderClass.getMethod("read", String.class)
+                        .invoke(binder, json);
+
+                assertEquals(3, beanClass.getField("age").getInt(copy));
+                assertEquals("Alice", beanClass.getField("name").get(copy));
+                assertEquals(null, beanClass.getField("count").get(copy));
+            }
+        }
     }
 
     @Test

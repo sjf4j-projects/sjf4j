@@ -9,7 +9,7 @@ import tools.jackson.core.sym.PropertyNameMatcher;
 import java.util.Arrays;
 
 /** Prepared Jackson 3 property-name metadata. */
-final class Jackson3NameMatcher extends NameMatcher {
+public final class Jackson3NameMatcher extends NameMatcher {
 
     final PropertyNameMatcher matcher;
 
@@ -17,7 +17,7 @@ final class Jackson3NameMatcher extends NameMatcher {
         this(properties, null);
     }
 
-    Jackson3NameMatcher(String... names) {
+    public Jackson3NameMatcher(String... names) {
         this(null, names);
     }
 

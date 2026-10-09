@@ -8,7 +8,7 @@ import org.sjf4j.node.PropertyInfo;
 import java.util.Arrays;
 
 /** Prepared Fastjson2 property-name matcher. */
-final class Fastjson2NameMatcher extends NameMatcher {
+public final class Fastjson2NameMatcher extends NameMatcher {
 
     static final int HASH_COLLISION = -3;
 
@@ -21,7 +21,7 @@ final class Fastjson2NameMatcher extends NameMatcher {
         this(writableProperties, null);
     }
 
-    Fastjson2NameMatcher(String... names) {
+    public Fastjson2NameMatcher(String... names) {
         this(null, names);
     }
 
