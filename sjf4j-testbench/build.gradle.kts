@@ -50,6 +50,17 @@ dependencies {
     testImplementation("org.springframework:spring-jdbc:6.2.19")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
+    jmhImplementation("org.mapstruct:mapstruct:1.6.3")
+    jmhAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
+    jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.2")
+    jmhImplementation("tools.jackson.core:jackson-databind:3.2.2")
+    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.2.2")
+    jmhImplementation("com.google.code.gson:gson:2.13.1")
+    jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
+    jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")
+    jmhImplementation("org.eclipse.parsson:parsson:1.1.7")
+
     // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhCompileOnly("org.projectlombok:lombok:1.18.38")
@@ -60,6 +71,7 @@ dependencies {
     jmhImplementation("org.mybatis:mybatis:3.5.19")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
     jmhAnnotationProcessor(project(":sjf4j-processor"))
+
     jmhImplementation("org.mapstruct:mapstruct:1.6.3")
     jmhAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")

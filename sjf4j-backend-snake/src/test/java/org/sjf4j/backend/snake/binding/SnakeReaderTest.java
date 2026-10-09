@@ -72,7 +72,7 @@ class SnakeReaderTest {
             assertThrows(ArithmeticException.class, reader::readByteValue);
             assertEquals(125d, reader.readDoubleValue());
             assertEquals(new BigInteger("123456789012345678901234567890"), reader.readBigInteger());
-            assertEquals(new BigDecimal("0.0012"), reader.readBigDecimal());
+            assertEquals(new BigDecimal("0.00120"), reader.readBigDecimal());
             assertEquals('x', reader.readCharValue());
             assertThrows(BindingException.class, reader::readCharValue);
             assertThrows(BindingException.class, reader::readCharValue);
