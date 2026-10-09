@@ -94,6 +94,21 @@ class JsonpBinderTest {
     }
 
     @Test
+    void readNodeDoesNotCloseCallerOwnedReader() {
+        final boolean[] closed = {false};
+        StringReader input = new StringReader("{\"id\":7}") {
+            @Override
+            public void close() {
+                closed[0] = true;
+            }
+        };
+
+        Document value = (Document) new JsonpBinder().readNode(input, Document.class);
+        assertEquals(7, value.id);
+        assertFalse(closed[0]);
+    }
+
+    @Test
     void rejectsNullDependenciesAndIo() {
         assertThrows(NullPointerException.class, () -> new JsonpBinder((JsonProvider) null));
         assertThrows(NullPointerException.class, () -> new JsonpBinder(JsonProvider.provider(), null));

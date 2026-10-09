@@ -1,6 +1,8 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.spi.JsonProvider;
+import java.net.URL;
+import java.net.URLClassLoader;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.BinderProvider;
@@ -28,6 +30,25 @@ class JsonpBinderProviderTest {
 
         assertInstanceOf(JsonpBinderProvider.class, provider);
         assertInstanceOf(JsonpBinder.class, provider.create(RuntimeContext.EMPTY));
+    }
+
+    @Test
+    void remainsUnavailableWhenOnlyJsonpApiIsVisible() throws Exception {
+        URL api = JsonProvider.class.getProtectionDomain().getCodeSource().getLocation();
+        URL core = BinderProvider.class.getProtectionDomain().getCodeSource().getLocation();
+        URL backend = JsonpBinderProvider.class.getProtectionDomain().getCodeSource().getLocation();
+
+        // Isolate API/backend from the provider implementation and ServiceLoader.
+        ClassLoader original = Thread.currentThread().getContextClassLoader();
+        try (URLClassLoader loader = new URLClassLoader(new URL[]{api, core, backend}, null)) {
+            Thread.currentThread().setContextClassLoader(loader);
+            Class<?> providerClass = Class.forName(
+                    "org.sjf4j.backend.jsonp.binding.JsonpBinderProvider", true, loader);
+            Object provider = providerClass.getConstructor().newInstance();
+            assertEquals(false, providerClass.getMethod("isAvailable").invoke(provider));
+        } finally {
+            Thread.currentThread().setContextClassLoader(original);
+        }
     }
 
     @Test
