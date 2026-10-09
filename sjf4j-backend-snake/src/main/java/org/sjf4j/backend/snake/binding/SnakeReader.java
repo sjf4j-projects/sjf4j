@@ -5,7 +5,6 @@ import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.util.Asserts;
-import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.events.CommentEvent;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
@@ -33,8 +32,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.HashSet;
-import java.util.Set;
 
 /** StreamingReader backed directly by SnakeYAML parser events. */
 public final class SnakeReader extends StreamingReader {
@@ -50,14 +47,9 @@ public final class SnakeReader extends StreamingReader {
 
     private final Parser parser;
     private final Deque<Scope> scopes = new ArrayDeque<>();
-    private final int nestingDepthLimit;
-    private final boolean rejectDuplicateKeys;
-
-    public SnakeReader(Parser parser, LoaderOptions options) {
+    public SnakeReader(Parser parser) {
         super(Backend.SNAKE);
         this.parser = Asserts.notNull(parser, "parser");
-        this.nestingDepthLimit = options.getNestingDepthLimit();
-        this.rejectDuplicateKeys = !options.isAllowDuplicateKeys();
     }
 
     @Override
@@ -171,9 +163,8 @@ public final class SnakeReader extends StreamingReader {
             throw expected("object start");
         }
         completeParentValue();
-        checkDepth(scopes.size() + 1);
         take();
-        scopes.push(new Scope(true, rejectDuplicateKeys));
+        scopes.push(new Scope(true));
     }
 
     @Override
@@ -189,9 +180,8 @@ public final class SnakeReader extends StreamingReader {
             throw expected("array start");
         }
         completeParentValue();
-        checkDepth(scopes.size() + 1);
         take();
-        scopes.push(new Scope(false, false));
+        scopes.push(new Scope(false));
     }
 
     @Override
@@ -212,11 +202,7 @@ public final class SnakeReader extends StreamingReader {
         }
         ScalarEvent scalar = (ScalarEvent) take();
         scope.expectingName = false;
-        String name = scalar.getValue();
-        if (scope.names != null && !scope.names.add(name)) {
-            throw new IOException("duplicate YAML mapping key: " + name);
-        }
-        return name;
+        return scalar.getValue();
     }
 
     @Override
@@ -440,9 +426,8 @@ public final class SnakeReader extends StreamingReader {
                     }
                     frame.expectingName = true;
                 }
-                checkDepth(scopes.size() + frames.size() + 1);
                 take();
-                frames.push(new SkipFrame(event instanceof MappingStartEvent, rejectDuplicateKeys));
+                frames.push(new SkipFrame(event instanceof MappingStartEvent));
                 continue;
             }
             throw expected("value");
@@ -566,12 +551,6 @@ public final class SnakeReader extends StreamingReader {
         }
     }
 
-    private void checkDepth(int depth) throws IOException {
-        if (depth > nestingDepthLimit) {
-            throw new IOException("YAML nesting depth exceeds limit: " + nestingDepthLimit);
-        }
-    }
-
     private IOException expected(String expected) throws IOException {
         return new IOException("expected " + expected + ", but was " + peekToken());
     }
@@ -638,9 +617,6 @@ public final class SnakeReader extends StreamingReader {
                 throw new IOException("YAML mapping keys must be strings");
             }
             frame.expectingName = false;
-            if (frame.names != null && !frame.names.add(scalar.getValue())) {
-                throw new IOException("duplicate YAML mapping key: " + scalar.getValue());
-            }
             return;
         }
         if (frame != null && frame.object) {
@@ -761,24 +737,20 @@ public final class SnakeReader extends StreamingReader {
 
     private static final class Scope {
         final boolean object;
-        final Set<String> names;
         boolean expectingName;
 
-        Scope(boolean object, boolean rejectDuplicates) {
+        Scope(boolean object) {
             this.object = object;
-            this.names = object && rejectDuplicates ? new HashSet<String>() : null;
             this.expectingName = object;
         }
     }
 
     private static final class SkipFrame {
         final boolean object;
-        final Set<String> names;
         boolean expectingName;
 
-        SkipFrame(boolean object, boolean rejectDuplicates) {
+        SkipFrame(boolean object) {
             this.object = object;
-            this.names = object && rejectDuplicates ? new HashSet<String>() : null;
             this.expectingName = object;
         }
     }
