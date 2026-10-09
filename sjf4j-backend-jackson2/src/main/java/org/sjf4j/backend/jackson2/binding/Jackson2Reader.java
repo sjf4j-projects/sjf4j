@@ -72,6 +72,11 @@ public final class Jackson2Reader extends StreamingReader {
         return token(parser.currentToken());
     }
 
+    /** Prepared matcher for generated binders. */
+    public static NameMatcher compiledNameMatcher(String... names) {
+        return new Jackson2NameMatcher(names);
+    }
+
     @Override
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
         return new Jackson2NameMatcher(writableProperties);
