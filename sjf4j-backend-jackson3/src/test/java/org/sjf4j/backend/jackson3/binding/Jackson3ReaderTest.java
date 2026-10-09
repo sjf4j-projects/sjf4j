@@ -28,6 +28,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson3ReaderTest {
 
     @Test
+    void matchesPrefetchedFieldNamesWithoutLosingThePendingValue() throws Exception {
+        NameMatcher matcher = new Jackson3NameMatcher("id", "name");
+
+        try (Jackson3Reader reader =
+                     reader("{\"id\":7,\"unknown\":true,\"name\":\"Ada\"}")) {
+            reader.startObject();
+
+            // A failed conditional probe physically advances onto FIELD_NAME.
+            assertFalse(reader.nextIfObjectEnd());
+            assertEquals(0, reader.nextNameMatch(matcher));
+            assertEquals(7, reader.readIntValue());
+
+            assertEquals(StreamingReader.Token.NAME, reader.peekToken());
+            assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
+            assertEquals("unknown", reader.currentName());
+            assertTrue(reader.readBooleanValue());
+
+            assertFalse(reader.nextIfObjectEnd());
+            assertEquals(1, reader.nextNameMatch(matcher));
+            assertEquals("Ada", reader.readString());
+
+            assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
+            reader.endDocument();
+        }
+    }
+
+    @Test
     void preservesPeekAndConditionalStateAcrossObjectsAndArrays() throws Exception {
         try (Jackson3Reader reader = reader("{\"id\":7,\"name\":\"Ada\"}")) {
             assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
