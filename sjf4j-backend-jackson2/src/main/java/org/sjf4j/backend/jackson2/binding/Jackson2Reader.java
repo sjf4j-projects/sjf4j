@@ -172,6 +172,11 @@ public final class Jackson2Reader extends StreamingReader {
      * The parser stays at FIELD_NAME, so the value remains pending.
      */
     @Override
+    public String unmatchedName() throws IOException {
+        return parser.currentName();
+    }
+
+    @Override
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         return nextNameMatch(matcher, -1);
     }
