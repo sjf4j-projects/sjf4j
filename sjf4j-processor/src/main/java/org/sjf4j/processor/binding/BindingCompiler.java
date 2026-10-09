@@ -367,24 +367,32 @@ final class BindingCompiler {
                 continue;
             }
 
-            NodeProperty annotation = access.member().getAnnotation(NodeProperty.class);
-            if (annotation != null &&
-                    (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                            || !annotation.codecPattern().isEmpty())) {
+            NodeProperty readAnnotation = property.read() == null ? null
+                    : property.read().member().getAnnotation(NodeProperty.class);
+            NodeProperty writeAnnotation = property.write() == null ? null
+                    : property.write().member().getAnnotation(NodeProperty.class);
+
+            if (unsupportedCodec(readAnnotation) || unsupportedCodec(writeAnnotation)) {
                 error(method, generated, "Cannot generate direct binding for "
                         + value.type() + "." + property.name()
                         + ": @NodeProperty codecName/codecPattern is not supported");
                 return false;
             }
-            if (access.member().getAnnotation(org.sjf4j.annotation.node.OneOf.class) != null) {
+            if (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write())) {
                 error(method, generated, "Cannot generate direct binding for "
                         + value.type() + "." + property.name()
                         + ": @OneOf is not supported");
                 return false;
             }
 
-            String[] aliases = value.direction() == BindingPlan.Direction.READ_FROM
-                    && annotation != null ? annotation.aliases() : new String[0];
+            String[] aliases = new String[0];
+            if (value.direction() == BindingPlan.Direction.READ_FROM) {
+                if (writeAnnotation != null && writeAnnotation.aliases().length != 0) {
+                    aliases = writeAnnotation.aliases();
+                } else if (readAnnotation != null) {
+                    aliases = readAnnotation.aliases();
+                }
+            }
             if (value.direction() == BindingPlan.Direction.READ_FROM) {
                 for (String key : aliases) {
                     if (key.isEmpty()) {
@@ -427,6 +435,17 @@ final class BindingCompiler {
 
         value.properties(compiled);
         return true;
+    }
+
+    private boolean unsupportedCodec(NodeProperty annotation) {
+        return annotation != null &&
+                (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                        || !annotation.codecPattern().isEmpty());
+    }
+
+    private boolean hasMemberOneOf(PropertyAccess access) {
+        return access != null &&
+                access.member().getAnnotation(org.sjf4j.annotation.node.OneOf.class) != null;
     }
 
     private boolean compileElement(
