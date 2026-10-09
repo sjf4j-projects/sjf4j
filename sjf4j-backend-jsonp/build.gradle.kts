@@ -17,6 +17,7 @@ java {
 
 dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
+    // Runtime requires Jakarta JSON-P API 2.1+ (JsonParser.currentEvent()) and a provider implementation.
     compileOnly("jakarta.json:jakarta.json-api:2.1.3")
     compileOnly("org.eclipse.parsson:parsson:1.1.7")
 
