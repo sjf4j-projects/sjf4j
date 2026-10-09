@@ -213,7 +213,7 @@ public final class StreamingIO {
             }
 
             throw new BindingException("cannot read value into type '" + boxed.getName() + "'");
-        } catch (BindingException e) {
+        } catch (BindingException | IOException e) {
             throw e;
         } catch (Throwable e) {
             throw new BindingException("failed to read streaming into '" + type + "'", e);
