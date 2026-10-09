@@ -10,6 +10,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 
@@ -25,6 +26,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -248,16 +250,104 @@ class Jackson2BinderTest {
         assertNull(binder.readNode("null", MixedJojo.class));
     }
 
+    @Test
+    void jojoMatcherResolvesAliasesAndPreservesUnknownNames() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        MixedJojo jojo = (MixedJojo) binder.readNode(
+                "{\"legacy_name\":\"Alias\",\"unknown\":7,\"uuid\":\"123e4567-e89b-12d3-a456-426614174000\"}",
+                MixedJojo.class);
+
+        assertEquals("Alias", jojo.name);
+        assertEquals(7, ((Number) jojo.getNode("unknown")).intValue());
+        assertEquals(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), jojo.uuid);
+        assertFalse(jojo.dynamicProperties().containsKey("legacy_name"));
+    }
+
+    @Test
+    void jojoReadOnlyDeclaredNameDoesNotBecomeDynamic() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        ReadOnlyJojo jojo = (ReadOnlyJojo) binder.readNode(
+                "{\"fixed\":\"attempted\",\"extra\":123}", ReadOnlyJojo.class);
+
+        assertEquals("preset", jojo.getNode("fixed"));
+        assertFalse(jojo.dynamicProperties().containsKey("fixed"));
+        assertEquals(123, ((Number) jojo.getNode("extra")).intValue());
+    }
+
+    @Test
+    void jojoCreatorRetainsDynamicMembersBeforeConstruction() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        CreatedJojo jojo = (CreatedJojo) binder.readNode(
+                "{\"before\":1,\"name\":\"Ada\",\"after\":[2,3]}", CreatedJojo.class);
+
+        assertEquals("Ada", jojo.getName());
+        assertEquals(1, ((Number) jojo.getNode("before")).intValue());
+        assertEquals(2, ((List<?>) jojo.getNode("after")).size());
+    }
+
+    @Test
+    void jojoCurrentAndParentOneOfStaySupported() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        CurrentJojo current = (CurrentJojo) binder.readNode(
+                "{\"extra\":9,\"pet\":{\"kind\":\"dog\",\"barks\":true}}", CurrentJojo.class);
+        assertTrue(assertInstanceOf(Dog.class, current.pet).barks);
+        assertEquals(9, ((Number) current.getNode("extra")).intValue());
+
+        ParentJojo after = (ParentJojo) binder.readNode(
+                "{\"pet\":{\"barks\":true},\"extra\":[1],\"kind\":\"dog\"}",
+                ParentJojo.class);
+        assertTrue(assertInstanceOf(Dog.class, after.pet).barks);
+        assertEquals(1, ((List<?>) after.getNode("extra")).size());
+
+        ParentJojo before = (ParentJojo) binder.readNode(
+                "{\"kind\":\"dog\",\"pet\":{\"barks\":true}}",
+                ParentJojo.class);
+        assertTrue(assertInstanceOf(Dog.class, before.pet).barks);
+    }
+
+    static class ReadOnlyJojo extends JsonObject {
+        public String getFixed() {
+            return "preset";
+        }
+    }
+
+    static class CreatedJojo extends JsonObject {
+        private final String name;
+
+        @NodeCreator
+        CreatedJojo(@NodeProperty("name") String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    static class CurrentJojo extends JsonObject {
+        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")}, key = "kind")
+        public Animal pet;
+    }
+
+    static class ParentJojo extends JsonObject {
+        public String kind;
+
+        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")},
+                key = "kind", scope = OneOf.Scope.PARENT)
+        public Animal pet;
+    }
+
     static class MixedJojo extends JsonObject {
         public int id;
 
-        @NodeProperty("display_name")
+        @NodeProperty(value = "display_name", aliases = {"legacy_name"})
         public String name;
 
         public Details child;
+        public UUID uuid;
     }
 
-    @org.sjf4j.annotation.node.NodeObject(readDynamic = false)
+    @NodeObject(readDynamic = false)
     static class StaticOnlyJojo extends JsonObject {
         public int id;
     }
