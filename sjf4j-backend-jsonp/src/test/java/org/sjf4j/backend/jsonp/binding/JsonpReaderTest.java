@@ -83,6 +83,35 @@ class JsonpReaderTest {
     }
 
     @Test
+    void readsIntShortAndByteThroughNativeIntegerConversions() throws Exception {
+        try (JsonpReader reader = reader("[2147483647,-2147483648,32767,-32768,127,-128,1.9]")) {
+            reader.startArray();
+            assertEquals(Integer.MAX_VALUE, reader.readIntValue());
+            assertEquals(Integer.MIN_VALUE, reader.readIntValue());
+            assertEquals(Short.MAX_VALUE, reader.readShortValue());
+            assertEquals(Short.MIN_VALUE, reader.readShortValue());
+            assertEquals(Byte.MAX_VALUE, reader.readByteValue());
+            assertEquals(Byte.MIN_VALUE, reader.readByteValue());
+            assertEquals(1, reader.readIntValue());
+            reader.endArray();
+            reader.endDocument();
+        }
+    }
+
+    @Test
+    void detectsShortAndByteOverflowAfterNativeIntRead() throws Exception {
+        try (JsonpReader reader = reader("[32768,-32769,128,-129,7]")) {
+            reader.startArray();
+            assertThrows(ArithmeticException.class, reader::readShortValue);
+            assertThrows(ArithmeticException.class, reader::readShortValue);
+            assertThrows(ArithmeticException.class, reader::readByteValue);
+            assertThrows(ArithmeticException.class, reader::readByteValue);
+            assertEquals(7, reader.readIntValue());
+            reader.endArray();
+        }
+    }
+
+    @Test
     void preservesRawNodeAndNumberSemantics() throws Exception {
         try (JsonpReader reader = reader(
                 "{\"text\":\"Ada\",\"number\":7,\"large\":123456789012345678901234567890,"
