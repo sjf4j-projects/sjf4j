@@ -7,7 +7,7 @@ import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.node.PropertyInfo;
 
 /** Prepared Jackson 2 property-name metadata. */
-final class Jackson2NameMatcher extends NameMatcher {
+public final class Jackson2NameMatcher extends NameMatcher {
 
     final SerializableString[] serializedNames;
 
@@ -15,7 +15,7 @@ final class Jackson2NameMatcher extends NameMatcher {
         this(writableProperties, null);
     }
 
-    Jackson2NameMatcher(String... names) {
+    public Jackson2NameMatcher(String... names) {
         this(null, names);
     }
 
