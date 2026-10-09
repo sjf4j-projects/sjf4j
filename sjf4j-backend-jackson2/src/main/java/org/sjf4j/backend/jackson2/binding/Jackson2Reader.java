@@ -77,6 +77,11 @@ public final class Jackson2Reader extends StreamingReader {
         return new Jackson2NameMatcher(writableProperties);
     }
 
+    @Override
+    protected NameMatcher createNameMatcher(String[] names) {
+        return new Jackson2NameMatcher(names);
+    }
+
     /* --------------------------------------------------------------
      * Conditional consumption
      * -------------------------------------------------------------- */
@@ -172,7 +177,7 @@ public final class Jackson2Reader extends StreamingReader {
      * The parser stays at FIELD_NAME, so the value remains pending.
      */
     @Override
-    public String unmatchedName() throws IOException {
+    public String currentName() throws IOException {
         return parser.currentName();
     }
 
