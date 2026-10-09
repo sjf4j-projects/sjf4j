@@ -106,6 +106,11 @@ public abstract class StreamingReader implements Closeable {
         return new NameMatcher(writableProperties);
     }
 
+    /** Prepares a matcher for creator parameters and declared properties. */
+    protected NameMatcher createNameMatcher(String[] names) {
+        return new NameMatcher(names);
+    }
+
     /**
      * Prepares this reader to consume one document.
      *
@@ -257,30 +262,22 @@ public abstract class StreamingReader implements Closeable {
      *         {@link NameMatcher#UNKNOWN}, or
      *         {@link NameMatcher#OBJECT_END}
      */
-    private String unmatchedName;
+    private String currentName;
 
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         String name = nextName();
-        if (name == null) {
-            return NameMatcher.OBJECT_END;
-        }
-        int index = matcher.fallback(name);
-        if (index == NameMatcher.UNKNOWN) {
-            unmatchedName = name;
-        }
-        return index;
+        currentName = name;
+        return name == null ? NameMatcher.OBJECT_END : matcher.fallback(name);
     }
 
     /**
-     * Returns the key of the last unmatched object member.
+     * Returns the current member name while its value is pending.
      *
-     * <p>Only defined immediately after {@code nextNameMatch(...)} returns
-     * {@link NameMatcher#UNKNOWN} and before its value is consumed. Native
-     * matcher backends override this to resolve the name from their parser,
+     * <p>Native matchers may retrieve the name directly from their parser,
      * avoiding String materialization for matched properties.</p>
      */
-    public String unmatchedName() throws IOException {
-        return unmatchedName;
+    public String currentName() throws IOException {
+        return currentName;
     }
 
     /**
