@@ -132,20 +132,26 @@ final class ReadEmitter {
                 .append(NAME_MATCHER)
                 .append(' ')
                 .append(matcherFieldName(value))
-                .append(" = ")
-                .append("new ")
+                .append(" = new ")
                 .append(backend.matcherType())
-                .append('(');
+                .append("(new String[]{");
 
         for (int i = 0; i < value.properties().size(); i++) {
-            if (i > 0) {
-                line.append(", ");
-            }
-            line.append(JavaWriter.stringLiteral(
-                    value.properties().get(i).name()));
+            if (i > 0) line.append(", ");
+            line.append(JavaWriter.stringLiteral(value.properties().get(i).name()));
         }
-
-        line.append(");");
+        line.append("}, new String[][]{");
+        for (int i = 0; i < value.properties().size(); i++) {
+            if (i > 0) line.append(", ");
+            line.append('{');
+            String[] aliases = value.properties().get(i).aliases();
+            for (int j = 0; j < aliases.length; j++) {
+                if (j > 0) line.append(", ");
+                line.append(JavaWriter.stringLiteral(aliases[j]));
+            }
+            line.append('}');
+        }
+        line.append("});");
         out.line(line.toString());
     }
 
@@ -290,6 +296,15 @@ final class ReadEmitter {
 
             out.line("break;");
             out.dedent();
+
+            for (String alias : property.aliases()) {
+                out.line("case " + JavaWriter.stringLiteral(alias) + ":");
+                out.indent();
+                out.line(assignment(property.access(), "value",
+                        readExpression(property.value(), "reader")));
+                out.line("break;");
+                out.dedent();
+            }
         }
 
         out.line("default:");
