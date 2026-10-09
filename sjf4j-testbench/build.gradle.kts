@@ -101,16 +101,23 @@ tasks.test {
 }
 
 val coverageProjects = listOf(":sjf4j-core", ":sjf4j-asm", ":sjf4j-schema")
+// Backend tests exercise the core ExternalNode/NodeMapper classes too.
+// Merge their execution data without expanding the measured production-class scope.
+val externalCoverageProjects = listOf(
+    ":sjf4j-backend-jackson2", ":sjf4j-backend-jackson3",
+    ":sjf4j-backend-gson", ":sjf4j-backend-jsonp"
+)
 evaluationDependsOn(":sjf4j-schema")
 val schemaOfficialLatestTest = project(":sjf4j-schema").tasks.named("officialLatestTest")
 val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
+    externalCoverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
     project(":sjf4j-schema").layout.buildDirectory.file("jacoco/officialLatestTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
 tasks.jacocoTestReport {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + schemaOfficialLatestTest)
+    dependsOn((coverageProjects + externalCoverageProjects).map { "$it:test" } + tasks.test + schemaOfficialLatestTest)
     executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
@@ -119,7 +126,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + schemaOfficialLatestTest)
+    dependsOn((coverageProjects + externalCoverageProjects).map { "$it:test" } + tasks.test + schemaOfficialLatestTest)
     executionData(coverageExecFiles)
     violationRules {
         rule {
