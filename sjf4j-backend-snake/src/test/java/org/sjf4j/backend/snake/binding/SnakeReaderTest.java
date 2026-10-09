@@ -219,11 +219,11 @@ class SnakeReaderTest {
 
     @Test
     void skipsMultipleNestedSubtreesAndScalarValues() throws Exception {
-        String yaml = "first: {a: [{b: [1, 2]}, {c: true}], d: null}\\n"
-                + "keep: 7\\n"
-                + "second: [{x: {y: []}}, false]\\n"
-                + "scalar: ignored\\n"
-                + "tail: done\\n";
+        String yaml = "first: {a: [{b: [1, 2]}, {c: true}], d: null}\n"
+                + "keep: 7\n"
+                + "second: [{x: {y: []}}, false]\n"
+                + "scalar: ignored\n"
+                + "tail: done\n";
         try (SnakeReader reader = reader(yaml)) {
             reader.startObject();
             assertEquals("first", reader.nextName());
@@ -254,7 +254,7 @@ class SnakeReaderTest {
     void readsCommentsWhenParserExposesEvents() throws Exception {
         LoaderOptions options = new LoaderOptions().setProcessComments(true);
         SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
-        assertEquals(1, ((Map<?, ?>) binder.readNode("# before\\na: 1 # after\\n", Object.class)).get("a"));
+        assertEquals(1, ((Map<?, ?>) binder.readNode("# before\na: 1 # after\n", Object.class)).get("a"));
     }
 
     @Test
