@@ -48,6 +48,7 @@ import java.math.BigInteger;
 public abstract class StreamingReader implements Closeable {
 
     final Backend backend;
+    private String currentName;
 
     public StreamingReader(Backend backend) {
         this.backend = backend;
@@ -262,8 +263,6 @@ public abstract class StreamingReader implements Closeable {
      *         {@link NameMatcher#UNKNOWN}, or
      *         {@link NameMatcher#OBJECT_END}
      */
-    private String currentName;
-
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         String name = nextName();
         currentName = name;
