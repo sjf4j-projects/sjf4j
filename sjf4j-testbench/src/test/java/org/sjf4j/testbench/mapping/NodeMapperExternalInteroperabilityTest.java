@@ -31,8 +31,8 @@ class NodeMapperExternalInteroperabilityTest {
         assertTrue(j3.get("items").get(1).isNull());
 
         JsonElement gsonAgain = (JsonElement) NodeMapper.convert(j2, JsonElement.class, false);
-        assertEquals(new BigDecimal("0.00120"),
-                new BigDecimal(gsonAgain.getAsJsonObject().get("amount").getAsString()));
+        assertEquals(0, new BigDecimal("0.00120").compareTo(
+                new BigDecimal(gsonAgain.getAsJsonObject().get("amount").getAsString())));
         assertEquals(gson.getAsJsonArray("items"), gsonAgain.getAsJsonObject().getAsJsonArray("items"));
     }
 
