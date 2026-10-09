@@ -186,4 +186,25 @@ class CompiledBinderConformanceTest {
         assertTrue(result.diagnostics().contains("codecName/codecPattern"),
                 result.diagnostics());
     }
+    @Test
+    void unsupportedOneOfTypesAreCompilationErrors() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.OneOf;\n"
+                        + "@OneOf({@OneOf.Mapping(value=Bean.class)})\n"
+                        + "public class Bean { public String name; }\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
+                        + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("@OneOf is not supported"),
+                result.diagnostics());
+    }
+
 }
