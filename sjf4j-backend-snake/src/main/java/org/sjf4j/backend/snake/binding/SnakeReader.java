@@ -5,6 +5,8 @@ import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.util.Asserts;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.events.CommentEvent;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
 import org.yaml.snakeyaml.events.DocumentStartEvent;
@@ -31,6 +33,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 /** StreamingReader backed directly by SnakeYAML parser events. */
 public final class SnakeReader extends StreamingReader {
@@ -46,10 +50,14 @@ public final class SnakeReader extends StreamingReader {
 
     private final Parser parser;
     private final Deque<Scope> scopes = new ArrayDeque<>();
+    private final int nestingDepthLimit;
+    private final boolean rejectDuplicateKeys;
 
-    public SnakeReader(Parser parser) {
+    public SnakeReader(Parser parser, LoaderOptions options) {
         super(Backend.SNAKE);
         this.parser = Asserts.notNull(parser, "parser");
+        this.nestingDepthLimit = options.getNestingDepthLimit();
+        this.rejectDuplicateKeys = !options.isAllowDuplicateKeys();
     }
 
     @Override
@@ -163,8 +171,9 @@ public final class SnakeReader extends StreamingReader {
             throw expected("object start");
         }
         completeParentValue();
+        checkDepth(scopes.size() + 1);
         take();
-        scopes.push(new Scope(true));
+        scopes.push(new Scope(true, rejectDuplicateKeys));
     }
 
     @Override
@@ -180,8 +189,9 @@ public final class SnakeReader extends StreamingReader {
             throw expected("array start");
         }
         completeParentValue();
+        checkDepth(scopes.size() + 1);
         take();
-        scopes.push(new Scope(false));
+        scopes.push(new Scope(false, false));
     }
 
     @Override
@@ -202,7 +212,11 @@ public final class SnakeReader extends StreamingReader {
         }
         ScalarEvent scalar = (ScalarEvent) take();
         scope.expectingName = false;
-        return scalar.getValue();
+        String name = scalar.getValue();
+        if (scope.names != null && !scope.names.add(name)) {
+            throw new IOException("duplicate YAML mapping key: " + name);
+        }
+        return name;
     }
 
     @Override
@@ -360,8 +374,24 @@ public final class SnakeReader extends StreamingReader {
 
     @Override
     public BigDecimal readBigDecimal() throws IOException {
-        Number value = readNumber();
-        return value == null ? null : Numbers.toBigDecimal(value);
+        ScalarEvent scalar = peekScalarValue();
+        Token token = scalarToken(scalar);
+        if (token == Token.NULL) {
+            takeScalarValue();
+            validateNull(scalar.getValue());
+            return null;
+        }
+        if (token != Token.NUMBER) throw expected("number or null", token);
+        String normalized = normalizeDecimal(scalar.getValue());
+        if (normalized == null) throw new IOException("unsupported YAML number: " + scalar.getValue());
+        BigDecimal value;
+        try {
+            value = new BigDecimal(normalized);
+        } catch (NumberFormatException e) {
+            throw new IOException("invalid YAML number: " + scalar.getValue(), e);
+        }
+        takeScalarValue();
+        return value;
     }
 
     @Override
@@ -410,8 +440,9 @@ public final class SnakeReader extends StreamingReader {
                     }
                     frame.expectingName = true;
                 }
+                checkDepth(scopes.size() + frames.size() + 1);
                 take();
-                frames.push(new SkipFrame(event instanceof MappingStartEvent));
+                frames.push(new SkipFrame(event instanceof MappingStartEvent, rejectDuplicateKeys));
                 continue;
             }
             throw expected("value");
@@ -512,7 +543,11 @@ public final class SnakeReader extends StreamingReader {
 
     private Event peek() throws IOException {
         try {
-            return parser.peekEvent();
+            Event event;
+            while ((event = parser.peekEvent()) instanceof CommentEvent) {
+                parser.getEvent();
+            }
+            return event;
         } catch (RuntimeException | StackOverflowError e) {
             throw new IOException("invalid YAML", e);
         }
@@ -520,13 +555,20 @@ public final class SnakeReader extends StreamingReader {
 
     private Event take() throws IOException {
         try {
-            Event event = parser.getEvent();
+            Event event = peek();
+            if (event != null) parser.getEvent();
             if (event == null) {
                 throw new IOException("unexpected end of YAML stream");
             }
             return event;
         } catch (RuntimeException | StackOverflowError e) {
             throw new IOException("invalid YAML", e);
+        }
+    }
+
+    private void checkDepth(int depth) throws IOException {
+        if (depth > nestingDepthLimit) {
+            throw new IOException("YAML nesting depth exceeds limit: " + nestingDepthLimit);
         }
     }
 
@@ -596,6 +638,9 @@ public final class SnakeReader extends StreamingReader {
                 throw new IOException("YAML mapping keys must be strings");
             }
             frame.expectingName = false;
+            if (frame.names != null && !frame.names.add(scalar.getValue())) {
+                throw new IOException("duplicate YAML mapping key: " + scalar.getValue());
+            }
             return;
         }
         if (frame != null && frame.object) {
@@ -701,6 +746,12 @@ public final class SnakeReader extends StreamingReader {
         if (text.charAt(0) == '+') {
             text = text.substring(1);
         }
+        int offset = text.charAt(0) == '-' ? 1 : 0;
+        if (text.length() > offset + 1 && text.charAt(offset) == '0'
+                && isDigit(text.charAt(offset + 1))
+                && text.indexOf('.') < 0 && text.indexOf('e') < 0 && text.indexOf('E') < 0) {
+            return null; // YAML octal must not be interpreted as decimal.
+        }
         return Numbers.isNumeric(text) ? text : null;
     }
 
@@ -710,20 +761,24 @@ public final class SnakeReader extends StreamingReader {
 
     private static final class Scope {
         final boolean object;
+        final Set<String> names;
         boolean expectingName;
 
-        Scope(boolean object) {
+        Scope(boolean object, boolean rejectDuplicates) {
             this.object = object;
+            this.names = object && rejectDuplicates ? new HashSet<String>() : null;
             this.expectingName = object;
         }
     }
 
     private static final class SkipFrame {
         final boolean object;
+        final Set<String> names;
         boolean expectingName;
 
-        SkipFrame(boolean object) {
+        SkipFrame(boolean object, boolean rejectDuplicates) {
             this.object = object;
+            this.names = object && rejectDuplicates ? new HashSet<String>() : null;
             this.expectingName = object;
         }
     }
