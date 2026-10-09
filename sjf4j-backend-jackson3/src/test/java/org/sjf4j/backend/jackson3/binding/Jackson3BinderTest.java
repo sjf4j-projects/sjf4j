@@ -2,6 +2,7 @@ package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -191,6 +192,23 @@ class Jackson3BinderTest {
         assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
         assertThrows(NullPointerException.class, () -> binder.createWriter((JsonGenerator) null));
         assertThrows(NullPointerException.class, () -> binder.createWriter((OutputStream) null));
+    }
+
+    @Test
+    void matchesRecordCreatorArgumentsAndAliasesWithoutFieldMapLookups() {
+        CreatorRecord value = (CreatorRecord) new Jackson3Binder(new JsonFactory()).readNode(
+                "{\"unknown\":{\"nested\":[1,2]},\"age\":7,\"legacy_name\":\"Ada\"}",
+                CreatorRecord.class);
+
+        assertEquals(new CreatorRecord("Ada", 7), value);
+        assertThrows(BindingException.class, () -> new Jackson3Binder(new JsonFactory()).readNode(
+                "{\"name\":\"first\",\"legacy_name\":\"duplicate\",\"age\":7}",
+                CreatorRecord.class));
+    }
+
+    record CreatorRecord(
+            @org.sjf4j.annotation.node.NodeProperty(value = "name", aliases = "legacy_name") String name,
+            int age) {
     }
 
     private static Document document() {
