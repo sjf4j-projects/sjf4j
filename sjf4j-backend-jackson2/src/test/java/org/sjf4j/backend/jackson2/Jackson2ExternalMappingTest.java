@@ -100,4 +100,51 @@ class Jackson2ExternalMappingTest {
         assertSame(child, shallow.get("child"));
         assertNotSame(child, deep.get("child"));
     }
+    @org.sjf4j.annotation.node.OneOf(key = "kind", value = {
+            @org.sjf4j.annotation.node.OneOf.Mapping(value = Dog.class, when = "dog"),
+            @org.sjf4j.annotation.node.OneOf.Mapping(value = Cat.class, when = "cat")
+    })
+    interface Animal {}
+
+    static class Dog implements Animal {
+        public String name;
+        public boolean barks;
+    }
+
+    static class Cat implements Animal {
+        public String name;
+        public int lives;
+    }
+
+    @Test
+    void selectsOneOfDiscriminatorFromNativeNodesAndGenericArray() {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.node.ArrayNode array = mapper.createArrayNode();
+        array.add(mapper.createObjectNode().put("kind", "dog").put("name", "Rex").put("barks", true));
+        array.add(mapper.createObjectNode().put("kind", "cat").put("name", "Mog").put("lives", 9));
+        List<Animal> animals = (List<Animal>) NodeMapper.convert(
+                array, new TypeReference<List<Animal>>() {}.getType(), false);
+        assertEquals("Rex", assertInstanceOf(Dog.class, animals.get(0)).name);
+        assertEquals(9, assertInstanceOf(Cat.class, animals.get(1)).lives);
+        assertThrows(BindingException.class, () -> NodeMapper.convert(
+                mapper.createObjectNode().put("kind", "unknown"), Animal.class, false));
+    }
+
+    @NodeValue
+    static class NullableCode {
+        final String text;
+        NullableCode(String text) { this.text = text; }
+        @ValueToRaw String encode() { return text; }
+        @RawToValue static NullableCode decode(String raw) {
+            return new NullableCode(raw == null ? "<native-null>" : raw);
+        }
+    }
+
+    @Test
+    void decodesNativeNullThroughValueCodecWithoutChangingRootJavaNull() {
+        NullableCode decoded = (NullableCode) NodeMapper.convert(NullNode.instance, NullableCode.class, false);
+        assertEquals("<native-null>", decoded.text);
+        assertNull(NodeMapper.convert(null, JsonNode.class, false));
+    }
+
 }

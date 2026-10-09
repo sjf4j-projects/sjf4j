@@ -37,4 +37,24 @@ class JsonpExternalMappingTest {
         assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonValue.class, false));
         assertNull(NodeMapper.convert(null, JsonValue.class, false));
     }
+    @Test
+    void convertsJsonpContainersToPlainMapListInsteadOfReturningNativeViews() {
+        JsonObject nativeObject = Json.createObjectBuilder()
+                .add("a", 1)
+                .add("items", Json.createArrayBuilder().addNull().add("x"))
+                .build();
+        Map<String, Object> map = (Map<String, Object>) NodeMapper.convert(nativeObject, Map.class, false);
+        assertFalse(map instanceof JsonValue);
+        assertEquals(1, ((Number) map.get("a")).intValue());
+        assertEquals(java.util.Arrays.asList(null, "x"), map.get("items"));
+
+        jakarta.json.JsonArray nativeArray = Json.createArrayBuilder()
+                .add(Json.createObjectBuilder().add("id", 1))
+                .addNull().build();
+        List<?> list = (List<?>) NodeMapper.convert(nativeArray, List.class, false);
+        assertFalse(list instanceof JsonValue);
+        assertEquals(1, ((Number) ((Map<?, ?>) list.get(0)).get("id")).intValue());
+        assertNull(list.get(1));
+    }
+
 }
