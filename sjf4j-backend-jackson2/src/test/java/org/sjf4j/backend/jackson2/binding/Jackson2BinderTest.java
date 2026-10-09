@@ -337,6 +337,36 @@ class Jackson2BinderTest {
         public Animal pet;
     }
 
+    @Test
+    void creatorAndParentScopeOneOfCanDeferUntilDiscriminatorAppears() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        CreatorParentJojo value = (CreatorParentJojo) binder.readNode(
+                "{\"extra\":[1,2],\"pet\":{\"barks\":true},\"kind\":\"dog\",\"name\":\"Ada\"}",
+                CreatorParentJojo.class);
+
+        assertEquals("Ada", value.name());
+        assertTrue(assertInstanceOf(Dog.class, value.pet).barks);
+        assertEquals(2, ((List<?>) value.getNode("extra")).size());
+    }
+
+    static class CreatorParentJojo extends JsonObject {
+        private final String name;
+        public String kind;
+
+        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")},
+                key = "kind", scope = OneOf.Scope.PARENT)
+        public Animal pet;
+
+        @NodeCreator
+        CreatorParentJojo(@NodeProperty("name") String name) {
+            this.name = name;
+        }
+
+        public String name() {
+            return name;
+        }
+    }
+
     static class MixedJojo extends JsonObject {
         public int id;
 
