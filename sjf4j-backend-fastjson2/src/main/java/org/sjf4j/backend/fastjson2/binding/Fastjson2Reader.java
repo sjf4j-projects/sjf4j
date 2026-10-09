@@ -28,11 +28,6 @@ public final class Fastjson2Reader extends StreamingReader {
         this.reader = Asserts.notNull(reader, "reader");
     }
 
-    /** Prepared matcher for generated binders. */
-    public static NameMatcher compiledNameMatcher(String... names) {
-        return new Fastjson2NameMatcher(names);
-    }
-
     @Override
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
         return new Fastjson2NameMatcher(writableProperties);
