@@ -139,21 +139,24 @@ public final class JsonpReader extends StreamingReader {
 
     @Override
     public int readIntValue() throws IOException {
-        BigDecimal value = number();
+        require(JsonParser.Event.VALUE_NUMBER, "number");
+        int value = parser.getInt();
         advance();
-        return Numbers.toInt(value);
+        return value;
     }
 
     @Override
     public short readShortValue() throws IOException {
-        BigDecimal value = number();
+        require(JsonParser.Event.VALUE_NUMBER, "number");
+        int value = parser.getInt();
         advance();
         return Numbers.toShort(value);
     }
 
     @Override
     public byte readByteValue() throws IOException {
-        BigDecimal value = number();
+        require(JsonParser.Event.VALUE_NUMBER, "number");
+        int value = parser.getInt();
         advance();
         return Numbers.toByte(value);
     }
