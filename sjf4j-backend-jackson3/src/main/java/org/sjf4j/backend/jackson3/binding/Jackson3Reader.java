@@ -172,6 +172,11 @@ public final class Jackson3Reader extends StreamingReader {
      * remains pending; the parser is still on PROPERTY_NAME on return.
      */
     @Override
+    public String unmatchedName() throws IOException {
+        return parser.currentName();
+    }
+
+    @Override
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         Jackson3NameMatcher jacksonMatcher = (Jackson3NameMatcher) matcher;
         int match;
