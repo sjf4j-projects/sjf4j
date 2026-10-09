@@ -43,9 +43,9 @@ import java.util.concurrent.TimeUnit;
  * existing {@link RuntimeReadBenchmark} baseline. In contrast, JOJO allocates
  * its dynamic map only if unknown properties occur.</p>
  *
- * <p>Run, for example:
- * {@code java -jar sjf4j-testbench/build/libs/sjf4j-testbench-jmh.jar
- * JojoReadBenchmark -p workload=mixed -prof gc}</p>
+ * <p>Build with {@code ./gradlew :sjf4j-testbench:jmhJar}, then use
+ * the resulting {@code *-jmh.jar} to run {@code JojoReadBenchmark},
+ * optionally passing {@code -p workload=mixed -prof gc}.</p>
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
