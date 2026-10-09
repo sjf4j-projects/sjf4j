@@ -41,6 +41,52 @@ public abstract class DynamicPropertyDeserializationContract {
         Map<?, ?> output = (Map<?, ?>) binder.readNode(binder.writeNodeAsString(value), Map.class);
         assertEquals(1, output.size()); assertEquals(1, ((Number) output.get("keep")).intValue());
     }
+    /** Unknown fields before and after declared fields are bound in a single pass. */
+    @Test void testJojoMixedStaticAndDynamicFields() {
+        MixedRead value = (MixedRead) binding(RuntimeContext.EMPTY).readNode(
+                "{\"before\":{\"nested\":[1,null,true]},\"id\":7,\"name\":\"Ada\",\"after\":null}",
+                MixedRead.class);
+        assertEquals(7, value.id);
+        assertEquals("Ada", value.name);
+        assertEquals(2, value.size() - 2);
+        Map<?, ?> before = (Map<?, ?>) value.getNode("before");
+        assertEquals(1, ((Number) ((java.util.List<?>) before.get("nested")).get(0)).intValue());
+        assertNull(((java.util.List<?>) before.get("nested")).get(1));
+        assertEquals(true, ((java.util.List<?>) before.get("nested")).get(2));
+        assertTrue(value.containsKey("after"));
+        assertNull(value.getNode("after"));
+    }
+
+    /** Known-only JOJOs should not eagerly create dynamic storage. */
+    @Test void testJojoKnownOnlyDoesNotAllocateDynamicMap() {
+        MixedRead value = (MixedRead) binding(RuntimeContext.EMPTY).readNode(
+                "{\"id\":12,\"name\":\"known\"}", MixedRead.class);
+        assertEquals(12, value.id);
+        assertEquals("known", value.name);
+        assertTrue(value.dynamicProperties().isEmpty());
+    }
+
+    /** A declared nested type must be bound as its target type, not left as a raw Map. */
+    @Test void testJojoNestedDeclaredPojo() {
+        NestedRead value = (NestedRead) binding(RuntimeContext.EMPTY).readNode(
+                "{\"child\":{\"id\":5},\"extra\":{\"flag\":true}}", NestedRead.class);
+        assertEquals(5, value.child.id);
+        assertEquals(true, ((Map<?, ?>) value.getNode("extra")).get("flag"));
+    }
+
+    static class MixedRead extends JsonObject {
+        public int id;
+        public String name;
+    }
+
+    static class NestedRead extends JsonObject {
+        public Child child;
+    }
+
+    static class Child {
+        public int id;
+    }
+
     @NodeObject(readDynamic = false) static class StaticRead extends JsonObject { public int id; }
     @NodeObject(writeDynamic = false) static class StaticWrite extends JsonObject { public int id; }
 }
