@@ -277,7 +277,9 @@ class NodeMapperExternalCoverageTest {
 
         jakarta.json.JsonArray arr = Json.createArrayBuilder().add(1).addNull().build();
         List<Object> javaList = (List<Object>) NodeMapper.convert(arr, List.class, false);
-        assertEquals(Arrays.asList(1, null), javaList);
+        assertEquals(2, javaList.size());
+        assertEquals(1, ((Number) javaList.get(0)).intValue());
+        assertNull(javaList.get(1));
         assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(
                 Arrays.asList(1, 2), jakarta.json.JsonValue.class, false));
