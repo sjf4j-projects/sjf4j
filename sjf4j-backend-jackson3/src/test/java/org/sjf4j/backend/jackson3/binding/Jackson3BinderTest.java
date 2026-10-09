@@ -245,6 +245,18 @@ class Jackson3BinderTest {
         assertFalse(result.dynamicProperties().containsKey("legacy_name"));
     }
 
+    @Test
+    void readsPureDynamicJojoWithEmptyStaticMatcher() {
+        PureDynamicJojo jojo = (PureDynamicJojo) new Jackson3Binder(new JsonFactory()).readNode(
+                "{\"escaped\\\"key\":1,\"obj\":{\"ok\":true},\"items\":[2,3]}", PureDynamicJojo.class);
+        assertEquals(1, ((Number) jojo.getNode("escaped\"key")).intValue());
+        assertEquals(true, ((Map<?, ?>) jojo.getNode("obj")).get("ok"));
+        assertEquals(2, ((List<?>) jojo.getNode("items")).size());
+    }
+
+    static class PureDynamicJojo extends org.sjf4j.JsonObject {
+    }
+
     static class MixedJojo extends org.sjf4j.JsonObject {
         public int id;
 
