@@ -36,6 +36,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class NodeMapperExternalCoverageTest {
 
     @Test
+    void convertsTopLevelNodeValueRawAndNullRawIntoExternalValues() {
+        com.fasterxml.jackson.databind.JsonNode text = (com.fasterxml.jackson.databind.JsonNode)
+                NodeMapper.convert(new Encoded("encoded"), com.fasterxml.jackson.databind.JsonNode.class, false);
+        assertEquals("encoded", text.textValue());
+
+        tools.jackson.databind.JsonNode nullValue = (tools.jackson.databind.JsonNode)
+                NodeMapper.convert(new Encoded(null), tools.jackson.databind.JsonNode.class, false);
+        assertTrue(nullValue.isNull());
+
+        JsonElement gson = (JsonElement) NodeMapper.convert(new Encoded("gson"), JsonElement.class, false);
+        assertEquals("gson", gson.getAsString());
+    }
+
+    @Test
     void createsExternalScalarNodesWithStrictRootAndNestedNullSemantics() {
         assertNull(NodeMapper.convert(null, com.fasterxml.jackson.databind.JsonNode.class, false));
         assertNull(NodeMapper.convert(null, tools.jackson.databind.JsonNode.class, false));
