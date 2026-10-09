@@ -454,7 +454,7 @@ final class ReadEmitter {
                         value.type() +
                         ".valueOf(" +
                         reader +
-                        ".readStringValue()))";
+                        ".readString()))";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
