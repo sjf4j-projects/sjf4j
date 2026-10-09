@@ -137,21 +137,16 @@ public final class NodeMapper {
             if (ti.valueInfos != null) {
                 String valueFormat = context.defaultValueFormat(toBoxed);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
-                return toBoxed.isInstance(node)
-                        ? valueInfo.valueCopy(node)
-                        : valueInfo.rawToValue(node);
+                if (toBoxed.isInstance(node)) return valueInfo.valueCopy(node);
+                TypeInfo sourceValueTi = TypeRegistry.registerTypeInfo(node.getClass());
+                Object rawValue = sourceValueTi.externalNode != null
+                        ? _convertToRaw(node, ps, context)
+                        : node;
+                return valueInfo.rawToValue(rawValue);
             }
 
             if (ti.externalNode != null) {
                 return _convertToExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
-            }
-
-            // An external source must be dispatched before Map/List: JSON-P
-            // nodes also implement those standard Java interfaces.
-            TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
-            if (sourceTi.externalNode != null) {
-                return _convertFromExternal(node, sourceTi.externalNode,
-                        toBoxed, toType, deepCopy, ps, context);
             }
 
             if (node instanceof String) {
@@ -172,6 +167,13 @@ public final class NodeMapper {
                 }
                 throw new BindingException("cannot convert node from '" +
                         Types.name(node) + "' to '" + toType + "'", ps);
+            }
+
+            // External nodes precede Map/List: JSON-P implements both.
+            TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
+            if (sourceTi.externalNode != null) {
+                return _convertFromExternal(node, sourceTi.externalNode,
+                        toBoxed, toType, deepCopy, ps, context);
             }
 
             if (node instanceof Map) {
@@ -853,9 +855,10 @@ public final class NodeMapper {
                 }
 
                 if (ti.oneOfInfo == null && argValueInfo != null) {
-                    state.acceptCtorArg(argIdx, argRaw.isInstance(rawValue)
-                            ? argValueInfo.valueCopy(rawValue)
-                            : argValueInfo.rawToValue(rawValue));
+                    Object codecSource = externalSource ? _convertToRaw(rawValue, cps, context) : rawValue;
+                    state.acceptCtorArg(argIdx, argRaw.isInstance(codecSource)
+                            ? argValueInfo.valueCopy(codecSource)
+                            : argValueInfo.rawToValue(codecSource));
                 } else {
                     state.acceptCtorArg(argIdx, _convertSourceChild(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context, externalSource));
                 }
@@ -876,9 +879,10 @@ public final class NodeMapper {
 
                 Object value;
                 if (propertyInfo.oneOfInfo == null && propertyInfo.valueInfo != null) {
-                    value = fieldRaw.isInstance(rawValue)
-                            ? propertyInfo.valueInfo.valueCopy(rawValue)
-                            : propertyInfo.valueInfo.rawToValue(rawValue);
+                    Object codecSource = externalSource ? _convertToRaw(rawValue, cps, context) : rawValue;
+                    value = fieldRaw.isInstance(codecSource)
+                            ? propertyInfo.valueInfo.valueCopy(codecSource)
+                            : propertyInfo.valueInfo.rawToValue(codecSource);
                 } else {
                     value = _convertSourceChild(rawValue, fieldType, fieldRaw, propertyInfo.oneOfInfo, deepCopy, cps, context, externalSource);
                 }

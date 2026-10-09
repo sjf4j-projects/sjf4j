@@ -55,7 +55,8 @@ class Jackson2ExternalMappingTest {
 
         Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(converted, RuntimeContext.EMPTY);
         assertEquals(Arrays.asList("a", null, 2), raw.get("items"));
-        assertEquals(0, ((Number) raw.get("amount")).doubleValue() == 0.0012 ? 0 : 1);
+        assertEquals(0, new BigDecimal("0.00120")
+                .compareTo(new BigDecimal(raw.get("amount").toString())));
         assertSame(NullNode.instance, NodeMapper.convert(null, JsonNode.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(data, TextNode.class, false));
     }

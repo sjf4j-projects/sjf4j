@@ -347,6 +347,9 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
         if (value instanceof Float) return JsonNodeFactory.instance.numberNode((Float) value);
         if (value instanceof Short) return JsonNodeFactory.instance.numberNode((Short) value);
         if (value instanceof Byte) return JsonNodeFactory.instance.numberNode((Byte) value);
+        if (value instanceof Number) {
+            return JsonNodeFactory.instance.numberNode(new java.math.BigDecimal(value.toString()));
+        }
         throw new NodeException("unsupported Java value for Jackson 3 node: '" + Types.name(value) + "'");
     }
 
