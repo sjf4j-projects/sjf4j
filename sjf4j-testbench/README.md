@@ -1,5 +1,43 @@
 # SJF4J Testbench
 
+## JOJO read benchmarks (JVM)
+
+\`JojoReadBenchmark\` isolates the cost of binding a \`JsonObject\` subclass versus
+a plain POJO (unknown names skipped) and native Jackson/Fastjson2 binding with
+an extra-properties map (unknown names retained).
+
+| Workload | Declared fields | Unknown fields | Purpose |
+| --- | ---: | ---: | --- |
+| \`static\` | 16 | 0 | Declared-property matching, setters, and JOJO construction overhead |
+| \`mixed\` | 8 | 8 | Alternating declared/dynamic name matching and value reading |
+| \`dynamic\` | 2 | 14 | Dynamic map fallback, including nested object/array values |
+
+The three model types have **identical declared fields**. Each measurement
+uses identical prebuilt JSON for all backends; JMH trial setup verifies that
+JOJO and native-extra retain the same dynamic keys. The plain POJO intentionally
+skips unknown keys, so **only the static workload is semantically equivalent**
+to JOJO for that baseline. The native-extra model also allocates its extra map
+eagerly, whereas JOJO creates its dynamic map on demand.
+
+Build the JMH jar and run all three workloads:
+
+\`\`\`bash
+./gradlew :sjf4j-testbench:jmhJar
+java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+  '.*JojoReadBenchmark.*' -prof gc
+\`\`\`
+
+For a focused Fastjson2 comparison:
+
+\`\`\`bash
+java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+  '.*JojoReadBenchmark.*fastjson2.*' -p workload=mixed -prof gc
+\`\`\`
+
+The benchmarks use three forks by default. Compare both latency (\`us/op\`)
+and allocation (\`gc.alloc.rate.norm\`, bytes/op); JMH warmup and measurement
+exclude JSON fixture creation and validation.
+
 ## GraalVM Native Image Benchmarking
 
 Native Image benchmarks use JMH. During the build, the target benchmark is first run with the GraalVM tracing agent to generate runtime configuration for reflection, resources, and other features. A native executable is then built from that configuration. Use the same benchmark regular expression for both build and execution.
