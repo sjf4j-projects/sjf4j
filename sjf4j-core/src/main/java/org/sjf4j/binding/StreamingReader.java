@@ -48,6 +48,7 @@ import java.math.BigInteger;
 public abstract class StreamingReader implements Closeable {
 
     final Backend backend;
+    private String currentName;
 
     public StreamingReader(Backend backend) {
         this.backend = backend;
@@ -104,6 +105,11 @@ public abstract class StreamingReader implements Closeable {
 
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
         return new NameMatcher(writableProperties);
+    }
+
+    /** Prepares a matcher for creator parameters and declared properties. */
+    protected NameMatcher createNameMatcher(String[] names) {
+        return new NameMatcher(names);
     }
 
     /**
@@ -259,7 +265,18 @@ public abstract class StreamingReader implements Closeable {
      */
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         String name = nextName();
+        currentName = name;
         return name == null ? NameMatcher.OBJECT_END : matcher.fallback(name);
+    }
+
+    /**
+     * Returns the current member name while its value is pending.
+     *
+     * <p>Native matchers may retrieve the name directly from their parser,
+     * avoiding String materialization for matched properties.</p>
+     */
+    public String currentName() throws IOException {
+        return currentName;
     }
 
     /**

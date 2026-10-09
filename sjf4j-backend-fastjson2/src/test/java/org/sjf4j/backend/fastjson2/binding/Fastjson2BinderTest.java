@@ -179,6 +179,56 @@ class Fastjson2BinderTest {
         assertEquals("null", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
     }
 
+    @Test
+    void jojoUsesHashedMatcherForDeclaredAndUnknownProperties() {
+        Fastjson2Binder binder = new Fastjson2Binder();
+        MixedJojo result = (MixedJojo) binder.readNode(
+                "{\"unknown_before\":{\"flag\":true},\"legacy_name\":\"Ada\","
+                        + "\"id\":17,\"unknown_after\":[1,null]}", MixedJojo.class);
+
+        assertEquals(17, result.id);
+        assertEquals("Ada", result.name);
+        assertEquals(true, ((Map<?, ?>) result.getNode("unknown_before")).get("flag"));
+        assertEquals(2, ((List<?>) result.getNode("unknown_after")).size());
+        assertFalse(result.dynamicProperties().containsKey("legacy_name"));
+    }
+
+    @Test
+    void readsPureDynamicJojoWithEmptyStaticMatcher() {
+        PureDynamicJojo jojo = (PureDynamicJojo) new Fastjson2Binder().readNode(
+                "{\"escaped\\\"key\":1,\"obj\":{\"ok\":true},\"items\":[2,3]}", PureDynamicJojo.class);
+        assertEquals(1, ((Number) jojo.getNode("escaped\"key")).intValue());
+        assertEquals(true, ((Map<?, ?>) jojo.getNode("obj")).get("ok"));
+        assertEquals(2, ((List<?>) jojo.getNode("items")).size());
+    }
+
+    static class PureDynamicJojo extends org.sjf4j.JsonObject {
+    }
+
+    static class MixedJojo extends org.sjf4j.JsonObject {
+        public int id;
+
+        @NodeProperty(value = "name", aliases = "legacy_name")
+        public String name;
+    }
+
+    @Test
+    void matchesRecordCreatorArgumentsAndAliasesWithoutFieldMapLookups() {
+        CreatorRecord value = (CreatorRecord) new Fastjson2Binder().readNode(
+                "{\"unknown\":{\"nested\":[1,2]},\"age\":7,\"legacy_name\":\"Ada\"}",
+                CreatorRecord.class);
+
+        assertEquals(new CreatorRecord("Ada", 7), value);
+        assertThrows(BindingException.class, () -> new Fastjson2Binder().readNode(
+                "{\"name\":\"first\",\"legacy_name\":\"duplicate\",\"age\":7}",
+                CreatorRecord.class));
+    }
+
+    record CreatorRecord(
+            @org.sjf4j.annotation.node.NodeProperty(value = "name", aliases = "legacy_name") String name,
+            int age) {
+    }
+
     static class TrackingWriter extends StringWriter {
         boolean closed;
 

@@ -396,22 +396,7 @@ public final class StreamingIO {
                 throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
                         type.getTypeName() + "'");
             }
-            return readParentOneOfPojo(reader, type, boxed, pojoInfo, context);
-        }
-
-        /*
-         * Dynamic objects remain a raw fallback because property names
-         * themselves are data.
-         *
-         * Do not pre-consume START_OBJECT here: readRawNode() owns the
-         * complete node.
-         */
-        if (pojoInfo.isJojo) {
-            Object raw = reader.readRawNode();
-            if (raw == null) {
-                return null;
-            }
-            return NodeMapper.convert(raw, type, false, context);
+            return readPojoWithCreator(reader, type, boxed, pojoInfo, context);
         }
 
         /*
@@ -429,12 +414,34 @@ public final class StreamingIO {
         PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
         NameMatcher matcher = cacheNameMatcher(reader, pojoInfo);
 
+        // Both POJO and JOJO use the same cached name matcher and property
+        // readers. Only a JOJO with dynamic reads enabled needs unknown keys.
+        boolean retainDynamic = pojoInfo.isJojo && pojoInfo.readDynamic;
+        Map<String, Object> dynamic = null;
+
         int expectedIndex = 0;
         int index;
         while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
             if (index >= 0) {
                 propertyReaders[index].read(reader, pojo, type, boxed, context);
                 expectedIndex = index + 1;
+            } else if (retainDynamic) {
+                String name = reader.currentName();
+                // Read-only declared members are not present in the writable
+                // matcher. They must not silently become dynamic properties.
+                if (pojoInfo.propertyLookup.containsKey(name)) {
+                    reader.skipNode();
+                    continue;
+                }
+                if (dynamic == null) {
+                    JsonObject jojo = (JsonObject) pojo;
+                    dynamic = InternalAccess.dynamicProperties(jojo);
+                    if (dynamic == null) {
+                        dynamic = new LinkedHashMap<>();
+                        InternalAccess.dynamicProperties(jojo, dynamic);
+                    }
+                }
+                dynamic.put(name, reader.readRawNode());
             } else {
                 reader.skipNode();
             }
@@ -445,9 +452,10 @@ public final class StreamingIO {
 
 
     /**
-     * Reads a POJO whose object start has already been consumed.
+     * Reads a POJO with creator arguments or deferred parent-scope resolution.
+     * The object start has already been consumed.
      */
-    public static Object readParentOneOfPojo(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+    public static Object readPojoWithCreator(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                              RuntimeContext context) throws IOException {
 
         CreatorInfo creator = pojoInfo.creatorInfo;
@@ -458,13 +466,34 @@ public final class StreamingIO {
         String parentKey = null;
         Object parentValue = UNSET;
 
-        String name;
-        while ((name = reader.nextName()) != null) {
+        // The creator matcher covers constructor names, aliases, and all
+        // declared properties, including read-only ones. Match before asking
+        // the backend to materialize any field name.
+        NameMatcher matcher = cacheCreatorNameMatcher(reader, pojoInfo);
+        int expectedIndex = 0;
+        int index;
+        while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
+            if (index == NameMatcher.UNKNOWN) {
+                if (pojoInfo.isJojo && pojoInfo.readDynamic) {
+                    String name = reader.currentName();
+                    Object value = reader.readRawNode();
+                    state.acceptDynamic(name, value);
+                    if (parentKey != null && parentKey.equals(name)) {
+                        parentValue = value;
+                    }
+                } else {
+                    reader.skipNode();
+                }
+                continue;
+            }
+
+            expectedIndex = index + 1;
+            String name = matcher.name(index);
 
             /*
              * Creator arguments have priority over ordinary properties.
              */
-            int argIndex = creator.getArgIndexOrAlias(name);
+            int argIndex = pojoInfo.creatorMatchArgs[index];
             if (argIndex >= 0) {
                 Type argType = Types.resolveMemberType(type, boxed, creator.argTypes[argIndex]);
                 Class<?> argBoxed = Types.rawBox(argType);
@@ -480,19 +509,8 @@ public final class StreamingIO {
                 continue;
             }
 
-            /*
-             * Unknown property.
-             */
-            PropertyInfo property = pojoInfo.propertyLookup.get(name);
+            PropertyInfo property = pojoInfo.creatorMatchProperties[index];
             if (property == null) {
-                if (pojoInfo.isJojo && pojoInfo.readDynamic) {
-                    Object value = reader.readRawNode();
-                    state.acceptDynamic(name, value);
-                    if (parentKey != null && parentKey.equals(name)) {
-                        parentValue = value;
-                    }
-                    continue;
-                }
                 reader.skipNode();
                 continue;
             }
@@ -553,11 +571,15 @@ public final class StreamingIO {
                 continue;
             }
 
-            Object value = readProperty(reader, property, type, boxed, context);
-            if (state.isCreated()) {
-                property.invokeSetter(state.pojo(), value);
+            if (state.isCreated() && property.reader != null) {
+                property.reader.read(reader, state.pojo(), type, boxed, context);
             } else {
-                state.bufferProperty(property, value);
+                Object value = readProperty(reader, property, type, boxed, context);
+                if (state.isCreated()) {
+                    property.invokeSetter(state.pojo(), value);
+                } else {
+                    state.bufferProperty(property, value);
+                }
             }
         }
 
@@ -942,6 +964,16 @@ public final class StreamingIO {
         if (matcher == null) {
             matcher = reader.createNameMatcher(pojoInfo.writableProperties);
             cache.nameMatcher = matcher;
+        }
+        return matcher;
+    }
+
+    private static NameMatcher cacheCreatorNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
+        BackendCache cache = pojoInfo.backendCache(reader.backend);
+        NameMatcher matcher = cache.creatorNameMatcher;
+        if (matcher == null) {
+            matcher = reader.createNameMatcher(pojoInfo.creatorMatchNames);
+            cache.creatorNameMatcher = matcher;
         }
         return matcher;
     }

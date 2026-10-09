@@ -78,6 +78,11 @@ public final class Jackson3Reader extends StreamingReader {
         return new Jackson3NameMatcher(writableProperties);
     }
 
+    @Override
+    protected NameMatcher createNameMatcher(String[] names) {
+        return new Jackson3NameMatcher(names);
+    }
+
     /* --------------------------------------------------------------
      * Conditional consumption
      * -------------------------------------------------------------- */
@@ -171,6 +176,11 @@ public final class Jackson3Reader extends StreamingReader {
      * Uses Jackson 3's native multi-name matcher. The matched property value
      * remains pending; the parser is still on PROPERTY_NAME on return.
      */
+    @Override
+    public String currentName() throws IOException {
+        return parser.currentName();
+    }
+
     @Override
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         Jackson3NameMatcher jacksonMatcher = (Jackson3NameMatcher) matcher;
