@@ -7,6 +7,8 @@ import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeRegistry;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.DumperOptions;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -130,7 +132,10 @@ class SnakeReaderTest {
     @Test
     void skipsAndReadsDeeplyNestedNodesWithoutRecursion() throws Exception {
         String nested = nestedContainers(2_000);
-        try (SnakeReader reader = reader("unknown: " + nested + "\nid: 7\n")) {
+        LoaderOptions options = new LoaderOptions();
+        options.setNestingDepthLimit(2_100);
+        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
+        try (SnakeReader reader = reader(binder, "unknown: " + nested + "\nid: 7\n")) {
             reader.startObject();
             assertEquals("unknown", reader.nextName());
             reader.skipNode();
@@ -140,7 +145,7 @@ class SnakeReaderTest {
             reader.endDocument();
         }
 
-        try (SnakeReader reader = reader(nested)) {
+        try (SnakeReader reader = reader(binder, nested)) {
             Object value = reader.readRawNode();
             for (int i = 0; i < 2_000; i++) {
                 if ((i & 1) == 0) {
@@ -190,6 +195,55 @@ class SnakeReaderTest {
         assertRejected("&value [one]");
     }
 
+    @Test
+    void honorsDepthLimitForNormalAndSkippedContainers() throws Exception {
+        LoaderOptions options = new LoaderOptions();
+        options.setNestingDepthLimit(2);
+        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
+        assertThrows(IOException.class, () -> binder.readNode("[[[1]]]", Object.class));
+        try (SnakeReader reader = reader(binder, "key: [[[1]]]")) {
+            reader.startObject();
+            reader.nextName();
+            assertThrows(IOException.class, reader::skipNode);
+        }
+    }
+
+    @Test
+    void rejectsDuplicateKeysWhenConfiguredIncludingSkippedObjects() throws Exception {
+        LoaderOptions options = new LoaderOptions();
+        options.setAllowDuplicateKeys(false);
+        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
+        assertThrows(RuntimeException.class, () -> binder.readNode("a: 1\\na: 2\\n", Object.class));
+        try (SnakeReader reader = reader(binder, "key: {a: 1, a: 2}")) {
+            reader.startObject();
+            reader.nextName();
+            assertThrows(IOException.class, reader::skipNode);
+        }
+    }
+
+    @Test
+    void readsCommentsWhenParserExposesEvents() throws Exception {
+        LoaderOptions options = new LoaderOptions().setProcessComments(true);
+        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
+        assertEquals(1, ((Map<?, ?>) binder.readNode("# before\\na: 1 # after\\n", Object.class)).get("a"));
+    }
+
+    @Test
+    void readsBigDecimalWithoutRoundingAndRejectsOctal() throws Exception {
+        try (SnakeReader reader = reader("[0.12345678901234567890123456789, 1e-10000]")) {
+            reader.startArray();
+            assertEquals(new BigDecimal("0.12345678901234567890123456789"), reader.readBigDecimal());
+            assertEquals(new BigDecimal("1e-10000"), reader.readBigDecimal());
+            reader.endArray();
+            reader.endDocument();
+        }
+        for (String yaml : new String[]{"010", "0_10", "!!int 010"}) {
+            try (SnakeReader reader = reader(yaml)) {
+                assertThrows(IOException.class, reader::readNumber);
+            }
+        }
+    }
+
     private static void assertRejected(String yaml) throws Exception {
         try (SnakeReader reader = reader(yaml)) {
             assertThrows(IOException.class, reader::peekToken);
@@ -213,7 +267,11 @@ class SnakeReaderTest {
     }
 
     private static SnakeReader reader(String yaml) throws IOException {
-        SnakeReader reader = new SnakeBinder().createReader(yaml);
+        return reader(new SnakeBinder(), yaml);
+    }
+
+    private static SnakeReader reader(SnakeBinder binder, String yaml) throws IOException {
+        SnakeReader reader = binder.createReader(yaml);
         reader.startDocument();
         return reader;
     }
