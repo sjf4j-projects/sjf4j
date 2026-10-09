@@ -233,6 +233,11 @@ public final class NodeMapper {
         if (toBoxed.isInstance(node)) {
             return deepCopy ? target.valueCopy(node) : node;
         }
+        // Raw scalar inputs are the common ValueCodec path. Avoid metadata
+        // lookups for them; ValueInfo enforces the declared raw type.
+        if (node instanceof String || node instanceof Number || node instanceof Boolean) {
+            return target.rawToValue(node);
+        }
 
         TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
         Object raw = node;
