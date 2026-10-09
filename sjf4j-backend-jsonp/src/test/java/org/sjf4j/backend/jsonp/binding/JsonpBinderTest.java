@@ -96,7 +96,7 @@ class JsonpBinderTest {
     @Test
     void readNodeDoesNotCloseCallerOwnedReader() {
         final boolean[] closed = {false};
-        StringReader input = new StringReader("{\\"id\\":7}") {
+        StringReader input = new StringReader("{\"id\":7}") {
             @Override
             public void close() {
                 closed[0] = true;
