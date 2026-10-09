@@ -283,6 +283,9 @@ class NodeMapperExternalCoverageTest {
         assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(
                 Arrays.asList(1, 2), jakarta.json.JsonValue.class, false));
+        // JSON-P deliberately omits native value-node construction as well.
+        assertThrows(BindingException.class, () -> NodeMapper.convert(
+                "value", jakarta.json.JsonValue.class, false));
     }
 
     @Test
