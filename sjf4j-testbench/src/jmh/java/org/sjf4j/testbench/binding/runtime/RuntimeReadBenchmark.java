@@ -24,11 +24,14 @@ import org.openjdk.jmh.infra.Blackhole;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.model.UserExtra;
 import org.sjf4j.testbench.model.UserJojo;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -38,16 +41,16 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 20, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class RuntimeReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
-//        Main.main(new String[]{"ReadBenchmark.json_fastjson2", "ReadBenchmark.json_jackson2"});
+//        Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
+        Main.main(new String[]{RuntimeReadBenchmark.class.getName() + ".*_jackson2"});
     }
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
@@ -78,34 +81,29 @@ public class RuntimeReadBenchmark {
             "}\n";
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
-    private static final ObjectMapper JACKSON2_BLACKBIRD = createBlackbirdJackson2();
-    private static final Gson GSON = createNativeGson();
-    private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT = createFastjson2NativeContext();
+    private static final ObjectMapper JACKSON2_BLACKBIRD = new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Jackson2Binder JACKSON2_BINDER = new Jackson2Binder();
+
+    private static final JsonMapper JACKSON3 = new JsonMapper();
+    private static final JsonMapper JACKSON3_BLACKBIRD = JsonMapper.builder()
+            .addModule(new tools.jackson.module.blackbird.BlackbirdModule()).build();
+    private static final Jackson3Binder JACKSON3_BINDER = new Jackson3Binder();
+
+    private static final Gson GSON = new GsonBuilder().create();
     private static final GsonBinder GSON_BINDER = new GsonBinder();
+
+    private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT =
+            JSONFactory.createReadContext(new ObjectReaderProvider(), JSONReader.Feature.UseDoubleForDecimals);
     private static final Fastjson2Binder FASTJSON2_BINDER = new Fastjson2Binder();
-    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
+
     private static final JsonpBinder JSONP_BINDER = new JsonpBinder();
+
+    private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
 
     static {
         JACKSON2.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
-    private static ObjectMapper createBlackbirdJackson2() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        mapper.registerModule(new BlackbirdModule());
-        return mapper;
-    }
-
-    private static Gson createNativeGson() {
-        GsonBuilder builder = new GsonBuilder();
-        builder.setFieldNamingStrategy(field -> {
-            String name = ReflectUtil.getExplicitName(field);
-            return name != null ? name : field.getName();
-        });
-        return builder.create();
-    }
 
     private static JSONReader.Context createFastjson2NativeContext() {
         ObjectReaderProvider provider = new ObjectReaderProvider();
@@ -113,69 +111,77 @@ public class RuntimeReadBenchmark {
     }
 
 
-    // ----- Pure parser baselines (no binding, no materialized result) -----
-    @Benchmark
-    public void parse_jackson2_native(Blackhole bh) throws IOException {
-        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
-            com.fasterxml.jackson.core.JsonToken token;
-            while ((token = parser.nextToken()) != null) {
-                bh.consume(token);
-                if (token == com.fasterxml.jackson.core.JsonToken.FIELD_NAME || token.isScalarValue()) {
-                    bh.consume(parser.getText());
-                }
-            }
-        }
-    }
-
-    @Benchmark
-    public void parse_jsonp_native(Blackhole bh) {
-        try (jakarta.json.stream.JsonParser parser = Json.createParser(new StringReader(JSON_DATA2))) {
-            while (parser.hasNext()) {
-                jakarta.json.stream.JsonParser.Event event = parser.next();
-                bh.consume(event);
-                switch (event) {
-                    case KEY_NAME:
-                    case VALUE_STRING:
-                    case VALUE_NUMBER:
-                        bh.consume(parser.getString());
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-    }
-
-
     // ----- Jackson2 baselines -----
     @Benchmark
-    public Object json_jackson2_pojo_native() throws IOException {
+    public Object pojo_jackson2_native() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_blackbird() throws IOException {
+    public Object pojo_jackson2_blackbird() throws IOException {
         return JACKSON2_BLACKBIRD.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_jojo_native() throws IOException {
-        return JACKSON2.readValue(JSON_DATA2, UserJojo.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_map_native() throws IOException {
+    public Object map_jackson2_native() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_runtime() throws IOException {
+    public Object pojo_jackson2_runtime() throws IOException {
         return JACKSON2_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_map_runtime() throws IOException {
+    public Object map_jackson2_runtime() throws IOException {
         return JACKSON2_BINDER.readNode(JSON_DATA2, Map.class);
+    }
+
+    @Benchmark
+    public Object jojo_jackson2_native() throws IOException {
+        return JACKSON2.readValue(JSON_DATA2, UserExtra.class);
+    }
+
+    @Benchmark
+    public Object jojo_jackson2_runtime() throws IOException {
+        return JACKSON2_BINDER.readNode(JSON_DATA2, UserJojo.class);
+    }
+
+
+    // ----- Jackson3 baselines -----
+    @Benchmark
+    public Object pojo_jackson3_native() throws IOException {
+        return JACKSON3.readValue(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object pojo_jackson3_blackbird() throws IOException {
+        return JACKSON3_BLACKBIRD.readValue(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object map_jackson3_native() throws IOException {
+        return JACKSON3.readValue(JSON_DATA2, Map.class);
+    }
+
+    @Benchmark
+    public Object pojo_jackson3_runtime() throws IOException {
+        return JACKSON3_BINDER.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object map_jackson3_runtime() throws IOException {
+        return JACKSON3_BINDER.readNode(JSON_DATA2, Map.class);
+    }
+
+    @Benchmark
+    public Object jojo_jackson3_native() throws IOException {
+        return JACKSON3.readValue(JSON_DATA2, UserExtra.class);
+    }
+
+    @Benchmark
+    public Object jojo_jackson3_runtime() throws IOException {
+        return JACKSON3_BINDER.readNode(JSON_DATA2, UserJojo.class);
     }
 
 
