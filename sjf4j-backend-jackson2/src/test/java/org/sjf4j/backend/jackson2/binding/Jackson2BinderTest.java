@@ -211,6 +211,57 @@ class Jackson2BinderTest {
         assertThrows(NullPointerException.class, () -> binder.createWriter((OutputStream) null));
     }
 
+    @Test
+    void streamsJojoDeclaredAndDynamicMembersWithoutIntermediateObjectConversion() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        String json = "{\"extraBefore\":{\"nested\":[1,true]},\"display_name\":\"Ada\","
+                + "\"id\":7,\"child\":{\"active\":true},\"extraAfter\":null}";
+
+        MixedJojo jojo = (MixedJojo) binder.readNode(json, MixedJojo.class);
+
+        assertEquals("Ada", jojo.name);
+        assertEquals(7, jojo.id);
+        assertTrue(jojo.child.active);
+        Map<?, ?> nested = assertInstanceOf(Map.class, jojo.getNode("extraBefore"));
+        assertEquals(1, ((Number) ((List<?>) nested.get("nested")).get(0)).intValue());
+        assertEquals(true, ((List<?>) nested.get("nested")).get(1));
+        assertTrue(jojo.containsKey("extraAfter"));
+        assertNull(jojo.getNode("extraAfter"));
+        assertEquals(2, jojo.dynamicProperties().size());
+
+        // A nested read must leave the parent's parser cursor on the next member.
+        MixedJojo second = (MixedJojo) binder.readNode(
+                "{\"child\":{\"active\":false},\"id\":8,\"extra\":[1,2]}", MixedJojo.class);
+        assertEquals(8, second.id);
+        assertFalse(second.child.active);
+        assertEquals(2, ((List<?>) second.getNode("extra")).size());
+    }
+
+    @Test
+    void jojoStreamingHonorsDisabledDynamicReadsAndNullRoot() {
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        StaticOnlyJojo result = (StaticOnlyJojo) binder.readNode(
+                "{\"unknown\":{\"nested\":[1,2]},\"id\":42}", StaticOnlyJojo.class);
+
+        assertEquals(42, result.id);
+        assertTrue(result.dynamicProperties().isEmpty());
+        assertNull(binder.readNode("null", MixedJojo.class));
+    }
+
+    static class MixedJojo extends JsonObject {
+        public int id;
+
+        @NodeProperty("display_name")
+        public String name;
+
+        public Details child;
+    }
+
+    @org.sjf4j.annotation.node.NodeObject(readDynamic = false)
+    static class StaticOnlyJojo extends JsonObject {
+        public int id;
+    }
+
     private static Document document() {
         Map<String, Details> related = new LinkedHashMap<>();
         related.put("first", new Details(false));
