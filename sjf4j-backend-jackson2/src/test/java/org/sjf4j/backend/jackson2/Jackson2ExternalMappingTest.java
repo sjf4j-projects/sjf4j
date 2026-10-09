@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.mapping.NodeMapper;
@@ -59,6 +62,32 @@ class Jackson2ExternalMappingTest {
                 .compareTo(new BigDecimal(raw.get("amount").toString())));
         assertSame(NullNode.instance, NodeMapper.convert(null, JsonNode.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(data, TextNode.class, false));
+    }
+
+    @NodeValue
+    static class Code {
+        final String text;
+        Code(String text) { this.text = text; }
+        @ValueToRaw String encode() { return text; }
+        @RawToValue static Code decode(String text) { return new Code(text); }
+    }
+
+    static class Holder {
+        public Code code;
+    }
+
+    @Test
+    void convertsValueCodecsThroughExternalProperties() {
+        ObjectNode source = new com.fasterxml.jackson.databind.ObjectMapper()
+                .createObjectNode().put("code", "hello");
+        Holder holder = (Holder) NodeMapper.convert(source, Holder.class, false);
+        assertEquals("hello", holder.code.text);
+        assertEquals("hello", ((JsonNode) NodeMapper.convert(holder, JsonNode.class, false))
+                .get("code").textValue());
+
+        Code direct = (Code) NodeMapper.convert(
+                com.fasterxml.jackson.databind.node.TextNode.valueOf("world"), Code.class, false);
+        assertEquals("world", direct.text);
     }
 
     @Test
