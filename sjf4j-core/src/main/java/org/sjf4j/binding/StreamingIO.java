@@ -396,7 +396,7 @@ public final class StreamingIO {
                 throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
                         type.getTypeName() + "'");
             }
-            return readParentOneOfPojo(reader, type, boxed, pojoInfo, context);
+            return readPojoWithCreator(reader, type, boxed, pojoInfo, context);
         }
 
         /*
@@ -452,9 +452,10 @@ public final class StreamingIO {
 
 
     /**
-     * Reads a POJO whose object start has already been consumed.
+     * Reads a POJO with creator arguments or deferred parent-scope resolution.
+     * The object start has already been consumed.
      */
-    public static Object readParentOneOfPojo(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+    public static Object readPojoWithCreator(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                              RuntimeContext context) throws IOException {
 
         CreatorInfo creator = pojoInfo.creatorInfo;
