@@ -348,36 +348,19 @@ public final class NodeMapper {
                     result = target.createValueNode(sourceExternal.toNumber(node));
                 } else if (sourceExternal != null && shape == JsonType.BOOLEAN) {
                     result = target.createValueNode(sourceExternal.toBoolean(node));
-                } else if (sourceExternal != null && shape == JsonType.OBJECT) {
-                    Object out = target.createObjectNode(toBoxed);
-                    for (Map.Entry<String, Object> entry : sourceExternal.entrySetInObject(node)) {
-                        PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                        target.putInObject(out, entry.getKey(), _convertToExternal(
-                                entry.getValue(), target.nodeType(), target, deepCopy, cps, context));
-                    }
-                    result = out;
+                } else if ((sourceExternal != null && shape == JsonType.OBJECT)
+                        || node instanceof Map || node instanceof JsonObject
+                        || sourceTi.pojoInfo != null) {
+                    // Construction is an external representation concern. Immutable
+                    // backends may build the entire object without exposing a
+                    // mutable container or requiring a temporary Map tree.
+                    result = target.createObjectNode(toBoxed, node, context);
                 } else if (sourceExternal != null && shape == JsonType.ARRAY) {
                     Object out = target.createArrayNode(toBoxed);
                     int len = sourceExternal.sizeInArray(node);
                     for (int i = 0; i < len; i++) {
                         target.addInArray(out, _convertToExternal(sourceExternal.getInArray(node, i),
                                 target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
-                    }
-                    result = out;
-                } else if (node instanceof Map) {
-                    Map<String, Object> map = (Map<String, Object>) node;
-                    Object out = target.createObjectNode(toBoxed);
-                    for (Map.Entry<String, Object> entry : map.entrySet()) {
-                        target.putInObject(out, entry.getKey(), _convertToExternal(
-                                entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
-                    }
-                    result = out;
-                } else if (node instanceof JsonObject && node.getClass() == JsonObject.class) {
-                    JsonObject jo = (JsonObject) node;
-                    Object out = target.createObjectNode(toBoxed);
-                    for (Map.Entry<String, Object> entry : jo.entrySet()) {
-                        target.putInObject(out, entry.getKey(), _convertToExternal(
-                                entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
                     }
                     result = out;
                 } else if (node instanceof List || node instanceof JsonArray
@@ -406,28 +389,6 @@ public final class NodeMapper {
                         for (Object item : (Set<?>) node) {
                             target.addInArray(out, _convertToExternal(
                                     item, target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i++), context));
-                        }
-                    }
-                    result = out;
-                } else if (sourceTi.pojoInfo != null) {
-                    PojoInfo pi = sourceTi.pojoInfo;
-                    Object out = target.createObjectNode(toBoxed);
-                    for (PropertyInfo property : pi.readableProperties) {
-                        Object value = property.invokeGetter(node);
-                        if (value != null && property.valueInfo != null) {
-                            value = property.valueInfo.valueToRaw(value);
-                        }
-                        target.putInObject(out, property.name, _convertToExternal(
-                                value, target.nodeType(), target, deepCopy, new PathSegment.Name(ps, property.name), context));
-                    }
-                    if (pi.isJojo && pi.writeDynamic) {
-                        Map<String, Object> dynamic = InternalAccess.dynamicProperties((JsonObject) node);
-                        // JOJO dynamic storage is allocated only after a dynamic entry is written.
-                        if (dynamic != null) {
-                            for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
-                                target.putInObject(out, entry.getKey(), _convertToExternal(
-                                        entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
-                            }
                         }
                     }
                     result = out;
@@ -1216,19 +1177,13 @@ public final class NodeMapper {
                                                      boolean deepCopy,
                                                      PathSegment ps,
                                                      RuntimeContext context) {
-        Object[] sourceValues = new Object[sourceInfo.readableProperties.length];
-
-        int sourceIndex = 0;
-        for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
-            sourceValues[sourceIndex++] = propertyInfo.invokeGetter(source);
-        }
-
         CreatorInfo ci = targetInfo.creatorInfo;
         CreatorState state = new CreatorState(ci);
 
-        sourceIndex = 0;
+        // Read source properties only when they are consumed. In particular,
+        // do not allocate a snapshot array for every POJO -> POJO conversion.
         for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
-            Object rawValue = sourceValues[sourceIndex++];
+            Object rawValue = propertyInfo.invokeGetter(source);
 
             int argIdx = ci.getArgIndexOrAlias(propertyInfo.name);
             if (argIdx >= 0) {
