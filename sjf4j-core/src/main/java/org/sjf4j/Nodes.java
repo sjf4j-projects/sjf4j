@@ -48,28 +48,16 @@ import java.util.function.Function;
  */
 public final class Nodes {
 
-    /*
-     * Keep common JDK containers on their original instanceof fast path while
-     * allowing external representations (notably JSON-P Map/List nodes) to win
-     * over those interfaces. Metadata for less common implementations is cached
-     * by TypeRegistry.
-     */
+    /** External Map/List views must win over their Java collection interfaces. */
     private static boolean _isPlainMap(Object node) {
-        if (!(node instanceof Map)) return false;
-        Class<?> clazz = node.getClass();
-        if (clazz == java.util.HashMap.class
-                || clazz == LinkedHashMap.class
-                || clazz == java.util.TreeMap.class) return true;
-        return TypeRegistry.registerTypeInfo(clazz).externalNode == null;
+        return node instanceof Map
+                && TypeRegistry.externalForContainer(node.getClass()) == null;
     }
 
     private static boolean _isPlainList(Object node) {
-        if (!(node instanceof List)) return false;
-        Class<?> clazz = node.getClass();
-        if (clazz == ArrayList.class || clazz == java.util.LinkedList.class) return true;
-        return TypeRegistry.registerTypeInfo(clazz).externalNode == null;
+        return node instanceof List
+                && TypeRegistry.externalForContainer(node.getClass()) == null;
     }
-
 
     /*
      * --------------------------------------------------------------
