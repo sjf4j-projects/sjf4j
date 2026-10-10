@@ -82,7 +82,7 @@ public class Fastjson2WriteIntrinsicProbeBenchmark {
     }
 
     @Setup(Level.Trial)
-    public void verify() {
+    public void verify() throws java.io.IOException {
         Object expected = JSON.parse(JSON.toJSONString(USER,CTX));
         verifyOne("directRawName",expected,directRawName());
         verifyOne("directPackedName",expected,directPackedName());
@@ -240,7 +240,7 @@ public class Fastjson2WriteIntrinsicProbeBenchmark {
         }
     }
     @Benchmark
-    public String directWrapperName() {
+    public String directWrapperName() throws java.io.IOException {
         try (JSONWriter json=JSONWriter.of(CTX)) {
             Fastjson2Writer writer=new Fastjson2Writer(json);
             writer.startObject();
