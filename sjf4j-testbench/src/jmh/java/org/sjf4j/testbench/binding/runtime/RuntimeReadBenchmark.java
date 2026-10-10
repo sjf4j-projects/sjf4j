@@ -31,6 +31,7 @@ import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.testbench.model.User;
 import org.sjf4j.testbench.model.UserExtra;
 import org.sjf4j.testbench.model.UserJojo;
+import org.sjf4j.testbench.model.UserRecord;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
@@ -84,9 +85,6 @@ public class RuntimeReadBenchmark {
     // independently from the larger mutable POJO/JOJO workload.
     private static final String RECORD_JSON =
             "{\"id\":839201,\"age\":34,\"username\":\"alice.builder\",\"active\":true}";
-
-    public record UserRecord(long id, int age, String username, boolean active) {
-    }
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final ObjectMapper JACKSON2_BLACKBIRD = new ObjectMapper().registerModule(new BlackbirdModule());
@@ -290,7 +288,7 @@ public class RuntimeReadBenchmark {
 
     // ----- Simple JSON baselines -----
     @Benchmark
-    public Object simple_pojo_facade() throws IOException {
+    public Object simple_pojo_runtime() throws IOException {
         return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, User.class);
     }
 

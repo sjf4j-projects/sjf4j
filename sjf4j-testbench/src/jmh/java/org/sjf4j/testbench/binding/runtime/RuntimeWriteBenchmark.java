@@ -1,11 +1,12 @@
 package org.sjf4j.testbench.binding.runtime;
 
-
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.openjdk.jmh.Main;
@@ -20,11 +21,18 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.TypeReference;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.gson.binding.GsonBinder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
-import org.sjf4j.TypeReference;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.model.UserExtra;
 import org.sjf4j.testbench.model.UserJojo;
+import org.sjf4j.testbench.model.UserRecord;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -34,8 +42,8 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 2)
 @Threads(1)
 @State(Scope.Thread)
@@ -43,7 +51,7 @@ public class RuntimeWriteBenchmark {
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{RuntimeWriteBenchmark.class.getName()});
-//        Main.main(new String[]{"WriteBenchmark.json_fastjson2"});
+//        Main.main(new String[]{RuntimeWriteBenchmark.class.getName() + ".jackson2_.*"});
     }
 
     // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
@@ -66,23 +74,38 @@ public class RuntimeWriteBenchmark {
             "}\n";
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
-    private static final Gson GSON = new Gson();
+    private static final ObjectMapper JACKSON2_BLACKBIRD = new ObjectMapper().registerModule(new BlackbirdModule());
+    private static final Jackson2Binder JACKSON2_BINDER = new Jackson2Binder();
+
+    private static final JsonMapper JACKSON3 = new JsonMapper();
+    private static final JsonMapper JACKSON3_BLACKBIRD = JsonMapper.builder()
+            .addModule(new tools.jackson.module.blackbird.BlackbirdModule()).build();
+    private static final Jackson3Binder JACKSON3_BINDER = new Jackson3Binder();
+
+    private static final Gson GSON = new GsonBuilder().serializeNulls().create();
+    private static final GsonBinder GSON_BINDER = new GsonBinder(GSON);
+
     private static final JSONWriter.Context FASTJSON2_WRITER_CONTEXT =
             JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
+    private static final Fastjson2Binder FASTJSON2_BINDER = new Fastjson2Binder();
+
     private static final SimpleJsonBinder SIMPLE_JSON_BINDER = new SimpleJsonBinder();
     private static final JsonpBinder JSONP_BINDER = new JsonpBinder();
 
     private static final User USER;
     private static final UserJojo USER_JOJO;
+    private static final UserExtra USER_EXTRA;
+    private static final UserRecord USER_RECORD = new UserRecord(839201, 34, "alice.builder", true);
     private static final Map<String, Object> MAP_NODE;
-    private static final JsonObject JSONP_MAP_NODE;
+    private static final JsonObject JSONP_TREE_NODE;
 
     static {
         try {
             USER = Sjf4j.global().fromJson(JSON_DATA2, User.class);
             USER_JOJO = Sjf4j.global().fromJson(JSON_DATA2, UserJojo.class);
-            MAP_NODE = Sjf4j.global().fromJson(JSON_DATA2, new TypeReference<Map<String, Object>>() {});
-            JSONP_MAP_NODE = Json.createReader(new StringReader(JSON_DATA2)).readObject();
+            MAP_NODE = Sjf4j.global().fromJson(JSON_DATA2, new TypeReference<>() {});
+            USER_EXTRA = JACKSON2.readValue(JSON_DATA2, UserExtra.class);
+            JSONP_TREE_NODE = Json.createReader(new StringReader(JSON_DATA2)).readObject();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -90,80 +113,178 @@ public class RuntimeWriteBenchmark {
 
     // ----- Jackson2 baselines -----
     @Benchmark
-    public Object json_jackson2_pojo_native() throws Exception {
+    public Object jackson2_pojo_native() throws Exception {
         return JACKSON2.writeValueAsString(USER);
     }
 
     @Benchmark
-    public Object json_jackson2_map_native() throws Exception {
+    public Object jackson2_pojo_blackbird() throws Exception {
+        return JACKSON2_BLACKBIRD.writeValueAsString(USER);
+    }
+
+    @Benchmark
+    public Object jackson2_pojo_runtime() {
+        return JACKSON2_BINDER.writeNodeAsString(USER);
+    }
+
+    @Benchmark
+    public Object jackson2_map_native() throws Exception {
         return JACKSON2.writeValueAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object jackson2_map_runtime() {
+        return JACKSON2_BINDER.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object jackson2_jojo_native_extra() throws Exception {
+        return JACKSON2.writeValueAsString(USER_EXTRA);
+    }
+
+    @Benchmark
+    public Object jackson2_jojo_runtime() {
+        return JACKSON2_BINDER.writeNodeAsString(USER_JOJO);
+    }
+
+    @Benchmark
+    public Object jackson2_record_native() throws Exception {
+        return JACKSON2.writeValueAsString(USER_RECORD);
+    }
+
+    @Benchmark
+    public Object jackson2_record_runtime() {
+        return JACKSON2_BINDER.writeNodeAsString(USER_RECORD);
+    }
+
+
+    // ----- Jackson3 baselines -----
+    @Benchmark
+    public Object jackson3_pojo_native() throws Exception {
+        return JACKSON3.writeValueAsString(USER);
+    }
+
+    @Benchmark
+    public Object jackson3_pojo_blackbird() throws Exception {
+        return JACKSON3_BLACKBIRD.writeValueAsString(USER);
+    }
+
+    @Benchmark
+    public Object jackson3_pojo_runtime() {
+        return JACKSON3_BINDER.writeNodeAsString(USER);
+    }
+
+    @Benchmark
+    public Object jackson3_map_native() throws Exception {
+        return JACKSON3.writeValueAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object jackson3_map_runtime() {
+        return JACKSON3_BINDER.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object jackson3_jojo_native_extra() throws Exception {
+        return JACKSON3.writeValueAsString(USER_EXTRA);
+    }
+
+    @Benchmark
+    public Object jackson3_jojo_runtime() {
+        return JACKSON3_BINDER.writeNodeAsString(USER_JOJO);
+    }
+
+    @Benchmark
+    public Object jackson3_record_native() throws Exception {
+        return JACKSON3.writeValueAsString(USER_RECORD);
+    }
+
+    @Benchmark
+    public Object jackson3_record_runtime() {
+        return JACKSON3_BINDER.writeNodeAsString(USER_RECORD);
     }
 
 
     // ----- Gson baselines -----
     @Benchmark
-    public Object json_gson_pojo_native() {
+    public Object gson_pojo_native() {
         return GSON.toJson(USER);
     }
 
     @Benchmark
-    public Object json_gson_map_native() {
+    public Object gson_pojo_runtime() {
+        return GSON_BINDER.writeNodeAsString(USER);
+    }
+
+    @Benchmark
+    public Object gson_map_native() {
         return GSON.toJson(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object gson_map_runtime() {
+        return GSON_BINDER.writeNodeAsString(MAP_NODE);
     }
 
 
     // ----- Fastjson2 baselines -----
     @Benchmark
-    public Object json_fastjson2_pojo_native() {
+    public Object fastjson2_pojo_native() {
         return JSON.toJSONString(USER, FASTJSON2_WRITER_CONTEXT);
     }
 
     @Benchmark
-    public Object json_fastjson2_map_native() {
+    public Object fastjson2_pojo_runtime() {
+        return FASTJSON2_BINDER.writeNodeAsString(USER);
+    }
+
+    @Benchmark
+    public Object fastjson2_map_native() {
         return JSON.toJSONString(MAP_NODE, FASTJSON2_WRITER_CONTEXT);
+    }
+
+    @Benchmark
+    public Object fastjson2_map_runtime() {
+        return FASTJSON2_BINDER.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object fastjson2_jojo_native_extra() {
+        return JSON.toJSONString(USER_EXTRA, FASTJSON2_WRITER_CONTEXT);
+    }
+
+    @Benchmark
+    public Object fastjson2_jojo_runtime() {
+        return FASTJSON2_BINDER.writeNodeAsString(USER_JOJO);
     }
 
     // ----- JSON-P baselines -----
     @Benchmark
-    public Object json_jsonp_map_native() {
+    public Object jsonp_tree_native() {
         StringWriter sw = new StringWriter();
-        Json.createWriter(sw).write(JSONP_MAP_NODE);
+        Json.createWriter(sw).write(JSONP_TREE_NODE);
         return sw.toString();
     }
 
     @Benchmark
-    public Object json_jsonp_pojo_facade() {
-        return JSONP_BINDER.writeNodeAsString(USER);
-    }
-
-    @Benchmark
-    public Object json_jsonp_map_facade() {
+    public Object jsonp_map_runtime() {
         return JSONP_BINDER.writeNodeAsString(MAP_NODE);
     }
 
-    @Benchmark
-    public Object json_jsonp_jojo_facade() {
-        return JSONP_BINDER.writeNodeAsString(USER_JOJO);
-    }
 
     // ----- Simple JSON baselines -----
     @Benchmark
-    public Object json_simple_pojo_facade() {
+    public Object simple_pojo_runtime() {
         return SIMPLE_JSON_BINDER.writeNodeAsString(USER);
     }
 
     @Benchmark
-    public Object json_simple_jojo_facade() {
+    public Object simple_jojo_runtime() {
         return SIMPLE_JSON_BINDER.writeNodeAsString(USER_JOJO);
     }
 
     @Benchmark
-    public Object json_simple_map_facade() {
-        return SIMPLE_JSON_BINDER.writeNodeAsString(MAP_NODE);
-    }
-
-    @Benchmark
-    public Object json_binding_simple_map_native() {
+    public Object simple_map_runtime() {
         return SIMPLE_JSON_BINDER.writeNodeAsString(MAP_NODE);
     }
 }
