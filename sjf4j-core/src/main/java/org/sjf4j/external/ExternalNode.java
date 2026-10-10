@@ -3,6 +3,8 @@ package org.sjf4j.external;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
+import org.sjf4j.RuntimeContext;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.exception.NodeException;
 
 import java.util.Iterator;
@@ -268,6 +270,27 @@ public interface ExternalNode<N> {
     /** Creates a native object container. */
     default Object createObjectNode(Class<?> clazz) {
         throw unsupported("createObjectNode");
+    }
+
+    /**
+     * Creates a complete native object from any OBNT object source.
+     *
+     * <p>The default implementation constructs a mutable container and converts
+     * each source property into the adapter's native node representation before
+     * inserting it. Immutable/schema-driven representations may override this
+     * method to perform their own atomic construction (e.g. via a builder).
+     * The source is never modified.</p>
+     *
+     * <p>Conversion honors the caller's runtime context, including ValueCodec
+     * registrations. This operation is distinct from mutating an existing
+     * external node.</p>
+     */
+    default Object createObjectNode(Class<?> clazz, Object source, RuntimeContext context) {
+        N target = nodeType().cast(createObjectNode(clazz));
+        Nodes.forEachObject(source, (name, value) ->
+                putInObject(target, name,
+                        NodeMapper.convert(value, nodeType(), false, context)));
+        return target;
     }
 
     /** Creates a native array container. */
