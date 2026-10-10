@@ -54,12 +54,12 @@ class JsonpNodeTest {
     }
 
     @Test
-    void nodesPreferExternalAdapterOverJsonpCollectionInterfaces() {
+    void nodesPreferMapAndListInterfacesForJsonpCollections() {
         JsonObject object = value("{\"nil\":null,\"value\":7}").asJsonObject();
         JsonArray array = value("[1,2]").asJsonArray();
 
-        assertEquals(NodeKind.OBJECT_EXTERNAL, NodeKind.of(object));
-        assertEquals(NodeKind.ARRAY_EXTERNAL, NodeKind.of(array));
+        assertEquals(NodeKind.OBJECT_MAP, NodeKind.of(object));
+        assertEquals(NodeKind.ARRAY_LIST, NodeKind.of(array));
         assertEquals(JsonType.OBJECT, JsonType.of(object));
         assertEquals(JsonType.ARRAY, JsonType.of(array));
 
@@ -72,10 +72,16 @@ class JsonpNodeTest {
         assertTrue(access.present);
         assertSame(JsonValue.NULL, access.node);
 
-        assertThrows(NodeException.class,
+        // Mutable operations follow Map/List's normal behavior: JSON-P
+        // containers are immutable and throw UnsupportedOperationException.
+        assertThrows(UnsupportedOperationException.class,
                 () -> Nodes.putInObject(object, "value", JsonValue.TRUE));
-        assertThrows(NodeException.class,
+        assertThrows(UnsupportedOperationException.class,
                 () -> Nodes.addInArray(array, JsonValue.TRUE));
+
+        // Copy is representation-preserving even for a Map/List subtype.
+        assertTrue(Nodes.copy(object) instanceof JsonObject);
+        assertTrue(Nodes.copy(array) instanceof JsonArray);
     }
 
     @Test
