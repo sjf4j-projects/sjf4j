@@ -55,12 +55,15 @@ public class Fastjson2WriteIntrinsicProbeBenchmark {
         Fastjson2Writer writer = new Fastjson2Writer(json);
         for (int i=0;i<NAMES.length;i++) {
             String name = NAMES[i];
-            RAW[i] = ("\\"" + name + "\":").toCharArray();
+            RAW[i] = (Character.toString((char) 34) + name + Character.toString((char) 34) + ':').toCharArray();
             PREPARED[i] = writer.createCompiledName(name);
             int len=name.length();
             if (len < 2 || len > 13) throw new IllegalArgumentException(name);
-            String first = len==8 ? name : len<=7 ? "\"" + name + "\":" : "\"" + name.substring(0,7);
-            String second = len<=8 ? "" : name.substring(7)+"\":";
+            String quote = Character.toString((char) 34);
+            String first = len == 8 ? name : len <= 5 ? quote + name + quote + ':'
+                    : len == 6 ? quote + name + quote : len == 7 ? quote + name
+                    : quote + name.substring(0, 7);
+            String second = len <= 8 ? "" : name.substring(7) + quote + ':';
             PACKED0[i] = pack(first);
             PACKED1[i] = pack(second);
         }
