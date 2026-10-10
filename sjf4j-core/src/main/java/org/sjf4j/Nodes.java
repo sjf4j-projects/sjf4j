@@ -49,6 +49,29 @@ import java.util.function.Function;
 public final class Nodes {
 
     /*
+     * Keep common JDK containers on their original instanceof fast path while
+     * allowing external representations (notably JSON-P Map/List nodes) to win
+     * over those interfaces. Metadata for less common implementations is cached
+     * by TypeRegistry.
+     */
+    private static boolean _isPlainMap(Object node) {
+        if (!(node instanceof Map)) return false;
+        Class<?> clazz = node.getClass();
+        if (clazz == java.util.HashMap.class
+                || clazz == LinkedHashMap.class
+                || clazz == java.util.TreeMap.class) return true;
+        return TypeRegistry.registerTypeInfo(clazz).externalNode == null;
+    }
+
+    private static boolean _isPlainList(Object node) {
+        if (!(node instanceof List)) return false;
+        Class<?> clazz = node.getClass();
+        if (clazz == ArrayList.class || clazz == java.util.LinkedList.class) return true;
+        return TypeRegistry.registerTypeInfo(clazz).externalNode == null;
+    }
+
+
+    /*
      * --------------------------------------------------------------
      * Type-Safe Access and Cross-Type Conversion
      * --------------------------------------------------------------
@@ -380,7 +403,7 @@ public final class Nodes {
     public static JsonObject toJsonObject(Object node) {
         if (node == null) return null;
         if (node instanceof JsonObject) return (JsonObject) node;
-        if (node instanceof Map) return new JsonObject((Map<String, Object>) node);
+        if (_isPlainMap(node)) return new JsonObject((Map<String, Object>) node);
 
         JsonObject jo = new JsonObject();
         Nodes.forEachObject(node, jo::put);
@@ -397,7 +420,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node) {
         if (node == null) return null;
-        if (node instanceof Map) return (Map<String, Object>) node;
+        if (_isPlainMap(node)) return (Map<String, Object>) node;
         if (node instanceof JsonObject) return ((JsonObject) node).toMap();
 
         Map<String, Object> map = new LinkedHashMap<>();
@@ -416,7 +439,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     private static <T> Map<String, T> _toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
         if (node == null) return null;
-        if (node instanceof Map
+        if (_isPlainMap(node)
                 && (mapType == null || mapType.isInstance(node))
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Map<String, T>) node;
@@ -438,7 +461,7 @@ public final class Nodes {
     public static JsonArray toJsonArray(Object node) {
         if (node == null) return null;
         if (node instanceof JsonArray) return (JsonArray) node;
-        if (node instanceof List) return new JsonArray((List<Object>) node);
+        if (_isPlainList(node)) return new JsonArray((List<Object>) node);
 
         JsonArray ja = new JsonArray();
         Nodes.forEachArray(node, (i, value) -> ja.add(value));
@@ -456,7 +479,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static List<Object> toList(Object node) {
         if (node == null) return null;
-        if (node instanceof List) return (List<Object>) node;
+        if (_isPlainList(node)) return (List<Object>) node;
         if (node instanceof JsonArray) return ((JsonArray) node).toList();
 
         List<Object> list = new ArrayList<>();
@@ -475,7 +498,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     private static <T> List<T> _toList(Object node, Class<?> listType, Class<T> valueClazz) {
         if (node == null) return null;
-        if (node instanceof List
+        if (_isPlainList(node)
                 && (listType == null || listType.isInstance(node))
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (List<T>) node;
@@ -504,7 +527,7 @@ public final class Nodes {
                 return ((Object[]) node);
             }
         }
-        if (node instanceof List) return ((List<Object>) node).toArray();
+        if (_isPlainList(node)) return ((List<Object>) node).toArray();
         if (node instanceof JsonArray) return ((JsonArray) node).toArray();
         if (node instanceof Set) return ((Set<Object>) node).toArray();
 
@@ -545,7 +568,7 @@ public final class Nodes {
     public static Set<Object> toSet(Object node) {
         if (node == null) return null;
         if (node instanceof Set) return (Set<Object>) node;
-        if (node instanceof List) return new LinkedHashSet<>((List<Object>) node);
+        if (_isPlainList(node)) return new LinkedHashSet<>((List<Object>) node);
         if (node instanceof JsonArray) return ((JsonArray) node).toSet();
 
         Set<Object> set = new LinkedHashSet<>();
@@ -865,12 +888,12 @@ public final class Nodes {
         }
 
         Class<?> rawClazz = node.getClass();
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, true);
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), true);
             list.addAll((List<Object>) node);
             return (T) list;
@@ -987,7 +1010,7 @@ public final class Nodes {
             return;
         }
 
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             Map<String, Object> map = (Map<String, Object>) node;
             sb.append("{");
             int idx = 0;
@@ -999,7 +1022,7 @@ public final class Nodes {
             sb.append("}");
             return;
         }
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             sb.append("[");
             for (int i = 0, len = list.size(); i < len; i++) {
@@ -1184,7 +1207,7 @@ public final class Nodes {
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         Asserts.notNull(node, "node");
         Asserts.notNull(consumer, "consumer");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             ((Map<String, Object>) node).forEach(consumer);
             return;
         }
@@ -1218,7 +1241,7 @@ public final class Nodes {
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
         Asserts.notNull(node, "node");
         Asserts.notNull(predicate, "predicate");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
                 if (predicate.test(entry.getKey(), entry.getValue())) {
                     return true;
@@ -1260,7 +1283,7 @@ public final class Nodes {
     public static boolean replaceAllInObject(Object node, BiFunction<String, Object, Object> replacer) {
         Asserts.notNull(node, "node");
         Asserts.notNull(replacer, "replacer");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             boolean changed = false;
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
                 Object oldValue = entry.getValue();
@@ -1312,7 +1335,7 @@ public final class Nodes {
         Asserts.notNull(node, "node");
         Asserts.notNull(predicate, "predicate");
 
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<String, Object>) node).entrySet().removeIf(entry ->
                     predicate.test(entry.getKey(), entry.getValue()));
         }
@@ -1340,7 +1363,7 @@ public final class Nodes {
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         Asserts.notNull(node, "node");
         Asserts.notNull(consumer, "consumer");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             for (int i = 0, len = list.size(); i < len; i++) consumer.accept(i, list.get(i));
             return;
@@ -1378,7 +1401,7 @@ public final class Nodes {
     public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
         Asserts.notNull(node, "node");
         Asserts.notNull(predicate, "predicate");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             for (int i = 0, len = list.size(); i < len; i++) {
                 if (predicate.test(i, list.get(i))) return true;
@@ -1422,7 +1445,7 @@ public final class Nodes {
      */
     public static int sizeInObject(Object node) {
         Asserts.notNull(node, "node");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<?, ?>) node).size();
         }
         if (node instanceof JsonObject) {
@@ -1446,7 +1469,7 @@ public final class Nodes {
      */
     public static int sizeInArray(Object node) {
         Asserts.notNull(node, "node");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             return ((List<?>) node).size();
         }
         if (node instanceof JsonArray) {
@@ -1478,7 +1501,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Set<String> keySetInObject(Object node) {
         Asserts.notNull(node, "node");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<String, Object>) node).keySet();
         }
         if (node instanceof JsonObject) {
@@ -1541,7 +1564,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
         Asserts.notNull(node, "node");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<String, Object>) node).entrySet();
         }
         if (node instanceof JsonObject) {
@@ -1594,7 +1617,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Iterator<Object> iteratorInArray(Object node) {
         Asserts.notNull(node, "node");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             return ((List<Object>) node).iterator();
         }
         if (node instanceof JsonArray) {
@@ -1632,7 +1655,7 @@ public final class Nodes {
     public static boolean containsInObject(Object node, String key) {
         Asserts.notNull(node, "node");
         Asserts.notNull(key, "key");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<String, Object>) node).containsKey(key);
         }
         if (node instanceof JsonObject) {
@@ -1672,7 +1695,7 @@ public final class Nodes {
     public static Object getInObject(Object node, String key) {
         Asserts.notNull(node, "node");
         Asserts.notNull(key, "key");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<?, ?>) node).get(key);
         }
         if (node instanceof JsonObject) {
@@ -1712,7 +1735,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object node, int idx) {
         Asserts.notNull(node, "node");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             int size = list.size();
             idx = idx < 0 ? size + idx : idx;
@@ -1797,7 +1820,7 @@ public final class Nodes {
 
         out.node = null;
         out.present = false;
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             Map<String, Object> map = (Map<String, Object>) node;
             out.node = map.get(key);
             out.present = out.node != null || map.containsKey(key);
@@ -1849,7 +1872,7 @@ public final class Nodes {
 
         out.node = null;
         out.puttable = false;
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             Map<String, Object> map = (Map<String, Object>) node;
             out.node = map.get(key);
             out.type = Types.resolveTypeArgument(type, Map.class, 1);
@@ -1909,7 +1932,7 @@ public final class Nodes {
 
         out.node = null;
         out.present = false;
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             int size = list.size();
             idx = idx < 0 ? size + idx : idx;
@@ -1970,7 +1993,7 @@ public final class Nodes {
         out.type = Object.class;
         out.node = null;
         out.puttable = true;
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             out.type = Types.resolveTypeArgument(type, List.class, 0);
             if (idx == null) return;
             List<Object> list = (List<Object>) node;
@@ -2091,7 +2114,7 @@ public final class Nodes {
     public static Object putInObject(Object node, String key, Object value) {
         Asserts.notNull(node, "node");
         Asserts.notNull(key, "key");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<String, Object>) node).put(key, value);
         }
         if (node instanceof JsonObject) {
@@ -2130,7 +2153,7 @@ public final class Nodes {
     public static Object removeInObject(Object node, String key) {
         Asserts.notNull(node, "node");
         Asserts.notNull(key, "key");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<String, Object>) node).remove(key);
         }
         if (node instanceof JsonObject) {
@@ -2162,7 +2185,7 @@ public final class Nodes {
         Asserts.notNull(node, "node");
         Asserts.notNull(key, "key");
         Asserts.notNull(computer, "computer");
-        if (node instanceof Map) {
+        if (_isPlainMap(node)) {
             return ((Map<String, T>) node).computeIfAbsent(key, computer);
         }
         if (node instanceof JsonObject) {
@@ -2226,7 +2249,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     private static Object _putInArray(Object node, int idx, Object value, boolean allowAppend) {
         Asserts.notNull(node, "node");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             int size = list.size();
             idx = idx < 0 ? size + idx : idx;
@@ -2288,7 +2311,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, Object value) {
         Asserts.notNull(node, "node");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             ((List<Object>) node).add(value);
             return;
         }
@@ -2323,7 +2346,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, int idx, Object value) {
         Asserts.notNull(node, "node");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
             list.add(idx, value);
@@ -2359,7 +2382,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static Object removeInArray(Object node, int idx) {
         Asserts.notNull(node, "node");
-        if (node instanceof List) {
+        if (_isPlainList(node)) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
             return list.remove(idx);
