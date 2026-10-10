@@ -499,10 +499,11 @@ public final class ReflectUtil {
     private static String _getBeanImplicitName(Method method) {
         String name = method.getName();
         if (method.getParameterCount() == 0 && method.getReturnType() != void.class) {
+            // Actual record components must retain their declared names (e.g. getCode).
+            if (_isRecordComponentAccessor(method)) return name;
             if (name.startsWith("get") && name.length() > 3) return Strings.decapitalize(name.substring(3));
             if ((method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class) && name.startsWith("is") && name.length() > 2)
                 return Strings.decapitalize(name.substring(2));
-            if (_isRecordComponentAccessor(method)) return name;
             // Explicit non-bean accessors remain opt-in, even on records.
             if (isRecord(method.getDeclaringClass()) &&
                     (method.getAnnotation(NodeProperty.class) != null || getExplicitName(method) != null)) {
