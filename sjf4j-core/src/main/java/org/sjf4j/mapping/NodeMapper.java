@@ -115,14 +115,7 @@ public final class NodeMapper {
             // generic structure to honor. Parameterized containers/POJOs still need
             // traversal so their declared element/member types are converted.
             if (toBoxed.isInstance(node) && !Types.hasGenericStructure(toType)) {
-                // JSON-P native objects/arrays implement Map/List; an explicit
-                // conversion to a plain Java container must not reuse the native tree.
-                boolean externalContainer = (node instanceof Map || node instanceof List)
-                        && TypeRegistry.registerTypeInfo(node.getClass()).externalNode != null
-                        && TypeRegistry.registerTypeInfo(toBoxed).externalNode == null;
-                if (!externalContainer) {
-                    return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
-                }
+                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
@@ -160,13 +153,8 @@ public final class NodeMapper {
                         Types.name(node) + "' to '" + toType + "'", ps);
             }
 
-            // External nodes precede Map/List: JSON-P implements both.
-            TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
-            if (sourceTi.externalNode != null) {
-                return _convertFromExternal(node, sourceTi.externalNode,
-                        toBoxed, toType, deepCopy, ps, context);
-            }
-
+            // Standard Java collection contracts win over external adapters.
+            // This also avoids TypeInfo resolution on the Map/List read path.
             if (node instanceof Map) {
                 return _convertFromMap((Map<String, Object>) node,
                         toBoxed, toType, deepCopy, ps, context);
@@ -174,6 +162,12 @@ public final class NodeMapper {
 
             if (node instanceof List) {
                 return _convertFromList((List<Object>) node,
+                        toBoxed, toType, deepCopy, ps, context);
+            }
+
+            TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
+            if (sourceTi.externalNode != null) {
+                return _convertFromExternal(node, sourceTi.externalNode,
                         toBoxed, toType, deepCopy, ps, context);
             }
 
