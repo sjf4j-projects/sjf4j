@@ -8,6 +8,7 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
+import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.backend.jsonp.external.JsonpExternalProvider;
 import org.sjf4j.exception.NodeException;
@@ -50,6 +51,31 @@ class JsonpNodeTest {
         assertEquals(JsonType.NUMBER, node.jsonType(value("12")));
         assertEquals(JsonType.BOOLEAN, node.jsonType(JsonValue.TRUE));
         assertEquals(JsonType.NULL, node.jsonType(JsonValue.NULL));
+    }
+
+    @Test
+    void nodesPreferExternalAdapterOverJsonpCollectionInterfaces() {
+        JsonObject object = value("{\"nil\":null,\"value\":7}").asJsonObject();
+        JsonArray array = value("[1,2]").asJsonArray();
+
+        assertEquals(NodeKind.OBJECT_EXTERNAL, NodeKind.of(object));
+        assertEquals(NodeKind.ARRAY_EXTERNAL, NodeKind.of(array));
+        assertEquals(JsonType.OBJECT, JsonType.of(object));
+        assertEquals(JsonType.ARRAY, JsonType.of(array));
+
+        assertSame(JsonValue.NULL, Nodes.getInObject(object, "nil"));
+        assertEquals(2, Nodes.sizeInArray(array));
+        assertEquals(2, ((JsonNumber) Nodes.getInArray(array, -1)).intValue());
+
+        Nodes.Access access = new Nodes.Access();
+        Nodes.getAccessInObject(object, "nil", access);
+        assertTrue(access.present);
+        assertSame(JsonValue.NULL, access.node);
+
+        assertThrows(NodeException.class,
+                () -> Nodes.putInObject(object, "value", JsonValue.TRUE));
+        assertThrows(NodeException.class,
+                () -> Nodes.addInArray(array, JsonValue.TRUE));
     }
 
     @Test
