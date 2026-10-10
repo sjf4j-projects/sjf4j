@@ -82,7 +82,14 @@ public enum JsonType {
      */
     public static JsonType rawOf(Class<?> clazz) {
         NodeKind kind = NodeKind.plainOf(clazz);
-        if (kind != NodeKind.UNKNOWN) return of(kind);
+        if (kind != NodeKind.UNKNOWN) {
+            if (kind == NodeKind.OBJECT_MAP || kind == NodeKind.ARRAY_LIST) {
+                org.sjf4j.external.ExternalNode<Object> external =
+                        TypeRegistry.externalForContainer(clazz);
+                if (external != null) return external.jsonTypeOfClass(clazz);
+            }
+            return of(kind);
+        }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueInfos != null) {

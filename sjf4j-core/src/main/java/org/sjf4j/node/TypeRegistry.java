@@ -138,6 +138,27 @@ public final class TypeRegistry {
     }
 
 
+    /**
+     * Resolves a registered external representation that also implements
+     * Map/List. Ordinary JDK collections retain their direct fast paths.
+     * Uncommon container implementations are resolved once through the
+     * existing type metadata cache.
+     */
+    public static ExternalNode<Object> externalForContainer(Class<?> clazz) {
+        if (clazz == java.util.HashMap.class
+                || clazz == java.util.LinkedHashMap.class
+                || clazz == java.util.TreeMap.class
+                || clazz == java.util.ArrayList.class
+                || clazz == java.util.LinkedList.class) {
+            return null;
+        }
+        if (!Map.class.isAssignableFrom(clazz) && !List.class.isAssignableFrom(clazz)) {
+            return null;
+        }
+        return registerTypeInfo(clazz).externalNode;
+    }
+
+
     /*
      * --------------------------------------------------------------
      * NodeValue

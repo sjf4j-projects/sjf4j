@@ -23,6 +23,10 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import org.sjf4j.RuntimeContext;
+import org.sjf4j.mapping.NodeMapper;
 import java.util.ServiceLoader;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -198,6 +202,47 @@ class Jackson2NodeTest {
         Patches.mergePatch(target, object("{\"a\":null}"));
         assertFalse(target.has("a"));
         assertEquals(2, target.get("b").intValue());
+    }
+
+    @Test
+    void constructsCompleteExternalObjectFromObntWithoutIntermediateJson() {
+        Map<String, Object> address = new LinkedHashMap<>();
+        address.put("city", "Beijing");
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("name", "Ada");
+        source.put("age", 32);
+        source.put("address", address);
+        source.put("items", Arrays.asList(true, 3, null));
+
+        ObjectNode direct = (ObjectNode) node().createObjectNode(
+                JsonNode.class, source, RuntimeContext.EMPTY);
+        assertEquals("Ada", direct.get("name").textValue());
+        assertEquals(32, direct.get("age").intValue());
+        assertEquals("Beijing", direct.get("address").get("city").textValue());
+        assertTrue(direct.get("items").get(0).booleanValue());
+        assertEquals(3, direct.get("items").get(1).intValue());
+        assertSame(NullNode.instance, direct.get("items").get(2));
+
+        ObjectNode mapped = (ObjectNode) NodeMapper.convert(
+                source, JsonNode.class, false, RuntimeContext.EMPTY);
+        assertEquals(direct, mapped);
+    }
+
+    @Test
+    void deepCopyConversionDetachesReusedNativeChildren() {
+        ObjectNode child = JsonNodeFactory.instance.objectNode().put("name", "original");
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("child", child);
+
+        ObjectNode shared = (ObjectNode) NodeMapper.convert(
+                source, JsonNode.class, false, RuntimeContext.EMPTY);
+        ObjectNode detached = (ObjectNode) NodeMapper.convert(
+                source, JsonNode.class, true, RuntimeContext.EMPTY);
+
+        assertSame(child, shared.get("child"));
+        assertNotSame(child, detached.get("child"));
+        ((ObjectNode) detached.get("child")).put("name", "changed");
+        assertEquals("original", child.get("name").textValue());
     }
 
     @SuppressWarnings("unchecked")
