@@ -152,7 +152,8 @@ public class JojoReadBenchmark {
                 readFastjson2Extra(), dynamicCount);
     }
 
-    private static String buildJson(int staticCount, int dynamicCount) {
+    // Shared with JojoWriteBenchmark to guarantee identical read/write fixtures.
+    static String buildJson(int staticCount, int dynamicCount) {
         StringBuilder out = new StringBuilder(512).append('{');
         int size = Math.max(staticCount, dynamicCount);
         boolean first = true;

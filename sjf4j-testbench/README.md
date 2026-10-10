@@ -34,9 +34,46 @@ java -jar sjf4j-testbench/build/libs/*-jmh.jar \
   '.*JojoReadBenchmark.*fastjson2.*' -p workload=mixed -prof gc
 ```
 
-The benchmarks use three forks by default. Compare both latency (`us/op`)
+The read benchmark currently uses one fork by default. Compare both latency (`us/op`)
 and allocation (`gc.alloc.rate.norm`, bytes/op); JMH warmup and measurement
 exclude JSON fixture creation and validation.
+
+## JOJO write benchmarks (JVM)
+
+`JojoWriteBenchmark` reuses the **exact same JSON fixture** as the read benchmark
+and measures String serialization. JMH trial setup constructs the objects and
+verifies parsed output equivalence for each backend before recording timings.
+
+| Workload | Declared fields | Dynamic fields |
+| --- | ---: | ---: |
+| `static` | 16 | 0 |
+| `mixed` | 8 | 8 |
+| `dynamic` | 2 | 14 |
+
+The runtime JOJO and native-extra implementations retain all fields.
+The plain POJO intentionally lacks dynamic fields, so it is a comparable
+serialization baseline **only for `static`**. For `mixed` and `dynamic`,
+POJO writes fewer fields and must not be interpreted as equivalent output.
+The native-extra object allocates its extra map eagerly; JOJO uses lazy dynamic
+storage. The benchmark covers Jackson2, Jackson3, Fastjson2, plus Simple JSON
+runtime (which has no corresponding native-extra baseline).
+
+```bash
+./gradlew :sjf4j-testbench:jmhJar
+java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+  '.*JojoWriteBenchmark.*' -prof gc
+```
+
+To focus on a dynamic-heavy workload:
+
+```bash
+java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+  '.*JojoWriteBenchmark.*' -p workload=dynamic -prof gc
+```
+
+Compare both throughput latency (`us/op`) and per-operation allocation
+(`gc.alloc.rate.norm`, bytes/op). Warmup/measurement exclude fixture setup,
+object construction, and output validation.
 
 ## GraalVM Native Image Benchmarking
 
