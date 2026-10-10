@@ -502,7 +502,12 @@ public final class ReflectUtil {
             if (name.startsWith("get") && name.length() > 3) return Strings.decapitalize(name.substring(3));
             if ((method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class) && name.startsWith("is") && name.length() > 2)
                 return Strings.decapitalize(name.substring(2));
-            if (isRecord(method.getDeclaringClass())) return name;
+            if (_isRecordComponentAccessor(method)) return name;
+            // Explicit non-bean accessors remain opt-in, even on records.
+            if (isRecord(method.getDeclaringClass()) &&
+                    (method.getAnnotation(NodeProperty.class) != null || getExplicitName(method) != null)) {
+                return name;
+            }
         }
         if (method.getParameterCount() == 1 && method.getReturnType() == void.class && name.startsWith("set") && name.length() > 3) {
             return Strings.decapitalize(name.substring(3));
@@ -933,6 +938,7 @@ public final class ReflectUtil {
     private static final Method METHOD_RECORD_COMPONENT_GET_NAME;
     private static final Method METHOD_RECORD_COMPONENT_GET_TYPE;
     private static final Method METHOD_RECORD_COMPONENT_GET_GENERIC_TYPE;
+    private static final Method METHOD_RECORD_COMPONENT_GET_ACCESSOR;
     private static final Method METHOD_RECORD_COMPONENT_GET_ANNOTATION;
 
     static {
@@ -941,6 +947,7 @@ public final class ReflectUtil {
         Method recordComponentGetName = null;
         Method recordComponentGetType = null;
         Method recordComponentGetGenericType = null;
+        Method recordComponentGetAccessor = null;
         Method recordComponentGetAnnotation = null;
         try {
             isRecord = Class.class.getMethod("isRecord");
@@ -949,6 +956,7 @@ public final class ReflectUtil {
             recordComponentGetName = recordComponentClass.getMethod("getName");
             recordComponentGetType = recordComponentClass.getMethod("getType");
             recordComponentGetGenericType = recordComponentClass.getMethod("getGenericType");
+            recordComponentGetAccessor = recordComponentClass.getMethod("getAccessor");
             recordComponentGetAnnotation = recordComponentClass.getMethod("getAnnotation", Class.class);
         } catch (Exception ignored) {}
 
@@ -957,6 +965,7 @@ public final class ReflectUtil {
         METHOD_RECORD_COMPONENT_GET_NAME = recordComponentGetName;
         METHOD_RECORD_COMPONENT_GET_TYPE = recordComponentGetType;
         METHOD_RECORD_COMPONENT_GET_GENERIC_TYPE = recordComponentGetGenericType;
+        METHOD_RECORD_COMPONENT_GET_ACCESSOR = recordComponentGetAccessor;
         METHOD_RECORD_COMPONENT_GET_ANNOTATION = recordComponentGetAnnotation;
     }
 
@@ -970,6 +979,30 @@ public final class ReflectUtil {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * Only an actual component accessor is an implicit record property.
+     * Record-generated toString/hashCode and other zero-argument methods are not.
+     * Record reflection is resolved dynamically to retain Java 8 compatibility.
+     */
+    private static boolean _isRecordComponentAccessor(Method method) {
+        if (METHOD_GET_RECORD_COMPONENTS == null || METHOD_RECORD_COMPONENT_GET_ACCESSOR == null ||
+                !isRecord(method.getDeclaringClass())) {
+            return false;
+        }
+        try {
+            Object[] components = (Object[]) METHOD_GET_RECORD_COMPONENTS.invoke(method.getDeclaringClass());
+            if (components == null) return false;
+            for (Object component : components) {
+                if (method.equals(METHOD_RECORD_COMPONENT_GET_ACCESSOR.invoke(component))) {
+                    return true;
+                }
+            }
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            return false;
+        }
+        return false;
     }
 
     public static RecordInfo analyzeRecord(Class<?> clazz, MethodHandles.Lookup lookup) {
