@@ -355,6 +355,12 @@ public final class NodeMapper {
                     // backends may build the entire object without exposing a
                     // mutable container or requiring a temporary Map tree.
                     result = target.createObjectNode(toBoxed, node, context);
+                    // A fresh outer container may still share native child nodes
+                    // with the source when deepCopy is false. Detach those children
+                    // for the explicit deep-copy conversion mode.
+                    if (deepCopy) {
+                        result = target.deepCopy(result);
+                    }
                 } else if (sourceExternal != null && shape == JsonType.ARRAY) {
                     Object out = target.createArrayNode(toBoxed);
                     int len = sourceExternal.sizeInArray(node);
