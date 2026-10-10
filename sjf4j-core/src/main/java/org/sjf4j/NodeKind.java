@@ -80,7 +80,21 @@ public enum NodeKind {
         if (node == null) return VALUE_NULL;
         Class<?> clazz = node.getClass();
         NodeKind kind = plainOf(clazz);
-        if (kind != NodeKind.UNKNOWN) return kind;
+        if (kind != NodeKind.UNKNOWN) {
+            // Some external tree types also implement Map/List (JSON-P).
+            // Do not let those Java interfaces mask the registered representation.
+            if ((kind == OBJECT_MAP
+                    && clazz != java.util.HashMap.class
+                    && clazz != java.util.LinkedHashMap.class
+                    && clazz != java.util.TreeMap.class)
+                    || (kind == ARRAY_LIST
+                    && clazz != java.util.ArrayList.class
+                    && clazz != java.util.LinkedList.class)) {
+                TypeInfo info = TypeRegistry.registerTypeInfo(clazz);
+                if (info.externalNode != null) return info.externalNode.nodeKind(node);
+            }
+            return kind;
+        }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueInfos != null) {
