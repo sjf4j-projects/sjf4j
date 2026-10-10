@@ -1,15 +1,90 @@
+package org.sjf4j;
+
+import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.node.TypeInfo;
+import org.sjf4j.util.Asserts;
+import org.sjf4j.value.ValueCodec;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Runtime representation and dispatch classification for OBNT values.
+ * <p>
+ * Each value identifies the Java representation used at runtime, such as a
+ * {@link Map} object node, a {@link List} array node, or a POJO. Use
+ * {@link JsonType} for JSON-semantic shape decisions rather than this
+ * representation classification.
+ */
+public enum NodeKind {
+    /** Represents a null value node. */
+    VALUE_NULL,
+
+    /** Represents a string value node. */
+    VALUE_STRING,
+    VALUE_STRING_CHARACTER,
+    VALUE_STRING_ENUM,
+    VALUE_STRING_EXTERNAL,
+
+    /** Represents a numeric value node. */
+    VALUE_NUMBER,
+    VALUE_NUMBER_EXTERNAL,
+
+    /** Represents a boolean value node. */
+    VALUE_BOOLEAN,
+    VALUE_BOOLEAN_EXTERNAL,
+
+    /**
+     * A logical value node represented through a configured value binding.
+     *
+     * <p>The binding may be a {@link ValueCodec} or {@code @NodeValue}
+     * conversion methods. Its raw OBNT representation may have scalar,
+     * object, or array JSON shape.
+     */
+    VALUE_BINDING,
+
+    /** Represents a {@link Map} object. */
+    OBJECT_MAP,
+    /** Represents a standard {@link JsonObject}. */
+    OBJECT_JSON_OBJECT,
+    /** Represents a custom JsonObject subtype (JOJO). */
+    OBJECT_JOJO,
+    /** Represents a Plain Old Java Object (POJO). */
+    OBJECT_POJO,
+    OBJECT_EXTERNAL,
+
+    /** Represents a {@link List} collection. */
+    ARRAY_LIST,
+    /** Represents a {@link JsonArray}. */
+    ARRAY_JSON_ARRAY,
+    /** Represents a custom JsonArray subtype (JAJO). */
+    ARRAY_JAJO,
+    /** Represents a Java array. */
+    ARRAY_ARRAY,
+    /** Represents a {@link Set}. */
+    ARRAY_SET,
+    ARRAY_EXTERNAL,
+
+    /** Represents an unclassified runtime representation. */
+    UNKNOWN,
+
+    /**
+     * The concrete node kind is not known statically and must be
+     * resolved from the runtime value.
+     */
+    COMPILE_TIME_UNKNOWN;
+
+
+    public static NodeKind of(Object node) {
+        if (node == null) return VALUE_NULL;
+        Class<?> clazz = node.getClass();
+        NodeKind kind = plainOf(clazz);
         if (kind != NodeKind.UNKNOWN) {
-            // Some external tree types also implement Map/List (JSON-P).
-            // Do not let those Java interfaces mask the registered representation.
-            if ((kind == OBJECT_MAP
-                    && clazz != java.util.HashMap.class
-                    && clazz != java.util.LinkedHashMap.class
-                    && clazz != java.util.TreeMap.class)
-                    || (kind == ARRAY_LIST
-                    && clazz != java.util.ArrayList.class
-                    && clazz != java.util.LinkedList.class)) {
-                TypeInfo info = TypeRegistry.registerTypeInfo(clazz);
-                if (info.externalNode != null) return info.externalNode.nodeKind(node);
+            if (kind == OBJECT_MAP || kind == ARRAY_LIST) {
+                org.sjf4j.external.ExternalNode<Object> external =
+                        TypeRegistry.externalForContainer(clazz);
+                if (external != null) return external.nodeKind(node);
             }
             return kind;
         }
@@ -54,16 +129,30 @@
             return OBJECT_JSON_OBJECT;
         } else if (JsonObject.class.isAssignableFrom(clazz)) {
             return OBJECT_JOJO;
-        } else if (List.clas        if (kind != NodeKind.UNKNOWN) {
-            if (kind == OBJECT_MAP || kind == ARRAY_LIST) {
-                org.sjf4j.external.ExternalNode<Object> external =
-                        TypeRegistry.externalForContainer(clazz);
-                if (external != null) return external.nodeKind(node);
-            }
-            return kind;
+        } else if (List.class.isAssignableFrom(clazz)) {
+            return ARRAY_LIST;
+        } else if (clazz == JsonArray.class) {
+            return ARRAY_JSON_ARRAY;
+        } else if (JsonArray.class.isAssignableFrom(clazz)) {
+            return ARRAY_JAJO;
+        } else if (clazz.isArray()) {
+            return ARRAY_ARRAY;
+        } else if (Set.class.isAssignableFrom(clazz)) {
+            return ARRAY_SET;
+        } else if (clazz == Character.class || Enum.class.isAssignableFrom(clazz)) {
+            return VALUE_STRING;
+        } else if (clazz == Void.class) {
+            return VALUE_NULL;
         }
+        return UNKNOWN;
+    }
 
-this == VALUE_STRING || this == VALUE_STRING_CHARACTER
+    public boolean isNumber() {
+        return this == VALUE_NUMBER || this == VALUE_NUMBER_EXTERNAL;
+    }
+
+    public boolean isString() {
+        return this == VALUE_STRING || this == VALUE_STRING_CHARACTER
                 || this == VALUE_STRING_ENUM || this == VALUE_STRING_EXTERNAL;
     }
 
