@@ -80,8 +80,8 @@ public class PojoInfo {
         this.propertyWriters = propertyWriters;
 
         if (hasParentScopeOneOf || !creatorInfo.hasNoArgsCreator()) {
-            // The creator has priority over declared properties, including
-            // aliases. Compute that resolution once, not per streamed field.
+            // Creator names and aliases take priority over declared properties.
+            // Precompute index-aligned matcher names, argument indices, and properties.
             LinkedHashSet<String> keys = new LinkedHashSet<>();
             if (creatorInfo.argNames != null) {
                 Collections.addAll(keys, creatorInfo.argNames);

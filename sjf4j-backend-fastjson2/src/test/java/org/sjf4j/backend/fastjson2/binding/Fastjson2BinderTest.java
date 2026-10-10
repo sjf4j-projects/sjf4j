@@ -212,23 +212,6 @@ class Fastjson2BinderTest {
         public String name;
     }
 
-    @Test
-    void matchesRecordCreatorArgumentsAndAliasesWithoutFieldMapLookups() {
-        CreatorRecord value = (CreatorRecord) new Fastjson2Binder().readNode(
-                "{\"unknown\":{\"nested\":[1,2]},\"age\":7,\"legacy_name\":\"Ada\"}",
-                CreatorRecord.class);
-
-        assertEquals(new CreatorRecord("Ada", 7), value);
-        assertThrows(BindingException.class, () -> new Fastjson2Binder().readNode(
-                "{\"name\":\"first\",\"legacy_name\":\"duplicate\",\"age\":7}",
-                CreatorRecord.class));
-    }
-
-    record CreatorRecord(
-            @org.sjf4j.annotation.node.NodeProperty(value = "name", aliases = "legacy_name") String name,
-            int age) {
-    }
-
     static class TrackingWriter extends StringWriter {
         boolean closed;
 

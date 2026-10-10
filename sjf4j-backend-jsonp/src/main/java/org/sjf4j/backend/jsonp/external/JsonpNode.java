@@ -20,7 +20,11 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
-/** JSON-P {@link JsonValue} implementation of the external node contract. */
+/**
+ * JSON-P {@link JsonValue} implementation of the external node contract.
+ * Existing immutable JSON-P nodes can be used as sources; this adapter does not
+ * construct JSON-P nodes as mapper targets.
+ */
 public final class JsonpNode implements ExternalNode<JsonValue> {
     @Override
     public Class<JsonValue> nodeType() {

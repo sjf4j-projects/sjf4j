@@ -9,7 +9,6 @@ import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.json.Json;
-import jakarta.json.JsonStructure;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -51,7 +50,7 @@ public class RuntimeReadBenchmark {
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
-//        Main.main(new String[]{RuntimeReadBenchmark.class.getName() + ".*_jackson2"});
+//        Main.main(new String[]{RuntimeReadBenchmark.class.getName() + ".jackson2_.*"});
     }
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
@@ -122,190 +121,186 @@ public class RuntimeReadBenchmark {
 
     // ----- Jackson2 baselines -----
     @Benchmark
-    public Object pojo_jackson2_native() throws IOException {
+    public Object jackson2_pojo_native() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object pojo_jackson2_blackbird() throws IOException {
+    public Object jackson2_pojo_blackbird() throws IOException {
         return JACKSON2_BLACKBIRD.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object map_jackson2_native() throws IOException {
+    public Object jackson2_map_native() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object pojo_jackson2_runtime() throws IOException {
+    public Object jackson2_pojo_runtime() throws IOException {
         return JACKSON2_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object map_jackson2_runtime() throws IOException {
+    public Object jackson2_map_runtime() throws IOException {
         return JACKSON2_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object jojo_jackson2_native_extra() throws IOException {
+    public Object jackson2_jojo_native_extra() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, UserExtra.class);
     }
 
     @Benchmark
-    public Object jojo_jackson2_runtime() throws IOException {
+    public Object jackson2_jojo_runtime() throws IOException {
         return JACKSON2_BINDER.readNode(JSON_DATA2, UserJojo.class);
     }
 
 
     @Benchmark
-    public Object record_jackson2_native() throws IOException {
+    public Object jackson2_record_native() throws IOException {
         return JACKSON2.readValue(RECORD_JSON, UserRecord.class);
     }
 
     @Benchmark
-    public Object record_jackson2_runtime() throws IOException {
+    public Object jackson2_record_runtime() throws IOException {
         return JACKSON2_BINDER.readNode(RECORD_JSON, UserRecord.class);
     }
 
 
     // ----- Jackson3 baselines -----
     @Benchmark
-    public Object pojo_jackson3_native() throws IOException {
+    public Object jackson3_pojo_native() throws IOException {
         return JACKSON3.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object pojo_jackson3_blackbird() throws IOException {
+    public Object jackson3_pojo_blackbird() throws IOException {
         return JACKSON3_BLACKBIRD.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object map_jackson3_native() throws IOException {
+    public Object jackson3_map_native() throws IOException {
         return JACKSON3.readValue(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object pojo_jackson3_runtime() throws IOException {
+    public Object jackson3_pojo_runtime() throws IOException {
         return JACKSON3_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object map_jackson3_runtime() throws IOException {
+    public Object jackson3_map_runtime() throws IOException {
         return JACKSON3_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object jojo_jackson3_native_extra() throws IOException {
+    public Object jackson3_jojo_native_extra() throws IOException {
         return JACKSON3.readValue(JSON_DATA2, UserExtra.class);
     }
 
     @Benchmark
-    public Object jojo_jackson3_runtime() throws IOException {
+    public Object jackson3_jojo_runtime() throws IOException {
         return JACKSON3_BINDER.readNode(JSON_DATA2, UserJojo.class);
     }
 
 
     @Benchmark
-    public Object record_jackson3_native() throws IOException {
+    public Object jackson3_record_native() throws IOException {
         return JACKSON3.readValue(RECORD_JSON, UserRecord.class);
     }
 
     @Benchmark
-    public Object record_jackson3_runtime() throws IOException {
+    public Object jackson3_record_runtime() throws IOException {
         return JACKSON3_BINDER.readNode(RECORD_JSON, UserRecord.class);
     }
 
 
     // ----- Gson baselines -----
     @Benchmark
-    public Object pojo_gson_native() {
+    public Object gson_pojo_native() {
         return GSON.fromJson(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object pojo_gson_runtime() throws IOException {
+    public Object gson_pojo_runtime() throws IOException {
         return GSON_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object map_gson_native() {
+    public Object gson_map_native() {
         return GSON.fromJson(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object map_gson_runtime() throws IOException {
+    public Object gson_map_runtime() throws IOException {
         return GSON_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
 
     // ----- Fastjson2 baselines -----
     @Benchmark
-    public Object pojo_fastjson2_native() {
+    public Object fastjson2_pojo_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(User.class);
         }
     }
 
     @Benchmark
-    public Object pojo_fastjson2_runtime() throws IOException {
+    public Object fastjson2_pojo_runtime() throws IOException {
         return FASTJSON2_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object jojo_fastjson2_native_extra() {
+    public Object fastjson2_jojo_native_extra() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(UserExtra.class);
         }
     }
 
     @Benchmark
-    public Object jojo_fastjson2_runtime() throws IOException {
+    public Object fastjson2_jojo_runtime() throws IOException {
         return FASTJSON2_BINDER.readNode(JSON_DATA2, UserJojo.class);
     }
 
     @Benchmark
-    public Object map_fastjson2_native() {
+    public Object fastjson2_map_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
         }
     }
 
     @Benchmark
-    public Object map_fastjson2_runtime() throws IOException {
+    public Object fastjson2_map_runtime() throws IOException {
         return FASTJSON2_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
 
     // ----- JSON-P baselines -----
+    // Binder conversion to JSON-P native targets is unsupported; measure native parsing directly.
     @Benchmark
-    public Object tree_jsonp_native() {
+    public Object jsonp_tree_native() {
         return Json.createReader(new StringReader(JSON_DATA2)).read();
     }
 
     @Benchmark
-    public Object tree_jsonp_runtime() throws IOException {
-        return JSONP_BINDER.readNode(JSON_DATA2, JsonStructure.class);
-    }
-
-    @Benchmark
-    public Object map_jsonp_runtime() throws IOException {
+    public Object jsonp_map_runtime() throws IOException {
         return JSONP_BINDER.readNode(JSON_DATA2, Map.class);
     }
 
 
     // ----- Simple JSON baselines -----
     @Benchmark
-    public Object json_simple_pojo_facade() throws IOException {
+    public Object simple_pojo_facade() throws IOException {
         return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object json_simple_jojo_facade() throws IOException {
+    public Object simple_jojo_runtime() throws IOException {
         return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, UserJojo.class);
     }
 
     @Benchmark
-    public Object json_simple_map_facade() throws IOException {
+    public Object simple_map_runtime() throws IOException {
         return SIMPLE_JSON_BINDER.readNode(JSON_DATA2, Map.class);
     }
 }

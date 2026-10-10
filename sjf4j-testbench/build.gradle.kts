@@ -41,6 +41,7 @@ dependencies {
 
     // test
     testAnnotationProcessor(project(":sjf4j-processor"))
+    testImplementation(project(":sjf4j-processor"))
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
     testImplementation("ch.qos.logback:logback-classic:1.5.34")

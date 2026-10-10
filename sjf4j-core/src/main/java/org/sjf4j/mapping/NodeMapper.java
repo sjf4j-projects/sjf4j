@@ -422,9 +422,12 @@ public final class NodeMapper {
                     }
                     if (pi.isJojo && pi.writeDynamic) {
                         Map<String, Object> dynamic = InternalAccess.dynamicProperties((JsonObject) node);
-                        for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
-                            target.putInObject(out, entry.getKey(), _convertToExternal(
-                                    entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
+                        // JOJO dynamic storage is allocated only after a dynamic entry is written.
+                        if (dynamic != null) {
+                            for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
+                                target.putInObject(out, entry.getKey(), _convertToExternal(
+                                        entry.getValue(), target.nodeType(), target, deepCopy, new PathSegment.Name(ps, entry.getKey()), context));
+                            }
                         }
                     }
                     result = out;

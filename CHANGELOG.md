@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `Format`, `BinderProvider`, and `BinderFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
 
 ### Changed
+- Fixed external conversion of JOJOs without dynamic properties and clarified JSON-P native-node source/target behavior.
 - Updated JSON-P streaming bindings and optimized structured property serialization; Jackson 2 benchmarks now include Blackbird comparisons.
 - Aligned streaming backends with the current reader/writer APIs, added primitive-array binding paths, and improved SnakeYAML JSON-compatible validation.
 - Improved typed serialization for map, collection, and array property values.

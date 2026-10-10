@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.InternalAccess;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
@@ -25,6 +26,10 @@ class Jackson2ExternalMappingTest {
     static class Person {
         public String name;
         public int age;
+    }
+
+    static class DeclaredOnlyJojo extends org.sjf4j.JsonObject {
+        public String name;
     }
 
     @Test
@@ -62,6 +67,18 @@ class Jackson2ExternalMappingTest {
                 .compareTo(new BigDecimal(raw.get("amount").toString())));
         assertNull(NodeMapper.convert(null, JsonNode.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(data, TextNode.class, false));
+    }
+
+    @Test
+    void convertsJojoWithDeclaredPropertiesAndNoDynamicEntries() {
+        DeclaredOnlyJojo source = new DeclaredOnlyJojo();
+        source.name = "Ada";
+        assertNull(InternalAccess.dynamicProperties(source));
+
+        JsonNode converted = (JsonNode) NodeMapper.convert(source, JsonNode.class, false);
+
+        assertEquals("Ada", converted.get("name").textValue());
+        assertEquals(1, converted.size());
     }
 
     @NodeValue

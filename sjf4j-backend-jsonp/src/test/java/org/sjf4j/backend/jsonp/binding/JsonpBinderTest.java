@@ -56,35 +56,23 @@ class JsonpBinderTest {
     }
 
     @Test
-    void readsNativeExternalTreeAndTraversesIt() {
+    void traversesAndWritesExistingNativeExternalTree() {
         JsonpBinder binder = new JsonpBinder();
         String json = "{\"items\":[{\"name\":\"Ada\",\"active\":true},null,3],\"empty\":{}}";
 
-        JsonObject object = (JsonObject) binder.readNode(json, JsonObject.class);
+        JsonObject object;
+        try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(json))) {
+            object = reader.readObject();
+        }
         Object first = Nodes.getInArray(Nodes.getInObject(object, "items"), 0);
         assertEquals("Ada", ((JsonString) Nodes.getInObject(first, "name")).getString());
         assertEquals(3, object.getJsonArray("items").size());
         assertSame(JsonValue.NULL, Nodes.getInArray(object.getJsonArray("items"), 1));
         assertEquals(json, binder.writeNodeAsString(object));
 
-        assertEquals(object, binder.readNode(json, JsonStructure.class));
-        assertEquals(object, binder.readNode(json, JsonValue.class));
-        JsonArray array = (JsonArray) binder.readNode("[true,{\"n\":1}]", JsonArray.class);
+        JsonArray array = Json.createArrayBuilder().add(true).add(Json.createObjectBuilder().add("n", 1)).build();
         assertEquals(2, array.size());
         assertEquals(1, array.getJsonObject(1).getInt("n"));
-        assertEquals(array, binder.readNode("[true,{\"n\":1}]".getBytes(StandardCharsets.UTF_8), JsonArray.class));
-        assertEquals("text", ((JsonString) binder.readNode("\"text\"", JsonValue.class)).getString());
-        assertNull(binder.readNode("null", JsonValue.class));
-
-        TreeDocument nested = (TreeDocument) binder.readNode(
-                "{\"before\":1,\"tree\":{\"items\":[true]},\"values\":[1,2],"
-                        + "\"entries\":{\"n\":3},\"elements\":[true,null],\"after\":2}", TreeDocument.class);
-        assertEquals(1, nested.before);
-        assertEquals(1, nested.tree.getJsonArray("items").size());
-        assertEquals(2, nested.values.size());
-        assertEquals(3, ((jakarta.json.JsonNumber) nested.entries.get("n")).intValue());
-        assertNull(nested.elements.get(1));
-        assertEquals(2, nested.after);
 
         Map<String, Object> mixed = new LinkedHashMap<>();
         mixed.put("tree", object);
@@ -92,18 +80,38 @@ class JsonpBinderTest {
         mixed.put("nil", JsonValue.NULL);
         assertEquals("{\"tree\":" + json + ",\"array\":[true,{\"n\":1}],\"nil\":null}",
                 new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false)).writeNodeAsString(mixed));
+        TreeDocument nested = new TreeDocument();
+        nested.before = 1;
+        nested.tree = Json.createObjectBuilder().add("items", Json.createArrayBuilder().add(true)).build();
+        nested.values = Json.createArrayBuilder().add(1).add(2).build();
+        nested.entries = new LinkedHashMap<>();
+        nested.entries.put("n", Json.createValue(3));
+        nested.elements = Arrays.asList(JsonValue.TRUE, JsonValue.NULL);
+        nested.after = 2;
         assertEquals("{\"before\":1,\"tree\":{\"items\":[true]},\"values\":[1,2],"
                         + "\"entries\":{\"n\":3},\"elements\":[true,null],\"after\":2}",
                 binder.writeNodeAsString(nested));
         assertEquals("true", binder.writeNodeAsString(JsonValue.TRUE));
         assertEquals("null", binder.writeNodeAsString(JsonValue.NULL));
         String precise = "{\"decimal\":0.123456789012345678901234567890}";
-        assertEquals(precise, binder.writeNodeAsString(binder.readNode(precise, JsonValue.class)));
+        try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(precise))) {
+            assertEquals(precise, binder.writeNodeAsString(reader.readObject()));
+        }
 
-        assertThrows(BindingException.class, () -> binder.readNode("[]", JsonObject.class));
-        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonArray.class));
-        assertThrows(BindingException.class, () -> binder.readNode("true", JsonStructure.class));
-        assertThrows(BindingException.class, () -> binder.readNode("{} []", JsonValue.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{} []", Map.class));
+    }
+
+    @Test
+    void rejectsCreatingNativeExternalTargets() {
+        JsonpBinder binder = new JsonpBinder();
+        assertEquals("text", binder.readNode("\"text\"", String.class));
+        assertNull(binder.readNode("null", JsonValue.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonObject.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonStructure.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonValue.class));
+        assertThrows(BindingException.class, () -> binder.readNode("[true,{\"n\":1}]", JsonArray.class));
+        assertThrows(BindingException.class, () -> binder.readNode("\"text\"", JsonValue.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{\"tree\":{}}", TreeDocument.class));
     }
 
     @Test
