@@ -80,14 +80,7 @@ public enum NodeKind {
         if (node == null) return VALUE_NULL;
         Class<?> clazz = node.getClass();
         NodeKind kind = plainOf(clazz);
-        if (kind != NodeKind.UNKNOWN) {
-            if (kind == OBJECT_MAP || kind == ARRAY_LIST) {
-                org.sjf4j.external.ExternalNode<Object> external =
-                        TypeRegistry.externalForContainer(clazz);
-                if (external != null) return external.nodeKind(node);
-            }
-            return kind;
-        }
+        if (kind != NodeKind.UNKNOWN) return kind;
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueInfos != null) {
