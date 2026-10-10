@@ -44,12 +44,16 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 20, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 15, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
 @State(Scope.Thread)
 public class JojoWriteBenchmark {
+
+    public static void main(String[] args) throws Exception {
+        Main.main(new String[]{JojoWriteBenchmark.class.getName()});
+    }
 
     private static final Jackson2Binder JACKSON2_BINDER = new Jackson2Binder();
     private static final Jackson3Binder JACKSON3_BINDER = new Jackson3Binder();
@@ -68,10 +72,6 @@ public class JojoWriteBenchmark {
     private JojoReadBenchmark.JojoModel jojo;
     private JojoReadBenchmark.PojoModel pojo;
     private JojoReadBenchmark.ExtraModel nativeExtra;
-
-    public static void main(String[] args) throws Exception {
-        Main.main(new String[]{JojoWriteBenchmark.class.getName()});
-    }
 
     @Setup(Level.Trial)
     public void setUp() throws IOException {
