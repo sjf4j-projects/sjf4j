@@ -64,11 +64,25 @@ public class Fastjson2RuntimeProbeBenchmark {
     public void validate() throws IOException {
         JojoReadBenchmark.PojoModel base = (JojoReadBenchmark.PojoModel) runtimePojo();
         validateResult("nativePojo", nativePojo());
+        validateNativeExtra(nativeExtra());
         validateResult("runtimePojo", base);
         validateResult("runtimeJojo", runtimeJojo());
         validateResult("readerPropertyDispatch", readerPropertyDispatch());
         validateResult("readerSwitch", readerSwitch());
         validateResult("rawHashIf", rawHashIf());
+    }
+
+    private static void validateNativeExtra(Object candidate) {
+        JojoReadBenchmark.ExtraModel p = (JojoReadBenchmark.ExtraModel) candidate;
+        if (p.id != 839201L || p.createdAt != 1700000000123L
+                || p.updatedAt != 1701234567890L || p.reputation != 9876543210L
+                || p.loginCount != 421 || p.age != 34 || !p.active || !p.verified
+                || p.admin || p.suspended || p.score != 98.75 || p.latitude != 37.7749
+                || p.longitude != -122.4194 || !"alice.builder".equals(p.username)
+                || p.email != null || !"Platform Engineering".equals(p.department)
+                || !p.extra.isEmpty()) {
+            throw new IllegalStateException("native extra content differs");
+        }
     }
 
     private static void validateResult(String label, Object candidate) {
@@ -103,6 +117,13 @@ public class Fastjson2RuntimeProbeBenchmark {
     public Object nativePojo() {
         try (JSONReader reader = JSONReader.of(JSON, CTX)) {
             return reader.read(TYPE);
+        }
+    }
+
+    @Benchmark
+    public Object nativeExtra() {
+        try (JSONReader reader = JSONReader.of(JSON, CTX)) {
+            return reader.read(JojoReadBenchmark.ExtraModel.class);
         }
     }
 
