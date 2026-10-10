@@ -107,12 +107,25 @@ public class JojoWriteBenchmark {
             throw new IllegalStateException("unexpected dynamic key set for " + workload);
         }
 
-        // Compare parsed JSON trees: serialization order may legitimately vary.
-        Map<?, ?> expectedJojo = parse(fixture);
+        // Every model declares all 16 typed fields, and serialization includes
+        // unset fields' Java defaults. The input fixture contains only staticCount
+        // typed properties, so comparing written output directly with the input
+        // would incorrectly reject mixed/dynamic workloads.
+        //
+        // Use native-extra as the independent complete-object reference and
+        // verify every input field still has its original value.
+        Map<?, ?> expectedJojo = parse(JACKSON2.writeValueAsString(nativeExtra));
         Map<?, ?> expectedPojo = parse(JACKSON2_BINDER.writeNodeAsString(pojo));
-        if (expectedJojo.size() != staticCount + dynamicCount
-                || expectedPojo.size() != staticCount) {
-            throw new IllegalStateException("invalid JOJO write fixture for " + workload);
+        Map<?, ?> input = parse(fixture);
+        int declaredCount = JojoReadBenchmark.PojoModel.class.getDeclaredFields().length;
+        if (expectedJojo.size() != declaredCount + dynamicCount
+                || expectedPojo.size() != declaredCount) {
+            throw new IllegalStateException("invalid JOJO write field count for " + workload);
+        }
+        for (Map.Entry<?, ?> entry : input.entrySet()) {
+            if (!java.util.Objects.equals(expectedJojo.get(entry.getKey()), entry.getValue())) {
+                throw new IllegalStateException("input field not preserved: " + entry.getKey());
+            }
         }
 
         verify("fastjson2 JOJO", expectedJojo, fastjson2_jojo_runtime());
