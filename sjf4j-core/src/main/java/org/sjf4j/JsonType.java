@@ -82,7 +82,21 @@ public enum JsonType {
      */
     public static JsonType rawOf(Class<?> clazz) {
         NodeKind kind = NodeKind.plainOf(clazz);
-        if (kind != NodeKind.UNKNOWN) return of(kind);
+        if (kind != NodeKind.UNKNOWN) {
+            // External JSON trees can also implement Map/List; their registered
+            // JSON shape takes precedence over those Java collection interfaces.
+            if ((kind == NodeKind.OBJECT_MAP
+                    && clazz != java.util.HashMap.class
+                    && clazz != java.util.LinkedHashMap.class
+                    && clazz != java.util.TreeMap.class)
+                    || (kind == NodeKind.ARRAY_LIST
+                    && clazz != java.util.ArrayList.class
+                    && clazz != java.util.LinkedList.class)) {
+                TypeInfo info = TypeRegistry.registerTypeInfo(clazz);
+                if (info.externalNode != null) return info.externalNode.jsonTypeOfClass(clazz);
+            }
+            return of(kind);
+        }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueInfos != null) {
