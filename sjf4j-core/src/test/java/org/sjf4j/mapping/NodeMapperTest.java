@@ -320,7 +320,7 @@ class NodeMapperTest {
         public final int age;
 
         @org.sjf4j.annotation.node.NodeCreator
-        CreatorTarget(@org.sjf4j.annotation.node.NodeProperty("name") String name,
+        public CreatorTarget(@org.sjf4j.annotation.node.NodeProperty("name") String name,
                       @org.sjf4j.annotation.node.NodeProperty("age") int age) {
             this.name = name;
             this.age = age;
