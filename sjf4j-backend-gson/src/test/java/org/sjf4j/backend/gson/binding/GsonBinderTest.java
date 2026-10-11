@@ -167,19 +167,21 @@ class GsonBinderTest {
     }
 
     @Test
-    void preservesExternalJsonNullsWhenContextOmitsOrdinaryNulls() {
+    void includeNullsControlsNativeJsonNullObjectProperties() {
         JsonObject object = new JsonObject();
         object.add("empty", JsonNull.INSTANCE);
 
-        JsonObject output = JsonParser.parseString(
-                new GsonBinder(new Gson(), new RuntimeContext(false)).writeNodeAsString(object))
-                .getAsJsonObject();
+        GsonBinder withoutNulls = new GsonBinder(new Gson(), new RuntimeContext(false));
+        GsonBinder withNulls = new GsonBinder(new Gson(), RuntimeContext.EMPTY);
 
-        assertTrue(output.get("empty").isJsonNull());
+        assertFalse(JsonParser.parseString(withoutNulls.writeNodeAsString(object))
+                .getAsJsonObject().has("empty"));
+        assertTrue(JsonParser.parseString(withNulls.writeNodeAsString(object))
+                .getAsJsonObject().get("empty").isJsonNull());
     }
 
     @Test
-    void distinguishesNativeJsonNullFromJavaNullInNestedWrites() {
+    void omitsNativeAndJavaNullObjectPropertiesButPreservesNullArrayElements() {
         JsonObject nativeTree = new JsonObject();
         nativeTree.add("explicit", JsonNull.INSTANCE);
         JsonObject child = new JsonObject();
@@ -195,8 +197,31 @@ class GsonBinderTest {
         wrapper.put("native", nativeTree);
         GsonBinder binder = new GsonBinder(new Gson(), new RuntimeContext(false));
         assertEquals(
-                "{\"native\":{\"explicit\":null,\"child\":{\"explicit\":null},\"items\":[null,\"x\"]}}",
+                "{\"native\":{\"child\":{},\"items\":[null,\"x\"]}}",
                 binder.writeNodeAsString(wrapper));
+    }
+
+    @Test
+    void omitsExternalNullInPojoFieldsWithStaticAndObjectTypes() {
+        ExternalNullHolder holder = new ExternalNullHolder();
+        holder.nativeValue = JsonNull.INSTANCE;
+        holder.objectValue = JsonNull.INSTANCE;
+        holder.javaValue = null;
+
+        assertEquals("{}", new GsonBinder(new Gson(), new RuntimeContext(false))
+                .writeNodeAsString(holder));
+        JsonObject withNulls = JsonParser.parseString(
+                new GsonBinder(new Gson(), RuntimeContext.EMPTY).writeNodeAsString(holder))
+                .getAsJsonObject();
+        assertTrue(withNulls.get("nativeValue").isJsonNull());
+        assertTrue(withNulls.get("objectValue").isJsonNull());
+        assertTrue(withNulls.get("javaValue").isJsonNull());
+    }
+
+    static class ExternalNullHolder {
+        public com.google.gson.JsonElement nativeValue;
+        public Object objectValue;
+        public Object javaValue;
     }
 
     @Test
