@@ -126,6 +126,31 @@ class NodeMapperTest {
     }
 
     @Test
+    void cachesPojoPropertyBindingsWithoutLosingCreatorOrJojoDynamicFields() {
+        SourceWithExtras source = new SourceWithExtras();
+        source.name = "Ada";
+        source.age = 32;
+        source.unused = "extra";
+
+        // Both conversions exercise the same cached concrete class pair.
+        for (int i = 0; i < 2; i++) {
+            NameOnly only = (NameOnly) NodeMapper.convert(source, NameOnly.class, false);
+            assertEquals("Ada", only.name);
+
+            CreatorTarget creator = (CreatorTarget) NodeMapper.convert(
+                    source, CreatorTarget.class, false);
+            assertEquals("Ada", creator.name);
+            assertEquals(32, creator.age);
+
+            OpenTarget open = (OpenTarget) NodeMapper.convert(source, OpenTarget.class, false);
+            assertEquals("Ada", open.name);
+            assertEquals(32, open.getNode("age"));
+            assertEquals("extra", open.getNode("unused"));
+            assertTrue(!open.dynamicProperties().containsKey("name"));
+        }
+    }
+
+    @Test
     void copyRecreatesNestedMutableNodesWhileConvertPreservesIdentity() {
         Profile source = profile();
 
@@ -274,6 +299,32 @@ class NodeMapperTest {
         profile.details = JsonObject.of("address", JsonObject.of("city", "Oslo"));
         profile.status = Status.OK;
         return profile;
+    }
+
+    static class SourceWithExtras {
+        public String name;
+        public int age;
+        public String unused;
+    }
+
+    static class NameOnly {
+        public String name;
+    }
+
+    static class OpenTarget extends JsonObject {
+        public String name;
+    }
+
+    static class CreatorTarget {
+        public final String name;
+        public final int age;
+
+        @org.sjf4j.annotation.node.NodeCreator
+        CreatorTarget(@org.sjf4j.annotation.node.NodeProperty("name") String name,
+                      @org.sjf4j.annotation.node.NodeProperty("age") int age) {
+            this.name = name;
+            this.age = age;
+        }
     }
 
     enum Status {
