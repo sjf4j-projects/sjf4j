@@ -151,6 +151,33 @@ class NodeMapperTest {
     }
 
     @Test
+    void mapsCreatorAndJojoPropertiesConsistentlyAcrossObjectSources() {
+        SourceWithExtras pojo = new SourceWithExtras();
+        pojo.name = "Ada";
+        pojo.age = 32;
+        pojo.unused = "extra";
+
+        Map<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("name", "Ada");
+        map.put("age", 32);
+        map.put("unused", "extra");
+
+        // POJO uses the cached source-property plan; Map and JsonObject
+        // traverse entries. All must apply identical Creator/JOJO semantics.
+        for (Object source : new Object[]{pojo, map, new JsonObject(map)}) {
+            CreatorTarget creator = (CreatorTarget) NodeMapper.convert(source, CreatorTarget.class, false);
+            assertEquals("Ada", creator.name);
+            assertEquals(32, creator.age);
+
+            OpenTarget open = (OpenTarget) NodeMapper.convert(source, OpenTarget.class, false);
+            assertEquals("Ada", open.name);
+            assertEquals(32, open.getNode("age"));
+            assertEquals("extra", open.getNode("unused"));
+            assertTrue(!open.dynamicProperties().containsKey("name"));
+        }
+    }
+
+    @Test
     void copyRecreatesNestedMutableNodesWhileConvertPreservesIdentity() {
         Profile source = profile();
 
