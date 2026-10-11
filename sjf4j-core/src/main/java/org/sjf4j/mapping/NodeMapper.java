@@ -320,45 +320,11 @@ public final class NodeMapper {
                 result = target.createValueNode(node.toString());
             } else if (node instanceof Enum) {
                 result = target.createValueNode(((Enum<?>) node).name());
-            } else if (node instanceof Map || node instanceof JsonObject) {
-                result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
-            } else if (node instanceof List || node instanceof JsonArray
+            } else if (node instanceof Map || node instanceof JsonObject
+                    || node instanceof List || node instanceof JsonArray
                     || node.getClass().isArray() || node instanceof Set) {
-                if (!target.supportsContainerMutation()) {
-                    result = target.convert(toBoxed, node, context);
-                } else {
-                    Object out = target.createArrayNode(toBoxed);
-                    if (node instanceof List) {
-                        List<?> list = (List<?>) node;
-                        for (int i = 0, size = list.size(); i < size; i++) {
-                            target.addInArray(out, _convertToExternal(
-                                    list.get(i), target.nodeType(), target, deepCopy,
-                                    new PathSegment.Index(ps, i), context));
-                        }
-                    } else if (node instanceof JsonArray) {
-                        JsonArray array = (JsonArray) node;
-                        for (int i = 0, size = array.size(); i < size; i++) {
-                            target.addInArray(out, _convertToExternal(
-                                    array.getNode(i), target.nodeType(), target, deepCopy,
-                                    new PathSegment.Index(ps, i), context));
-                        }
-                    } else if (node.getClass().isArray()) {
-                        int len = Array.getLength(node);
-                        for (int i = 0; i < len; i++) {
-                            target.addInArray(out, _convertToExternal(
-                                    Array.get(node, i), target.nodeType(), target, deepCopy,
-                                    new PathSegment.Index(ps, i), context));
-                        }
-                    } else {
-                        int i = 0;
-                        for (Object value : (Set<?>) node) {
-                            target.addInArray(out, _convertToExternal(
-                                    value, target.nodeType(), target, deepCopy,
-                                    new PathSegment.Index(ps, i++), context));
-                        }
-                    }
-                    result = out;
-                }
+                result = target.convert(toBoxed, node, context);
+                if (deepCopy) result = target.deepCopy(result);
             } else {
                 TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
                 if (sourceInfo.valueInfos != null) {
@@ -383,28 +349,16 @@ public final class NodeMapper {
                             result = target.createValueNode(sourceExternal.toBoolean(node));
                             break;
                         case OBJECT:
-                            result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
-                            break;
                         case ARRAY:
-                            if (!target.supportsContainerMutation()) {
-                                result = target.convert(toBoxed, node, context);
-                            } else {
-                                Object out = target.createArrayNode(toBoxed);
-                                int size = sourceExternal.sizeInArray(node);
-                                for (int i = 0; i < size; i++) {
-                                    target.addInArray(out, _convertToExternal(
-                                            sourceExternal.getInArray(node, i),
-                                            target.nodeType(), target, deepCopy,
-                                            new PathSegment.Index(ps, i), context));
-                                }
-                                result = out;
-                            }
+                            result = target.convert(toBoxed, node, context);
+                            if (deepCopy) result = target.deepCopy(result);
                             break;
                         default:
                             throw new BindingException("unsupported external node type '" + Types.name(node) + "'", ps);
                     }
                 } else if (sourceInfo.pojoInfo != null) {
-                    result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
+                    result = target.convert(toBoxed, node, context);
+                    if (deepCopy) result = target.deepCopy(result);
                 } else {
                     throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);
                 }
@@ -416,15 +370,6 @@ public final class NodeMapper {
             throw new BindingException("cannot convert node from '" + Types.name(node)
                     + "' to external type '" + toBoxed.getName() + "'", ps, e);
         }
-    }
-
-    private static Object _convertExternalObject(Object node, Class<?> toBoxed,
-                                                 ExternalNode<Object> target,
-                                                 boolean deepCopy, RuntimeContext context) {
-        Object result = target.convert(toBoxed, node, context);
-        // Mutable target construction may retain existing native child nodes.
-        // Immutable trees cannot alias mutable children, so avoid an extra copy.
-        return deepCopy && target.supportsContainerMutation() ? target.deepCopy(result) : result;
     }
 
     private static Object _requireExternalTarget(Object result, Class<?> toBoxed, PathSegment ps) {
@@ -552,7 +497,7 @@ public final class NodeMapper {
             // them as mutable Java collections.
             if (node instanceof Map || node instanceof List) {
                 ExternalNode<?> external = ExternalRegistry.resolve(nodeClazz);
-                if (external != null && !external.supportsContainerMutation()) {
+                if (external != null) {
                     return ((ExternalNode<Object>) external).deepCopy(node);
                 }
             }
