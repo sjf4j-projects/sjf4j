@@ -425,12 +425,6 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Map<String, T>) node;
         }
-        if (mapType != Map.class && mapType != LinkedHashMap.class) {
-            ContainerInfo ci = TypeRegistry.registerTypeInfo(mapType).containerInfo;
-            if (ci != null && ci.externalNode != null) {
-                return (Map<String, T>) NodeMapper.convert(node, mapType, false);
-            }
-        }
         Map<String, T> map = TypeRegistry.newMapContainer(mapType, 0, false);
         Nodes.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz)));
         return map;
@@ -491,12 +485,6 @@ public final class Nodes {
             return (List<T>) node;
         }
 
-        if (listType != List.class && listType != ArrayList.class) {
-            ContainerInfo ci = TypeRegistry.registerTypeInfo(listType).containerInfo;
-            if (ci != null && ci.externalNode != null) {
-                return (List<T>) NodeMapper.convert(node, listType, false);
-            }
-        }
         List<T> list = TypeRegistry.newListContainer(listType, 0, false);
         Nodes.forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
         return list;
@@ -688,11 +676,23 @@ public final class Nodes {
             else return toBoolean(node);
         }
         if (Map.class.isAssignableFrom(clazz)) {
+            if (clazz != Map.class && clazz != LinkedHashMap.class) {
+                ContainerInfo ci = TypeRegistry.registerTypeInfo(clazz).containerInfo;
+                if (ci != null && ci.externalNode != null) {
+                    return NodeMapper.convert(node, type, false);
+                }
+            }
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             return _toMap(node, clazz, vc);
         }
         if (List.class.isAssignableFrom(clazz)) {
+            if (clazz != List.class && clazz != ArrayList.class) {
+                ContainerInfo ci = TypeRegistry.registerTypeInfo(clazz).containerInfo;
+                if (ci != null && ci.externalNode != null) {
+                    return NodeMapper.convert(node, type, false);
+                }
+            }
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             return _toList(node, clazz, vc);
