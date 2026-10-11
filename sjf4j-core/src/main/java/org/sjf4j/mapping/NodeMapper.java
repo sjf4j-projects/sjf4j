@@ -671,7 +671,7 @@ public final class NodeMapper {
             return value;
         }
         if (toBoxed == Character.class) {
-            return !value.isEmpty() ? value.charAt(0) : null;
+            return Nodes.toChar(value);
         }
         if (toBoxed.isEnum()) {
             return Enum.valueOf((Class<? extends Enum>) toBoxed, value);
