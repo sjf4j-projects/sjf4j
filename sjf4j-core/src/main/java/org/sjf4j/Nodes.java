@@ -614,11 +614,7 @@ public final class Nodes {
         Asserts.notNull(clazz, "clazz");
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
             throw new IllegalArgumentException("expected JAJO subtype, but was " + clazz.getName());
-        if (node == null) return null;
-        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(clazz);
-        JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
-        forEachArray(node, jajo::add);
-        return (T) jajo;
+        return (T) NodeMapper.convert(node, clazz, false);
     }
 
 
