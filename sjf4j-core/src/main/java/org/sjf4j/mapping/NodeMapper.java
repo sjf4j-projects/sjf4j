@@ -10,7 +10,6 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.PropertyInfo;
@@ -471,19 +470,6 @@ public final class NodeMapper {
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueCopy(node);
             }
-            if (ti.externalNode != null) {
-                return ti.externalNode.deepCopy(node);
-            }
-
-            // Some external trees also implement Map/List. Their container metadata
-            // takes precedence in TypeRegistry, so check the native adapter here.
-            if (node instanceof Map || node instanceof List) {
-                ExternalNode<?> external = ExternalRegistry.resolve(nodeClazz);
-                if (external != null) {
-                    return ((ExternalNode<Object>) external).deepCopy(node);
-                }
-            }
-
             /*
              * Map.
              */
@@ -575,6 +561,10 @@ public final class NodeMapper {
                     target.add(_deepCopy(value, elemType, elemBoxed, cps, context));
                 }
                 return target;
+            }
+
+            if (ti.externalNode != null) {
+                return ti.externalNode.deepCopy(node);
             }
 
             /*
