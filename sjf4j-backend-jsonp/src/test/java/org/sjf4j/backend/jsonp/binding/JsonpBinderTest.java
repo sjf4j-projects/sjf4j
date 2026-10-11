@@ -78,7 +78,7 @@ class JsonpBinderTest {
         mixed.put("tree", object);
         mixed.put("array", array);
         mixed.put("nil", JsonValue.NULL);
-        assertEquals("{\"tree\":" + json + ",\"array\":[true,{\"n\":1}],\"nil\":null}",
+        assertEquals("{\"tree\":" + json + ",\"array\":[true,{\"n\":1}]}",
                 new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false)).writeNodeAsString(mixed));
         TreeDocument nested = new TreeDocument();
         nested.before = 1;
@@ -99,6 +99,27 @@ class JsonpBinderTest {
         }
 
         assertThrows(BindingException.class, () -> binder.readNode("{} []", Map.class));
+    }
+
+    @Test
+    void externalWritesPreserveRuntimeContextAcrossRawConversion() {
+        JsonObject nativeObject = Json.createObjectBuilder()
+                .add("drop", JsonValue.NULL)
+                .add("nested", Json.createObjectBuilder()
+                        .add("keep", 7)
+                        .add("drop", JsonValue.NULL))
+                .add("items", Json.createArrayBuilder().addNull().add("x"))
+                .build();
+
+        JsonpBinder withoutNulls = new JsonpBinder(
+                JsonProvider.provider(), new RuntimeContext(false));
+        assertEquals("{\"nested\":{\"keep\":7},\"items\":[null,\"x\"]}",
+                withoutNulls.writeNodeAsString(nativeObject));
+
+        JsonpBinder withNulls = new JsonpBinder(
+                JsonProvider.provider(), RuntimeContext.EMPTY);
+        assertEquals("{\"drop\":null,\"nested\":{\"keep\":7,\"drop\":null},\"items\":[null,\"x\"]}",
+                withNulls.writeNodeAsString(nativeObject));
     }
 
     @Test
