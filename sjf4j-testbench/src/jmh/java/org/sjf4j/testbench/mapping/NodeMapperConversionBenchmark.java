@@ -41,6 +41,8 @@ public class NodeMapperConversionBenchmark {
     private List<Long> listSource;
     private JsonArray jsonArraySource;
     private long[] arraySource;
+    private Long[] boxedArraySource;
+    private int[] intArraySource;
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{NodeMapperConversionBenchmark.class.getName()});
@@ -60,9 +62,13 @@ public class NodeMapperConversionBenchmark {
         listSource = new ArrayList<>(setSource);
         jsonArraySource = new JsonArray(listSource);
         arraySource = new long[listSource.size()];
+        boxedArraySource = new Long[listSource.size()];
+        intArraySource = new int[listSource.size()];
         for (int i = 0; i < arraySource.length; i++) {
             long value = listSource.get(i);
             arraySource[i] = value;
+            boxedArraySource[i] = value;
+            intArraySource[i] = (int) value;
         }
 
         verifySources();
@@ -103,6 +109,16 @@ public class NodeMapperConversionBenchmark {
         return NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
     }
 
+    @Benchmark
+    public Object nodeMapper_boxedLongArrayToTypedList() {
+        return NodeMapper.convert(boxedArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_intArrayToTypedList() {
+        return NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
     @SuppressWarnings("unchecked")
     private void verifySources() {
         TargetUser target = (TargetUser) NodeMapper.convert(pojoSource, TargetUser.class, false);
@@ -116,6 +132,8 @@ public class NodeMapperConversionBenchmark {
         if (((List<?>) NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false)).size() != 32
                 || ((List<?>) NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false)).size() != 32
                 || ((List<?>) NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(boxedArraySource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false)).size() != 32
 ) {
             throw new AssertionError("indexed mapping baseline mismatch");
         }
