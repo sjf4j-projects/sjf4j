@@ -41,7 +41,6 @@ public class NodeMapperConversionBenchmark {
     private List<Long> listSource;
     private JsonArray jsonArraySource;
     private long[] arraySource;
-    private com.fasterxml.jackson.databind.JsonNode externalArraySource;
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{NodeMapperConversionBenchmark.class.getName()});
@@ -61,14 +60,10 @@ public class NodeMapperConversionBenchmark {
         listSource = new ArrayList<>(setSource);
         jsonArraySource = new JsonArray(listSource);
         arraySource = new long[listSource.size()];
-        com.fasterxml.jackson.databind.node.ArrayNode nativeArray =
-                new com.fasterxml.jackson.databind.ObjectMapper().createArrayNode();
         for (int i = 0; i < arraySource.length; i++) {
             long value = listSource.get(i);
             arraySource[i] = value;
-            nativeArray.add(value);
         }
-        externalArraySource = nativeArray;
 
         verifySources();
     }
@@ -108,11 +103,6 @@ public class NodeMapperConversionBenchmark {
         return NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
     }
 
-    @Benchmark
-    public Object nodeMapper_externalArrayToTypedList() {
-        return NodeMapper.convert(externalArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
-    }
-
     @SuppressWarnings("unchecked")
     private void verifySources() {
         TargetUser target = (TargetUser) NodeMapper.convert(pojoSource, TargetUser.class, false);
@@ -126,7 +116,7 @@ public class NodeMapperConversionBenchmark {
         if (((List<?>) NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false)).size() != 32
                 || ((List<?>) NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false)).size() != 32
                 || ((List<?>) NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false)).size() != 32
-                || ((List<?>) NodeMapper.convert(externalArraySource, INTEGER_LIST_TYPE, false)).size() != 32) {
+) {
             throw new AssertionError("indexed mapping baseline mismatch");
         }
     }
