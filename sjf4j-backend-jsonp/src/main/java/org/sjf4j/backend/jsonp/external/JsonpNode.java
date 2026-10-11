@@ -36,11 +36,6 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
     }
 
     @Override
-    public boolean supportsContainerMutation() {
-        return false;
-    }
-
-    @Override
     public Object createValueNode(Object value) {
         if (value == null) return JsonValue.NULL;
         if (value instanceof JsonValue) return value;
