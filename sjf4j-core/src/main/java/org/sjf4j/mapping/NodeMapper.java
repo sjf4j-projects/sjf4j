@@ -327,37 +327,37 @@ public final class NodeMapper {
                 if (!target.supportsContainerMutation()) {
                     result = target.convert(toBoxed, node, context);
                 } else {
-                Object out = target.createArrayNode(toBoxed);
-                if (node instanceof List) {
-                    List<?> list = (List<?>) node;
-                    for (int i = 0, size = list.size(); i < size; i++) {
-                        target.addInArray(out, _convertToExternal(
-                                list.get(i), target.nodeType(), target, deepCopy,
-                                new PathSegment.Index(ps, i), context));
+                    Object out = target.createArrayNode(toBoxed);
+                    if (node instanceof List) {
+                        List<?> list = (List<?>) node;
+                        for (int i = 0, size = list.size(); i < size; i++) {
+                            target.addInArray(out, _convertToExternal(
+                                    list.get(i), target.nodeType(), target, deepCopy,
+                                    new PathSegment.Index(ps, i), context));
+                        }
+                    } else if (node instanceof JsonArray) {
+                        JsonArray array = (JsonArray) node;
+                        for (int i = 0, size = array.size(); i < size; i++) {
+                            target.addInArray(out, _convertToExternal(
+                                    array.getNode(i), target.nodeType(), target, deepCopy,
+                                    new PathSegment.Index(ps, i), context));
+                        }
+                    } else if (node.getClass().isArray()) {
+                        int len = Array.getLength(node);
+                        for (int i = 0; i < len; i++) {
+                            target.addInArray(out, _convertToExternal(
+                                    Array.get(node, i), target.nodeType(), target, deepCopy,
+                                    new PathSegment.Index(ps, i), context));
+                        }
+                    } else {
+                        int i = 0;
+                        for (Object value : (Set<?>) node) {
+                            target.addInArray(out, _convertToExternal(
+                                    value, target.nodeType(), target, deepCopy,
+                                    new PathSegment.Index(ps, i++), context));
+                        }
                     }
-                } else if (node instanceof JsonArray) {
-                    JsonArray array = (JsonArray) node;
-                    for (int i = 0, size = array.size(); i < size; i++) {
-                        target.addInArray(out, _convertToExternal(
-                                array.getNode(i), target.nodeType(), target, deepCopy,
-                                new PathSegment.Index(ps, i), context));
-                    }
-                } else if (node.getClass().isArray()) {
-                    int len = Array.getLength(node);
-                    for (int i = 0; i < len; i++) {
-                        target.addInArray(out, _convertToExternal(
-                                Array.get(node, i), target.nodeType(), target, deepCopy,
-                                new PathSegment.Index(ps, i), context));
-                    }
-                } else {
-                    int i = 0;
-                    for (Object value : (Set<?>) node) {
-                        target.addInArray(out, _convertToExternal(
-                                value, target.nodeType(), target, deepCopy,
-                                new PathSegment.Index(ps, i++), context));
-                    }
-                }
-                result = out;
+                    result = out;
                 }
             } else {
                 TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
