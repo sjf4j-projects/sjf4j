@@ -8,6 +8,7 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.Nodes;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -26,6 +27,14 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsonpExternalMappingTest {
+    @Test
+    void nativeNullScalarsFollowNodesNullSemantics() {
+        assertNull(Nodes.toChar(JsonValue.NULL));
+        assertNull(Nodes.asChar(JsonValue.NULL));
+        assertNull(Nodes.toEnum(JsonValue.NULL, Thread.State.class));
+        assertNull(Nodes.asEnum(JsonValue.NULL, Thread.State.class));
+    }
+
     @SuppressWarnings("unchecked")
     @Test
     void mapsJsonpObjectsWithoutImplicitlyUnwrappingObjectTypedChildren() {
