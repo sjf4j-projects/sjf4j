@@ -107,6 +107,61 @@ class NodeMapperTest {
     }
 
     @Test
+    void convertsListJsonArrayAndJavaArraysWithoutIndexedAdapters() {
+        Type integers = new TypeReference<List<Integer>>() {}.getType();
+        Type longSet = new TypeReference<Set<Long>>() {}.getType();
+
+        Object[] sources = {
+                Arrays.asList(1, 2, 2),
+                JsonArray.of(1, 2, 2),
+                new int[]{1, 2, 2},
+                new Integer[]{1, 2, 2}
+        };
+
+        for (Object source : sources) {
+            List<Integer> list = (List<Integer>) NodeMapper.convert(source, integers, false);
+            assertEquals(Arrays.asList(1, 2, 2), list);
+
+            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false);
+            assertEquals(3, jsonArray.size());
+            assertEquals(2, jsonArray.getNode(2));
+
+            IntJajo jajo = (IntJajo) NodeMapper.convert(source, IntJajo.class, false);
+            assertEquals(3, jajo.size());
+            assertEquals(2, jajo.getNode(1));
+
+            int[] array = (int[]) NodeMapper.convert(source, int[].class, false);
+            assertArrayEquals(new int[]{1, 2, 2}, array);
+
+            Set<Long> set = (Set<Long>) NodeMapper.convert(source, longSet, false);
+            assertEquals(new LinkedHashSet<>(Arrays.asList(1L, 2L)), set);
+        }
+    }
+
+    @Test
+    void indexedConversionPreservesNullsAndNestedErrorPaths() {
+        for (Object source : new Object[]{
+                Arrays.asList(1, null),
+                JsonArray.of(1, null),
+                new Integer[]{1, null}
+        }) {
+            List<Integer> list = (List<Integer>) NodeMapper.convert(
+                    source, new TypeReference<List<Integer>>() {}.getType(), false);
+            assertEquals(Arrays.asList(1, null), list);
+        }
+
+        for (Object source : new Object[]{
+                Arrays.asList(1, true),
+                JsonArray.of(1, true),
+                new Object[]{1, true}
+        }) {
+            BindingException error = assertThrows(BindingException.class,
+                    () -> NodeMapper.convert(source, new TypeReference<List<Integer>>() {}.getType(), false));
+            assertTrue(error.getMessage().contains("$[1]"));
+        }
+    }
+
+    @Test
     void convertHandlesEmptyContainersAndNullMembers() {
         Profile empty = (Profile) NodeMapper.convert(JsonObject.of(
                 "aliases", JsonArray.of(),
@@ -356,6 +411,13 @@ class NodeMapperTest {
         profile.details = JsonObject.of("address", JsonObject.of("city", "Oslo"));
         profile.status = Status.OK;
         return profile;
+    }
+
+    public static class IntJajo extends JsonArray {
+        @Override
+        public Class<?> elementClass() {
+            return Integer.class;
+        }
     }
 
     static class CountingTarget {

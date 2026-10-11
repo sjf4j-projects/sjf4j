@@ -212,6 +212,35 @@ class NodeMapperExternalCoverageTest {
     }
 
     @Test
+    void convertsNativeExternalArraysWithoutIndexedSourceAdapters() {
+        Object[] sources = {
+                new com.fasterxml.jackson.databind.ObjectMapper()
+                        .createArrayNode().add(1).addNull().add(3),
+                JsonParser.parseString("[1,null,3]")
+        };
+        TypeReference<List<Integer>> listType = new TypeReference<List<Integer>>() {};
+        TypeReference<java.util.Set<Integer>> setType = new TypeReference<java.util.Set<Integer>>() {};
+
+        for (Object source : sources) {
+            List<Integer> list = (List<Integer>) NodeMapper.convert(source, listType.getType(), false);
+            assertEquals(Arrays.asList(1, null, 3), list);
+
+            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false);
+            assertEquals(3, jsonArray.size());
+            assertEquals(1, ((Number) jsonArray.getNode(0)).intValue());
+            assertNull(jsonArray.getNode(1));
+            assertEquals(3, ((Number) jsonArray.getNode(2)).intValue());
+
+            Integer[] array = (Integer[]) NodeMapper.convert(source, Integer[].class, false);
+            assertArrayEquals(new Integer[]{1, null, 3}, array);
+
+            java.util.Set<Integer> set = (java.util.Set<Integer>) NodeMapper.convert(
+                    source, setType.getType(), false);
+            assertEquals(new LinkedHashSet<>(Arrays.asList(1, null, 3)), set);
+        }
+    }
+
+    @Test
     void readsNativeOneOfAndReportsInvalidNestedScalarPaths() {
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.JsonNode nativeDog =
