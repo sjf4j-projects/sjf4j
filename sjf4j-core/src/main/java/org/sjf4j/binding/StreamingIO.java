@@ -58,8 +58,8 @@ public final class StreamingIO {
         Asserts.notNull(context, "context");
 
         Class<?> boxed = Types.rawBox(type);
-        TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
-        return readNode(reader, type, boxed, ti, context);
+        // The common scalar and collection paths need no registered metadata.
+        return readNode(reader, type, boxed, TypeInfo.NONE, context);
     }
 
 
@@ -79,15 +79,6 @@ public final class StreamingIO {
 
             if (boxed == Object.class) {
                 return reader.readRawNode();
-            }
-
-            // Polymorphic resolution is uncommon and needs the complete source shape.
-            if (typeInfo.oneOfInfo != null) {
-                return readOneOf(reader, typeInfo.oneOfInfo, context);
-            }
-
-            if (typeInfo.valueInfos != null) {
-                return readValueCodec(reader, typeInfo.requireValueInfo(context.defaultValueFormat(boxed)), context);
             }
 
             /*
@@ -177,10 +168,6 @@ public final class StreamingIO {
                 return new JsonArray(castList(raw));
             }
 
-            if (JsonArray.class.isAssignableFrom(boxed)) {
-                return readJsonArray(reader, type, boxed, typeInfo, context);
-            }
-
             if (Set.class.isAssignableFrom(boxed)) {
                 return readSet(reader, type, boxed, null, null, null, context);
             }
@@ -190,19 +177,35 @@ public final class StreamingIO {
             }
 
             /*
-             * External representations without a standard Java container
-             * contract. Map/List/JsonArray/Set/arrays are handled above.
+             * Registered types only. Callers with pre-resolved metadata keep
+             * using it, while untyped callers avoid registry work entirely
+             * for the standard scalar and collection paths above.
              */
-            if (typeInfo.externalNode != null) {
+            TypeInfo ti = typeInfo == TypeInfo.NONE
+                    ? TypeRegistry.registerTypeInfo(boxed)
+                    : typeInfo;
+
+            if (ti.oneOfInfo != null) {
+                return readOneOf(reader, ti.oneOfInfo, context);
+            }
+
+            if (ti.valueInfos != null) {
+                return readValueCodec(reader, ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
+            }
+
+            if (JsonArray.class.isAssignableFrom(boxed)) {
+                return readJsonArray(reader, type, boxed, ti, context);
+            }
+
+            if (ti.externalNode != null) {
                 Object raw = reader.readRawNode();
                 return NodeMapper.convert(raw, type, false, context);
             }
 
             /*
-             * POJO nodes.
+             * POJO / JOJO.
              */
-
-            PojoInfo pojoInfo = typeInfo.pojoInfo;
+            PojoInfo pojoInfo = ti.pojoInfo;
             if (pojoInfo != null && !pojoInfo.isJajo) {
                 return readPojo(reader, type, boxed, pojoInfo, context);
             }
@@ -1152,7 +1155,7 @@ public final class StreamingIO {
          */
         if (ti.externalNode != null) {
             Object raw = NodeMapper.convertToRaw(node, context);
-            _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
+            _writeNode(writer, raw, TypeInfo.NONE, context);
             return;
         }
 
