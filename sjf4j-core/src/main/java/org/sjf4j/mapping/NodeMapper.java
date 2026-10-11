@@ -1066,6 +1066,12 @@ public final class NodeMapper {
         if (source instanceof Object[]) return ((Object[]) source)[index];
         if (source instanceof int[]) return ((int[]) source)[index];
         if (source instanceof long[]) return ((long[]) source)[index];
+        if (source instanceof byte[]) return ((byte[]) source)[index];
+        if (source instanceof short[]) return ((short[]) source)[index];
+        if (source instanceof float[]) return ((float[]) source)[index];
+        if (source instanceof double[]) return ((double[]) source)[index];
+        if (source instanceof boolean[]) return ((boolean[]) source)[index];
+        if (source instanceof char[]) return ((char[]) source)[index];
         return Array.get(source, index);
     }
 
