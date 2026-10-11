@@ -121,18 +121,6 @@ public final class NodeMapper {
                 return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
             }
 
-            // Explicit native Map/List interfaces (e.g. JSON-P JsonObject/JsonArray)
-            // are external targets, not generic Java collection constructors.
-            // Plain Map/List targets retain their existing OBNT precedence.
-            if (toBoxed.isInterface() && toBoxed != Map.class && toBoxed != List.class
-                    && (Map.class.isAssignableFrom(toBoxed) || List.class.isAssignableFrom(toBoxed))) {
-                ExternalNode<?> nativeTarget = ExternalRegistry.resolve(toBoxed);
-                if (nativeTarget != null) {
-                    return _convertToExternal(node, toBoxed, (ExternalNode<Object>) nativeTarget,
-                            deepCopy, ps, context);
-                }
-            }
-
             // The same Java/OBNT representations used by NodeKind and
             // StreamingIO take priority over external representation adapters.
             if (NodeKind.plainOf(toBoxed) != NodeKind.UNKNOWN) {
