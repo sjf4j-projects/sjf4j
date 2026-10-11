@@ -822,8 +822,9 @@ public final class NodeMapper {
             }
 
             if (pi.isJojo && pi.readDynamic) {
-                _acceptPojoDynamic(state, key, rawValue, deepCopy,
-                        new PathSegment.Name(ps, key), context, externalSource);
+                state.acceptDynamic(key, _convertSourceChild(rawValue,
+                        Object.class, Object.class, null, deepCopy,
+                        new PathSegment.Name(ps, key), context, externalSource));
             }
         }
 
@@ -877,15 +878,6 @@ public final class NodeMapper {
             state.bufferProperty(property, value);
         }
     }
-
-    /** Shared JOJO dynamic-key conversion. */
-    private static void _acceptPojoDynamic(CreatorState state, String name, Object rawValue,
-                                           boolean deepCopy, PathSegment ps,
-                                           RuntimeContext context, boolean externalSource) {
-        state.acceptDynamic(name, _convertSourceChild(rawValue,
-                Object.class, Object.class, null, deepCopy, ps, context, externalSource));
-    }
-
 
     // List -> List/JsonArray/JAJO/Array/Set
     private static Object _convertFromList(List<?> oldList,
@@ -1258,8 +1250,9 @@ public final class NodeMapper {
             }
 
             if (plan.includeDynamic) {
-                _acceptPojoDynamic(state, sourceProperty.name, rawValue, deepCopy,
-                        new PathSegment.Name(ps, sourceProperty.name), context, false);
+                state.acceptDynamic(sourceProperty.name,
+                        _convert(rawValue, Object.class, Object.class, null, deepCopy,
+                                new PathSegment.Name(ps, sourceProperty.name), context));
             }
         }
 
