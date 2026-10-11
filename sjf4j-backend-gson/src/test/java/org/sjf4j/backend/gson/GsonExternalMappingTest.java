@@ -37,7 +37,7 @@ class GsonExternalMappingTest {
         assertEquals("Ada", person.name);
         assertEquals(32, person.age);
 
-        Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(node, RuntimeContext.EMPTY);
+        Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(node, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(true, null, "x"), raw.get("items"));
         assertNull(NodeMapper.convert(null, JsonElement.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(source, com.google.gson.JsonPrimitive.class, false));

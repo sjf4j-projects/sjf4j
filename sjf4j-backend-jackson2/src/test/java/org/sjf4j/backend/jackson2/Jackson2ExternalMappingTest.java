@@ -40,12 +40,12 @@ class Jackson2ExternalMappingTest {
         assertEquals("Ada", person.name);
         assertEquals(32, person.age);
 
-        Map<String, List<Integer>> typed = (Map<String, List<Integer>>) NodeMapper.convert(
+        Map<?, ?> typed = assertInstanceOf(Map.class, NodeMapper.convert(
                 new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode()
                         .set("items", new com.fasterxml.jackson.databind.ObjectMapper()
                                 .createArrayNode().add(1).add(2)),
-                new TypeReference<Map<String, List<Integer>>>() {}.getType(), false);
-        assertEquals(Arrays.asList(1, 2), typed.get("items"));
+                new TypeReference<Map<String, List<Integer>>>() {}.getType(), false));
+        assertEquals(Arrays.asList(1, 2), assertInstanceOf(List.class, typed.get("items")));
     }
 
     @Test
@@ -61,7 +61,7 @@ class Jackson2ExternalMappingTest {
         assertEquals(2, converted.get("items").get(2).intValue());
         assertEquals(0, converted.get("amount").decimalValue().compareTo(new BigDecimal("0.00120")));
 
-        Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(converted, RuntimeContext.EMPTY);
+        Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(converted, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList("a", null, 2), raw.get("items"));
         assertEquals(0, new BigDecimal("0.00120")
                 .compareTo(new BigDecimal(raw.get("amount").toString())));
@@ -139,8 +139,8 @@ class Jackson2ExternalMappingTest {
         com.fasterxml.jackson.databind.node.ArrayNode array = mapper.createArrayNode();
         array.add(mapper.createObjectNode().put("kind", "dog").put("name", "Rex").put("barks", true));
         array.add(mapper.createObjectNode().put("kind", "cat").put("name", "Mog").put("lives", 9));
-        List<Animal> animals = (List<Animal>) NodeMapper.convert(
-                array, new TypeReference<List<Animal>>() {}.getType(), false);
+        List<?> animals = assertInstanceOf(List.class, NodeMapper.convert(
+                array, new TypeReference<List<Animal>>() {}.getType(), false));
         assertEquals("Rex", assertInstanceOf(Dog.class, animals.get(0)).name);
         assertEquals(9, assertInstanceOf(Cat.class, animals.get(1)).lives);
         assertThrows(BindingException.class, () -> NodeMapper.convert(

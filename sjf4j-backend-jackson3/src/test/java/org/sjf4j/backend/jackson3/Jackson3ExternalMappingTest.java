@@ -38,7 +38,7 @@ class Jackson3ExternalMappingTest {
         assertEquals("Ada", person.name);
         assertEquals(32, person.age);
 
-        Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(node, RuntimeContext.EMPTY);
+        Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(node, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(1, null, 3), raw.get("items"));
         assertNull(NodeMapper.convert(null, JsonNode.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(source, StringNode.class, false));
@@ -49,8 +49,8 @@ class Jackson3ExternalMappingTest {
         ArrayNode node = (ArrayNode) NodeMapper.convert(new int[]{1, 2}, JsonNode.class, false);
         assertEquals(2, node.size());
         assertEquals(1, node.get(0).intValue());
-        List<Integer> list = (List<Integer>) NodeMapper.convert(node,
-                new org.sjf4j.TypeReference<List<Integer>>() {}.getType(), false);
+        List<?> list = assertInstanceOf(List.class, NodeMapper.convert(node,
+                new org.sjf4j.TypeReference<List<Integer>>() {}.getType(), false));
         assertEquals(Arrays.asList(1, 2), list);
     }
 }

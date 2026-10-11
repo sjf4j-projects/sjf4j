@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -37,10 +38,10 @@ class StreamingIOReadTest {
                 new TypeReference<Map<String, List<Integer>>>() {};
         try (SimpleJsonReader reader = new SimpleJsonReader(
                 new StringReader("{\"first\":[1,2],\"second\":[]}"))) {
-            Map<String, List<Integer>> value = (Map<String, List<Integer>>)
-                    StreamingIO.readNode(reader, target.getType(), RuntimeContext.EMPTY);
-            assertEquals(List.of(1, 2), value.get("first"));
-            assertEquals(List.of(), value.get("second"));
+            Map<?, ?> value = assertInstanceOf(Map.class,
+                    StreamingIO.readNode(reader, target.getType(), RuntimeContext.EMPTY));
+            assertEquals(List.of(1, 2), assertInstanceOf(List.class, value.get("first")));
+            assertEquals(List.of(), assertInstanceOf(List.class, value.get("second")));
         }
     }
 
