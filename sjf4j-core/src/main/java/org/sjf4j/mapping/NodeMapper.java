@@ -301,13 +301,8 @@ public final class NodeMapper {
     }
 
     /**
-     * Recursively constructs the target backend's native tree without
-     * allocating intermediate Map/List trees or serializing JSON text.
-     */
-    /**
-     * Builds a target native representation. Java/OBNT containers are handled
-     * before consulting ExternalNode metadata; there is no adapter-vs-Map/List
-     * special case.
+     * Constructs the target's native representation without intermediate JSON trees.
+     * Standard Java/OBNT containers are handled before external adapters.
      */
     @SuppressWarnings("unchecked")
     private static Object _convertToExternal(Object node, Class<?> toBoxed,
