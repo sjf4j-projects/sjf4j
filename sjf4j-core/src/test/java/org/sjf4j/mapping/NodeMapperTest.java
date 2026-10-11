@@ -178,6 +178,36 @@ class NodeMapperTest {
     }
 
     @Test
+    void usesNoArgsCreatorForMapPojoAndJojoWithoutLosingFields() {
+        CountingTarget.created = 0;
+
+        SourceWithExtras source = new SourceWithExtras();
+        source.name = "Ada";
+        source.age = 32;
+        source.unused = "extra";
+
+        Map<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("name", "Ada");
+        map.put("age", 32);
+        map.put("unused", "extra");
+
+        for (Object input : new Object[]{source, map, new JsonObject(map)}) {
+            CountingTarget target = (CountingTarget) NodeMapper.convert(input, CountingTarget.class, false);
+            assertEquals("Ada", target.name);
+            assertEquals(32, target.age);
+            assertEquals("extra", target.unused);
+        }
+        assertEquals(3, CountingTarget.created);
+
+        // The same direct-creation path must support JOJO's static properties
+        // and dynamically stored keys.
+        OpenTarget jojo = (OpenTarget) NodeMapper.convert(map, OpenTarget.class, false);
+        assertEquals("Ada", jojo.name);
+        assertEquals(32, jojo.getNode("age"));
+        assertEquals("extra", jojo.getNode("unused"));
+    }
+
+    @Test
     void copyRecreatesNestedMutableNodesWhileConvertPreservesIdentity() {
         Profile source = profile();
 
@@ -326,6 +356,17 @@ class NodeMapperTest {
         profile.details = JsonObject.of("address", JsonObject.of("city", "Oslo"));
         profile.status = Status.OK;
         return profile;
+    }
+
+    static class CountingTarget {
+        static int created;
+        public String name;
+        public int age;
+        public String unused;
+
+        CountingTarget() {
+            created++;
+        }
     }
 
     static class SourceWithExtras {
