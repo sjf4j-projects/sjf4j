@@ -168,7 +168,9 @@ class NodeMapperTest {
 
         for (Object source : new Object[]{
                 new long[]{1, 2, 3},
-                new Long[]{1L, 2L, 3L}
+                new Long[]{1L, 2L, 3L},
+                new int[]{1, 2, 3},
+                new Integer[]{1, 2, 3}
         }) {
             assertEquals(Arrays.asList(1, 2, 3),
                     NodeMapper.convert(source, integers, false));
@@ -186,6 +188,11 @@ class NodeMapperTest {
                         new long[]{1L, ((long) Integer.MAX_VALUE) + 1},
                         integers, false));
         assertTrue(overflow.getMessage().contains("$[1]"));
+
+        BindingException shortOverflow = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new int[]{1, Short.MAX_VALUE + 1},
+                        new TypeReference<List<Short>>() {}.getType(), false));
+        assertTrue(shortOverflow.getMessage().contains("$[1]"));
 
         BindingException incompatible = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(new Object[]{1, true}, integers, false));
