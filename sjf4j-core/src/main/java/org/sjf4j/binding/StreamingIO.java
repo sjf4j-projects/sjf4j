@@ -1173,9 +1173,8 @@ public final class StreamingIO {
         }
 
         /*
-         * External representations without standard Java container contracts.
-         * Stream native values directly so a native JSON null remains distinct
-         * from a Java null when includeNulls is false.
+         * Stream non-collection external representations directly.
+         * External object members apply the backend's JSON null semantics.
          */
         if (ti.externalNode != null) {
             _writeExternalNode(writer, node, ti.externalNode, context);
