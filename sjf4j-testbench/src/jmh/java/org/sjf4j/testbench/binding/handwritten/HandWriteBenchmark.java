@@ -45,12 +45,18 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class HandWriteBenchmark {
+
+    public static void main(String[] args) throws Exception {
+//        Main.main(new String[]{HandWriteBenchmark.class.getName()});
+        Main.main(new String[]{HandWriteBenchmark.class.getName() + ".*_fastjson"});
+
+    }
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final JsonFactory JACKSON2_FACTORY = JACKSON2.getFactory();
@@ -60,12 +66,6 @@ public class HandWriteBenchmark {
     private static final JSONWriter.Context FASTJSON2_NATIVE_CONTEXT =
             JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
     private static final User USER = createUser();
-
-    public static void main(String[] args) throws Exception {
-//        Main.main(new String[]{HandWriteBenchmark.class.getName()});
-        Main.main(new String[]{HandWriteBenchmark.class.getName() + ".json_jackson2"});
-
-    }
 
     private static Gson createNativeGson() {
         GsonBuilder builder = new GsonBuilder();
