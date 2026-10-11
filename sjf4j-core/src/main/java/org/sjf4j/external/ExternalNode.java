@@ -285,7 +285,7 @@ public interface ExternalNode<N> {
      * registrations. This operation is distinct from mutating an existing
      * external node.</p>
      */
-    default Object createObjectNode(Class<?> clazz, Object source, RuntimeContext context) {
+    default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
         N target = nodeType().cast(createObjectNode(clazz));
         Nodes.forEachObject(source, (name, value) ->
                 putInObject(target, name,
