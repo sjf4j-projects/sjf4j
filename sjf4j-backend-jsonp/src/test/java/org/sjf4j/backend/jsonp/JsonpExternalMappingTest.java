@@ -175,8 +175,13 @@ class JsonpExternalMappingTest {
         assertSame(source, NodeMapper.convert(source, JsonValue.class, true));
         assertSame(source, NodeMapper.convert(source, JsonObject.class, true));
         assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, true));
-        assertSame(source, Nodes.copy(source));
-        assertSame(nativeArray, Nodes.copy(nativeArray));
+        JsonObject shallowObject = Nodes.copy(source);
+        JsonArray shallowArray = Nodes.copy(nativeArray);
+        assertNotSame(source, shallowObject);
+        assertNotSame(nativeArray, shallowArray);
+        assertEquals(source, shallowObject);
+        assertEquals(nativeArray, shallowArray);
+        assertSame(source.get("nested"), shallowObject.get("nested"));
     }
 
     @NodeValue
