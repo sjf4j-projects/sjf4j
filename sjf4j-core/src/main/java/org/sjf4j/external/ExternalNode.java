@@ -6,10 +6,9 @@ import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.node.Types;
 
-import java.lang.reflect.Array;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -283,48 +282,24 @@ public interface ExternalNode<N> {
      * using the supplied runtime context.</p>
      */
     default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
-        if (source instanceof Map || source instanceof org.sjf4j.JsonObject
-                || JsonType.of(source).isObject()) {
-            N target = nodeType().cast(createObjectNode(clazz));
-            Nodes.forEachObject(source, (name, value) ->
-                    putInObject(target, name, NodeMapper.convert(value, nodeType(), false, context)));
-            return target;
+        switch (JsonType.of(source)) {
+            case OBJECT: {
+                N target = nodeType().cast(createObjectNode(clazz));
+                Nodes.forEachObject(source, (name, value) ->
+                        putInObject(target, name, NodeMapper.convert(value, nodeType(), false, context)));
+                return target;
+            }
+            case ARRAY: {
+                N target = nodeType().cast(createArrayNode(clazz));
+                Nodes.forEachArray(source, (index, value) ->
+                        addInArray(target, NodeMapper.convert(value, nodeType(), false, context)));
+                return target;
+            }
+            default:
+                throw new NodeException("expected object or array node, but was " + Types.name(source));
         }
-
-        if (!(source instanceof List || source instanceof org.sjf4j.JsonArray
-                || source instanceof Set || source.getClass().isArray()
-                || JsonType.of(source).isArray())) {
-            throw new org.sjf4j.exception.NodeException(
-                    "expected object or array node, but was " + source.getClass().getName());
-        }
-
-        N target = nodeType().cast(createArrayNode(clazz));
-        if (source instanceof List) {
-            List<?> list = (List<?>) source;
-            for (int i = 0, size = list.size(); i < size; i++) {
-                addInArray(target, NodeMapper.convert(list.get(i), nodeType(), false, context));
-            }
-        } else if (source instanceof org.sjf4j.JsonArray) {
-            org.sjf4j.JsonArray array = (org.sjf4j.JsonArray) source;
-            for (int i = 0, size = array.size(); i < size; i++) {
-                addInArray(target, NodeMapper.convert(array.getNode(i), nodeType(), false, context));
-            }
-        } else if (source.getClass().isArray()) {
-            int size = Array.getLength(source);
-            for (int i = 0; i < size; i++) {
-                addInArray(target, NodeMapper.convert(Array.get(source, i), nodeType(), false, context));
-            }
-        } else if (source instanceof Set) {
-            for (Object value : (Set<?>) source) {
-                addInArray(target, NodeMapper.convert(value, nodeType(), false, context));
-            }
-        } else {
-            // External arrays are traversed using their registered native adapter.
-            Nodes.forEachArray(source, (index, value) ->
-                    addInArray(target, NodeMapper.convert(value, nodeType(), false, context)));
-        }
-        return target;
     }
+
 
     /** Creates a native array container. */
     default Object createArrayNode(Class<?> clazz) {
