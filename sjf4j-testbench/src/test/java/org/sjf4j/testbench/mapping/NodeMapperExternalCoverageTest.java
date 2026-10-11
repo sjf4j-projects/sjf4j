@@ -304,7 +304,7 @@ class NodeMapperExternalCoverageTest {
     }
 
     @Test
-    void convertsJsonpSourceAndLeavesTargetConstructionUnsupported() {
+    void convertsJsonpBidirectionallyAndPreservesStandardMapListPrecedence() {
         jakarta.json.JsonObject source = Json.createObjectBuilder()
                 .add("name", "Ada")
                 .add("flag", true)
@@ -332,11 +332,17 @@ class NodeMapperExternalCoverageTest {
         assertEquals(1, ((Number) rawList.get(0)).intValue());
         assertNull(rawList.get(1));
         assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(
-                Arrays.asList(1, 2), jakarta.json.JsonValue.class, false));
-        // JSON-P deliberately omits native value-node construction as well.
-        assertThrows(BindingException.class, () -> NodeMapper.convert(
-                "value", jakarta.json.JsonValue.class, false));
+        jakarta.json.JsonArray nativeArray = (jakarta.json.JsonArray) NodeMapper.convert(
+                Arrays.asList(1, 2), jakarta.json.JsonValue.class, false);
+        assertEquals(2, nativeArray.size());
+        assertEquals(2, nativeArray.getInt(1));
+        jakarta.json.JsonValue nativeString = (jakarta.json.JsonValue) NodeMapper.convert(
+                "value", jakarta.json.JsonValue.class, false);
+        assertEquals("value", ((jakarta.json.JsonString) nativeString).getString());
+        jakarta.json.JsonObject remapped = (jakarta.json.JsonObject)
+                NodeMapper.convert(j2, jakarta.json.JsonValue.class, false);
+        assertEquals("Ada", remapped.getString("name"));
+        assertSame(jakarta.json.JsonValue.NULL, remapped.getJsonArray("items").get(1));
     }
 
     @Test
