@@ -301,6 +301,23 @@ class NodeMapperExternalCoverageTest {
         assertNotSame(child, copied.get("child"));
         assertSame(child, NodeMapper.convert(child, com.fasterxml.jackson.databind.JsonNode.class, false));
         assertNotSame(child, NodeMapper.convert(child, com.fasterxml.jackson.databind.JsonNode.class, true));
+
+        // Default ExternalNode.convert now owns array construction too. Mutable
+        // native children must retain the same shallow/deep-copy distinction.
+        com.fasterxml.jackson.databind.JsonNode retainedArray = (com.fasterxml.jackson.databind.JsonNode)
+                NodeMapper.convert(Arrays.asList(child), com.fasterxml.jackson.databind.JsonNode.class, false);
+        com.fasterxml.jackson.databind.JsonNode copiedArray = (com.fasterxml.jackson.databind.JsonNode)
+                NodeMapper.convert(Arrays.asList(child), com.fasterxml.jackson.databind.JsonNode.class, true);
+        assertSame(child, retainedArray.get(0));
+        assertNotSame(child, copiedArray.get(0));
+
+        JsonElement gsonChild = JsonParser.parseString("{\"n\":1}");
+        JsonElement gsonRetained = (JsonElement) NodeMapper.convert(
+                Arrays.asList(gsonChild), JsonElement.class, false);
+        JsonElement gsonCopied = (JsonElement) NodeMapper.convert(
+                Arrays.asList(gsonChild), JsonElement.class, true);
+        assertSame(gsonChild, gsonRetained.getAsJsonArray().get(0));
+        assertNotSame(gsonChild, gsonCopied.getAsJsonArray().get(0));
     }
 
     @Test
