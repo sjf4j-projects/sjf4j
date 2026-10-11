@@ -774,9 +774,6 @@ public interface PropertyWriter {
             if (value == null) {
                 return _writeNullValueField(writer, preparedName, context, count);
             }
-            if (StreamingIO.shouldOmitNullProperty(value, context)) {
-                return count;
-            }
 
             count = _writeName(writer, preparedName, count);
 
