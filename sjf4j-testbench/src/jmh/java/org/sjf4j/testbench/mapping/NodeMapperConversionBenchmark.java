@@ -35,6 +35,10 @@ import java.util.concurrent.TimeUnit;
 public class NodeMapperConversionBenchmark {
 
     private static final Type INTEGER_LIST_TYPE = new TypeReference<List<Integer>>() {}.getType();
+    private static final Type FLOAT_LIST_TYPE = new TypeReference<List<Float>>() {}.getType();
+    private static final Type DOUBLE_LIST_TYPE = new TypeReference<List<Double>>() {}.getType();
+    private static final Type BOOLEAN_LIST_TYPE = new TypeReference<List<Boolean>>() {}.getType();
+    private static final Type CHARACTER_LIST_TYPE = new TypeReference<List<Character>>() {}.getType();
 
     private SourceUser pojoSource;
     private LinkedHashSet<Long> setSource;
@@ -43,6 +47,12 @@ public class NodeMapperConversionBenchmark {
     private long[] arraySource;
     private Long[] boxedArraySource;
     private int[] intArraySource;
+    private byte[] byteArraySource;
+    private short[] shortArraySource;
+    private float[] floatArraySource;
+    private double[] doubleArraySource;
+    private boolean[] booleanArraySource;
+    private char[] charArraySource;
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{NodeMapperConversionBenchmark.class.getName()});
@@ -64,11 +74,23 @@ public class NodeMapperConversionBenchmark {
         arraySource = new long[listSource.size()];
         boxedArraySource = new Long[listSource.size()];
         intArraySource = new int[listSource.size()];
+        byteArraySource = new byte[listSource.size()];
+        shortArraySource = new short[listSource.size()];
+        floatArraySource = new float[listSource.size()];
+        doubleArraySource = new double[listSource.size()];
+        booleanArraySource = new boolean[listSource.size()];
+        charArraySource = new char[listSource.size()];
         for (int i = 0; i < arraySource.length; i++) {
             long value = listSource.get(i);
             arraySource[i] = value;
             boxedArraySource[i] = value;
             intArraySource[i] = (int) value;
+            byteArraySource[i] = (byte) value;
+            shortArraySource[i] = (short) value;
+            floatArraySource[i] = (float) value;
+            doubleArraySource[i] = (double) value;
+            booleanArraySource[i] = (i & 1) == 0;
+            charArraySource[i] = (char) ('A' + i % 26);
         }
 
         verifySources();
@@ -119,6 +141,36 @@ public class NodeMapperConversionBenchmark {
         return NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
     }
 
+    @Benchmark
+    public Object nodeMapper_byteArrayToTypedList() {
+        return NodeMapper.convert(byteArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_shortArrayToTypedList() {
+        return NodeMapper.convert(shortArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_floatArrayToTypedList() {
+        return NodeMapper.convert(floatArraySource, FLOAT_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_doubleArrayToTypedList() {
+        return NodeMapper.convert(doubleArraySource, DOUBLE_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_booleanArrayToTypedList() {
+        return NodeMapper.convert(booleanArraySource, BOOLEAN_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_charArrayToTypedList() {
+        return NodeMapper.convert(charArraySource, CHARACTER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
     @SuppressWarnings("unchecked")
     private void verifySources() {
         TargetUser target = (TargetUser) NodeMapper.convert(pojoSource, TargetUser.class, false);
@@ -134,6 +186,12 @@ public class NodeMapperConversionBenchmark {
                 || ((List<?>) NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false)).size() != 32
                 || ((List<?>) NodeMapper.convert(boxedArraySource, INTEGER_LIST_TYPE, false)).size() != 32
                 || ((List<?>) NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(byteArraySource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(shortArraySource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(floatArraySource, FLOAT_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(doubleArraySource, DOUBLE_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(booleanArraySource, BOOLEAN_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(charArraySource, CHARACTER_LIST_TYPE, false)).size() != 32
 ) {
             throw new AssertionError("indexed mapping baseline mismatch");
         }
