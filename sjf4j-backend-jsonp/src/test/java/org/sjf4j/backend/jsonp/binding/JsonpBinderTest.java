@@ -114,16 +114,21 @@ class JsonpBinderTest {
     }
 
     @Test
-    void rejectsCreatingNativeExternalTargets() {
+    void nativeTargetsRespectJavaContainerPrecedence() {
         JsonpBinder binder = new JsonpBinder();
         assertEquals("text", binder.readNode("\"text\"", String.class));
         assertNull(binder.readNode("null", JsonValue.class));
+
+        // Map/List targets are resolved as Java containers, not via the external adapter.
         assertThrows(BindingException.class, () -> binder.readNode("{}", JsonObject.class));
-        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonStructure.class));
-        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonValue.class));
         assertThrows(BindingException.class, () -> binder.readNode("[true,{\"n\":1}]", JsonArray.class));
-        assertThrows(BindingException.class, () -> binder.readNode("\"text\"", JsonValue.class));
         assertThrows(BindingException.class, () -> binder.readNode("{\"tree\":{}}", TreeDocument.class));
+
+        // JsonStructure/JsonValue are non-container external targets.
+        assertInstanceOf(JsonObject.class, binder.readNode("{}", JsonStructure.class));
+        assertInstanceOf(JsonObject.class, binder.readNode("{}", JsonValue.class));
+        assertInstanceOf(JsonArray.class, binder.readNode("[true,{\"n\":1}]", JsonStructure.class));
+        assertEquals("text", ((JsonString) binder.readNode("\"text\"", JsonValue.class)).getString());
     }
 
     @Test
