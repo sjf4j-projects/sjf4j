@@ -114,6 +114,13 @@ class NodesEdgeCaseTest {
 
     static class DynamicArray extends JsonArray {}
 
+    static class TypedArray extends JsonArray {
+        @Override
+        public Class<?> elementClass() {
+            return Integer.class;
+        }
+    }
+
     static final class UnknownValue {
         private final String value;
 
@@ -437,6 +444,9 @@ class NodesEdgeCaseTest {
         assertNull(Nodes.toJajo(null, DynamicArray.class));
         DynamicArray dynamicArray = Nodes.toJajo(Arrays.asList(1, 2), DynamicArray.class);
         assertEquals(Arrays.asList(1, 2), dynamicArray.toList());
+        TypedArray typed = Nodes.toJajo(Arrays.asList(1L, 2L), TypedArray.class);
+        assertEquals(Arrays.asList(1, 2), typed.toList());
+        assertInstanceOf(Integer.class, typed.getNode(0));
         IllegalArgumentException jajoError = assertThrows(IllegalArgumentException.class,
                 () -> Nodes.toJajo(Arrays.asList(1, 2), JsonArray.class));
         assertEquals(IllegalArgumentException.class, jajoError.getClass());
