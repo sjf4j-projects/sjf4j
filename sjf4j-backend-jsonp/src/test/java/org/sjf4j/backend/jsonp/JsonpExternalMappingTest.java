@@ -74,9 +74,10 @@ class JsonpExternalMappingTest {
         assertSame(JsonValue.NULL, target.getJsonArray("items").get(1));
         assertEquals("three", target.getJsonArray("items").getString(2));
 
-        // Explicit JSON-P target interfaces must not become generic Map/List instances.
-        assertEquals(target, NodeMapper.convert(source, JsonObject.class, false));
-        assertInstanceOf(JsonArray.class, NodeMapper.convert(
+        // JsonValue is the external target; Map/List subinterfaces remain
+        // governed by the standard Java container precedence.
+        assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonObject.class, false));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(
                 Arrays.asList(1, null), JsonArray.class, false));
         assertNull(NodeMapper.convert(null, JsonValue.class, false));
         assertInstanceOf(JsonString.class, NodeMapper.convert("x", JsonString.class, false));
@@ -100,7 +101,7 @@ class JsonpExternalMappingTest {
             assertEquals(3, array.getInt(2));
         }
         JsonArray withNull = (JsonArray) NodeMapper.convert(
-                new Integer[]{1, null, 3}, JsonArray.class, false);
+                new Integer[]{1, null, 3}, JsonValue.class, false);
         assertSame(JsonValue.NULL, withNull.get(1));
     }
 
@@ -111,7 +112,7 @@ class JsonpExternalMappingTest {
         pojo.code = new Encoded("coded");
         pojo.items = Arrays.asList("a", null);
 
-        JsonObject fromPojo = (JsonObject) NodeMapper.convert(pojo, JsonObject.class, false);
+        JsonObject fromPojo = (JsonObject) NodeMapper.convert(pojo, JsonValue.class, false);
         assertEquals("Ada", fromPojo.getString("name"));
         assertEquals("coded", fromPojo.getString("code"));
         assertSame(JsonValue.NULL, fromPojo.getJsonArray("items").get(1));
@@ -133,6 +134,12 @@ class JsonpExternalMappingTest {
                 .add("nested", Json.createArrayBuilder().add(1).addNull()).build();
         // JSON-P trees are immutable, so a deep copy may return the same instance.
         assertSame(source, NodeMapper.convert(source, JsonValue.class, true));
+        // Already-compatible native shapes still use the regular identity path.
+        assertSame(source, NodeMapper.convert(source, JsonObject.class, false));
+        assertSame(source, NodeMapper.convert(source, JsonObject.class, true));
+        JsonArray nativeArray = source.getJsonArray("nested");
+        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, false));
+        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, true));
     }
 
     @NodeValue
