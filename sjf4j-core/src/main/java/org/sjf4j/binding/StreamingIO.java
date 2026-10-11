@@ -5,7 +5,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.NodeKind;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
@@ -1221,7 +1220,7 @@ public final class StreamingIO {
                 int count = 0;
                 for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
                     Object value = entry.getValue();
-                    if (shouldOmitNullProperty(value, context)) {
+                    if (!context.includeNulls && (value == null || external.jsonType(value) == JsonType.NULL)) {
                         continue;
                     }
                     writer.writeName(entry.getKey(), count > 0);
@@ -1247,15 +1246,6 @@ public final class StreamingIO {
     }
 
 
-    /**
-     * Applies includeNulls consistently to Java and external JSON null nodes.
-     * Array elements are never filtered by this helper.
-     */
-    static boolean shouldOmitNullProperty(Object value, RuntimeContext context) {
-        return !context.includeNulls && NodeKind.of(value).isNull();
-    }
-
-
     /*
      * --------------------------------------------------------------
      * Object nodes
@@ -1268,7 +1258,7 @@ public final class StreamingIO {
         int count = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object value = entry.getValue();
-            if (shouldOmitNullProperty(value, context)) {
+            if (value == null && !context.includeNulls) {
                 continue;
             }
             writer.writeName(entry.getKey().toString(), count > 0);
@@ -1285,7 +1275,7 @@ public final class StreamingIO {
         int count = 0;
         for (Map.Entry<String, Object> entry : object.entrySet()) {
             Object value = entry.getValue();
-            if (shouldOmitNullProperty(value, context)) {
+            if (value == null && !context.includeNulls) {
                 continue;
             }
             writer.writeName(entry.getKey(), count > 0);
@@ -1451,7 +1441,7 @@ public final class StreamingIO {
             if (dynamic != null) {
                 for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
                     Object value = entry.getValue();
-                    if (shouldOmitNullProperty(value, context)) {
+                    if (value == null && !context.includeNulls) {
                         continue;
                     }
 
