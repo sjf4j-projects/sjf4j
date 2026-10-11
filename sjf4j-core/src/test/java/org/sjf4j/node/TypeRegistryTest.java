@@ -94,10 +94,16 @@ public class TypeRegistryTest {
 
     @Test
     public void testContainerClassificationIndependentOfConstructors() {
-        Class<?>[] mapTypes = {Map.class, java.util.LinkedHashMap.class,
+        // Standard interfaces are handled by the binding fast paths and
+        // should not trigger TypeInfo cache registration.
+        assertTrue(TypeRegistry.registerTypeInfo(Map.class) == TypeInfo.NONE);
+        assertTrue(TypeRegistry.registerTypeInfo(List.class) == TypeInfo.NONE);
+        assertTrue(TypeRegistry.registerTypeInfo(Set.class) == TypeInfo.NONE);
+
+        Class<?>[] mapTypes = {java.util.LinkedHashMap.class,
                 Collections.unmodifiableMap(Collections.singletonMap("a", 1)).getClass()};
-        Class<?>[] listTypes = {List.class, ArrayList.class, Arrays.asList("x").getClass()};
-        Class<?>[] setTypes = {Set.class, java.util.LinkedHashSet.class,
+        Class<?>[] listTypes = {ArrayList.class, Arrays.asList("x").getClass()};
+        Class<?>[] setTypes = {java.util.LinkedHashSet.class,
                 Collections.singleton("z").getClass()};
 
         for (Class<?> type : mapTypes) {
@@ -116,7 +122,6 @@ public class TypeRegistryTest {
             assertTrue(ti.externalNode == null);
         }
 
-        assertTrue(TypeRegistry.registerTypeInfo(Map.class).containerInfo.noArgsCtorHandle == null);
         assertTrue(TypeRegistry.registerTypeInfo(Arrays.asList("x").getClass())
                 .containerInfo.noArgsCtorHandle == null);
         assertNotNull(TypeRegistry.registerTypeInfo(ArrayList.class).containerInfo.noArgsCtorHandle);
