@@ -227,9 +227,9 @@ class NodeMapperExternalCoverageTest {
 
             JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false);
             assertEquals(3, jsonArray.size());
-            assertEquals(1, jsonArray.getNode(0));
+            assertEquals(1, ((Number) jsonArray.getNode(0)).intValue());
             assertNull(jsonArray.getNode(1));
-            assertEquals(3, jsonArray.getNode(2));
+            assertEquals(3, ((Number) jsonArray.getNode(2)).intValue());
 
             Integer[] array = (Integer[]) NodeMapper.convert(source, Integer[].class, false);
             assertArrayEquals(new Integer[]{1, null, 3}, array);
