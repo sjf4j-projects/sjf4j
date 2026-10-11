@@ -138,17 +138,21 @@ class JsonpExternalMappingTest {
     }
 
     @Test
-    void reusesImmutableNativeTargetsForDeepCopy() {
+    void jsonpContainersFollowJavaMapListPrecedence() {
         JsonObject source = Json.createObjectBuilder()
                 .add("nested", Json.createArrayBuilder().add(1).addNull()).build();
-        // JSON-P trees are immutable, so a deep copy may return the same instance.
-        assertSame(source, NodeMapper.convert(source, JsonValue.class, true));
-        // Already-compatible native shapes still use the regular identity path.
-        assertSame(source, NodeMapper.convert(source, JsonObject.class, false));
-        assertSame(source, NodeMapper.convert(source, JsonObject.class, true));
         JsonArray nativeArray = source.getJsonArray("nested");
+
+        // Assignable targets preserve identity without deep copying.
+        assertSame(source, NodeMapper.convert(source, JsonValue.class, false));
+        assertSame(source, NodeMapper.convert(source, JsonObject.class, false));
         assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, false));
-        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, true));
+
+        // JSON-P Map/List implementations are immutable, and no external-adapter
+        // fallback is permitted when Java container deep-copy construction fails.
+        assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonValue.class, true));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonObject.class, true));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(nativeArray, JsonArray.class, true));
     }
 
     @NodeValue
