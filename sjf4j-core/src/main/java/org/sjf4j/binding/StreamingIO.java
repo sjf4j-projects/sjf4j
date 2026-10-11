@@ -14,7 +14,6 @@ import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.ContainerInfo;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.TypeInfo;
@@ -151,6 +150,12 @@ public final class StreamingIO {
              */
 
             if (Map.class.isAssignableFrom(boxed)) {
+                if (boxed != Map.class && boxed != LinkedHashMap.class) {
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
+                    if (ti.containerInfo != null && ti.containerInfo.externalNode != null) {
+                        return _readRegisteredNode(reader, type, boxed, ti, context);
+                    }
+                }
                 return readMap(reader, type, boxed, null, null, null, context);
             }
 
@@ -165,6 +170,12 @@ public final class StreamingIO {
              */
 
             if (List.class.isAssignableFrom(boxed)) {
+                if (boxed != List.class && boxed != ArrayList.class) {
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
+                    if (ti.containerInfo != null && ti.containerInfo.externalNode != null) {
+                        return _readRegisteredNode(reader, type, boxed, ti, context);
+                    }
+                }
                 return readList(reader, type, boxed, null, null, null, context);
             }
 
@@ -227,6 +238,9 @@ public final class StreamingIO {
                     ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
         }
         if (ti.containerInfo != null) {
+            if (ti.containerInfo.externalNode != null) {
+                return NodeMapper.convert(reader.readRawNode(), type, false, context);
+            }
             switch (ti.containerInfo.kind) {
                 case OBJECT_MAP:
                     return readMap(reader, type, boxed, null, null, null, context);
@@ -688,12 +702,6 @@ public final class StreamingIO {
     public static Map<String, Object> readMap(StreamingReader reader, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
                                               RuntimeContext context) throws IOException {
-        if (boxed != Map.class && boxed != LinkedHashMap.class) {
-            ContainerInfo ci = TypeRegistry.registerTypeInfo(boxed).containerInfo;
-            if (ci != null && ci.externalNode != null) {
-                return (Map<String, Object>) NodeMapper.convert(reader.readRawNode(), type, false, context);
-            }
-        }
         if (!reader.nextIfObjectStart()) {
             if (reader.nextIfNull()) {
                 return null;
@@ -728,12 +736,6 @@ public final class StreamingIO {
     public static List<Object> readList(StreamingReader reader, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                         RuntimeContext context) throws IOException {
-        if (boxed != List.class && boxed != ArrayList.class) {
-            ContainerInfo ci = TypeRegistry.registerTypeInfo(boxed).containerInfo;
-            if (ci != null && ci.externalNode != null) {
-                return (List<Object>) NodeMapper.convert(reader.readRawNode(), type, false, context);
-            }
-        }
         if (!reader.nextIfArrayStart()) {
             if (reader.nextIfNull()) {
                 return null;
