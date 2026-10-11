@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -267,7 +268,7 @@ class NodesEdgeCaseTest {
         assertTrue(iterator.hasNext());
         assertEquals(1, iterator.next());
         assertEquals(2, iterator.next());
-        assertThrows(ArrayIndexOutOfBoundsException.class, iterator::next);
+        assertThrows(NoSuchElementException.class, iterator::next);
 
         Nodes.Access access = new Nodes.Access();
         Nodes.putAccessInObject(bean, Bean.class, "name", access);
