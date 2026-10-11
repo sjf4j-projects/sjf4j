@@ -510,7 +510,7 @@ public final class StreamingIO {
                 ValueInfo codec = creator.argValueCodecs[argIndex];
 
                 Object value = codec == null
-                        ? readNode(reader, argType, argBoxed, TypeRegistry.registerTypeInfo(argBoxed), context)
+                        ? readNode(reader, argType, argBoxed, TypeInfo.NONE, context)
                         : readValueCodec(reader, codec, context);
                 state.acceptCtorArg(argIndex, value);
                 if (parentKey != null && parentKey.equals(name)) {
@@ -653,7 +653,7 @@ public final class StreamingIO {
             return readValueCodec(reader, property.valueInfo, context);
         }
 
-        return readNode(reader, type, boxed, TypeRegistry.registerTypeInfo(boxed), context);
+        return readNode(reader, type, boxed, TypeInfo.NONE, context);
     }
 
 
