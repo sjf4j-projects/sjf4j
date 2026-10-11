@@ -161,8 +161,9 @@ public final class NodeMapper {
             // Standard Java collection contracts win over external adapters.
             // This also avoids TypeInfo resolution on the Map/List read path.
             if (node instanceof Map) {
-                return _convertFromMap((Map<String, Object>) node,
-                        toBoxed, toType, deepCopy, ps, context);
+                return _convertFromObjectEntries(
+                        ((Map<String, Object>) node).entrySet(), ((Map<?, ?>) node).size(),
+                        false, "Map", toBoxed, toType, deepCopy, ps, context);
             }
 
             if (node instanceof List) {
@@ -177,8 +178,9 @@ public final class NodeMapper {
             }
 
             if (node instanceof JsonObject) {
-                return _convertFromJsonObject((JsonObject) node,
-                        toBoxed, toType, deepCopy, ps, context);
+                JsonObject jo = (JsonObject) node;
+                return _convertFromObjectEntries(jo.entrySet(), jo.size(),
+                        false, "JsonObject", toBoxed, toType, deepCopy, ps, context);
             }
 
             if (node instanceof JsonArray) {
@@ -268,22 +270,9 @@ public final class NodeMapper {
             case BOOLEAN:
                 return _convert(external.toBoolean(node), type, toBoxed, null, deepCopy, ps, context);
             case OBJECT:
-                return _convertFromObjectSource(new ObjectSource() {
-                    @Override
-                    public Iterable<Map.Entry<String, Object>> entries() {
-                        return external.entrySetInObject(node);
-                    }
-
-                    @Override
-                    public int size() {
-                        return external.sizeInObject(node);
-                    }
-
-                    @Override
-                    public boolean external() {
-                        return true;
-                    }
-                }, "External object", toBoxed, type, deepCopy, ps, context);
+                return _convertFromObjectEntries(external.entrySetInObject(node),
+                        external.sizeInObject(node), true,
+                        "External object", toBoxed, type, deepCopy, ps, context);
             case ARRAY:
                 return _convertFromIndexedSource(new IndexedSource() {
                     @Override
@@ -738,47 +727,10 @@ public final class NodeMapper {
     }
 
 
-    // Map -> Map/JsonObject/JOJO/POJO
-    private static Object _convertFromMap(Map<String, Object> oldMap,
-                                          Class<?> toBoxed,
-                                          Type type,
-                                          boolean deepCopy,
-                                          PathSegment ps,
-                                          RuntimeContext context) {
-        return _convertFromObjectSource(new ObjectSource() {
-            @Override
-            public Iterable<Map.Entry<String, Object>> entries() {
-                return oldMap.entrySet();
-            }
-
-            @Override
-            public int size() {
-                return oldMap.size();
-            }
-        }, "Map", toBoxed, type, deepCopy, ps, context);
-    }
-
-    // JsonObject -> Map/JsonObject/JOJO/POJO
-    private static Object _convertFromJsonObject(JsonObject oldJo,
-                                                 Class<?> toBoxed,
-                                                 Type type,
-                                                 boolean deepCopy,
-                                                 PathSegment ps,
-                                                 RuntimeContext context) {
-        return _convertFromObjectSource(new ObjectSource() {
-            @Override
-            public Iterable<Map.Entry<String, Object>> entries() {
-                return oldJo.entrySet();
-            }
-
-            @Override
-            public int size() {
-                return oldJo.size();
-            }
-        }, "JsonObject", toBoxed, type, deepCopy, ps, context);
-    }
-
-    private static Object _convertFromObjectSource(ObjectSource source,
+    // Map / JsonObject / external object -> target Object representation.
+    // Accept native entry views directly; do not allocate source adapters.
+    private static Object _convertFromObjectEntries(Iterable<Map.Entry<String, Object>> entries,
+                                                   int sourceSize, boolean externalSource,
                                                    String sourceName,
                                                    Class<?> toBoxed,
                                                    Type type,
@@ -787,17 +739,17 @@ public final class NodeMapper {
                                                    RuntimeContext context) {
         if (Map.class.isAssignableFrom(toBoxed)) {
             Map<String, Object> map =
-                    TypeRegistry.newMapContainer(toBoxed, source.size(), false);
+                    TypeRegistry.newMapContainer(toBoxed, sourceSize, false);
 
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueRaw = Types.rawBox(valueType);
             OneOfInfo valueOneOf =
                     TypeRegistry.registerTypeInfo(valueRaw).oneOfInfo;
 
-            for (Map.Entry<String, Object> entry : source.entries()) {
+            for (Map.Entry<String, Object> entry : entries) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object value = _convertSourceChild(entry.getValue(),
-                        valueType, valueRaw, valueOneOf, deepCopy, cps, context, source.external());
+                        valueType, valueRaw, valueOneOf, deepCopy, cps, context, externalSource);
                 map.put(entry.getKey(), value);
             }
             return map;
@@ -805,10 +757,10 @@ public final class NodeMapper {
 
         if (toBoxed == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (Map.Entry<String, Object> entry : source.entries()) {
+            for (Map.Entry<String, Object> entry : entries) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object value = _convertSourceChild(entry.getValue(),
-                        Object.class, Object.class, null, deepCopy, cps, context, source.external());
+                        Object.class, Object.class, null, deepCopy, cps, context, externalSource);
                 jo.put(entry.getKey(), value);
             }
             return jo;
@@ -817,7 +769,7 @@ public final class NodeMapper {
         PojoInfo pi = TypeRegistry.registerTypeInfo(toBoxed).pojoInfo;
         if (pi != null && !pi.isJajo) {
             return _convertPojoFromEntries(
-                    source.entries(), type, toBoxed, pi, deepCopy, ps, context, source.external());
+                    entries, type, toBoxed, pi, deepCopy, ps, context, externalSource);
         }
 
         throw new BindingException(
@@ -1259,16 +1211,6 @@ public final class NodeMapper {
         int size();
 
         Object get(int i);
-
-        default boolean external() {
-            return false;
-        }
-    }
-
-    private interface ObjectSource {
-        Iterable<Map.Entry<String, Object>> entries();
-
-        int size();
 
         default boolean external() {
             return false;
