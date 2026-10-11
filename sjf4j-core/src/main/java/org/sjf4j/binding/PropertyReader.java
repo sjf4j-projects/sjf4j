@@ -4,6 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoAccess;
@@ -18,6 +19,8 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -133,6 +136,21 @@ public interface PropertyReader {
          * Containers
          * --------------------------------------------------------------
          */
+
+        // Select the immutable/native construction path once when building the
+        // property reader, not on every field read.
+        if ((Map.class.isAssignableFrom(fieldBoxed) || List.class.isAssignableFrom(fieldBoxed))
+                && fieldBoxed != Map.class && fieldBoxed != LinkedHashMap.class
+                && fieldBoxed != List.class && fieldBoxed != ArrayList.class) {
+            TypeInfo containerTypeInfo = TypeRegistry.registerTypeInfo(fieldBoxed);
+            if (containerTypeInfo.containerInfo != null
+                    && containerTypeInfo.containerInfo.externalNode != null) {
+                return (reader, owner, ownerType, ownerBoxed, context) -> {
+                    Object value = NodeMapper.convert(reader.readRawNode(), fieldType, false, context);
+                    PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                };
+            }
+        }
 
         if (Map.class.isAssignableFrom(fieldBoxed)) {
             Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
