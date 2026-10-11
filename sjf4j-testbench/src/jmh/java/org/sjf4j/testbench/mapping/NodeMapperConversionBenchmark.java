@@ -19,6 +19,7 @@ import org.sjf4j.TypeReference;
 import org.sjf4j.mapping.NodeMapper;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -37,6 +38,10 @@ public class NodeMapperConversionBenchmark {
 
     private SourceUser pojoSource;
     private LinkedHashSet<Long> setSource;
+    private List<Long> listSource;
+    private JsonArray jsonArraySource;
+    private long[] arraySource;
+    private com.fasterxml.jackson.databind.JsonNode externalArraySource;
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{NodeMapperConversionBenchmark.class.getName()});
@@ -52,6 +57,18 @@ public class NodeMapperConversionBenchmark {
         for (long i = 0; i < 32; i++) {
             setSource.add(i);
         }
+
+        listSource = new ArrayList<>(setSource);
+        jsonArraySource = new JsonArray(listSource);
+        arraySource = new long[listSource.size()];
+        com.fasterxml.jackson.databind.node.ArrayNode nativeArray =
+                new com.fasterxml.jackson.databind.ObjectMapper().createArrayNode();
+        for (int i = 0; i < arraySource.length; i++) {
+            long value = listSource.get(i);
+            arraySource[i] = value;
+            nativeArray.add(value);
+        }
+        externalArraySource = nativeArray;
 
         verifySources();
     }
@@ -76,6 +93,26 @@ public class NodeMapperConversionBenchmark {
         return NodeMapper.convert(setSource, JsonArray.class, false);
     }
 
+    @Benchmark
+    public Object nodeMapper_listToTypedList() {
+        return NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_jsonArrayToTypedList() {
+        return NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_javaArrayToTypedList() {
+        return NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
+    @Benchmark
+    public Object nodeMapper_externalArrayToTypedList() {
+        return NodeMapper.convert(externalArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+    }
+
     @SuppressWarnings("unchecked")
     private void verifySources() {
         TargetUser target = (TargetUser) NodeMapper.convert(pojoSource, TargetUser.class, false);
@@ -86,6 +123,12 @@ public class NodeMapperConversionBenchmark {
         int[] array = (int[]) NodeMapper.convert(setSource, int[].class, false);
         JsonArray jsonArray = (JsonArray) NodeMapper.convert(setSource, JsonArray.class, false);
         if (list.size() != 32 || array.length != 32 || jsonArray.size() != 32) throw new AssertionError();
+        if (((List<?>) NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false)).size() != 32
+                || ((List<?>) NodeMapper.convert(externalArraySource, INTEGER_LIST_TYPE, false)).size() != 32) {
+            throw new AssertionError("indexed mapping baseline mismatch");
+        }
     }
 
     public static class SourceUser {
