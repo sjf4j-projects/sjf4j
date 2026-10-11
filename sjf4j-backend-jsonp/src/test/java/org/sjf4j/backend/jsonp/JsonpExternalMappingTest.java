@@ -20,6 +20,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsonpExternalMappingTest {
+    @SuppressWarnings("unchecked")
     @Test
     void mapsJsonpObjectsWithoutImplicitlyUnwrappingObjectTypedChildren() {
         JsonObject nativeObject = Json.createObjectBuilder()
@@ -55,6 +56,7 @@ class JsonpExternalMappingTest {
         assertNull(NodeMapper.convert(null, JsonValue.class, false));
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     void reusesJsonpMapAndListViewsWhenTargetIsAssignable() {
         JsonObject nativeObject = Json.createObjectBuilder()
