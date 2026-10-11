@@ -879,18 +879,22 @@ public final class Nodes {
 
         Class<?> rawClazz = node.getClass();
         if (node instanceof Map) {
-            ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
-            if (ci != null && ci.externalNode != null) {
-                return (T) ci.externalNode.copy(node);
+            if (rawClazz != LinkedHashMap.class) {
+                ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
+                if (ci != null && ci.externalNode != null) {
+                    return (T) ci.externalNode.copy(node);
+                }
             }
             Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, false);
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
         if (node instanceof List) {
-            ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
-            if (ci != null && ci.externalNode != null) {
-                return (T) ci.externalNode.copy(node);
+            if (rawClazz != ArrayList.class) {
+                ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
+                if (ci != null && ci.externalNode != null) {
+                    return (T) ci.externalNode.copy(node);
+                }
             }
             List<Object> list = TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), false);
             list.addAll((List<Object>) node);
