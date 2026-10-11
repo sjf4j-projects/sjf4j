@@ -119,10 +119,13 @@ class JsonpBinderTest {
         assertEquals("text", binder.readNode("\"text\"", String.class));
         assertNull(binder.readNode("null", JsonValue.class));
 
-        // Map/List targets are resolved as Java containers, not via the external adapter.
-        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonObject.class));
-        assertThrows(BindingException.class, () -> binder.readNode("[true,{\"n\":1}]", JsonArray.class));
-        assertThrows(BindingException.class, () -> binder.readNode("{\"tree\":{}}", TreeDocument.class));
+        // Map/List classification is unchanged; native targets use their
+        // cached immutable construction strategy.
+        assertInstanceOf(JsonObject.class, binder.readNode("{}", JsonObject.class));
+        assertInstanceOf(JsonArray.class, binder.readNode("[true,{\"n\":1}]", JsonArray.class));
+        TreeDocument nested = (TreeDocument) binder.readNode("{\"tree\":{},\"values\":[1]}", TreeDocument.class);
+        assertInstanceOf(JsonObject.class, nested.tree);
+        assertInstanceOf(JsonArray.class, nested.values);
 
         // JsonStructure/JsonValue are non-container external targets.
         assertInstanceOf(JsonObject.class, binder.readNode("{}", JsonStructure.class));
