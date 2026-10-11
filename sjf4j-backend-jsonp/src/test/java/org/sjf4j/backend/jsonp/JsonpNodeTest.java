@@ -12,6 +12,8 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.backend.jsonp.external.JsonpExternalProvider;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
 
@@ -79,9 +81,17 @@ class JsonpNodeTest {
         assertThrows(UnsupportedOperationException.class,
                 () -> Nodes.addInArray(array, JsonValue.TRUE));
 
-        // Copy is representation-preserving even for a Map/List subtype.
-        assertTrue(Nodes.copy(object) instanceof JsonObject);
-        assertTrue(Nodes.copy(array) instanceof JsonArray);
+        // Factory/copy follows the same Map/List contract. JSON-P has no
+        // constructible mutable Java container; there is no external fallback.
+        assertThrows(BindingException.class, () -> Nodes.copy(object));
+        assertThrows(BindingException.class, () -> Nodes.copy(array));
+        assertThrows(BindingException.class, () -> Nodes.createObjectNode(JsonObject.class));
+        assertThrows(BindingException.class, () -> Nodes.createArrayNode(JsonArray.class));
+        assertThrows(BindingException.class, () ->
+                NodeMapper.convert(java.util.Collections.singletonMap("value", 7),
+                        JsonObject.class, false));
+        assertThrows(BindingException.class, () ->
+                NodeMapper.convert(Arrays.asList(1, 2), JsonArray.class, false));
     }
 
     @Test
