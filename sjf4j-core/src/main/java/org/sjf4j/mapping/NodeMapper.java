@@ -1072,7 +1072,7 @@ public final class NodeMapper {
         if (source instanceof double[]) return ((double[]) source)[index];
         if (source instanceof boolean[]) return ((boolean[]) source)[index];
         if (source instanceof char[]) return ((char[]) source)[index];
-        return Array.get(source, index);
+        throw new AssertionError("Unsupported indexed source: " + source.getClass());
     }
 
     // POJO -> Map/JsonObject/JOJO/POJO
