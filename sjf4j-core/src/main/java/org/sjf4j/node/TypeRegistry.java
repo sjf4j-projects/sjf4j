@@ -77,7 +77,8 @@ public final class TypeRegistry {
             return ti;
         }
 
-        // Standard Java containers are classified before external adapters.
+        // Concrete Java containers take precedence over external adapters.
+        // Map/List/Set interfaces have already returned NONE via _fastNoneInfo.
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
             if (requirePojo) {
@@ -130,6 +131,7 @@ public final class TypeRegistry {
     private static boolean _fastNoneInfo(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
                 || Number.class.isAssignableFrom(clazz)
+                || clazz == Map.class || clazz == List.class || clazz == Set.class
                 || clazz == JsonObject.class || clazz == JsonArray.class || clazz.isArray()
                 || clazz.isPrimitive()
                 || Enum.class.isAssignableFrom(clazz)
