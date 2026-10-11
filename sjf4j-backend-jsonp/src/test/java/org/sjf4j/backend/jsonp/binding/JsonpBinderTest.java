@@ -78,7 +78,7 @@ class JsonpBinderTest {
         mixed.put("tree", object);
         mixed.put("array", array);
         mixed.put("nil", JsonValue.NULL);
-        assertEquals("{\"tree\":" + json + ",\"array\":[true,{\"n\":1}],\"nil\":null}",
+        assertEquals("{\"tree\":" + json + ",\"array\":[true,{\"n\":1}]}",
                 new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false)).writeNodeAsString(mixed));
         TreeDocument nested = new TreeDocument();
         nested.before = 1;
@@ -99,6 +99,19 @@ class JsonpBinderTest {
         }
 
         assertThrows(BindingException.class, () -> binder.readNode("{} []", Map.class));
+    }
+
+    @Test
+    void omitsNativeJsonpNullObjectFieldsButNotArrayElements() {
+        JsonObject object = Json.createObjectBuilder()
+                .addNull("empty")
+                .add("items", Json.createArrayBuilder().addNull().add(1))
+                .build();
+        JsonpBinder withoutNulls = new JsonpBinder(
+                JsonProvider.provider(), new RuntimeContext(false));
+        assertEquals("{\"items\":[null,1]}", withoutNulls.writeNodeAsString(object));
+        assertEquals("{\"empty\":null,\"items\":[null,1]}",
+                new JsonpBinder().writeNodeAsString(object));
     }
 
     @Test
