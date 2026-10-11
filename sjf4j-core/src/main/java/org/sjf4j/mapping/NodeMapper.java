@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -1129,6 +1130,62 @@ public final class NodeMapper {
         throw new BindingException("cannot convert POJO to '" + toBoxed.getName() + "'", ps);
     }
 
+    // Cached name resolution only: generic member types, ValueCodec formats,
+    // OneOf decisions, and runtime context remain evaluated during conversion.
+    private static final ClassValue<ConcurrentHashMap<Class<?>, PojoPropertyPlan>> POJO_PROPERTY_PLANS =
+            new ClassValue<ConcurrentHashMap<Class<?>, PojoPropertyPlan>>() {
+                @Override
+                protected ConcurrentHashMap<Class<?>, PojoPropertyPlan> computeValue(Class<?> type) {
+                    return new ConcurrentHashMap<>();
+                }
+            };
+
+    private static PojoPropertyPlan _pojoPropertyPlan(Class<?> sourceClass, Class<?> targetClass,
+                                                      PojoInfo source, PojoInfo target) {
+        ConcurrentHashMap<Class<?>, PojoPropertyPlan> plans = POJO_PROPERTY_PLANS.get(sourceClass);
+        PojoPropertyPlan plan = plans.get(targetClass);
+        if (plan != null) return plan;
+        PojoPropertyPlan candidate = new PojoPropertyPlan(source, target);
+        PojoPropertyPlan previous = plans.putIfAbsent(targetClass, candidate);
+        return previous != null ? previous : candidate;
+    }
+
+    private static final class PojoPropertyPlan {
+        final PropertyInfo[] sourceProperties;
+        final PropertyInfo[] targetProperties;
+        final int[] creatorIndices;
+        final boolean includeDynamic;
+
+        PojoPropertyPlan(PojoInfo source, PojoInfo target) {
+            PropertyInfo[] readable = source.readableProperties;
+            CreatorInfo ci = target.creatorInfo;
+            includeDynamic = target.isJojo && target.readDynamic;
+            int count = 0;
+            for (PropertyInfo property : readable) {
+                int arg = ci.getArgIndexOrAlias(property.name);
+                if (arg >= 0) {
+                    count++;
+                    continue;
+                }
+                PropertyInfo dest = target.getPropertyNoAlias(property.name);
+                if (dest != null ? dest.writable : includeDynamic) count++;
+            }
+            sourceProperties = new PropertyInfo[count];
+            targetProperties = new PropertyInfo[count];
+            creatorIndices = new int[count];
+            int i = 0;
+            for (PropertyInfo property : readable) {
+                int arg = ci.getArgIndexOrAlias(property.name);
+                PropertyInfo dest = arg < 0 ? target.getPropertyNoAlias(property.name) : null;
+                if (arg < 0 && !(dest != null ? dest.writable : includeDynamic)) continue;
+                sourceProperties[i] = property;
+                targetProperties[i] = dest;
+                creatorIndices[i] = arg;
+                i++;
+            }
+        }
+    }
+
     private static Object _convertPojoFromProperties(Object source,
                                                      PojoInfo sourceInfo,
                                                      Type type,
@@ -1139,13 +1196,14 @@ public final class NodeMapper {
                                                      RuntimeContext context) {
         CreatorInfo ci = targetInfo.creatorInfo;
         CreatorState state = new CreatorState(ci);
+        PojoPropertyPlan plan = _pojoPropertyPlan(source.getClass(), toBoxed, sourceInfo, targetInfo);
 
-        // Read source properties only when they are consumed. In particular,
-        // do not allocate a snapshot array for every POJO -> POJO conversion.
-        for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
+        // Source/target property name resolution is cached by the concrete class
+        // pair. Unmapped and read-only target properties are never read.
+        for (int i = 0; i < plan.sourceProperties.length; i++) {
+            PropertyInfo propertyInfo = plan.sourceProperties[i];
             Object rawValue = propertyInfo.invokeGetter(source);
-
-            int argIdx = ci.getArgIndexOrAlias(propertyInfo.name);
+            int argIdx = plan.creatorIndices[i];
             if (argIdx >= 0) {
                 Type argType = Types.resolveMemberType(type, toBoxed, ci.argTypes[argIdx]);
                 PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
@@ -1168,9 +1226,8 @@ public final class NodeMapper {
                 continue;
             }
 
-            PropertyInfo targetPropertyInfo = targetInfo.getPropertyNoAlias(propertyInfo.name);
+            PropertyInfo targetPropertyInfo = plan.targetProperties[i];
             if (targetPropertyInfo != null) {
-                if (!targetPropertyInfo.writable) continue;
 
                 PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
                 Type fieldType = targetPropertyInfo.genericDependent
@@ -1196,7 +1253,7 @@ public final class NodeMapper {
                 continue;
             }
 
-            if (targetInfo.isJojo && targetInfo.readDynamic) {
+            if (plan.includeDynamic) {
                 PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
                 state.acceptDynamic(propertyInfo.name,
                         _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, context));
