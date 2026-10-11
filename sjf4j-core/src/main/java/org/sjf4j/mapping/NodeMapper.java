@@ -129,7 +129,12 @@ public final class NodeMapper {
                 return _convertValue(node, toBoxed, target, deepCopy, ps, context);
             }
 
-            if (ti.externalNode != null) {
+            // Map/List target contracts take priority over external factories.
+            // For example, JSON-P JsonObject/JsonArray implement Map/List, but
+            // are not constructible via the regular Java collection path.
+            if (ti.externalNode != null
+                    && !Map.class.isAssignableFrom(toBoxed)
+                    && !List.class.isAssignableFrom(toBoxed)) {
                 return _convertToExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
             }
 
@@ -324,7 +329,10 @@ public final class NodeMapper {
             } else if (node instanceof Enum) {
                 result = target.createValueNode(((Enum<?>) node).name());
             } else {
-                TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
+                // Standard Map/List implementations are sources in their own
+                // right; never route them back through an external tree adapter.
+                TypeInfo sourceTi = node instanceof Map || node instanceof List
+                        ? TypeInfo.NONE : TypeRegistry.registerTypeInfo(node.getClass());
                 if (sourceTi.valueInfos != null) {
                     ValueInfo vi = sourceTi.requireValueInfo(context.defaultValueFormat(node.getClass()));
                     return _requireExternalTarget(_convertToExternal(
@@ -516,14 +524,7 @@ public final class NodeMapper {
             TypeInfo ti = TypeRegistry.registerTypeInfo(nodeClazz);
 
             /*
-             * External node.
-             */
-            if (ti.externalNode != null) {
-                return ti.externalNode.deepCopy(node);
-            }
-
-            /*
-             * Node value.
+             * Node value. Map/List semantics take priority below.
              */
             if (ti.valueInfos != null) {
                 String valueFormat = context.defaultValueFormat(nodeClazz);
@@ -537,7 +538,7 @@ public final class NodeMapper {
              */
             if (node instanceof Map) {
                 Map<String, Object> src = (Map<String, Object>) node;
-                Map<String, Object> target = TypeRegistry.newMapContainer(nodeClazz, src.size(), true);
+                Map<String, Object> target = TypeRegistry.newMapContainer(nodeClazz, src.size(), false);
                 Type valueType = Types.resolveTypeArgument(toType, Map.class, 1);
                 Class<?> valueBoxed = Types.rawBox(valueType);
                 for (Map.Entry<String, Object> entry : src.entrySet()) {
@@ -552,7 +553,7 @@ public final class NodeMapper {
              */
             if (node instanceof List) {
                 List<Object> src = (List<Object>) node;
-                List<Object> target = TypeRegistry.newListContainer(nodeClazz, src.size(), true);
+                List<Object> target = TypeRegistry.newListContainer(nodeClazz, src.size(), false);
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
                 for (int i = 0; i < src.size(); i++) {
@@ -560,6 +561,13 @@ public final class NodeMapper {
                     target.add(_deepCopy(src.get(i), elemType, elemBoxed, cps, context));
                 }
                 return target;
+            }
+
+            /*
+             * External nodes that are not Map/List keep their native semantics.
+             */
+            if (ti.externalNode != null) {
+                return ti.externalNode.deepCopy(node);
             }
 
             /*
