@@ -179,6 +179,27 @@ class GsonBinderTest {
     }
 
     @Test
+    void distinguishesNativeJsonNullFromJavaNullInNestedWrites() {
+        JsonObject nativeTree = new JsonObject();
+        nativeTree.add("explicit", JsonNull.INSTANCE);
+        JsonObject child = new JsonObject();
+        child.add("explicit", JsonNull.INSTANCE);
+        nativeTree.add("child", child);
+        com.google.gson.JsonArray array = new com.google.gson.JsonArray();
+        array.add(JsonNull.INSTANCE);
+        array.add("x");
+        nativeTree.add("items", array);
+
+        java.util.Map<String, Object> wrapper = new java.util.LinkedHashMap<>();
+        wrapper.put("ordinary", null);
+        wrapper.put("native", nativeTree);
+        GsonBinder binder = new GsonBinder(new Gson(), new RuntimeContext(false));
+        assertEquals(
+                "{\"native\":{\"explicit\":null,\"child\":{\"explicit\":null},\"items\":[null,\"x\"]}}",
+                binder.writeNodeAsString(wrapper));
+    }
+
+    @Test
     void rejectsNullDependenciesAndIo() {
         assertThrows(NullPointerException.class, () -> new GsonBinder(null));
         assertThrows(NullPointerException.class, () -> new GsonBinder(new Gson(), null));
