@@ -8,11 +8,17 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.mapping.NodeMapper;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,11 +55,98 @@ class JsonpExternalMappingTest {
     }
 
     @Test
-    void refusesImmutableJsonpTargetConstruction() {
+    void constructsImmutableJsonpObjectsScalarsAndNestedNulls() {
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("name", "Ada");
-        assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonValue.class, false));
+        source.put("active", true);
+        source.put("nothing", null);
+        source.put("amount", new BigDecimal("0.00120"));
+        source.put("big", new BigInteger("123456789012345678901234567890"));
+        source.put("items", Arrays.asList(1, null, "three"));
+
+        JsonObject target = (JsonObject) NodeMapper.convert(source, JsonValue.class, false);
+        assertEquals("Ada", target.getString("name"));
+        assertTrue(target.getBoolean("active"));
+        assertSame(JsonValue.NULL, target.get("nothing"));
+        assertEquals(new BigDecimal("0.00120"), target.getJsonNumber("amount").bigDecimalValue());
+        assertEquals(new BigInteger("123456789012345678901234567890"),
+                target.getJsonNumber("big").bigIntegerValue());
+        assertSame(JsonValue.NULL, target.getJsonArray("items").get(1));
+        assertEquals("three", target.getJsonArray("items").getString(2));
+
+        // Explicit JSON-P target interfaces must not become generic Map/List instances.
+        assertEquals(target, NodeMapper.convert(source, JsonObject.class, false));
+        assertInstanceOf(JsonArray.class, NodeMapper.convert(
+                Arrays.asList(1, null), JsonArray.class, false));
         assertNull(NodeMapper.convert(null, JsonValue.class, false));
+        assertInstanceOf(JsonString.class, NodeMapper.convert("x", JsonString.class, false));
+        assertEquals(7, ((JsonNumber) NodeMapper.convert(7, JsonNumber.class, false)).intValue());
+        assertThrows(BindingException.class, () -> NodeMapper.convert("not an object", JsonObject.class, false));
+    }
+
+    @Test
+    void buildsJsonpArraysFromEverySequenceSource() {
+        Object[] sources = {
+                Arrays.asList(1, 2, 3),
+                org.sjf4j.JsonArray.of(1, 2, 3),
+                new int[]{1, 2, 3},
+                new Integer[]{1, 2, 3},
+                new LinkedHashSet<>(Arrays.asList(1, 2, 3))
+        };
+        for (Object source : sources) {
+            JsonArray array = (JsonArray) NodeMapper.convert(source, JsonValue.class, false);
+            assertEquals(3, array.size());
+            assertEquals(1, array.getInt(0));
+            assertEquals(3, array.getInt(2));
+        }
+        JsonArray withNull = (JsonArray) NodeMapper.convert(
+                new Integer[]{1, null, 3}, JsonArray.class, false);
+        assertSame(JsonValue.NULL, withNull.get(1));
+    }
+
+    @Test
+    void buildsJsonpFromPojoJojoAndValueCodecWithoutMutatingSources() {
+        Profile pojo = new Profile();
+        pojo.name = "Ada";
+        pojo.code = new Encoded("coded");
+        pojo.items = Arrays.asList("a", null);
+
+        JsonObject fromPojo = (JsonObject) NodeMapper.convert(pojo, JsonObject.class, false);
+        assertEquals("Ada", fromPojo.getString("name"));
+        assertEquals("coded", fromPojo.getString("code"));
+        assertSame(JsonValue.NULL, fromPojo.getJsonArray("items").get(1));
+
+        org.sjf4j.JsonObject jojo = org.sjf4j.JsonObject.of(
+                "static", "value", "dynamic", Arrays.asList(true, false));
+        JsonObject fromJojo = (JsonObject) NodeMapper.convert(jojo, JsonValue.class, true);
+        assertEquals("value", fromJojo.getString("static"));
+        assertTrue(fromJojo.getJsonArray("dynamic").getBoolean(0));
+
+        JsonValue code = (JsonValue) NodeMapper.convert(new Encoded("root"), JsonValue.class, false);
+        assertEquals("root", ((JsonString) code).getString());
+        assertEquals("coded", pojo.code.value);
+    }
+
+    @Test
+    void reusesImmutableNativeTargetsForDeepCopy() {
+        JsonObject source = Json.createObjectBuilder()
+                .add("nested", Json.createArrayBuilder().add(1).addNull()).build();
+        // JSON-P trees are immutable, so a deep copy may return the same instance.
+        assertSame(source, NodeMapper.convert(source, JsonValue.class, true));
+    }
+
+    @NodeValue
+    static class Encoded {
+        final String value;
+        Encoded(String value) { this.value = value; }
+        @ValueToRaw String encode() { return value; }
+        @RawToValue static Encoded decode(String raw) { return new Encoded(raw); }
+    }
+
+    static class Profile {
+        public String name;
+        public Encoded code;
+        public List<String> items;
     }
 
     @SuppressWarnings("unchecked")
