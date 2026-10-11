@@ -84,9 +84,7 @@ public final class ReflectUtil {
 
 
     public static ContainerInfo analyzeContainer(Class<?> clazz) {
-        if (clazz == null || clazz == Object.class || clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
-            return null;
-        }
+        if (clazz == null) return null;
 
         NodeKind kind;
         if (Map.class.isAssignableFrom(clazz)) {
@@ -99,6 +97,12 @@ public final class ReflectUtil {
             return null;
         }
 
+        // Collection classification does not depend on constructibility.
+        // The factory decides whether a missing constructor permits fallback.
+        if (clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
+            return new ContainerInfo(clazz, kind, null, null);
+        }
+
         MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
         try {
             Constructor<?> ctor = clazz.getDeclaredConstructor();
@@ -107,7 +111,7 @@ public final class ReflectUtil {
             Supplier<?> noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
             return new ContainerInfo(clazz, kind, noArgsCtor, noArgsLambdaCtor);
         } catch (NoSuchMethodException | IllegalAccessException e) {
-            return null;
+            return new ContainerInfo(clazz, kind, null, null);
         }
     }
 

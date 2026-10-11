@@ -200,18 +200,6 @@ public final class TypeSystem {
             return NodeKind.ARRAY_JAJO;
         }
 
-        // Java containers
-
-        if (isAssignableErasure(type, mapType)) {
-            return NodeKind.OBJECT_MAP;
-        }
-        if (isAssignableErasure(type, listType)) {
-            return NodeKind.ARRAY_LIST;
-        }
-        if (isAssignableErasure(type, setType)) {
-            return NodeKind.ARRAY_SET;
-        }
-
         // Java values
 
         if (isSameErasure(type, stringType)) {
@@ -231,6 +219,18 @@ public final class TypeSystem {
         }
         if (isSameErasure(type, voidType)) {
             return NodeKind.VALUE_NULL;
+        }
+
+        // Java containers
+
+        if (isAssignableErasure(type, mapType)) {
+            return NodeKind.OBJECT_MAP;
+        }
+        if (isAssignableErasure(type, listType)) {
+            return NodeKind.ARRAY_LIST;
+        }
+        if (isAssignableErasure(type, setType)) {
+            return NodeKind.ARRAY_SET;
         }
 
         // @NodeValue

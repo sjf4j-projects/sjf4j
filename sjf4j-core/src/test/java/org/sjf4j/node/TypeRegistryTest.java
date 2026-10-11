@@ -93,6 +93,43 @@ public class TypeRegistryTest {
     }
 
     @Test
+    public void testContainerClassificationIndependentOfConstructors() {
+        // Standard interfaces are handled by the binding fast paths and
+        // should not trigger TypeInfo cache registration.
+        assertTrue(TypeRegistry.registerTypeInfo(Map.class) == TypeInfo.NONE);
+        assertTrue(TypeRegistry.registerTypeInfo(List.class) == TypeInfo.NONE);
+        assertTrue(TypeRegistry.registerTypeInfo(Set.class) == TypeInfo.NONE);
+
+        Class<?>[] mapTypes = {java.util.LinkedHashMap.class,
+                Collections.unmodifiableMap(Collections.singletonMap("a", 1)).getClass()};
+        Class<?>[] listTypes = {ArrayList.class, Arrays.asList("x").getClass()};
+        Class<?>[] setTypes = {java.util.LinkedHashSet.class,
+                Collections.singleton("z").getClass()};
+
+        for (Class<?> type : mapTypes) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(type);
+            assertEquals(org.sjf4j.NodeKind.OBJECT_MAP, ti.containerInfo.kind);
+            assertTrue(ti.externalNode == null);
+        }
+        for (Class<?> type : listTypes) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(type);
+            assertEquals(org.sjf4j.NodeKind.ARRAY_LIST, ti.containerInfo.kind);
+            assertTrue(ti.externalNode == null);
+        }
+        for (Class<?> type : setTypes) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(type);
+            assertEquals(org.sjf4j.NodeKind.ARRAY_SET, ti.containerInfo.kind);
+            assertTrue(ti.externalNode == null);
+        }
+
+        assertTrue(TypeRegistry.registerTypeInfo(Arrays.asList("x").getClass())
+                .containerInfo.noArgsCtorHandle == null);
+        assertNotNull(TypeRegistry.registerTypeInfo(ArrayList.class).containerInfo.noArgsCtorHandle);
+        assertThrows(BindingException.class,
+                () -> TypeRegistry.requireRegisteredPojoInfo(Map.class));
+    }
+
+    @Test
     public void testContainerFactoryFallback() {
         assertThrows(BindingException.class, () -> TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), 0, false));
         Map<String, Object> map = TypeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), 0, true);

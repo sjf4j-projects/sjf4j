@@ -167,15 +167,38 @@ class GsonBinderTest {
     }
 
     @Test
-    void preservesExternalJsonNullsWhenContextOmitsOrdinaryNulls() {
+    void includeNullsControlsNativeJsonNullObjectProperties() {
         JsonObject object = new JsonObject();
         object.add("empty", JsonNull.INSTANCE);
 
-        JsonObject output = JsonParser.parseString(
-                new GsonBinder(new Gson(), new RuntimeContext(false)).writeNodeAsString(object))
-                .getAsJsonObject();
+        GsonBinder withoutNulls = new GsonBinder(new Gson(), new RuntimeContext(false));
+        GsonBinder withNulls = new GsonBinder(new Gson(), RuntimeContext.EMPTY);
 
-        assertTrue(output.get("empty").isJsonNull());
+        assertFalse(JsonParser.parseString(withoutNulls.writeNodeAsString(object))
+                .getAsJsonObject().has("empty"));
+        assertTrue(JsonParser.parseString(withNulls.writeNodeAsString(object))
+                .getAsJsonObject().get("empty").isJsonNull());
+    }
+
+    @Test
+    void omitsNativeAndJavaNullObjectPropertiesButPreservesNullArrayElements() {
+        JsonObject nativeTree = new JsonObject();
+        nativeTree.add("explicit", JsonNull.INSTANCE);
+        JsonObject child = new JsonObject();
+        child.add("explicit", JsonNull.INSTANCE);
+        nativeTree.add("child", child);
+        com.google.gson.JsonArray array = new com.google.gson.JsonArray();
+        array.add(JsonNull.INSTANCE);
+        array.add("x");
+        nativeTree.add("items", array);
+
+        java.util.Map<String, Object> wrapper = new java.util.LinkedHashMap<>();
+        wrapper.put("ordinary", null);
+        wrapper.put("native", nativeTree);
+        GsonBinder binder = new GsonBinder(new Gson(), new RuntimeContext(false));
+        assertEquals(
+                "{\"native\":{\"child\":{},\"items\":[null,\"x\"]}}",
+                binder.writeNodeAsString(wrapper));
     }
 
     @Test

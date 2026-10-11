@@ -7,7 +7,10 @@ import java.lang.invoke.MethodHandle;
 import java.util.function.Supplier;
 
 /**
- * Cached construction metadata for a supported map, list, or set type.
+ * Cached classification and optional construction metadata for a Map/List/Set.
+ *
+ * <p>A null constructor means the type is still a valid container, but cannot
+ * be instantiated using the standard zero-argument construction path.
  */
 public final class ContainerInfo {
     public final Class<?> clazz;

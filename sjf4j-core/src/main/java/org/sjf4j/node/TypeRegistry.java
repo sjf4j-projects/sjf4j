@@ -55,9 +55,9 @@ public final class TypeRegistry {
     /**
      * Returns type metadata and optionally requires an object binding.
      * <p>
-     * Resolution order is: cache hit, ServiceLoader-discovered external node,
-     * {@code @NodeValue}/registered codec, {@code @OneOf}, container analysis,
-     * object analysis, then the none marker.
+     * Resolution order is: cache hit, standard Java collections,
+     * ServiceLoader-discovered external node, {@code @NodeValue}/registered codec,
+     * {@code @OneOf}, object analysis, then the none marker.
      *
      * @param requirePojo when true, results without object binding are rejected
      */
@@ -74,6 +74,18 @@ public final class TypeRegistry {
             if (requirePojo && ti.pojoInfo == null) {
                 throw new BindingException("class '" + clazz.getName() + "' is not a POJO");
             }
+            return ti;
+        }
+
+        // Concrete Java containers take precedence over external adapters.
+        // Map/List/Set interfaces have already returned NONE via _fastNoneInfo.
+        ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
+        if (ci != null) {
+            if (requirePojo) {
+                throw new BindingException("class '" + clazz.getName() + "' is a container node, not a POJO");
+            }
+            ti = new TypeInfo(clazz, null, null, ci, null, null);
+            TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
@@ -105,16 +117,6 @@ public final class TypeRegistry {
             return ti;
         }
 
-        ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
-        if (ci != null) {
-            if (requirePojo) {
-                throw new BindingException("class '" + clazz.getName() + "' is a container node, not a POJO");
-            }
-            ti = new TypeInfo(clazz, null, null, ci, null, null);
-            TYPE_INFO_CACHE.put(clazz, ti);
-            return ti;
-        }
-
         PojoInfo pi = ReflectUtil.analyzePojo(clazz, requirePojo);
         if (pi != null) {
             ti = new TypeInfo(clazz, null, null, null, pi, null);
@@ -129,8 +131,8 @@ public final class TypeRegistry {
     private static boolean _fastNoneInfo(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
                 || Number.class.isAssignableFrom(clazz)
-                || clazz == Map.class || clazz == JsonObject.class
-                || clazz == List.class || clazz == JsonArray.class || clazz == Set.class || clazz.isArray()
+                || clazz == Map.class || clazz == List.class || clazz == Set.class
+                || clazz == JsonObject.class || clazz == JsonArray.class || clazz.isArray()
                 || clazz.isPrimitive()
                 || Enum.class.isAssignableFrom(clazz)
                 || clazz == Character.class
@@ -181,7 +183,7 @@ public final class TypeRegistry {
             return new LinkedHashMap<>();
         }
         ContainerInfo ci = registerTypeInfo(mapClazz).containerInfo;
-        if (ci == null || ci.kind != NodeKind.OBJECT_MAP) {
+        if (ci == null || ci.kind != NodeKind.OBJECT_MAP || ci.noArgsCtorHandle == null) {
             if (fallback) {
                 return new LinkedHashMap<>();
             }
@@ -204,7 +206,7 @@ public final class TypeRegistry {
             return new ArrayList<>();
         }
         ContainerInfo ci = registerTypeInfo(listClazz).containerInfo;
-        if (ci == null || ci.kind != NodeKind.ARRAY_LIST) {
+        if (ci == null || ci.kind != NodeKind.ARRAY_LIST || ci.noArgsCtorHandle == null) {
             if (fallback) {
                 return new ArrayList<>();
             }
@@ -227,7 +229,7 @@ public final class TypeRegistry {
             return new LinkedHashSet<>();
         }
         ContainerInfo ci = registerTypeInfo(setClazz).containerInfo;
-        if (ci == null || ci.kind != NodeKind.ARRAY_SET) {
+        if (ci == null || ci.kind != NodeKind.ARRAY_SET || ci.noArgsCtorHandle == null) {
             if (fallback) {
                 return new LinkedHashSet<>();
             }

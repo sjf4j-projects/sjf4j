@@ -2,11 +2,13 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.TypeReference;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueRegistry;
 import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.node.TypeInfo;
 import org.sjf4j.value.ValueCodec;
 
 import java.io.StringReader;
@@ -26,6 +28,19 @@ class StreamingIOReadTest {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"items\":[1,true]}"))) {
             Map<?, ?> value = (Map<?, ?>) StreamingIO.readNode(reader, Object.class, RuntimeContext.EMPTY);
             assertEquals(List.of(1, true), value.get("items"));
+        }
+    }
+
+    @Test
+    void readsNestedGenericMapAndListUsingInterfaceFastPaths() throws Exception {
+        TypeReference<Map<String, List<Integer>>> target =
+                new TypeReference<Map<String, List<Integer>>>() {};
+        try (SimpleJsonReader reader = new SimpleJsonReader(
+                new StringReader("{\"first\":[1,2],\"second\":[]}"))) {
+            Map<String, List<Integer>> value = (Map<String, List<Integer>>)
+                    StreamingIO.readNode(reader, target.getType(), RuntimeContext.EMPTY);
+            assertEquals(List.of(1, 2), value.get("first"));
+            assertEquals(List.of(), value.get("second"));
         }
     }
 
@@ -80,6 +95,41 @@ class StreamingIOReadTest {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"parent\""))) {
             assertThrows(BindingException.class, () -> StreamingIO.readNode(reader, CodecChild.class, RuntimeContext.EMPTY));
         }
+    }
+
+    @Test
+    void distinguishesUnresolvedAbsentAndResolvedReadMetadata() throws Exception {
+        // null: unresolved, resolves the POJO only after the built-in paths.
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"name\":\"Ada\"}"))) {
+            NameHolder value = (NameHolder) StreamingIO.readNode(
+                    reader, NameHolder.class, NameHolder.class, null, RuntimeContext.EMPTY);
+            assertEquals("Ada", value.name);
+        }
+
+        // NONE: already resolved; standard Java types need no registry lookup.
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"a\":1}"))) {
+            Map<?, ?> result = (Map<?, ?>) StreamingIO.readNode(
+                    reader, Map.class, Map.class, TypeInfo.NONE, RuntimeContext.EMPTY);
+            assertEquals(1, result.get("a"));
+        }
+
+        // Concrete metadata: dispatches directly to POJO reading.
+        TypeInfo info = TypeRegistry.registerTypeInfo(NameHolder.class);
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"name\":\"Bob\"}"))) {
+            NameHolder value = (NameHolder) StreamingIO.readNode(
+                    reader, NameHolder.class, NameHolder.class, info, RuntimeContext.EMPTY);
+            assertEquals("Bob", value.name);
+        }
+
+        // NONE for a non-standard type must not silently resolve metadata.
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"name\":\"Eve\"}"))) {
+            assertThrows(BindingException.class, () -> StreamingIO.readNode(
+                    reader, NameHolder.class, NameHolder.class, TypeInfo.NONE, RuntimeContext.EMPTY));
+        }
+    }
+
+    static class NameHolder {
+        public String name;
     }
 
     enum SampleEnum { FIRST, SECOND }

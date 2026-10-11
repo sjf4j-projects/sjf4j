@@ -8,11 +8,15 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
+import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.backend.jsonp.external.JsonpExternalProvider;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
+import org.sjf4j.node.TypeRegistry;
 
 import java.io.File;
 import java.io.StringReader;
@@ -50,6 +54,60 @@ class JsonpNodeTest {
         assertEquals(JsonType.NUMBER, node.jsonType(value("12")));
         assertEquals(JsonType.BOOLEAN, node.jsonType(JsonValue.TRUE));
         assertEquals(JsonType.NULL, node.jsonType(JsonValue.NULL));
+    }
+
+    @Test
+    void nodesPreferMapAndListInterfacesForJsonpCollections() {
+        JsonObject object = value("{\"nil\":null,\"value\":7}").asJsonObject();
+        JsonArray array = value("[1,2]").asJsonArray();
+
+        assertEquals(NodeKind.OBJECT_MAP, NodeKind.of(object));
+        assertEquals(NodeKind.ARRAY_LIST, NodeKind.of(array));
+        assertEquals(JsonType.OBJECT, JsonType.of(object));
+        assertEquals(JsonType.ARRAY, JsonType.of(array));
+
+        assertSame(JsonValue.NULL, Nodes.getInObject(object, "nil"));
+        assertEquals(2, Nodes.sizeInArray(array));
+        assertEquals(2, ((JsonNumber) Nodes.getInArray(array, -1)).intValue());
+
+        Nodes.Access access = new Nodes.Access();
+        Nodes.getAccessInObject(object, "nil", access);
+        assertTrue(access.present);
+        assertSame(JsonValue.NULL, access.node);
+
+        // Mutable operations follow Map/List's normal behavior: JSON-P
+        // containers are immutable and throw UnsupportedOperationException.
+        assertThrows(UnsupportedOperationException.class,
+                () -> Nodes.putInObject(object, "value", JsonValue.TRUE));
+        assertThrows(UnsupportedOperationException.class,
+                () -> Nodes.addInArray(array, JsonValue.TRUE));
+
+        // Factory/copy follows the same Map/List contract. JSON-P has no
+        // constructible mutable Java container; there is no external fallback.
+        assertThrows(BindingException.class, () -> Nodes.copy(object));
+        assertThrows(BindingException.class, () -> Nodes.copy(array));
+        assertThrows(BindingException.class, () -> Nodes.createObjectNode(JsonObject.class));
+        assertThrows(BindingException.class, () -> Nodes.createArrayNode(JsonArray.class));
+        assertThrows(BindingException.class, () ->
+                NodeMapper.convert(java.util.Collections.singletonMap("value", 7),
+                        JsonObject.class, false));
+        assertThrows(BindingException.class, () ->
+                NodeMapper.convert(Arrays.asList(1, 2), JsonArray.class, false));
+    }
+
+    @Test
+    void registryNeverAssignsExternalAdapterToJavaCollectionTypes() {
+        JsonObject object = value("{\"n\":1}").asJsonObject();
+        JsonArray array = value("[1]").asJsonArray();
+        assertNotNull(TypeRegistry.registerTypeInfo(object.getClass()).containerInfo);
+        assertNotNull(TypeRegistry.registerTypeInfo(array.getClass()).containerInfo);
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonObject.class).containerInfo);
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonArray.class).containerInfo);
+        assertNull(TypeRegistry.registerTypeInfo(object.getClass()).externalNode);
+        assertNull(TypeRegistry.registerTypeInfo(array.getClass()).externalNode);
+
+        // A JSON-P scalar does not implement Map/List and remains external.
+        assertNotNull(TypeRegistry.registerTypeInfo(object.get("n").getClass()).externalNode);
     }
 
     @Test

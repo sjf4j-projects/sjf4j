@@ -853,8 +853,9 @@ public final class Nodes {
      * For POJO/JOJO/JAJO representations, a new instance is created and direct field/item
      * values are transferred without deep recursion. Strings, numbers, booleans,
      * and unrecognized values are returned unchanged. {@code @NodeValue} types
-     * use their registered value-copy hook. Recognized backend-native tree
-     * representations are not copied and cause {@link NodeException}.
+     * use their registered value-copy hook. Map/List copies use the concrete
+     * Java collection type; types with no supported construction path fail
+     * instead of silently falling back to a different implementation.
      */
     @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
     public static <T> T copy(T node) {
@@ -866,35 +867,18 @@ public final class Nodes {
 
         Class<?> rawClazz = node.getClass();
         if (node instanceof Map) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, true);
+            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, false);
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
         if (node instanceof List) {
-            List<Object> list = TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), true);
+            List<Object> list = TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), false);
             list.addAll((List<Object>) node);
             return (T) list;
         }
 
         if (rawClazz == JsonObject.class) {
             return (T) new JsonObject(((JsonObject) node).toMap());
-        }
-        if (node instanceof JsonObject) {
-            JsonObject srcJo = (JsonObject) node;
-            PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(node.getClass());
-            TypeRegistry.PojoCreationSession session = new TypeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
-
-            for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
-                String key = entry.getKey();
-                int argIdx = pojoInfo.creatorInfo.getArgIndexOrAlias(key);
-                if (argIdx >= 0) {
-                    session.acceptCtorArg(argIdx, entry.getValue());
-                } else {
-                    session.acceptDynamic(key, entry.getValue());
-                }
-            }
-            JsonObject newJo = (JsonObject) session.finish();
-            return (T) newJo;
         }
         if (rawClazz == JsonArray.class) {
             return (T) new JsonArray(((JsonArray) node).toList());
@@ -925,21 +909,33 @@ public final class Nodes {
             return (T) ti.externalNode.copy(node);
         }
         if (ti.pojoInfo != null) {
-            PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(node.getClass());
+            PojoInfo pi = ti.pojoInfo;
+            Map<String, Object> dynamic = pi.isJojo
+                    ? ((JsonObject) node).dynamicProperties : null;
+            int capacity = pi.readableProperties.length
+                    + (dynamic == null ? 0 : dynamic.size());
             TypeRegistry.PojoCreationSession session =
-                    new TypeRegistry.PojoCreationSession(pi.creatorInfo, pi.readableProperties.length);
+                    new TypeRegistry.PojoCreationSession(pi.creatorInfo, capacity);
 
-            for (PropertyInfo propertyInfo : pi.readableProperties) {
-                Object v = propertyInfo.invokeGetter(node);
-                int argIdx = pi.creatorInfo.getArgIndexOrAlias(propertyInfo.name);
+            // POJO and JOJO share the same static-property/creator path.
+            for (PropertyInfo property : pi.readableProperties) {
+                Object value = property.invokeGetter(node);
+                int argIdx = pi.creatorInfo.getArgIndexOrAlias(property.name);
                 if (argIdx >= 0) {
-                    session.acceptCtorArg(argIdx, v);
-                } else {
-                    session.acceptProperty(propertyInfo, v);
+                    session.acceptCtorArg(argIdx, value);
+                } else if (property.writable) {
+                    session.acceptProperty(property, value);
                 }
             }
-            Object pojo = session.finish();
-            return (T) pojo;
+
+            // JOJO adds dynamic entries without iterating over static properties
+            // a second time or treating them as dynamic keys.
+            if (dynamic != null) {
+                for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
+                    session.acceptDynamic(entry.getKey(), entry.getValue());
+                }
+            }
+            return (T) session.finish();
         }
 
         return node;

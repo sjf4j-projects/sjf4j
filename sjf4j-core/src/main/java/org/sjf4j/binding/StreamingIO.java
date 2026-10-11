@@ -9,6 +9,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.external.ExternalNode;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.OneOfInfo;
@@ -58,8 +59,8 @@ public final class StreamingIO {
         Asserts.notNull(context, "context");
 
         Class<?> boxed = Types.rawBox(type);
-        TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
-        return readNode(reader, type, boxed, ti, context);
+        // The common scalar and collection paths need no registered metadata.
+        return readNode(reader, type, boxed, null, context);
     }
 
 
@@ -77,17 +78,12 @@ public final class StreamingIO {
              * operation below.
              */
 
+            if (typeInfo != null && typeInfo != TypeInfo.NONE) {
+                return _readRegisteredNode(reader, type, boxed, typeInfo, context);
+            }
+
             if (boxed == Object.class) {
                 return reader.readRawNode();
-            }
-
-            // Polymorphic resolution is uncommon and needs the complete source shape.
-            if (typeInfo.oneOfInfo != null) {
-                return readOneOf(reader, typeInfo.oneOfInfo, context);
-            }
-
-            if (typeInfo.valueInfos != null) {
-                return readValueCodec(reader, typeInfo.requireValueInfo(context.defaultValueFormat(boxed)), context);
             }
 
             /*
@@ -149,12 +145,6 @@ public final class StreamingIO {
                 return readEnum(reader, boxed, context);
             }
 
-            // External trees may also implement Map or List (e.g. JSON-P).
-            if (typeInfo.externalNode != null) {
-                Object raw = reader.readRawNode();
-                return NodeMapper.convert(raw, type, false, context);
-            }
-
             /*
              * Object nodes.
              */
@@ -183,10 +173,6 @@ public final class StreamingIO {
                 return new JsonArray(castList(raw));
             }
 
-            if (JsonArray.class.isAssignableFrom(boxed)) {
-                return readJsonArray(reader, type, boxed, typeInfo, context);
-            }
-
             if (Set.class.isAssignableFrom(boxed)) {
                 return readSet(reader, type, boxed, null, null, null, context);
             }
@@ -195,13 +181,13 @@ public final class StreamingIO {
                 return readArray(reader, type, boxed, null, null, null, context);
             }
 
-            /*
-             * POJO nodes.
-             */
-
-            PojoInfo pojoInfo = typeInfo.pojoInfo;
-            if (pojoInfo != null && !pojoInfo.isJajo) {
-                return readPojo(reader, type, boxed, pojoInfo, context);
+            // A null TypeInfo means metadata has not been resolved. NONE
+            // means it was resolved and there is no registered binding.
+            if (typeInfo == null) {
+                TypeInfo resolved = TypeRegistry.registerTypeInfo(boxed);
+                if (resolved != TypeInfo.NONE) {
+                    return _readRegisteredNode(reader, type, boxed, resolved, context);
+                }
             }
 
             /*
@@ -222,6 +208,48 @@ public final class StreamingIO {
         } catch (Throwable e) {
             throw new BindingException("failed to read streaming into '" + type + "'", e);
         }
+    }
+
+
+    /**
+     * Direct path for already-resolved types. A known TypeInfo bypasses all
+     * scalar/container checks in readNode; container metadata is handled here.
+     */
+    private static Object _readRegisteredNode(StreamingReader reader, Type type,
+                                              Class<?> boxed, TypeInfo ti,
+                                              RuntimeContext context) throws IOException {
+        if (ti.oneOfInfo != null) {
+            return readOneOf(reader, ti.oneOfInfo, context);
+        }
+        if (ti.valueInfos != null) {
+            return readValueCodec(reader,
+                    ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
+        }
+        if (ti.containerInfo != null) {
+            switch (ti.containerInfo.kind) {
+                case OBJECT_MAP:
+                    return readMap(reader, type, boxed, null, null, null, context);
+                case ARRAY_LIST:
+                    return readList(reader, type, boxed, null, null, null, context);
+                case ARRAY_SET:
+                    return readSet(reader, type, boxed, null, null, null, context);
+                default:
+                    throw new BindingException("unsupported container type '" + boxed.getName() + "'");
+            }
+        }
+        if (ti.externalNode != null) {
+            return NodeMapper.convert(reader.readRawNode(), type, false, context);
+        }
+        if (ti.pojoInfo != null) {
+            if (ti.pojoInfo.isJajo) {
+                return readJsonArray(reader, type, boxed, ti, context);
+            }
+            return readPojo(reader, type, boxed, ti.pojoInfo, context);
+        }
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        throw new BindingException("cannot read value into type '" + boxed.getName() + "'");
     }
 
 
@@ -504,7 +532,7 @@ public final class StreamingIO {
                 ValueInfo codec = creator.argValueCodecs[argIndex];
 
                 Object value = codec == null
-                        ? readNode(reader, argType, argBoxed, TypeRegistry.registerTypeInfo(argBoxed), context)
+                        ? readNode(reader, argType, argBoxed, null, context)
                         : readValueCodec(reader, codec, context);
                 state.acceptCtorArg(argIndex, value);
                 if (parentKey != null && parentKey.equals(name)) {
@@ -647,7 +675,7 @@ public final class StreamingIO {
             return readValueCodec(reader, property.valueInfo, context);
         }
 
-        return readNode(reader, type, boxed, TypeRegistry.registerTypeInfo(boxed), context);
+        return readNode(reader, type, boxed, null, context);
     }
 
 
@@ -1018,12 +1046,6 @@ public final class StreamingIO {
                 return;
             }
 
-            if (typeInfo.externalNode != null) {
-                Object raw = NodeMapper.convertToRaw(node, context);
-                _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
-                return;
-            }
-
             if (typeInfo.valueInfos != null) {
                 String valueFormat = context.defaultValueFormat(clazz);
                 ValueInfo vi = typeInfo.requireValueInfo(valueFormat);
@@ -1137,19 +1159,8 @@ public final class StreamingIO {
          * --------------------------------------------------------------
          */
 
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-
-        /*
-         * External JSON tree.
-         *
-         * Do this before POJO fallback. An external JsonNode / JsonElement
-         * is already an OBNT tree and must not be reflected as a POJO.
-         */
-        if (ti.externalNode != null) {
-            Object raw = NodeMapper.convertToRaw(node, context);
-            _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
-            return;
-        }
+        TypeInfo ti = typeInfo.clazz == clazz
+                ? typeInfo : TypeRegistry.registerTypeInfo(clazz);
 
         /*
          * NodeValue / ValueCodec.
@@ -1162,6 +1173,15 @@ public final class StreamingIO {
         }
 
         /*
+         * Stream non-collection external representations directly.
+         * External object members apply the backend's JSON null semantics.
+         */
+        if (ti.externalNode != null) {
+            _writeExternalNode(writer, node, ti.externalNode, context);
+            return;
+        }
+
+        /*
          * POJO / JOJO.
          */
         if (ti.pojoInfo != null && !ti.pojoInfo.isJajo) {
@@ -1170,6 +1190,58 @@ public final class StreamingIO {
         }
 
         throw new BindingException("unsupported node type '" + Types.name(node) + "'");
+    }
+
+
+    /**
+     * Streams an external JSON tree without creating intermediate raw nodes.
+     * Object properties with JSON null are omitted when includeNulls is false;
+     * null array elements are preserved.
+     */
+    private static void _writeExternalNode(StreamingWriter writer, Object node,
+                                           ExternalNode<Object> external,
+                                           RuntimeContext context) throws IOException {
+        switch (external.jsonType(node)) {
+            case NULL:
+                writer.writeNull();
+                return;
+            case STRING:
+                writer.writeStringValue(external.toString(node));
+                return;
+            case NUMBER:
+                writer.writeNumberValue(external.toNumber(node));
+                return;
+            case BOOLEAN:
+                writer.writeBooleanValue(external.toBoolean(node));
+                return;
+            case OBJECT:
+                writer.startObject();
+                int count = 0;
+                for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
+                    Object value = entry.getValue();
+                    if (!context.includeNulls && (value == null || external.jsonType(value) == JsonType.NULL)) {
+                        continue;
+                    }
+                    writer.writeName(entry.getKey(), count > 0);
+                    count++;
+                    _writeNode(writer, value, TypeInfo.NONE, context);
+                }
+                writer.endObject();
+                return;
+            case ARRAY:
+                writer.startArray();
+                int size = external.sizeInArray(node);
+                for (int i = 0; i < size; i++) {
+                    if (i > 0) {
+                        writer.separateElement();
+                    }
+                    _writeNode(writer, external.getInArray(node, i), TypeInfo.NONE, context);
+                }
+                writer.endArray();
+                return;
+            default:
+                throw new BindingException("unsupported external node type '" + Types.name(node) + "'");
+        }
     }
 
 

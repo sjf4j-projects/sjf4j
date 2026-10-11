@@ -102,6 +102,18 @@ class JsonpBinderTest {
     }
 
     @Test
+    void jsonpMapKeepsNativeNullMembersUnderJavaMapContract() {
+        JsonObject object = Json.createObjectBuilder()
+                .addNull("empty")
+                .add("items", Json.createArrayBuilder().addNull().add(1))
+                .build();
+        String expected = "{\"empty\":null,\"items\":[null,1]}";
+        assertEquals(expected, new JsonpBinder(
+                JsonProvider.provider(), new RuntimeContext(false)).writeNodeAsString(object));
+        assertEquals(expected, new JsonpBinder().writeNodeAsString(object));
+    }
+
+    @Test
     void rejectsCreatingNativeExternalTargets() {
         JsonpBinder binder = new JsonpBinder();
         assertEquals("text", binder.readNode("\"text\"", String.class));

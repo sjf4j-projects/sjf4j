@@ -281,9 +281,14 @@ class NodeMapperExternalCoverageTest {
                 .add("flag", true)
                 .add("items", Json.createArrayBuilder().add("x").addNull())
                 .build();
+        // Map/List-first conversion preserves assignable sources when no copy
+        // is requested. Explicit raw conversion is the detached JSON-compatible path.
         Map<String, Object> javaMap = (Map<String, Object>) NodeMapper.convert(source, Map.class, false);
-        assertFalse(javaMap instanceof jakarta.json.JsonValue);
-        assertEquals(Arrays.asList("x", null), javaMap.get("items"));
+        assertSame(source, javaMap);
+        Map<String, Object> rawMap = (Map<String, Object>)
+                NodeMapper.convertToRaw(source, RuntimeContext.EMPTY);
+        assertFalse(rawMap instanceof jakarta.json.JsonValue);
+        assertEquals(Arrays.asList("x", null), rawMap.get("items"));
 
         com.fasterxml.jackson.databind.JsonNode j2 = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(source, com.fasterxml.jackson.databind.JsonNode.class, false);
@@ -291,9 +296,12 @@ class NodeMapperExternalCoverageTest {
 
         jakarta.json.JsonArray arr = Json.createArrayBuilder().add(1).addNull().build();
         List<Object> javaList = (List<Object>) NodeMapper.convert(arr, List.class, false);
-        assertEquals(2, javaList.size());
-        assertEquals(1, ((Number) javaList.get(0)).intValue());
-        assertNull(javaList.get(1));
+        assertSame(arr, javaList);
+        List<Object> rawList = (List<Object>)
+                NodeMapper.convertToRaw(arr, RuntimeContext.EMPTY);
+        assertEquals(2, rawList.size());
+        assertEquals(1, ((Number) rawList.get(0)).intValue());
+        assertNull(rawList.get(1));
         assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false));
         assertThrows(BindingException.class, () -> NodeMapper.convert(
                 Arrays.asList(1, 2), jakarta.json.JsonValue.class, false));

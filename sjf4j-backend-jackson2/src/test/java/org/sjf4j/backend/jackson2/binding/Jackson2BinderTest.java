@@ -98,6 +98,35 @@ class Jackson2BinderTest {
     }
 
     @Test
+    void includeNullsControlsExternalNullNodesAndOrdinaryNullProperties() {
+        com.fasterxml.jackson.databind.node.JsonNodeFactory factory =
+                com.fasterxml.jackson.databind.node.JsonNodeFactory.instance;
+        com.fasterxml.jackson.databind.node.ObjectNode tree = factory.objectNode();
+        tree.putNull("explicit");
+        tree.set("nested", factory.objectNode().put("keep", 7).putNull("explicit"));
+        tree.set("items", factory.arrayNode().addNull().add("x"));
+
+        Jackson2Binder withoutNulls = new Jackson2Binder(
+                new JsonFactory(), new RuntimeContext(false));
+        Jackson2Binder withNulls = new Jackson2Binder(
+                new JsonFactory(), RuntimeContext.EMPTY);
+        String without =
+                "{\"nested\":{\"keep\":7},\"items\":[null,\"x\"]}";
+        String with =
+                "{\"explicit\":null,\"nested\":{\"keep\":7,\"explicit\":null},\"items\":[null,\"x\"]}";
+        assertEquals(without, withoutNulls.writeNodeAsString(tree));
+        assertEquals(with, withNulls.writeNodeAsString(tree));
+
+        Map<String, Object> wrapped = new LinkedHashMap<>();
+        wrapped.put("javaNull", null);
+        wrapped.put("native", tree);
+        assertEquals("{\"native\":" + without + "}",
+                withoutNulls.writeNodeAsString(wrapped));
+        assertEquals("{\"javaNull\":null,\"native\":" + with + "}",
+                withNulls.writeNodeAsString(wrapped));
+    }
+
+    @Test
     void writesLargeUtf8NodeAsBytes() {
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
         Document value = document();
