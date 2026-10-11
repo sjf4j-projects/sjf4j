@@ -200,6 +200,43 @@ class NodeMapperTest {
     }
 
     @Test
+    void indexedPrimitiveArrayFastPathsCoverEveryElementType() {
+        Type ints = new TypeReference<List<Integer>>() {}.getType();
+        Type doubles = new TypeReference<List<Double>>() {}.getType();
+        Type floats = new TypeReference<List<Float>>() {}.getType();
+        Type booleans = new TypeReference<List<Boolean>>() {}.getType();
+        Type characters = new TypeReference<List<Character>>() {}.getType();
+        Type strings = new TypeReference<List<String>>() {}.getType();
+
+        assertEquals(Arrays.asList(1, 2, 3),
+                NodeMapper.convert(new byte[]{1, 2, 3}, ints, false));
+        assertEquals(Arrays.asList(1, 2, 3),
+                NodeMapper.convert(new short[]{1, 2, 3}, ints, false));
+        assertEquals(Arrays.asList(1.25d, 2.5d),
+                NodeMapper.convert(new float[]{1.25f, 2.5f}, doubles, false));
+        assertEquals(Arrays.asList(1.25f, 2.5f),
+                NodeMapper.convert(new double[]{1.25d, 2.5d}, floats, false));
+        assertEquals(Arrays.asList(true, false, true),
+                NodeMapper.convert(new boolean[]{true, false, true}, booleans, false));
+        assertEquals(Arrays.asList('A', 'B'),
+                NodeMapper.convert(new char[]{'A', 'B'}, characters, false));
+        assertEquals(Arrays.asList("A", "B"),
+                NodeMapper.convert(new char[]{'A', 'B'}, strings, false));
+
+        // Direct primitive reads must keep indexed paths on checked numeric failures.
+        BindingException overflow = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new double[]{1.0, Double.MAX_VALUE}, floats, false));
+        assertTrue(overflow.getMessage().contains("$[1]"));
+
+        // Non-List targets still use the same generic target-conversion engine.
+        assertArrayEquals(new int[]{1, 2},
+                (int[]) NodeMapper.convert(new short[]{1, 2}, int[].class, false));
+        assertEquals(Arrays.asList(true, false),
+                NodeMapper.convert(new boolean[]{true, false},
+                        new TypeReference<List<Boolean>>() {}.getType(), true));
+    }
+
+    @Test
     void convertHandlesEmptyContainersAndNullMembers() {
         Profile empty = (Profile) NodeMapper.convert(JsonObject.of(
                 "aliases", JsonArray.of(),
