@@ -4,6 +4,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.node.ContainerInfo;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.PropertyInfo;
@@ -424,6 +425,12 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Map<String, T>) node;
         }
+        if (mapType != Map.class && mapType != LinkedHashMap.class) {
+            ContainerInfo ci = TypeRegistry.registerTypeInfo(mapType).containerInfo;
+            if (ci != null && ci.externalNode != null) {
+                return (Map<String, T>) NodeMapper.convert(node, mapType, false);
+            }
+        }
         Map<String, T> map = TypeRegistry.newMapContainer(mapType, 0, false);
         Nodes.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz)));
         return map;
@@ -484,6 +491,12 @@ public final class Nodes {
             return (List<T>) node;
         }
 
+        if (listType != List.class && listType != ArrayList.class) {
+            ContainerInfo ci = TypeRegistry.registerTypeInfo(listType).containerInfo;
+            if (ci != null && ci.externalNode != null) {
+                return (List<T>) NodeMapper.convert(node, listType, false);
+            }
+        }
         List<T> list = TypeRegistry.newListContainer(listType, 0, false);
         Nodes.forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
         return list;
@@ -866,11 +879,19 @@ public final class Nodes {
 
         Class<?> rawClazz = node.getClass();
         if (node instanceof Map) {
+            ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
+            if (ci != null && ci.externalNode != null) {
+                return (T) ci.externalNode.copy(node);
+            }
             Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, false);
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
         if (node instanceof List) {
+            ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
+            if (ci != null && ci.externalNode != null) {
+                return (T) ci.externalNode.copy(node);
+            }
             List<Object> list = TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), false);
             list.addAll((List<Object>) node);
             return (T) list;
