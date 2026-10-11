@@ -1,0 +1,81 @@
+name: Temporary Indexed Mapping JMH
+
+on:
+  push:
+    branches:
+      - perf/nodemapper-direct-indexed-sources
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Compare base and PR on the same runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          BENCHMARK="sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/NodeMapperConversionBenchmark.java"
+          mkdir -p "$RUNNER_TEMP/mapping-jmh"
+          cp "$BENCHMARK" "$RUNNER_TEMP/mapping-jmh/NodeMapperConversionBenchmark.java"
+          BASE_DIR="$RUNNER_TEMP/mapping-jmh/base"
+          git worktree add --detach "$BASE_DIR" de1156c3cac3477d8dee488449447b3600868186
+          cp "$RUNNER_TEMP/mapping-jmh/NodeMapperConversionBenchmark.java" "$BASE_DIR/$BENCHMARK"
+          PATTERN='org.sjf4j.testbench.mapping.NodeMapperConversionBenchmark.nodeMapper_(listToTypedList|jsonArrayToTypedList|javaArrayToTypedList|externalArrayToTypedList)'
+          run_bench() {
+            local location="$1"
+            local label="$2"
+            cd "$location"
+            ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain
+            local jar
+            jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*jmh.jar' -print -quit)
+            if [ -z "$jar" ]; then
+              echo "No JMH jar found"; ls -l sjf4j-testbench/build/libs; return 1
+            fi
+            java -jar "$jar" "$PATTERN" -f 1 -t 1 -wi 4 -i 6 -w 300ms -r 300ms -prof gc -rf json -rff "$RUNNER_TEMP/mapping-jmh/$label.json" | tee "$RUNNER_TEMP/mapping-jmh/$label.log"
+          }
+          run_bench "$BASE_DIR" base
+          run_bench "$GITHUB_WORKSPACE" pr
+          python3 - <<'PY'
+          import json, os
+          root=os.environ["RUNNER_TEMP"]+"/mapping-jmh/"
+          files={k:json.load(open(root+k+".json")) for k in ("base","pr")}
+          values={}
+          for label,records in files.items():
+              for record in records:
+                  name=record["benchmark"].split(".")[-1]
+                  primary=record["primaryMetric"]
+                  alloc=record.get("secondaryMetrics",{}).get("gc.alloc.rate.norm",{})
+                  values.setdefault(name,{})[label]=(primary["score"],primary.get("scoreError",0),alloc.get("score"))
+          print("\n=== PAIRED JMH COMPARISON (same CI runner, baseline then PR) ===")
+          print(f'{"Benchmark":30} {"base ns/op":>12} {"PR ns/op":>12} {"delta %":>10} {"base B/op":>12} {"PR B/op":>12}')
+          for name, result in sorted(values.items()):
+              if "base" not in result or "pr" not in result:
+                  print("MISSING",name,result)
+                  continue
+              base,base_err,base_alloc=result["base"]
+              pr,pr_err,pr_alloc=result["pr"]
+              diff=(pr/base-1)*100
+              fmt=lambda x: f"{x:12.2f}" if x is not None else "       n/a  "
+              print(f'{name:30} {base:12.2f} {pr:12.2f} {diff:+10.2f} {fmt(base_alloc)} {fmt(pr_alloc)}')
+              print(f'  JMH score errors ns/op: base +/- {base_err:.2f}, PR +/- {pr_err:.2f}')
+          PY
+      - name: Upload paired JMH JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexed-jmh-paired
+          path: ${{ runner.temp }}/mapping-jmh/*.json
+          if-no-files-found: ignore
