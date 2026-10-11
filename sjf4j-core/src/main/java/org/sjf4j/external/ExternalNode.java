@@ -284,7 +284,7 @@ public interface ExternalNode<N> {
      */
     default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
         if (source instanceof Map || source instanceof org.sjf4j.JsonObject
-                || (!JsonType.of(source).isArray() && JsonType.of(source).isObject())) {
+                || JsonType.of(source).isObject()) {
             N target = nodeType().cast(createObjectNode(clazz));
             Nodes.forEachObject(source, (name, value) ->
                     putInObject(target, name, NodeMapper.convert(value, nodeType(), false, context)));
