@@ -293,6 +293,15 @@ public interface ExternalNode<N> {
         return target;
     }
 
+    /**
+     * Whether objects and arrays can be filled using putInObject/addInArray.
+     * Immutable adapters override this to false and construct complete nodes
+     * with convert(Class, Object, RuntimeContext).
+     */
+    default boolean supportsContainerMutation() {
+        return true;
+    }
+
     /** Creates a native array container. */
     default Object createArrayNode(Class<?> clazz) {
         throw unsupported("createArrayNode");
