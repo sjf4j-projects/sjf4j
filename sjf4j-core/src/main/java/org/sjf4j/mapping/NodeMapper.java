@@ -791,6 +791,11 @@ public final class NodeMapper {
                 "cannot convert " + sourceName + " to '" + toBoxed.getName() + "'", ps);
     }
 
+    /**
+     * Maps entry-backed objects to POJO/JOJO targets. Source lookup differs from
+     * the cached POJO source path, but Creator, property and dynamic writes share
+     * exactly the same target conversion routines.
+     */
     private static Object _convertPojoFromEntries(Iterable<Map.Entry<String, Object>> entries, Type type, Class<?> toBoxed,
                                                   PojoInfo pi, boolean deepCopy, PathSegment ps,
                                                   RuntimeContext context, boolean externalSource) {
@@ -800,65 +805,85 @@ public final class NodeMapper {
         for (Map.Entry<String, Object> entry : entries) {
             String key = entry.getKey();
             Object rawValue = entry.getValue();
-
             int argIdx = ci.getArgIndexOrAlias(key);
             if (argIdx >= 0) {
-                Type argType = Types.resolveMemberType(type, toBoxed, ci.argTypes[argIdx]);
-                PathSegment cps = new PathSegment.Name(ps, key);
-                Class<?> argRaw = Types.rawBox(argType);
-
-                TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                ValueInfo argValueInfo = ci.argValueCodecs[argIdx];
-                if (argValueInfo == null && ti.valueInfos != null) {
-                    String valueFormat = context.defaultValueFormat(argRaw);
-                    argValueInfo = ti.requireValueInfo(valueFormat);
-                }
-
-                if (ti.oneOfInfo == null && argValueInfo != null) {
-                    state.acceptCtorArg(argIdx,
-                            _convertValue(rawValue, argRaw, argValueInfo, deepCopy, cps, context));
-                } else {
-                    state.acceptCtorArg(argIdx, _convertSourceChild(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context, externalSource));
-                }
+                _acceptCreatorArgument(state, ci, argIdx, rawValue, type, toBoxed,
+                        deepCopy, new PathSegment.Name(ps, key), context, externalSource);
                 continue;
             }
 
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
             if (propertyInfo != null) {
-                if (!propertyInfo.writable) continue;
-
-                PathSegment cps = new PathSegment.Name(ps, key);
-                Type fieldType = propertyInfo.genericDependent
-                        ? Types.resolveMemberType(type, toBoxed, propertyInfo.type)
-                        : propertyInfo.type;
-                Class<?> fieldRaw = propertyInfo.genericDependent
-                        ? Types.rawBox(fieldType)
-                        : propertyInfo.boxed;
-
-                Object value;
-                if (propertyInfo.oneOfInfo == null && propertyInfo.valueInfo != null) {
-                    value = _convertValue(rawValue, fieldRaw, propertyInfo.valueInfo,
-                            deepCopy, cps, context);
-                } else {
-                    value = _convertSourceChild(rawValue, fieldType, fieldRaw, propertyInfo.oneOfInfo, deepCopy, cps, context, externalSource);
-                }
-
-                if (state.isCreated()) {
-                    propertyInfo.invokeSetter(state.pojo(), value);
-                } else {
-                    state.bufferProperty(propertyInfo, value);
+                if (propertyInfo.writable) {
+                    _acceptPojoProperty(state, propertyInfo, rawValue, type, toBoxed,
+                            deepCopy, new PathSegment.Name(ps, key), context, externalSource);
                 }
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
-                PathSegment cps = new PathSegment.Name(ps, key);
-                Object value = _convertSourceChild(rawValue, Object.class, Object.class, null, deepCopy, cps, context, externalSource);
-                state.acceptDynamic(key, value);
+                _acceptPojoDynamic(state, key, rawValue, deepCopy,
+                        new PathSegment.Name(ps, key), context, externalSource);
             }
         }
 
         return state.finish();
+    }
+
+    /**
+     * Shared Creator argument conversion for entry-backed and cached POJO
+     * sources. The original source field name supplies the error path.
+     */
+    private static void _acceptCreatorArgument(CreatorState state, CreatorInfo creator,
+                                               int argIdx, Object rawValue,
+                                               Type targetType, Class<?> targetClass,
+                                               boolean deepCopy, PathSegment ps,
+                                               RuntimeContext context, boolean externalSource) {
+        Type argType = Types.resolveMemberType(targetType, targetClass, creator.argTypes[argIdx]);
+        Class<?> argRaw = Types.rawBox(argType);
+        TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
+        ValueInfo codec = creator.argValueCodecs[argIdx];
+        if (codec == null && ti.valueInfos != null) {
+            codec = ti.requireValueInfo(context.defaultValueFormat(argRaw));
+        }
+
+        Object value = ti.oneOfInfo == null && codec != null
+                ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, context)
+                : _convertSourceChild(rawValue, argType, argRaw, ti.oneOfInfo,
+                        deepCopy, ps, context, externalSource);
+        state.acceptCtorArg(argIdx, value);
+    }
+
+    /** Shared field conversion and delayed-Creator assignment. */
+    private static void _acceptPojoProperty(CreatorState state, PropertyInfo property,
+                                            Object rawValue, Type targetType, Class<?> targetClass,
+                                            boolean deepCopy, PathSegment ps,
+                                            RuntimeContext context, boolean externalSource) {
+        Type fieldType = property.genericDependent
+                ? Types.resolveMemberType(targetType, targetClass, property.type)
+                : property.type;
+        Class<?> fieldRaw = property.genericDependent
+                ? Types.rawBox(fieldType)
+                : property.boxed;
+
+        Object value = property.oneOfInfo == null && property.valueInfo != null
+                ? _convertValue(rawValue, fieldRaw, property.valueInfo, deepCopy, ps, context)
+                : _convertSourceChild(rawValue, fieldType, fieldRaw, property.oneOfInfo,
+                        deepCopy, ps, context, externalSource);
+
+        if (state.isCreated()) {
+            property.invokeSetter(state.pojo(), value);
+        } else {
+            state.bufferProperty(property, value);
+        }
+    }
+
+    /** Shared JOJO dynamic-key conversion. */
+    private static void _acceptPojoDynamic(CreatorState state, String name, Object rawValue,
+                                           boolean deepCopy, PathSegment ps,
+                                           RuntimeContext context, boolean externalSource) {
+        state.acceptDynamic(name, _convertSourceChild(rawValue,
+                Object.class, Object.class, null, deepCopy, ps, context, externalSource));
     }
 
 
@@ -1212,65 +1237,29 @@ public final class NodeMapper {
         CreatorState state = new CreatorState(ci);
         PojoPropertyPlan plan = _pojoPropertyPlan(source.getClass(), toBoxed, sourceInfo, targetInfo);
 
-        // Source/target property name resolution is cached by the concrete class
-        // pair. Unmapped and read-only target properties are never read.
+        // Source/target name matching stays cached, avoiding extra lookups and
+        // getter calls for unmapped fields. Target assignment is shared with
+        // entry-backed Map/JsonObject/External object conversions.
         for (int i = 0; i < plan.sourceProperties.length; i++) {
-            PropertyInfo propertyInfo = plan.sourceProperties[i];
-            Object rawValue = propertyInfo.invokeGetter(source);
+            PropertyInfo sourceProperty = plan.sourceProperties[i];
+            Object rawValue = sourceProperty.invokeGetter(source);
             int argIdx = plan.creatorIndices[i];
             if (argIdx >= 0) {
-                Type argType = Types.resolveMemberType(type, toBoxed, ci.argTypes[argIdx]);
-                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
-                Class<?> argRaw = Types.rawBox(argType);
-
-                TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
-                ValueInfo argValueInfo = ci.argValueCodecs[argIdx];
-                if (argValueInfo == null && ti.valueInfos != null) {
-                    String valueFormat = context.defaultValueFormat(argRaw);
-                    argValueInfo = ti.requireValueInfo(valueFormat);
-                }
-
-                if (ti.oneOfInfo == null && argValueInfo != null) {
-                    state.acceptCtorArg(argIdx,
-                            _convertValue(rawValue, argRaw, argValueInfo, deepCopy, cps, context));
-                } else {
-                    state.acceptCtorArg(argIdx,
-                            _convert(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps, context));
-                }
+                _acceptCreatorArgument(state, ci, argIdx, rawValue, type, toBoxed,
+                        deepCopy, new PathSegment.Name(ps, sourceProperty.name), context, false);
                 continue;
             }
 
-            PropertyInfo targetPropertyInfo = plan.targetProperties[i];
-            if (targetPropertyInfo != null) {
-
-                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
-                Type fieldType = targetPropertyInfo.genericDependent
-                        ? Types.resolveMemberType(type, toBoxed, targetPropertyInfo.type)
-                        : targetPropertyInfo.type;
-                Class<?> fieldRaw = targetPropertyInfo.genericDependent
-                        ? Types.rawBox(fieldType)
-                        : targetPropertyInfo.boxed;
-
-                Object value;
-                if (targetPropertyInfo.oneOfInfo == null && targetPropertyInfo.valueInfo != null) {
-                    value = _convertValue(rawValue, fieldRaw, targetPropertyInfo.valueInfo,
-                            deepCopy, cps, context);
-                } else {
-                    value = _convert(rawValue, fieldType, fieldRaw, targetPropertyInfo.oneOfInfo, deepCopy, cps, context);
-                }
-
-                if (state.isCreated()) {
-                    targetPropertyInfo.invokeSetter(state.pojo(), value);
-                } else {
-                    state.bufferProperty(targetPropertyInfo, value);
-                }
+            PropertyInfo targetProperty = plan.targetProperties[i];
+            if (targetProperty != null) {
+                _acceptPojoProperty(state, targetProperty, rawValue, type, toBoxed,
+                        deepCopy, new PathSegment.Name(ps, sourceProperty.name), context, false);
                 continue;
             }
 
             if (plan.includeDynamic) {
-                PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
-                state.acceptDynamic(propertyInfo.name,
-                        _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, context));
+                _acceptPojoDynamic(state, sourceProperty.name, rawValue, deepCopy,
+                        new PathSegment.Name(ps, sourceProperty.name), context, false);
             }
         }
 
