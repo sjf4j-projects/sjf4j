@@ -800,7 +800,8 @@ public final class NodeMapper {
                                                   PojoInfo pi, boolean deepCopy, PathSegment ps,
                                                   RuntimeContext context, boolean externalSource) {
         CreatorInfo ci = pi.creatorInfo;
-        CreatorState state = new CreatorState(ci);
+        Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
+        CreatorState state = direct == null ? new CreatorState(ci) : null;
 
         for (Map.Entry<String, Object> entry : entries) {
             String key = entry.getKey();
@@ -815,20 +816,24 @@ public final class NodeMapper {
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
             if (propertyInfo != null) {
                 if (propertyInfo.writable) {
-                    _acceptPojoProperty(state, propertyInfo, rawValue, type, toBoxed,
+                    _acceptPojoProperty(direct, state, propertyInfo, rawValue, type, toBoxed,
                             deepCopy, new PathSegment.Name(ps, key), context, externalSource);
                 }
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
-                state.acceptDynamic(key, _convertSourceChild(rawValue,
-                        Object.class, Object.class, null, deepCopy,
-                        new PathSegment.Name(ps, key), context, externalSource));
+                Object value = _convertSourceChild(rawValue, Object.class, Object.class, null,
+                        deepCopy, new PathSegment.Name(ps, key), context, externalSource);
+                if (direct != null) {
+                    ((JsonObject) direct).put(key, value);
+                } else {
+                    state.acceptDynamic(key, value);
+                }
             }
         }
 
-        return state.finish();
+        return direct != null ? direct : state.finish();
     }
 
     /**
@@ -855,8 +860,8 @@ public final class NodeMapper {
         state.acceptCtorArg(argIdx, value);
     }
 
-    /** Shared field conversion and delayed-Creator assignment. */
-    private static void _acceptPojoProperty(CreatorState state, PropertyInfo property,
+    /** Shared field conversion for direct construction and delayed Creators. */
+    private static void _acceptPojoProperty(Object direct, CreatorState state, PropertyInfo property,
                                             Object rawValue, Type targetType, Class<?> targetClass,
                                             boolean deepCopy, PathSegment ps,
                                             RuntimeContext context, boolean externalSource) {
@@ -872,7 +877,9 @@ public final class NodeMapper {
                 : _convertSourceChild(rawValue, fieldType, fieldRaw, property.oneOfInfo,
                         deepCopy, ps, context, externalSource);
 
-        if (state.isCreated()) {
+        if (direct != null) {
+            property.invokeSetter(direct, value);
+        } else if (state.isCreated()) {
             property.invokeSetter(state.pojo(), value);
         } else {
             state.bufferProperty(property, value);
@@ -1226,7 +1233,8 @@ public final class NodeMapper {
                                                      PathSegment ps,
                                                      RuntimeContext context) {
         CreatorInfo ci = targetInfo.creatorInfo;
-        CreatorState state = new CreatorState(ci);
+        Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
+        CreatorState state = direct == null ? new CreatorState(ci) : null;
         PojoPropertyPlan plan = _pojoPropertyPlan(source.getClass(), toBoxed, sourceInfo, targetInfo);
 
         // Source/target name matching stays cached, avoiding extra lookups and
@@ -1244,19 +1252,23 @@ public final class NodeMapper {
 
             PropertyInfo targetProperty = plan.targetProperties[i];
             if (targetProperty != null) {
-                _acceptPojoProperty(state, targetProperty, rawValue, type, toBoxed,
+                _acceptPojoProperty(direct, state, targetProperty, rawValue, type, toBoxed,
                         deepCopy, new PathSegment.Name(ps, sourceProperty.name), context, false);
                 continue;
             }
 
             if (plan.includeDynamic) {
-                state.acceptDynamic(sourceProperty.name,
-                        _convert(rawValue, Object.class, Object.class, null, deepCopy,
-                                new PathSegment.Name(ps, sourceProperty.name), context));
+                Object value = _convert(rawValue, Object.class, Object.class, null, deepCopy,
+                        new PathSegment.Name(ps, sourceProperty.name), context);
+                if (direct != null) {
+                    ((JsonObject) direct).put(sourceProperty.name, value);
+                } else {
+                    state.acceptDynamic(sourceProperty.name, value);
+                }
             }
         }
 
-        return state.finish();
+        return direct != null ? direct : state.finish();
     }
 
 
