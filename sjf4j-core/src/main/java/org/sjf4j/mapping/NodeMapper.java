@@ -10,6 +10,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
+import org.sjf4j.node.ContainerInfo;
 import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.PropertyInfo;
@@ -120,9 +121,18 @@ public final class NodeMapper {
                 return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
             }
 
-            // The same Java/OBNT representations used by NodeKind and
-            // StreamingIO take priority over external representation adapters.
-            if (NodeKind.plainOf(toBoxed) != NodeKind.UNKNOWN) {
+            // Java container kind remains primary. A nonconstructible container
+            // may carry an external builder in its cached ContainerInfo.
+            NodeKind targetKind = NodeKind.plainOf(toBoxed);
+            if (targetKind != NodeKind.UNKNOWN) {
+                if ((targetKind == NodeKind.OBJECT_MAP || targetKind == NodeKind.ARRAY_LIST)
+                        && toBoxed != Map.class && toBoxed != LinkedHashMap.class
+                        && toBoxed != List.class && toBoxed != ArrayList.class) {
+                    ContainerInfo ci = TypeRegistry.registerTypeInfo(toBoxed).containerInfo;
+                    if (ci != null && ci.externalNode != null) {
+                        return _convertToExternal(node, toBoxed, ci.externalNode, deepCopy, ps, context);
+                    }
+                }
                 return _convertFromSource(node, toType, toBoxed, deepCopy, ps, context);
             }
 
@@ -475,6 +485,9 @@ public final class NodeMapper {
              */
             if (node instanceof Map) {
                 Map<String, Object> src = (Map<String, Object>) node;
+                if (ti.containerInfo != null && ti.containerInfo.externalNode != null) {
+                    return ti.containerInfo.externalNode.deepCopy(node);
+                }
                 Map<String, Object> target = TypeRegistry.newMapContainer(nodeClazz, src.size(), false);
                 Type valueType = Types.resolveTypeArgument(toType, Map.class, 1);
                 Class<?> valueBoxed = Types.rawBox(valueType);
@@ -490,6 +503,9 @@ public final class NodeMapper {
              */
             if (node instanceof List) {
                 List<Object> src = (List<Object>) node;
+                if (ti.containerInfo != null && ti.containerInfo.externalNode != null) {
+                    return ti.containerInfo.externalNode.deepCopy(node);
+                }
                 List<Object> target = TypeRegistry.newListContainer(nodeClazz, src.size(), false);
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
