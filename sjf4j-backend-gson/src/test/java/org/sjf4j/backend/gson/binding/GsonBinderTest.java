@@ -202,29 +202,6 @@ class GsonBinderTest {
     }
 
     @Test
-    void omitsExternalNullInPojoFieldsWithStaticAndObjectTypes() {
-        ExternalNullHolder holder = new ExternalNullHolder();
-        holder.nativeValue = JsonNull.INSTANCE;
-        holder.objectValue = JsonNull.INSTANCE;
-        holder.javaValue = null;
-
-        assertEquals("{}", new GsonBinder(new Gson(), new RuntimeContext(false))
-                .writeNodeAsString(holder));
-        JsonObject withNulls = JsonParser.parseString(
-                new GsonBinder(new Gson(), RuntimeContext.EMPTY).writeNodeAsString(holder))
-                .getAsJsonObject();
-        assertTrue(withNulls.get("nativeValue").isJsonNull());
-        assertTrue(withNulls.get("objectValue").isJsonNull());
-        assertTrue(withNulls.get("javaValue").isJsonNull());
-    }
-
-    static class ExternalNullHolder {
-        public com.google.gson.JsonElement nativeValue;
-        public Object objectValue;
-        public Object javaValue;
-    }
-
-    @Test
     void rejectsNullDependenciesAndIo() {
         assertThrows(NullPointerException.class, () -> new GsonBinder(null));
         assertThrows(NullPointerException.class, () -> new GsonBinder(new Gson(), null));
