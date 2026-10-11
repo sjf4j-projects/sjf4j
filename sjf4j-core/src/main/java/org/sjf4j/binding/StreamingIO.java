@@ -59,7 +59,7 @@ public final class StreamingIO {
 
         Class<?> boxed = Types.rawBox(type);
         // The common scalar and collection paths need no registered metadata.
-        return readNode(reader, type, boxed, TypeInfo.NONE, context);
+        return readNode(reader, type, boxed, null, context);
     }
 
 
@@ -76,6 +76,10 @@ public final class StreamingIO {
              * Null handling is therefore delegated to the target-specific
              * operation below.
              */
+
+            if (typeInfo != null && typeInfo != TypeInfo.NONE) {
+                return _readRegisteredNode(reader, type, boxed, typeInfo, context);
+            }
 
             if (boxed == Object.class) {
                 return reader.readRawNode();
@@ -176,38 +180,13 @@ public final class StreamingIO {
                 return readArray(reader, type, boxed, null, null, null, context);
             }
 
-            /*
-             * Registered types only. Callers with pre-resolved metadata keep
-             * using it, while untyped callers avoid registry work entirely
-             * for the standard scalar and collection paths above.
-             */
-            TypeInfo ti = typeInfo == TypeInfo.NONE
-                    ? TypeRegistry.registerTypeInfo(boxed)
-                    : typeInfo;
-
-            if (ti.oneOfInfo != null) {
-                return readOneOf(reader, ti.oneOfInfo, context);
-            }
-
-            if (ti.valueInfos != null) {
-                return readValueCodec(reader, ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
-            }
-
-            if (JsonArray.class.isAssignableFrom(boxed)) {
-                return readJsonArray(reader, type, boxed, ti, context);
-            }
-
-            if (ti.externalNode != null) {
-                Object raw = reader.readRawNode();
-                return NodeMapper.convert(raw, type, false, context);
-            }
-
-            /*
-             * POJO / JOJO.
-             */
-            PojoInfo pojoInfo = ti.pojoInfo;
-            if (pojoInfo != null && !pojoInfo.isJajo) {
-                return readPojo(reader, type, boxed, pojoInfo, context);
+            // A null TypeInfo means metadata has not been resolved. NONE
+            // means it was resolved and there is no registered binding.
+            if (typeInfo == null) {
+                TypeInfo resolved = TypeRegistry.registerTypeInfo(boxed);
+                if (resolved != TypeInfo.NONE) {
+                    return _readRegisteredNode(reader, type, boxed, resolved, context);
+                }
             }
 
             /*
@@ -228,6 +207,48 @@ public final class StreamingIO {
         } catch (Throwable e) {
             throw new BindingException("failed to read streaming into '" + type + "'", e);
         }
+    }
+
+
+    /**
+     * Direct path for already-resolved types. A known TypeInfo bypasses all
+     * scalar/container checks in readNode; container metadata is handled here.
+     */
+    private static Object _readRegisteredNode(StreamingReader reader, Type type,
+                                              Class<?> boxed, TypeInfo ti,
+                                              RuntimeContext context) throws IOException {
+        if (ti.oneOfInfo != null) {
+            return readOneOf(reader, ti.oneOfInfo, context);
+        }
+        if (ti.valueInfos != null) {
+            return readValueCodec(reader,
+                    ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
+        }
+        if (ti.containerInfo != null) {
+            switch (ti.containerInfo.kind) {
+                case OBJECT_MAP:
+                    return readMap(reader, type, boxed, null, null, null, context);
+                case ARRAY_LIST:
+                    return readList(reader, type, boxed, null, null, null, context);
+                case ARRAY_SET:
+                    return readSet(reader, type, boxed, null, null, null, context);
+                default:
+                    throw new BindingException("unsupported container type '" + boxed.getName() + "'");
+            }
+        }
+        if (ti.externalNode != null) {
+            return NodeMapper.convert(reader.readRawNode(), type, false, context);
+        }
+        if (ti.pojoInfo != null) {
+            if (ti.pojoInfo.isJajo) {
+                return readJsonArray(reader, type, boxed, ti, context);
+            }
+            return readPojo(reader, type, boxed, ti.pojoInfo, context);
+        }
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        throw new BindingException("cannot read value into type '" + boxed.getName() + "'");
     }
 
 
@@ -510,7 +531,7 @@ public final class StreamingIO {
                 ValueInfo codec = creator.argValueCodecs[argIndex];
 
                 Object value = codec == null
-                        ? readNode(reader, argType, argBoxed, TypeInfo.NONE, context)
+                        ? readNode(reader, argType, argBoxed, null, context)
                         : readValueCodec(reader, codec, context);
                 state.acceptCtorArg(argIndex, value);
                 if (parentKey != null && parentKey.equals(name)) {
@@ -653,7 +674,7 @@ public final class StreamingIO {
             return readValueCodec(reader, property.valueInfo, context);
         }
 
-        return readNode(reader, type, boxed, TypeInfo.NONE, context);
+        return readNode(reader, type, boxed, null, context);
     }
 
 
