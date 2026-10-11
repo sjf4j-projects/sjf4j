@@ -282,17 +282,18 @@ public interface ExternalNode<N> {
      * using the supplied runtime context.</p>
      */
     default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
+        Class<N> nativeType = nodeType();
         switch (JsonType.of(source)) {
             case OBJECT: {
-                N target = nodeType().cast(createObjectNode(clazz));
+                N target = nativeType.cast(createObjectNode(clazz));
                 Nodes.forEachObject(source, (name, value) ->
-                        putInObject(target, name, NodeMapper.convert(value, nodeType(), false, context)));
+                        putInObject(target, name, NodeMapper.convert(value, nativeType, false, context)));
                 return target;
             }
             case ARRAY: {
-                N target = nodeType().cast(createArrayNode(clazz));
+                N target = nativeType.cast(createArrayNode(clazz));
                 Nodes.forEachArray(source, (index, value) ->
-                        addInArray(target, NodeMapper.convert(value, nodeType(), false, context)));
+                        addInArray(target, NodeMapper.convert(value, nativeType, false, context)));
                 return target;
             }
             default:
