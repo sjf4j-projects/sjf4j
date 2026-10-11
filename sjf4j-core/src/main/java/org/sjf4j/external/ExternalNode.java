@@ -291,6 +291,13 @@ public interface ExternalNode<N> {
             return target;
         }
 
+        if (!(source instanceof List || source instanceof org.sjf4j.JsonArray
+                || source instanceof Set || source.getClass().isArray()
+                || JsonType.of(source).isArray())) {
+            throw new org.sjf4j.exception.NodeException(
+                    "expected object or array node, but was " + source.getClass().getName());
+        }
+
         N target = nodeType().cast(createArrayNode(clazz));
         if (source instanceof List) {
             List<?> list = (List<?>) source;
