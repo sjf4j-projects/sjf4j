@@ -7,7 +7,9 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.exception.NodeException;
 
+import java.lang.reflect.Array;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -273,33 +275,48 @@ public interface ExternalNode<N> {
     }
 
     /**
-     * Creates a complete native object from any OBNT object source.
+     * Constructs a complete native object or array from an OBNT source.
      *
-     * <p>The default implementation constructs a mutable container and converts
-     * each source property into the adapter's native node representation before
-     * inserting it. Immutable/schema-driven representations may override this
-     * method to perform their own atomic construction (e.g. via a builder).
-     * The source is never modified.</p>
-     *
-     * <p>Conversion honors the caller's runtime context, including ValueCodec
-     * registrations. This operation is distinct from mutating an existing
-     * external node.</p>
+     * <p>Mutable adapters use this default implementation to populate their
+     * native containers; immutable adapters may override it to build the same
+     * shape atomically. The source is not modified. Nested values are converted
+     * using the supplied runtime context.</p>
      */
     default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
-        N target = nodeType().cast(createObjectNode(clazz));
-        Nodes.forEachObject(source, (name, value) ->
-                putInObject(target, name,
-                        NodeMapper.convert(value, nodeType(), false, context)));
-        return target;
-    }
+        if (source instanceof Map || source instanceof org.sjf4j.JsonObject
+                || (!JsonType.of(source).isArray() && JsonType.of(source).isObject())) {
+            N target = nodeType().cast(createObjectNode(clazz));
+            Nodes.forEachObject(source, (name, value) ->
+                    putInObject(target, name, NodeMapper.convert(value, nodeType(), false, context)));
+            return target;
+        }
 
-    /**
-     * Whether objects and arrays can be filled using putInObject/addInArray.
-     * Immutable adapters override this to false and construct complete nodes
-     * with convert(Class, Object, RuntimeContext).
-     */
-    default boolean supportsContainerMutation() {
-        return true;
+        N target = nodeType().cast(createArrayNode(clazz));
+        if (source instanceof List) {
+            List<?> list = (List<?>) source;
+            for (int i = 0, size = list.size(); i < size; i++) {
+                addInArray(target, NodeMapper.convert(list.get(i), nodeType(), false, context));
+            }
+        } else if (source instanceof org.sjf4j.JsonArray) {
+            org.sjf4j.JsonArray array = (org.sjf4j.JsonArray) source;
+            for (int i = 0, size = array.size(); i < size; i++) {
+                addInArray(target, NodeMapper.convert(array.getNode(i), nodeType(), false, context));
+            }
+        } else if (source.getClass().isArray()) {
+            int size = Array.getLength(source);
+            for (int i = 0; i < size; i++) {
+                addInArray(target, NodeMapper.convert(Array.get(source, i), nodeType(), false, context));
+            }
+        } else if (source instanceof Set) {
+            for (Object value : (Set<?>) source) {
+                addInArray(target, NodeMapper.convert(value, nodeType(), false, context));
+            }
+        } else {
+            // External arrays are traversed using their registered native adapter.
+            Nodes.forEachArray(source, (index, value) ->
+                    addInArray(target, NodeMapper.convert(value, nodeType(), false, context)));
+        }
+        return target;
     }
 
     /** Creates a native array container. */
