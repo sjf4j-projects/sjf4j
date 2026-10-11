@@ -162,6 +162,37 @@ class NodeMapperTest {
     }
 
     @Test
+    void indexedLongAndObjectArrayFastPathsPreserveMappingSemantics() {
+        Type integers = new TypeReference<List<Integer>>() {}.getType();
+        Type longs = new TypeReference<List<Long>>() {}.getType();
+
+        for (Object source : new Object[]{
+                new long[]{1, 2, 3},
+                new Long[]{1L, 2L, 3L}
+        }) {
+            assertEquals(Arrays.asList(1, 2, 3),
+                    NodeMapper.convert(source, integers, false));
+            assertEquals(Arrays.asList(1L, 2L, 3L),
+                    NodeMapper.convert(source, longs, true));
+            assertArrayEquals(new int[]{1, 2, 3},
+                    (int[]) NodeMapper.convert(source, int[].class, false));
+        }
+
+        assertEquals(Arrays.asList(1, null, 3),
+                NodeMapper.convert(new Long[]{1L, null, 3L}, integers, false));
+
+        BindingException overflow = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(
+                        new long[]{1L, ((long) Integer.MAX_VALUE) + 1},
+                        integers, false));
+        assertTrue(overflow.getMessage().contains("$[1]"));
+
+        BindingException incompatible = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new Object[]{1, true}, integers, false));
+        assertTrue(incompatible.getMessage().contains("$[1]"));
+    }
+
+    @Test
     void convertHandlesEmptyContainersAndNullMembers() {
         Profile empty = (Profile) NodeMapper.convert(JsonObject.of(
                 "aliases", JsonArray.of(),
