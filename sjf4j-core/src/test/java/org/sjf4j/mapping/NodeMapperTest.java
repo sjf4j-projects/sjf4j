@@ -268,7 +268,7 @@ class NodeMapperTest {
         Profile profile = new Profile();
         profile.name = "Ada";
         profile.age = 32;
-        profile.aliases = Arrays.asList("Ada", "A");
+        profile.aliases = new java.util.ArrayList<>(Arrays.asList("Ada", "A"));
         profile.scores = new LinkedHashSet<>(Arrays.asList(1, 2));
         profile.ranks = new int[]{3, 5};
         profile.details = JsonObject.of("address", JsonObject.of("city", "Oslo"));
