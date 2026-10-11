@@ -507,12 +507,16 @@ public final class Sjf4j {
         }
 
         /**
-         * Controls whether JSON object serialization emits properties whose value is {@code null}.
+         * Controls omission of null-valued object properties during serialization.
          * <p>
+         * When {@code false}, Java {@code null} properties are omitted from Maps,
+         * JsonObjects, and POJOs. For external object trees that do not implement
+         * {@link java.util.Map}, native JSON null properties are also omitted.
+         * External objects implementing Map (such as JSON-P objects) use the
+         * ordinary Map rule: non-null native null sentinels are retained.
+         * <p>
+         * Null array elements and root null values are always written.
          * The default is {@code true}.
-         * <p>
-         * This setting is propagated to backend binders that support null filtering so the
-         * behavior stays consistent within the constructed runtime instance.
          */
         public Builder includeNulls(boolean includeNulls) {
             this.includeNulls = includeNulls;
