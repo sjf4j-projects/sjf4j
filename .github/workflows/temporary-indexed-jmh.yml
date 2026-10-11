@@ -33,7 +33,7 @@ jobs:
           BASE_DIR="$RUNNER_TEMP/mapping-jmh/base"
           git worktree add --detach "$BASE_DIR" de1156c3cac3477d8dee488449447b3600868186
           cp "$RUNNER_TEMP/mapping-jmh/NodeMapperConversionBenchmark.java" "$BASE_DIR/$BENCHMARK"
-          PATTERN='org.sjf4j.testbench.mapping.NodeMapperConversionBenchmark.nodeMapper_(listToTypedList|jsonArrayToTypedList|javaArrayToTypedList|externalArrayToTypedList)'
+          PATTERN='org.sjf4j.testbench.mapping.NodeMapperConversionBenchmark.nodeMapper_(listToTypedList|jsonArrayToTypedList|javaArrayToTypedList)'
           run_bench() {
             local location="$1"
             local label="$2"
@@ -52,6 +52,9 @@ jobs:
           import json, os
           root=os.environ["RUNNER_TEMP"]+"/mapping-jmh/"
           files={k:json.load(open(root+k+".json")) for k in ("base","pr")}
+          expected = 3
+          if any(len(records) != expected for records in files.values()):
+              raise SystemExit(f"JMH failed or returned incomplete results: base={len(files['base'])}, pr={len(files['pr'])}")
           values={}
           for label,records in files.items():
               for record in records:
