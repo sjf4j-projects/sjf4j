@@ -279,7 +279,7 @@ public class JsonPatchTest {
 
     @Test
     public void testDiffAndApply2() {
-        List<Integer> a = Arrays.asList(1, 2, 3);
+        List<Integer> a = new ArrayList<>(Arrays.asList(1, 2, 3));
         List<Integer> b = Arrays.asList(1, 5, 3, 4);
 
         JsonPatch patch = JsonPatch.diff(a, b);
