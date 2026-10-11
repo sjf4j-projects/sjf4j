@@ -81,6 +81,15 @@ public final class TypeRegistry {
         // Map/List/Set interfaces have already returned NONE via _fastNoneInfo.
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
+            // Java container classification wins. Only containers without a Java
+            // constructor may use a native adapter as their construction strategy.
+            if (ci.noArgsCtorHandle == null) {
+                ExternalNode<?> adapter = ExternalRegistry.resolve(clazz);
+                if (adapter != null) {
+                    ci = new ContainerInfo(clazz, ci.kind,
+                            ci.noArgsCtorHandle, ci.noArgsCtorLambda, adapter);
+                }
+            }
             if (requirePojo) {
                 throw new BindingException("class '" + clazz.getName() + "' is a container node, not a POJO");
             }
