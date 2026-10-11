@@ -55,8 +55,8 @@ public final class TypeRegistry {
     /**
      * Returns type metadata and optionally requires an object binding.
      * <p>
-     * Resolution order is: cache hit, ServiceLoader-discovered external node,
-     * {@code @NodeValue}/registered codec, {@code @OneOf}, container analysis,
+     * Resolution order is: cache hit, standard Java collections,
+     * ServiceLoader-discovered external node, {@code @NodeValue}/registered codec, {@code @OneOf}, container analysis,
      * object analysis, then the none marker.
      *
      * @param requirePojo when true, results without object binding are rejected
@@ -74,6 +74,24 @@ public final class TypeRegistry {
             if (requirePojo && ti.pojoInfo == null) {
                 throw new BindingException("class '" + clazz.getName() + "' is not a POJO");
             }
+            return ti;
+        }
+
+        // The Java collection contract always wins over external adapters.
+        // Immutable or constructor-less collections retain their Map/List/Set
+        // semantics; absence of a mutable constructor is handled by the
+        // container creation path, not by falling back to ExternalNode.
+        if (Map.class.isAssignableFrom(clazz)
+                || List.class.isAssignableFrom(clazz)
+                || Set.class.isAssignableFrom(clazz)) {
+            if (requirePojo) {
+                throw new BindingException("class '" + clazz.getName() + "' is a container node, not a POJO");
+            }
+            ContainerInfo container = ReflectUtil.analyzeContainer(clazz);
+            ti = container != null
+                    ? new TypeInfo(clazz, null, null, container, null, null)
+                    : TypeInfo.NONE;
+            TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
