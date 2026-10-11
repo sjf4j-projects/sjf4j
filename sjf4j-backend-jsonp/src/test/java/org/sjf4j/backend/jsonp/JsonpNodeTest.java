@@ -99,10 +99,12 @@ class JsonpNodeTest {
     void registryNeverAssignsExternalAdapterToJavaCollectionTypes() {
         JsonObject object = value("{\"n\":1}").asJsonObject();
         JsonArray array = value("[1]").asJsonArray();
+        assertNotNull(TypeRegistry.registerTypeInfo(object.getClass()).containerInfo);
+        assertNotNull(TypeRegistry.registerTypeInfo(array.getClass()).containerInfo);
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonObject.class).containerInfo);
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonArray.class).containerInfo);
         assertNull(TypeRegistry.registerTypeInfo(object.getClass()).externalNode);
         assertNull(TypeRegistry.registerTypeInfo(array.getClass()).externalNode);
-        assertNull(TypeRegistry.registerTypeInfo(JsonObject.class).externalNode);
-        assertNull(TypeRegistry.registerTypeInfo(JsonArray.class).externalNode);
 
         // A JSON-P scalar does not implement Map/List and remains external.
         assertNotNull(TypeRegistry.registerTypeInfo(object.get("n").getClass()).externalNode);
