@@ -214,7 +214,7 @@ class Jackson2NodeTest {
         source.put("address", address);
         source.put("items", Arrays.asList(true, 3, null));
 
-        ObjectNode direct = (ObjectNode) node().createObjectNode(
+        ObjectNode direct = (ObjectNode) node().convert(
                 JsonNode.class, source, RuntimeContext.EMPTY);
         assertEquals("Ada", direct.get("name").textValue());
         assertEquals(32, direct.get("age").intValue());
