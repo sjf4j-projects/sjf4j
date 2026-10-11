@@ -356,7 +356,7 @@ public final class NodeMapper {
                     // Construction is an external representation concern. Immutable
                     // backends may build the entire object without exposing a
                     // mutable container or requiring a temporary Map tree.
-                    result = target.createObjectNode(toBoxed, node, context);
+                    result = target.convert(toBoxed, node, context);
                     // A fresh outer container may still share native child nodes
                     // with the source when deepCopy is false. Detach those children
                     // for the explicit deep-copy conversion mode.
