@@ -182,24 +182,6 @@ public final class TypeSystem {
             return NodeKind.UNKNOWN;
         }
 
-        // SJF4J object nodes
-
-        if (isSameErasure(type, jsonObjectType)) {
-            return NodeKind.OBJECT_JSON_OBJECT;
-        }
-        if (isAssignableErasure(type, jsonObjectType)) {
-            return NodeKind.OBJECT_JOJO;
-        }
-
-        // SJF4J array nodes
-
-        if (isSameErasure(type, jsonArrayType)) {
-            return NodeKind.ARRAY_JSON_ARRAY;
-        }
-        if (isAssignableErasure(type, jsonArrayType)) {
-            return NodeKind.ARRAY_JAJO;
-        }
-
         // Java values
 
         if (isSameErasure(type, stringType)) {
@@ -221,14 +203,28 @@ public final class TypeSystem {
             return NodeKind.VALUE_NULL;
         }
 
-        // Java containers
+        // Match NodeKind.plainOf precedence for overlapping container types.
 
         if (isAssignableErasure(type, mapType)) {
             return NodeKind.OBJECT_MAP;
         }
+        if (isSameErasure(type, jsonObjectType)) {
+            return NodeKind.OBJECT_JSON_OBJECT;
+        }
+        if (isAssignableErasure(type, jsonObjectType)) {
+            return NodeKind.OBJECT_JOJO;
+        }
+
         if (isAssignableErasure(type, listType)) {
             return NodeKind.ARRAY_LIST;
         }
+        if (isSameErasure(type, jsonArrayType)) {
+            return NodeKind.ARRAY_JSON_ARRAY;
+        }
+        if (isAssignableErasure(type, jsonArrayType)) {
+            return NodeKind.ARRAY_JAJO;
+        }
+
         if (isAssignableErasure(type, setType)) {
             return NodeKind.ARRAY_SET;
         }
