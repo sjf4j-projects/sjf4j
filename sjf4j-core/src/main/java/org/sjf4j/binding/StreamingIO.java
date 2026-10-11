@@ -149,12 +149,6 @@ public final class StreamingIO {
                 return readEnum(reader, boxed, context);
             }
 
-            // External trees may also implement Map or List (e.g. JSON-P).
-            if (typeInfo.externalNode != null) {
-                Object raw = reader.readRawNode();
-                return NodeMapper.convert(raw, type, false, context);
-            }
-
             /*
              * Object nodes.
              */
@@ -193,6 +187,15 @@ public final class StreamingIO {
 
             if (boxed.isArray()) {
                 return readArray(reader, type, boxed, null, null, null, context);
+            }
+
+            /*
+             * External representations without a standard Java container
+             * contract. Map/List/JsonArray/Set/arrays are handled above.
+             */
+            if (typeInfo.externalNode != null) {
+                Object raw = reader.readRawNode();
+                return NodeMapper.convert(raw, type, false, context);
             }
 
             /*
@@ -1018,12 +1021,6 @@ public final class StreamingIO {
                 return;
             }
 
-            if (typeInfo.externalNode != null) {
-                Object raw = NodeMapper.convertToRaw(node, context);
-                _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
-                return;
-            }
-
             if (typeInfo.valueInfos != null) {
                 String valueFormat = context.defaultValueFormat(clazz);
                 ValueInfo vi = typeInfo.requireValueInfo(valueFormat);
@@ -1137,19 +1134,8 @@ public final class StreamingIO {
          * --------------------------------------------------------------
          */
 
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-
-        /*
-         * External JSON tree.
-         *
-         * Do this before POJO fallback. An external JsonNode / JsonElement
-         * is already an OBNT tree and must not be reflected as a POJO.
-         */
-        if (ti.externalNode != null) {
-            Object raw = NodeMapper.convertToRaw(node, context);
-            _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
-            return;
-        }
+        TypeInfo ti = typeInfo.clazz == clazz
+                ? typeInfo : TypeRegistry.registerTypeInfo(clazz);
 
         /*
          * NodeValue / ValueCodec.
@@ -1158,6 +1144,15 @@ public final class StreamingIO {
             String valueFormat = context.defaultValueFormat(clazz);
             ValueInfo vi = ti.requireValueInfo(valueFormat);
             _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+            return;
+        }
+
+        /*
+         * External representations without standard Java container contracts.
+         */
+        if (ti.externalNode != null) {
+            Object raw = NodeMapper.convertToRaw(node, context);
+            _writeNode(writer, raw, TypeInfo.NONE, RuntimeContext.EMPTY);
             return;
         }
 
