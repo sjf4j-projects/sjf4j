@@ -90,6 +90,26 @@ class NodeMapperValueBridgeTest {
         assertEquals(4, fromMap.count);
     }
 
+    @Test
+    void usesSameValueCodecAssignmentsForPojoMapAndJsonObjectSources() {
+        SourceHolder pojo = new SourceHolder();
+        pojo.value = new A("encoded");
+        pojo.count = 9;
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("value", new A("encoded"));
+        map.put("count", 9);
+
+        for (Object source : new Object[]{pojo, map, new JsonObject(map)}) {
+            TargetCreator creator = (TargetCreator) NodeMapper.convert(source, TargetCreator.class, false);
+            assertEquals("encoded", creator.value.text);
+            assertEquals(9, creator.count);
+
+            TargetHolder holder = (TargetHolder) NodeMapper.convert(source, TargetHolder.class, false);
+            assertEquals("encoded", holder.value.text);
+        }
+    }
+
     @NodeValue
     static class A {
         final String text;
