@@ -2,6 +2,7 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.TypeReference;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 import org.sjf4j.exception.BindingException;
@@ -27,6 +28,19 @@ class StreamingIOReadTest {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"items\":[1,true]}"))) {
             Map<?, ?> value = (Map<?, ?>) StreamingIO.readNode(reader, Object.class, RuntimeContext.EMPTY);
             assertEquals(List.of(1, true), value.get("items"));
+        }
+    }
+
+    @Test
+    void readsNestedGenericMapAndListUsingInterfaceFastPaths() throws Exception {
+        TypeReference<Map<String, List<Integer>>> target =
+                new TypeReference<Map<String, List<Integer>>>() {};
+        try (SimpleJsonReader reader = new SimpleJsonReader(
+                new StringReader("{\"first\":[1,2],\"second\":[]}"))) {
+            Map<String, List<Integer>> value = (Map<String, List<Integer>>)
+                    StreamingIO.readNode(reader, target.getType(), RuntimeContext.EMPTY);
+            assertEquals(List.of(1, 2), value.get("first"));
+            assertEquals(List.of(), value.get("second"));
         }
     }
 
