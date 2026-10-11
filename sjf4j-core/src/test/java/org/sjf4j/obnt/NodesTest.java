@@ -750,9 +750,10 @@ public class NodesTest {
         assertNotSame(cowList, cowListCopy);
         assertEquals(cowList, cowListCopy);
 
-        List<?> fixedListCopy = Nodes.copy(Arrays.asList("x", "y"));
-        assertInstanceOf(ArrayList.class, fixedListCopy);
-        assertEquals(Arrays.asList("x", "y"), fixedListCopy);
+        // A fixed-size List has no supported zero-argument construction
+        // path; do not silently return an ArrayList with different semantics.
+        assertThrows(BindingException.class,
+                () -> Nodes.copy(Arrays.asList("x", "y")));
     }
 
     @Test
@@ -772,6 +773,34 @@ public class NodesTest {
         Set<?> singletonSetCopy = Nodes.copy(Collections.singleton("z"));
         assertInstanceOf(LinkedHashSet.class, singletonSetCopy);
         assertEquals(Collections.singleton("z"), singletonSetCopy);
+    }
+
+    @Test
+    public void testCopyUnsupportedMapDoesNotFallback() {
+        Map<String, Object> immutable = Collections.unmodifiableMap(
+                Collections.singletonMap("name", "Ada"));
+        assertThrows(BindingException.class, () -> Nodes.copy(immutable));
+    }
+
+    @Test
+    public void testCopyJojoCopiesDeclaredAndDynamicProperties() {
+        Person original = new Person();
+        original.setName("Ada");
+        JsonObject address = JsonObject.of("city", "Beijing");
+        original.setInfo(address);
+        original.put("nickname", "A");
+
+        Person copied = Nodes.copy(original);
+
+        assertNotSame(original, copied);
+        assertEquals("Ada", copied.getName());
+        assertSame(address, copied.getInfo());
+        assertEquals("A", copied.getNode("nickname"));
+
+        original.setName("Grace");
+        original.put("nickname", "G");
+        assertEquals("Ada", copied.getName());
+        assertEquals("A", copied.getNode("nickname"));
     }
 
     @Test
