@@ -95,9 +95,33 @@ public final class NodeMapper {
         try {
             if (node == null) {
                 if (oneOfInfo == null) {
-                    // Standard Java/OBNT representations take precedence over registered
-            // external adapters, both as mapping sources and as target types.
-            // This mirrors NodeKind.plainOf and StreamingIO's dispatch order.
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
+                    if (ti.valueInfos != null) {
+                        String valueFormat = context.defaultValueFormat(toBoxed);
+                        ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
+                        return valueInfo.rawToValue(null);
+                    }
+                }
+                return null;
+            }
+
+            if (oneOfInfo != null) {
+                return _convertOneOf(node, toBoxed, oneOfInfo, deepCopy, ps, context);
+            }
+
+            if (toBoxed == Object.class) {
+                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
+            }
+
+            // Compatible values can only be returned as-is when the target has no
+            // generic structure to honor. Parameterized containers/POJOs still need
+            // traversal so their declared element/member types are converted.
+            if (toBoxed.isInstance(node) && !Types.hasGenericStructure(toType)) {
+                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
+            }
+
+            // The same Java/OBNT representations used by NodeKind and
+            // StreamingIO take priority over external representation adapters.
             if (NodeKind.plainOf(toBoxed) != NodeKind.UNKNOWN) {
                 return _convertFromSource(node, toType, toBoxed, deepCopy, ps, context);
             }
@@ -107,18 +131,14 @@ public final class NodeMapper {
             if (oneOfInfo != null) {
                 return _convertOneOf(node, toBoxed, oneOfInfo, deepCopy, ps, context);
             }
-
             if (ti.valueInfos != null) {
                 ValueInfo target = ti.requireValueInfo(context.defaultValueFormat(toBoxed));
                 return _convertValue(node, toBoxed, target, deepCopy, ps, context);
             }
-
             if (ti.externalNode != null) {
                 return _convertToExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
             }
-
             return _convertFromSource(node, toType, toBoxed, deepCopy, ps, context);
-
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -163,7 +183,7 @@ public final class NodeMapper {
      * Reads an external representation directly through the existing object
      * and indexed source engines, preserving creator/OneOf/generic handling.
      */
-    /** Converts from the source's native representation, with plain Java types first. */
+    /** Converts from the source's representation, with Java/OBNT types first. */
     @SuppressWarnings("unchecked")
     private static Object _convertFromSource(Object node, Type toType, Class<?> toBoxed,
                                              boolean deepCopy, PathSegment ps, RuntimeContext context) {
@@ -187,8 +207,6 @@ public final class NodeMapper {
                     Types.name(node) + "' to '" + toType + "'", ps);
         }
 
-        // Standard Java collection contracts win over external adapters.
-        // This also avoids TypeInfo resolution on the Map/List read path.
         if (node instanceof Character) {
             return _convertString(node.toString(), toBoxed, ps);
         }
