@@ -321,7 +321,7 @@ public final class NodeMapper {
             } else if (node instanceof Enum) {
                 result = target.createValueNode(((Enum<?>) node).name());
             } else if (node instanceof Map || node instanceof JsonObject) {
-                result = _convertExternalObject(node, toBoxed, target, context);
+                result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
             } else if (node instanceof List || node instanceof JsonArray
                     || node.getClass().isArray() || node instanceof Set) {
                 if (!target.supportsContainerMutation()) {
@@ -383,7 +383,7 @@ public final class NodeMapper {
                             result = target.createValueNode(sourceExternal.toBoolean(node));
                             break;
                         case OBJECT:
-                            result = _convertExternalObject(node, toBoxed, target, context);
+                            result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
                             break;
                         case ARRAY:
                             if (!target.supportsContainerMutation()) {
@@ -404,7 +404,7 @@ public final class NodeMapper {
                             throw new BindingException("unsupported external node type '" + Types.name(node) + "'", ps);
                     }
                 } else if (sourceInfo.pojoInfo != null) {
-                    result = _convertExternalObject(node, toBoxed, target, context);
+                    result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
                 } else {
                     throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);
                 }
@@ -419,9 +419,12 @@ public final class NodeMapper {
     }
 
     private static Object _convertExternalObject(Object node, Class<?> toBoxed,
-                                                 ExternalNode<Object> target, RuntimeContext context) {
-        // convert builds a complete new target, so copying it again is redundant.
-        return target.convert(toBoxed, node, context);
+                                                 ExternalNode<Object> target,
+                                                 boolean deepCopy, RuntimeContext context) {
+        Object result = target.convert(toBoxed, node, context);
+        // Mutable target construction may retain existing native child nodes.
+        // Immutable trees cannot alias mutable children, so avoid an extra copy.
+        return deepCopy && target.supportsContainerMutation() ? target.deepCopy(result) : result;
     }
 
     private static Object _requireExternalTarget(Object result, Class<?> toBoxed, PathSegment ps) {
@@ -543,6 +546,16 @@ public final class NodeMapper {
                 return valueInfo.valueCopy(node);
             }
 
+
+            // Some immutable native JSON trees also implement Map/List
+            // (notably JSON-P). Copy them through their adapter before treating
+            // them as mutable Java collections.
+            if (node instanceof Map || node instanceof List) {
+                ExternalNode<?> external = ExternalRegistry.resolve(nodeClazz);
+                if (external != null && !external.supportsContainerMutation()) {
+                    return ((ExternalNode<Object>) external).deepCopy(node);
+                }
+            }
 
             /*
              * Map.
