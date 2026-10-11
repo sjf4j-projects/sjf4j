@@ -180,10 +180,6 @@ public final class NodeMapper {
     }
 
 
-    /**
-     * Reads an external representation directly through the existing object
-     * and indexed source engines, preserving creator/OneOf/generic handling.
-     */
     /** Converts from the source's representation, with Java/OBNT types first. */
     @SuppressWarnings("unchecked")
     private static Object _convertFromSource(Object node, Type toType, Class<?> toBoxed,
@@ -470,19 +466,17 @@ public final class NodeMapper {
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(nodeClazz);
 
-            /*
-             * Node value. Map/List semantics take priority below.
-             */
             if (ti.valueInfos != null) {
                 String valueFormat = context.defaultValueFormat(nodeClazz);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueCopy(node);
             }
+            if (ti.externalNode != null) {
+                return ti.externalNode.deepCopy(node);
+            }
 
-
-            // Some immutable native JSON trees also implement Map/List
-            // (notably JSON-P). Copy them through their adapter before treating
-            // them as mutable Java collections.
+            // Some external trees also implement Map/List. Their container metadata
+            // takes precedence in TypeRegistry, so check the native adapter here.
             if (node instanceof Map || node instanceof List) {
                 ExternalNode<?> external = ExternalRegistry.resolve(nodeClazz);
                 if (external != null) {
@@ -518,13 +512,6 @@ public final class NodeMapper {
                     target.add(_deepCopy(src.get(i), elemType, elemBoxed, cps, context));
                 }
                 return target;
-            }
-
-            /*
-             * External nodes that are not Map/List keep their native semantics.
-             */
-            if (ti.externalNode != null) {
-                return ti.externalNode.deepCopy(node);
             }
 
             /*
