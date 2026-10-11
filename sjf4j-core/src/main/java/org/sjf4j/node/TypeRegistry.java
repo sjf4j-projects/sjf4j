@@ -77,20 +77,13 @@ public final class TypeRegistry {
             return ti;
         }
 
-        // The Java collection contract always wins over external adapters.
-        // Immutable or constructor-less collections retain their Map/List/Set
-        // semantics; absence of a mutable constructor is handled by the
-        // container creation path, not by falling back to ExternalNode.
-        if (Map.class.isAssignableFrom(clazz)
-                || List.class.isAssignableFrom(clazz)
-                || Set.class.isAssignableFrom(clazz)) {
+        // Standard Java containers are classified before external adapters.
+        ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
+        if (ci != null) {
             if (requirePojo) {
                 throw new BindingException("class '" + clazz.getName() + "' is a container node, not a POJO");
             }
-            ContainerInfo container = ReflectUtil.analyzeContainer(clazz);
-            ti = container != null
-                    ? new TypeInfo(clazz, null, null, container, null, null)
-                    : TypeInfo.NONE;
+            ti = new TypeInfo(clazz, null, null, ci, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -137,8 +130,7 @@ public final class TypeRegistry {
     private static boolean _fastNoneInfo(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
                 || Number.class.isAssignableFrom(clazz)
-                || clazz == Map.class || clazz == JsonObject.class
-                || clazz == List.class || clazz == JsonArray.class || clazz == Set.class || clazz.isArray()
+                || clazz == JsonObject.class || clazz == JsonArray.class || clazz.isArray()
                 || clazz.isPrimitive()
                 || Enum.class.isAssignableFrom(clazz)
                 || clazz == Character.class
@@ -189,7 +181,7 @@ public final class TypeRegistry {
             return new LinkedHashMap<>();
         }
         ContainerInfo ci = registerTypeInfo(mapClazz).containerInfo;
-        if (ci == null || ci.kind != NodeKind.OBJECT_MAP) {
+        if (ci == null || ci.kind != NodeKind.OBJECT_MAP || ci.noArgsCtorHandle == null) {
             if (fallback) {
                 return new LinkedHashMap<>();
             }
@@ -212,7 +204,7 @@ public final class TypeRegistry {
             return new ArrayList<>();
         }
         ContainerInfo ci = registerTypeInfo(listClazz).containerInfo;
-        if (ci == null || ci.kind != NodeKind.ARRAY_LIST) {
+        if (ci == null || ci.kind != NodeKind.ARRAY_LIST || ci.noArgsCtorHandle == null) {
             if (fallback) {
                 return new ArrayList<>();
             }
@@ -235,7 +227,7 @@ public final class TypeRegistry {
             return new LinkedHashSet<>();
         }
         ContainerInfo ci = registerTypeInfo(setClazz).containerInfo;
-        if (ci == null || ci.kind != NodeKind.ARRAY_SET) {
+        if (ci == null || ci.kind != NodeKind.ARRAY_SET || ci.noArgsCtorHandle == null) {
             if (fallback) {
                 return new LinkedHashSet<>();
             }
