@@ -1064,6 +1064,7 @@ public final class NodeMapper {
         if (source instanceof List) return ((List<?>) source).get(index);
         if (source instanceof JsonArray) return ((JsonArray) source).getNode(index);
         if (source instanceof Object[]) return ((Object[]) source)[index];
+        if (source instanceof int[]) return ((int[]) source)[index];
         if (source instanceof long[]) return ((long[]) source)[index];
         return Array.get(source, index);
     }
