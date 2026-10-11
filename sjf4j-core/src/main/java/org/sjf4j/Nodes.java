@@ -96,6 +96,7 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = toString(node);
+        if (s == null) return null;
         if (s.length() != 1) {
             throw new NodeException(
                     "cannot convert to char: expected single-character string, but length was " + s.length());
@@ -122,6 +123,7 @@ public final class Nodes {
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return (E) node;
         String s = toString(node);
+        if (s == null) return null;
         try {
             return Enum.valueOf(enumClazz, s);
         } catch (IllegalArgumentException e) {
@@ -138,6 +140,7 @@ public final class Nodes {
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return (E) node;
         String s = asString(node);
+        if (s == null) return null;
         try {
             return Enum.valueOf(enumClazz, s);
         } catch (Exception e) {
@@ -1091,7 +1094,7 @@ public final class Nodes {
             return;
         }
         if (ti.externalNode != null) {
-            switch (ti.externalNode.jsonTypeOfClass(rawClazz)) {
+            switch (ti.externalNode.jsonType(node)) {
                 case OBJECT:
                     sb.append("@").append(node.getClass().getSimpleName()).append("{");
                     int[] idx = new int[1];
@@ -1604,6 +1607,7 @@ public final class Nodes {
                     return i < len;
                 }
                 public Object next() {
+                    if (i >= len) throw new NoSuchElementException();
                     return Array.get(node, i++);
                 }
             };
