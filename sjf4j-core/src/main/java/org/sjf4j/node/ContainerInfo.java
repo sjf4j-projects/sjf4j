@@ -2,6 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.external.ExternalNode;
 
 import java.lang.invoke.MethodHandle;
 import java.util.function.Supplier;
@@ -17,12 +18,21 @@ public final class ContainerInfo {
     public final NodeKind kind;
     public final MethodHandle noArgsCtorHandle;
     public final Supplier<?> noArgsCtorLambda;
+    /** Optional native construction/copy support when the Java container cannot be instantiated. */
+    public final ExternalNode<Object> externalNode;
 
     /**
      * Creates metadata for a supported container type.
      */
     public ContainerInfo(Class<?> clazz, NodeKind kind,
                          MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda) {
+        this(clazz, kind, noArgsCtorHandle, noArgsCtorLambda, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public ContainerInfo(Class<?> clazz, NodeKind kind,
+                         MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
+                         ExternalNode<?> externalNode) {
         if (kind != NodeKind.OBJECT_MAP && kind != NodeKind.ARRAY_LIST && kind != NodeKind.ARRAY_SET) {
             throw new BindingException("invalid container kind '" + kind + "' for " + clazz.getName());
         }
@@ -30,6 +40,7 @@ public final class ContainerInfo {
         this.kind = kind;
         this.noArgsCtorHandle = noArgsCtorHandle;
         this.noArgsCtorLambda = noArgsCtorLambda;
+        this.externalNode = (ExternalNode<Object>) externalNode;
     }
 
     /**
