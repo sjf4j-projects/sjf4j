@@ -9,6 +9,9 @@ import jakarta.json.JsonValue;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.Nodes;
+import org.sjf4j.NodeKind;
+import org.sjf4j.JsonType;
+import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -143,6 +146,19 @@ class JsonpExternalMappingTest {
                 .add("nested", Json.createArrayBuilder().add(1).addNull()).build();
         JsonArray nativeArray = source.getJsonArray("nested");
 
+        // All classifiers and accessors treat JSON-P Map/List implementations
+        // as ordinary Java containers before considering an external adapter.
+        assertEquals(NodeKind.OBJECT_MAP, NodeKind.of(source));
+        assertEquals(NodeKind.ARRAY_LIST, NodeKind.of(nativeArray));
+        assertEquals(JsonType.OBJECT, JsonType.of(source));
+        assertEquals(JsonType.ARRAY, JsonType.of(nativeArray));
+        assertEquals(NodeKind.OBJECT_MAP,
+                TypeRegistry.registerTypeInfo(source.getClass()).containerInfo.kind);
+        assertEquals(NodeKind.ARRAY_LIST,
+                TypeRegistry.registerTypeInfo(nativeArray.getClass()).containerInfo.kind);
+        assertEquals(1, Nodes.sizeInObject(source));
+        assertEquals(2, Nodes.sizeInArray(nativeArray));
+
         // Assignable targets preserve identity without deep copying.
         assertSame(source, NodeMapper.convert(source, JsonValue.class, false));
         assertSame(source, NodeMapper.convert(source, JsonObject.class, false));
@@ -153,6 +169,8 @@ class JsonpExternalMappingTest {
         assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonValue.class, true));
         assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonObject.class, true));
         assertThrows(BindingException.class, () -> NodeMapper.convert(nativeArray, JsonArray.class, true));
+        assertThrows(BindingException.class, () -> Nodes.copy(source));
+        assertThrows(BindingException.class, () -> Nodes.copy(nativeArray));
     }
 
     @NodeValue
