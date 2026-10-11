@@ -9,6 +9,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.external.ExternalNode;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.OneOfInfo;
@@ -1173,10 +1174,11 @@ public final class StreamingIO {
 
         /*
          * External representations without standard Java container contracts.
+         * Stream native values directly so a native JSON null remains distinct
+         * from a Java null when includeNulls is false.
          */
         if (ti.externalNode != null) {
-            Object raw = NodeMapper.convertToRaw(node, context);
-            _writeNode(writer, raw, TypeInfo.NONE, context);
+            _writeExternalNode(writer, node, ti.externalNode, context);
             return;
         }
 
@@ -1189,6 +1191,58 @@ public final class StreamingIO {
         }
 
         throw new BindingException("unsupported node type '" + Types.name(node) + "'");
+    }
+
+
+    /**
+     * Writes an external JSON tree without normalizing its explicit null nodes
+     * to Java null. Only Java null object properties obey includeNulls;
+     * present native JSON null members are always emitted.
+     */
+    private static void _writeExternalNode(StreamingWriter writer, Object node,
+                                           ExternalNode<Object> external,
+                                           RuntimeContext context) throws IOException {
+        switch (external.jsonType(node)) {
+            case NULL:
+                writer.writeNull();
+                return;
+            case STRING:
+                writer.writeStringValue(external.toString(node));
+                return;
+            case NUMBER:
+                writer.writeNumberValue(external.toNumber(node));
+                return;
+            case BOOLEAN:
+                writer.writeBooleanValue(external.toBoolean(node));
+                return;
+            case OBJECT:
+                writer.startObject();
+                int count = 0;
+                for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) {
+                        continue;
+                    }
+                    writer.writeName(entry.getKey(), count > 0);
+                    count++;
+                    _writeNode(writer, value, TypeInfo.NONE, context);
+                }
+                writer.endObject();
+                return;
+            case ARRAY:
+                writer.startArray();
+                int size = external.sizeInArray(node);
+                for (int i = 0; i < size; i++) {
+                    if (i > 0) {
+                        writer.separateElement();
+                    }
+                    _writeNode(writer, external.getInArray(node, i), TypeInfo.NONE, context);
+                }
+                writer.endArray();
+                return;
+            default:
+                throw new BindingException("unsupported external node type '" + Types.name(node) + "'");
+        }
     }
 
 
