@@ -304,6 +304,11 @@ public final class NodeMapper {
      * Recursively constructs the target backend's native tree without
      * allocating intermediate Map/List trees or serializing JSON text.
      */
+    /**
+     * Builds a target native representation. Java/OBNT containers are handled
+     * before consulting ExternalNode metadata; there is no adapter-vs-Map/List
+     * special case.
+     */
     @SuppressWarnings("unchecked")
     private static Object _convertToExternal(Object node, Class<?> toBoxed,
                                              ExternalNode<Object> target,
@@ -313,8 +318,6 @@ public final class NodeMapper {
             if (node == null) {
                 result = target.createValueNode(null);
             } else if (target.nodeType().isInstance(node)) {
-                // A compatible native subtree is safe to reuse for a non-copy
-                // conversion, even if it is nested in a different Java source.
                 result = deepCopy ? target.deepCopy(node) : node;
             } else if (node instanceof String || node instanceof Number || node instanceof Boolean) {
                 result = target.createValueNode(node);
@@ -322,78 +325,83 @@ public final class NodeMapper {
                 result = target.createValueNode(node.toString());
             } else if (node instanceof Enum) {
                 result = target.createValueNode(((Enum<?>) node).name());
+            } else if (node instanceof Map || node instanceof JsonObject) {
+                result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
+            } else if (node instanceof List || node instanceof JsonArray
+                    || node.getClass().isArray() || node instanceof Set) {
+                Object out = target.createArrayNode(toBoxed);
+                if (node instanceof List) {
+                    List<?> list = (List<?>) node;
+                    for (int i = 0, size = list.size(); i < size; i++) {
+                        target.addInArray(out, _convertToExternal(
+                                list.get(i), target.nodeType(), target, deepCopy,
+                                new PathSegment.Index(ps, i), context));
+                    }
+                } else if (node instanceof JsonArray) {
+                    JsonArray array = (JsonArray) node;
+                    for (int i = 0, size = array.size(); i < size; i++) {
+                        target.addInArray(out, _convertToExternal(
+                                array.getNode(i), target.nodeType(), target, deepCopy,
+                                new PathSegment.Index(ps, i), context));
+                    }
+                } else if (node.getClass().isArray()) {
+                    int len = Array.getLength(node);
+                    for (int i = 0; i < len; i++) {
+                        target.addInArray(out, _convertToExternal(
+                                Array.get(node, i), target.nodeType(), target, deepCopy,
+                                new PathSegment.Index(ps, i), context));
+                    }
+                } else {
+                    int i = 0;
+                    for (Object value : (Set<?>) node) {
+                        target.addInArray(out, _convertToExternal(
+                                value, target.nodeType(), target, deepCopy,
+                                new PathSegment.Index(ps, i++), context));
+                    }
+                }
+                result = out;
             } else {
-                // Standard Map/List implementations are sources in their own
-                // right; never route them back through an external tree adapter.
-                TypeInfo sourceTi = node instanceof Map || node instanceof List
-                        ? TypeInfo.NONE : TypeRegistry.registerTypeInfo(node.getClass());
-                if (sourceTi.valueInfos != null) {
-                    ValueInfo vi = sourceTi.requireValueInfo(context.defaultValueFormat(node.getClass()));
+                TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
+                if (sourceInfo.valueInfos != null) {
+                    ValueInfo info = sourceInfo.requireValueInfo(context.defaultValueFormat(node.getClass()));
                     return _requireExternalTarget(_convertToExternal(
-                            vi.valueToRaw(node), target.nodeType(), target, deepCopy, ps, context), toBoxed, ps);
+                            info.valueToRaw(node), target.nodeType(), target, deepCopy, ps, context), toBoxed, ps);
                 }
 
-                ExternalNode<Object> sourceExternal = sourceTi.externalNode;
-                JsonType shape = sourceExternal != null ? sourceExternal.jsonType(node) : JsonType.UNKNOWN;
-
-                if (sourceExternal != null && shape == JsonType.NULL) {
-                    result = target.createValueNode(null);
-                } else if (sourceExternal != null && shape == JsonType.STRING) {
-                    result = target.createValueNode(sourceExternal.toString(node));
-                } else if (sourceExternal != null && shape == JsonType.NUMBER) {
-                    result = target.createValueNode(sourceExternal.toNumber(node));
-                } else if (sourceExternal != null && shape == JsonType.BOOLEAN) {
-                    result = target.createValueNode(sourceExternal.toBoolean(node));
-                } else if ((sourceExternal != null && shape == JsonType.OBJECT)
-                        || node instanceof Map || node instanceof JsonObject
-                        || sourceTi.pojoInfo != null) {
-                    // Construction is an external representation concern. Immutable
-                    // backends may build the entire object without exposing a
-                    // mutable container or requiring a temporary Map tree.
-                    result = target.convert(toBoxed, node, context);
-                    // A fresh outer container may still share native child nodes
-                    // with the source when deepCopy is false. Detach those children
-                    // for the explicit deep-copy conversion mode.
-                    if (deepCopy) {
-                        result = target.deepCopy(result);
+                ExternalNode<Object> sourceExternal = sourceInfo.externalNode;
+                if (sourceExternal != null) {
+                    switch (sourceExternal.jsonType(node)) {
+                        case NULL:
+                            result = target.createValueNode(null);
+                            break;
+                        case STRING:
+                            result = target.createValueNode(sourceExternal.toString(node));
+                            break;
+                        case NUMBER:
+                            result = target.createValueNode(sourceExternal.toNumber(node));
+                            break;
+                        case BOOLEAN:
+                            result = target.createValueNode(sourceExternal.toBoolean(node));
+                            break;
+                        case OBJECT:
+                            result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
+                            break;
+                        case ARRAY:
+                            Object out = target.createArrayNode(toBoxed);
+                            int size = sourceExternal.sizeInArray(node);
+                            for (int i = 0; i < size; i++) {
+                                target.addInArray(out, _convertToExternal(
+                                        sourceExternal.getInArray(node, i),
+                                        target.nodeType(), target, deepCopy,
+                                        new PathSegment.Index(ps, i), context));
+                            }
+                            result = out;
+                            break;
+                        default:
+                            throw new BindingException("unsupported external node type '" + Types.name(node) + "'", ps);
                     }
-                } else if (sourceExternal != null && shape == JsonType.ARRAY) {
-                    Object out = target.createArrayNode(toBoxed);
-                    int len = sourceExternal.sizeInArray(node);
-                    for (int i = 0; i < len; i++) {
-                        target.addInArray(out, _convertToExternal(sourceExternal.getInArray(node, i),
-                                target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
-                    }
-                    result = out;
-                } else if (node instanceof List || node instanceof JsonArray
-                        || node.getClass().isArray() || node instanceof Set) {
-                    Object out = target.createArrayNode(toBoxed);
-                    if (node instanceof List) {
-                        List<?> list = (List<?>) node;
-                        for (int i = 0; i < list.size(); i++) {
-                            target.addInArray(out, _convertToExternal(
-                                    list.get(i), target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
-                        }
-                    } else if (node instanceof JsonArray) {
-                        JsonArray array = (JsonArray) node;
-                        for (int i = 0; i < array.size(); i++) {
-                            target.addInArray(out, _convertToExternal(
-                                    array.getNode(i), target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
-                        }
-                    } else if (node.getClass().isArray()) {
-                        int len = Array.getLength(node);
-                        for (int i = 0; i < len; i++) {
-                            target.addInArray(out, _convertToExternal(
-                                    Array.get(node, i), target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i), context));
-                        }
-                    } else {
-                        int i = 0;
-                        for (Object item : (Set<?>) node) {
-                            target.addInArray(out, _convertToExternal(
-                                    item, target.nodeType(), target, deepCopy, new PathSegment.Index(ps, i++), context));
-                        }
-                    }
-                    result = out;
+                } else if (sourceInfo.pojoInfo != null) {
+                    result = _convertExternalObject(node, toBoxed, target, deepCopy, context);
                 } else {
                     throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);
                 }
@@ -405,6 +413,13 @@ public final class NodeMapper {
             throw new BindingException("cannot convert node from '" + Types.name(node)
                     + "' to external type '" + toBoxed.getName() + "'", ps, e);
         }
+    }
+
+    private static Object _convertExternalObject(Object node, Class<?> toBoxed,
+                                                 ExternalNode<Object> target,
+                                                 boolean deepCopy, RuntimeContext context) {
+        Object result = target.convert(toBoxed, node, context);
+        return deepCopy ? target.deepCopy(result) : result;
     }
 
     private static Object _requireExternalTarget(Object result, Class<?> toBoxed, PathSegment ps) {
