@@ -4,6 +4,7 @@ import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
+import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
@@ -94,29 +95,11 @@ public final class NodeMapper {
         try {
             if (node == null) {
                 if (oneOfInfo == null) {
-                    TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
-                    if (ti.valueInfos != null) {
-                        String valueFormat = context.defaultValueFormat(toBoxed);
-                        ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
-                        return valueInfo.rawToValue(null);
-                    }
-                }
-                return null;
-            }
-
-            if (oneOfInfo != null) {
-                return _convertOneOf(node, toBoxed, oneOfInfo, deepCopy, ps, context);
-            }
-
-            if (toBoxed == Object.class) {
-                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
-            }
-
-            // Compatible values can only be returned as-is when the target has no
-            // generic structure to honor. Parameterized containers/POJOs still need
-            // traversal so their declared element/member types are converted.
-            if (toBoxed.isInstance(node) && !Types.hasGenericStructure(toType)) {
-                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
+                    // Standard Java/OBNT representations take precedence over registered
+            // external adapters, both as mapping sources and as target types.
+            // This mirrors NodeKind.plainOf and StreamingIO's dispatch order.
+            if (NodeKind.plainOf(toBoxed) != NodeKind.UNKNOWN) {
+                return _convertFromSource(node, toType, toBoxed, deepCopy, ps, context);
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
@@ -130,90 +113,12 @@ public final class NodeMapper {
                 return _convertValue(node, toBoxed, target, deepCopy, ps, context);
             }
 
-            // Map/List target contracts take priority over external factories.
-            // For example, JSON-P JsonObject/JsonArray implement Map/List, but
-            // are not constructible via the regular Java collection path.
-            if (ti.externalNode != null
-                    && !Map.class.isAssignableFrom(toBoxed)
-                    && !List.class.isAssignableFrom(toBoxed)) {
+            if (ti.externalNode != null) {
                 return _convertToExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
             }
 
-            if (node instanceof String) {
-                return _convertString(node.toString(), toBoxed, ps);
-            }
+            return _convertFromSource(node, toType, toBoxed, deepCopy, ps, context);
 
-            if (node instanceof Number) {
-                if (Number.class.isAssignableFrom(toBoxed)) {
-                    return Numbers.to((Number) node, toBoxed);
-                }
-                throw new BindingException("cannot convert node from '" +
-                        Types.name(node) + "' to '" + toType + "'", ps);
-            }
-
-            if (node instanceof Boolean) {
-                if (toBoxed == Boolean.class) {
-                    return node;
-                }
-                throw new BindingException("cannot convert node from '" +
-                        Types.name(node) + "' to '" + toType + "'", ps);
-            }
-
-            // Standard Java collection contracts win over external adapters.
-            // This also avoids TypeInfo resolution on the Map/List read path.
-            if (node instanceof Map) {
-                return _convertFromObjectEntries(
-                        ((Map<String, Object>) node).entrySet(), ((Map<?, ?>) node).size(),
-                        false, "Map", toBoxed, toType, deepCopy, ps, context);
-            }
-
-            if (node instanceof List) {
-                return _convertFromList((List<Object>) node,
-                        toBoxed, toType, deepCopy, ps, context);
-            }
-
-            TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
-            if (sourceTi.externalNode != null) {
-                return _convertFromExternal(node, sourceTi.externalNode,
-                        toBoxed, toType, deepCopy, ps, context);
-            }
-
-            if (node instanceof JsonObject) {
-                JsonObject jo = (JsonObject) node;
-                return _convertFromObjectEntries(jo.entrySet(), jo.size(),
-                        false, "JsonObject", toBoxed, toType, deepCopy, ps, context);
-            }
-
-            if (node instanceof JsonArray) {
-                return _convertFromJsonArray((JsonArray) node,
-                        toBoxed, toType, deepCopy, ps, context);
-            }
-
-            if (node.getClass().isArray()) {
-                return _convertFromArray(node, toBoxed, toType, deepCopy, ps, context);
-            }
-
-            if (node instanceof Set) {
-                return _convertFromSet((Set<Object>) node,
-                        toBoxed, toType, deepCopy, ps, context);
-            }
-
-            if (node instanceof Character) {
-                return _convertString(node.toString(), toBoxed, ps);
-            }
-
-            if (node instanceof Enum) {
-                return _convertString(((Enum<?>) node).name(), toBoxed, ps);
-            }
-
-            PojoInfo sourceInfo = sourceTi.pojoInfo;
-            if (sourceInfo != null) {
-                return _convertFromPojo(node, sourceInfo,
-                        toBoxed, toType, deepCopy, ps, context);
-            }
-
-            throw new BindingException("cannot convert node from '" +
-                    Types.name(node) + "' to '" + toType + "'", ps);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -258,6 +163,87 @@ public final class NodeMapper {
      * Reads an external representation directly through the existing object
      * and indexed source engines, preserving creator/OneOf/generic handling.
      */
+    /** Converts from the source's native representation, with plain Java types first. */
+    @SuppressWarnings("unchecked")
+    private static Object _convertFromSource(Object node, Type toType, Class<?> toBoxed,
+                                             boolean deepCopy, PathSegment ps, RuntimeContext context) {
+        if (node instanceof String) {
+            return _convertString(node.toString(), toBoxed, ps);
+        }
+
+        if (node instanceof Number) {
+            if (Number.class.isAssignableFrom(toBoxed)) {
+                return Numbers.to((Number) node, toBoxed);
+            }
+            throw new BindingException("cannot convert node from '" +
+                    Types.name(node) + "' to '" + toType + "'", ps);
+        }
+
+        if (node instanceof Boolean) {
+            if (toBoxed == Boolean.class) {
+                return node;
+            }
+            throw new BindingException("cannot convert node from '" +
+                    Types.name(node) + "' to '" + toType + "'", ps);
+        }
+
+        // Standard Java collection contracts win over external adapters.
+        // This also avoids TypeInfo resolution on the Map/List read path.
+        if (node instanceof Character) {
+            return _convertString(node.toString(), toBoxed, ps);
+        }
+
+        if (node instanceof Enum) {
+            return _convertString(((Enum<?>) node).name(), toBoxed, ps);
+        }
+
+        if (node instanceof Map) {
+            return _convertFromObjectEntries(
+                    ((Map<String, Object>) node).entrySet(), ((Map<?, ?>) node).size(),
+                    false, "Map", toBoxed, toType, deepCopy, ps, context);
+        }
+
+        if (node instanceof List) {
+            return _convertFromList((List<Object>) node,
+                    toBoxed, toType, deepCopy, ps, context);
+        }
+
+        if (node instanceof JsonObject) {
+            JsonObject jo = (JsonObject) node;
+            return _convertFromObjectEntries(jo.entrySet(), jo.size(),
+                    false, "JsonObject", toBoxed, toType, deepCopy, ps, context);
+        }
+
+        if (node instanceof JsonArray) {
+            return _convertFromJsonArray((JsonArray) node,
+                    toBoxed, toType, deepCopy, ps, context);
+        }
+
+        if (node.getClass().isArray()) {
+            return _convertFromArray(node, toBoxed, toType, deepCopy, ps, context);
+        }
+
+        if (node instanceof Set) {
+            return _convertFromSet((Set<Object>) node,
+                    toBoxed, toType, deepCopy, ps, context);
+        }
+
+        TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
+        if (sourceTi.externalNode != null) {
+            return _convertFromExternal(node, sourceTi.externalNode,
+                    toBoxed, toType, deepCopy, ps, context);
+        }
+
+        PojoInfo sourceInfo = sourceTi.pojoInfo;
+        if (sourceInfo != null) {
+            return _convertFromPojo(node, sourceInfo,
+                    toBoxed, toType, deepCopy, ps, context);
+        }
+
+        throw new BindingException("cannot convert node from '" +
+                Types.name(node) + "' to '" + toType + "'", ps);
+    }
+
     private static Object _convertFromExternal(Object node, ExternalNode<Object> external,
                                                Class<?> toBoxed, Type type, boolean deepCopy,
                                                PathSegment ps, RuntimeContext context) {
