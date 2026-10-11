@@ -222,7 +222,7 @@ public final class NodeMapper {
         }
 
         if (node instanceof List) {
-            return _convertFromList((List<Object>) node,
+            return _convertFromIndexedSource(node, null, "List",
                     toBoxed, toType, deepCopy, ps, context);
         }
 
@@ -233,12 +233,13 @@ public final class NodeMapper {
         }
 
         if (node instanceof JsonArray) {
-            return _convertFromJsonArray((JsonArray) node,
+            return _convertFromIndexedSource(node, null, "JsonArray",
                     toBoxed, toType, deepCopy, ps, context);
         }
 
         if (node.getClass().isArray()) {
-            return _convertFromArray(node, toBoxed, toType, deepCopy, ps, context);
+            return _convertFromIndexedSource(node, null, "Array",
+                    toBoxed, toType, deepCopy, ps, context);
         }
 
         if (node instanceof Set) {
@@ -870,25 +871,6 @@ public final class NodeMapper {
         } else {
             state.bufferProperty(property, value);
         }
-    }
-
-    // Direct sources retain their native indexed access without wrapper allocations.
-    private static Object _convertFromList(List<?> source, Class<?> toBoxed, Type type,
-                                           boolean deepCopy, PathSegment ps, RuntimeContext context) {
-        return _convertFromIndexedSource(source, null, "List",
-                toBoxed, type, deepCopy, ps, context);
-    }
-
-    private static Object _convertFromJsonArray(JsonArray source, Class<?> toBoxed, Type type,
-                                                boolean deepCopy, PathSegment ps, RuntimeContext context) {
-        return _convertFromIndexedSource(source, null, "JsonArray",
-                toBoxed, type, deepCopy, ps, context);
-    }
-
-    private static Object _convertFromArray(Object source, Class<?> toBoxed, Type type,
-                                            boolean deepCopy, PathSegment ps, RuntimeContext context) {
-        return _convertFromIndexedSource(source, null, "Array",
-                toBoxed, type, deepCopy, ps, context);
     }
 
     // Set -> List/JsonArray/JAJO/Array/Set
