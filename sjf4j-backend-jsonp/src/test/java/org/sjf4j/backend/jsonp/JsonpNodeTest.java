@@ -16,6 +16,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
+import org.sjf4j.node.TypeRegistry;
 
 import java.io.File;
 import java.io.StringReader;
@@ -92,6 +93,19 @@ class JsonpNodeTest {
                         JsonObject.class, false));
         assertThrows(BindingException.class, () ->
                 NodeMapper.convert(Arrays.asList(1, 2), JsonArray.class, false));
+    }
+
+    @Test
+    void registryNeverAssignsExternalAdapterToJavaCollectionTypes() {
+        JsonObject object = value("{\"n\":1}").asJsonObject();
+        JsonArray array = value("[1]").asJsonArray();
+        assertNull(TypeRegistry.registerTypeInfo(object.getClass()).externalNode);
+        assertNull(TypeRegistry.registerTypeInfo(array.getClass()).externalNode);
+        assertNull(TypeRegistry.registerTypeInfo(JsonObject.class).externalNode);
+        assertNull(TypeRegistry.registerTypeInfo(JsonArray.class).externalNode);
+
+        // A JSON-P scalar does not implement Map/List and remains external.
+        assertNotNull(TypeRegistry.registerTypeInfo(object.get("n").getClass()).externalNode);
     }
 
     @Test
