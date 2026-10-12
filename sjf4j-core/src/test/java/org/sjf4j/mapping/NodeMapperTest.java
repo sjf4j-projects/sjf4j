@@ -258,13 +258,13 @@ class NodeMapperTest {
     }
 
     @Test
-    void cachesPojoPropertyBindingsWithoutLosingCreatorOrJojoDynamicFields() {
+    void mapsPojoPropertiesWithoutLosingCreatorOrJojoDynamicFields() {
         SourceWithExtras source = new SourceWithExtras();
         source.name = "Ada";
         source.age = 32;
         source.unused = "extra";
 
-        // Both conversions exercise the same cached concrete class pair.
+        // Repeated conversions preserve Creator and JOJO dynamic fields.
         for (int i = 0; i < 2; i++) {
             NameOnly only = (NameOnly) NodeMapper.convert(source, NameOnly.class, false);
             assertEquals("Ada", only.name);
@@ -294,8 +294,8 @@ class NodeMapperTest {
         map.put("age", 32);
         map.put("unused", "extra");
 
-        // POJO uses the cached source-property plan; Map and JsonObject
-        // traverse entries. All must apply identical Creator/JOJO semantics.
+        // POJO reads cached per-class metadata; Map and JsonObject traverse
+        // entries. All must apply identical Creator/JOJO semantics.
         for (Object source : new Object[]{pojo, map, new JsonObject(map)}) {
             CreatorTarget creator = (CreatorTarget) NodeMapper.convert(source, CreatorTarget.class, false);
             assertEquals("Ada", creator.name);
