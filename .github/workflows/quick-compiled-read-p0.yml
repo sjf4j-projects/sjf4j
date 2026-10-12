@@ -33,7 +33,7 @@ jobs:
             '(.*CompiledReadBenchmark[.]json_fastjson2_pojo_(string|utf8)_(compiled|native)$|.*HandReadBenchmark[.]json_fastjson2_pojo_(handwritten|handwritten_hash|handwritten_raw|native)$)' \
             -f 1 -wi 3 -w 150ms -i 5 -r 250ms -t 1 \
             -rf json -rff fastjson2-read-p0.json | tee fastjson2-read-p0.txt
-          test "$(grep -Ec '^(CompiledReadBenchmark|HandReadBenchmark)[.]json_fastjson2_pojo_.*avgt' fastjson2-read-p0.txt)" -eq 8
+          test "$(grep -c ' avgt ' fastjson2-read-p0.txt)" -eq 8
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
