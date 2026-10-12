@@ -139,12 +139,10 @@ public final class Fastjson2Reader extends StreamingReader {
     private int nextNameMatchFallback(NameMatcher matcher,
                                       Fastjson2NameMatcher fastMatcher,
                                       int expectedIndex) {
-        if (expectedIndex >= 0) {
-            int rawIndex = fastMatcher.matchRaw(reader, expectedIndex);
-            if (rawIndex >= 0) {
-                peeked = null;
-                return rawIndex;
-            }
+        int rawIndex = fastMatcher.matchRaw(reader, expectedIndex);
+        if (rawIndex >= 0) {
+            peeked = null;
+            return rawIndex;
         }
 
         long hash = reader.readFieldNameHashCode();
