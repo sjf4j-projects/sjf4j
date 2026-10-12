@@ -6,8 +6,8 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.PojoAccess;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Invokers;
+import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.lang.invoke.MethodHandle;
@@ -188,7 +188,7 @@ public final class ValueRegistry {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
         MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
-        MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
+        MethodHandles.Lookup lookup = Invokers.resolveLookup(clazz);
 
         Class<?> current = clazz;
         while (current != null && current != Object.class &&

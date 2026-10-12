@@ -13,7 +13,7 @@ import org.sjf4j.node.OneOfInfo;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Type;

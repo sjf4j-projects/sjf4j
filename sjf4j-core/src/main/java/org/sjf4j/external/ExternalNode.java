@@ -6,7 +6,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 
 import java.util.Iterator;
 import java.util.Map;

@@ -14,7 +14,9 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.util.Invokers;
 import org.sjf4j.util.Strings;
+import org.sjf4j.util.Types;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.PatternedValueCodec;
@@ -50,11 +52,6 @@ import java.util.function.Supplier;
  */
 @SuppressWarnings("unchecked")
 public final class ReflectUtil {
-
-    /**
-     * Flag indicating if the current JVM is running JDK 8.
-     */
-    public static final boolean IS_JDK8 = PojoAccess.IS_JDK8;
 
 
     /*
@@ -103,12 +100,12 @@ public final class ReflectUtil {
             return new ContainerInfo(clazz, kind, null, null);
         }
 
-        MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
+        MethodHandles.Lookup lookup = Invokers.resolveLookup(clazz);
         try {
             Constructor<?> ctor = clazz.getDeclaredConstructor();
             try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
             MethodHandle noArgsCtor = lookup.unreflectConstructor(ctor);
-            Supplier<?> noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
+            Supplier<?> noArgsLambdaCtor = Invokers.createConstructorLambda(lookup, clazz, noArgsCtor);
             return new ContainerInfo(clazz, kind, noArgsCtor, noArgsLambdaCtor);
         } catch (NoSuchMethodException | IllegalAccessException e) {
             return new ContainerInfo(clazz, kind, null, null);
@@ -129,7 +126,7 @@ public final class ReflectUtil {
             else return null;
         }
 
-        MethodHandles.Lookup lookup = PojoAccess.resolveLookup(clazz);
+        MethodHandles.Lookup lookup = Invokers.resolveLookup(clazz);
 
         // Creator constructor (for final fields / record-style)
         CreatorInfo creatorInfo;
@@ -239,9 +236,9 @@ public final class ReflectUtil {
             }
 
             Function<Object, Object> getterLambda = getterHandle == null ? null :
-                    PojoAccess.createGetterLambda(lookup, getterHandle, Function.class, Object.class);
+                    Invokers.createGetterLambda(lookup, getterHandle, Function.class, Object.class);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
-                    PojoAccess.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
+                    Invokers.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
             ValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
 
             PropertyReader propertyReader = PropertyReader.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
@@ -745,19 +742,19 @@ public final class ReflectUtil {
             if (!hasPrimitiveArg) {
                 switch (creator.getParameterCount()) {
                     case 1:
-                        creatorLambda1 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func1.class, 1);
+                        creatorLambda1 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func1.class, 1);
                         break;
                     case 2:
-                        creatorLambda2 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func2.class, 2);
+                        creatorLambda2 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func2.class, 2);
                         break;
                     case 3:
-                        creatorLambda3 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func3.class, 3);
+                        creatorLambda3 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func3.class, 3);
                         break;
                     case 4:
-                        creatorLambda4 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func4.class, 4);
+                        creatorLambda4 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func4.class, 4);
                         break;
                     case 5:
-                        creatorLambda5 = PojoAccess.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func5.class, 5);
+                        creatorLambda5 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func5.class, 5);
                         break;
                     default:
                         break;
@@ -812,11 +809,11 @@ public final class ReflectUtil {
             } catch (NoSuchMethodException | IllegalAccessException e) {
                 throw new BindingException("no defined creator or no-args constructor of " + clazz.getName(), e);
             }
-            noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
+            noArgsLambdaCtor = Invokers.createConstructorLambda(lookup, clazz, noArgsCtor);
         } else if (creator.getParameterCount() == 0) {
             // The defined creator is no-args Constructor
             noArgsCtor = creatorHandle;
-            noArgsLambdaCtor = PojoAccess.createConstructorLambda(lookup, clazz, noArgsCtor);
+            noArgsLambdaCtor = Invokers.createConstructorLambda(lookup, clazz, noArgsCtor);
             if (!explicitCreator) {
                 creator = null;
                 creatorHandle = null;

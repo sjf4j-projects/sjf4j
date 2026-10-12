@@ -7,7 +7,7 @@ import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Numbers;
 
 import java.math.BigDecimal;
 import java.util.concurrent.TimeUnit;

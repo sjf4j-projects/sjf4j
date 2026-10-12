@@ -2,6 +2,8 @@ package org.sjf4j.node;
 
 import org.sjf4j.binding.PropertyReader;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.Invokers;
+import org.sjf4j.util.Types;
 import org.sjf4j.value.ValueInfo;
 
 import java.lang.invoke.MethodHandle;
@@ -106,7 +108,7 @@ public class PropertyInfo {
      */
     public Object invokeGetter(Object receiver) {
         Asserts.notNull(receiver, "receiver");
-        return PojoAccess.invokeGetter(name, getterHandle, getterLambda, receiver);
+        return Invokers.invokeGetter(name, getterHandle, getterLambda, receiver);
     }
 
     /**
@@ -122,7 +124,7 @@ public class PropertyInfo {
      * Invokes this property's setter.
      */
     public void invokeSetter(Object receiver, Object value) {
-        PojoAccess.invokeSetter(name, setterHandle, setterLambda, receiver, value);
+        Invokers.invokeSetter(name, setterHandle, setterLambda, receiver, value);
     }
 
 }

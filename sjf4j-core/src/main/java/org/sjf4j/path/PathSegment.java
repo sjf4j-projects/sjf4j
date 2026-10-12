@@ -2,7 +2,7 @@ package org.sjf4j.path;
 
 
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Numbers;
 
 import java.util.List;
 

@@ -1,6 +1,5 @@
 package org.sjf4j.testbench.node;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -98,8 +97,6 @@ class ReflectUtilTest {
 
     @Test
     void analyzeRecord_readsComponents_andFindsCanonicalCtor() {
-        Assumptions.assumeTrue(!ReflectUtil.IS_JDK8, "Record test requires JDK >= 16 at runtime");
-
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         RecordInfo ri = ReflectUtil.analyzeRecord(Person.class, lookup);
         assertNotNull(ri);

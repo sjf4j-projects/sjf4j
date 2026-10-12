@@ -724,7 +724,7 @@ public final class SchemaValidatorGenerator {
             return var + " != null";
         }
         if (needsIntegerCheck) {
-            String integerCheck = "org.sjf4j.node.Numbers.isSemanticInteger(" + _numberValueExpr(var, type) + ")";
+            String integerCheck = "org.sjf4j.util.Numbers.isSemanticInteger(" + _numberValueExpr(var, type) + ")";
             if (nonNull) return integerCheck;
             if (allowsNull) return var + " == null || (" + var + " != null && " + integerCheck + ")";
             return var + " != null && " + integerCheck;
@@ -756,7 +756,7 @@ public final class SchemaValidatorGenerator {
         String jt = "org.sjf4j.JsonType.of(" + var + ")";
         if ("integer".equals(schemaType)) {
             return jt + " == org.sjf4j.JsonType.INTEGER || (" + jt + " == org.sjf4j.JsonType.NUMBER && " +
-                    "org.sjf4j.node.Numbers.isSemanticInteger(org.sjf4j.Nodes.toNumber(" + var + ")))";
+                    "org.sjf4j.util.Numbers.isSemanticInteger(org.sjf4j.Nodes.toNumber(" + var + ")))";
         }
         return jt + " == " + _jsonTypeConstant(schemaType);
     }

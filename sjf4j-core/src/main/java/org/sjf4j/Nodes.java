@@ -5,11 +5,11 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.TypeRegistry;
 import org.sjf4j.node.ContainerInfo;
-import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Numbers;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.PropertyInfo;
 import org.sjf4j.node.TypeInfo;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 

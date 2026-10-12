@@ -1,11 +1,9 @@
-package org.sjf4j.node;
+package org.sjf4j.util;
 
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.util.Asserts;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /**
  * Numeric conversion helpers with range checks.

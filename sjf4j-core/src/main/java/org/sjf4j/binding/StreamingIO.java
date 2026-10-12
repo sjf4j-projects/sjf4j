@@ -6,7 +6,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
@@ -18,7 +17,7 @@ import org.sjf4j.node.CreatorInfo;
 import org.sjf4j.node.CreatorState;
 import org.sjf4j.node.TypeInfo;
 import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 

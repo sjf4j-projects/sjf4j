@@ -699,7 +699,7 @@ public final class ConversionEmitter
                             source +
                             " == null ? null : (" +
                             localType(targetType) +
-                            ") org.sjf4j.node.Numbers.to((java.lang.Number) " +
+                            ") org.sjf4j.util.Numbers.to((java.lang.Number) " +
                             source +
                             ", " +
                             classLiteral(targetType) +

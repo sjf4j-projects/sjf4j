@@ -7,6 +7,7 @@ import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Types;
 
 import static org.junit.jupiter.api.Assertions.*;
 

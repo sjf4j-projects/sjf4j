@@ -1,6 +1,6 @@
 package org.sjf4j;
 
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.util.Map;
