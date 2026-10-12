@@ -21,7 +21,21 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
       - name: Verify generated binder and backend tests
-        run: ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-processor:test :sjf4j-testbench:test --no-daemon --console=plain
+        shell: bash
+        run: |
+          ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-processor:test :sjf4j-testbench:test --no-daemon --console=plain && exit 0
+          echo '=== TEST XML diagnostics ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for f in Path('sjf4j-processor/build/test-results/test').glob('TEST-*.xml'):
+              try: root=ET.parse(f).getroot()
+              except Exception: continue
+              for tc in root.findall('.//testcase'):
+                  for issue in list(tc.findall('failure'))+list(tc.findall('error')):
+                      print(tc.attrib.get('name'),issue.attrib.get('message'),(issue.text or '')[:3500])
+          PY
+          exit 1
       - name: Compile paired JMH harnesses
         shell: bash
         run: |
