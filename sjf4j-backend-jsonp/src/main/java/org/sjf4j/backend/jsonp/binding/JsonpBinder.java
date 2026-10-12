@@ -14,9 +14,10 @@ import java.io.Writer;
 /**
  * Streaming JSON binder backed by a Jakarta JSON-P {@link JsonProvider}.
  *
- * <p>Reads POJOs and directly populated Java containers. Immutable JSON-P
- * native targets require builders and are supported by NodeMapper conversion,
- * not streaming reads. Existing JSON-P native nodes can still be written.
+ * <p>Reads POJOs and directly populated Java containers. Streaming reads
+ * do not construct native JSON-P target types (including scalar JsonValue);
+ * obtain these via NodeMapper conversion instead. Existing native JSON-P
+ * nodes can still be written.
  */
 public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
 
