@@ -131,10 +131,10 @@ public final class NodeMapper {
                         && toBoxed != List.class && toBoxed != ArrayList.class) {
                     ContainerInfo ci = TypeRegistry.registerTypeInfo(toBoxed).containerInfo;
                     if (ci != null && ci.externalNode != null) {
-                        return _convertToExternal(node, toBoxed, ci.externalNode, deepCopy, ps, context);
+                        return _convertExternal(node, toBoxed, ci.externalNode, deepCopy, ps, context);
                     }
                 }
-                return _convertFromPlain(node, toType, toBoxed, deepCopy, ps, context);
+                return _convertStructural(node, toType, toBoxed, deepCopy, ps, context);
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
@@ -147,9 +147,9 @@ public final class NodeMapper {
                 return _convertValue(node, toBoxed, target, deepCopy, ps, context);
             }
             if (ti.externalNode != null) {
-                return _convertToExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
+                return _convertExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
             }
-            return _convertFromPlain(node, toType, toBoxed, deepCopy, ps, context);
+            return _convertStructural(node, toType, toBoxed, deepCopy, ps, context);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -192,7 +192,7 @@ public final class NodeMapper {
 
     /** Converts through the plain Java/OBNT path, dispatching on the source representation. */
     @SuppressWarnings("unchecked")
-    private static Object _convertFromPlain(Object node, Type toType, Class<?> toBoxed,
+    private static Object _convertStructural(Object node, Type toType, Class<?> toBoxed,
                                              boolean deepCopy, PathSegment ps, RuntimeContext context) {
         if (node instanceof String) {
             return _convertString(node.toString(), toBoxed, ps);
@@ -298,10 +298,9 @@ public final class NodeMapper {
      * Constructs the target's native representation without intermediate JSON trees.
      * Standard Java/OBNT containers are handled before external adapters.
      */
-    @SuppressWarnings("unchecked")
-    private static Object _convertToExternal(Object node, Class<?> toBoxed,
-                                             ExternalNode<Object> target,
-                                             boolean deepCopy, PathSegment ps, RuntimeContext context) {
+    private static Object _convertExternal(Object node, Class<?> toBoxed,
+                                           ExternalNode<Object> target,
+                                           boolean deepCopy, PathSegment ps, RuntimeContext context) {
         try {
             Object result;
             if (node == null) {
@@ -323,7 +322,7 @@ public final class NodeMapper {
                 TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
                 if (sourceInfo.valueInfos != null) {
                     ValueInfo info = sourceInfo.requireValueInfo(context.defaultValueFormat(node.getClass()));
-                    return _requireExternalTarget(_convertToExternal(
+                    return _requireExternalTarget(_convertExternal(
                             info.valueToRaw(node), target.nodeType(), target, deepCopy, ps, context), toBoxed, ps);
                 }
 
