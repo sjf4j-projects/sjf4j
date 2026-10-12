@@ -125,10 +125,16 @@ public final class Fastjson2Reader extends StreamingReader {
         }
 
         Fastjson2NameMatcher fastMatcher = (Fastjson2NameMatcher) matcher;
-        int rawIndex = fastMatcher.matchRaw(reader, expectedIndex);
-        if (rawIndex >= 0) {
-            peeked = null;
-            return rawIndex;
+        if (expectedIndex >= 0) {
+            if (fastMatcher.matchesExpectedRaw(reader, expectedIndex)) {
+                peeked = null;
+                return expectedIndex;
+            }
+            int rawIndex = fastMatcher.matchOtherRaw(reader, expectedIndex);
+            if (rawIndex >= 0) {
+                peeked = null;
+                return rawIndex;
+            }
         }
 
         long hash = reader.readFieldNameHashCode();
