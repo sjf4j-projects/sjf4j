@@ -54,6 +54,14 @@ final class BindingEmitter {
                     out -> reads.emitNameMatcherField(out, value));
         }
 
+        if (value.direction() ==
+                BindingPlan.Direction.WRITE_TO &&
+                value.kind() == BindingValue.Kind.POJO &&
+                writes.usesCompiledNames()) {
+            generated.addField(
+                    out -> writes.emitCompiledNames(out, value));
+        }
+
         generated.addHelper(
                 out -> {
                     if (value.direction() ==

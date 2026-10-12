@@ -90,6 +90,26 @@ final class BackendSpec {
         }
     }
 
+    boolean usesCompiledNames() {
+        return backend == Backend.JACKSON2
+                || backend == Backend.JACKSON3
+                || backend == Backend.FASTJSON2;
+    }
+
+    String compiledNameType() {
+        switch (backend) {
+            case JACKSON2:
+                return "org.sjf4j.backend.jackson2.binding.Jackson2CompiledName";
+            case JACKSON3:
+                return "org.sjf4j.backend.jackson3.binding.Jackson3CompiledName";
+            case FASTJSON2:
+                return "org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName";
+            default:
+                throw new IllegalStateException(
+                        "No compiled property names for backend " + backend);
+        }
+    }
+
     boolean usesExpectedNameMatch() {
         return backend == Backend.JACKSON2;
     }
