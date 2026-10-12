@@ -1,4 +1,4 @@
-name: Temporary Fastjson2 Matcher Raw Ordered Retest V3
+name: Temporary Fastjson2 Matcher Raw Reversed Retest V3
 on:
   push:
     branches:
@@ -41,7 +41,7 @@ jobs:
             rev="${tag%-*}"
             echo "::group::JMH ${tag}"
             java -jar /tmp/fj2-${rev}/sjf4j-testbench/build/libs/*-jmh.jar \
-              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_string_(compiled|runtime)$' \
+              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_reversed_(string|utf8)_(compiled|runtime)$' \
               -f 1 -wi 6 -w 350ms -i 10 -r 400ms -t 1 \
               -rf json -rff results/${tag}.json | tee results/${tag}.txt
             echo "::endgroup::"
@@ -55,9 +55,9 @@ jobs:
           groups={}
           for tag in ['base-1','candidate-1','candidate-2','base-2']:
               data=json.loads(Path('results',tag+'.json').read_text())
-              assert len(data)==2,(tag,len(data))
+              assert len(data)==4,(tag,len(data))
               for row in data:
-                  key='runtime' if row['benchmark'].endswith('_runtime') else 'compiled'
+                  key=('utf8' if '_utf8_' in row['benchmark'] else 'string') + ('/runtime' if row['benchmark'].endswith('_runtime') else '/compiled')
                   groups.setdefault(key,{})[tag]=row['primaryMetric']['score']
           lines=['case,base-1,candidate-1,candidate-2,base-2,baseline_mean,candidate_mean,delta_pct']
           for key,s in sorted(groups.items()):
