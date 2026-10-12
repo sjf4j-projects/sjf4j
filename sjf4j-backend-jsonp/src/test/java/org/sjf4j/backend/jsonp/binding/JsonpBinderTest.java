@@ -114,24 +114,24 @@ class JsonpBinderTest {
     }
 
     @Test
-    void nativeTargetsRespectJavaContainerPrecedence() {
+    void rejectsCreatingNativeExternalTargets() {
         JsonpBinder binder = new JsonpBinder();
-        assertEquals("text", binder.readNode("\"text\"", String.class));
+        assertEquals("text", binder.readNode("\\\"text\\\"", String.class));
         assertNull(binder.readNode("null", JsonValue.class));
 
-        // Map/List classification is unchanged; native targets use their
-        // cached immutable construction strategy.
-        assertInstanceOf(JsonObject.class, binder.readNode("{}", JsonObject.class));
-        assertInstanceOf(JsonArray.class, binder.readNode("[true,{\"n\":1}]", JsonArray.class));
-        TreeDocument nested = (TreeDocument) binder.readNode("{\"tree\":{},\"values\":[1]}", TreeDocument.class);
-        assertInstanceOf(JsonObject.class, nested.tree);
-        assertInstanceOf(JsonArray.class, nested.values);
+        // Binding only constructs directly mutable Map/List targets. JSON-P
+        // builders are available through NodeMapper, not through StreamingIO.
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonObject.class));
+        assertThrows(BindingException.class, () -> binder.readNode("[true,{\\\"n\\\":1}]", JsonArray.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonStructure.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{}", JsonValue.class));
+        assertThrows(BindingException.class, () -> binder.readNode("\\\"text\\\"", JsonValue.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{\\\"tree\\\":{}}", TreeDocument.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{\\\"values\\\":[1]}", TreeDocument.class));
 
-        // JsonStructure/JsonValue are non-container external targets.
-        assertInstanceOf(JsonObject.class, binder.readNode("{}", JsonStructure.class));
-        assertInstanceOf(JsonObject.class, binder.readNode("{}", JsonValue.class));
-        assertInstanceOf(JsonArray.class, binder.readNode("[true,{\"n\":1}]", JsonStructure.class));
-        assertEquals("text", ((JsonString) binder.readNode("\"text\"", JsonValue.class)).getString());
+        // Regular Java container targets are still streamed and populated.
+        assertTrue(((Map<?, ?>) binder.readNode("{\\\"k\\\":1}", Map.class)).containsKey("k"));
+        assertEquals(Arrays.asList(true, null), binder.readNode("[true,null]", List.class));
     }
 
     @Test
