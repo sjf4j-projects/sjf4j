@@ -203,7 +203,14 @@ public final class Jackson2Writer extends StreamingWriter {
 
     @Override
     public String toString() {
-        return stringOutput != null ? stringOutput.getAndClear() : super.toString();
+        if (stringOutput == null) {
+            return super.toString();
+        }
+        try {
+            return stringOutput.getAndClear();
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
     }
 
     @Override
