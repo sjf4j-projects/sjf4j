@@ -102,16 +102,16 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext), output);
     }
 
-    /**
-     * Serializes through the SJF4J binding pipeline while retaining Fastjson2's
-     * native in-memory output buffer.  The base implementation writes through
-     * a {@code Writer} and copies the completed document into a String.
-     */
     /** Creates an in-memory native writer with this binder's configured context. */
     public JSONWriter createNativeWriter() {
         return JSONWriter.of(writerContext);
     }
 
+    /**
+     * Serializes through the SJF4J binding pipeline while retaining Fastjson2's
+     * native in-memory output buffer. The base implementation writes through
+     * a {@code Writer} and copies the completed document into a String.
+     */
     @Override
     public String writeNodeAsString(Object node) {
         try (JSONWriter output = JSONWriter.of(writerContext)) {
