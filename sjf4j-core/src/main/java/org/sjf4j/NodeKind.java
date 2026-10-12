@@ -88,7 +88,15 @@ public enum NodeKind {
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
         } else if (ti.externalNode != null) {
-            return ti.externalNode.nodeKind(node);
+            switch (ti.externalNode.jsonType(node)) {
+                case OBJECT: return OBJECT_EXTERNAL;
+                case ARRAY: return ARRAY_EXTERNAL;
+                case STRING: return VALUE_STRING_EXTERNAL;
+                case NUMBER: return VALUE_NUMBER_EXTERNAL;
+                case BOOLEAN: return VALUE_BOOLEAN_EXTERNAL;
+                case NULL: return VALUE_NULL;
+                default: return UNKNOWN;
+            }
         } else if (ti.pojoInfo != null) {
             return NodeKind.OBJECT_POJO;
         }
