@@ -12,13 +12,15 @@ import java.util.function.Supplier;
  *
  * <p>A null constructor means the type is still a valid container, but cannot
  * be instantiated using the standard zero-argument construction path.
+ * The optional external adapter supports complete-node construction in mapping
+ * only; streaming binding requires a directly populatable Java container.
  */
 public final class ContainerInfo {
     public final Class<?> clazz;
     public final NodeKind kind;
     public final MethodHandle noArgsCtorHandle;
     public final Supplier<?> noArgsCtorLambda;
-    /** Optional native construction/copy support when the Java container cannot be instantiated. */
+    /** Optional mapping/copy support for native containers; not a streaming binding constructor. */
     public final ExternalNode<Object> externalNode;
 
     /**
@@ -44,7 +46,9 @@ public final class ContainerInfo {
     }
 
     /**
-     * Creates a container instance using its registered construction path.
+     * Creates a Java container for direct put/add population.
+     * The external adapter cannot replace this constructor: it builds a
+     * complete target from an existing source node in NodeMapper.
      */
     public Object newContainer() {
         if (noArgsCtorLambda != null) {
