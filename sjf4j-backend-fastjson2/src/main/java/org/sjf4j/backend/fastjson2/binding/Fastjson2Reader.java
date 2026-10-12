@@ -124,17 +124,16 @@ public final class Fastjson2Reader extends StreamingReader {
             return NameMatcher.OBJECT_END;
         }
 
-        long hash = reader.readFieldNameHashCode();
-        peeked = null;
-
         Fastjson2NameMatcher fastMatcher = (Fastjson2NameMatcher) matcher;
-        boolean hashSafe = fastMatcher.hashSafe();
-        if (hashSafe && fastMatcher.matchesExpected(hash, expectedIndex)) {
+        if (fastMatcher.matchesExpectedRaw(reader, expectedIndex)) {
+            peeked = null;
             return expectedIndex;
         }
 
+        long hash = reader.readFieldNameHashCode();
+        peeked = null;
         int index = fastMatcher.matchHash(hash);
-        return !hashSafe && index == Fastjson2NameMatcher.HASH_COLLISION
+        return !fastMatcher.hashSafe() && index == Fastjson2NameMatcher.HASH_COLLISION
                 ? matcher.fallback(reader.getFieldName())
                 : index;
     }
