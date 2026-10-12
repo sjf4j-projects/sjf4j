@@ -41,7 +41,7 @@ jobs:
             rev="${tag%-*}"
             echo "::group::JMH ${tag}"
             java -jar /tmp/fj2-${rev}/sjf4j-testbench/build/libs/*-jmh.jar \
-              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_string_(compiled|runtime) \
+              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_string_(compiled|runtime)$' \
               -f 1 -wi 6 -w 350ms -i 10 -r 400ms -t 1 \
               -rf json -rff results/${tag}.json | tee results/${tag}.txt
             echo "::endgroup::"
@@ -57,8 +57,7 @@ jobs:
               data=json.loads(Path('results',tag+'.json').read_text())
               assert len(data)==2,(tag,len(data))
               for row in data:
-                  benchmark=row['benchmark']
-                  key=('/reversed' if '_reversed_' in benchmark else '/ordered')+('/utf8' if '_utf8_' in benchmark else '/string')+('/runtime' if benchmark.endswith('_runtime') else '/compiled')
+                  key='runtime' if row['benchmark'].endswith('_runtime') else 'compiled'
                   groups.setdefault(key,{})[tag]=row['primaryMetric']['score']
           lines=['case,base-1,candidate-1,candidate-2,base-2,baseline_mean,candidate_mean,delta_pct']
           for key,s in sorted(groups.items()):
@@ -74,42 +73,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: fastjson2-all-raw-ab
-          path: results/
-          if-no-files-found: ignore
- \
-              -f 1 -wi 3 -w 150ms -i 5 -r 250ms -t 1 \
-              -rf json -rff results/${tag}.json | tee results/${tag}.txt
-            echo "::endgroup::"
-          done
-      - name: Summarize results
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          groups={}
-          for tag in ['base-1','candidate-1','candidate-2','base-2']:
-              data=json.loads(Path('results',tag+'.json').read_text())
-              assert len(data)==8,(tag,len(data))
-              for row in data:
-                  benchmark=row['benchmark']
-                  key=('/reversed' if '_reversed_' in benchmark else '/ordered')+('/utf8' if '_utf8_' in benchmark else '/string')+('/runtime' if benchmark.endswith('_runtime') else '/compiled')
-                  groups.setdefault(key,{})[tag]=row['primaryMetric']['score']
-          lines=['case,base-1,candidate-1,candidate-2,base-2,baseline_mean,candidate_mean,delta_pct']
-          for key,s in sorted(groups.items()):
-              baseline=(s['base-1']+s['base-2'])/2
-              candidate=(s['candidate-1']+s['candidate-2'])/2
-              delta=(candidate/baseline-1)*100
-              line=f"{key},{s['base-1']:.6f},{s['candidate-1']:.6f},{s['candidate-2']:.6f},{s['base-2']:.6f},{baseline:.6f},{candidate:.6f},{delta:+.2f}"
-              print(line)
-              lines.append(line)
-          Path('results/summary.csv').write_text('\n'.join(lines)+'\n')
-          PY
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: fastjson2-all-raw-ab
+          name: fastjson2-ordered-retest
           path: results/
           if-no-files-found: ignore
