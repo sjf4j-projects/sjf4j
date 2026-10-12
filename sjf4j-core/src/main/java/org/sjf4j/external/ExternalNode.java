@@ -279,7 +279,11 @@ public interface ExternalNode<N> {
      * <p>Mutable adapters use this default implementation to populate their
      * native containers; immutable adapters may override it to build the same
      * shape atomically. The source is not modified. Nested values are converted
-     * using the supplied runtime context.</p>
+     * using the supplied runtime context.
+     *
+     * <p>This is a mapping capability, not a streaming binding constructor.
+     * StreamingIO does not route native targets through readRawNode() and this
+     * method to create immutable trees.</p>
      */
     default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
         Class<N> nativeType = nodeType();
