@@ -44,7 +44,8 @@ import java.util.function.BiPredicate;
  * <p>Supported mutations and mapped or entry values canonicalize Java
  * {@code null} to the native JSON null node. An adapter that supports
  * {@link #copy(Object)} should shallow-copy only the outer container and share
- * its children. The default {@code copy} implementation is identity. Factories
+ * its children. The default {@code copy} returns scalar nodes unchanged and
+ * rejects object, array, and unknown shapes. Factories
  * create native object or array containers for the adapter root or its
  * corresponding concrete shape. Only classification is mandatory; unsupported
  * operations fail fast by default, except where a method specifies another
@@ -236,11 +237,19 @@ public interface ExternalNode<N> {
 
     /**
      * Returns a copy of {@code node}; adapters that support copying should
-     * shallow-copy containers and share their children. The default returns
-     * {@code node} unchanged.
+     * shallow-copy containers and share their children. By default, scalar
+     * nodes are returned unchanged and other shapes are rejected.
      */
     default N copy(N node) {
-        return node;
+        switch (jsonType(node)) {
+            case NULL:
+            case STRING:
+            case NUMBER:
+            case BOOLEAN:
+                return node;
+            default:
+                throw unsupported("copy");
+        }
     }
 
     /**
