@@ -86,11 +86,15 @@ class JsonpExternalMappingTest {
         assertSame(JsonValue.NULL, target.getJsonArray("items").get(1));
         assertEquals("three", target.getJsonArray("items").getString(2));
 
-        // JsonValue is the external target; Map/List subinterfaces remain
-        // governed by the standard Java container precedence.
-        assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonObject.class, false));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(
-                Arrays.asList(1, null), JsonArray.class, false));
+        // The container kind stays Map/List, while its cached builder can
+        // materialize an immutable native target.
+        assertEquals(target, NodeMapper.convert(source, JsonObject.class, false));
+        JsonArray directArray = (JsonArray) NodeMapper.convert(
+                Arrays.asList(1, null), JsonArray.class, false);
+        assertEquals(2, directArray.size());
+        assertSame(JsonValue.NULL, directArray.get(1));
+        assertEquals(target, Nodes.to(source, JsonObject.class));
+        assertEquals(directArray, Nodes.to(Arrays.asList(1, null), JsonArray.class));
         assertNull(NodeMapper.convert(null, JsonValue.class, false));
         assertInstanceOf(JsonString.class, NodeMapper.convert("x", JsonString.class, false));
         assertEquals(7, ((JsonNumber) NodeMapper.convert(7, JsonNumber.class, false)).intValue());
@@ -164,13 +168,20 @@ class JsonpExternalMappingTest {
         assertSame(source, NodeMapper.convert(source, JsonObject.class, false));
         assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, false));
 
-        // JSON-P Map/List implementations are immutable, and no external-adapter
-        // fallback is permitted when Java container deep-copy construction fails.
-        assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonValue.class, true));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(source, JsonObject.class, true));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(nativeArray, JsonArray.class, true));
-        assertThrows(BindingException.class, () -> Nodes.copy(source));
-        assertThrows(BindingException.class, () -> Nodes.copy(nativeArray));
+        // The cached native adapter supplies construction/copy without changing
+        // the container's NodeKind or Java Map/List read semantics.
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonObject.class).containerInfo.externalNode);
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonArray.class).containerInfo.externalNode);
+        assertSame(source, NodeMapper.convert(source, JsonValue.class, true));
+        assertSame(source, NodeMapper.convert(source, JsonObject.class, true));
+        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, true));
+        JsonObject shallowObject = Nodes.copy(source);
+        JsonArray shallowArray = Nodes.copy(nativeArray);
+        assertNotSame(source, shallowObject);
+        assertNotSame(nativeArray, shallowArray);
+        assertEquals(source, shallowObject);
+        assertEquals(nativeArray, shallowArray);
+        assertSame(source.get("nested"), shallowObject.get("nested"));
     }
 
     @NodeValue

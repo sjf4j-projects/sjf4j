@@ -28,6 +28,8 @@ import java.util.function.BiPredicate;
  * JSON-P {@link JsonValue} implementation of the external node contract.
  * Immutable JSON-P trees can be used as sources and constructed as targets
  * via JSON-P builders without exposing mutable intermediate nodes.
+ * This builder conversion is for NodeMapper; JSON-P native target types are
+ * not supported by streaming binding (existing native sources can be written).
  */
 public final class JsonpNode implements ExternalNode<JsonValue> {
     @Override

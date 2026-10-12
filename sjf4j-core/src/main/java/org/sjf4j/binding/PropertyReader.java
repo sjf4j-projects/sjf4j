@@ -134,6 +134,9 @@ public interface PropertyReader {
          * --------------------------------------------------------------
          */
 
+        // Binding uses directly populated Map/List implementations only.
+        // ExternalNode builders are reserved for NodeMapper conversions.
+
         if (Map.class.isAssignableFrom(fieldBoxed)) {
             Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
             Class<?> valueBoxed = Types.rawBox(valueType);

@@ -118,12 +118,20 @@ class JsonpBinderTest {
         JsonpBinder binder = new JsonpBinder();
         assertEquals("text", binder.readNode("\"text\"", String.class));
         assertNull(binder.readNode("null", JsonValue.class));
+
+        // Binding only constructs directly mutable Map/List targets. JSON-P
+        // builders are available through NodeMapper, not through StreamingIO.
         assertThrows(BindingException.class, () -> binder.readNode("{}", JsonObject.class));
+        assertThrows(BindingException.class, () -> binder.readNode("[true,{\"n\":1}]", JsonArray.class));
         assertThrows(BindingException.class, () -> binder.readNode("{}", JsonStructure.class));
         assertThrows(BindingException.class, () -> binder.readNode("{}", JsonValue.class));
-        assertThrows(BindingException.class, () -> binder.readNode("[true,{\"n\":1}]", JsonArray.class));
         assertThrows(BindingException.class, () -> binder.readNode("\"text\"", JsonValue.class));
         assertThrows(BindingException.class, () -> binder.readNode("{\"tree\":{}}", TreeDocument.class));
+        assertThrows(BindingException.class, () -> binder.readNode("{\"values\":[1]}", TreeDocument.class));
+
+        // Regular Java container targets are still streamed and populated.
+        assertTrue(((Map<?, ?>) binder.readNode("{\"k\":1}", Map.class)).containsKey("k"));
+        assertEquals(Arrays.asList(true, null), binder.readNode("[true,null]", List.class));
     }
 
     @Test
