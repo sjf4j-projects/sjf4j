@@ -111,7 +111,8 @@ final class BackendSpec {
     }
 
     boolean usesExpectedNameMatch() {
-        return backend == Backend.JACKSON2;
+        return backend == Backend.JACKSON2
+                || backend == Backend.FASTJSON2;
     }
 
 }
