@@ -109,7 +109,7 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         try {
             return new Jackson3Writer(
                     factory.createGenerator(WRITE_CONTEXT, output), output, recycler);
-        } catch (IOException | RuntimeException e) {
+        } catch (RuntimeException e) {
             recycler.releaseToPool();
             throw e;
         }
