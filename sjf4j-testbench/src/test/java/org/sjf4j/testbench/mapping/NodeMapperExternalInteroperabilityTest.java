@@ -37,7 +37,7 @@ class NodeMapperExternalInteroperabilityTest {
     }
 
     @Test
-    void acceptsJsonpAsSourceButRejectsJsonpAsTarget() {
+    void convertsJsonpBidirectionallyAcrossJacksonAndGson() {
         jakarta.json.JsonObject jsonp = Json.createObjectBuilder()
                 .add("amount", new BigDecimal("0.00120"))
                 .add("items", Json.createArrayBuilder().add("x").addNull())
@@ -50,7 +50,24 @@ class NodeMapperExternalInteroperabilityTest {
 
         Map<?, ?> raw = (Map<?, ?>) NodeMapper.convertToRaw(jsonp, RuntimeContext.EMPTY);
         assertEquals(Arrays.asList("x", null), raw.get("items"));
-        assertThrows(org.sjf4j.exception.BindingException.class,
-                () -> NodeMapper.convert(j2, jakarta.json.JsonValue.class, false));
+        jakarta.json.JsonObject back = (jakarta.json.JsonObject)
+                NodeMapper.convert(j2, jakarta.json.JsonValue.class, false);
+        assertEquals(0, back.getJsonNumber("amount").bigDecimalValue()
+                .compareTo(new BigDecimal("0.00120")));
+        assertEquals("x", back.getJsonArray("items").getString(0));
+        assertSame(jakarta.json.JsonValue.NULL, back.getJsonArray("items").get(1));
+
+        JsonElement gson = com.google.gson.JsonParser.parseString(
+                "{\"flag\":true,\"items\":[1,null,2]}");
+        jakarta.json.JsonObject fromGson = (jakarta.json.JsonObject)
+                NodeMapper.convert(gson, jakarta.json.JsonValue.class, false);
+        assertTrue(fromGson.getBoolean("flag"));
+        assertEquals(2, fromGson.getJsonArray("items").getInt(2));
+        assertSame(jakarta.json.JsonValue.NULL, fromGson.getJsonArray("items").get(1));
+
+        com.fasterxml.jackson.databind.JsonNode jacksonAgain = (com.fasterxml.jackson.databind.JsonNode)
+                NodeMapper.convert(fromGson, com.fasterxml.jackson.databind.JsonNode.class, false);
+        assertTrue(jacksonAgain.get("flag").booleanValue());
+        assertTrue(jacksonAgain.get("items").get(1).isNull());
     }
 }

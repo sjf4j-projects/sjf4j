@@ -32,6 +32,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -82,27 +83,41 @@ class JsonpNodeTest {
         assertThrows(UnsupportedOperationException.class,
                 () -> Nodes.addInArray(array, JsonValue.TRUE));
 
-        // Factory/copy follows the same Map/List contract. JSON-P has no
-        // constructible mutable Java container; there is no external fallback.
-        assertThrows(BindingException.class, () -> Nodes.copy(object));
-        assertThrows(BindingException.class, () -> Nodes.copy(array));
+        // Mapping/copy may use JSON-P builders without changing Map/List
+        // classification. Shallow copies share their nested JSON values.
+        JsonObject objectCopy = Nodes.copy(object);
+        JsonArray arrayCopy = Nodes.copy(array);
+        assertNotSame(object, objectCopy);
+        assertNotSame(array, arrayCopy);
+        assertEquals(object, objectCopy);
+        assertEquals(array, arrayCopy);
+        assertSame(object.get("value"), objectCopy.get("value"));
+        assertSame(array.get(0), arrayCopy.get(0));
+
+        JsonObject mappedObject = (JsonObject) NodeMapper.convert(
+                java.util.Collections.singletonMap("value", 7), JsonObject.class, false);
+        JsonArray mappedArray = (JsonArray) NodeMapper.convert(
+                Arrays.asList(1, 2), JsonArray.class, false);
+        assertEquals(7, mappedObject.getInt("value"));
+        assertEquals(2, mappedArray.getInt(1));
+
+        // Node factories still require directly mutable containers; builder
+        // conversion is a mapping capability, not an empty-node factory.
         assertThrows(BindingException.class, () -> Nodes.createObjectNode(JsonObject.class));
         assertThrows(BindingException.class, () -> Nodes.createArrayNode(JsonArray.class));
-        assertThrows(BindingException.class, () ->
-                NodeMapper.convert(java.util.Collections.singletonMap("value", 7),
-                        JsonObject.class, false));
-        assertThrows(BindingException.class, () ->
-                NodeMapper.convert(Arrays.asList(1, 2), JsonArray.class, false));
     }
 
     @Test
-    void registryNeverAssignsExternalAdapterToJavaCollectionTypes() {
+    void registryPreservesJavaContainerClassificationWithMappingAdapter() {
         JsonObject object = value("{\"n\":1}").asJsonObject();
         JsonArray array = value("[1]").asJsonArray();
         assertNotNull(TypeRegistry.registerTypeInfo(object.getClass()).containerInfo);
         assertNotNull(TypeRegistry.registerTypeInfo(array.getClass()).containerInfo);
         assertNotNull(TypeRegistry.registerTypeInfo(JsonObject.class).containerInfo);
         assertNotNull(TypeRegistry.registerTypeInfo(JsonArray.class).containerInfo);
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonObject.class).containerInfo.externalNode);
+        assertNotNull(TypeRegistry.registerTypeInfo(JsonArray.class).containerInfo.externalNode);
+        // The adapter lives in ContainerInfo, not the top-level TypeInfo.
         assertNull(TypeRegistry.registerTypeInfo(object.getClass()).externalNode);
         assertNull(TypeRegistry.registerTypeInfo(array.getClass()).externalNode);
 

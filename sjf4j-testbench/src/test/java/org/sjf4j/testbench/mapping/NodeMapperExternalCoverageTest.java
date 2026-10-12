@@ -301,10 +301,27 @@ class NodeMapperExternalCoverageTest {
         assertNotSame(child, copied.get("child"));
         assertSame(child, NodeMapper.convert(child, com.fasterxml.jackson.databind.JsonNode.class, false));
         assertNotSame(child, NodeMapper.convert(child, com.fasterxml.jackson.databind.JsonNode.class, true));
+
+        // Default ExternalNode.convert now owns array construction too. Mutable
+        // native children must retain the same shallow/deep-copy distinction.
+        com.fasterxml.jackson.databind.JsonNode retainedArray = (com.fasterxml.jackson.databind.JsonNode)
+                NodeMapper.convert(Arrays.asList(child), com.fasterxml.jackson.databind.JsonNode.class, false);
+        com.fasterxml.jackson.databind.JsonNode copiedArray = (com.fasterxml.jackson.databind.JsonNode)
+                NodeMapper.convert(Arrays.asList(child), com.fasterxml.jackson.databind.JsonNode.class, true);
+        assertSame(child, retainedArray.get(0));
+        assertNotSame(child, copiedArray.get(0));
+
+        JsonElement gsonChild = JsonParser.parseString("{\"n\":1}");
+        JsonElement gsonRetained = (JsonElement) NodeMapper.convert(
+                Arrays.asList(gsonChild), JsonElement.class, false);
+        JsonElement gsonCopied = (JsonElement) NodeMapper.convert(
+                Arrays.asList(gsonChild), JsonElement.class, true);
+        assertSame(gsonChild, gsonRetained.getAsJsonArray().get(0));
+        assertNotSame(gsonChild, gsonCopied.getAsJsonArray().get(0));
     }
 
     @Test
-    void convertsJsonpSourceAndLeavesTargetConstructionUnsupported() {
+    void convertsJsonpBidirectionallyAndPreservesStandardMapListPrecedence() {
         jakarta.json.JsonObject source = Json.createObjectBuilder()
                 .add("name", "Ada")
                 .add("flag", true)
@@ -332,11 +349,17 @@ class NodeMapperExternalCoverageTest {
         assertEquals(1, ((Number) rawList.get(0)).intValue());
         assertNull(rawList.get(1));
         assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(
-                Arrays.asList(1, 2), jakarta.json.JsonValue.class, false));
-        // JSON-P deliberately omits native value-node construction as well.
-        assertThrows(BindingException.class, () -> NodeMapper.convert(
-                "value", jakarta.json.JsonValue.class, false));
+        jakarta.json.JsonArray nativeArray = (jakarta.json.JsonArray) NodeMapper.convert(
+                Arrays.asList(1, 2), jakarta.json.JsonValue.class, false);
+        assertEquals(2, nativeArray.size());
+        assertEquals(2, nativeArray.getInt(1));
+        jakarta.json.JsonValue nativeString = (jakarta.json.JsonValue) NodeMapper.convert(
+                "value", jakarta.json.JsonValue.class, false);
+        assertEquals("value", ((jakarta.json.JsonString) nativeString).getString());
+        jakarta.json.JsonObject remapped = (jakarta.json.JsonObject)
+                NodeMapper.convert(j2, jakarta.json.JsonValue.class, false);
+        assertEquals("Ada", remapped.getString("name"));
+        assertSame(jakarta.json.JsonValue.NULL, remapped.getJsonArray("items").get(1));
     }
 
     @Test

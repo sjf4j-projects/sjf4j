@@ -122,10 +122,10 @@ public abstract class JsonContainer {
     public void deepPruneNulls() {
         Nodes.walk(this, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1,
                 (path, node) -> {
-                    if (node instanceof JsonObject) {
-                        ((JsonObject) node).removeIf(e -> e.getValue() == null);
-                    } else if (node instanceof Map) {
+                    if (node instanceof Map) {
                         ((Map<?, ?>) node).entrySet().removeIf(e -> e.getValue() == null);
+                    } else if (node instanceof JsonObject) {
+                        ((JsonObject) node).removeIf(e -> e.getValue() == null);
                     }
                     return true;
                 });
