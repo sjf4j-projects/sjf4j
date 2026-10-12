@@ -11,7 +11,13 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 
-/** JSON binder backed directly by a Jakarta JSON-P {@link JsonProvider}. */
+/**
+ * Streaming JSON binder backed by a Jakarta JSON-P {@link JsonProvider}.
+ *
+ * <p>Reads POJOs and directly populated Java containers. Immutable JSON-P
+ * native targets require builders and are supported by NodeMapper conversion,
+ * not streaming reads. Existing JSON-P native nodes can still be written.
+ */
 public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
 
     private final JsonProvider provider;
