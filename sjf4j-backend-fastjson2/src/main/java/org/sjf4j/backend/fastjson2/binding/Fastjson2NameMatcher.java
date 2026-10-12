@@ -13,6 +13,7 @@ public final class Fastjson2NameMatcher extends NameMatcher {
     static final int HASH_COLLISION = -3;
 
     private final long[] hashes;
+    private final long[] expectedHashes;
     private final int[] indexes;
     private final int mask;
     private final boolean hashSafe;
@@ -51,12 +52,14 @@ public final class Fastjson2NameMatcher extends NameMatcher {
         }
 
         this.hashes = new long[capacity];
+        this.expectedHashes = new long[size()];
         this.indexes = new int[capacity];
         Arrays.fill(this.indexes, UNKNOWN);
         this.mask = capacity - 1;
 
         boolean safe = true;
         for (int i = 0; i < size(); i++) {
+            expectedHashes[i] = Fnv.hashCode64(name(i));
             safe &= add(name(i), i);
             String[] propertyAliases = writableProperties != null
                     ? writableProperties[i].alias
@@ -93,6 +96,11 @@ public final class Fastjson2NameMatcher extends NameMatcher {
 
     boolean hashSafe() {
         return hashSafe;
+    }
+
+    boolean matchesExpected(long hash, int index) {
+        return index >= 0 && index < expectedHashes.length
+                && expectedHashes[index] == hash;
     }
 
     int matchHash(long hash) {
