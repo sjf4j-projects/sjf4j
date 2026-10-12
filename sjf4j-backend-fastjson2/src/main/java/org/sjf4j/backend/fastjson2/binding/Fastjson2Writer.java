@@ -193,6 +193,14 @@ public final class Fastjson2Writer extends StreamingWriter {
         }
     }
 
+    /**
+     * Returns the buffered JSON when this writer was created without an external output.
+     */
+    @Override
+    public String toString() {
+        return writer.toString();
+    }
+
     @Override
     public void close() throws IOException {
         flush();

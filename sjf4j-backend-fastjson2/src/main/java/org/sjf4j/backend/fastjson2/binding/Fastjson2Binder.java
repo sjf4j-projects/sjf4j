@@ -102,9 +102,9 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext), output);
     }
 
-    /** Creates an in-memory native writer with this binder's configured context. */
-    public JSONWriter createNativeWriter() {
-        return JSONWriter.of(writerContext);
+    /** Creates an in-memory writer using this binder's configured context. */
+    public Fastjson2Writer createWriter() {
+        return new Fastjson2Writer(JSONWriter.of(writerContext));
     }
 
     /**

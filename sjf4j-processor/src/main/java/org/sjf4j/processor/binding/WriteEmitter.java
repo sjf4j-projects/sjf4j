@@ -99,14 +99,6 @@ final class WriteEmitter {
             NameAllocator names) {
 
         switch (backend.backend()) {
-            case JACKSON2:
-                emitJacksonStringMethod(out, value, source, names,
-                        "com.fasterxml.jackson.core");
-                return;
-            case JACKSON3:
-                emitJacksonStringMethod(out, value, source, names,
-                        "tools.jackson.core");
-                return;
             case FASTJSON2:
                 emitFastjson2StringMethod(out, value, source, names);
                 return;
@@ -140,53 +132,20 @@ final class WriteEmitter {
     }
 
 
-    private void emitJacksonStringMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            NameAllocator names,
-            String corePackage) {
-
-        String recycler = names.newName("recycler");
-        String output = names.newName("output");
-        String writer = names.newName("writer");
-
-        out.line(corePackage + ".util.BufferRecycler " + recycler +
-                " = this.binder.acquireBufferRecycler();");
-        out.beginBlock("try");
-        out.line(corePackage + ".io.SegmentedStringWriter " + output +
-                " = new " + corePackage +
-                ".io.SegmentedStringWriter(" + recycler + ");");
-        out.beginBlock("try (" + backend.writerType() + " " + writer +
-                " = this.binder.createWriter(" + output + "))");
-
-        emitWriteBody(out, value, source, writer);
-
-        out.endBlock();
-        out.line("return " + output + ".getAndClear();");
-        out.endBlock(" finally {");
-        out.indent();
-        out.line(recycler + ".releaseToPool();");
-        out.endBlock();
-    }
-
     private void emitFastjson2StringMethod(
             JavaWriter out,
             BindingValue value,
             String source,
             NameAllocator names) {
 
-        String output = names.newName("output");
         String writer = names.newName("writer");
 
-        out.beginBlock("try (com.alibaba.fastjson2.JSONWriter " + output +
-                " = this.binder.createNativeWriter())");
-        out.line(backend.writerType() + " " + writer +
-                " = this.binder.createWriter(" + output + ");");
+        out.beginBlock("try (" + backend.writerType() + " " + writer +
+                " = this.binder.createWriter())");
 
         emitWriteBody(out, value, source, writer);
 
-        out.line("return " + output + ".toString();");
+        out.line("return " + writer + ".toString();");
         out.endBlock();
     }
 
