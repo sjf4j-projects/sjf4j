@@ -425,6 +425,11 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Map<String, T>) node;
         }
+        // Node conversion may use a native builder; streaming binding may not.
+        if (mapType != Map.class && mapType != LinkedHashMap.class
+                && TypeRegistry.registerTypeInfo(mapType).containerInfo.externalNode != null) {
+            return (Map<String, T>) NodeMapper.convert(node, mapType, false);
+        }
         Map<String, T> map = TypeRegistry.newMapContainer(mapType, 0, false);
         Nodes.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz)));
         return map;
@@ -483,6 +488,10 @@ public final class Nodes {
                 && (listType == null || listType.isInstance(node))
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (List<T>) node;
+        }
+        if (listType != List.class && listType != ArrayList.class
+                && TypeRegistry.registerTypeInfo(listType).containerInfo.externalNode != null) {
+            return (List<T>) NodeMapper.convert(node, listType, false);
         }
 
         List<T> list = TypeRegistry.newListContainer(listType, 0, false);
@@ -676,20 +685,11 @@ public final class Nodes {
             else return toBoolean(node);
         }
         if (Map.class.isAssignableFrom(clazz)) {
-            // Native immutable targets are constructed by NodeMapper.
-            if (clazz != Map.class && clazz != LinkedHashMap.class
-                    && TypeRegistry.registerTypeInfo(clazz).containerInfo.externalNode != null) {
-                return NodeMapper.convert(node, type, false);
-            }
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             return _toMap(node, clazz, vc);
         }
         if (List.class.isAssignableFrom(clazz)) {
-            if (clazz != List.class && clazz != ArrayList.class
-                    && TypeRegistry.registerTypeInfo(clazz).containerInfo.externalNode != null) {
-                return NodeMapper.convert(node, type, false);
-            }
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             return _toList(node, clazz, vc);
