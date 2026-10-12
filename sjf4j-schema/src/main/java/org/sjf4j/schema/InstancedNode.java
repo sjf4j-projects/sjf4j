@@ -133,7 +133,12 @@ public final class InstancedNode {
                 }
                 kind = NodeKind.VALUE_BINDING;
             } else if (ti.externalNode != null) {
-                kind = ti.externalNode.nodeKind(node);
+                JsonType jsonType = ti.externalNode.jsonType(node);
+                if (jsonType == JsonType.INTEGER) jsonType = JsonType.UNKNOWN;
+                if (jsonType.isScalar() && reusedLeaf != null) {
+                    return reusedLeaf.reuse(node, jsonType, false);
+                }
+                return new InstancedNode(node, jsonType, false);
             } else if (ti.pojoInfo != null) {
                 kind = NodeKind.OBJECT_POJO;
             }
