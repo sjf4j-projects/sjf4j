@@ -134,7 +134,7 @@ public final class NodeMapper {
                         return _convertToExternal(node, toBoxed, ci.externalNode, deepCopy, ps, context);
                     }
                 }
-                return _convertFromSource(node, toType, toBoxed, deepCopy, ps, context);
+                return _convertFromPlain(node, toType, toBoxed, deepCopy, ps, context);
             }
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(toBoxed);
@@ -149,7 +149,7 @@ public final class NodeMapper {
             if (ti.externalNode != null) {
                 return _convertToExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
             }
-            return _convertFromSource(node, toType, toBoxed, deepCopy, ps, context);
+            return _convertFromPlain(node, toType, toBoxed, deepCopy, ps, context);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -190,9 +190,9 @@ public final class NodeMapper {
     }
 
 
-    /** Converts from the source's representation, with Java/OBNT types first. */
+    /** Converts through the plain Java/OBNT path, dispatching on the source representation. */
     @SuppressWarnings("unchecked")
-    private static Object _convertFromSource(Object node, Type toType, Class<?> toBoxed,
+    private static Object _convertFromPlain(Object node, Type toType, Class<?> toBoxed,
                                              boolean deepCopy, PathSegment ps, RuntimeContext context) {
         if (node instanceof String) {
             return _convertString(node.toString(), toBoxed, ps);
