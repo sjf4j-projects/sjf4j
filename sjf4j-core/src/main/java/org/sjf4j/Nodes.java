@@ -676,22 +676,19 @@ public final class Nodes {
             else return toBoolean(node);
         }
         if (Map.class.isAssignableFrom(clazz)) {
-            if (clazz != Map.class && clazz != LinkedHashMap.class) {
-                ContainerInfo ci = TypeRegistry.registerTypeInfo(clazz).containerInfo;
-                if (ci != null && ci.externalNode != null) {
-                    return NodeMapper.convert(node, type, false);
-                }
+            // Native immutable targets are constructed by NodeMapper.
+            if (clazz != Map.class && clazz != LinkedHashMap.class
+                    && TypeRegistry.registerTypeInfo(clazz).containerInfo.externalNode != null) {
+                return NodeMapper.convert(node, type, false);
             }
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             return _toMap(node, clazz, vc);
         }
         if (List.class.isAssignableFrom(clazz)) {
-            if (clazz != List.class && clazz != ArrayList.class) {
-                ContainerInfo ci = TypeRegistry.registerTypeInfo(clazz).containerInfo;
-                if (ci != null && ci.externalNode != null) {
-                    return NodeMapper.convert(node, type, false);
-                }
+            if (clazz != List.class && clazz != ArrayList.class
+                    && TypeRegistry.registerTypeInfo(clazz).containerInfo.externalNode != null) {
+                return NodeMapper.convert(node, type, false);
             }
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
@@ -883,12 +880,10 @@ public final class Nodes {
                 return (T) new LinkedHashMap<>((Map<String, Object>) node);
             }
             ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
-            if (ci != null && ci.externalNode != null) {
+            if (ci.externalNode != null) {
                 return (T) ci.externalNode.copy(node);
             }
-            Map<String, Object> map = ci != null
-                    ? (Map<String, Object>) ci.newContainer()
-                    : TypeRegistry.newMapContainer(rawClazz, 0, false);
+            Map<String, Object> map = (Map<String, Object>) ci.newContainer();
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
@@ -897,12 +892,10 @@ public final class Nodes {
                 return (T) new ArrayList<>((List<Object>) node);
             }
             ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
-            if (ci != null && ci.externalNode != null) {
+            if (ci.externalNode != null) {
                 return (T) ci.externalNode.copy(node);
             }
-            List<Object> list = ci != null
-                    ? (List<Object>) ci.newContainer()
-                    : TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), false);
+            List<Object> list = (List<Object>) ci.newContainer();
             list.addAll((List<Object>) node);
             return (T) list;
         }
