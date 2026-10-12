@@ -253,11 +253,11 @@ final class ReadEmitter {
             case 3:
                 return fn + ")";
             case 4:
-                return fn + "(byte) 0x" + Long.toHexString(suffix) + ")";
+                return fn + "(byte) 0x" + Long.toHexString(suffix & 0xffL) + ")";
             case 5:
             case 6:
             case 7:
-                return fn + "0x" + Long.toHexString(suffix) + ")";
+                return fn + "0x" + Long.toHexString(suffix & 0xffffffffL) + ")";
             case 8:
                 return fn + "0x" + Long.toHexString(suffix & 0xffffffffL)
                         + ", (byte) 0x" + Long.toHexString(suffix >>> 32) + ")";
