@@ -10,10 +10,14 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
+import org.sjf4j.RuntimeContext;
+import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.Types;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -22,13 +26,58 @@ import java.util.function.BiPredicate;
 
 /**
  * JSON-P {@link JsonValue} implementation of the external node contract.
- * Existing immutable JSON-P nodes can be used as sources; this adapter does not
- * construct JSON-P nodes as mapper targets.
+ * Immutable JSON-P trees can be used as sources and constructed as targets
+ * via JSON-P builders without exposing mutable intermediate nodes.
+ * This builder conversion is for NodeMapper; JSON-P native target types are
+ * not supported by streaming binding (existing native sources can be written).
  */
 public final class JsonpNode implements ExternalNode<JsonValue> {
     @Override
     public Class<JsonValue> nodeType() {
         return JsonValue.class;
+    }
+
+    @Override
+    public Object createValueNode(Object value) {
+        if (value == null) return JsonValue.NULL;
+        if (value instanceof JsonValue) return value;
+        if (value instanceof Boolean) return (Boolean) value ? JsonValue.TRUE : JsonValue.FALSE;
+        if (value instanceof String) return Json.createValue((String) value);
+        if (value instanceof BigDecimal) return Json.createValue((BigDecimal) value);
+        if (value instanceof BigInteger) return Json.createValue((BigInteger) value);
+        if (value instanceof Float || value instanceof Double) {
+            return Json.createValue(((Number) value).doubleValue());
+        }
+        if (value instanceof Byte || value instanceof Short || value instanceof Integer) {
+            return Json.createValue(((Number) value).intValue());
+        }
+        if (value instanceof Long) return Json.createValue(((Long) value).longValue());
+        if (value instanceof Number) return Json.createValue(new BigDecimal(value.toString()));
+        throw new NodeException("cannot create JSON-P scalar from " + Types.name(value));
+    }
+
+    @Override
+    public Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {
+        JsonType shape = JsonType.of(source);
+        if (shape.isObject()) {
+            JsonObjectBuilder builder = Json.createObjectBuilder();
+            Nodes.forEachObject(source, (name, value) -> {
+                JsonValue child = value == null ? JsonValue.NULL :
+                        (JsonValue) NodeMapper.convert(value, JsonValue.class, false, context);
+                builder.add(name, child);
+            });
+            return builder.build();
+        }
+        if (shape.isArray()) {
+            JsonArrayBuilder builder = Json.createArrayBuilder();
+            Nodes.forEachArray(source, (index, value) -> {
+                JsonValue child = value == null ? JsonValue.NULL :
+                        (JsonValue) NodeMapper.convert(value, JsonValue.class, false, context);
+                builder.add(child);
+            });
+            return builder.build();
+        }
+        throw new NodeException("expected object or array node, but was " + Types.name(source));
     }
 
     @Override

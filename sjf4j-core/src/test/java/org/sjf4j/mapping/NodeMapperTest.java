@@ -35,7 +35,9 @@ class NodeMapperTest {
     void convertClassHandlesNullScalarsAndEnums() {
         assertNull(NodeMapper.convert(null, String.class, false));
         assertEquals(Integer.valueOf(12), NodeMapper.convert(12L, Integer.class, false));
-        assertEquals(Character.valueOf('a'), NodeMapper.convert("abc", Character.class, false));
+        assertEquals(Character.valueOf('a'), NodeMapper.convert("a", Character.class, false));
+        assertThrows(BindingException.class, () -> NodeMapper.convert("abc", Character.class, false));
+        assertThrows(BindingException.class, () -> NodeMapper.convert("", Character.class, false));
         assertEquals("a", NodeMapper.convert('a', String.class, false));
         assertEquals(Boolean.TRUE, NodeMapper.convert(true, Boolean.class, false));
         assertEquals(Status.OK, NodeMapper.convert("OK", Status.class, false));

@@ -4,6 +4,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.node.ContainerInfo;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.PojoInfo;
 import org.sjf4j.node.PropertyInfo;
@@ -96,6 +97,7 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = toString(node);
+        if (s == null) return null;
         if (s.length() != 1) {
             throw new NodeException(
                     "cannot convert to char: expected single-character string, but length was " + s.length());
@@ -122,6 +124,7 @@ public final class Nodes {
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return (E) node;
         String s = toString(node);
+        if (s == null) return null;
         try {
             return Enum.valueOf(enumClazz, s);
         } catch (IllegalArgumentException e) {
@@ -138,6 +141,7 @@ public final class Nodes {
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return (E) node;
         String s = asString(node);
+        if (s == null) return null;
         try {
             return Enum.valueOf(enumClazz, s);
         } catch (Exception e) {
@@ -421,6 +425,11 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Map<String, T>) node;
         }
+        // Node conversion may use a native builder; streaming binding may not.
+        if (mapType != Map.class && mapType != LinkedHashMap.class
+                && TypeRegistry.registerTypeInfo(mapType).containerInfo.externalNode != null) {
+            return (Map<String, T>) NodeMapper.convert(node, mapType, false);
+        }
         Map<String, T> map = TypeRegistry.newMapContainer(mapType, 0, false);
         Nodes.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz)));
         return map;
@@ -479,6 +488,10 @@ public final class Nodes {
                 && (listType == null || listType.isInstance(node))
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (List<T>) node;
+        }
+        if (listType != List.class && listType != ArrayList.class
+                && TypeRegistry.registerTypeInfo(listType).containerInfo.externalNode != null) {
+            return (List<T>) NodeMapper.convert(node, listType, false);
         }
 
         List<T> list = TypeRegistry.newListContainer(listType, 0, false);
@@ -611,11 +624,7 @@ public final class Nodes {
         Asserts.notNull(clazz, "clazz");
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
             throw new IllegalArgumentException("expected JAJO subtype, but was " + clazz.getName());
-        if (node == null) return null;
-        PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(clazz);
-        JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
-        forEachArray(node, jajo::add);
-        return (T) jajo;
+        return (T) NodeMapper.convert(node, clazz, false);
     }
 
 
@@ -867,12 +876,26 @@ public final class Nodes {
 
         Class<?> rawClazz = node.getClass();
         if (node instanceof Map) {
-            Map<String, Object> map = TypeRegistry.newMapContainer(rawClazz, 0, false);
+            if (rawClazz == LinkedHashMap.class) {
+                return (T) new LinkedHashMap<>((Map<String, Object>) node);
+            }
+            ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
+            if (ci.externalNode != null) {
+                return (T) ci.externalNode.copy(node);
+            }
+            Map<String, Object> map = (Map<String, Object>) ci.newContainer();
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
         if (node instanceof List) {
-            List<Object> list = TypeRegistry.newListContainer(rawClazz, ((List<?>) node).size(), false);
+            if (rawClazz == ArrayList.class) {
+                return (T) new ArrayList<>((List<Object>) node);
+            }
+            ContainerInfo ci = TypeRegistry.registerTypeInfo(rawClazz).containerInfo;
+            if (ci.externalNode != null) {
+                return (T) ci.externalNode.copy(node);
+            }
+            List<Object> list = (List<Object>) ci.newContainer();
             list.addAll((List<Object>) node);
             return (T) list;
         }
@@ -1091,7 +1114,7 @@ public final class Nodes {
             return;
         }
         if (ti.externalNode != null) {
-            switch (ti.externalNode.jsonTypeOfClass(rawClazz)) {
+            switch (ti.externalNode.jsonType(node)) {
                 case OBJECT:
                     sb.append("@").append(node.getClass().getSimpleName()).append("{");
                     int[] idx = new int[1];
@@ -1604,6 +1627,7 @@ public final class Nodes {
                     return i < len;
                 }
                 public Object next() {
+                    if (i >= len) throw new NoSuchElementException();
                     return Array.get(node, i++);
                 }
             };

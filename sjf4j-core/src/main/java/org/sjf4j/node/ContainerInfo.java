@@ -2,6 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.external.ExternalNode;
 
 import java.lang.invoke.MethodHandle;
 import java.util.function.Supplier;
@@ -11,18 +12,29 @@ import java.util.function.Supplier;
  *
  * <p>A null constructor means the type is still a valid container, but cannot
  * be instantiated using the standard zero-argument construction path.
+ * The optional external adapter supports complete-node construction in mapping
+ * only; streaming binding requires a directly populatable Java container.
  */
 public final class ContainerInfo {
     public final Class<?> clazz;
     public final NodeKind kind;
     public final MethodHandle noArgsCtorHandle;
     public final Supplier<?> noArgsCtorLambda;
+    /** Optional mapping/copy support for native containers; not a streaming binding constructor. */
+    public final ExternalNode<Object> externalNode;
 
     /**
      * Creates metadata for a supported container type.
      */
     public ContainerInfo(Class<?> clazz, NodeKind kind,
                          MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda) {
+        this(clazz, kind, noArgsCtorHandle, noArgsCtorLambda, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public ContainerInfo(Class<?> clazz, NodeKind kind,
+                         MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
+                         ExternalNode<?> externalNode) {
         if (kind != NodeKind.OBJECT_MAP && kind != NodeKind.ARRAY_LIST && kind != NodeKind.ARRAY_SET) {
             throw new BindingException("invalid container kind '" + kind + "' for " + clazz.getName());
         }
@@ -30,10 +42,13 @@ public final class ContainerInfo {
         this.kind = kind;
         this.noArgsCtorHandle = noArgsCtorHandle;
         this.noArgsCtorLambda = noArgsCtorLambda;
+        this.externalNode = (ExternalNode<Object>) externalNode;
     }
 
     /**
-     * Creates a container instance using its registered construction path.
+     * Creates a Java container for direct put/add population.
+     * The external adapter cannot replace this constructor: it builds a
+     * complete target from an existing source node in NodeMapper.
      */
     public Object newContainer() {
         if (noArgsCtorLambda != null) {

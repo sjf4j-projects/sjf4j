@@ -6,6 +6,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.node.Types;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -273,25 +274,37 @@ public interface ExternalNode<N> {
     }
 
     /**
-     * Creates a complete native object from any OBNT object source.
+     * Constructs a complete native object or array from an OBNT source.
      *
-     * <p>The default implementation constructs a mutable container and converts
-     * each source property into the adapter's native node representation before
-     * inserting it. Immutable/schema-driven representations may override this
-     * method to perform their own atomic construction (e.g. via a builder).
-     * The source is never modified.</p>
+     * <p>Mutable adapters use this default implementation to populate their
+     * native containers; immutable adapters may override it to build the same
+     * shape atomically. The source is not modified. Nested values are converted
+     * using the supplied runtime context.
      *
-     * <p>Conversion honors the caller's runtime context, including ValueCodec
-     * registrations. This operation is distinct from mutating an existing
-     * external node.</p>
+     * <p>This is a mapping capability, not a streaming binding constructor.
+     * StreamingIO does not route native targets through readRawNode() and this
+     * method to create immutable trees.</p>
      */
-    default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
-        N target = nodeType().cast(createObjectNode(clazz));
-        Nodes.forEachObject(source, (name, value) ->
-                putInObject(target, name,
-                        NodeMapper.convert(value, nodeType(), false, context)));
-        return target;
+    default Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {
+        Class<N> nativeType = nodeType();
+        switch (JsonType.of(source)) {
+            case OBJECT: {
+                N target = nativeType.cast(createObjectNode(clazz));
+                Nodes.forEachObject(source, (name, value) ->
+                        putInObject(target, name, NodeMapper.convert(value, nativeType, false, context)));
+                return target;
+            }
+            case ARRAY: {
+                N target = nativeType.cast(createArrayNode(clazz));
+                Nodes.forEachArray(source, (index, value) ->
+                        addInArray(target, NodeMapper.convert(value, nativeType, false, context)));
+                return target;
+            }
+            default:
+                throw new NodeException("expected object or array node, but was " + Types.name(source));
+        }
     }
+
 
     /** Creates a native array container. */
     default Object createArrayNode(Class<?> clazz) {
