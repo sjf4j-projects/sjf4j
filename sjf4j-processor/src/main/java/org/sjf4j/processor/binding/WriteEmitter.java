@@ -99,8 +99,10 @@ final class WriteEmitter {
             NameAllocator names) {
 
         switch (backend.backend()) {
+            case JACKSON2:
+            case JACKSON3:
             case FASTJSON2:
-                emitFastjson2StringMethod(out, value, source, names);
+                emitBufferedStringMethod(out, value, source, names);
                 return;
             default:
                 break;
@@ -132,7 +134,7 @@ final class WriteEmitter {
     }
 
 
-    private void emitFastjson2StringMethod(
+    private void emitBufferedStringMethod(
             JavaWriter out,
             BindingValue value,
             String source,
