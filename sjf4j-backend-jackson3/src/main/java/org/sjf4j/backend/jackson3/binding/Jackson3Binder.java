@@ -102,6 +102,19 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         return new Jackson3Writer(generator);
     }
 
+    /** Creates an in-memory writer backed by a pooled Jackson buffer. */
+    public Jackson3Writer createWriter() throws IOException {
+        BufferRecycler recycler = factory._getBufferRecycler();
+        SegmentedStringWriter output = new SegmentedStringWriter(recycler);
+        try {
+            return new Jackson3Writer(
+                    factory.createGenerator(WRITE_CONTEXT, output), output, recycler);
+        } catch (IOException | RuntimeException e) {
+            recycler.releaseToPool();
+            throw e;
+        }
+    }
+
     @Override
     public String writeNodeAsString(Object node) {
         final BufferRecycler recycler = factory._getBufferRecycler();
