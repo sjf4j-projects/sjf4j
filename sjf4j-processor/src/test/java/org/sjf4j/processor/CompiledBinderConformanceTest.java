@@ -138,6 +138,60 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2CompiledPojoSpecificMatchersPreserveAllNameSemantics() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + "  public int createdAt, createdBy, createdOn, id;\n"
+                        + "  @NodeProperty(value=\"displayName\", aliases={\"legacy\"}) public String display;\n"
+                        + "  public int café;\n"
+                        + "  @NodeProperty(\"longPropertyNameTooLong\") public int longValue;\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            boolean specialized = false;
+            for (Class<?> nested : impl.getDeclaredClasses()) {
+                specialized |= org.sjf4j.backend.fastjson2.binding.Fastjson2NameMatcher.class
+                        .isAssignableFrom(nested);
+            }
+            assertTrue(specialized, "Expected per-POJO generated Fastjson2 matcher");
+
+            String json = "{\"createdOn\":3,\"createdBy\":2,\"created\\u0041t\":1,"
+                    + "\"legacy\":\"ok\",\"id\":4,\"café\":9,"
+                    + "\"longPropertyNameTooLong\":11,\"unknown\":{\"k\":[1,2]}}";
+            Object binder = impl.getConstructor().newInstance();
+            Object[] values = {
+                    impl.getMethod("read", String.class).invoke(binder, json),
+                    impl.getMethod("readBytes", byte[].class).invoke(binder,
+                            (Object) json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            };
+            for (Object bean : values) {
+                assertEquals(1, beanType.getField("createdAt").getInt(bean));
+                assertEquals(2, beanType.getField("createdBy").getInt(bean));
+                assertEquals(3, beanType.getField("createdOn").getInt(bean));
+                assertEquals(4, beanType.getField("id").getInt(bean));
+                assertEquals(9, beanType.getField("café").getInt(bean));
+                assertEquals(11, beanType.getField("longValue").getInt(bean));
+                assertEquals("ok", beanType.getField("display").get(bean));
+            }
+        }
+    }
+
+    @Test
     void fastjson2RawNameFallbackAcceptsReorderedFieldsAndAliases() throws Exception {
         NavigatorTestCompiler.Result result = compile("FASTJSON2", false);
         assertTrue(result.success, result.diagnostics());
