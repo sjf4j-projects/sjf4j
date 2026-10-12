@@ -1,7 +1,6 @@
 package org.sjf4j.external;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.mapping.NodeMapper;
@@ -64,19 +63,6 @@ public interface ExternalNode<N> {
     /** Returns the type implied by a concrete node class, or {@link JsonType#UNKNOWN}. */
     default JsonType jsonTypeOfClass(Class<?> nodeType) {
         return JsonType.UNKNOWN;
-    }
-
-    /** Returns the runtime classification corresponding to {@link #jsonType(Object)}. */
-    default NodeKind nodeKind(N node) {
-        switch (jsonType(node)) {
-            case OBJECT: return NodeKind.OBJECT_EXTERNAL;
-            case ARRAY: return NodeKind.ARRAY_EXTERNAL;
-            case STRING: return NodeKind.VALUE_STRING_EXTERNAL;
-            case NUMBER: return NodeKind.VALUE_NUMBER_EXTERNAL;
-            case BOOLEAN: return NodeKind.VALUE_BOOLEAN_EXTERNAL;
-            case NULL: return NodeKind.VALUE_NULL;
-            default: return NodeKind.UNKNOWN;
-        }
     }
 
     /** Returns the fail-fast exception for an unsupported operation. */
