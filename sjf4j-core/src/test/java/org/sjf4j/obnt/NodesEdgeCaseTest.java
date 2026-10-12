@@ -275,7 +275,13 @@ class NodesEdgeCaseTest {
         assertTrue(iterator.hasNext());
         assertEquals(1, iterator.next());
         assertEquals(2, iterator.next());
+        assertFalse(iterator.hasNext());
         assertThrows(NoSuchElementException.class, iterator::next);
+        assertThrows(NoSuchElementException.class, iterator::next);
+
+        Iterator<Object> emptyIterator = Nodes.iteratorInArray(new Object[0]);
+        assertFalse(emptyIterator.hasNext());
+        assertThrows(NoSuchElementException.class, emptyIterator::next);
 
         Nodes.Access access = new Nodes.Access();
         Nodes.putAccessInObject(bean, Bean.class, "name", access);
