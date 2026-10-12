@@ -29,7 +29,19 @@ jobs:
       - name: Run focused String write benchmarks
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CompiledWriteBenchmark\\.json_(jackson2|jackson3|fastjson2)_(pojo|map)_string_(compiled|runtime|native)$' \
+            '.*CompiledWriteBenchmark[.]json_(jackson2|jackson3|fastjson2)_(pojo|map)_string_(compiled|runtime|native)
+            -f 1 -wi 3 -w 150ms -i 5 -r 250ms -t 1 \
+            -rf json -rff quick-compiled-write-jmh.json | tee quick-compiled-write-jmh.txt
+      - name: Upload focused results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quick-compiled-write-jmh
+          path: |
+            quick-compiled-write-jmh.json
+            quick-compiled-write-jmh.txt
+          if-no-files-found: ignore
+ \
             -f 1 -wi 3 -w 150ms -i 5 -r 250ms -t 1 \
             -rf json -rff quick-compiled-write-jmh.json | tee quick-compiled-write-jmh.txt
       - name: Upload focused results
