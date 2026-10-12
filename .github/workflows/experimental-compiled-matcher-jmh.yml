@@ -1,4 +1,4 @@
-name: Experimental Fastjson2 Compiled Matcher
+name: Experimental Fastjson2 Compiled Matcher V2
 on:
   push:
     branches:
