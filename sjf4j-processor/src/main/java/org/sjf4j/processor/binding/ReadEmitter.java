@@ -198,8 +198,7 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
-        emitNullReturn(out);
-        out.line("reader.startObject();");
+        emitObjectStart(out);
 
         out.line(
                 value.type() +
@@ -261,9 +260,6 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        if (backend.usesExpectedNameMatch()) {
-            out.line("expectedNameIndex = -1;");
-        }
         out.line("reader.skipNode();");
         out.line("break;");
         out.dedent();
@@ -324,8 +320,7 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
-        emitNullReturn(out);
-        out.line("reader.startArray();");
+        emitArrayStart(out);
 
         out.line(
                 value.type() +
@@ -349,8 +344,7 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
-        emitNullReturn(out);
-        out.line("reader.startArray();");
+        emitArrayStart(out);
 
         out.line(
                 value.type() +
@@ -374,8 +368,7 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
-        emitNullReturn(out);
-        out.line("reader.startObject();");
+        emitObjectStart(out);
 
         out.line(
                 value.type() +
@@ -396,9 +389,21 @@ final class ReadEmitter {
         out.line("return value;");
     }
 
-    private void emitNullReturn(JavaWriter out) {
+    private void emitObjectStart(JavaWriter out) {
+        out.beginBlock("if (!reader.nextIfObjectStart())");
         out.beginBlock("if (reader.nextIfNull())");
         out.line("return null;");
+        out.endBlock();
+        out.line("reader.startObject();");
+        out.endBlock();
+    }
+
+    private void emitArrayStart(JavaWriter out) {
+        out.beginBlock("if (!reader.nextIfArrayStart())");
+        out.beginBlock("if (reader.nextIfNull())");
+        out.line("return null;");
+        out.endBlock();
+        out.line("reader.startArray();");
         out.endBlock();
     }
 
@@ -465,12 +470,12 @@ final class ReadEmitter {
                 return reader + ".readBigDecimal()";
 
             case ENUM:
-                return "(" + reader +
-                        ".nextIfNull() ? null : " +
-                        value.type() +
-                        ".valueOf(" +
-                        reader +
-                        ".readString()))";
+                // Keep string, ordinal and null semantics aligned with StreamingIO.
+                return "(" + value.type() + ") " +
+                        STREAMING_IO +
+                        ".readEnum(" + reader + ", " +
+                        value.type() + ".class, " +
+                        RUNTIME_CONTEXT + ".EMPTY)";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {

@@ -19,6 +19,24 @@ final class WriteEmitter {
         this.backend = backend;
     }
 
+    boolean usesCompiledNames() {
+        return backend.usesCompiledNames();
+    }
+
+    void emitCompiledNames(JavaWriter out, BindingValue value) {
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            out.line("private static final org.sjf4j.binding.CompiledName " +
+                    compiledNameField(value, index++) + " = new " +
+                    backend.compiledNameType() + "(" +
+                    JavaWriter.stringLiteral(property.name()) + ");");
+        }
+    }
+
+    private String compiledNameField(BindingValue value, int index) {
+        return value.helperName() + "_name_" + index;
+    }
+
     void emitMethod(
             JavaWriter out,
             BindingCompiler.CompiledMethod compiled) {
@@ -226,15 +244,16 @@ final class WriteEmitter {
         for (BindingProperty property :
                 value.properties()) {
 
-            if (index++ > 0) {
+            if (index > 0) {
                 out.line("writer.separateProperty();");
             }
 
-            out.line(
-                    "writer.writeName(" +
-                            JavaWriter.stringLiteral(
-                                    property.name()) +
-                            ");");
+            out.line("writer.writeName(" +
+                    (backend.usesCompiledNames()
+                            ? compiledNameField(value, index)
+                            : JavaWriter.stringLiteral(property.name())) +
+                    ");");
+            index++;
 
             writeValue(
                     out,

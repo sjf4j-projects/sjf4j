@@ -5,13 +5,13 @@ import org.sjf4j.binding.CompiledName;
 import java.nio.charset.StandardCharsets;
 
 /** Pre-escaped Fastjson2 object property name for its raw-name writer path. */
-final class Fastjson2CompiledName extends CompiledName {
+public final class Fastjson2CompiledName extends CompiledName {
 
     final char[] rawNameUtf16;
     final byte[] rawNameUtf8;
 
 
-    Fastjson2CompiledName(String name) {
+    public Fastjson2CompiledName(String name) {
         super(name);
 
         int length = name.length();

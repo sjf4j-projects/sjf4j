@@ -207,4 +207,77 @@ class CompiledBinderConformanceTest {
                 result.diagnostics());
     }
 
+
+    @Test
+    void compiledEnumsAcceptNamesOrdinalsAndNulls() throws Exception {
+        for (String backend : JSON_BACKENDS) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Choice.java",
+                    "package fixture;\n"
+                            + "public enum Choice { FIRST, SECOND, THIRD }\n");
+            sources.put("fixture/Binder.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.binding.*;\n"
+                            + "@CompiledBinder(backend=Backend." + backend + ")\n"
+                            + "public interface Binder {\n"
+                            + " @ReadFrom Choice read(String source) throws java.io.IOException;\n"
+                            + "}\n");
+
+            NavigatorTestCompiler.Result result =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(result.success, backend + ": " + result.diagnostics());
+            try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+                Class<?> binderType = Class.forName("fixture.Binder_Impl", true, loader);
+                Object binder = binderType.getConstructor().newInstance();
+                java.lang.reflect.Method read = binderType.getMethod("read", String.class);
+                assertEquals("SECOND", ((Enum<?>) read.invoke(binder, "\"SECOND\"")).name(), backend);
+                assertEquals("SECOND", ((Enum<?>) read.invoke(binder, "1")).name(), backend);
+                assertNull(read.invoke(binder, "null"), backend);
+            }
+        }
+    }
+
+    @Test
+    void compiledWritersUseCorrectPropertyNames() throws Exception {
+        for (String backend : new String[]{"JACKSON2", "JACKSON3", "FASTJSON2"}) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Bean.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                            + "public class Bean {\n"
+                            + " @NodeProperty(\"special-key\") public String text;\n"
+                            + " public int count;\n"
+                            + "}\n");
+            sources.put("fixture/Binder.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.binding.*;\n"
+                            + "@CompiledBinder(backend=Backend." + backend + ")\n"
+                            + "public interface Binder {\n"
+                            + " @ReadFrom Bean read(String source) throws java.io.IOException;\n"
+                            + " @WriteTo String write(Bean value) throws java.io.IOException;\n"
+                            + " @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\n"
+                            + "}\n");
+            NavigatorTestCompiler.Result result =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(result.success, backend + ": " + result.diagnostics());
+            try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+                Class<?> binderType = Class.forName("fixture.Binder_Impl", true, loader);
+                Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+                Object binder = binderType.getConstructor().newInstance();
+                Object bean = beanType.getConstructor().newInstance();
+                beanType.getField("text").set(bean, "hello");
+                beanType.getField("count").setInt(bean, 7);
+
+                String json = (String) binderType.getMethod("write", beanType).invoke(binder, bean);
+                assertTrue(json.contains("\"special-key\""), backend + ": " + json);
+                Object decoded = binderType.getMethod("read", String.class).invoke(binder, json);
+                assertEquals("hello", beanType.getField("text").get(decoded), backend);
+                assertEquals(7, beanType.getField("count").getInt(decoded), backend);
+
+                byte[] utf8 = (byte[]) binderType.getMethod("writeBytes", beanType)
+                        .invoke(binder, bean);
+                assertEquals(json, new String(utf8, java.nio.charset.StandardCharsets.UTF_8), backend);
+            }
+        }
+    }
 }
