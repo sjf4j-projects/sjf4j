@@ -1,6 +1,8 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.io.SegmentedStringWriter;
+import tools.jackson.core.util.BufferRecycler;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.StreamingWriter;
@@ -19,10 +21,21 @@ import java.math.BigInteger;
 public final class Jackson3Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
+    private final SegmentedStringWriter stringOutput;
+    private final BufferRecycler recycler;
 
     public Jackson3Writer(JsonGenerator generator) {
         super(Backend.JACKSON3);
         this.generator = Asserts.notNull(generator, "generator");
+        this.stringOutput = null;
+        this.recycler = null;
+    }
+
+    Jackson3Writer(JsonGenerator generator, SegmentedStringWriter output, BufferRecycler recycler) {
+        super(Backend.JACKSON3);
+        this.generator = Asserts.notNull(generator, "generator");
+        this.stringOutput = output;
+        this.recycler = recycler;
     }
 
 
@@ -190,7 +203,16 @@ public final class Jackson3Writer extends StreamingWriter {
     }
 
     @Override
+    public String toString() {
+        return stringOutput != null ? stringOutput.getAndClear() : super.toString();
+    }
+
+    @Override
     public void close() throws IOException {
-        generator.close();
+        try {
+            generator.close();
+        } finally {
+            if (recycler != null) recycler.releaseToPool();
+        }
     }
 }
