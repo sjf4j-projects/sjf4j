@@ -19,6 +19,10 @@ public final class Fastjson2NameMatcher extends NameMatcher {
     private final int[] rawPrefixes;
     private final long[] rawSuffixes;
     private final byte[] rawLengths;
+    private final int[] rawKeys;
+    private final int[] rawHeads;
+    private final int[] rawNext;
+    private final int rawMask;
     private final int[] indexes;
     private final int mask;
     private final boolean hashSafe;
@@ -60,6 +64,8 @@ public final class Fastjson2NameMatcher extends NameMatcher {
         this.rawPrefixes = new int[size()];
         this.rawSuffixes = new long[size()];
         this.rawLengths = new byte[size()];
+        this.rawNext = new int[size()];
+        Arrays.fill(this.rawNext, -1);
         this.indexes = new int[capacity];
         Arrays.fill(this.indexes, UNKNOWN);
         this.mask = capacity - 1;
@@ -79,6 +85,29 @@ public final class Fastjson2NameMatcher extends NameMatcher {
         }
 
         this.hashSafe = safe;
+
+        int rawCount = 0;
+        for (byte length : rawLengths) {
+            if (length != 0) rawCount++;
+        }
+        int rawCapacity = 1;
+        while (rawCapacity < rawCount * 2) rawCapacity <<= 1;
+        this.rawKeys = new int[rawCount == 0 ? 0 : rawCapacity];
+        this.rawHeads = new int[rawKeys.length];
+        Arrays.fill(rawHeads, -1);
+        this.rawMask = rawKeys.length - 1;
+
+        for (int i = 0; i < rawLengths.length; i++) {
+            if (rawLengths[i] == 0) continue;
+            int prefix = rawPrefixes[i];
+            int slot = (prefix ^ (prefix >>> 16)) & rawMask;
+            while (rawHeads[slot] >= 0 && rawKeys[slot] != prefix) {
+                slot = (slot + 1) & rawMask;
+            }
+            rawNext[i] = rawHeads[slot];
+            rawKeys[slot] = prefix;
+            rawHeads[slot] = i;
+        }
     }
 
     private boolean add(String name, int index) {
@@ -106,19 +135,39 @@ public final class Fastjson2NameMatcher extends NameMatcher {
     }
 
     /**
-     * Matches an expected unescaped ASCII name before computing its FNV hash.
-     * A mismatch does not consume input; callers use the generic hash matcher.
+     * Matches any unescaped ASCII property directly from the input bytes.
+     * The expected field is tried first; a miss uses the raw-prefix table,
+     * then the caller falls back to regular FNV64 name matching.
      */
-    boolean matchesExpectedRaw(JSONReader reader, int index) {
-        if (index < 0 || index >= rawLengths.length) {
-            return false;
+    int matchRaw(JSONReader reader, int expectedIndex) {
+        if (rawHeads.length == 0) return UNKNOWN;
+
+        int prefix = reader.getRawInt();
+        if (expectedIndex >= 0 && expectedIndex < rawLengths.length
+                && rawLengths[expectedIndex] != 0
+                && rawPrefixes[expectedIndex] == prefix
+                && matchRawName(reader, expectedIndex)) {
+            return expectedIndex;
         }
-        int length = rawLengths[index];
-        if (length == 0 || reader.getRawInt() != rawPrefixes[index]) {
-            return false;
+
+        int slot = (prefix ^ (prefix >>> 16)) & rawMask;
+        while (rawHeads[slot] >= 0) {
+            if (rawKeys[slot] == prefix) {
+                for (int i = rawHeads[slot]; i >= 0; i = rawNext[i]) {
+                    if (i != expectedIndex && matchRawName(reader, i)) {
+                        return i;
+                    }
+                }
+                return UNKNOWN;
+            }
+            slot = (slot + 1) & rawMask;
         }
+        return UNKNOWN;
+    }
+
+    private boolean matchRawName(JSONReader reader, int index) {
         long suffix = rawSuffixes[index];
-        switch (length) {
+        switch (rawLengths[index]) {
             case 2: return reader.nextIfName4Match2();
             case 3: return reader.nextIfName4Match3();
             case 4: return reader.nextIfName4Match4((byte) suffix);
