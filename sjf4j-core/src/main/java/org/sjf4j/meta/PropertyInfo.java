@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.meta;
 
 import org.sjf4j.binding.PropertyReader;
 import org.sjf4j.util.Asserts;

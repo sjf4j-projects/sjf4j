@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.node.CreatorInfo;
-import org.sjf4j.node.RecordInfo;
-import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.RecordInfo;
+import org.sjf4j.meta.ReflectUtil;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;

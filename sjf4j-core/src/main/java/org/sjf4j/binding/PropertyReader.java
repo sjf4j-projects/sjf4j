@@ -5,10 +5,10 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueInfo;
-import org.sjf4j.node.OneOfInfo;
+import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.util.Invokers;
-import org.sjf4j.node.TypeInfo;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.meta.TypeInfo;
+import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.util.Types;
 
 import java.io.IOException;

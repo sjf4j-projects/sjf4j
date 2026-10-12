@@ -11,7 +11,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.Nodes;
 import org.sjf4j.NodeKind;
 import org.sjf4j.JsonType;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;

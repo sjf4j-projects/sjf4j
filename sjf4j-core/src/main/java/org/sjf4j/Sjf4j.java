@@ -357,7 +357,8 @@ public final class Sjf4j {
     /**
      * Creates a recursive copy of supported OBNT structures.
      * <p>
-     * Delegates to {@link NodeMapper#deepcopy(Object)}. Unsupported values,
+     * Delegates to {@link NodeMapper#convert(Object, java.lang.reflect.Type, boolean, RuntimeContext)}
+     * with deep copying enabled. Unsupported values,
      * including external mutable containers without a deep-copy implementation,
      * fail with {@link org.sjf4j.exception.BindingException}.
      */

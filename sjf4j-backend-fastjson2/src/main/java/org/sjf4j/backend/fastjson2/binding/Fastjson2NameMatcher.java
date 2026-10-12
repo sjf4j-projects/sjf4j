@@ -4,7 +4,7 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.util.Fnv;
 import org.sjf4j.binding.NameMatcher;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.meta.PropertyInfo;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;

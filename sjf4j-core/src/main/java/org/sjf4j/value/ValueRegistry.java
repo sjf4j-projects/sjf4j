@@ -6,6 +6,7 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.util.Invokers;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
@@ -26,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Register custom codecs during application initialization, before metadata
  * for the codec type or dependent bindings is analyzed. The registry is shared
  * by all {@code Sjf4j} instances and later registrations do not update metadata
- * already cached by {@link org.sjf4j.node.TypeRegistry}.
+ * already cached by {@link TypeRegistry}.
  */
 public final class ValueRegistry {
     private ValueRegistry() {}

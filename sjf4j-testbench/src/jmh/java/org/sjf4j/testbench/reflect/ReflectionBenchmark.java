@@ -14,9 +14,9 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.PropertyInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;

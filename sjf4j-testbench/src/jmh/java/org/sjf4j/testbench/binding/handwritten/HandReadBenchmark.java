@@ -30,7 +30,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.util.Numbers;
-import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.meta.ReflectUtil;
 import org.sjf4j.testbench.model.User;
 
 import java.io.IOException;

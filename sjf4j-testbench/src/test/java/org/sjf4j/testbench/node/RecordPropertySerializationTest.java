@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.io.IOException;
 import java.util.Arrays;

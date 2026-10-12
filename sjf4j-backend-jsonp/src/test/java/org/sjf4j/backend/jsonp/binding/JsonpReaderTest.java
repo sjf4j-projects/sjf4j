@@ -7,8 +7,8 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.io.StringReader;
 import java.lang.reflect.Proxy;

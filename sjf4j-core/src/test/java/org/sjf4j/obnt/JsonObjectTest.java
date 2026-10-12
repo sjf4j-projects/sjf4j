@@ -16,8 +16,8 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.PojoInfo;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.path.PathSegment;
 
 import java.io.StringReader;

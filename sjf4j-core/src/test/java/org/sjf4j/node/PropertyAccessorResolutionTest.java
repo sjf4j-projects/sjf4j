@@ -5,6 +5,8 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.PropertyStrategy;
+import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.util.Types;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

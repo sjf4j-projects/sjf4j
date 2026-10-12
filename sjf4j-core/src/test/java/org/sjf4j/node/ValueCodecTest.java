@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.value.ValueInfo;
 
 import java.io.File;

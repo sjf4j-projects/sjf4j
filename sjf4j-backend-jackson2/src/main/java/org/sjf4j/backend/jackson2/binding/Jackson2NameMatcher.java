@@ -4,7 +4,7 @@ package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import org.sjf4j.binding.NameMatcher;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.meta.PropertyInfo;
 
 /** Prepared Jackson 2 property-name metadata. */
 public final class Jackson2NameMatcher extends NameMatcher {

@@ -1,7 +1,7 @@
 
 package org.sjf4j.binding;
 
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.meta.PropertyInfo;
 
 import java.util.HashMap;
 import java.util.Map;

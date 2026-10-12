@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.meta;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;

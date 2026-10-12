@@ -1,7 +1,7 @@
 package org.sjf4j;
 
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.TypeInfo;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueCodec;
 

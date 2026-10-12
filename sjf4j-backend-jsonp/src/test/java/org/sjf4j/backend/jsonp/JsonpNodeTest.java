@@ -16,7 +16,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.mapping.NodeMapper;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.io.File;
 import java.io.StringReader;
