@@ -81,8 +81,9 @@ public final class TypeRegistry {
         // Map/List/Set interfaces have already returned NONE via _fastNoneInfo.
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
-            // Java container classification wins. Only containers without a Java
-            // constructor may use a native adapter as their construction strategy.
+            // Map/List classification wins. Cache a native builder adapter only
+            // for mapping/copy when direct Java construction is unavailable.
+            // StreamingIO never constructs containers through this adapter.
             if (ci.noArgsCtorHandle == null) {
                 ExternalNode<?> adapter = ExternalRegistry.resolve(clazz);
                 if (adapter != null) {
@@ -181,7 +182,8 @@ public final class TypeRegistry {
     /**
      * Returns a map container. For {@link Map} and {@link LinkedHashMap}, a
      * positive {@code size} preallocates for that many entries; {@code 0} uses
-     * the default allocation.
+     * the default allocation. Only directly populatable Java containers are
+     * supported; immutable native builder targets belong to NodeMapper.
      */
     @SuppressWarnings("unchecked")
     public static <T> Map<String, T> newMapContainer(Class<?> mapClazz, int size, boolean fallback) {
