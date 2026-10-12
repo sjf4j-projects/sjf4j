@@ -96,6 +96,28 @@ class ExternalRegistryTest {
         assertEquals("unsupported external node operation 'getInObject'", exception.getMessage());
     }
 
+    @Test
+    void defaultCopyReusesScalarsButRejectsNonScalarExternalNodes() {
+        ExternalNode<TestExternalNode> adapter = new TestExternalAdapter();
+
+        for (JsonType type : new JsonType[]{
+                JsonType.NULL, JsonType.STRING, JsonType.NUMBER, JsonType.BOOLEAN}) {
+            TestExternalNode scalar = new TestExternalNode(type);
+            assertSame(scalar, adapter.copy(scalar));
+        }
+
+        for (JsonType type : new JsonType[]{
+                JsonType.OBJECT, JsonType.ARRAY, JsonType.UNKNOWN}) {
+            TestExternalNode container = new TestExternalNode(type);
+            NodeException exception = assertThrowsExactly(NodeException.class,
+                    () -> adapter.copy(container));
+            assertEquals("unsupported external node operation 'copy'", exception.getMessage());
+        }
+
+        assertThrowsExactly(NodeException.class,
+                () -> Nodes.copy(new TestExternalObjectNode()));
+    }
+
     static class TestExternalNode {
         private final JsonType jsonType;
         final Map<String, Object> values = new LinkedHashMap<>();
