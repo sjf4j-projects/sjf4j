@@ -206,7 +206,8 @@ public final class TypeRegistry {
     /**
      * Returns a list container. For {@link List} and {@link ArrayList}, a
      * positive {@code size} preallocates for that many entries; {@code 0} uses
-     * the default allocation.
+     * the default allocation. Native builder construction is handled by
+     * NodeMapper, never by this direct-fill factory.
      */
     @SuppressWarnings("unchecked")
     public static <T> List<T> newListContainer(Class<?> listClazz, int size, boolean fallback) {
