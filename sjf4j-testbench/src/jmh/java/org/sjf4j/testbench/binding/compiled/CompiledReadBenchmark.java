@@ -112,6 +112,41 @@ public class CompiledReadBenchmark {
     private static final SimpleCompiledBinder SIMPLE_COMPILED =
             CompiledInstances.of(SimpleCompiledBinder.class);
 
+    // Precomputed once, outside the measured operation. Reverse nested object
+    // properties too, so expected-next-name matching rarely succeeds.
+    private static final String JSON_REVERSED = reverseFields(JSON_DATA);
+    private static final byte[] JSON_REVERSED_UTF8 = JSON_REVERSED.getBytes(StandardCharsets.UTF_8);
+
+    private static String reverseFields(String input) {
+        try {
+            Object root = JACKSON2_NATIVE.readValue(input, Map.class);
+            return JACKSON2_NATIVE.writeValueAsString(reverseObjectFields(root));
+        } catch (IOException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    private static Object reverseObjectFields(Object node) {
+        if (node instanceof Map) {
+            java.util.List<Map.Entry<?, ?>> entries =
+                    new java.util.ArrayList<>(((Map<?, ?>) node).entrySet());
+            java.util.Collections.reverse(entries);
+            Map<String, Object> reversed = new java.util.LinkedHashMap<>();
+            for (Map.Entry<?, ?> e : entries) {
+                reversed.put((String) e.getKey(), reverseObjectFields(e.getValue()));
+            }
+            return reversed;
+        }
+        if (node instanceof java.util.List) {
+            java.util.List<Object> result = new java.util.ArrayList<>();
+            for (Object item : (java.util.List<?>) node) {
+                result.add(reverseObjectFields(item));
+            }
+            return result;
+        }
+        return node;
+    }
+
     // Fail in trial setup if a compiled or runtime result differs from the
     // reference POJO. This catches accidentally unequal benchmark fixtures.
     @Setup(Level.Trial)
@@ -141,6 +176,9 @@ public class CompiledReadBenchmark {
         checkMap("gson runtime JSON_DATA", GSON_RUNTIME.readNode(JSON_DATA, Map.class));
         checkMap("gson compiled JSON_UTF8", GSON_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("gson runtime JSON_UTF8", GSON_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkPojo("fastjson2 compiled JSON_REVERSED", expected, FASTJSON2_COMPILED.readPojo(JSON_REVERSED));
+        checkPojo("fastjson2 compiled JSON_REVERSED_UTF8", expected,
+                FASTJSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8));
         checkPojo("fastjson2 compiled JSON_DATA", expected, FASTJSON2_COMPILED.readPojo(JSON_DATA));
         checkPojo("fastjson2 runtime JSON_DATA", expected, FASTJSON2_RUNTIME.readNode(JSON_DATA, User.class));
         checkPojo("fastjson2 compiled JSON_UTF8", expected, FASTJSON2_COMPILED.readPojoUtf8(JSON_UTF8));
@@ -432,6 +470,26 @@ public class CompiledReadBenchmark {
     }
 
     // ----- FASTJSON2 -----
+    @Benchmark
+    public Object json_fastjson2_pojo_reversed_string_compiled() throws IOException {
+        return FASTJSON2_COMPILED.readPojo(JSON_REVERSED);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_pojo_reversed_string_runtime() {
+        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_pojo_reversed_utf8_compiled() throws IOException {
+        return FASTJSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_pojo_reversed_utf8_runtime() {
+        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
+    }
+
     @Benchmark
     public Object json_fastjson2_pojo_string_compiled() throws IOException {
         return FASTJSON2_COMPILED.readPojo(JSON_DATA);
