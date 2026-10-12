@@ -327,17 +327,17 @@ final class ReadEmitter {
 
         if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
-            if (backend.usesExpectedNameMatch()) {
+            if (backend.usesExpectedNameMatch() && !generatesFastjson2Matcher()) {
                 out.line("int expectedNameIndex = 0;");
             }
 
-            out.beginBlock(
-                    "while ((nameIndex = reader.nextNameMatch(" +
-                            matcherFieldName(value) +
-                            (backend.usesExpectedNameMatch()
-                                    ? ", expectedNameIndex"
-                                    : "") +
-                            ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            String nameMatch = generatesFastjson2Matcher()
+                    ? matcherFieldName(value) + ".nextNameMatch(reader)"
+                    : "reader.nextNameMatch(" + matcherFieldName(value)
+                            + (backend.usesExpectedNameMatch()
+                                    ? ", expectedNameIndex" : "") + ")";
+            out.beginBlock("while ((nameIndex = " + nameMatch
+                    + ") != " + NAME_MATCHER + ".OBJECT_END)");
 
             emitMatchedPojoProperty(out, value);
         } else {
@@ -363,7 +363,7 @@ final class ReadEmitter {
             int propertyIndex = index++;
             out.line("case " + propertyIndex + ":");
             out.indent();
-            if (backend.usesExpectedNameMatch()) {
+            if (backend.usesExpectedNameMatch() && !generatesFastjson2Matcher()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
             out.line(
