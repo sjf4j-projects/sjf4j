@@ -122,7 +122,8 @@ public final class NodeMapper {
             }
 
             // Java container kind remains primary. A nonconstructible container
-            // may carry an external builder in its cached ContainerInfo.
+            // may carry a mapping-only external builder in its cached ContainerInfo.
+            // Streaming binding never invokes this full-source construction path.
             NodeKind targetKind = NodeKind.plainOf(toBoxed);
             if (targetKind != NodeKind.UNKNOWN) {
                 if ((targetKind == NodeKind.OBJECT_MAP || targetKind == NodeKind.ARRAY_LIST)
