@@ -6,12 +6,14 @@ import com.alibaba.fastjson2.util.Fnv;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.node.PropertyInfo;
 
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 /** Prepared Fastjson2 property-name matcher. */
 public final class Fastjson2NameMatcher extends NameMatcher {
 
     static final int HASH_COLLISION = -3;
+    private static final boolean RAW_LITTLE_ENDIAN = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
 
     private final long[] hashes;
     private final int[] rawPrefixes;
@@ -133,7 +135,7 @@ public final class Fastjson2NameMatcher extends NameMatcher {
 
     private void prepareRawName(String name, int index) {
         int length = name.length();
-        if (length < 2 || length > 11) return;
+        if (!RAW_LITTLE_ENDIAN || length < 2 || length > 11) return;
         for (int i = 0; i < length; i++) {
             char c = name.charAt(i);
             if (c < 0x20 || c >= 0x7f || c == '"' || c == '\\') return;
