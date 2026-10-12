@@ -43,6 +43,7 @@ class ExternalRegistryTest {
         assertEquals(NodeKind.VALUE_NUMBER_EXTERNAL, NodeKind.of(new TestExternalNode(JsonType.NUMBER)));
         assertEquals(NodeKind.VALUE_BOOLEAN_EXTERNAL, NodeKind.of(new TestExternalNode(JsonType.BOOLEAN)));
         assertEquals(NodeKind.VALUE_NULL, NodeKind.of(new TestExternalNode(JsonType.NULL)));
+        assertEquals(NodeKind.UNKNOWN, NodeKind.of(new TestExternalNode(JsonType.INTEGER)));
         assertEquals(NodeKind.UNKNOWN, NodeKind.of(new TestExternalNode(JsonType.UNKNOWN)));
     }
 
