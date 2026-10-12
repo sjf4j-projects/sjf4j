@@ -125,11 +125,21 @@ public final class Fastjson2Reader extends StreamingReader {
         }
 
         Fastjson2NameMatcher fastMatcher = (Fastjson2NameMatcher) matcher;
+        if (fastMatcher.matchesExpectedRaw(reader, expectedIndex)) {
+            peeked = null;
+            return expectedIndex;
+        }
+        return nextNameMatchFallback(matcher, fastMatcher, expectedIndex);
+    }
+
+    /**
+     * Out-of-order and unknown-name handling stays outside the ordered hot
+     * method, keeping its expected-name branch small enough for JIT inlining.
+     */
+    private int nextNameMatchFallback(NameMatcher matcher,
+                                      Fastjson2NameMatcher fastMatcher,
+                                      int expectedIndex) {
         if (expectedIndex >= 0) {
-            if (fastMatcher.matchesExpectedRaw(reader, expectedIndex)) {
-                peeked = null;
-                return expectedIndex;
-            }
             int rawIndex = fastMatcher.matchOtherRaw(reader, expectedIndex);
             if (rawIndex >= 0) {
                 peeked = null;
