@@ -5,6 +5,11 @@ import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 /** Emits direct concrete-reader binding code. */
 final class ReadEmitter {
 
@@ -30,6 +35,10 @@ final class ReadEmitter {
 
     boolean usesNameMatcher() {
         return backend.usesNameMatcher();
+    }
+
+    boolean generatesFastjson2Matcher() {
+        return backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2;
     }
 
     void emitMethod(
@@ -128,12 +137,14 @@ final class ReadEmitter {
         }
 
         StringBuilder line = new StringBuilder();
+        String matcherType = generatesFastjson2Matcher()
+                ? matcherClassName(value) : backend.matcherType();
         line.append("private static final ")
-                .append(NAME_MATCHER)
+                .append(matcherType)
                 .append(' ')
                 .append(matcherFieldName(value))
                 .append(" = new ")
-                .append(backend.matcherType())
+                .append(matcherType)
                 .append("(new String[]{");
 
         for (int i = 0; i < value.properties().size(); i++) {
@@ -153,6 +164,114 @@ final class ReadEmitter {
         }
         line.append("});");
         out.line(line.toString());
+    }
+
+    /**
+     * Generates the Fastjson2 raw-name dispatch for one concrete compiled
+     * POJO plan. The surrounding property read loop remains backend-generic.
+     */
+    void emitFastjson2MatcherClass(JavaWriter out, BindingValue value) {
+        out.beginBlock("private static final class " + matcherClassName(value)
+                + " extends org.sjf4j.backend.fastjson2.binding.Fastjson2NameMatcher");
+        out.beginBlock("private " + matcherClassName(value)
+                + "(String[] names, String[][] aliases)");
+        out.line("super(names, aliases);");
+        out.endBlock();
+        out.blank();
+
+        out.line("@Override");
+        out.beginBlock("protected int matchRaw(com.alibaba.fastjson2.JSONReader raw, int expectedIndex)");
+        out.beginBlock("if (java.nio.ByteOrder.nativeOrder() != java.nio.ByteOrder.LITTLE_ENDIAN)");
+        out.line("return UNKNOWN;");
+        out.endBlock();
+
+        Map<Integer, List<Integer>> groups = new LinkedHashMap<Integer, List<Integer>>();
+        List<String> names = new ArrayList<String>();
+        for (int i = 0; i < value.properties().size(); i++) {
+            String name = value.properties().get(i).name();
+            names.add(name);
+            if (!canMatchRaw(name)) continue;
+            String literal = "\"" + name + "\":";
+            int prefix = (int) packRaw(literal, 0, 4);
+            List<Integer> matches = groups.get(prefix);
+            if (matches == null) {
+                matches = new ArrayList<Integer>();
+                groups.put(prefix, matches);
+            }
+            matches.add(i);
+        }
+
+        if (!groups.isEmpty()) {
+            out.beginBlock("switch (raw.getRawInt())");
+            for (Map.Entry<Integer, List<Integer>> group : groups.entrySet()) {
+                out.line("case 0x" + Integer.toHexString(group.getKey()) + ":");
+                out.indent();
+                for (Integer index : group.getValue()) {
+                    out.beginBlock("if (" + rawCall(names.get(index)) + ")");
+                    out.line("return " + index + ";");
+                    out.endBlock();
+                }
+                out.line("break;");
+                out.dedent();
+            }
+            out.line("default:");
+            out.indent();
+            out.line("break;");
+            out.dedent();
+            out.endBlock();
+        }
+        out.line("return UNKNOWN;");
+        out.endBlock();
+        out.endBlock();
+    }
+
+    private static boolean canMatchRaw(String name) {
+        int length = name.length();
+        if (length < 2 || length > 11) return false;
+        for (int i = 0; i < length; i++) {
+            char c = name.charAt(i);
+            if (c < 0x20 || c >= 0x7f || c == '"' || c == '\\') return false;
+        }
+        return true;
+    }
+
+    private static long packRaw(String text, int start, int count) {
+        long bits = 0;
+        for (int i = 0; i < count; i++) {
+            bits |= (long) text.charAt(start + i) << (i * 8);
+        }
+        return bits;
+    }
+
+    private static String rawCall(String name) {
+        int length = name.length();
+        String literal = "\"" + name + "\":";
+        long suffix = packRaw(literal, 4, Math.min(8, literal.length() - 4));
+        String fn = "raw.nextIfName4Match" + length + "(";
+        switch (length) {
+            case 2:
+            case 3:
+                return fn + ")";
+            case 4:
+                return fn + "(byte) 0x" + Long.toHexString(suffix) + ")";
+            case 5:
+            case 6:
+            case 7:
+                return fn + "0x" + Long.toHexString(suffix) + ")";
+            case 8:
+                return fn + "0x" + Long.toHexString(suffix & 0xffffffffL)
+                        + ", (byte) 0x" + Long.toHexString(suffix >>> 32) + ")";
+            case 9:
+            case 10:
+            case 11:
+                return fn + "0x" + Long.toHexString(suffix) + "L)";
+            default:
+                throw new AssertionError("Unsupported raw name length: " + length);
+        }
+    }
+
+    private static String matcherClassName(BindingValue value) {
+        return value.helperName() + "_Matcher";
     }
 
     void emitHelper(
