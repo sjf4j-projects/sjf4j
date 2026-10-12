@@ -135,21 +135,40 @@ public final class Fastjson2NameMatcher extends NameMatcher {
     }
 
     /**
-     * Matches any unescaped ASCII property directly from the input bytes.
-     * The expected field is tried first; a miss uses the raw-prefix table,
-     * then the caller falls back to regular FNV64 name matching.
+     * The ordered-input hot path remains identical to the original
+     * expected-name shortcut.
      */
-    int matchRaw(JSONReader reader, int expectedIndex) {
-        if (rawHeads.length == 0) return UNKNOWN;
-
-        int prefix = reader.getRawInt();
-        if (expectedIndex >= 0 && expectedIndex < rawLengths.length
-                && rawLengths[expectedIndex] != 0
-                && rawPrefixes[expectedIndex] == prefix
-                && matchRawName(reader, expectedIndex)) {
-            return expectedIndex;
+    boolean matchesExpectedRaw(JSONReader reader, int index) {
+        if (index < 0 || index >= rawLengths.length) {
+            return false;
         }
+        int length = rawLengths[index];
+        if (length == 0 || reader.getRawInt() != rawPrefixes[index]) {
+            return false;
+        }
+        long suffix = rawSuffixes[index];
+        switch (length) {
+            case 2: return reader.nextIfName4Match2();
+            case 3: return reader.nextIfName4Match3();
+            case 4: return reader.nextIfName4Match4((byte) suffix);
+            case 5: return reader.nextIfName4Match5((int) suffix);
+            case 6: return reader.nextIfName4Match6((int) suffix);
+            case 7: return reader.nextIfName4Match7((int) suffix);
+            case 8: return reader.nextIfName4Match8((int) suffix, (byte) (suffix >>> 32));
+            case 9: return reader.nextIfName4Match9(suffix);
+            case 10: return reader.nextIfName4Match10(suffix);
+            case 11: return reader.nextIfName4Match11(suffix);
+            default: return false;
+        }
+    }
 
+    /**
+     * Cold path only: resolve another canonical name using its raw prefix
+     * before the caller falls back to FNV64. An unknown name is not consumed.
+     */
+    int matchOtherRaw(JSONReader reader, int expectedIndex) {
+        if (rawHeads.length == 0) return UNKNOWN;
+        int prefix = reader.getRawInt();
         int slot = (prefix ^ (prefix >>> 16)) & rawMask;
         while (rawHeads[slot] >= 0) {
             if (rawKeys[slot] == prefix) {
