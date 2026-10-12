@@ -32,7 +32,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -1077,62 +1076,6 @@ public final class NodeMapper {
         throw new BindingException("cannot convert POJO to '" + toBoxed.getName() + "'", ps);
     }
 
-    // Cached name resolution only: generic member types, ValueCodec formats,
-    // OneOf decisions, and runtime context remain evaluated during conversion.
-    private static final ClassValue<ConcurrentHashMap<Class<?>, PojoPropertyPlan>> POJO_PROPERTY_PLANS =
-            new ClassValue<ConcurrentHashMap<Class<?>, PojoPropertyPlan>>() {
-                @Override
-                protected ConcurrentHashMap<Class<?>, PojoPropertyPlan> computeValue(Class<?> type) {
-                    return new ConcurrentHashMap<>();
-                }
-            };
-
-    private static PojoPropertyPlan _pojoPropertyPlan(Class<?> sourceClass, Class<?> targetClass,
-                                                      PojoInfo source, PojoInfo target) {
-        ConcurrentHashMap<Class<?>, PojoPropertyPlan> plans = POJO_PROPERTY_PLANS.get(sourceClass);
-        PojoPropertyPlan plan = plans.get(targetClass);
-        if (plan != null) return plan;
-        PojoPropertyPlan candidate = new PojoPropertyPlan(source, target);
-        PojoPropertyPlan previous = plans.putIfAbsent(targetClass, candidate);
-        return previous != null ? previous : candidate;
-    }
-
-    private static final class PojoPropertyPlan {
-        final PropertyInfo[] sourceProperties;
-        final PropertyInfo[] targetProperties;
-        final int[] creatorIndices;
-        final boolean includeDynamic;
-
-        PojoPropertyPlan(PojoInfo source, PojoInfo target) {
-            PropertyInfo[] readable = source.readableProperties;
-            CreatorInfo ci = target.creatorInfo;
-            includeDynamic = target.isJojo && target.readDynamic;
-            int count = 0;
-            for (PropertyInfo property : readable) {
-                int arg = ci.getArgIndexOrAlias(property.name);
-                if (arg >= 0) {
-                    count++;
-                    continue;
-                }
-                PropertyInfo dest = target.getPropertyNoAlias(property.name);
-                if (dest != null ? dest.writable : includeDynamic) count++;
-            }
-            sourceProperties = new PropertyInfo[count];
-            targetProperties = new PropertyInfo[count];
-            creatorIndices = new int[count];
-            int i = 0;
-            for (PropertyInfo property : readable) {
-                int arg = ci.getArgIndexOrAlias(property.name);
-                PropertyInfo dest = arg < 0 ? target.getPropertyNoAlias(property.name) : null;
-                if (arg < 0 && !(dest != null ? dest.writable : includeDynamic)) continue;
-                sourceProperties[i] = property;
-                targetProperties[i] = dest;
-                creatorIndices[i] = arg;
-                i++;
-            }
-        }
-    }
-
     private static Object _convertPojoFromProperties(Object source,
                                                      PojoInfo sourceInfo,
                                                      Type type,
@@ -1144,36 +1087,33 @@ public final class NodeMapper {
         CreatorInfo ci = targetInfo.creatorInfo;
         Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
         CreatorState state = direct == null ? new CreatorState(ci) : null;
-        PojoPropertyPlan plan = _pojoPropertyPlan(source.getClass(), toBoxed, sourceInfo, targetInfo);
+        boolean includeDynamic = targetInfo.isJojo && targetInfo.readDynamic;
 
-        // Source/target name matching stays cached, avoiding extra lookups and
-        // getter calls for unmapped fields. Target assignment is shared with
-        // entry-backed Map/JsonObject/External object conversions.
-        for (int i = 0; i < plan.sourceProperties.length; i++) {
-            PropertyInfo sourceProperty = plan.sourceProperties[i];
+        for (PropertyInfo sourceProperty : sourceInfo.readableProperties) {
+            String name = sourceProperty.name;
+            int argIdx = ci.getArgIndexOrAlias(name);
+            PropertyInfo targetProperty = argIdx < 0 ? targetInfo.getPropertyNoAlias(name) : null;
+            if (argIdx < 0 && !(targetProperty != null ? targetProperty.writable : includeDynamic)) continue;
+
             Object rawValue = sourceProperty.invokeGetter(source);
-            int argIdx = plan.creatorIndices[i];
+            PathSegment cps = new PathSegment.Name(ps, name);
             if (argIdx >= 0) {
                 _acceptCreatorArgument(state, ci, argIdx, rawValue, type, toBoxed,
-                        deepCopy, new PathSegment.Name(ps, sourceProperty.name), context, false);
+                        deepCopy, cps, context, false);
                 continue;
             }
 
-            PropertyInfo targetProperty = plan.targetProperties[i];
             if (targetProperty != null) {
                 _acceptPojoProperty(direct, state, targetProperty, rawValue, type, toBoxed,
-                        deepCopy, new PathSegment.Name(ps, sourceProperty.name), context, false);
+                        deepCopy, cps, context, false);
                 continue;
             }
 
-            if (plan.includeDynamic) {
-                Object value = _convert(rawValue, Object.class, Object.class, null, deepCopy,
-                        new PathSegment.Name(ps, sourceProperty.name), context);
-                if (direct != null) {
-                    ((JsonObject) direct).put(sourceProperty.name, value);
-                } else {
-                    state.acceptDynamic(sourceProperty.name, value);
-                }
+            Object value = _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, context);
+            if (direct != null) {
+                ((JsonObject) direct).put(name, value);
+            } else {
+                state.acceptDynamic(name, value);
             }
         }
 
