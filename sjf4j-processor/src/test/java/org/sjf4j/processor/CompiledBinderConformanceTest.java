@@ -138,6 +138,32 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2RawNameFallbackAcceptsReorderedFieldsAndAliases() throws Exception {
+        NavigatorTestCompiler.Result result = compile("FASTJSON2", false);
+        assertTrue(result.success, result.diagnostics());
+
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> implementation = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            Object binder = implementation.getConstructor().newInstance();
+
+            // Missing the expected name and whitespace before the colon must
+            // both fall back without consuming the pending property.
+            String json = "{\"numbers\":{\"x\":1},\"values\":[\"a\"],\"count\" : 9,\"oldName\":\"Bob\"}";
+            Object decoded = implementation.getMethod("read", String.class)
+                    .invoke(binder, json);
+            assertEquals("Bob", beanType.getField("name").get(decoded));
+            assertEquals(9, beanType.getField("count").getInt(decoded));
+
+            byte[] utf8 = json.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            Object decodedBytes = implementation.getMethod("readBytes", byte[].class)
+                    .invoke(binder, (Object) utf8);
+            assertEquals("Bob", beanType.getField("name").get(decodedBytes));
+            assertEquals(9, beanType.getField("count").getInt(decodedBytes));
+        }
+    }
+
+    @Test
     void snakeRoundTripCompiledBinder() throws Exception {
         verifyBackend("SNAKE", true);
     }
