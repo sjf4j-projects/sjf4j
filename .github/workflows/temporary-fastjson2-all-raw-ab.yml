@@ -1,4 +1,4 @@
-name: Temporary Fastjson2 Matcher Raw A-B
+name: Temporary Fastjson2 Matcher Raw A-B (cold lookup)
 on:
   push:
     branches:
