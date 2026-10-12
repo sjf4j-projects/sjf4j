@@ -1,0 +1,81 @@
+name: Experimental Fastjson2 Matcher Driven AB
+on:
+  push:
+    branches:
+      - experiment/compiled-fastjson2-matcher-driven
+    paths:
+      - .github/workflows/experimental-matcher-driven-ab.yml
+permissions:
+  contents: read
+jobs:
+  test-and-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Verify matcher-driven compiled binders
+        shell: bash
+        run: |
+          ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-processor:test :sjf4j-testbench:test --no-daemon --console=plain && exit 0
+          echo '=== Compiler diagnostics ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for f in Path('sjf4j-processor/build/test-results/test').glob('TEST-*.xml'):
+              for tc in ET.parse(f).getroot().findall('.//testcase'):
+                  for issue in list(tc.findall('failure'))+list(tc.findall('error')):
+                      print(tc.attrib.get('name'), issue.attrib.get('message'),(issue.text or '')[:1000])
+          PY
+          exit 1
+      - name: Build A and B JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach /tmp/variants-A c25eeb24f7a2eedfcf2473470d9cfd9fb9e0ca6a
+          git worktree add --detach /tmp/variants-B HEAD
+          (cd /tmp/variants-A && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          (cd /tmp/variants-B && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+      - name: Paired A-B-B-A compiled POJO JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for item in A-1 B-1 B-2 A-2; do
+            variant="${item%-*}"
+            java -jar /tmp/variants-${variant}/sjf4j-testbench/build/libs/*-jmh.jar \
+              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_(reversed_)?(string|utf8)_compiled$' \
+              -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
+              -rff results/${item}.json | tee results/${item}.txt
+          done
+      - name: Compare performance
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          values={}
+          for label in ['A-1','B-1','B-2','A-2']:
+              rows=json.loads(Path('results',label+'.json').read_text())
+              assert len(rows)==4,(label,len(rows))
+              for row in rows:
+                  key=('reversed' if '_reversed_' in row['benchmark'] else 'ordered')+'/'+('utf8' if '_utf8_' in row['benchmark'] else 'string')
+                  values.setdefault(key,{})[label]=row['primaryMetric']['score']
+          for key,v in sorted(values.items()):
+              a=(v['A-1']+v['A-2'])/2
+              b=(v['B-1']+v['B-2'])/2
+              print(f'{key}: reader-driven {a:.6f} vs matcher-driven {b:.6f} us/op, delta {(b/a-1)*100:+.2f}%')
+          PY
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-matcher-driven-ab
+          path: results/
+          if-no-files-found: ignore
