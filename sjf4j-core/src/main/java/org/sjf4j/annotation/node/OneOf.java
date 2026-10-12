@@ -35,7 +35,7 @@ public @interface OneOf {
     @Retention(RetentionPolicy.RUNTIME)
     @interface Mapping {
         /**
-         * Concrete target subtype.
+         * Concrete target subtype, distinct from the declared target type.
          */
         Class<?> value();
 

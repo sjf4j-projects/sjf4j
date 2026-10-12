@@ -6,7 +6,9 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.fixture.JsonObjectPersonFixture.Baby;
@@ -14,6 +16,7 @@ import org.sjf4j.fixture.JsonObjectPersonFixture.Person;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,8 @@ class NodeMapperTest {
         assertEquals(Boolean.TRUE, NodeMapper.convert(true, Boolean.class, false));
         assertEquals(Status.OK, NodeMapper.convert("OK", Status.class, false));
         assertEquals("OK", NodeMapper.convert(Status.OK, String.class, false));
+        assertNull(NodeMapper.convert(null, void.class, false));
+        assertThrows(BindingException.class, () -> NodeMapper.convert("x", Void.class, false));
 
         assertEquals(Integer.valueOf(7),
                 NodeMapper.convert(7L, Integer.class, false, RuntimeContext.EMPTY));
@@ -407,9 +412,75 @@ class NodeMapperTest {
     void convertDecodesNullWithNodeValue() {
         NullValue root = (NullValue) NodeMapper.convert(null, NullValue.class, false);
         NullValueHolder holder = (NullValueHolder) NodeMapper.convert(JsonObject.of("value", null), NullValueHolder.class, false);
+        List<NullValue> list = (List<NullValue>) NodeMapper.convert(JsonArray.of((Object) null),
+                new TypeReference<List<NullValue>>() {}.getType(), false);
 
         assertEquals("<null>", root.value);
         assertEquals("<null>", holder.value.value);
+        assertEquals("<null>", list.get(0).value);
+    }
+
+    @Test
+    void annotatedJsonSubclassesSelectOneOfBeforeStructuralOrIdentityConversion() {
+        JsonObject object = JsonObject.of("kind", "child", "name", "A");
+        JsonArray array = JsonArray.of(1, 2);
+
+        assertInstanceOf(SelectedObject.class, NodeMapper.convert(object, ObjectChoice.class, false));
+        assertInstanceOf(SelectedArray.class, NodeMapper.convert(array, ArrayChoice.class, false));
+        SelectedObject compatibleObject = new SelectedObject();
+        compatibleObject.put("kind", "child");
+        assertSame(compatibleObject, NodeMapper.convert(compatibleObject, ObjectChoice.class, false));
+        compatibleObject.put("kind", "unknown");
+        assertThrows(BindingException.class,
+                () -> NodeMapper.convert(compatibleObject, ObjectChoice.class, false));
+        SelectedArray compatibleArray = new SelectedArray();
+        assertSame(compatibleArray, NodeMapper.convert(compatibleArray, ArrayChoice.class, false));
+        assertNull(NodeMapper.convert(null, ObjectChoice.class, false));
+    }
+
+    @Test
+    void memberOneOfOverridesClassSelectionAndNullCodec() {
+        ChoiceHolder holder = (ChoiceHolder) NodeMapper.convert(
+                JsonObject.of("value", JsonObject.of("kind", "child")), ChoiceHolder.class, false);
+        assertInstanceOf(OtherChoice.class, holder.value);
+
+        ChoiceHolder empty = (ChoiceHolder) NodeMapper.convert(
+                JsonObject.of("value", null), ChoiceHolder.class, false);
+        assertNull(empty.value);
+
+        NullOverrideHolder nullOverride = (NullOverrideHolder) NodeMapper.convert(
+                JsonObject.of("value", null), NullOverrideHolder.class, false);
+        assertNull(nullOverride.value);
+    }
+
+    @Test
+    void oneOfTreatsUnknownSourcesAsNoMatchWithoutEncodingThem() {
+        assertInstanceOf(EncodedChoice.class, NodeMapper.convert(
+                Map.of("kind", "child"), ValueChoice.class, false));
+        assertNull(NodeMapper.convert(Map.of("kind", "missing"), NullableValueChoice.class, false));
+
+        BindingException valueBinding = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new EncodedChoice(Map.of("kind", "child")), ValueChoice.class, false));
+        assertTrue(valueBinding.getMessage().contains("node must be a JSON object"));
+        assertNull(NodeMapper.convert(new RawChoice(null), NullableValueChoice.class, false));
+        BindingException unknown = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new Object(), ValueChoice.class, false));
+        assertTrue(unknown.getMessage().contains("node must be a JSON object"));
+
+        BindingException failure = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(Collections.singletonList(new RawChoice(Map.of("kind", "error"))),
+                        new TypeReference<List<ValueChoice>>() {}.getType(), false));
+        assertTrue(failure.getMessage().contains("$[0]"));
+        assertTrue(failure.getMessage().contains("node must be a JSON object"));
+    }
+
+    @Test
+    void oneOfMatchesRawShapeButRejectsValueBindingSource() {
+        StringChoice decoded = (StringChoice) NodeMapper.convert("text", ShapeChoice.class, false);
+        assertEquals("text", decoded.value);
+        BindingException error = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new StringChoice("text"), ShapeChoice.class, false));
+        assertTrue(error.getMessage().contains("jsonType=UNKNOWN"));
     }
 
     @Test
@@ -568,6 +639,78 @@ class NodeMapperTest {
 
     static class NullValueHolder {
         public NullValue value;
+    }
+
+    @OneOf(value = @OneOf.Mapping(value = SelectedObject.class, when = "child"), key = "kind")
+    static class ObjectChoice extends JsonObject {}
+
+    static class SelectedObject extends ObjectChoice {}
+
+    @OneOf(@OneOf.Mapping(SelectedArray.class))
+    static class ArrayChoice extends JsonArray {}
+
+    static class SelectedArray extends ArrayChoice {}
+
+    @OneOf(value = @OneOf.Mapping(value = SelectedChoice.class, when = "child"), key = "kind")
+    static class Choice extends JsonObject {}
+
+    static class SelectedChoice extends Choice {}
+
+    static class OtherChoice extends Choice {}
+
+    static class ChoiceHolder {
+        @OneOf(value = @OneOf.Mapping(value = OtherChoice.class, when = "child"), key = "kind")
+        public Choice value;
+    }
+
+    static class NullOverrideHolder {
+        @OneOf(value = @OneOf.Mapping(value = NullValueSubtype.class, when = "child"), key = "kind")
+        public NullValue value;
+    }
+
+    static class NullValueSubtype extends NullValue {
+        NullValueSubtype(String value) { super(value); }
+    }
+
+    @OneOf(value = @OneOf.Mapping(value = EncodedChoice.class, when = "child"), key = "kind")
+    static abstract class ValueChoice {}
+
+    @NodeValue
+    static class EncodedChoice extends ValueChoice {
+        final Map<String, Object> raw;
+        EncodedChoice(Map<String, Object> raw) { this.raw = raw; }
+        @ValueToRaw Map<String, Object> encode() { return raw; }
+        @RawToValue static EncodedChoice decode(Map<String, Object> raw) { return new EncodedChoice(raw); }
+        @ValueCopy EncodedChoice copy() { return new EncodedChoice(raw); }
+    }
+
+    @NodeValue
+    static class RawChoice {
+        final Map<String, Object> raw;
+        RawChoice(Map<String, Object> raw) { this.raw = raw; }
+        @ValueToRaw Map<String, Object> encode() {
+            if (raw != null && "error".equals(raw.get("kind"))) throw new IllegalStateException("bad raw");
+            return raw;
+        }
+        @RawToValue static RawChoice decode(Map<String, Object> raw) { return new RawChoice(raw); }
+    }
+
+    @OneOf(value = @OneOf.Mapping(value = NullableValueSubtype.class, when = "child"),
+            key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
+    static abstract class NullableValueChoice extends ValueChoice {}
+
+    static class NullableValueSubtype extends NullableValueChoice {}
+
+    @OneOf(@OneOf.Mapping(StringChoice.class))
+    static abstract class ShapeChoice {}
+
+    @NodeValue
+    static class StringChoice extends ShapeChoice {
+        final String value;
+        StringChoice(String value) { this.value = value; }
+        @ValueToRaw String encode() { return value; }
+        @RawToValue static StringChoice decode(String raw) { return new StringChoice(raw); }
+        @ValueCopy StringChoice copy() { return new StringChoice(value); }
     }
 
     static class Profile {

@@ -176,6 +176,19 @@ class ReflectUtilEdgeCaseTest {
 
     static class MissingWhenSubtype extends JsonObject implements MissingWhenOneOf {}
 
+    @OneOf(value = @OneOf.Mapping(value = SelfDiscriminatorOneOf.class, when = "self"), key = "kind")
+    static class SelfDiscriminatorOneOf {}
+
+    @OneOf(@OneOf.Mapping(SelfShapeOneOf.class))
+    static class SelfShapeOneOf {}
+
+    static class SelfFieldChoice {}
+
+    static class SelfFieldOneOf {
+        @OneOf(value = @OneOf.Mapping(value = SelfFieldChoice.class, when = "self"), key = "kind")
+        public SelfFieldChoice value;
+    }
+
     @NodeObject(naming = NamingStrategy.IDENTITY)
     static class IdentityNamingPojo {}
 
@@ -300,6 +313,15 @@ class ReflectUtilEdgeCaseTest {
                 MissingWhenOneOf.class,
                 MissingWhenOneOf.class.getAnnotation(OneOf.class)
         ));
+
+        for (Class<?> clazz : new Class<?>[]{SelfDiscriminatorOneOf.class, SelfShapeOneOf.class}) {
+            BindingException error = assertThrows(BindingException.class,
+                    () -> TypeRegistry.registerTypeInfo(clazz));
+            assertTrue(error.getMessage().contains("must differ from declared type"));
+        }
+        BindingException fieldError = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(SelfFieldOneOf.class));
+        assertTrue(fieldError.getMessage().contains("must differ from declared type"));
 
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(null));
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(IdentityNamingPojo.class));

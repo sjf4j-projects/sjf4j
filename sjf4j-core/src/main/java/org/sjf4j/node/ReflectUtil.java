@@ -1062,6 +1062,10 @@ public final class ReflectUtil {
         EnumSet<JsonType> enumSet = hasDiscriminator ? null : EnumSet.noneOf(JsonType.class);
         for (OneOf.Mapping mapping : mappings) {
             Class<?> subClazz = mapping.value();
+            if (subClazz == clazz) {
+                throw new BindingException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
+                        " must differ from declared type " + clazz.getName());
+            }
             if (!clazz.isAssignableFrom(subClazz)) {
                 throw new BindingException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
                         " is not assignable from " + clazz.getName());
