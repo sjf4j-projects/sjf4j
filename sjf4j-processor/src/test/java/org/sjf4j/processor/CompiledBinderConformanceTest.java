@@ -265,13 +265,13 @@ class CompiledBinderConformanceTest {
                 Class<?> beanType = Class.forName("fixture.Bean", true, loader);
                 Object binder = binderType.getConstructor().newInstance();
                 Object bean = beanType.getConstructor().newInstance();
-                beanType.getField("text").set(bean, "hello");
+                beanType.getField("text").set(bean, "hello \"escaped\" \\ slash 中\nline");
                 beanType.getField("count").setInt(bean, 7);
 
                 String json = (String) binderType.getMethod("write", beanType).invoke(binder, bean);
                 assertTrue(json.contains("\"special-key\""), backend + ": " + json);
                 Object decoded = binderType.getMethod("read", String.class).invoke(binder, json);
-                assertEquals("hello", beanType.getField("text").get(decoded), backend);
+                assertEquals("hello \"escaped\" \\ slash 中\nline", beanType.getField("text").get(decoded), backend);
                 assertEquals(7, beanType.getField("count").getInt(decoded), backend);
 
                 byte[] utf8 = (byte[]) binderType.getMethod("writeBytes", beanType)

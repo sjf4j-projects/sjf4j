@@ -98,6 +98,16 @@ final class WriteEmitter {
             String source,
             NameAllocator names) {
 
+        switch (backend.backend()) {
+            case JACKSON2:
+            case JACKSON3:
+            case FASTJSON2:
+                emitBufferedStringMethod(out, value, source, names);
+                return;
+            default:
+                break;
+        }
+
         String output =
                 names.newName("output");
 
@@ -120,6 +130,24 @@ final class WriteEmitter {
                 writer);
 
         out.line("return " + output + ".toString();");
+        out.endBlock();
+    }
+
+
+    private void emitBufferedStringMethod(
+            JavaWriter out,
+            BindingValue value,
+            String source,
+            NameAllocator names) {
+
+        String writer = names.newName("writer");
+
+        out.beginBlock("try (" + backend.writerType() + " " + writer +
+                " = this.binder.createWriter())");
+
+        emitWriteBody(out, value, source, writer);
+
+        out.line("return " + writer + ".toString();");
         out.endBlock();
     }
 
