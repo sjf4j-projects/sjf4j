@@ -55,7 +55,7 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
     }
 
     @Override
-    public Object convert(Class<?> clazz, Object source, RuntimeContext context) {
+    public Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {
         JsonType shape = JsonType.of(source);
         if (shape.isObject()) {
             JsonObjectBuilder builder = Json.createObjectBuilder();

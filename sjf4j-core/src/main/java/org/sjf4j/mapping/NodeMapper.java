@@ -306,7 +306,7 @@ public final class NodeMapper {
             } else if (node instanceof Map || node instanceof JsonObject
                     || node instanceof List || node instanceof JsonArray
                     || node.getClass().isArray() || node instanceof Set) {
-                result = target.convert(toBoxed, node, context);
+                result = target.convertContainer(toBoxed, node, context);
                 if (deepCopy) result = target.deepCopy(result);
             } else {
                 TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
@@ -333,14 +333,14 @@ public final class NodeMapper {
                             break;
                         case OBJECT:
                         case ARRAY:
-                            result = target.convert(toBoxed, node, context);
+                            result = target.convertContainer(toBoxed, node, context);
                             if (deepCopy) result = target.deepCopy(result);
                             break;
                         default:
                             throw new BindingException("unsupported external node type '" + Types.name(node) + "'", ps);
                     }
                 } else if (sourceInfo.pojoInfo != null) {
-                    result = target.convert(toBoxed, node, context);
+                    result = target.convertContainer(toBoxed, node, context);
                     if (deepCopy) result = target.deepCopy(result);
                 } else {
                     throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);

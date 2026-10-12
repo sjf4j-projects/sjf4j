@@ -281,7 +281,7 @@ public interface ExternalNode<N> {
      * shape atomically. The source is not modified. Nested values are converted
      * using the supplied runtime context.</p>
      */
-    default Object convert(Class<?> clazz, Object source, RuntimeContext context) {
+    default Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {
         Class<N> nativeType = nodeType();
         switch (JsonType.of(source)) {
             case OBJECT: {

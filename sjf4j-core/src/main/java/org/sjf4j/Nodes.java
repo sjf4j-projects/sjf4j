@@ -1603,7 +1603,6 @@ public final class Nodes {
                     return i < len;
                 }
                 public Object next() {
-                    if (i >= len) throw new NoSuchElementException();
                     return Array.get(node, i++);
                 }
             };
