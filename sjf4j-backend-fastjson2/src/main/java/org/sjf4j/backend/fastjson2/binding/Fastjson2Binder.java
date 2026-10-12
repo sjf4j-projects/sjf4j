@@ -107,6 +107,11 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
      * native in-memory output buffer.  The base implementation writes through
      * a {@code Writer} and copies the completed document into a String.
      */
+    /** Creates an in-memory native writer with this binder's configured context. */
+    public JSONWriter createNativeWriter() {
+        return JSONWriter.of(writerContext);
+    }
+
     @Override
     public String writeNodeAsString(Object node) {
         try (JSONWriter output = JSONWriter.of(writerContext)) {

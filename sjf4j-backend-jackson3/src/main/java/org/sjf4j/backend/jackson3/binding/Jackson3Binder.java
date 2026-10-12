@@ -102,6 +102,14 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         return new Jackson3Writer(generator);
     }
 
+    /**
+     * Acquires the same pooled output recycler used by native String binding.
+     * Callers must release it with {@code releaseToPool()}.
+     */
+    public BufferRecycler acquireBufferRecycler() {
+        return factory._getBufferRecycler();
+    }
+
     @Override
     public String writeNodeAsString(Object node) {
         final BufferRecycler recycler = factory._getBufferRecycler();

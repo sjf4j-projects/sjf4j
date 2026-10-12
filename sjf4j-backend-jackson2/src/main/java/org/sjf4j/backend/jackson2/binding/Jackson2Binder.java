@@ -90,6 +90,14 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         return new Jackson2Writer(generator);
     }
 
+    /**
+     * Acquires the same pooled output recycler used by native String binding.
+     * Callers must release it with {@code releaseToPool()}.
+     */
+    public BufferRecycler acquireBufferRecycler() {
+        return factory._getBufferRecycler();
+    }
+
     @Override
     public String writeNodeAsString(Object node) {
         final BufferRecycler br = factory._getBufferRecycler();
