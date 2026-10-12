@@ -170,7 +170,7 @@ class CompiledBinderConformanceTest {
             }
             assertTrue(specialized, "Expected per-POJO generated Fastjson2 matcher");
 
-            String json = "{\"createdOn\":3,\"createdBy\":2,\"created\\\\u0041t\":1,"
+            String json = "{\"createdOn\":3,\"createdBy\":2,\"created\\u0041t\":1,"
                     + "\"legacy\":\"ok\",\"id\":4,\"café\":9,"
                     + "\"longPropertyNameTooLong\":11,\"unknown\":{\"k\":[1,2]}}";
             Object binder = impl.getConstructor().newInstance();
