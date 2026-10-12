@@ -129,7 +129,7 @@ public enum JsonType {
     /**
      * Returns true when this type is a scalar JSON shape, including null.
      */
-    public boolean isScalar() {
+    public boolean isValue() {
         return this == STRING || this == NUMBER || this == INTEGER || this == BOOLEAN || this == NULL;
     }
     /**

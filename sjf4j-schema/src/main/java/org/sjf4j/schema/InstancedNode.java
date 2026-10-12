@@ -120,7 +120,7 @@ public final class InstancedNode {
     static InstancedNode infer(Object node, InstancedNode reusedLeaf) {
         Class<?> clazz = node == null ? null : node.getClass();
         NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
-        if (kind == NodeKind.UNKNOWN && clazz != null) {
+        if (kind == NodeKind.UNKNOWN) {
             TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
             if (ti.valueInfos != null) {
                 ValueInfo vi = ti.valueInfos[0];
@@ -139,7 +139,7 @@ public final class InstancedNode {
             }
         }
         JsonType jsonType = JsonType.of(kind);
-        if (jsonType.isScalar() && reusedLeaf != null) {
+        if (jsonType.isValue() && reusedLeaf != null) {
             return reusedLeaf.reuse(node, jsonType, false);
         }
         return new InstancedNode(node, jsonType, false);

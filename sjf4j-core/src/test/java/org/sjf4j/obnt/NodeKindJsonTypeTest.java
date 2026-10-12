@@ -103,13 +103,13 @@ class NodeKindJsonTypeTest {
 
         assertTrue(JsonType.OBJECT.isObject());
         assertTrue(JsonType.ARRAY.isArray());
-        assertTrue(JsonType.STRING.isScalar());
+        assertTrue(JsonType.STRING.isValue());
         assertTrue(JsonType.STRING.isString());
         assertTrue(JsonType.NUMBER.isNumber());
         assertTrue(JsonType.INTEGER.isNumber());
         assertTrue(JsonType.BOOLEAN.isBoolean());
         assertTrue(JsonType.NULL.isNull());
         assertTrue(JsonType.UNKNOWN.isUnknown());
-        assertFalse(JsonType.OBJECT.isScalar());
+        assertFalse(JsonType.OBJECT.isValue());
     }
 }
