@@ -150,12 +150,6 @@ public final class StreamingIO {
              */
 
             if (Map.class.isAssignableFrom(boxed)) {
-                if (boxed != Map.class && boxed != LinkedHashMap.class) {
-                    TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
-                    if (ti.containerInfo != null && ti.containerInfo.externalNode != null) {
-                        return _readRegisteredNode(reader, type, boxed, ti, context);
-                    }
-                }
                 return readMap(reader, type, boxed, null, null, null, context);
             }
 
@@ -170,12 +164,6 @@ public final class StreamingIO {
              */
 
             if (List.class.isAssignableFrom(boxed)) {
-                if (boxed != List.class && boxed != ArrayList.class) {
-                    TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
-                    if (ti.containerInfo != null && ti.containerInfo.externalNode != null) {
-                        return _readRegisteredNode(reader, type, boxed, ti, context);
-                    }
-                }
                 return readList(reader, type, boxed, null, null, null, context);
             }
 
@@ -238,9 +226,8 @@ public final class StreamingIO {
                     ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
         }
         if (ti.containerInfo != null) {
-            if (ti.containerInfo.externalNode != null) {
-                return NodeMapper.convert(reader.readRawNode(), type, false, context);
-            }
+            // Streaming binding only constructs Java containers that can be
+            // populated with put/add. Native builder construction is mapping-only.
             switch (ti.containerInfo.kind) {
                 case OBJECT_MAP:
                     return readMap(reader, type, boxed, null, null, null, context);
@@ -253,7 +240,12 @@ public final class StreamingIO {
             }
         }
         if (ti.externalNode != null) {
-            return NodeMapper.convert(reader.readRawNode(), type, false, context);
+            // ExternalNode.convert may use a builder and requires a materialized
+            // source. Binding must not silently fall back to Raw + Mapping.
+            // JSON null still maps to Java null for reference targets.
+            if (reader.nextIfNull()) return null;
+            throw new BindingException("streaming binding does not support external target type '" +
+                    boxed.getName() + "'");
         }
         if (ti.pojoInfo != null) {
             if (ti.pojoInfo.isJajo) {
