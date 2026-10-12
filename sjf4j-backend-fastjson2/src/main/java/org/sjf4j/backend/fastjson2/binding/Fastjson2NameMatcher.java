@@ -163,6 +163,15 @@ public class Fastjson2NameMatcher extends NameMatcher {
     }
 
     /**
+     * Matcher-driven compiled entry point. Fastjson2Reader retains ownership
+     * of parser state and unknown/alias fallback; generated call sites can
+     * bind to the specialized POJO matcher type.
+     */
+    public final int nextNameMatch(Fastjson2Reader reader) {
+        return reader.nextNameMatch(this);
+    }
+
+    /**
      * Overridden by compiled, per-POJO matchers that can switch on raw
      * prefixes and embed native Fastjson2 name constants in bytecode.
      * Runtime matchers retain the existing prepared lookup table.
