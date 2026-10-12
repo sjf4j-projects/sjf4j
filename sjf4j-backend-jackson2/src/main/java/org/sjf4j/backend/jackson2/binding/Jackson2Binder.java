@@ -90,6 +90,18 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         return new Jackson2Writer(generator);
     }
 
+    /** Creates an in-memory writer backed by a pooled Jackson buffer. */
+    public Jackson2Writer createWriter() throws IOException {
+        BufferRecycler recycler = factory._getBufferRecycler();
+        SegmentedStringWriter output = new SegmentedStringWriter(recycler);
+        try {
+            return new Jackson2Writer(factory.createGenerator(output), output, recycler);
+        } catch (IOException | RuntimeException e) {
+            recycler.releaseToPool();
+            throw e;
+        }
+    }
+
     @Override
     public String writeNodeAsString(Object node) {
         final BufferRecycler br = factory._getBufferRecycler();
