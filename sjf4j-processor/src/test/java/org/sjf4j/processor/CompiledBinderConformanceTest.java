@@ -192,7 +192,7 @@ class CompiledBinderConformanceTest {
             Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
             Class<?> beanType = Class.forName("fixture.Bean", true, loader);
             Object binder = impl.getConstructor().newInstance();
-            String json = "{\"createdOn\":3,\"createdBy\":2,\"created\\\\u0041t\":1,"
+            String json = "{\"createdOn\":3,\"createdBy\":2,\"created\\u0041t\":1,"
                     + "\"legacy\":\"alias\",\"id\" :4,\"café\":9,"
                     + "\"longPropertyNameTooLong\":11,"
                     + "\"nested\":{\"count\":6,\"name\":\"n\"},"
