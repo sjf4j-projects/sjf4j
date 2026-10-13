@@ -325,8 +325,14 @@ final class ReadEmitter {
 
     void emitPropertyRead(JavaWriter out, BindingProperty property,
                           String owner, String reader) {
-        out.line(assignment(property.access(), owner,
-                readExpression(property.value(), reader)));
+        emitPropertyReadExpression(out, property, owner,
+                readExpression(property.value(), reader));
+    }
+
+    /** Reuses the normal POJO assignment semantics for backend-native reads. */
+    void emitPropertyReadExpression(JavaWriter out, BindingProperty property,
+                                    String owner, String expression) {
+        out.line(assignment(property.access(), owner, expression));
     }
 
     private void emitList(
