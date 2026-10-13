@@ -220,6 +220,60 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2FusedRawNameSupportsLengths2Through43() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        StringBuilder bean = new StringBuilder("package fixture;\npublic class Bean {\n");
+        StringBuilder json = new StringBuilder("{");
+        for (int length = 1; length <= 44; length++) {
+            // All names of length >= 4 share the same 4-byte raw prefix.
+            String name = "p" + "x".repeat(length - 1);
+            bean.append("  public int ").append(name).append(";\n");
+            if (length != 1) json.append(',');
+            json.append('"').append(name).append("\":").append(length);
+        }
+        bean.append("}\n");
+        json.append(",\"unknownExtra\":{\"nested\":[1,true,null]}}");
+        sources.put("fixture/Bean.java", bean.toString());
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;\n"
+                        + "}\n");
+
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        String generated = compiled.generatedSource("fixture/Binder_Impl.java");
+        for (int length = 2; length <= 43; length++) {
+            assertTrue(generated.contains("raw.nextIfName4Match" + length + "("),
+                    "Generated raw matcher missing for length " + length);
+        }
+        assertFalse(generated.contains("raw.nextIfName4Match44("));
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            Object binder = impl.getConstructor().newInstance();
+            String input = json.toString();
+            Object[] decoded = {
+                    impl.getMethod("read", String.class).invoke(binder, input),
+                    impl.getMethod("readBytes", byte[].class).invoke(binder,
+                            (Object) input.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            };
+            for (Object value : decoded) {
+                for (int length = 1; length <= 44; length++) {
+                    String name = "p" + "x".repeat(length - 1);
+                    assertEquals(length, beanType.getField(name).getInt(value),
+                            "Length " + length);
+                }
+            }
+        }
+    }
+
+    @Test
     void snakeRoundTripCompiledBinder() throws Exception {
         verifyBackend("SNAKE", true);
     }
