@@ -368,6 +368,16 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
+        // Experimental: Map<String, Object> is already a raw node graph.
+        // Compare one native recursive parse with per-entry compiled dispatch.
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && value.mapValue().kind() == BindingValue.Kind.RUNTIME
+                && context.types.isObject(value.mapValue().type())) {
+            out.line(value.type() + " value = (" + value.type() + ") reader.readRawNode();");
+            out.line("return value;");
+            return;
+        }
+
         emitObjectStart(out);
 
         out.line(
