@@ -240,7 +240,9 @@ final class ReadEmitter {
             emitStringPojoProperty(out, value);
         }
 
-        out.endBlock();
+        if (fastjson2Pojo == null || value.properties().isEmpty()) {
+            out.endBlock();
+        }
         out.line("return value;");
     }
 
