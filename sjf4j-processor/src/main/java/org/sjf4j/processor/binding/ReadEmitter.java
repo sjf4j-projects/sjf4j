@@ -368,6 +368,17 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
+        // Experimental Fastjson2 Map<String, Object> fast path: reuse the
+        // backend's already-recursive raw graph reader instead of alternating
+        // generic map name iteration with per-child readRawNode calls.
+        // Other map value types retain their compiled conversion semantics.
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && value.mapValue().kind() == BindingValue.Kind.RUNTIME
+                && context.types.isObject(value.mapValue().type())) {
+            out.line("return (" + value.type() + ") reader.readRawNode();");
+            return;
+        }
+
         emitObjectStart(out);
 
         out.line(
