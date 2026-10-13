@@ -138,6 +138,66 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2CompiledUntypedMapUsesRawGraphAndPreservesTypedMaps() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @ReadFrom java.util.Map<String,Object> read(String value) throws java.io.IOException;\n"
+                        + " @ReadFrom java.util.Map<String,Object> readBytes(byte[] value) throws java.io.IOException;\n"
+                        + " @ReadFrom java.util.Map<String,Integer> readTyped(String value) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
+                        .contains("reader.readRawNode()"),
+                "Untyped maps should use the existing recursive raw graph reader");
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> type = Class.forName("fixture.Binder_Impl", true, loader);
+            Object binder = type.getConstructor().newInstance();
+            String json = "{\"a\":1,\"b\":2.5,\"c\":null,\"d\":true,"
+                    + "\"e\":{\"x\":[\"hello\",null,3],\"y\":{\"z\":false}},"
+                    + "\"f\":[],\"g\":{},\"h\":\"escaped\\nline\"}";
+            Object[] values = {
+                    type.getMethod("read", String.class).invoke(binder, json),
+                    type.getMethod("readBytes", byte[].class).invoke(binder,
+                            (Object) json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            };
+            for (Object value : values) {
+                assertTrue(value instanceof LinkedHashMap, "root must preserve insertion order");
+                Map<?, ?> map = (Map<?, ?>) value;
+                assertEquals(java.util.Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h"),
+                        new java.util.ArrayList<>(map.keySet()));
+                assertEquals(1, ((Number) map.get("a")).intValue());
+                assertEquals(2.5d, ((Number) map.get("b")).doubleValue());
+                assertNull(map.get("c"));
+                assertEquals(true, map.get("d"));
+                Map<?, ?> nested = (Map<?, ?>) map.get("e");
+                assertTrue(nested instanceof LinkedHashMap);
+                assertEquals(java.util.Arrays.asList("hello", null, 3),
+                        nested.get("x"));
+                assertEquals(false, ((Map<?, ?>) nested.get("y")).get("z"));
+                assertEquals(java.util.Collections.emptyList(), map.get("f"));
+                assertEquals(java.util.Collections.emptyMap(), map.get("g"));
+                assertEquals("escaped\nline", map.get("h"));
+            }
+            assertNull(type.getMethod("read", String.class).invoke(binder, "null"));
+            assertTrue(((Map<?, ?>) type.getMethod("read", String.class).invoke(
+                    binder, "{}")).isEmpty());
+
+            @SuppressWarnings("unchecked")
+            Map<String, Integer> typed = (Map<String, Integer>)
+                    type.getMethod("readTyped", String.class)
+                            .invoke(binder, "{\"k\":2,\"j\":null}");
+            assertEquals(Integer.valueOf(2), typed.get("k"));
+            assertNull(typed.get("j"));
+        }
+    }
+
+    @Test
     void fastjson2RawNameFallbackAcceptsReorderedFieldsAndAliases() throws Exception {
         NavigatorTestCompiler.Result result = compile("FASTJSON2", false);
         assertTrue(result.success, result.diagnostics());
