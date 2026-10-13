@@ -93,7 +93,7 @@ final class Fastjson2PojoReadEmitter {
 
     private static boolean rawEligible(String name) {
         int length = name.length();
-        if (length < 2 || length > 11) return false;
+        if (length < 2 || length > 43) return false;
         for (int i = 0; i < length; i++) {
             char c = name.charAt(i);
             if (c < 0x20 || c >= 0x7f || c == '"' || c == '\\') return false;
@@ -109,30 +109,56 @@ final class Fastjson2PojoReadEmitter {
         return result;
     }
 
+    /**
+     * Emit the native 2..43-character Fastjson2 matcher arguments at compile
+     * time. After the four-byte raw prefix, the name has (length - 3)
+     * remaining bytes. Each native matcher accepts 8-byte groups followed by
+     * either a byte, an int, an int+byte, or an eight-byte group (which may
+     * include the closing quote/colon for lengths ending in 6 or 7).
+     */
     private static String rawMatchCall(String name) {
         int length = name.length();
         String literal = "\"" + name + "\":";
-        long suffix = pack(literal, 4, Math.min(8, literal.length() - 4));
-        String call = "raw.nextIfName4Match" + length + "(";
-        switch (length) {
-            case 2:
-            case 3:
-                return call + ")";
-            case 4:
-                return call + "(byte) 0x" + Long.toHexString(suffix & 0xffL) + ")";
-            case 5:
-            case 6:
-            case 7:
-                return call + "0x" + Long.toHexString(suffix & 0xffffffffL) + ")";
-            case 8:
-                return call + "0x" + Long.toHexString(suffix & 0xffffffffL)
-                        + ", (byte) 0x" + Long.toHexString(suffix >>> 32) + ")";
-            case 9:
-            case 10:
-            case 11:
-                return call + "0x" + Long.toHexString(suffix) + "L)";
-            default:
-                throw new AssertionError("Unsupported raw-name length: " + length);
+        StringBuilder call = new StringBuilder("raw.nextIfName4Match")
+                .append(length).append('(');
+
+        int remaining = length - 3;
+        int offset = 4;
+        while (remaining >= 8) {
+            appendRawArg(call, literal, offset, 8);
+            remaining -= 8;
+            offset += 8;
+        }
+
+        if (remaining == 1) {
+            appendRawArg(call, literal, offset, 1);
+        } else if (remaining >= 2 && remaining <= 4) {
+            appendRawArg(call, literal, offset, 4);
+        } else if (remaining == 5) {
+            appendRawArg(call, literal, offset, 4);
+            appendRawArg(call, literal, offset + 4, 1);
+        } else if (remaining >= 6) {
+            appendRawArg(call, literal, offset, 8);
+        }
+
+        return call.append(')').toString();
+    }
+
+    private static void appendRawArg(
+            StringBuilder call, String literal, int offset, int bytes) {
+        if (call.charAt(call.length() - 1) != '(') {
+            call.append(", ");
+        }
+        long bits = pack(literal, offset, bytes);
+        if (bytes == 1) {
+            call.append("(byte) 0x").append(Long.toHexString(bits));
+        } else if (bytes == 4) {
+            call.append("0x").append(Long.toHexString(bits));
+        } else if (bytes == 8) {
+            call.append("0x").append(Long.toHexString(bits)).append('L');
+        } else {
+            throw new AssertionError("Unsupported raw-name argument width: " + bytes);
         }
     }
+
 }
