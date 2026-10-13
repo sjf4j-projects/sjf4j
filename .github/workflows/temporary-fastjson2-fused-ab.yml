@@ -1,0 +1,94 @@
+name: Temporary Fastjson2 Fused Raw A-B
+on:
+  push:
+    branches:
+      - experiment/compiled-fastjson2-raw-fused
+    paths:
+      - .github/workflows/temporary-fastjson2-fused-ab.yml
+permissions:
+  contents: read
+jobs:
+  test-and-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Conformance and compile all changed modules
+        shell: bash
+        run: |
+          ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-processor:test :sjf4j-testbench:test --no-daemon --console=plain && exit 0
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          for f in Path('sjf4j-processor/build/test-results/test').glob('TEST-*.xml'):
+            for case in ET.parse(f).getroot().findall('.//testcase'):
+              for fail in case.findall('failure') + case.findall('error'):
+                print('TEST FAILURE',case.attrib['name'],fail.attrib.get('message'),(fail.text or '')[:2000])
+          PY
+          exit 1
+      - name: Build PR34 PR35 and fused JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach /tmp/bench-pr34 5349dc38982a47d35745842439443b9f2fb6093c
+          git worktree add --detach /tmp/bench-pr35 f0ab7669b0cf85e746ba60865ba3a770c602efd1
+          git worktree add --detach /tmp/bench-fused HEAD
+          for rev in pr34 pr35 fused; do
+            (cd /tmp/bench-${rev} && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          done
+      - name: JMH A-B-B-A PR35 vs fused including native and handwritten
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for tag in pr35-1 fused-1 fused-2 pr35-2; do
+            rev="${tag%-*}"
+            echo "::group::JMH ${tag}"
+            java -jar /tmp/bench-${rev}/sjf4j-testbench/build/libs/*-jmh.jar \
+              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_(reversed_)?(string|utf8)_(compiled|native)$|.*HandReadBenchmark[.]json_fastjson2_pojo_(native|handwritten_raw)$' \
+              -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
+              -rff results/${tag}.json | tee results/${tag}.txt
+            echo "::endgroup::"
+          done
+      - name: PR34 standalone reference
+        shell: bash
+        run: |
+          java -jar /tmp/bench-pr34/sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledReadBenchmark[.]json_fastjson2_pojo_(reversed_)?(string|utf8)_compiled$' \
+            -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
+            -rff results/pr34.json | tee results/pr34.txt
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cases={}
+          for tag in ['pr35-1','fused-1','fused-2','pr35-2','pr34']:
+            rows=json.loads(Path('results',tag+'.json').read_text())
+            print(tag,'benchmarks',len(rows))
+            for row in rows:
+              name=row['benchmark'].split('.')[-1]
+              if name.startswith('json_fastjson2_pojo_'):
+                cases.setdefault(name,{})[tag]=row['primaryMetric']['score']
+          for name,s in sorted(cases.items()):
+            if all(x in s for x in ('pr35-1','fused-1','fused-2','pr35-2')):
+              a=(s['pr35-1']+s['pr35-2'])/2
+              b=(s['fused-1']+s['fused-2'])/2
+              print(f'{name}: PR35 {a:.6f}, fused {b:.6f}, delta {(b/a-1)*100:+.2f}%, reference PR34={s.get("pr34")}')
+            else: print(name, s)
+          PY
+      - name: Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-fused-p0-ab
+          path: results/
+          if-no-files-found: ignore
