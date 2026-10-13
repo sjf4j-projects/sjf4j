@@ -7,7 +7,7 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -28,19 +28,19 @@ class GsonExternalMappingTest {
         source.put("age", 32);
         source.put("items", Arrays.asList(true, null, "x"));
 
-        JsonObject node = (JsonObject) NodeMapper.convert(source, JsonElement.class, false);
+        JsonObject node = (JsonObject) NodeMapper.convert(source, JsonElement.class, false, RuntimeContext.EMPTY);
         assertEquals("Ada", node.get("name").getAsString());
         assertEquals(32, node.get("age").getAsInt());
         assertSame(JsonNull.INSTANCE, node.getAsJsonArray("items").get(1));
 
-        Person person = (Person) NodeMapper.convert(node, Person.class, false);
+        Person person = (Person) NodeMapper.convert(node, Person.class, false, RuntimeContext.EMPTY);
         assertEquals("Ada", person.name);
         assertEquals(32, person.age);
 
         Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(node, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(true, null, "x"), raw.get("items"));
-        assertNull(NodeMapper.convert(null, JsonElement.class, false));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(source, com.google.gson.JsonPrimitive.class, false));
+        assertNull(NodeMapper.convert(null, JsonElement.class, false, RuntimeContext.EMPTY));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(source, com.google.gson.JsonPrimitive.class, false, RuntimeContext.EMPTY));
     }
 
     @Test
@@ -48,8 +48,8 @@ class GsonExternalMappingTest {
         JsonObject child = JsonParser.parseString("{\"x\":1}").getAsJsonObject();
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("child", child);
-        JsonObject shared = (JsonObject) NodeMapper.convert(map, JsonElement.class, false);
-        JsonObject copied = (JsonObject) NodeMapper.convert(map, JsonElement.class, true);
+        JsonObject shared = (JsonObject) NodeMapper.convert(map, JsonElement.class, false, RuntimeContext.EMPTY);
+        JsonObject copied = (JsonObject) NodeMapper.convert(map, JsonElement.class, true, RuntimeContext.EMPTY);
         assertSame(child, shared.get("child"));
         assertNotSame(child, copied.get("child"));
     }

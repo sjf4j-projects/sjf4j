@@ -8,3 +8,5 @@
  * codecs}. Use a {@code Binder} for format input and output.</p>
  */
 package org.sjf4j.mapping;
+
+import org.sjf4j.node.NodeMapper;

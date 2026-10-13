@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeStream;
+import org.sjf4j.node.NodeStream;
 import org.sjf4j.Nodes;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.BindingException;
@@ -14,6 +14,7 @@ import org.sjf4j.path.PathSegment;
 
 import java.util.Collections;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -35,17 +36,13 @@ class ExceptionRefactorTest {
     }
 
     @Test
-    void typedTargetsAreRequiredBeforeNullOrMissingValues() {
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.to(null, (Class<Object>) null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.as(null, (Class<Object>) null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.to(null, (TypeReference<Object>) null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.toMap(null, null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.toList(null, null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.toArray(null, null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.toSet(null, null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.toPojo(null, null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.toJojo(null, null));
-        assertThrowsExactly(NullPointerException.class, () -> Nodes.toJajo(null, null));
+    void nullDirectTargetsAreUntypedButOtherTypedApisRequireTargets() {
+        assertNull(Nodes.to(null, (Class<Object>) null));
+        assertNull(Nodes.as(null, (Class<Object>) null));
+        assertNull(Nodes.toMap(null, null));
+        assertNull(Nodes.toList(null, null));
+        assertNull(Nodes.toArray(null, null));
+        assertNull(Nodes.toSet(null, null));
 
         JsonObject object = new JsonObject();
         JsonArray array = new JsonArray();
@@ -53,7 +50,7 @@ class ExceptionRefactorTest {
         assertThrowsExactly(NullPointerException.class, () -> object.getMap("missing", null));
         assertThrowsExactly(NullPointerException.class, () -> array.get(0, (Class<Object>) null));
         assertThrowsExactly(NullPointerException.class, () -> array.getList(0, null));
-        assertThrowsExactly(NullPointerException.class, () -> array.toArray(null));
+        assertArrayEquals(new Object[0], array.toArray(null));
 
         JsonPath path = JsonPath.parse("$.missing");
         assertThrowsExactly(NullPointerException.class, () -> path.get(null, (Class<Object>) null));
@@ -86,7 +83,7 @@ class ExceptionRefactorTest {
     }
 
     @Test
-    void jsonPathReportsNodeErrorsForUnsupportedBindingTargets() {
+    void jsonPathReportsBindingErrorsForUnsupportedBindingTargets() {
         JsonObject document = JsonObject.of(
                 "value", 1,
                 "object", JsonObject.of("value", 1),
@@ -94,21 +91,21 @@ class ExceptionRefactorTest {
                 "objects", JsonArray.of(JsonObject.of("id", 1))
         );
 
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.value").get(document, Thread.class));
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.value").getAs(document, Thread.class));
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.object").getMap(document, Thread.class));
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.values").getList(document, Thread.class));
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.values").getArray(document, Thread.class));
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.values").getSet(document, Thread.class));
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.value").eval(document, Thread.class));
-        assertThrowsExactly(NodeException.class,
+        assertThrowsExactly(BindingException.class,
                 () -> JsonPath.parse("$.value").evalAs(document, Thread.class));
 
         ThrowingJsonObject throwing = new ThrowingJsonObject();

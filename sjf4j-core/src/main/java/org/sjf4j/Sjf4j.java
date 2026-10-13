@@ -7,7 +7,7 @@ import org.sjf4j.binding.Format;
 import org.sjf4j.binding.PropertiesBinder;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.simple.SimplePropertiesBinder;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 

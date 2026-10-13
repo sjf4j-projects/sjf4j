@@ -1,9 +1,10 @@
 package org.sjf4j.schema;
 
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 
 
 /**
@@ -67,7 +68,7 @@ public interface JsonSchema {
      * The returned value is not compiled yet.
      */
     static JsonSchema fromNode(Object node) {
-        return (JsonSchema) NodeMapper.convert(node, JsonSchema.class, false);
+        return (JsonSchema) NodeMapper.convert(node, JsonSchema.class, false, RuntimeContext.EMPTY);
     }
 
 }

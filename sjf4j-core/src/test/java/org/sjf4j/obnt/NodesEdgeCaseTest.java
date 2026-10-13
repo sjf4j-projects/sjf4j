@@ -15,6 +15,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.node.NodeWalker;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -283,41 +284,44 @@ class NodesEdgeCaseTest {
         assertFalse(emptyIterator.hasNext());
         assertThrows(NoSuchElementException.class, emptyIterator::next);
 
-        Nodes.Access access = new Nodes.Access();
-        Nodes.putAccessInObject(bean, Bean.class, "name", access);
+        NodeWalker.Access access = new NodeWalker.Access();
+        NodeWalker.putAccessInObject(bean, Bean.class, "name", access);
         assertEquals("bean", access.node);
         assertTrue(access.puttable);
-        Nodes.putAccessInObject(dynamicBean, DynamicBean.class, "extra", access);
+        NodeWalker.putAccessInObject(dynamicBean, DynamicBean.class, "extra", access);
         assertEquals(true, access.node);
         assertTrue(access.puttable);
-        Nodes.putAccessInObject(bean, Bean.class, "missing", access);
+        NodeWalker.putAccessInObject(bean, Bean.class, "missing", access);
         assertNull(access.node);
         assertFalse(access.puttable);
         map.put("presentNull", null);
-        Nodes.putAccessInObject(map, null, "presentNull", access);
+        NodeWalker.putAccessInObject(map, null, "presentNull", access);
         assertNull(access.node);
-        Nodes.getAccessInObject(map, "presentNull", access);
+        NodeWalker.getAccessInObject(map, "presentNull", access);
         assertNull(access.node);
         assertTrue(access.present);
 
-        Nodes.putAccessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), 1, access);
+        NodeWalker.putAccessInArray(Arrays.asList("x"),
+                new TypeReference<List<String>>() {}.getType(), 1, access);
         assertNull(access.node);
         assertTrue(access.puttable);
         assertEquals(String.class, access.type);
-        Nodes.putAccessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), null, access);
+        NodeWalker.putAccessInArray(Arrays.asList("x"),
+                new TypeReference<List<String>>() {}.getType(), null, access);
         assertNull(access.node);
         assertTrue(access.puttable);
         assertEquals(String.class, access.type);
-        Nodes.putAccessInArray(new int[]{1, 2}, int[].class, -1, access);
+        NodeWalker.putAccessInArray(new int[]{1, 2}, int[].class, -1, access);
         assertEquals(2, access.node);
         assertTrue(access.puttable);
-        Nodes.putAccessInArray(new int[]{1, 2}, int[].class, 2, access);
+        NodeWalker.putAccessInArray(new int[]{1, 2}, int[].class, 2, access);
         assertNull(access.node);
         assertFalse(access.puttable);
-        Nodes.getAccessInArray(Arrays.asList("x", null), 1, access);
+        NodeWalker.getAccessInArray(Arrays.asList("x", null), 1, access);
         assertNull(access.node);
         assertTrue(access.present);
-        assertThrows(NodeException.class, () -> Nodes.putAccessInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), null, 0, access));
+        assertThrows(NodeException.class, () -> NodeWalker.putAccessInArray(
+                new LinkedHashSet<>(Arrays.asList("a", "b")), null, 0, access));
 
         assertEquals("jack", Nodes.putInObject(map, "name", "map"));
         assertNull(Nodes.putInObject(bean, "name", "pojo"));
@@ -405,11 +409,11 @@ class NodesEdgeCaseTest {
         assertEquals("han", Nodes.asString(Nodes.getInObject(objectNode, "name")));
         assertEquals("han", Nodes.getInObject(objectNode, "name", String.class));
 
-        Nodes.Access access = new Nodes.Access();
-        Nodes.putAccessInObject(objectNode, null, "name", access);
+        NodeWalker.Access access = new NodeWalker.Access();
+        NodeWalker.putAccessInObject(objectNode, null, "name", access);
         assertEquals("han", Nodes.asString(access.node));
         assertTrue(access.puttable);
-        Nodes.putAccessInObject(objectNode, null, "missing", access);
+        NodeWalker.putAccessInObject(objectNode, null, "missing", access);
         assertNull(access.node);
 
         List<Integer> indexes = new ArrayList<>();
@@ -424,10 +428,10 @@ class NodesEdgeCaseTest {
         assertEquals("x", Nodes.asString(iterator.next()));
         assertEquals(2, Nodes.toNumber(iterator.next()).intValue());
 
-        Nodes.putAccessInArray(arrayNode, null, 1, access);
+        NodeWalker.putAccessInArray(arrayNode, null, 1, access);
         assertEquals(2, Nodes.toNumber(access.node).intValue());
         assertTrue(access.puttable);
-        Nodes.putAccessInArray(arrayNode, null, 9, access);
+        NodeWalker.putAccessInArray(arrayNode, null, 9, access);
         assertNull(access.node);
 
         assertThrows(NodeException.class, () -> Nodes.copy(objectNode));
@@ -443,19 +447,16 @@ class NodesEdgeCaseTest {
     }
 
     @Test
-    void testJojoJajoEqualityHashAndWalkCoverage() {
-        IllegalArgumentException jojoError = assertThrows(IllegalArgumentException.class,
-                () -> Nodes.toJojo(JsonObject.of("name", "han"), JsonObject.class));
-        assertEquals(IllegalArgumentException.class, jojoError.getClass());
-        assertNull(Nodes.toJajo(null, DynamicArray.class));
-        DynamicArray dynamicArray = Nodes.toJajo(Arrays.asList(1, 2), DynamicArray.class);
+    void testNodeConversionEqualityHashAndWalkCoverage() {
+        JsonObject object = JsonObject.of("name", "han");
+        assertSame(object, Nodes.to(object, JsonObject.class));
+        assertNull(Sjf4j.global().fromNode(null, DynamicArray.class, false));
+        DynamicArray dynamicArray = Sjf4j.global().fromNode(Arrays.asList(1, 2), DynamicArray.class, false);
         assertEquals(Arrays.asList(1, 2), dynamicArray.toList());
-        TypedArray typed = Nodes.toJajo(Arrays.asList(1L, 2L), TypedArray.class);
+        TypedArray typed = Sjf4j.global().fromNode(Arrays.asList(1L, 2L), TypedArray.class, false);
         assertEquals(Arrays.asList(1, 2), typed.toList());
         assertInstanceOf(Integer.class, typed.getNode(0));
-        IllegalArgumentException jajoError = assertThrows(IllegalArgumentException.class,
-                () -> Nodes.toJajo(Arrays.asList(1, 2), JsonArray.class));
-        assertEquals(IllegalArgumentException.class, jajoError.getClass());
+        assertEquals(Arrays.asList(1, 2), Nodes.to(Arrays.asList(1, 2), JsonArray.class).toList());
 
         assertTrue(Nodes.equals(new UnknownValue("v"), new UnknownValue("v")));
         assertFalse(Nodes.equals("1", 1));
@@ -467,12 +468,12 @@ class NodesEdgeCaseTest {
         JsonArray arrayTree = JsonArray.of(JsonObject.of("name", "han"), 2);
         List<String> visited = new ArrayList<>();
 
-        Nodes.walk(objectTree, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, -1,
+        NodeWalker.walk(objectTree, NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.TOP_DOWN, -1,
                 (path, node) -> {
                     visited.add(path.toString());
                     return false;
                 });
-        Nodes.walk(arrayTree, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, -1,
+        NodeWalker.walk(arrayTree, NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.TOP_DOWN, -1,
                 (path, node) -> {
                     visited.add(path.toString());
                     return false;
@@ -516,11 +517,11 @@ class NodesEdgeCaseTest {
         assertEquals("ro", bean.getReadOnly());
         assertEquals("secret-1", bean.peekWriteOnly());
 
-        Nodes.Access access = new Nodes.Access();
-        Nodes.putAccessInObject(bean, AccessModeBean.class, "writeOnly", access);
+        NodeWalker.Access access = new NodeWalker.Access();
+        NodeWalker.putAccessInObject(bean, AccessModeBean.class, "writeOnly", access);
         assertNull(access.node);
         assertTrue(access.puttable);
-        Nodes.getAccessInObject(bean, "writeOnly", access);
+        NodeWalker.getAccessInObject(bean, "writeOnly", access);
         assertNull(access.node);
         assertFalse(access.present);
 
@@ -545,7 +546,7 @@ class NodesEdgeCaseTest {
                 "keep", 4
         );
 
-        root.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
+        root.walk(NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
             Nodes.removeIfInObject(node, (key, value) -> key.startsWith("$"));
             return true;
         });

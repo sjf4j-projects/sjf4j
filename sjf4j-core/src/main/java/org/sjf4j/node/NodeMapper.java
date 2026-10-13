@@ -1,4 +1,4 @@
-package org.sjf4j.mapping;
+package org.sjf4j.node;
 
 import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
@@ -8,6 +8,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.meta.CreatorInfo;
 import org.sjf4j.meta.CreatorState;
@@ -27,7 +28,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,15 +47,697 @@ public final class NodeMapper {
     private NodeMapper() {
     }
 
+    /*
+     * --------------------------------------------------------------
+     * Direct Adaptation (to / as)
+     * --------------------------------------------------------------
+     */
 
 
     /**
-     * Converts a node to the captured generic target type using the default
-     * runtime context.
+     * Returns the string value of a string-shaped node without cross-type coercion.
+     * Character and enum values use their textual representation. A node value
+     * must use a String raw representation under the selected value format.
      */
-    public static Object convert(Object node, Type type, boolean deepCopy) {
-        return convert(node, type, deepCopy, RuntimeContext.EMPTY);
+    public static String toString(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof String) return (String) node;
+        if (node instanceof Character) return node.toString();
+        if (node instanceof Enum) return ((Enum<?>) node).name();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.valueInfos != null) {
+            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
+            if (vi.rawClazz != String.class) {
+                throw new NodeException("expected String raw type for '" + Types.name(node)
+                        + "', but was '" + vi.rawClazz.getName() + "'");
+            }
+            return (String) vi.valueToRaw(node);
+        }
+        if (ti.externalNode != null) return ti.externalNode.toString(node);
+        throw new NodeException("expected String, but was " + Types.name(node));
     }
+
+    /**
+     * Returns a scalar node as text using lenient coercion.
+     * Numbers and booleans use their Java textual form; external object/array
+     * nodes are not stringified as JSON documents. Plain POJOs retain their
+     * Java {@code toString()} fallback.
+     */
+    public static String asString(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof String) return (String) node;
+        if (node instanceof Character) return node.toString();
+        if (node instanceof Enum) return ((Enum<?>) node).name();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.valueInfos != null) {
+            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
+            return asString(vi.valueToRaw(node), context);
+        }
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case STRING: return ti.externalNode.toString(node);
+                case NUMBER: return ti.externalNode.toNumber(node).toString();
+                case BOOLEAN: return ti.externalNode.toBoolean(node).toString();
+                default: return node.toString();
+            }
+        }
+        return node.toString();
+    }
+
+    /**
+     * Returns a Character from a single-character string representation.
+     * Empty or multi-character strings are rejected.
+     */
+    public static Character toChar(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Character) return (Character) node;
+
+        String s = toString(node, context);
+        if (s == null) return null;
+        if (s.length() != 1) {
+            throw new NodeException("cannot convert to char: expected single-character string, but length was " + s.length());
+        }
+        return s.charAt(0);
+    }
+
+    /**
+     * Returns the first character of the lenient string representation.
+     * Returns {@code null} for an absent or empty string.
+     */
+    public static Character asChar(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Character) return (Character) node;
+
+        String s = asString(node, context);
+        return s != null && !s.isEmpty() ? s.charAt(0) : null;
+    }
+
+    /**
+     * Resolves an enum constant by its exact name, using strict string semantics.
+     * Numeric ordinals are not accepted.
+     */
+    public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz, RuntimeContext context) {
+        Asserts.notNull(enumClazz, "enumClazz");
+        if (node == null) return null;
+        if (enumClazz.isInstance(node)) return enumClazz.cast(node);
+
+        String s = toString(node, context);
+        if (s == null) return null;
+        try {
+            return Enum.valueOf(enumClazz, s);
+        } catch (IllegalArgumentException e) {
+            throw new NodeException("cannot bind '" + s + "' to enum " + enumClazz.getName(), e);
+        }
+    }
+
+    /**
+     * Resolves an enum constant by name or by a numeric ordinal.
+     * Numeric input (including numeric external nodes and value-codec raw values)
+     * must be an exact, in-range integer. Numeric strings are treated as names,
+     * not ordinals. Returns {@code null} for an unknown name or invalid ordinal.
+     */
+    public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz, RuntimeContext context) {
+        Asserts.notNull(enumClazz, "enumClazz");
+        if (node == null) return null;
+        if (enumClazz.isInstance(node)) return enumClazz.cast(node);
+
+        Object value = node;
+        if (!(value instanceof Number) && !(value instanceof String)
+                && !(value instanceof Character) && !(value instanceof Enum)) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(value.getClass());
+            if (ti.valueInfos != null) {
+                ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(value.getClass()));
+                value = vi.valueToRaw(value);
+            } else if (ti.externalNode != null && ti.externalNode.jsonType(value) == JsonType.NUMBER) {
+                value = ti.externalNode.toNumber(value);
+            }
+        }
+        if (value instanceof Number) {
+            Number number = (Number) value;
+            if (!Numbers.isSemanticInteger(number)) return null;
+            int ordinal;
+            try {
+                ordinal = Numbers.toInt(number);
+            } catch (ArithmeticException e) {
+                return null;
+            }
+            E[] values = enumClazz.getEnumConstants();
+            return ordinal >= 0 && ordinal < values.length ? values[ordinal] : null;
+        }
+
+        String s = asString(value, context);
+        if (s == null) return null;
+        try {
+            return Enum.valueOf(enumClazz, s);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns the numeric value of a number-shaped node without coercion from
+     * strings or booleans. The selected value codec must have a numeric raw type.
+     */
+    public static Number toNumber(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Number) return (Number) node;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.valueInfos != null) {
+            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
+            if (!Number.class.isAssignableFrom(Types.box(vi.rawClazz))) {
+                throw new NodeException("expected Number raw type for '" + Types.name(node)
+                        + "', but was '" + vi.rawClazz.getName() + "'");
+            }
+            return (Number) vi.valueToRaw(node);
+        }
+        if (ti.externalNode != null) return ti.externalNode.toNumber(node);
+        throw new NodeException("expected Number, but was " + Types.name(node));
+    }
+
+    /**
+     * Returns a numeric value using lenient coercion: strings are parsed,
+     * booleans map to 1/0, and enums map to their ordinal.
+     * Invalid numeric text follows {@link Numbers#parseNumber(String)} semantics.
+     */
+    public static Number asNumber(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Number) return (Number) node;
+        if (node instanceof Boolean) return (Boolean) node ? 1 : 0;
+        if (node instanceof String || node instanceof Character) return Numbers.parseNumber(node.toString());
+        if (node instanceof Enum) return ((Enum<?>) node).ordinal();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.valueInfos != null) {
+            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
+            return asNumber(vi.valueToRaw(node), context);
+        }
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case NUMBER: return ti.externalNode.toNumber(node);
+                case BOOLEAN: return ti.externalNode.toBoolean(node) ? 1 : 0;
+                case STRING: return Numbers.parseNumber(ti.externalNode.toString(node));
+                default: break;
+            }
+        }
+        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Number");
+    }
+
+
+    /**
+     * Returns a boolean-shaped node without coercion from numbers or strings.
+     * The selected value codec must use Boolean as its raw type.
+     */
+    public static Boolean toBoolean(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Boolean) return (Boolean) node;
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.valueInfos != null) {
+            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
+            if (Types.box(vi.rawClazz) != Boolean.class) {
+                throw new NodeException("expected Boolean raw type for '" + Types.name(node)
+                        + "', but was '" + vi.rawClazz.getName() + "'");
+            }
+            return (Boolean) vi.valueToRaw(node);
+        }
+        if (ti.externalNode != null) return ti.externalNode.toBoolean(node);
+        throw new NodeException("expected Boolean, but was " + Types.name(node));
+    }
+
+    /**
+     * Returns a boolean using lenient coercion.
+     * Accepted strings are true/false, yes/no, on/off, and 1/0 (ignoring case).
+     * Numeric values must be exactly 0 or 1; fractions and overflow are rejected.
+     */
+    public static Boolean asBoolean(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Boolean) return (Boolean) node;
+        if (node instanceof String || node instanceof Character) {
+            String str = node.toString().toLowerCase(Locale.ROOT);
+            if ("true".equals(str) || "yes".equals(str) || "on".equals(str) || "1".equals(str)) return true;
+            if ("false".equals(str) || "no".equals(str) || "off".equals(str) || "0".equals(str)) return false;
+            throw new NodeException("cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
+        }
+        if (node instanceof Number) {
+            int i = ((Number) node).intValue();
+            if (i == 1) return true;
+            if (i == 0) return false;
+            throw new NodeException("cannot convert Number to Boolean: expected exactly 0 or 1, but was " + i);
+        }
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.valueInfos != null) {
+            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
+            return asBoolean(vi.valueToRaw(node), context);
+        }
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case BOOLEAN: return ti.externalNode.toBoolean(node);
+                case NUMBER: return asBoolean(ti.externalNode.toNumber(node), context);
+                case STRING: return asBoolean(ti.externalNode.toString(node), context);
+                default: break;
+            }
+        }
+        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Boolean");
+    }
+
+    /**
+     * Returns a {@link JsonObject} shallow representation of an object-shaped node.
+     * An existing JsonObject is reused, and a Map is wrapped as its backing map.
+     * POJO and external object entries are copied into a new outer container;
+     * nested entry values are not recursively mapped.
+     */
+    @SuppressWarnings("unchecked")
+    public static JsonObject toJsonObject(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof JsonObject) return (JsonObject) node;
+        if (node instanceof Map) return new JsonObject((Map<String, Object>) node);
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case OBJECT: {
+                    JsonObject jo = new JsonObject();
+                    ti.externalNode.forEachObject(node, jo::put);
+                    return jo;
+                }
+                default: throw new NodeException("expected object node, but was " + Types.name(node));
+
+            }
+        }
+        if (ti.pojoInfo != null) {
+            JsonObject jo = new JsonObject();
+            for (PropertyInfo property : ti.pojoInfo.readableProperties) {
+                jo.put(property.name, property.invokeGetter(node));
+            }
+            return jo;
+        }
+        throw new NodeException("expected object node, but was " + Types.name(node));
+    }
+
+    /**
+     * Returns an object-shaped node as a {@code Map<String, Object>}.
+     * Existing maps are reused. JsonObject values use {@link JsonObject#toMap()},
+     * and other object representations are copied only at the outer level.
+     * Child values remain shared with the source.
+     */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> toMap(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Map) return (Map<String, Object>) node;
+        if (node instanceof JsonObject) return ((JsonObject) node).toMap();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case OBJECT: {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    ti.externalNode.forEachObject(node, map::put);
+                    return map;
+                }
+                default: throw new NodeException("expected object node, but was " + Types.name(node));
+
+            }
+        }
+        if (ti.pojoInfo != null) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (PropertyInfo property : ti.pojoInfo.readableProperties) {
+                map.put(property.name, property.invokeGetter(node));
+            }
+            return map;
+        }
+        throw new NodeException("expected object node, but was " + Types.name(node));
+    }
+
+    /**
+     * Copies object entries into a Map, applying strict direct adaptation to
+     * each value. Passing {@code null} or Object.class for {@code valueClazz}
+     * uses the untyped shallow Map form, which may reuse a backing Map.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz, RuntimeContext context) {
+        if (node == null) return null;
+        if (valueClazz == null || valueClazz == Object.class) {
+            return (Map<String, T>) toMap(node, context);
+        }
+
+        if (!(node instanceof Map) && !(node instanceof JsonObject)) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+            if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.NULL) {
+                return null;
+            }
+        }
+
+        Map<String, T> map = new LinkedHashMap<>();
+        NodeWalker.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz, context)));
+        return map;
+    }
+
+
+    /**
+     * Returns a {@link JsonArray} shallow representation of an array-shaped node.
+     * Existing JsonArray instances are reused and Lists are wrapped directly.
+     * Other array representations produce a new outer container, without
+     * recursively mapping child elements.
+     */
+    @SuppressWarnings("unchecked")
+    public static JsonArray toJsonArray(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof JsonArray) return (JsonArray) node;
+        if (node instanceof List) return new JsonArray((List<Object>) node);
+        if (node instanceof Set) {
+            JsonArray ja = new JsonArray();
+            ((Set<Object>) node).forEach(ja::add);
+            return ja;
+        }
+        if (node.getClass().isArray()) {
+            JsonArray ja = new JsonArray();
+            for (int i = 0, len = Array.getLength(node); i < len; i++) ja.add(Array.get(node, i));
+            return ja;
+        }
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case ARRAY: {
+                    JsonArray ja = new JsonArray();
+                    ti.externalNode.forEachArray(node, ja::add);
+                    return ja;
+                }
+                default: throw new NodeException("expected array node, but was " + Types.name(node));
+
+            }
+        }
+        throw new NodeException("expected array node, but was " + Types.name(node));
+    }
+
+    /**
+     * Returns an array-shaped node as a {@code List<Object>}.
+     * Existing Lists are reused. JsonArray follows {@link JsonArray#toList()}
+     * snapshot semantics; other sources copy only their outer sequence.
+     */
+    @SuppressWarnings("unchecked")
+    public static List<Object> toList(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof List) return (List<Object>) node;
+        if (node instanceof JsonArray) return ((JsonArray) node).toList();
+        if (node instanceof Set) {
+            return new ArrayList<>(((Set<Object>) node));
+        }
+        if (node.getClass().isArray()) {
+            List<Object> list = new ArrayList<>();
+            for (int i = 0, len = Array.getLength(node); i < len; i++) list.add(Array.get(node, i));
+            return list;
+        }
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case ARRAY: {
+                    List<Object> list = new ArrayList<>();
+                    ti.externalNode.forEachArray(node, list::add);
+                    return list;
+                }
+                default: throw new NodeException("expected array node, but was " + Types.name(node));
+
+            }
+        }
+        throw new NodeException("expected array node, but was " + Types.name(node));
+    }
+
+    /**
+     * Copies array elements into a List, applying strict direct adaptation to
+     * each element. A null or Object.class component type uses the untyped
+     * shallow List form, which may return the original List.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> List<T> toList(Object node, Class<T> elementClazz, RuntimeContext context) {
+        if (node == null) return null;
+        if (elementClazz == null || elementClazz == Object.class) {
+            return (List<T>) toList(node, context);
+        }
+
+        if (!(node instanceof List) && !(node instanceof JsonArray)
+                && !(node instanceof Set) && !node.getClass().isArray()) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+            if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.NULL) {
+                return null;
+            }
+        }
+
+        List<T> list = new ArrayList<>();
+        NodeWalker.forEachArray(node, (i, e) -> list.add(to(e, elementClazz, context)));
+        return list;
+    }
+
+    /**
+     * Returns array elements as {@code Object[]} without recursively mapping them.
+     * Existing reference arrays are reused; primitive arrays are boxed into a new
+     * array. Other indexed sources are shallowly copied into an Object array.
+     */
+    @SuppressWarnings("unchecked")
+    public static Object[] toArray(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node.getClass().isArray()) {
+            if (node.getClass().getComponentType().isPrimitive()) {
+                int len = Array.getLength(node);
+                Object[] arr = new Object[len];
+                for (int i = 0; i < len; i++) {
+                    arr[i] = Array.get(node, i); // Auto boxing
+                }
+                return arr;
+            } else {
+                return ((Object[]) node);
+            }
+        }
+        if (node instanceof List) return ((List<Object>) node).toArray();
+        if (node instanceof JsonArray) return ((JsonArray) node).toArray();
+        if (node instanceof Set) return ((Set<Object>) node).toArray();
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case ARRAY: {
+                    int len = ti.externalNode.sizeInArray(node);
+                    Object[] arr = new Object[len];
+                    ti.externalNode.forEachArray(node, (i, e) -> arr[i] = e);
+                    return arr;
+                }
+                default: throw new NodeException("expected array node, but was " + Types.name(node));
+
+            }
+        }
+        throw new NodeException("expected array node, but was " + Types.name(node));
+    }
+
+    /**
+     * Returns a typed reference array, adapting each element strictly.
+     * Passing null or Object.class uses {@link #toArray(Object, RuntimeContext)}.
+     * Primitive component types must use {@link #to(Object, Class, RuntimeContext)}
+     * with an array class such as {@code int[].class} instead.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T[] toArray(Object node, Class<T> componentClazz, RuntimeContext context) {
+        if (node == null) return null;
+        if (componentClazz == null || componentClazz == Object.class) {
+            return (T[]) toArray(node, context);
+        }
+        if (componentClazz.isPrimitive()) {
+            throw new IllegalArgumentException("primitive array component is not supported by toArray: "
+                    + componentClazz.getName());
+        }
+
+        if (!(node instanceof List) && !(node instanceof JsonArray)
+                && !(node instanceof Set) && !node.getClass().isArray()) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+            if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.NULL) {
+                return null;
+            }
+        }
+
+        int len = NodeWalker.sizeInArray(node);
+        T[] arr = (T[]) Array.newInstance(componentClazz, len);
+        NodeWalker.forEachArray(node, (i, e) -> arr[i] = to(e, componentClazz, context));
+        return arr;
+    }
+
+    /**
+     * Returns an array-shaped node as a Set with shallowly retained elements.
+     * Existing Sets are reused. Other sources are copied into a LinkedHashSet,
+     * removing duplicates while preserving encounter order.
+     */
+    @SuppressWarnings("unchecked")
+    public static Set<Object> toSet(Object node, RuntimeContext context) {
+        if (node == null) return null;
+        if (node instanceof Set) return (Set<Object>) node;
+        if (node instanceof List) {
+            return new LinkedHashSet<>(((List<Object>) node));
+        }
+        if (node instanceof JsonArray) return ((JsonArray) node).toSet();
+        if (node.getClass().isArray()) {
+            Set<Object> set = new LinkedHashSet<>();
+            for (int i = 0, len = Array.getLength(node); i < len; i++) set.add(Array.get(node, i));
+            return set;
+        }
+
+        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+        if (ti.externalNode != null) {
+            switch (ti.externalNode.jsonType(node)) {
+                case NULL: return null;
+                case ARRAY: {
+                    Set<Object> set = new LinkedHashSet<>();
+                    ti.externalNode.forEachArray(node, (i, e) -> set.add(e));
+                    return set;
+                }
+                default: throw new NodeException("expected array node, but was " + Types.name(node));
+
+            }
+        }
+        throw new NodeException("expected array node, but was " + Types.name(node));
+    }
+
+    /**
+     * Copies array elements into a Set, applying strict direct adaptation to
+     * each element. A null or Object.class component type uses the untyped
+     * shallow Set form, which may return the original Set.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> Set<T> toSet(Object node, Class<T> elementClazz, RuntimeContext context) {
+        if (node == null) return null;
+        if (elementClazz == null || elementClazz == Object.class) {
+            return (Set<T>) toSet(node, context);
+        }
+
+        if (!(node instanceof List) && !(node instanceof JsonArray)
+                && !(node instanceof Set) && !node.getClass().isArray()) {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+            if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.NULL) {
+                return null;
+            }
+        }
+
+        Set<T> set = new LinkedHashSet<>();
+        NodeWalker.forEachArray(node, (i, e) -> set.add(to(e, elementClazz, context)));
+        return set;
+    }
+
+
+    /**
+     * Routes strict and lenient direct adaptation by target class. Compatible
+     * nodes are reused. Concrete POJO/JOJO/JAJO and specialized container targets
+     * fall back to structural mapping with deepCopy disabled.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Object _adapt(Object node, Class<?> toClazz, boolean lenient, RuntimeContext context) {
+        if (toClazz == null || toClazz == Object.class) return node;
+        if (node == null) return NodeMapper.convert(null, toClazz, false, context);
+        if (toClazz.isInstance(node)) return node;
+
+        Class<?> toBoxed = Types.box(toClazz);
+        if (toBoxed == String.class) {
+            return lenient ? asString(node, context) : toString(node, context);
+        }
+        if (toBoxed == Boolean.class) {
+            return lenient ? asBoolean(node, context) : toBoolean(node, context);
+        }
+        if (Number.class.isAssignableFrom(toBoxed)) {
+            Number n = lenient ? asNumber(node, context) : toNumber(node, context);
+            return n == null ? null : Numbers.to(n, toBoxed);
+        }
+        if (toBoxed == Character.class) {
+            return lenient ? asChar(node, context) : toChar(node, context);
+        }
+        if (toClazz.isEnum()) {
+            return lenient ? asEnum(node, (Class<? extends Enum>) toClazz, context)
+                    : toEnum(node, (Class<? extends Enum>) toClazz, context);
+        }
+
+        if (toClazz == Map.class) return toMap(node, context);
+        if (toClazz == JsonObject.class) return toJsonObject(node, context);
+        if (toClazz == List.class) return toList(node, context);
+        if (toClazz == JsonArray.class) return toJsonArray(node, context);
+        if (toClazz == Set.class) return toSet(node, context);
+
+        if (toClazz.isArray()) {
+            if (!(node instanceof List) && !(node instanceof JsonArray)
+                    && !(node instanceof Set) && !node.getClass().isArray()) {
+                TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+                if (ti.valueInfos != null) {
+                    ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
+                    if (vi.rawClazz != List.class) {
+                        throw new NodeException("expected List raw type for '" + Types.name(node)
+                                + "', but was '" + vi.rawClazz.getName() + "'");
+                    }
+                    node = vi.valueToRaw(node);
+                    if (node == null) return null;
+                } else if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.NULL) {
+                    return null;
+                }
+            }
+
+            Class<?> componentClazz = toClazz.getComponentType();
+            int len = NodeWalker.sizeInArray(node);
+            Object arr = Array.newInstance(componentClazz, len);
+            NodeWalker.forEachArray(node, (i, e) ->
+                    Array.set(arr, i, _adapt(e, componentClazz, lenient, context)));
+            return arr;
+        }
+
+        return NodeMapper.convert(node, toClazz, false, context);
+    }
+
+    /**
+     * Adapts a node to the requested class using strict scalar semantics.
+     * Compatible nodes may be returned unchanged. Unsupported direct targets
+     * are passed to the structural mapper without forcing a deep copy.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T to(Object node, Class<T> clazz, RuntimeContext context) {
+        return (T) _adapt(node, clazz, false, context);
+    }
+
+    /**
+     * Adapts a node to the requested class using lenient scalar semantics.
+     * Compatible nodes may be reused. Invalid enum names/ordinals return null;
+     * other unsupported coercions retain their corresponding conversion errors.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T as(Object node, Class<T> clazz, RuntimeContext context) {
+        return (T) _adapt(node, clazz, true, context);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+     * --------------------------------------------------------------
+     * Structural Conversion (convert / convertToRaw)
+     * --------------------------------------------------------------
+     */
 
 
     /**

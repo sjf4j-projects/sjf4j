@@ -2,10 +2,11 @@ package org.sjf4j;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.node.NodeStream;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -429,7 +430,7 @@ public class JsonObject extends JsonContainer {
      * Structurally converts a value to a JsonObject.
      */
     public static JsonObject fromNode(Object node) {
-        return (JsonObject) NodeMapper.convert(node, JsonObject.class, false);
+        return (JsonObject) NodeMapper.convert(node, JsonObject.class, false, RuntimeContext.EMPTY);
     }
 
 

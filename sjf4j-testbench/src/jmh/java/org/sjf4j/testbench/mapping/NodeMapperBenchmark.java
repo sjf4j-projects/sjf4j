@@ -19,7 +19,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.mapping.CompiledMapper;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.CommentEvent;
 import org.sjf4j.testbench.model.Friend;

@@ -9,7 +9,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.meta.PojoInfo;
@@ -221,8 +221,7 @@ public final class StreamingIO {
             return readOneOf(reader, ti.oneOfInfo, context);
         }
         if (ti.valueInfos != null) {
-            return readValueCodec(reader,
-                    ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
+            return readValueCodec(reader, ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
         }
         if (ti.containerInfo != null) {
             // Streaming binding only constructs Java containers that can be
@@ -261,7 +260,6 @@ public final class StreamingIO {
 
     private static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
                                     RuntimeContext context) throws IOException {
-
         /*
          * readRawNode() is already nullable, so probing null beforehand
          * would only create unnecessary lookahead state.
@@ -1053,8 +1051,7 @@ public final class StreamingIO {
             }
 
             if (typeInfo.valueInfos != null) {
-                String valueFormat = context.defaultValueFormat(clazz);
-                ValueInfo vi = typeInfo.requireValueInfo(valueFormat);
+                ValueInfo vi = typeInfo.requireValueInfo(context.defaultValueFormat(clazz));
                 _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
                 return;
             }
@@ -1172,8 +1169,7 @@ public final class StreamingIO {
          * NodeValue / ValueCodec.
          */
         if (ti.valueInfos != null) {
-            String valueFormat = context.defaultValueFormat(clazz);
-            ValueInfo vi = ti.requireValueInfo(valueFormat);
+            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(clazz));
             _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
             return;
         }

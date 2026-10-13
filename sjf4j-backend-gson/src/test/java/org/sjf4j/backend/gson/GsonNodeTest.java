@@ -13,6 +13,7 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.backend.gson.external.GsonExternalProvider;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.path.JsonPath;
 
 import java.io.File;
@@ -111,8 +112,8 @@ class GsonNodeTest {
         object.add("name", new JsonPrimitive("value"));
         JsonPrimitive written = new JsonPrimitive("written");
 
-        assertTrue(Nodes.keySetInObject(object).contains("name"));
-        assertNull(Nodes.putInObject(object, "written", written));
+        assertTrue(NodeWalker.keySetInObject(object).contains("name"));
+        assertNull(NodeWalker.putInObject(object, "written", written));
         assertSame(written, object.get("written"));
         assertSame(JsonObject.class, object.getClass());
 
@@ -122,8 +123,8 @@ class GsonNodeTest {
         array.add(last);
         JsonPrimitive appended = new JsonPrimitive("appended");
 
-        assertSame(last, Nodes.getInArray(array, -1));
-        assertNull(Nodes.putInArray(array, array.size(), appended));
+        assertSame(last, NodeWalker.getInArray(array, -1));
+        assertNull(NodeWalker.putInArray(array, array.size(), appended));
         assertSame(appended, array.get(2));
         assertSame(JsonArray.class, array.getClass());
     }
@@ -149,35 +150,6 @@ class GsonNodeTest {
         }
     }
 
-    @Test
-    void convertsScalarsWithLegacyStrictAndLenientSemantics() {
-        ExternalNode<JsonElement> node = node();
-
-        assertEquals("text", node.toString(JsonParser.parseString("\"text\"")));
-        assertEquals("12", node.asString(JsonParser.parseString("12")));
-        assertEquals(12, node.toNumber(JsonParser.parseString("12")).intValue());
-        assertTrue(node.toBoolean(JsonParser.parseString("true")));
-        assertEquals(12, node.asNumber(JsonParser.parseString("\"12\"")));
-        assertEquals(1, node.asNumber(JsonParser.parseString("true")));
-        assertEquals(0, node.asNumber(JsonParser.parseString("false")));
-        assertTrue(node.asBoolean(JsonParser.parseString("\"true\"")));
-        assertTrue(node.asBoolean(JsonParser.parseString("1")));
-        assertNull(node.asBoolean(JsonParser.parseString("null")));
-        assertThrows(NodeException.class, () -> node.asNumber(JsonParser.parseString("{}")));
-        assertThrows(NodeException.class, () -> node.asNumber(JsonParser.parseString("[]")));
-        assertThrows(NodeException.class, () -> node.asBoolean(JsonParser.parseString("{}")));
-        assertThrows(NodeException.class, () -> node.asBoolean(JsonParser.parseString("[]")));
-        assertNull(node.toString(JsonNull.INSTANCE));
-        assertNull(node.toNumber(JsonNull.INSTANCE));
-        assertNull(node.toBoolean(JsonNull.INSTANCE));
-        assertNull(node.asString(JsonNull.INSTANCE));
-        assertNull(node.asNumber(JsonNull.INSTANCE));
-
-        assertStrictRejection(() -> node.toString(JsonParser.parseString("12")), "JsonPrimitive(String)");
-        assertStrictRejection(() -> node.toNumber(JsonParser.parseString("true")), "JsonPrimitive(Number)");
-        assertStrictRejection(() -> node.toBoolean(JsonParser.parseString("\"true\"")), "JsonPrimitive(Boolean)");
-        assertThrows(IllegalStateException.class, () -> node.asString(JsonParser.parseString("[]")));
-    }
 
     @Test
     void traversesObjectsAndArrays() {
@@ -264,12 +236,12 @@ class GsonNodeTest {
 
     @Test
     void createsNativeGsonContainers() {
-        assertTrue(Nodes.createObjectNode(JsonObject.class) instanceof JsonObject);
-        assertTrue(Nodes.createArrayNode(JsonArray.class) instanceof JsonArray);
-        assertTrue(Nodes.createObjectNode(JsonElement.class) instanceof JsonObject);
-        assertTrue(Nodes.createArrayNode(JsonElement.class) instanceof JsonArray);
-        assertThrows(NodeException.class, () -> Nodes.createObjectNode(JsonArray.class));
-        assertThrows(NodeException.class, () -> Nodes.createArrayNode(JsonObject.class));
+        assertTrue(NodeWalker.createObjectNode(JsonObject.class) instanceof JsonObject);
+        assertTrue(NodeWalker.createArrayNode(JsonArray.class) instanceof JsonArray);
+        assertTrue(NodeWalker.createObjectNode(JsonElement.class) instanceof JsonObject);
+        assertTrue(NodeWalker.createArrayNode(JsonElement.class) instanceof JsonArray);
+        assertThrows(NodeException.class, () -> NodeWalker.createObjectNode(JsonArray.class));
+        assertThrows(NodeException.class, () -> NodeWalker.createArrayNode(JsonObject.class));
     }
 
     @Test
@@ -321,7 +293,7 @@ class GsonNodeTest {
         ExternalNode<JsonElement> node = node();
         JsonObject object = JsonParser.parseString("{\"name\":\"value\",\"nil\":null,\"items\":[true,2]}").getAsJsonObject();
         JsonArray array = object.getAsJsonArray("items");
-        Nodes.Access access = new Nodes.Access();
+        NodeWalker.Access access = new NodeWalker.Access();
 
         access.type = String.class;
         access.puttable = true;

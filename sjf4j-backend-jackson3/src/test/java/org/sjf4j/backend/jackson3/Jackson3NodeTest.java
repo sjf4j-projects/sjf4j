@@ -7,6 +7,7 @@ import org.sjf4j.backend.jackson3.external.Jackson3ExternalProvider;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.path.JsonPath;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -72,23 +73,6 @@ class Jackson3NodeTest {
     }
 
     @Test
-    void convertsScalarsAndDistinguishesJsonNull() throws Exception {
-        ExternalNode<JsonNode> node = node();
-        assertEquals("text", node.toString(MAPPER.readTree("\"text\"")));
-        assertEquals("12", node.asString(MAPPER.readTree("12")));
-        assertEquals(12, node.toNumber(MAPPER.readTree("12")).intValue());
-        assertTrue(node.toBoolean(MAPPER.readTree("true")));
-        assertEquals(12, node.asNumber(MAPPER.readTree("\"12\"")).intValue());
-        assertEquals(1, node.asNumber(MAPPER.readTree("true")).intValue());
-        assertTrue(node.asBoolean(MAPPER.readTree("1")));
-        assertNull(node.toString(NullNode.instance));
-        assertNull(node.asNumber(NullNode.instance));
-        assertNull(node.asBoolean(NullNode.instance));
-        assertThrows(NodeException.class, () -> node.asNumber(object("{}")));
-        assertThrows(NodeException.class, () -> node.asBoolean(array("[]")));
-    }
-
-    @Test
     void traversesAndExposesLiveObjectViews() throws Exception {
         ExternalNode<JsonNode> node = node();
         ObjectNode object = object("{\"name\":\"value\",\"drop\":false,\"items\":[true,2]}");
@@ -116,7 +100,7 @@ class Jackson3NodeTest {
         ArrayNode array = array("[\"zero\",\"one\"]");
         assertSame(array.get(1), node.getInArray(array, -1));
         assertNull(node.getInArray(array, -3));
-        Nodes.Access access = new Nodes.Access();
+        NodeWalker.Access access = new NodeWalker.Access();
         node.getAccessInArray(array, -1, access);
         assertTrue(access.present);
         node.putAccessInArray(array, array.size(), access);

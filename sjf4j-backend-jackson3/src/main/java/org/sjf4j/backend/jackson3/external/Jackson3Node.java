@@ -4,6 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Types;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
@@ -61,13 +62,6 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
     }
 
     @Override
-    public String asString(JsonNode node) {
-        _node(node);
-        if (node.isNull()) return null;
-        return node.asString();
-    }
-
-    @Override
     public Number toNumber(JsonNode node) {
         _node(node);
         if (node.isNull()) return null;
@@ -76,31 +70,11 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
     }
 
     @Override
-    public Number asNumber(JsonNode node) {
-        _node(node);
-        if (node.isNull()) return null;
-        if (node instanceof NumericNode) return node.numberValue();
-        if (node instanceof StringNode) return Nodes.asNumber(node.stringValue());
-        if (node instanceof BooleanNode) return Nodes.asNumber(node.booleanValue());
-        throw _cannotConvert(node, "Number");
-    }
-
-    @Override
     public Boolean toBoolean(JsonNode node) {
         _node(node);
         if (node.isNull()) return null;
         if (node instanceof BooleanNode) return node.booleanValue();
         throw _expected("BooleanNode", node);
-    }
-
-    @Override
-    public Boolean asBoolean(JsonNode node) {
-        _node(node);
-        if (node.isNull()) return null;
-        if (node instanceof BooleanNode) return node.booleanValue();
-        if (node instanceof StringNode) return Nodes.asBoolean(node.stringValue());
-        if (node instanceof NumericNode) return Nodes.asBoolean(node.numberValue());
-        throw _cannotConvert(node, "Boolean");
     }
 
     @Override
@@ -229,21 +203,21 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
     }
 
     @Override
-    public void getAccessInObject(JsonNode node, String key, Nodes.Access out) {
+    public void getAccessInObject(JsonNode node, String key, NodeWalker.Access out) {
         ObjectNode object = _object(node);
         out.node = object.get(key);
         out.present = object.get(key) != null;
     }
 
     @Override
-    public void putAccessInObject(JsonNode node, String key, Nodes.Access out) {
+    public void putAccessInObject(JsonNode node, String key, NodeWalker.Access out) {
         out.node = _object(node).get(key);
         out.type = JsonNode.class;
         out.puttable = true;
     }
 
     @Override
-    public void getAccessInArray(JsonNode node, int idx, Nodes.Access out) {
+    public void getAccessInArray(JsonNode node, int idx, NodeWalker.Access out) {
         ArrayNode array = _array(node);
         out.node = null;
         out.present = false;
@@ -255,7 +229,7 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
     }
 
     @Override
-    public void putAccessInArray(JsonNode node, Integer idx, Nodes.Access out) {
+    public void putAccessInArray(JsonNode node, Integer idx, NodeWalker.Access out) {
         ArrayNode array = _array(node);
         out.type = JsonNode.class;
         out.node = null;

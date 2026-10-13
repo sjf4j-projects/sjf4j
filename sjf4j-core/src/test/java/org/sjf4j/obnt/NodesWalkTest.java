@@ -4,8 +4,8 @@ import lombok.ToString;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.path.PathSyntax;
 
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ public class NodesWalkTest {
         List<String> paths = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         
-        Nodes.walk(jo, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
+        NodeWalker.walk(jo, NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             paths.add(PathSyntax.rootedPathExpr(ps));
             values.add(value);
             return true;
@@ -52,7 +52,7 @@ public class NodesWalkTest {
         
         List<String> containerPaths = new ArrayList<>();
         
-        Nodes.walk(jo, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1,
+        NodeWalker.walk(jo, NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.BOTTOM_UP, -1,
                 (ps, container) -> {
             containerPaths.add(ps.rootedPathExpr());
             assertNotNull(container);
@@ -70,7 +70,7 @@ public class NodesWalkTest {
         AtomicInteger count = new AtomicInteger(0);
         List<String> paths = new ArrayList<>();
         
-        Nodes.walk(ja, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1,
+        NodeWalker.walk(ja, NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.TOP_DOWN, -1,
                 (ps, value) -> {
             paths.add(PathSyntax.rootedPathExpr(ps));
             count.incrementAndGet();
@@ -96,7 +96,7 @@ public class NodesWalkTest {
         map.put("nested", nested);
         
         List<String> paths = new ArrayList<>();
-        Nodes.walk(map, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
+        NodeWalker.walk(map, NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             paths.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
@@ -115,7 +115,7 @@ public class NodesWalkTest {
         list.add(nested);
         
         List<String> paths = new ArrayList<>();
-        Nodes.walk(list, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
+        NodeWalker.walk(list, NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             paths.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
@@ -130,7 +130,7 @@ public class NodesWalkTest {
         int[] array = {1, 2, 3};
         
         List<String> paths = new ArrayList<>();
-        Nodes.walk(array, (ps, value) -> {
+        NodeWalker.walk(array, (ps, value) -> {
             paths.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
@@ -144,7 +144,7 @@ public class NodesWalkTest {
     public void walksPrimitiveValues() {
         AtomicInteger count = new AtomicInteger(0);
         
-        Nodes.walk("test", (ps, value) -> {
+        NodeWalker.walk("test", (ps, value) -> {
             count.incrementAndGet();
             assertEquals("test", value);
             return true;
@@ -167,7 +167,7 @@ public class NodesWalkTest {
                 "}");
         
         AtomicInteger count = new AtomicInteger(0);
-        Nodes.walk(jo, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
+        NodeWalker.walk(jo, NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             count.incrementAndGet();
             return true;
         });
@@ -203,14 +203,14 @@ public class NodesWalkTest {
         Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
 
         List<String> values1 = new ArrayList<>();
-        Nodes.walk(person, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, node) -> {
+        NodeWalker.walk(person, NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.TOP_DOWN, -1, (ps, node) -> {
             values1.add(ps.rootedPathExpr());
             return true;
         });
         assertTrue(values1.contains("$.babies[1].name"));
 
         List<String> values2 = new ArrayList<>();
-        Nodes.walk(person, Nodes.WalkTarget.ANY, Nodes.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
+        NodeWalker.walk(person, NodeWalker.WalkTarget.ANY, NodeWalker.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
             values2.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });

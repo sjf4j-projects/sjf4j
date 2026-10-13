@@ -10,13 +10,15 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.backend.jsonp.external.JsonpExternalProvider;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.node.NodeWalker;
 
 import java.io.File;
 import java.io.StringReader;
@@ -71,8 +73,8 @@ class JsonpNodeTest {
         assertEquals(2, Nodes.sizeInArray(array));
         assertEquals(2, ((JsonNumber) Nodes.getInArray(array, -1)).intValue());
 
-        Nodes.Access access = new Nodes.Access();
-        Nodes.getAccessInObject(object, "nil", access);
+        NodeWalker.Access access = new NodeWalker.Access();
+        NodeWalker.getAccessInObject(object, "nil", access);
         assertTrue(access.present);
         assertSame(JsonValue.NULL, access.node);
 
@@ -95,9 +97,9 @@ class JsonpNodeTest {
         assertSame(array.get(0), arrayCopy.get(0));
 
         JsonObject mappedObject = (JsonObject) NodeMapper.convert(
-                java.util.Collections.singletonMap("value", 7), JsonObject.class, false);
+                java.util.Collections.singletonMap("value", 7), JsonObject.class, false, RuntimeContext.EMPTY);
         JsonArray mappedArray = (JsonArray) NodeMapper.convert(
-                Arrays.asList(1, 2), JsonArray.class, false);
+                Arrays.asList(1, 2), JsonArray.class, false, RuntimeContext.EMPTY);
         assertEquals(7, mappedObject.getInt("value"));
         assertEquals(2, mappedArray.getInt(1));
 
@@ -160,37 +162,6 @@ class JsonpNodeTest {
     }
 
     @Test
-    void convertsScalarsStrictlyAndLeniently() {
-        ExternalNode<JsonValue> node = node();
-
-        assertEquals("text", node.toString(value("\"text\"")));
-        assertEquals("12", node.asString(value("12")));
-        assertEquals("false", node.asString(JsonValue.FALSE));
-        assertEquals(12, node.toNumber(value("12")).intValue());
-        assertTrue(node.toBoolean(JsonValue.TRUE));
-        assertEquals(12, node.asNumber(value("\"12\"")).intValue());
-        assertEquals(1, node.asNumber(JsonValue.TRUE).intValue());
-        assertEquals(0, node.asNumber(JsonValue.FALSE).intValue());
-        assertTrue(node.asBoolean(value("\"true\"")));
-        assertTrue(node.asBoolean(value("1")));
-        assertNull(node.toString(JsonValue.NULL));
-        assertNull(node.toNumber(JsonValue.NULL));
-        assertNull(node.toBoolean(JsonValue.NULL));
-        assertNull(node.asBoolean(JsonValue.NULL));
-
-        assertThrows(NodeException.class, () -> node.toString(value("12")));
-        assertThrows(NodeException.class, () -> node.toNumber(JsonValue.TRUE));
-        assertThrows(NodeException.class, () -> node.toBoolean(value("\"true\"")));
-        assertThrows(NodeException.class, () -> node.asString(value("{}")));
-        assertThrows(NodeException.class, () -> node.asString(value("[]")));
-        assertThrows(NodeException.class, () -> node.asNumber(value("{}")));
-        assertThrows(NodeException.class, () -> node.asNumber(value("[]")));
-        assertThrows(NodeException.class, () -> node.asBoolean(value("{}")));
-        assertThrows(NodeException.class, () -> node.asBoolean(value("[]")));
-        assertThrows(NodeException.class, () -> node.jsonType(null));
-    }
-
-    @Test
     void traversesJsonpObjectsAndArraysReadOnly() {
         ExternalNode<JsonValue> node = node();
         JsonObject object = value("{\"name\":\"value\",\"nil\":null,\"items\":[true,2]}").asJsonObject();
@@ -233,7 +204,7 @@ class JsonpNodeTest {
         ExternalNode<JsonValue> node = node();
         JsonObject object = value("{\"nil\":null,\"items\":[true,2]}").asJsonObject();
         JsonArray array = object.getJsonArray("items");
-        Nodes.Access access = new Nodes.Access();
+        NodeWalker.Access access = new NodeWalker.Access();
 
         node.getAccessInObject(object, "nil", access);
         assertTrue(access.present);
@@ -276,7 +247,7 @@ class JsonpNodeTest {
         ExternalNode<JsonValue> node = node();
         JsonObject object = value("{}").asJsonObject();
         JsonArray array = value("[true]").asJsonArray();
-        Nodes.Access access = new Nodes.Access();
+        NodeWalker.Access access = new NodeWalker.Access();
 
         assertUnsupported(() -> node.replaceAllInObject(object, (key, item) -> item));
         assertUnsupported(() -> node.removeIfInObject(object, (key, item) -> true));

@@ -11,9 +11,10 @@ import jakarta.json.JsonValue;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Types;
 
 import java.math.BigDecimal;
@@ -112,32 +113,10 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
     }
 
     @Override
-    public String asString(JsonValue node) {
-        JsonValue.ValueType type = _value(node).getValueType();
-        if (type == JsonValue.ValueType.NULL) return null;
-        if (node instanceof JsonString) return ((JsonString) node).getString();
-        if (type == JsonValue.ValueType.OBJECT || type == JsonValue.ValueType.ARRAY) {
-            throw _cannotConvert(node, "String");
-        }
-        return node.toString();
-    }
-
-    @Override
     public Number toNumber(JsonValue node) {
         if (_value(node).getValueType() == JsonValue.ValueType.NULL) return null;
         if (node instanceof JsonNumber) return ((JsonNumber) node).bigDecimalValue();
         throw _expected("JsonNumber", node);
-    }
-
-    @Override
-    public Number asNumber(JsonValue node) {
-        JsonValue.ValueType type = _value(node).getValueType();
-        if (type == JsonValue.ValueType.NULL) return null;
-        if (node instanceof JsonNumber) return ((JsonNumber) node).bigDecimalValue();
-        if (node instanceof JsonString) return Nodes.asNumber(((JsonString) node).getString());
-        if (type == JsonValue.ValueType.TRUE) return Nodes.asNumber(true);
-        if (type == JsonValue.ValueType.FALSE) return Nodes.asNumber(false);
-        throw _cannotConvert(node, "Number");
     }
 
     @Override
@@ -147,17 +126,6 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
         if (type == JsonValue.ValueType.TRUE) return true;
         if (type == JsonValue.ValueType.FALSE) return false;
         throw _expected("JsonValue(TRUE or FALSE)", node);
-    }
-
-    @Override
-    public Boolean asBoolean(JsonValue node) {
-        JsonValue.ValueType type = _value(node).getValueType();
-        if (type == JsonValue.ValueType.NULL) return null;
-        if (type == JsonValue.ValueType.TRUE) return true;
-        if (type == JsonValue.ValueType.FALSE) return false;
-        if (node instanceof JsonString) return Nodes.asBoolean(((JsonString) node).getString());
-        if (node instanceof JsonNumber) return Nodes.asBoolean(((JsonNumber) node).bigDecimalValue());
-        throw _cannotConvert(node, "Boolean");
     }
 
     @Override
@@ -237,14 +205,14 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
     }
 
     @Override
-    public void getAccessInObject(JsonValue node, String key, Nodes.Access out) {
+    public void getAccessInObject(JsonValue node, String key, NodeWalker.Access out) {
         JsonObject object = _object(node);
         out.node = object.get(key);
         out.present = object.containsKey(key);
     }
 
     @Override
-    public void getAccessInArray(JsonValue node, int idx, Nodes.Access out) {
+    public void getAccessInArray(JsonValue node, int idx, NodeWalker.Access out) {
         JsonArray array = _array(node);
         out.node = null;
         out.present = false;

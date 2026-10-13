@@ -4,8 +4,9 @@ import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Types;
 
 import java.util.Iterator;
@@ -90,29 +91,15 @@ public interface ExternalNode<N> {
         throw unsupported("toString");
     }
 
-    /** Returns a lenient string conversion. */
-    default String asString(N node) {
-        throw unsupported("asString");
-    }
 
     /** Returns a strict number conversion. */
     default Number toNumber(N node) {
         throw unsupported("toNumber");
     }
 
-    /** Returns a lenient number conversion. */
-    default Number asNumber(N node) {
-        throw unsupported("asNumber");
-    }
-
     /** Returns a strict boolean conversion. */
     default Boolean toBoolean(N node) {
         throw unsupported("toBoolean");
-    }
-
-    /** Returns a lenient boolean conversion. */
-    default Boolean asBoolean(N node) {
-        throw unsupported("asBoolean");
     }
 
     /** Visits object entries. */
@@ -186,22 +173,22 @@ public interface ExternalNode<N> {
     }
 
     /** Fills {@code out} with readable object-child metadata. */
-    default void getAccessInObject(N node, String key, Nodes.Access out) {
+    default void getAccessInObject(N node, String key, NodeWalker.Access out) {
         throw unsupported("getAccessInObject");
     }
 
     /** Fills {@code out} with writable object-child metadata. */
-    default void putAccessInObject(N node, String key, Nodes.Access out) {
+    default void putAccessInObject(N node, String key, NodeWalker.Access out) {
         throw unsupported("putAccessInObject");
     }
 
     /** Fills {@code out} with readable array-child metadata. */
-    default void getAccessInArray(N node, int idx, Nodes.Access out) {
+    default void getAccessInArray(N node, int idx, NodeWalker.Access out) {
         throw unsupported("getAccessInArray");
     }
 
     /** Fills {@code out} with writable array-child metadata; null index means append. */
-    default void putAccessInArray(N node, Integer idx, Nodes.Access out) {
+    default void putAccessInArray(N node, Integer idx, NodeWalker.Access out) {
         throw unsupported("putAccessInArray");
     }
 
@@ -299,13 +286,13 @@ public interface ExternalNode<N> {
         switch (JsonType.of(source)) {
             case OBJECT: {
                 N target = nativeType.cast(createObjectNode(clazz));
-                Nodes.forEachObject(source, (name, value) ->
+                NodeWalker.forEachObject(source, (name, value) ->
                         putInObject(target, name, NodeMapper.convert(value, nativeType, false, context)));
                 return target;
             }
             case ARRAY: {
                 N target = nativeType.cast(createArrayNode(clazz));
-                Nodes.forEachArray(source, (index, value) ->
+                NodeWalker.forEachArray(source, (index, value) ->
                         addInArray(target, NodeMapper.convert(value, nativeType, false, context)));
                 return target;
             }

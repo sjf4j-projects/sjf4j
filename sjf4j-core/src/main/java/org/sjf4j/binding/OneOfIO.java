@@ -4,7 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.meta.CreatorInfo;
 import org.sjf4j.meta.CreatorState;
 import org.sjf4j.meta.PropertyInfo;

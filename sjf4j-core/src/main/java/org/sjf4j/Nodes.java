@@ -2,9 +2,10 @@ package org.sjf4j;
 
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.meta.ContainerInfo;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
@@ -49,9 +50,11 @@ import java.util.function.Function;
  */
 public final class Nodes {
 
+    private Nodes() {}
+
     /*
      * --------------------------------------------------------------
-     * Type-Safe Access and Cross-Type Conversion
+     * Direct Conversion (to / as)
      * --------------------------------------------------------------
      */
 
@@ -59,129 +62,56 @@ public final class Nodes {
      * Converts a node to a String with strict type checking.
      */
     public static String toString(Object node) {
-        if (node == null) return null;
-        if (node instanceof String || node instanceof Character) return node.toString();
-        Class<?> clazz = node.getClass();
-        if (clazz.isEnum()) return ((Enum<?>) node).name();
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.externalNode != null) return ti.externalNode.toString(node);
-        if (ti.valueInfos != null && ti.valueInfos[0].rawClazz == String.class) {
-            return (String) ti.valueInfos[0].valueToRaw(node);
-        }
-        throw new NodeException("expected String, but was " + Types.name(node));
+        return NodeMapper.toString(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to a String with flexible type conversion.
      */
     public static String asString(Object node) {
-        if (node == null) return null;
-        if (node instanceof String || node instanceof Character) return node.toString();
-        Class<?> clazz = node.getClass();
-        if (clazz.isEnum()) return ((Enum<?>) node).name();
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.externalNode != null) return ti.externalNode.asString(node);
-        if (ti.valueInfos != null) {
-            Object raw = ti.valueInfos[0].valueToRaw(node);
-            return (raw == null) ? null : raw.toString();
-        }
-        return node.toString();
+        return NodeMapper.asString(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to Character using strict conversion.
      */
     public static Character toChar(Object node) {
-        if (node == null) return null;
-        if (node instanceof Character) return (Character) node;
-        String s = toString(node);
-        if (s == null) return null;
-        if (s.length() != 1) {
-            throw new NodeException(
-                    "cannot convert to char: expected single-character string, but length was " + s.length());
-        }
-        return s.charAt(0);
+        return NodeMapper.toChar(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to Character using lenient conversion.
      */
     public static Character asChar(Object node) {
-        if (node == null) return null;
-        if (node instanceof Character) return (Character) node;
-        String s = asString(node);
-        return s != null && !s.isEmpty() ? s.charAt(0) : null;
+        return NodeMapper.asChar(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to enum using strict conversion.
      */
-    @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz) {
-        Asserts.notNull(enumClazz, "enumClazz");
-        if (node == null) return null;
-        if (enumClazz.isInstance(node)) return (E) node;
-        String s = toString(node);
-        if (s == null) return null;
-        try {
-            return Enum.valueOf(enumClazz, s);
-        } catch (IllegalArgumentException e) {
-            throw new NodeException("cannot bind '" + s + "' to enum " + enumClazz.getName(), e);
-        }
+        return NodeMapper.toEnum(node, enumClazz, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to enum using lenient conversion.
      */
-    @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz) {
-        Asserts.notNull(enumClazz, "enumClazz");
-        if (node == null) return null;
-        if (enumClazz.isInstance(node)) return (E) node;
-        String s = asString(node);
-        if (s == null) return null;
-        try {
-            return Enum.valueOf(enumClazz, s);
-        } catch (Exception e) {
-            return null;
-        }
+        return NodeMapper.asEnum(node, enumClazz, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to a Number with strict type checking.
      */
     public static Number toNumber(Object node) {
-        if (node == null) return null;
-        if (node instanceof Number) return (Number) node;
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) return ti.externalNode.toNumber(node);
-        if (ti.valueInfos != null && Number.class.isAssignableFrom(ti.valueInfos[0].rawClazz)) {
-            return (Number) ti.valueInfos[0].valueToRaw(node);
-        }
-        throw new NodeException("expected Number, but was " + Types.name(node));
+        return NodeMapper.toNumber(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to a Number with flexible type conversion.
      */
     public static Number asNumber(Object node) {
-        if (node == null) return null;
-        if (node instanceof Number) return (Number) node;
-        if (node instanceof Boolean) return (Boolean) node ? 1 : 0;
-        if (node instanceof String || node instanceof Character) return Numbers.parseNumber(node.toString());
-        Class<?> clazz = node.getClass();
-        if (clazz.isEnum()) return ((Enum<?>) node).ordinal();
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.externalNode != null) return ti.externalNode.asNumber(node);
-        if (ti.valueInfos != null) {
-            Object raw = ti.valueInfos[0].valueToRaw(node);
-            return asNumber(raw);
-        }
-        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Number");
+        return NodeMapper.asNumber(node, RuntimeContext.EMPTY);
     }
 
 
@@ -333,43 +263,14 @@ public final class Nodes {
      * Converts a node to Boolean using strict conversion.
      */
     public static Boolean toBoolean(Object node) {
-        if (node == null) return null;
-        if (node instanceof Boolean) return (Boolean) node;
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) return ti.externalNode.toBoolean(node);
-        if (ti.valueInfos != null && ti.valueInfos[0].rawClazz == Boolean.class) {
-            return (Boolean) ti.valueInfos[0].valueToRaw(node);
-        }
-        throw new NodeException("expected Boolean, but was " + Types.name(node));
+        return NodeMapper.toBoolean(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to Boolean using lenient conversion.
      */
     public static Boolean asBoolean(Object node) {
-        if (node == null) return null;
-        if (node instanceof Boolean) return (Boolean) node;
-        if (node instanceof String || node instanceof Character) {
-            String str = node.toString().toLowerCase(Locale.ROOT);
-            if ("true".equals(str) || "yes".equals(str) || "on".equals(str) || "1".equals(str)) return true;
-            if ("false".equals(str) || "no".equals(str) || "off".equals(str) || "0".equals(str)) return false;
-            throw new NodeException("cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
-        }
-        if (node instanceof Number) {
-            int i = ((Number) node).intValue();
-            if (i == 1) return true;
-            if (i == 0) return false;
-            throw new NodeException("cannot convert Number to Boolean: numeric values other than 0-false or 1-true");
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) return ti.externalNode.asBoolean(node);
-        if (ti.valueInfos != null) {
-            Object raw = ti.valueInfos[0].valueToRaw(node);
-            return asBoolean(raw);
-        }
-        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Boolean");
+        return NodeMapper.asBoolean(node, RuntimeContext.EMPTY);
     }
 
     /**
@@ -380,15 +281,8 @@ public final class Nodes {
      * are materialized into a new {@link JsonObject} by copying their readable
      * entries.
      */
-    @SuppressWarnings("unchecked")
     public static JsonObject toJsonObject(Object node) {
-        if (node == null) return null;
-        if (node instanceof JsonObject) return (JsonObject) node;
-        if (node instanceof Map) return new JsonObject((Map<String, Object>) node);
-
-        JsonObject jo = new JsonObject();
-        Nodes.forEachObject(node, jo::put);
-        return jo;
+        return NodeMapper.toJsonObject(node, RuntimeContext.EMPTY);
     }
 
     /**
@@ -398,41 +292,15 @@ public final class Nodes {
      * and other object node representations are projected into a new outer map by
      * readable entries; entry values are not recursively converted.
      */
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node) {
-        if (node == null) return null;
-        if (node instanceof Map) return (Map<String, Object>) node;
-        if (node instanceof JsonObject) return ((JsonObject) node).toMap();
-
-        Map<String, Object> map = new LinkedHashMap<>();
-        Nodes.forEachObject(node, map::put);
-        return map;
+        return NodeMapper.toMap(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to typed Map.
      */
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
-        Asserts.notNull(valueClazz, "valueClazz");
-        return _toMap(node, Map.class, valueClazz);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> Map<String, T> _toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
-        if (node == null) return null;
-        if (node instanceof Map
-                && (mapType == null || mapType.isInstance(node))
-                && (valueClazz == null || valueClazz == Object.class)) {
-            return (Map<String, T>) node;
-        }
-        // Node conversion may use a native builder; streaming binding may not.
-        if (mapType != Map.class && mapType != LinkedHashMap.class
-                && TypeRegistry.registerTypeInfo(mapType).containerInfo.externalNode != null) {
-            return (Map<String, T>) NodeMapper.convert(node, mapType, false);
-        }
-        Map<String, T> map = TypeRegistry.newMapContainer(mapType, 0, false);
-        Nodes.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz)));
-        return map;
+        return NodeMapper.toMap(node, valueClazz, RuntimeContext.EMPTY);
     }
 
     /**
@@ -443,15 +311,8 @@ public final class Nodes {
      * materialized into a new {@link JsonArray} by copying their readable
      * elements.
      */
-    @SuppressWarnings("unchecked")
     public static JsonArray toJsonArray(Object node) {
-        if (node == null) return null;
-        if (node instanceof JsonArray) return (JsonArray) node;
-        if (node instanceof List) return new JsonArray((List<Object>) node);
-
-        JsonArray ja = new JsonArray();
-        Nodes.forEachArray(node, (i, value) -> ja.add(value));
-        return ja;
+        return NodeMapper.toJsonArray(node, RuntimeContext.EMPTY);
     }
 
     /**
@@ -462,297 +323,47 @@ public final class Nodes {
      * representations are materialized into a new outer list. Elements are not
      * recursively converted.
      */
-    @SuppressWarnings("unchecked")
     public static List<Object> toList(Object node) {
-        if (node == null) return null;
-        if (node instanceof List) return (List<Object>) node;
-        if (node instanceof JsonArray) return ((JsonArray) node).toList();
-
-        List<Object> list = new ArrayList<>();
-        Nodes.forEachArray(node, (i, value) -> list.add(value));
-        return list;
+        return NodeMapper.toList(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to typed List.
      */
-    public static <T> List<T> toList(Object node, Class<T> valueClazz) {
-        Asserts.notNull(valueClazz, "valueClazz");
-        return _toList(node, List.class, valueClazz);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> List<T> _toList(Object node, Class<?> listType, Class<T> valueClazz) {
-        if (node == null) return null;
-        if (node instanceof List
-                && (listType == null || listType.isInstance(node))
-                && (valueClazz == null || valueClazz == Object.class)) {
-            return (List<T>) node;
-        }
-        if (listType != List.class && listType != ArrayList.class
-                && TypeRegistry.registerTypeInfo(listType).containerInfo.externalNode != null) {
-            return (List<T>) NodeMapper.convert(node, listType, false);
-        }
-
-        List<T> list = TypeRegistry.newListContainer(listType, 0, false);
-        Nodes.forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
-        return list;
+    public static <T> List<T> toList(Object node, Class<T> elementClazz) {
+        return NodeMapper.toList(node, elementClazz, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to Object array.
      */
-    @SuppressWarnings("unchecked")
     public static Object[] toArray(Object node) {
-        if (node == null) return null;
-        if (node.getClass().isArray()) {
-            if (node.getClass().getComponentType().isPrimitive()) {
-                int length = Array.getLength(node);
-                Object[] arr = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    arr[i] = Array.get(node, i); // Auto boxing
-                }
-                return arr;
-            } else {
-                return ((Object[]) node);
-            }
-        }
-        if (node instanceof List) return ((List<Object>) node).toArray();
-        if (node instanceof JsonArray) return ((JsonArray) node).toArray();
-        if (node instanceof Set) return ((Set<Object>) node).toArray();
-
-        int size = Nodes.sizeInArray(node);
-        Object[] arr = new Object[size];
-        Nodes.forEachArray(node, (i, v) -> arr[i] = v);
-        return arr;
+        return NodeMapper.toArray(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to typed array.
      */
-    @SuppressWarnings("unchecked")
-    public static <T> T[] toArray(Object node, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        if (node == null) return null;
-        if (node.getClass().isArray() && clazz == Object.class) {
-            if (node.getClass().getComponentType().isPrimitive()) {
-                int length = Array.getLength(node);
-                Object[] arr = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    arr[i] = Array.get(node, i); // Auto boxing
-                }
-                return (T[]) arr;
-            } else {
-                return (T[]) node;
-            }
-        }
-        Object arr = Array.newInstance(clazz, sizeInArray(node));
-        Nodes.forEachArray(node, (i, v) -> Array.set(arr, i, to(v, clazz)));
-        return (T[]) arr;
+    public static <T> T[] toArray(Object node, Class<T> componentClazz) {
+        return NodeMapper.toArray(node, componentClazz, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to Set with Object values.
      */
-    @SuppressWarnings("unchecked")
     public static Set<Object> toSet(Object node) {
-        if (node == null) return null;
-        if (node instanceof Set) return (Set<Object>) node;
-        if (node instanceof List) return new LinkedHashSet<>((List<Object>) node);
-        if (node instanceof JsonArray) return ((JsonArray) node).toSet();
-
-        Set<Object> set = new LinkedHashSet<>();
-        Nodes.forEachArray(node, (i, value) -> set.add(value));
-        return set;
+        return NodeMapper.toSet(node, RuntimeContext.EMPTY);
     }
 
     /**
      * Converts a node to typed Set.
      */
-    public static <T> Set<T> toSet(Object node, Class<T> valueClazz) {
-        Asserts.notNull(valueClazz, "valueClazz");
-        return _toSet(node, Set.class, valueClazz);
+    public static <T> Set<T> toSet(Object node, Class<T> elementClazz) {
+        return NodeMapper.toSet(node, elementClazz, RuntimeContext.EMPTY);
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> Set<T> _toSet(Object node, Class<?> setType, Class<T> valueClazz) {
-        if (node == null) return null;
-        if (node instanceof Set
-                && (setType == null || setType.isInstance(node))
-                && (valueClazz == null || valueClazz == Object.class)) {
-            return (Set<T>) node;
-        }
-
-        Set<T> set = TypeRegistry.newSetContainer(setType, 0, false);
-        Nodes.forEachArray(node, (i, v) -> set.add(to(v, valueClazz)));
-        return set;
-    }
-
-    /**
-     * Converts a node to a JOJO subtype.
-     * <p>
-     * A JOJO is a Java representation category: a concrete {@link JsonObject}
-     * subclass other than {@link JsonObject} itself. During conversion, declared
-     * properties are bound by POJO rules. Unknown object members are retained as dynamic
-     * properties unless {@link NodeObject#readDynamic()}
-     * disables that behavior.
-     * <p>
-     * This is a binding conversion, not a forced deep copy. Nested containers may
-     * still alias source values when the target binding allows reuse.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T toJojo(Object node, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
-            throw new IllegalArgumentException("expected JOJO subtype, but was " + clazz.getName());
-        if (node == null) return null;
-        return (T) NodeMapper.convert(node, clazz, false);
-    }
-
-    /**
-     * Converts a node to a JAJO subtype.
-     * <p>
-     * A JAJO is a Java representation category: a concrete {@link JsonArray}
-     * subclass other than {@link JsonArray} itself. The target instance is created
-     * first and then populated with converted array elements in order.
-     * <p>
-     * This is a binding conversion, not a forced deep copy. Nested containers may
-     * still alias source values when the target binding allows reuse.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T toJajo(Object node, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
-            throw new IllegalArgumentException("expected JAJO subtype, but was " + clazz.getName());
-        return (T) NodeMapper.convert(node, clazz, false);
-    }
-
-
-    /**
-     * Converts a node to a registered POJO type, including JOJO and JAJO subclasses.
-     * <p>
-     * In SJF4J terminology:
-     * <ul>
-     *     <li>POJO is a Java representation category bound by declared members</li>
-     *     <li>JOJO is a {@link JsonObject} subtype with declared properties and dynamic object entries</li>
-     *     <li>JAJO is a {@link JsonArray} subtype with array node behavior and a dedicated Java type</li>
-     * </ul>
-     *
-     * <p>For regular POJO targets, properties are mapped by discovered property names, with
-     * alias support from {@code @NodeProperty}. Constructor-arg mapping is used
-     * when required by {@code @NodeCreator}; unmatched values are applied later
-     * through setters when available.
-     *
-     * <p>For JOJO targets, object members that are not declared properties are
-     * preserved in the dynamic map unless type binding disables dynamic reads.
-     * For JAJO targets, array items are appended to the target subtype in order.
-     * <p>
-     * This is a binding conversion, not a forced deep copy. Nested containers may
-     * still alias source values when the target binding allows reuse.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T toPojo(Object node, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.pojoInfo == null && ti.oneOfInfo == null) {
-            throw new NodeException("class '" + clazz.getName() + "' is not a registered POJO");
-        }
-        return (T) NodeMapper.convert(node, clazz, false);
-    }
-
-    /**
-     * Internal conversion with strict/lenient flag.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object _to(Object node, Type type, boolean cross) {
-        if (type == null || type == Object.class) return node;
-        if (node == null) return NodeMapper.convert(null, type, false);
-
-        Class<?> clazz = Types.rawBox(type);
-        if (clazz.isInstance(node)) return node;
-
-        if (clazz == String.class) {
-            if (cross) return asString(node);
-            else return toString(node);
-        }
-        if (Number.class.isAssignableFrom(clazz)) {
-            Number number = cross ? asNumber(node) : toNumber(node);
-            if (number == null) return null;
-            return Numbers.to(number, clazz);
-        }
-        if (clazz == Boolean.class) {
-            if (cross) return asBoolean(node);
-            else return toBoolean(node);
-        }
-        if (Map.class.isAssignableFrom(clazz)) {
-            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
-            Class<?> vc = Types.rawBox(vt);
-            return _toMap(node, clazz, vc);
-        }
-        if (List.class.isAssignableFrom(clazz)) {
-            Type vt = Types.resolveTypeArgument(type, List.class, 0);
-            Class<?> vc = Types.rawBox(vt);
-            return _toList(node, clazz, vc);
-        }
-
-        if (clazz == JsonObject.class) return toJsonObject(node);
-        if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
-
-        if (clazz == JsonArray.class) return toJsonArray(node);
-        if (JsonArray.class.isAssignableFrom(clazz)) return toJajo(node, clazz);
-        if (clazz.isArray()) return toArray(node, clazz.getComponentType());
-        if (Set.class.isAssignableFrom(clazz)) {
-            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
-            Class<?> vc = Types.rawBox(vt);
-            return _toSet(node, clazz, vc);
-        }
-
-        if (clazz == Character.class) {
-            if (cross) return asChar(node);
-            else return toChar(node);
-        }
-        if (clazz.isEnum()) {
-            if (cross) return asEnum(node, (Class<Enum>) clazz);
-            return toEnum(node, (Class<Enum>) clazz);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (!ti.isNone()) {
-            return NodeMapper.convert(node, clazz, false);
-        }
-
-        throw new NodeException("expected " + clazz.getName() + ", but was " + Types.name(node));
-    }
-
-    /**
-     * Converts a node to target type using strict conversion.
-     * <p>
-     * Strict mode does not coerce incompatible values across logical domains
-     * (for example arbitrary string to number/boolean). Type mismatch throws
-     * {@link NodeException}.
-     */
-    @SuppressWarnings("unchecked")
     public static <T> T to(Object node, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        return (T) _to(node, clazz, false);
-    }
-
-    /**
-     * Converts a node to target generic type using strict structural binding.
-     * <p>
-     * This overload always uses the structural mapping pipeline, including when
-     * the captured type is a non-generic class. Conversion can therefore
-     * materialize a new target root container. Use {@link #to(Object, Class)}
-     * for the concrete node-container wrapper/view semantics.
-     * <p>
-     * For parameterized containers/POJOs, generic members are bound eagerly,
-     * but branches declared as {@code Object} or otherwise left untyped may
-     * still alias the source graph.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T to(Object node, TypeReference<T> type) {
-        Asserts.notNull(type, "type");
-        return (T) NodeMapper.convert(node, type.getType(), false);
+        return NodeMapper.to(node, clazz, RuntimeContext.EMPTY);
     }
 
     /**
@@ -762,10 +373,8 @@ public final class Nodes {
      * to number/boolean). Failed coercions generally yield {@code null} in the
      * lower-level converters.
      */
-    @SuppressWarnings({"unchecked"})
     public static <T> T as(Object node, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        return (T) _to(node, clazz, true);
+        return NodeMapper.as(node, clazz, RuntimeContext.EMPTY);
     }
 
 
@@ -1135,7 +744,7 @@ public final class Nodes {
                     return;
                 default:
                     sb.append("@").append(rawClazz.getSimpleName()).append("#");
-                    sb.append(ti.externalNode.asString(node));
+                    sb.append(node);
                     return;
             }
         }
@@ -1199,72 +808,16 @@ public final class Nodes {
     /**
      * Visits each readable entry in an object node.
      */
-    @SuppressWarnings("unchecked")
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(consumer, "consumer");
-        if (node instanceof Map) {
-            ((Map<String, Object>) node).forEach(consumer);
-            return;
-        }
-        if (node instanceof JsonObject) {
-            ((JsonObject) node).forEach(consumer);
-            return;
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                ti.externalNode.forEachObject(node, consumer);
-                return;
-            }
-        }
-        if (ti.pojoInfo != null) {
-            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
-                Object value = propertyInfo.invokeGetter(node);
-                consumer.accept(propertyInfo.name, value);
-            }
-            return;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        NodeWalker.forEachObject(node, consumer);
     }
 
 
     /**
      * Returns true if any readable object entry matches the predicate.
      */
-    @SuppressWarnings("unchecked")
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(predicate, "predicate");
-        if (node instanceof Map) {
-            for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
-                if (predicate.test(entry.getKey(), entry.getValue())) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).anyMatch(predicate);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.anyMatchObject(node, predicate);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
-                Object value = propertyInfo.invokeGetter(node);
-                if (predicate.test(propertyInfo.name, value)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.anyMatchInObject(node, predicate);
     }
 
 
@@ -1275,46 +828,8 @@ public final class Nodes {
      * and returns the new value to store. Returns true when at least one entry
      * changes by reference.
      */
-    @SuppressWarnings("unchecked")
     public static boolean replaceAllInObject(Object node, BiFunction<String, Object, Object> replacer) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(replacer, "replacer");
-        if (node instanceof Map) {
-            boolean changed = false;
-            for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
-                Object oldValue = entry.getValue();
-                Object newValue = replacer.apply(entry.getKey(), oldValue);
-                if (oldValue != newValue) {
-                    entry.setValue(newValue);
-                    changed = true;
-                }
-            }
-            return changed;
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).replaceAll(replacer);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.replaceAllInObject(node, replacer);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            boolean changed = false;
-            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
-                if (!propertyInfo.writable) continue;
-                Object oldValue = propertyInfo.invokeGetter(node);
-                Object newValue = replacer.apply(propertyInfo.name, oldValue);
-                if (oldValue != newValue) {
-                    propertyInfo.invokeSetter(node, newValue);
-                    changed = true;
-                }
-            }
-            return changed;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.replaceAllInObject(node, replacer);
     }
 
     /**
@@ -1326,165 +841,37 @@ public final class Nodes {
      * matching keys are collected first and removed afterward so live key views
      * remain safe to traverse.
      */
-    @SuppressWarnings("unchecked")
     public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(predicate, "predicate");
-
-        if (node instanceof Map) {
-            return ((Map<String, Object>) node).entrySet().removeIf(entry ->
-                    predicate.test(entry.getKey(), entry.getValue()));
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).removeIf(entry -> predicate.test(entry.getKey(), entry.getValue()));
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.removeIfInObject(node, predicate);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            return false;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.removeIfInObject(node, predicate);
     }
 
 
     /**
      * Visits each element in an array node.
      */
-    @SuppressWarnings("unchecked")
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(consumer, "consumer");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            for (int i = 0, len = list.size(); i < len; i++) consumer.accept(i, list.get(i));
-            return;
-        }
-        if (node instanceof JsonArray) {
-            ((JsonArray) node).forEach(consumer);
-            return;
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            for (int i = 0; i < len; i++) consumer.accept(i, Array.get(node, i));
-            return;
-        }
-        if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            int i = 0;
-            for (Object v : set) consumer.accept(i++, v);
-            return;
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                ti.externalNode.forEachArray(node, consumer);
-                return;
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        NodeWalker.forEachArray(node, consumer);
     }
 
     /**
      * Returns true if any element matches the predicate.
      */
-    @SuppressWarnings("unchecked")
     public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(predicate, "predicate");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            for (int i = 0, len = list.size(); i < len; i++) {
-                if (predicate.test(i, list.get(i))) return true;
-            }
-            return false;
-        }
-        if (node instanceof JsonArray) {
-            JsonArray ja = (JsonArray) node;
-            for (int i = 0, len = ja.size(); i < len; i++) {
-                if (predicate.test(i, ja.getNode(i))) return true;
-            }
-            return false;
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            for (int i = 0; i < len; i++) {
-                if (predicate.test(i, Array.get(node, i))) return true;
-            }
-            return false;
-        }
-        if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            int i = 0;
-            for (Object v : set) {
-                if (predicate.test(i++, v)) return true;
-            }
-            return false;
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                return ti.externalNode.anyMatchInArray(node, predicate);
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        return NodeWalker.anyMatchInArray(node, predicate);
     }
 
     /**
      * Returns the number of readable members in an object node.
      */
     public static int sizeInObject(Object node) {
-        Asserts.notNull(node, "node");
-        if (node instanceof Map) {
-            return ((Map<?, ?>) node).size();
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).size();
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.sizeInObject(node);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            return ti.pojoInfo.readableProperties.length;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.sizeInObject(node);
     }
 
     /**
      * Returns the number of elements in an array node.
      */
     public static int sizeInArray(Object node) {
-        Asserts.notNull(node, "node");
-        if (node instanceof List) {
-            return ((List<?>) node).size();
-        }
-        if (node instanceof JsonArray) {
-            return ((JsonArray) node).size();
-        }
-        if (node.getClass().isArray()) {
-            return Array.getLength(node);
-        }
-        if (node instanceof Set) {
-            return ((Set<?>) node).size();
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                return ti.externalNode.sizeInArray(node);
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        return NodeWalker.sizeInArray(node);
     }
 
     /**
@@ -1494,60 +881,8 @@ public final class Nodes {
      * return the structural readable-property key view; callers must treat it as
      * read-only metadata.
      */
-    @SuppressWarnings("unchecked")
     public static Set<String> keySetInObject(Object node) {
-        Asserts.notNull(node, "node");
-        if (node instanceof Map) {
-            return ((Map<String, Object>) node).keySet();
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).keySet();
-        }
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.keySetInObject(node);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PojoInfo pi = ti.pojoInfo;
-            if (pi.readableProperties.length == 0) return Collections.emptySet();
-            return new AbstractSet<String>() {
-                @Override
-                public Iterator<String> iterator() {
-                    return new Iterator<String>() {
-                        private int index;
-
-                        @Override
-                        public boolean hasNext() {
-                            return index < pi.readableProperties.length;
-                        }
-
-                        @Override
-                        public String next() {
-                            return pi.readableProperties[index++].name;
-                        }
-                    };
-                }
-
-                @Override
-                public int size() {
-                    return pi.readableProperties.length;
-                }
-
-                @Override
-                public boolean contains(Object key) {
-                    if (!(key instanceof String)) {
-                        return false;
-                    }
-
-                    PropertyInfo property = pi.getPropertyNoAlias((String) key);
-                    return property != null && property.readable;
-                }
-            };
-
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.keySetInObject(node);
     }
 
     /**
@@ -1557,92 +892,15 @@ public final class Nodes {
      * return a read-only projection of readable properties; modifying returned
      * entries does not write back to the POJO.
      */
-    @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
-        Asserts.notNull(node, "node");
-        if (node instanceof Map) {
-            return ((Map<String, Object>) node).entrySet();
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).entrySet();
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.entrySetInObject(node);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PojoInfo pi = ti.pojoInfo;
-            if (pi.readableProperties.length == 0) {
-                return Collections.emptySet();
-            }
-            return new AbstractSet<Map.Entry<String, Object>>() {
-                @Override
-                public Iterator<Map.Entry<String, Object>> iterator() {
-                    return new Iterator<Map.Entry<String, Object>>() {
-                        private int index;
-                        @Override
-                        public boolean hasNext() {
-                            return index < pi.readableProperties.length;
-                        }
-                        @Override
-                        public Map.Entry<String, Object> next() {
-                            if (!hasNext()) {
-                                throw new NoSuchElementException();
-                            }
-                            PropertyInfo propertyInfo = pi.readableProperties[index++];
-                            return new AbstractMap.SimpleImmutableEntry<>(propertyInfo.name, propertyInfo.invokeGetter(node));
-                        }
-                    };
-                }
-
-                @Override
-                public int size() {
-                    return pi.readableProperties.length;
-                }
-            };
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.entrySetInObject(node);
     }
 
     /**
      * Returns an iterator over an array node.
      */
-    @SuppressWarnings("unchecked")
     public static Iterator<Object> iteratorInArray(Object node) {
-        Asserts.notNull(node, "node");
-        if (node instanceof List) {
-            return ((List<Object>) node).iterator();
-        }
-        if (node instanceof JsonArray) {
-            return ((JsonArray) node).iterator();
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            return new Iterator<Object>() {
-                int i = 0;
-                public boolean hasNext() {
-                    return i < len;
-                }
-                public Object next() {
-                    if (i >= len) throw new NoSuchElementException();
-                    return Array.get(node, i++);
-                }
-            };
-        }
-        if (node instanceof Set) {
-            return ((Set<Object>) node).iterator();
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                return ti.externalNode.iteratorInArray(node);
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        return NodeWalker.iteratorInArray(node);
     }
 
     /**
@@ -1650,26 +908,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-        if (node instanceof Map) {
-            return ((Map<String, Object>) node).containsKey(key);
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).containsKey(key);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.containsInObject(node, key);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
-            return propertyInfo != null && propertyInfo.readable;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.containsInObject(node, key);
     }
 
     /**
@@ -1678,9 +917,7 @@ public final class Nodes {
      * Negative indexes are normalized against current size.
      */
     public static boolean containsInArray(Object node, int idx) {
-        int len = sizeInArray(node);
-        idx = idx < 0 ? len + idx : idx;
-        return idx >= 0 && idx < len;
+        return NodeWalker.containsInArray(node, idx);
     }
 
     /**
@@ -1690,36 +927,15 @@ public final class Nodes {
      * without a getter behave as absent and return {@code null}.
      */
     public static Object getInObject(Object node, String key) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-        if (node instanceof Map) {
-            return ((Map<?, ?>) node).get(key);
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).getNode(key);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.getInObject(node, key);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
-            return propertyInfo != null && propertyInfo.readable ? propertyInfo.invokeGetter(node) : null;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.getInObject(node, key);
     }
 
     /**
      * Gets a value by key from an object node and converts it to the
      * requested target type.
      */
-    public static <T> T getInObject(Object node, String key, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        Object sub = getInObject(node, key);
-        return to(sub, clazz);
+        public static <T> T getInObject(Object node, String key, Class<T> clazz) {
+            return NodeWalker.getInObject(node, key, clazz);
     }
 
     /**
@@ -1729,42 +945,8 @@ public final class Nodes {
      * Array, and Set, out-of-range access returns {@code null}. JsonArray behavior
      * follows {@link JsonArray#getNode(int)}.
      */
-    @SuppressWarnings("unchecked")
     public static Object getInArray(Object node, int idx) {
-        Asserts.notNull(node, "node");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            int size = list.size();
-            idx = idx < 0 ? size + idx : idx;
-            if (idx < 0 || idx >= size) {
-                return null;
-            } else {
-                return list.get(idx);
-            }
-        }
-        if (node instanceof JsonArray) {
-            return ((JsonArray) node).getNode(idx);
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            idx = idx < 0 ? len + idx : idx;
-            if (idx < 0 || idx >= len) {
-                return null;
-            } else {
-                return Array.get(node, idx);
-            }
-        }
-        if (node instanceof Set) {
-            throw new NodeException("cannot call getInArray() on an unordered Java Set");
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                return ti.externalNode.getInArray(node, idx);
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        return NodeWalker.getInArray(node, idx);
     }
 
     /**
@@ -1772,330 +954,21 @@ public final class Nodes {
      * requested target type.
      */
     public static <T> T getInArray(Object node, int idx, Class<T> clazz) {
-        Asserts.notNull(clazz, "clazz");
-        Object sub = getInArray(node, idx);
-        return to(sub, clazz);
-    }
-
-    /**
-     * Mutable holder used by access helpers to report child-value metadata.
-     * <p>
-     * Callers typically reuse one instance across repeated lookups to avoid
-     * allocating short-lived result wrappers.
-     * <p>
-     * {@code getAccess*} methods fill {@link #node}/{@link #present} for read
-     * paths. {@code putAccess*} methods fill {@link #node}/{@link #type}/
-     * {@link #puttable} for write and auto-create paths.
-     */
-    public static final class Access {
-        /** child value (can be null) */
-        public Object node;
-        /** static Type of child resolved by the access helper */
-        public Type type;
-        /** whether the child location currently exists, even when its value is null */
-        public boolean present;
-        /**
-         * Indicates whether public Nodes/JsonPath write operations can put or
-         * auto-create at this location.
-         * false means the container is locked (e.g. POJO without such field).
-         */
-        public boolean puttable;
-    }
-
-    /**
-     * Resolves readable object-child access and fills {@link Access}.
-     * <p>
-     * The output distinguishes present-null from missing values under read
-     * semantics. Write-only POJO properties are not readable and therefore are
-     * reported as absent.
-     */
-    @SuppressWarnings("unchecked")
-    public static void getAccessInObject(Object node, String key, Access out) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-        Asserts.notNull(out, "out");
-
-        out.node = null;
-        out.present = false;
-        if (node instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) node;
-            out.node = map.get(key);
-            out.present = out.node != null || map.containsKey(key);
-            return;
-        }
-        if (node.getClass() == JsonObject.class) {
-            JsonObject jo = (JsonObject) node;
-            out.node = jo.getNode(key);
-            out.present = out.node != null || jo.containsKey(key);
-            return;
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                ti.externalNode.getAccessInObject(node, key, out);
-                return;
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
-            if (propertyInfo != null) {
-                if (!propertyInfo.readable) return;
-                out.node = propertyInfo.invokeGetter(node);
-                out.present = true;
-                return;
-            }
-            if (ti.pojoInfo.isJojo) {
-                JsonObject jo = (JsonObject) node;
-                out.node = jo.getNode(key);
-                out.present = out.node != null || jo.containsKey(key);
-            }
-            return;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
-    }
-
-    /**
-     * Resolves writable object-child access and fills {@link Access} with node/type metadata.
-     * <p>
-     * The output describes the current child value, inferred static type, and
-     * whether public write APIs can create or replace content at this location.
-     */
-    @SuppressWarnings("unchecked")
-    public static void putAccessInObject(Object node, Type type, String key, Access out) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-        Asserts.notNull(out, "out");
-
-        out.node = null;
-        out.puttable = false;
-        if (node instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) node;
-            out.node = map.get(key);
-            out.type = Types.resolveTypeArgument(type, Map.class, 1);
-            out.puttable = true;
-            return;
-        }
-        if (node.getClass() == JsonObject.class) {
-            JsonObject jo = (JsonObject) node;
-            out.node = jo.getNode(key);
-            out.type = Object.class;
-            out.puttable = true;
-            return;
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                ti.externalNode.putAccessInObject(node, key, out);
-                return;
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
-            if (propertyInfo != null) {
-                out.type = propertyInfo.type;
-                out.puttable = propertyInfo.writable;
-                if (propertyInfo.readable) {
-                    out.node = propertyInfo.invokeGetter(node);
-                }
-                return;
-            }
-            if (ti.pojoInfo.isJojo) {
-                JsonObject jo = (JsonObject) node;
-                out.node = jo.getNode(key);
-                out.type = Object.class;
-                out.puttable = true;
-                return;
-            }
-            out.node = null;
-            out.type = Object.class;
-            out.puttable = false;
-            return;
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
-    }
-
-    /**
-     * Resolves readable array-child access and fills {@link Access}.
-     * <p>
-     * The output distinguishes present-null from missing values under read
-     * semantics. Negative indexes are normalized.
-     */
-    @SuppressWarnings("unchecked")
-    public static void getAccessInArray(Object node, int idx, Access out) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(out, "out");
-
-        out.node = null;
-        out.present = false;
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            int size = list.size();
-            idx = idx < 0 ? size + idx : idx;
-            if (idx >= 0 && idx < size) {
-                out.node = list.get(idx);
-                out.present = true;
-            }
-            return;
-        }
-        if (node instanceof JsonArray) {
-            JsonArray ja = (JsonArray) node;
-            int size = ja.size();
-            idx = idx < 0 ? size + idx : idx;
-            if (idx >= 0 && idx < size) {
-                out.node = ja.getNode(idx);
-                out.present = true;
-            }
-            return;
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            idx = idx < 0 ? len + idx : idx;
-            if (idx >= 0 && idx < len) {
-                out.node = Array.get(node, idx);
-                out.present = true;
-            }
-            return;
-        }
-        if (node instanceof Set) {
-            throw new NodeException("cannot call getAccessInArray() on an unordered Java Set");
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                ti.externalNode.getAccessInArray(node, idx, out);
-                return;
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
-    }
-
-    /**
-     * Resolves writable array-child access and fills {@link Access} with node/type metadata.
-     * <p>
-     * Negative indexes are normalized. Indexed access follows {@link #putInArray(Object, int, Object)}
-     * put semantics: existing normalized indexes are puttable, and for appendable array nodes
-     * {@code idx == size} is also puttable.
-     * <p>
-     * If {@code idx == null}, it is treated as append-to-tail and remains puttable
-     * with {@code node == null}.
-     */
-    @SuppressWarnings("unchecked")
-    public static void putAccessInArray(Object node, Type type, Integer idx, Access out) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(out, "out");
-
-        out.type = Object.class;
-        out.node = null;
-        out.puttable = true;
-        if (node instanceof List) {
-            out.type = Types.resolveTypeArgument(type, List.class, 0);
-            if (idx == null) return;
-            List<Object> list = (List<Object>) node;
-            int size = list.size();
-            idx = idx < 0 ? size + idx : idx;
-            if (idx == size) {
-                return;
-            } else if (idx >= 0 && idx < size) {
-                out.node = list.get(idx);
-                return;
-            }
-            out.puttable = false;
-            return;
-        }
-        if (node instanceof JsonArray) {
-            if (idx == null) return;
-            JsonArray ja = (JsonArray) node;
-            int size = ja.size();
-            idx = idx < 0 ? size + idx : idx;
-            if (idx == size) {
-                return;
-            } else if (idx >= 0 && idx < size) {
-                out.node = ja.getNode(idx);
-                return;
-            }
-            out.puttable = false;
-            return;
-        }
-        if (node.getClass().isArray()) {
-            out.type = node.getClass().getComponentType();
-            if (idx != null) {
-                int len = Array.getLength(node);
-                idx = idx < 0 ? len + idx : idx;
-                if (idx >= 0 && idx < len) {
-                    out.node = Array.get(node, idx);
-                    return;
-                }
-            }
-            out.puttable = false;
-            return;
-        }
-        if (node instanceof Set) {
-            if (idx == null) return;
-            throw new NodeException("cannot call putAccessInArray() on an unordered Java Set");
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                ti.externalNode.putAccessInArray(node, idx, out);
-                return;
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        return NodeWalker.getInArray(node, idx, clazz);
     }
 
     /**
      * Creates a missing object node representation for path ensure operations.
      */
     public static Object createObjectNode(Class<?> clazz) {
-        if (clazz == null || clazz == Object.class || Map.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.newMapContainer(clazz, 0, false);
-        }
-        if (clazz == JsonObject.class) {
-            return new JsonObject();
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.externalNode != null) {
-            if (clazz == ti.externalNode.nodeType() ||
-                    ti.externalNode.jsonTypeOfClass(clazz) == JsonType.OBJECT) {
-                return ti.externalNode.createObjectNode(clazz);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            return ti.pojoInfo.creatorInfo.forceNewPojo();
-        }
-        throw new NodeException("cannot create object node of type '" + clazz + "'");
+        return NodeWalker.createObjectNode(clazz);
     }
 
     /**
      * Creates a missing array node representation for path ensure operations.
      */
     public static Object createArrayNode(Class<?> clazz) {
-        if (clazz == null || clazz == Object.class || List.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.newListContainer(clazz, 0, false);
-        }
-        if (clazz == JsonArray.class) {
-            return new JsonArray();
-        }
-        if (JsonArray.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.requireRegisteredPojoInfo(clazz).creatorInfo.forceNewPojo();
-        }
-        if (Set.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.newSetContainer(clazz, 0, false);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.externalNode != null) {
-            if (clazz == ti.externalNode.nodeType() ||
-                    ti.externalNode.jsonTypeOfClass(clazz) == JsonType.ARRAY) {
-                return ti.externalNode.createArrayNode(clazz);
-            }
-        }
-        throw new NodeException("cannot create array node of type '" + clazz + "'");
+        return NodeWalker.createArrayNode(clazz);
     }
 
 
@@ -2107,37 +980,8 @@ public final class Nodes {
      * POJO property writes do not read back the old value and therefore return
      * {@code null}.
      */
-    @SuppressWarnings("unchecked")
     public static Object putInObject(Object node, String key, Object value) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-        if (node instanceof Map) {
-            return ((Map<String, Object>) node).put(key, value);
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).put(key, value);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.putInObject(node, key, value);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PropertyInfo fi = ti.pojoInfo.getPropertyNoAlias(key);
-            if (fi != null) {
-                if (fi.writable) {
-                    fi.invokeSetter(node, value);
-                    return null;
-                }
-                throw new NodeException("property '" + key + "' is not writable");
-            } else {
-                throw new NodeException("unknown field '" + key + "' in POJO '" +
-                        node.getClass().getName() + "'");
-            }
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.putInObject(node, key, value);
     }
 
     /**
@@ -2146,28 +990,8 @@ public final class Nodes {
      * Removal is supported for Map/JsonObject. POJO fields are structural and
      * cannot be removed.
      */
-    @SuppressWarnings("unchecked")
     public static Object removeInObject(Object node, String key) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-        if (node instanceof Map) {
-            return ((Map<String, Object>) node).remove(key);
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).remove(key);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                return ti.externalNode.removeInObject(node, key);
-            }
-        }
-        if (ti.pojoInfo != null) {
-            throw new NodeException("cannot remove field '" + key + "' from POJO '" +
-                    node.getClass().getName() + "'");
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.removeInObject(node, key);
     }
 
     /**
@@ -2179,44 +1003,7 @@ public final class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T computeIfAbsentInObject(Object node, String key, Function<String, T> computer) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-        Asserts.notNull(computer, "computer");
-        if (node instanceof Map) {
-            return ((Map<String, T>) node).computeIfAbsent(key, computer);
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).computeIfAbsent(key, computer);
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.OBJECT) {
-                T old = (T) ti.externalNode.getInObject(node, key);
-                if (old != null) return old;
-                T newNode = computer.apply(key);
-                if (newNode != null) ti.externalNode.putInObject(node, key, newNode);
-                return newNode;
-            }
-        }
-        if (ti.pojoInfo != null) {
-            PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
-            if (propertyInfo != null) {
-                T old = propertyInfo.readable ? (T) propertyInfo.invokeGetter(node) : null;
-                if (old != null) {
-                    return old;
-                }
-                T newNode = computer.apply(key);
-                if (newNode != null) {
-                    propertyInfo.invokeSetter(node, newNode);
-                }
-                return newNode;
-            } else {
-                throw new NodeException("unknown property '" + key + "' in POJO '" +
-                        node.getClass().getName() + "'");
-            }
-        }
-        throw new NodeException("expected object node, but was " + Types.name(node));
+        return NodeWalker.computeIfAbsentInObject(node, key, computer);
     }
 
     /**
@@ -2229,7 +1016,7 @@ public final class Nodes {
      * @return the previous value at the index when replacing, or {@code null} when appending
      */
     public static Object putInArray(Object node, int idx, Object value) {
-        return _putInArray(node, idx, value, true);
+        return NodeWalker.putInArray(node, idx, value);
     }
 
     /**
@@ -2240,64 +1027,7 @@ public final class Nodes {
      * supported.
      */
     public static Object setInArray(Object node, int idx, Object value) {
-        return _putInArray(node, idx, value, false);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object _putInArray(Object node, int idx, Object value, boolean allowAppend) {
-        Asserts.notNull(node, "node");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            int size = list.size();
-            idx = idx < 0 ? size + idx : idx;
-            if (idx >= 0 && idx < size) {
-                return list.set(idx, value);
-            }
-            if (allowAppend && idx == size) {
-                list.add(value);
-                return null;
-            }
-            throw new NodeException("cannot set at index " + idx + " in List of size " + size);
-        }
-        if (node instanceof JsonArray) {
-            JsonArray ja = (JsonArray) node;
-            if (ja.containsIndex(idx)) {
-                return ja.set(idx, value);
-            }
-            if (allowAppend && idx == ja.size()) {
-                ja.add(value);
-                return null;
-            }
-            throw new NodeException("cannot set at index " + idx + " in JsonArray of size " + ja.size());
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            idx = idx < 0 ? len + idx : idx;
-            if (idx >= 0 && idx < len) {
-                Object old = Array.get(node, idx);
-                Array.set(node, idx, value);
-                return old;
-            }
-            if (allowAppend && idx == len) {
-                throw new NodeException("cannot append to a Java array");
-            }
-            throw new NodeException("cannot set at index " + idx + " in Java array of size " + len);
-        }
-        if (node instanceof Set) {
-            throw new NodeException("cannot set by index on an unordered Java Set");
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                if (allowAppend && ti.externalNode.sizeInArray(node) == idx) {
-                    ti.externalNode.addInArray(node, value);
-                    return null;
-                }
-                return ti.externalNode.setInArray(node, idx, value);
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        return NodeWalker.setInArray(node, idx, value);
     }
 
     /**
@@ -2305,33 +1035,8 @@ public final class Nodes {
      * <p>
      * Java arrays are fixed-size and therefore not appendable.
      */
-    @SuppressWarnings("unchecked")
     public static void addInArray(Object node, Object value) {
-        Asserts.notNull(node, "node");
-        if (node instanceof List) {
-            ((List<Object>) node).add(value);
-            return;
-        }
-        if (node instanceof JsonArray) {
-            ((JsonArray) node).add(value);
-            return;
-        }
-        if (node.getClass().isArray()) {
-            throw new NodeException("cannot append to a Java array");
-        }
-        if (node instanceof Set) {
-            ((Set<Object>) node).add(value);
-            return;
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                ti.externalNode.addInArray(node, value);
-                return;
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        NodeWalker.addInArray(node, value);
     }
 
     /**
@@ -2340,34 +1045,8 @@ public final class Nodes {
      * Indexed insert is supported by List/JsonArray only. Set and Java array
      * inputs are rejected because they are unordered or fixed-size.
      */
-    @SuppressWarnings("unchecked")
     public static void addInArray(Object node, int idx, Object value) {
-        Asserts.notNull(node, "node");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            idx = idx < 0 ? list.size() + idx : idx;
-            list.add(idx, value);
-            return;
-        }
-        if (node instanceof JsonArray) {
-            ((JsonArray) node).add(idx, value);
-            return;
-        }
-        if (node.getClass().isArray()) {
-            throw new NodeException("cannot insert into a Java array");
-        }
-        if (node instanceof Set) {
-            throw new NodeException("cannot call addInArray() with an index on an unordered Java Set");
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                ti.externalNode.addInArray(node, idx, value);
-                return;
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        NodeWalker.addInArray(node, idx, value);
     }
 
     /**
@@ -2376,125 +1055,9 @@ public final class Nodes {
      * Negative indexes are supported for List. Java arrays and Set do not support
      * index-based removal.
      */
-    @SuppressWarnings("unchecked")
     public static Object removeInArray(Object node, int idx) {
-        Asserts.notNull(node, "node");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            idx = idx < 0 ? list.size() + idx : idx;
-            return list.remove(idx);
-        }
-        if (node instanceof JsonArray) {
-            return ((JsonArray) node).remove(idx);
-        }
-        if (node.getClass().isArray()) {
-            throw new NodeException("cannot remove at index " + idx +
-                    " from Java array of component type '" + node.getClass().getComponentType().getName() + "'");
-        }
-        if (node instanceof Set) {
-            throw new NodeException("cannot call removeInArray() on an unordered Java Set");
-        }
-
-        TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.externalNode != null) {
-            if (ti.externalNode.jsonType(node) == JsonType.ARRAY) {
-                return ti.externalNode.removeInArray(node, idx);
-            }
-        }
-        throw new NodeException("expected array node, but was " + Types.name(node));
+        return NodeWalker.removeInArray(node, idx);
     }
 
-
-    /*
-     * --------------------------------------------------------------
-     * Walk
-     * --------------------------------------------------------------
-     */
-
-    /** Traversal order relative to child nodes. */
-    public enum WalkOrder { TOP_DOWN, BOTTOM_UP }
-    /** Node selection mode for visitor callbacks. */
-    public enum WalkTarget { ANY, CONTAINER, OBJECT, ARRAY, VALUE, STRING, NUMBER, BOOLEAN, NULL, UNKNOWN }
-
-    /**
-     * Walks an OBNT tree in top-down order and visits containers and value nodes.
-     */
-    public static void walk(Object container,
-                            BiFunction<PathSegment, Object, Boolean> visitor) {
-        walk(container, WalkTarget.ANY, WalkOrder.TOP_DOWN, -1, visitor);
-    }
-
-    /**
-     * Walks an OBNT tree with full traversal controls.
-     * <p>
-     * {@code maxDepth < 0} means unlimited depth. Traversal starts at root path.
-     * Returning {@link Boolean} stops traversal of the current branch.
-     */
-    public static void walk(Object container, WalkTarget target,
-                            WalkOrder order, int maxDepth,
-                            BiFunction<PathSegment, Object, Boolean> visitor) {
-        Asserts.notNull(container, "container");
-        Asserts.notNull(target, "target");
-        Asserts.notNull(order, "order");
-        Asserts.notNull(visitor, "visitor");
-        _walk(container, PathSegment.Root.INSTANCE, visitor, target, order, maxDepth);
-    }
-
-    private static void _walk(Object node, PathSegment path,
-                              BiFunction<PathSegment, Object, Boolean> visitor,
-                              WalkTarget target, WalkOrder order, int remainingDepth) {
-        if (remainingDepth == 0) return;
-
-        JsonType jt = JsonType.of(node);
-        if (jt.isObject()) {
-            if (order == WalkOrder.TOP_DOWN &&
-                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.OBJECT)) {
-                if (!visitor.apply(path, node)) return;
-            }
-
-            Nodes.forEachObject(node, (key, subNode) -> {
-                PathSegment childPath = new PathSegment.Name(path, key);
-                _walk(subNode, childPath, visitor, target, order, remainingDepth - 1);
-            });
-            if (order == WalkOrder.BOTTOM_UP &&
-                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.OBJECT)) {
-                visitor.apply(path, node);
-            }
-        } else if (jt.isArray()) {
-            if (order == WalkOrder.TOP_DOWN &&
-                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.ARRAY)) {
-                if (!visitor.apply(path, node)) return;
-            }
-
-            Nodes.forEachArray(node, (idx, subNode) -> {
-                PathSegment childPath = new PathSegment.Index(path, idx);
-                _walk(subNode, childPath, visitor, target, order, remainingDepth - 1);
-            });
-            if (order == WalkOrder.BOTTOM_UP &&
-                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.ARRAY)) {
-                visitor.apply(path, node);
-            }
-        } else if (jt.isString()) {
-            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.STRING ) {
-                visitor.apply(path, node);
-            }
-        } else if (jt.isNumber()) {
-            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.NUMBER ) {
-                visitor.apply(path, node);
-            }
-        } else if (jt.isBoolean()) {
-            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.BOOLEAN ) {
-                visitor.apply(path, node);
-            }
-        } else if (jt.isNull()) {
-            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.NULL ) {
-                visitor.apply(path, node);
-            }
-        } else if (jt.isUnknown()) {
-            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.UNKNOWN ) {
-                visitor.apply(path, node);
-            }
-        }
-    }
 
 }

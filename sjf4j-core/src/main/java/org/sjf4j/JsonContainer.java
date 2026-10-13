@@ -1,6 +1,7 @@
 package org.sjf4j;
 
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.patch.Patches;
@@ -57,7 +58,7 @@ public abstract class JsonContainer {
     @SuppressWarnings("unchecked")
     public <T> T toNode(Class<T> clazz, boolean deepCopy) {
         Asserts.notNull(clazz, "clazz");
-        return (T) NodeMapper.convert(this, clazz, deepCopy);
+        return (T) NodeMapper.convert(this, clazz, deepCopy, RuntimeContext.EMPTY);
     }
 
     /**
@@ -120,7 +121,7 @@ public abstract class JsonContainer {
      * Removes null-valued object entries recursively.
      */
     public void deepPruneNulls() {
-        Nodes.walk(this, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1,
+        NodeWalker.walk(this, NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.BOTTOM_UP, -1,
                 (path, node) -> {
                     if (node instanceof Map) {
                         ((Map<?, ?>) node).entrySet().removeIf(e -> e.getValue() == null);
@@ -814,15 +815,15 @@ public abstract class JsonContainer {
      * Walks all nodes with default traversal options.
      */
     public void walk(BiFunction<PathSegment, Object, Boolean> visitor) {
-        Nodes.walk(this, visitor);
+        NodeWalker.walk(this, visitor);
     }
 
     /**
      * Walks nodes with specified target, order, and max depth.
      */
-    public void walk(Nodes.WalkTarget target, Nodes.WalkOrder order, int maxDepth,
+    public void walk(NodeWalker.WalkTarget target, NodeWalker.WalkOrder order, int maxDepth,
                      BiFunction<PathSegment, Object, Boolean> visitor) {
-        Nodes.walk(this, target, order, maxDepth, visitor);
+        NodeWalker.walk(this, target, order, maxDepth, visitor);
     }
 
     /*
