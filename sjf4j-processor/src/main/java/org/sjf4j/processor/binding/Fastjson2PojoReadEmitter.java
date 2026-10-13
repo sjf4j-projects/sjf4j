@@ -19,7 +19,7 @@ final class Fastjson2PojoReadEmitter {
 
     void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads) {
         out.line("com.alibaba.fastjson2.JSONReader raw = reader.rawReader();");
-        out.beginBlock("while (!reader.nextIfObjectEnd())");
+        out.beginBlock("while (!raw.nextIfObjectEnd())");
 
         Map<Integer, List<BindingProperty>> rawNames =
                 new LinkedHashMap<Integer, List<BindingProperty>>();
