@@ -1,0 +1,50 @@
+name: Temporary Fastjson2 Map Allocation Diagnostics
+on:
+  push:
+    branches:
+      - experiment/fastjson2-map-allocation-diagnostics
+    paths:
+      - .github/workflows/temporary-fastjson2-map-alloc.yml
+permissions:
+  contents: read
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Build same-fixture Map comparison
+        shell: bash
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain
+      - name: Map JMH with GC allocation profiler
+        shell: bash
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledReadBenchmark[.]fastjson2_map_(string|utf8)_(compiled|runtime|native|handwritten_v2)$' \
+            -f 1 -wi 4 -w 300ms -i 8 -r 450ms -t 1 -prof gc \
+            -rf json -rff map-profile.json | tee map-profile.txt
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          x=json.load(open('map-profile.json'))
+          for row in x:
+              p=row['primaryMetric']
+              gc=row.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{})
+              print(row['benchmark'].split('.')[-1], round(p['score'],6), 'us/op', round(gc.get('score',0),2), 'B/op')
+          PY
+      - name: Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-map-alloc-diagnostics
+          path: |
+            map-profile.json
+            map-profile.txt
+          if-no-files-found: ignore
