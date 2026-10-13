@@ -1,0 +1,66 @@
+name: Temporary Fastjson2 Map A-B
+on:
+  push:
+    branches:
+      - experiment/fastjson2-map-raw-node
+    paths:
+      - .github/workflows/temporary-fastjson2-map-ab.yml
+permissions:
+  contents: read
+jobs:
+  map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Conformance
+        run: ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-processor:test :sjf4j-testbench:test --no-daemon --console=plain
+      - name: Build baseline and raw-node variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach /tmp/map-base bb344a2f60a76b65165d13a4f07111811834044e
+          git worktree add --detach /tmp/map-raw HEAD
+          (cd /tmp/map-base && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          (cd /tmp/map-raw && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+      - name: Map String/UTF-8 JMH B-A-A-B
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for tag in base-1 raw-1 raw-2 base-2; do
+            rev="${tag%-*}"
+            java -jar /tmp/map-${rev}/sjf4j-testbench/build/libs/*-jmh.jar \
+              '.*CompiledReadBenchmark[.]fastjson2_map_(string|utf8)_(compiled|native|runtime)$' \
+              -f 1 -wi 5 -w 300ms -i 8 -r 350ms -t 1 \
+              -rf json -rff results/${tag}.json | tee results/${tag}.txt
+          done
+      - name: Results
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          samples={}
+          for tag in ('base-1','raw-1','raw-2','base-2'):
+              for r in json.loads(Path('results',tag+'.json').read_text()):
+                  samples.setdefault(r['benchmark'].split('.')[-1],{})[tag]=r['primaryMetric']['score']
+          for k,v in sorted(samples.items()):
+              base=(v['base-1']+v['base-2'])/2
+              raw=(v['raw-1']+v['raw-2'])/2
+              print(f'{k}: BASE {base:.6f}, RAW {raw:.6f}, delta {(raw/base-1)*100:+.2f}%, samples {v}')
+          PY
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-map-raw-node-ab
+          path: results/
+          if-no-files-found: ignore
