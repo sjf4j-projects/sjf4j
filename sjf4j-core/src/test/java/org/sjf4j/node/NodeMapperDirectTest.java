@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class NodeMapperDirectTest {
 
     @Test
-    void directAdaptationContracts() {
+    void directAdaptationRejectsInvalidValuesAndKeepsEmptyCopiesMutable() {
         RuntimeContext ctx = RuntimeContext.EMPTY;
 
         // Lenient string adaptation accepts scalar values only.

@@ -1,6 +1,5 @@
 package org.sjf4j.node;
 
-import lombok.ToString;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
@@ -10,6 +9,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.fixture.PojoPersonFixture.Person;
 import org.sjf4j.path.PathSyntax;
 
 import java.util.ArrayList;
@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.sjf4j.fixture.PojoPersonFixture.JSON_DATA;
 
 class NodeWalkerTest {
 
@@ -184,29 +185,6 @@ class NodeWalkerTest {
         assertEquals(7, count.get());
     }
 
-
-    // --------- Sample POJO ------------
-    @ToString
-    public static class Person {
-        public String name;
-        public int age;
-        public Info info;
-        public List<Baby> babies;
-    }
-
-    @ToString
-    public static class Info {
-        public String email;
-        public String city;
-    }
-
-    @ToString
-    public static class Baby {
-        public String name;
-        public int age;
-    }
-
-    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
 
     @Test
     public void walksPojosInConfiguredOrder() {

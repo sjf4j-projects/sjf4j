@@ -1,0 +1,246 @@
+package org.sjf4j.meta;
+
+
+import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.NodeException;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.ReflectUtil;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.util.Invokers;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.function.BiConsumer;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ReflectUtilTest {
+
+    // ---------- 1) isPojoCandidate ----------
+
+    @Test
+    void isPojoCandidate_filtersCommonNonPojoTypes() {
+        assertFalse(ReflectUtil.isPojoCandidate(null));
+        assertFalse(ReflectUtil.isPojoCandidate(Object.class));
+        assertFalse(ReflectUtil.isPojoCandidate(int.class));
+        assertFalse(ReflectUtil.isPojoCandidate(String.class));
+        assertFalse(ReflectUtil.isPojoCandidate(Integer.class));
+        assertFalse(ReflectUtil.isPojoCandidate(Boolean.class));
+
+        assertFalse(ReflectUtil.isPojoCandidate(Map.class)); // interface, also Map
+        assertFalse(ReflectUtil.isPojoCandidate(int[].class)); // array
+    }
+
+    @Test
+    void isPojoCandidate_filtersJdkPackage() {
+        assertFalse(ReflectUtil.isPojoCandidate(Instant.class));
+        assertFalse(ReflectUtil.isPojoCandidate(ArrayList.class));
+    }
+
+    @Test
+    void isPojoCandidate_acceptsUserPojo() {
+        assertTrue(ReflectUtil.isPojoCandidate(SimplePojo.class));
+    }
+
+    static class SimplePojo {
+        public int a;
+    }
+
+    // ---------- 2) getFieldName / getFieldAliases priority ----------
+
+    @Test
+    void getFieldAliases_prefersNodePropertyAliases_overOthers() throws Exception {
+        Field f = FieldNamePriorityPojo.class.getDeclaredField("f");
+        assertArrayEquals(new String[]{"na1", "na2"}, ReflectUtil.getAliases(f));
+    }
+
+    static class FieldNamePriorityPojo {
+        @NodeProperty(value = "nodeName", aliases = {"na1", "na2"})
+        @com.fasterxml.jackson.annotation.JsonProperty("jacksonName")
+        @com.fasterxml.jackson.annotation.JsonAlias({"ja1"})
+        @com.alibaba.fastjson2.annotation.JSONField(name = "fastjsonName", alternateNames = {"fa1"})
+        public int f;
+    }
+
+    // ---------- 3) getParameterName / getParameterAliases ----------
+
+    @Test
+    void getParameterAliases_readsAliasAnnotations() throws Exception {
+        Constructor<CreatorCtorPojo> c = CreatorCtorPojo.class.getDeclaredConstructor(String.class, int.class);
+
+        assertArrayEquals(new String[]{"aliasN1", "aliasN2"}, ReflectUtil.getAliases(c.getParameters()[0]));
+
+        assertNull(ReflectUtil.getAliases(c.getParameters()[1]));
+    }
+
+    static class CreatorCtorPojo {
+        @NodeCreator
+        public CreatorCtorPojo(
+                @com.fasterxml.jackson.annotation.JsonProperty("name2")
+                @com.fasterxml.jackson.annotation.JsonAlias({"aliasN1", "aliasN2"})
+                String name,
+                int age
+        ) {}
+    }
+
+    // ---------- 5) analyzeCreator: creator / record / no-args fallback / alias ----------
+
+    @Test
+    void analyzeCreator_prefersAnnotatedCreatorCtor() {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        assertThrows(NodeException.class, () -> {
+            CreatorInfo ci = ReflectUtil.analyzeCreator(ExplicitCreatorPojo.class, lookup);
+        });
+    }
+
+    static class ExplicitCreatorPojo {
+        final String name;
+        final int age;
+
+        @NodeCreator
+        public ExplicitCreatorPojo(@com.fasterxml.jackson.annotation.JsonProperty("name2") String name, int age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    @Test
+    void analyzeCreator_usesNoArgsCtorWhenNoCreatorFound() {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
+
+        assertNull(ci.argsCreator);
+        assertNull(ci.argsCreatorHandle);
+        assertNotNull(ci.noArgsCtorHandle);
+        assertNotNull(ci.noArgsCtorLambda);
+
+        Object obj = ci.noArgsCtorLambda.get();
+        assertTrue(obj instanceof NoArgsPojo);
+    }
+
+    static class NoArgsPojo {
+        public NoArgsPojo() {}
+    }
+
+    @Test
+    void analyzeCreator_preservesExplicitZeroArgumentFactoryMetadata() {
+        CreatorInfo ci = ReflectUtil.analyzeCreator(ZeroArgFactoryPojo.class, MethodHandles.lookup());
+
+        assertNotNull(ci.argsCreator);
+        assertTrue(TypeRegistry.requireRegisteredPojoInfo(ZeroArgFactoryPojo.class).creatorInfo != null);
+        assertTrue(ci.newPojoNoArgs() instanceof ZeroArgFactoryPojo);
+    }
+
+    static class ZeroArgFactoryPojo {
+        private ZeroArgFactoryPojo() {}
+
+        @NodeCreator
+        static ZeroArgFactoryPojo create() {
+            return new ZeroArgFactoryPojo();
+        }
+    }
+
+    @Test
+    void analyzeCreator_throwsOnMultipleCreators() {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        NodeException ex = assertThrows(NodeException.class,
+                () -> ReflectUtil.analyzeCreator(MultipleCreatorsPojo.class, lookup));
+        assertTrue(ex.getMessage().contains("multiple creator definitions"));
+    }
+
+    static class MultipleCreatorsPojo {
+        @NodeCreator public MultipleCreatorsPojo(String a) {}
+        @NodeCreator public MultipleCreatorsPojo(Integer b) {}
+    }
+
+    @Test
+    void analyzeCreator_detectsAliasConflict_inCreatorParams() {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        NodeException ex = assertThrows(NodeException.class,
+                () -> ReflectUtil.analyzeCreator(AliasConflictCreatorPojo.class, lookup));
+        assertTrue(ex.getMessage().contains("mapped to multiple properties"));
+    }
+
+    static class AliasConflictCreatorPojo {
+        @NodeCreator
+        public AliasConflictCreatorPojo(
+                @NodeProperty(value = "a", aliases = {"x"}) String a,
+                @NodeProperty(value = "b", aliases = {"x"}) String b
+        ) {}
+    }
+
+    // ---------- 6) lambdaSetter: reference/primitive/private ----------
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void lambdaSetter_setsPrivateReferenceField() throws Throwable {
+        PrivateFieldPojo p = new PrivateFieldPojo();
+
+        MethodHandles.Lookup root = MethodHandles.lookup();
+        MethodHandles.Lookup lookup = root;
+        if (!Invokers.IS_JDK8) {
+            lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrivateFieldPojo.class, root);
+        }
+
+        MethodHandle setter = lookup.unreflect(PrivateFieldPojo.class.getDeclaredMethod("setName", String.class));
+        BiConsumer<Object, Object> lambda = Invokers.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
+        assertNotNull(lambda);
+        lambda.accept(p, "ok");
+        assertEquals("ok", p.getName());
+
+        BiConsumer<Object, Object> lambda2 = Invokers.createSetterLambda(lookup, null, BiConsumer.class, Object.class);
+        assertNull(lambda2);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void lambdaSetter_setsPrimitiveField_withBoxedValue() throws Throwable {
+        PrimitiveFieldPojo p = new PrimitiveFieldPojo();
+
+        MethodHandles.Lookup root = MethodHandles.lookup();
+        MethodHandles.Lookup lookup = root;
+        if (!Invokers.IS_JDK8) {
+            lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrimitiveFieldPojo.class, root);
+        }
+
+        Field f = PrimitiveFieldPojo.class.getDeclaredField("age");
+        MethodHandle setter = lookup.unreflectSetter(f);
+
+        BiConsumer<Object, Object> lambda = Invokers.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
+        assertNull(lambda);
+    }
+
+    static class PrivateFieldPojo {
+        private String name;
+        public String getName() {
+                return name;
+            }
+        public void setName(String name) {
+                this.name = name;
+            }
+
+        private String name2;
+    }
+
+    static class PrimitiveFieldPojo {
+        int age;
+    }
+
+    private static Method getPrivateLookupIn() throws Exception {
+        return MethodHandles.class.getMethod("privateLookupIn", Class.class, MethodHandles.Lookup.class);
+    }
+}

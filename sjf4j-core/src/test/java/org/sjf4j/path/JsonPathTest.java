@@ -1,7 +1,6 @@
 package org.sjf4j.path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
@@ -9,6 +8,8 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Nodes;
+import org.sjf4j.fixture.PojoPersonFixture.Baby;
+import org.sjf4j.fixture.PojoPersonFixture.Person;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.sjf4j.fixture.PojoPersonFixture.JSON_DATA;
 
 @Slf4j
 public class JsonPathTest {
@@ -559,26 +561,6 @@ public class JsonPathTest {
         assertEquals(Arrays.asList((Object) null, "d"), JsonPath.parse("$[*][1]").find(nestedArrays));
     }
 
-    @ToString
-    public static class Person {
-        public String name;
-        public int age;
-        public Info info;
-        public List<Baby> babies;
-    }
-
-    @ToString
-    public static class Info {
-        public String email;
-        public String city;
-    }
-
-    @ToString
-    public static class Baby {
-        public String name;
-        public int age;
-    }
-
     public static class PropertyPathRoot {
         public PropertyPathA a;
     }
@@ -603,8 +585,6 @@ public class JsonPathTest {
     }
 
     public static class AutoJsonArray extends JsonArray {}
-
-    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
 
     @Test
     public void testPojo1() {
