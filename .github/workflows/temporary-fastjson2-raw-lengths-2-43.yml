@@ -1,0 +1,80 @@
+name: Temporary Fastjson2 Raw Name Length A-B
+on:
+  push:
+    branches:
+      - experiment/compiled-fastjson2-raw-fused
+    paths:
+      - .github/workflows/temporary-fastjson2-raw-lengths-2-43.yml
+permissions:
+  contents: read
+jobs:
+  verify-and-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Verify full raw-name length conformance
+        shell: bash
+        run: |
+          ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-processor:test :sjf4j-testbench:test --no-daemon --console=plain && exit 0
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for path in Path('sjf4j-processor/build/test-results/test').glob('TEST-*.xml'):
+              for case in ET.parse(path).getroot().findall('.//testcase'):
+                  for fail in case.findall('failure') + case.findall('error'):
+                      print('FAIL:', case.attrib.get('name'), fail.attrib.get('message'), (fail.text or '')[:1200])
+          PY
+          exit 1
+      - name: Build before and after JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach /tmp/raw-length-old 4480075d12fd1fc4492c696358d179b621af1b71
+          git worktree add --detach /tmp/raw-length-new HEAD
+          (cd /tmp/raw-length-old && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          (cd /tmp/raw-length-new && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+      - name: Paired JMH A-B-B-A
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for tag in old-1 new-1 new-2 old-2; do
+            variant=$(echo "$tag" | cut -d- -f1)
+            java -jar /tmp/raw-length-$variant/sjf4j-testbench/build/libs/*-jmh.jar \
+              '.*CompiledReadBenchmark[.](json_)?fastjson2_pojo_(reversed_)?(string|utf8)_(compiled|native)$|.*HandReadBenchmark[.]json_fastjson2_pojo_handwritten_raw$' \
+              -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 \
+              -rf json -rff results/$tag.json | tee results/$tag.txt
+          done
+      - name: Report comparable results
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          results={}
+          for tag in ['old-1','new-1','new-2','old-2']:
+              data=json.loads(Path('results',tag+'.json').read_text())
+              for row in data:
+                  key=row['benchmark'].split('.')[-1]
+                  results.setdefault(key,{})[tag]=row['primaryMetric']['score']
+          for key,s in sorted(results.items()):
+              if len(s) != 4: raise AssertionError((key,s))
+              old=(s['old-1']+s['old-2'])/2
+              new=(s['new-1']+s['new-2'])/2
+              print(f'{key}: old={old:.6f}, 2-43={new:.6f} us/op, delta={(new/old-1)*100:+.2f}%, pairs={s}')
+          PY
+      - name: Upload raw JMH data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-raw-2-43-paired
+          path: results/
+          if-no-files-found: ignore
