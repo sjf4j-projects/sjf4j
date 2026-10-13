@@ -122,13 +122,13 @@ public class NodeMapperBenchmark {
                 "labels", labelNodes, "primaryLabel", "primary-production");
         compiledMapper = CompiledInstances.of(UserGraphMapper.class);
         assertGraph(compiledMapper.map(userGraphNode), userGraph);
-        assertGraph((UserGraph) NodeMapper.convert(userGraphNode, UserGraph.class, false), userGraph);
+        assertGraph((UserGraph) NodeMapper.convert(userGraphNode, UserGraph.class, false, RuntimeContext.EMPTY), userGraph);
         assertGraph(readUserGraph(userGraphNode), userGraph);
     }
 
     @Benchmark
     public Object nodeMapper_fullGraph_read() {
-        return NodeMapper.convert(userGraphNode, UserGraph.class, false);
+        return NodeMapper.convert(userGraphNode, UserGraph.class, false, RuntimeContext.EMPTY);
     }
 
     @Benchmark
@@ -153,17 +153,17 @@ public class NodeMapperBenchmark {
 
     @Benchmark
     public Object nodeMapper_users_nestedCollection_read() {
-        return NodeMapper.convert(usersNode, Users.class, false);
+        return NodeMapper.convert(usersNode, Users.class, false, RuntimeContext.EMPTY);
     }
 
     @Benchmark
     public Object nodeMapper_oneOf_login_read() {
-        return NodeMapper.convert(loginEventNode, UserEvent.class, false);
+        return NodeMapper.convert(loginEventNode, UserEvent.class, false, RuntimeContext.EMPTY);
     }
 
     @Benchmark
     public Object nodeMapper_oneOf_comment_read() {
-        return NodeMapper.convert(commentEventNode, UserEvent.class, false);
+        return NodeMapper.convert(commentEventNode, UserEvent.class, false, RuntimeContext.EMPTY);
     }
 
     @Benchmark
@@ -282,7 +282,7 @@ public class NodeMapperBenchmark {
                         JsonObject.of("id", 2000L + index, "since", 1_600_000_000_000L + index,
                                 "name", "Friend " + index, "close", true),
                         JsonObject.of("id", 3000L + index, "since", 1_610_000_000_000L + index,
-                                "name", "Colleague " + index, "close", false)));
+                                "name", "Colleague " + index, "close", false, RuntimeContext.EMPTY)));
     }
 
     private static UserGraph readUserGraph(JsonObject node) {
