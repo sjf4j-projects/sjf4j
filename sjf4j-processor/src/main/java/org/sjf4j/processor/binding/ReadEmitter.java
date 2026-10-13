@@ -19,6 +19,7 @@ final class ReadEmitter {
 
     private final ProcessorContext context;
     private final BackendSpec backend;
+    private final Fastjson2PojoReadEmitter fastjson2Pojo;
 
     ReadEmitter(
             ProcessorContext context,
@@ -26,6 +27,9 @@ final class ReadEmitter {
 
         this.context = context;
         this.backend = backend;
+        this.fastjson2Pojo = backend.backend()
+                == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                ? new Fastjson2PojoReadEmitter() : null;
     }
 
     boolean usesNameMatcher() {
@@ -192,6 +196,11 @@ final class ReadEmitter {
         }
 
         out.endBlock();
+        if (fastjson2Pojo != null && value.kind() == BindingValue.Kind.POJO
+                && !value.properties().isEmpty()) {
+            out.blank();
+            fastjson2Pojo.emitFallback(out, value, this);
+        }
     }
 
     private void emitPojo(
@@ -206,7 +215,9 @@ final class ReadEmitter {
                         value.type() +
                         "();");
 
-        if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
+        if (fastjson2Pojo != null && !value.properties().isEmpty()) {
+            fastjson2Pojo.emitProperties(out, value, this);
+        } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) {
                 out.line("int expectedNameIndex = 0;");
@@ -247,13 +258,7 @@ final class ReadEmitter {
             if (backend.usesExpectedNameMatch()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
-            out.line(
-                    assignment(
-                            property.access(),
-                            "value",
-                            readExpression(
-                                    property.value(),
-                                    "reader")));
+            emitPropertyRead(out, property, "value", "reader");
             out.line("break;");
             out.dedent();
         }
@@ -312,8 +317,14 @@ final class ReadEmitter {
         out.endBlock();
     }
 
-    private String matcherFieldName(BindingValue value) {
+    String matcherFieldName(BindingValue value) {
         return value.helperName() + "_names";
+    }
+
+    void emitPropertyRead(JavaWriter out, BindingProperty property,
+                          String owner, String reader) {
+        out.line(assignment(property.access(), owner,
+                readExpression(property.value(), reader)));
     }
 
     private void emitList(
