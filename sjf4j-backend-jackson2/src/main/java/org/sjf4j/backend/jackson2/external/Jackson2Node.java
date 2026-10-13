@@ -13,6 +13,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.Types;
 
 import java.util.AbstractSet;
@@ -124,7 +125,7 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
     }
 
     @Override
-    public void forEachArray(JsonNode node, BiConsumer<Integer, Object> consumer) {
+    public void forEachArray(JsonNode node, IdxConsumer<Object> consumer) {
         ArrayNode array = _array(node);
         for (int i = 0, size = array.size(); i < size; i++) consumer.accept(i, array.get(i));
     }

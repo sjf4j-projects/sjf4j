@@ -131,8 +131,9 @@ public final class SchemaPlan {
         // validation scope stack.
         if (!byDynamicAnchorPlans.isEmpty()) ctx.pushPlan(this);
         for (Evaluator evaluator : evaluators) {
-            result = result && evaluator.evaluate(instance, ps, ctx);
-            if (ctx.shouldAbort()) return result;
+            boolean matched = evaluator.evaluate(instance, ps, ctx);
+            if (!matched) result = false;
+            if (ctx.shouldAbort()) return false;
         }
         if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
         return result;

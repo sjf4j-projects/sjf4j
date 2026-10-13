@@ -7,6 +7,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.Types;
 
 import java.util.Iterator;
@@ -29,8 +30,7 @@ import java.util.function.BiPredicate;
  * <p>Strict conversions accept only their matching scalar type or JSON null.
  * Lenient number and boolean conversions follow {@link Nodes#asNumber(Object)}
  * and {@link Nodes#asBoolean(Object)}. Objects and arrays cannot be converted
- * to numbers or booleans. {@link #asString(Object)} may use the native
- * backend's normal lenient string behavior.</p>
+ * to numbers or booleans.</p>
  *
  * <p>Adapters may provide traversal and mutation operations. When they provide
  * object key or entry sets, those sets are live backing views: their iterators
@@ -123,7 +123,7 @@ public interface ExternalNode<N> {
     }
 
     /** Visits array elements. */
-    default void forEachArray(N node, BiConsumer<Integer, Object> consumer) {
+    default void forEachArray(N node, IdxConsumer<Object> consumer) {
         throw unsupported("forEachArray");
     }
 

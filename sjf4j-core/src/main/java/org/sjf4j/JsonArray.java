@@ -6,6 +6,7 @@ import org.sjf4j.node.NodeMapper;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.IdxConsumer;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -176,19 +177,9 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Performs the action for each element.
-     */
-    public void forEach(Consumer<Object> action) {
-        if (dynamicList == null) return;
-        for (Object object : dynamicList) {
-            action.accept(object);
-        }
-    }
-
-    /**
      * Performs the action for each index/value pair.
      */
-    public void forEach(BiConsumer<Integer, Object> action) {
+    public void forEach(IdxConsumer<Object> action) {
         if (dynamicList == null) return;
         for (int i = 0; i < dynamicList.size(); i++) {
             action.accept(i, dynamicList.get(i));

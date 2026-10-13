@@ -6,6 +6,7 @@ import org.sjf4j.node.NodeMapper;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.meta.ContainerInfo;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
@@ -849,7 +850,7 @@ public final class Nodes {
     /**
      * Visits each element in an array node.
      */
-    public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
+    public static void forEachArray(Object node, IdxConsumer<Object> consumer) {
         NodeWalker.forEachArray(node, consumer);
     }
 

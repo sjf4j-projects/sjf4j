@@ -352,7 +352,7 @@ class JsonArrayTest {
         JsonArray ja = JsonArray.of("a", "b", "c");
         List<Object> collected = new ArrayList<>();
         
-        ja.forEach(e -> collected.add(e));
+        ja.forEach((i, e) -> collected.add(e));
         assertEquals(3, collected.size());
         assertEquals("a", collected.get(0));
         assertEquals("b", collected.get(1));
@@ -378,7 +378,7 @@ class JsonArrayTest {
         assertNull(empty.getString(0));
         
         // iterate empty array
-        empty.forEach(val -> fail("Should not iterate"));
+        empty.forEach((i, val) -> fail("Should not iterate"));
         
         // toList on empty array
         assertTrue(empty.isEmpty());

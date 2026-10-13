@@ -11,6 +11,7 @@ import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.Types;
 
 import java.lang.reflect.Array;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class NodeWalker {
@@ -193,7 +195,7 @@ public class NodeWalker {
      * Visits each element in an array node.
      */
     @SuppressWarnings("unchecked")
-    public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
+    public static void forEachArray(Object node, IdxConsumer<Object> consumer) {
         Asserts.notNull(node, "node");
         Asserts.notNull(consumer, "consumer");
         if (node instanceof List) {

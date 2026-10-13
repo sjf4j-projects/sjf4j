@@ -9,6 +9,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.Types;
 
 import java.util.AbstractSet;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 
 /** Gson JsonElement implementation of the external node contract. */
 public final class GsonNode implements ExternalNode<JsonElement> {
@@ -112,7 +114,7 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public void forEachArray(JsonElement node, BiConsumer<Integer, Object> consumer) {
+    public void forEachArray(JsonElement node, IdxConsumer<Object> consumer) {
         JsonArray array = _array(node);
         for (int i = 0, size = array.size(); i < size; i++) {
             consumer.accept(i, array.get(i));

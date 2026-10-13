@@ -15,6 +15,7 @@ import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.Types;
 
 import java.math.BigDecimal;
@@ -144,7 +145,7 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
     }
 
     @Override
-    public void forEachArray(JsonValue node, BiConsumer<Integer, Object> consumer) {
+    public void forEachArray(JsonValue node, IdxConsumer<Object> consumer) {
         JsonArray array = _array(node);
         for (int i = 0, size = array.size(); i < size; i++) {
             consumer.accept(i, array.get(i));
