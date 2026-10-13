@@ -164,6 +164,62 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2FusedRawNameMatchesSharedPrefixesAndPreservesFallback() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + "  public int createdAt, createdBy, createdOn, id;\n"
+                        + "  @NodeProperty(value=\"displayName\", aliases={\"legacy\"}) public String display;\n"
+                        + "  public int café;\n"
+                        + "  @NodeProperty(\"longPropertyNameTooLong\") public int longValue;\n"
+                        + "  public Nested nested;\n"
+                        + "  public static class Nested { public String name; public int count; }\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            Object binder = impl.getConstructor().newInstance();
+            String json = "{\"createdOn\":3,\"createdBy\":2,\"created\\\\u0041t\":1,"
+                    + "\"legacy\":\"alias\",\"id\" :4,\"café\":9,"
+                    + "\"longPropertyNameTooLong\":11,"
+                    + "\"nested\":{\"count\":6,\"name\":\"n\"},"
+                    + "\"unknown\":{\"k\":[1,2]}}";
+            Object[] values = {
+                    impl.getMethod("read", String.class).invoke(binder, json),
+                    impl.getMethod("readBytes", byte[].class).invoke(binder,
+                            (Object) json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            };
+            for (Object bean : values) {
+                assertEquals(1, beanType.getField("createdAt").getInt(bean));
+                assertEquals(2, beanType.getField("createdBy").getInt(bean));
+                assertEquals(3, beanType.getField("createdOn").getInt(bean));
+                assertEquals(4, beanType.getField("id").getInt(bean));
+                assertEquals(9, beanType.getField("café").getInt(bean));
+                assertEquals(11, beanType.getField("longValue").getInt(bean));
+                assertEquals("alias", beanType.getField("display").get(bean));
+                Object nested = beanType.getField("nested").get(bean);
+                assertEquals("n", nested.getClass().getField("name").get(nested));
+                assertEquals(6, nested.getClass().getField("count").getInt(nested));
+            }
+            Object nullResult = impl.getMethod("read", String.class).invoke(binder, "null");
+            assertNull(nullResult);
+        }
+    }
+
+    @Test
     void snakeRoundTripCompiledBinder() throws Exception {
         verifyBackend("SNAKE", true);
     }
