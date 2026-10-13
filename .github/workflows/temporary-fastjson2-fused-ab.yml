@@ -1,4 +1,4 @@
-name: Temporary Fastjson2 Fused Raw A-B Retest
+name: Temporary Fastjson2 Fused Raw A-B Conformance
 on:
   push:
     branches:
