@@ -45,12 +45,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores dynamic object node entries.
      */
-    protected transient Map<String, Object> dynamicProperties;
+    transient Map<String, Object> dynamicProperties;
     
     /**
      * Stores object-binding metadata for declared JOJO properties.
      */
-    protected final transient PojoInfo pi;
+    private final transient PojoInfo pi;
 
     /**
      * Creates an empty object node.

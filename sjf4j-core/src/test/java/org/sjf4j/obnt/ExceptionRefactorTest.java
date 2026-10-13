@@ -36,9 +36,9 @@ class ExceptionRefactorTest {
     }
 
     @Test
-    void nullDirectTargetsAreUntypedButOtherTypedApisRequireTargets() {
-        assertNull(Nodes.to(null, (Class<Object>) null));
-        assertNull(Nodes.as(null, (Class<Object>) null));
+    void directClassTargetsAreRequiredEvenForNullNodes() {
+        assertThrowsExactly(NullPointerException.class, () -> Nodes.to(null, (Class<Object>) null));
+        assertThrowsExactly(NullPointerException.class, () -> Nodes.as(null, (Class<Object>) null));
         assertNull(Nodes.toMap(null, null));
         assertNull(Nodes.toList(null, null));
         assertNull(Nodes.toArray(null, null));

@@ -230,6 +230,13 @@ public class NodesTest {
         assertEquals(1, arrayByTypeReference.size());
         assertEquals(2, arrayByClass.getInt(1));
         assertEquals(1, arrayByTypeReference.getInt(0));
+
+        Map<String, Object> rawUser = new HashMap<>();
+        rawUser.put("name", "Ada");
+        List<GenericUser> users = Sjf4j.global().fromNode(
+                Arrays.asList(rawUser), new TypeReference<List<GenericUser>>() {}, true);
+        assertEquals("Ada", users.get(0).name);
+        assertNotSame(rawUser, users.get(0));
     }
 
     @Test
@@ -244,31 +251,6 @@ public class NodesTest {
         assertTrue(byTypeReference.getMessage().contains("GenericUser"));
         assertEquals(BindingException.class, byClass.getClass());
         assertEquals(BindingException.class, byTypeReference.getClass());
-    }
-
-    @Test
-    public void testConvertDeepCopyControlsNestedContainerIdentity() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("key", "value");
-        JsonObject nested = JsonObject.of("value", 1);
-        map.put("nested", nested);
-        JsonObject shallowObject = Sjf4j.global().fromNode(map, JsonObject.class, false);
-        JsonObject deepObject = Sjf4j.global().fromNode(map, JsonObject.class, true);
-        map.put("later", 2);
-
-        assertFalse(shallowObject.containsKey("later"));
-        assertFalse(deepObject.containsKey("later"));
-        assertSame(nested, shallowObject.getJsonObject("nested"));
-        assertNotSame(nested, deepObject.getJsonObject("nested"));
-
-        List<Object> list = new ArrayList<>();
-        list.add(1);
-        JsonArray shallowArray = Sjf4j.global().fromNode(list, JsonArray.class, false);
-        JsonArray deepArray = Sjf4j.global().fromNode(list, JsonArray.class, true);
-        list.add(2);
-
-        assertEquals(1, shallowArray.size());
-        assertEquals(1, deepArray.size());
     }
 
     @Test
@@ -490,48 +472,6 @@ public class NodesTest {
     public static class GenericUser {
         public String name;
         public Object meta;
-    }
-
-    public static class Box<T> {
-        public T value;
-    }
-
-
-    @Test
-    void testFromNodeTypeReferenceDeepCopiesGenericPojoMembers() {
-        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
-        meta.put("active", true);
-        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
-        rawUser.put("name", "A");
-        rawUser.put("meta", meta);
-        Box<Map<String, Object>> source = new Box<>();
-        source.value = rawUser;
-
-        Box<GenericUser> bound = Sjf4j.global().fromNode(
-                source, new TypeReference<Box<GenericUser>>() {}, true);
-
-        assertNotSame(source, bound);
-        assertInstanceOf(GenericUser.class, bound.value);
-        assertEquals("A", bound.value.name);
-        assertInstanceOf(Map.class, bound.value.meta);
-        assertNotSame(meta, bound.value.meta);
-    }
-
-    @Test
-    void testTypeReferenceTypedContainerAliasBoundary() {
-        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
-        meta.put("active", true);
-        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
-        rawUser.put("name", "A");
-        rawUser.put("meta", meta);
-        List<Map<String, Object>> source = new ArrayList<>();
-        source.add(rawUser);
-
-        List<GenericUser> deepCopied = Sjf4j.global().fromNode(
-                source, new TypeReference<List<GenericUser>>() {}, true);
-
-        assertNotSame(source, deepCopied);
-        assertNotSame(meta, deepCopied.get(0).meta);
     }
 
     @Test

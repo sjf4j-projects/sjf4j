@@ -137,7 +137,7 @@ public class JsonArray extends JsonContainer {
      * When no backing list exists, the empty result may be unmodifiable.
      */
     public List<Object> toList() {
-        return dynamicList == null ? Collections.emptyList() : new ArrayList<>(dynamicList);
+        return dynamicList == null ? new ArrayList<>() : new ArrayList<>(dynamicList);
     }
 
     /**
@@ -165,7 +165,7 @@ public class JsonArray extends JsonContainer {
      * Returns the elements as a Set.
      */
     public Set<Object> toSet() {
-        return dynamicList == null ? Collections.emptySet() : new LinkedHashSet<>(dynamicList);
+        return dynamicList == null ? new LinkedHashSet<>() : new LinkedHashSet<>(dynamicList);
     }
 
     /**

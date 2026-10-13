@@ -77,18 +77,25 @@ public final class NodeMapper {
         if (ti.externalNode != null) return ti.externalNode.toString(node);
         throw new NodeException("expected String, but was " + Types.name(node));
     }
-
     /**
-     * Returns a scalar node as text using lenient coercion.
-     * Numbers and booleans use their Java textual form; external object/array
-     * nodes are not stringified as JSON documents. Plain POJOs retain their
-     * Java {@code toString()} fallback.
+     * Returns the textual representation of a scalar node using lenient coercion.
+     * <p>
+     * String, character, number, boolean, and enum values are supported.
+     * Node values are interpreted through their selected value codec.
+     * Object and array nodes are not stringified; use JSON binding for
+     * serialization instead.
+     *
+     * @throws NodeException if the node is not a supported scalar
      */
     public static String asString(Object node, RuntimeContext context) {
         if (node == null) return null;
         if (node instanceof String) return (String) node;
-        if (node instanceof Character) return node.toString();
-        if (node instanceof Enum) return ((Enum<?>) node).name();
+        if (node instanceof Number || node instanceof Boolean || node instanceof Character) {
+            return node.toString();
+        }
+        if (node instanceof Enum) {
+            return ((Enum<?>) node).name();
+        }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
         if (ti.valueInfos != null) {
@@ -101,10 +108,10 @@ public final class NodeMapper {
                 case STRING: return ti.externalNode.toString(node);
                 case NUMBER: return ti.externalNode.toNumber(node).toString();
                 case BOOLEAN: return ti.externalNode.toBoolean(node).toString();
-                default: return node.toString();
+                default: break;
             }
         }
-        return node.toString();
+        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to String");
     }
 
     /**
@@ -284,10 +291,12 @@ public final class NodeMapper {
             throw new NodeException("cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
         }
         if (node instanceof Number) {
-            int i = ((Number) node).intValue();
-            if (i == 1) return true;
-            if (i == 0) return false;
-            throw new NodeException("cannot convert Number to Boolean: expected exactly 0 or 1, but was " + i);
+            Number n = (Number) node;
+            if (Numbers.isSemanticInteger(n)) {
+                if (Numbers.compare(n, 1) == 0) return true;
+                if (Numbers.compare(n, 0) == 0) return false;
+            }
+            throw new NodeException("cannot convert Number '" + n + "' to Boolean: expected exactly 0 or 1");
         }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
@@ -343,10 +352,14 @@ public final class NodeMapper {
     }
 
     /**
-     * Returns an object-shaped node as a {@code Map<String, Object>}.
-     * Existing maps are reused. JsonObject values use {@link JsonObject#toMap()},
-     * and other object representations are copied only at the outer level.
-     * Child values remain shared with the source.
+     * Returns an object-shaped node as a Map with String keys.
+     * <p>
+     * Existing maps are reused. JsonObject values are projected into a
+     * new outer map; other object representations are copied shallowly.
+     * Child values are not recursively converted.
+     *
+     * <p>Map-backed object nodes must use String keys. This method does
+     * not validate keys of existing maps at runtime.
      */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node, RuntimeContext context) {
@@ -378,9 +391,14 @@ public final class NodeMapper {
     }
 
     /**
-     * Copies object entries into a Map, applying strict direct adaptation to
-     * each value. Passing {@code null} or Object.class for {@code valueClazz}
-     * uses the untyped shallow Map form, which may reuse a backing Map.
+     * Returns a Map whose values are adapted to the specified class.
+     * <p>
+     * Each immediate member value is adapted using strict direct
+     * adaptation. Compatible nested values may be reused.
+     *
+     * <p>A null or Object.class value type selects the untyped shallow
+     * Map representation, which may reuse the original map.
+     * Map-backed object nodes must have String keys.
      */
     @SuppressWarnings("unchecked")
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz, RuntimeContext context) {
@@ -634,13 +652,22 @@ public final class NodeMapper {
 
 
     /**
-     * Routes strict and lenient direct adaptation by target class. Compatible
-     * nodes are reused. Concrete POJO/JOJO/JAJO and specialized container targets
-     * fall back to structural mapping with deepCopy disabled.
+     * Adapts a node to the requested target class.
+     * <p>
+     * Compatible nodes are reused. Scalar adaptation is strict or lenient
+     * according to the requested mode. Java arrays apply the same mode to
+     * their elements.
+     * <p>
+     * Standard object and array representations use direct adaptation.
+     * Concrete POJO, JOJO, JAJO, and specialized container targets fall
+     * back to structural mapping without forcing a deep copy.
+     *
+     * <p>Node values are not implicitly expanded into object or array
+     * structures through their value codecs.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object _adapt(Object node, Class<?> toClazz, boolean lenient, RuntimeContext context) {
-        if (toClazz == null || toClazz == Object.class) return node;
+        if (toClazz == Object.class) return node;
         if (node == null) return NodeMapper.convert(null, toClazz, false, context);
         if (toClazz.isInstance(node)) return node;
 
@@ -673,15 +700,7 @@ public final class NodeMapper {
             if (!(node instanceof List) && !(node instanceof JsonArray)
                     && !(node instanceof Set) && !node.getClass().isArray()) {
                 TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-                if (ti.valueInfos != null) {
-                    ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
-                    if (vi.rawClazz != List.class) {
-                        throw new NodeException("expected List raw type for '" + Types.name(node)
-                                + "', but was '" + vi.rawClazz.getName() + "'");
-                    }
-                    node = vi.valueToRaw(node);
-                    if (node == null) return null;
-                } else if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.NULL) {
+                if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.NULL) {
                     return null;
                 }
             }
@@ -699,21 +718,33 @@ public final class NodeMapper {
 
     /**
      * Adapts a node to the requested class using strict scalar semantics.
-     * Compatible nodes may be returned unchanged. Unsupported direct targets
-     * are passed to the structural mapper without forcing a deep copy.
+     * <p>
+     * Compatible values may be reused. Standard node containers use direct
+     * adaptation; other supported concrete targets may use structural mapping
+     * without forcing a deep copy.
+     *
+     * @throws NullPointerException if clazz or context is null
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, Class<T> clazz, RuntimeContext context) {
+        Asserts.notNull(clazz, "clazz");
         return (T) _adapt(node, clazz, false, context);
     }
 
     /**
      * Adapts a node to the requested class using lenient scalar semantics.
-     * Compatible nodes may be reused. Invalid enum names/ordinals return null;
-     * other unsupported coercions retain their corresponding conversion errors.
+     * <p>
+     * Leniency applies to the requested scalar value, not recursively to POJO
+     * properties or other nested members. Structural targets use the same
+     * mapping semantics as {@link #to(Object, Class, RuntimeContext)}.
+     * An invalid enum name or ordinal returns null; other invalid coercions
+     * may throw an exception.
+     *
+     * @throws NullPointerException if clazz or context is null
      */
     @SuppressWarnings("unchecked")
     public static <T> T as(Object node, Class<T> clazz, RuntimeContext context) {
+        Asserts.notNull(clazz, "clazz");
         return (T) _adapt(node, clazz, true, context);
     }
 
