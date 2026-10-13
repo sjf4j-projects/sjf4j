@@ -1,4 +1,4 @@
 /**
- * Annotations for POJO, JOJO, and JAJO binding rules on SJF4J node models.
+ * Annotations for POJO, JOJO, JAJO, and logical value-node binding rules.
  */
 package org.sjf4j.annotation.node;

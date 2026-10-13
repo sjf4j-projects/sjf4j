@@ -23,15 +23,15 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 15, time = 100, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class SchemaBenchmark {
 
     public static void main(String[] args) throws IOException {
-        Main.main(new String[]{"SchemaBenchmark"});
+        Main.main(new String[]{SchemaBenchmark.class.getName()});
     }
 
     private static final String OBJECT_SCHEMA_JSON =

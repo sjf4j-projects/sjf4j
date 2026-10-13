@@ -1,4 +1,4 @@
 /**
- * Runtime exceptions for JSON processing, node binding, and schema validation failures.
+ * Runtime exceptions for node access, paths, patches, binding, and mapping.
  */
 package org.sjf4j.exception;

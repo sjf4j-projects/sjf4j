@@ -990,6 +990,85 @@ public class SchemaValidationTest {
         assertFalse(plan.isValid(JsonArray.fromJson("[1,\"x\"]")));
     }
 
+
+
+    @Test
+    public void testUniqueItemsSemanticEquality() {
+        SchemaPlan plan = JsonSchema.fromJson(
+                "{\"type\":\"array\",\"uniqueItems\":true}"
+        ).createPlan();
+
+        // Numeric equality must ignore Java boxed types.
+        assertFalse(plan.isValid(Arrays.asList(1, 1.0)));
+        assertFalse(plan.isValid(Arrays.asList(1L, new java.math.BigDecimal("1.00"))));
+
+        // Null values.
+        assertFalse(plan.isValid(Arrays.asList(null, null)));
+
+        // Object property order is irrelevant.
+        Map<String, Object> a = new java.util.LinkedHashMap<>();
+        a.put("x", 1);
+        a.put("y", 2);
+
+        Map<String, Object> b = new java.util.LinkedHashMap<>();
+        b.put("y", 2.0);
+        b.put("x", 1L);
+
+        assertFalse(plan.isValid(Arrays.asList(a, b)));
+
+        // Nested arrays compare recursively.
+        assertFalse(plan.isValid(Arrays.asList(
+                Arrays.asList(1, 2),
+                Arrays.asList(1.0, 2L)
+        )));
+
+        assertTrue(plan.isValid(Arrays.asList(1, 2, 3)));
+    }
+
+    @Test
+    public void testUniqueItemsLargeArrayAndHashCollisions() {
+        SchemaPlan plan = JsonSchema.fromJson(
+                "{\"type\":\"array\",\"uniqueItems\":true}"
+        ).createPlan();
+
+        List<Object> values = new java.util.ArrayList<>();
+        for (int i = 0; i < 64; i++) {
+            values.add(i);
+        }
+
+        assertTrue(plan.isValid(values));
+
+        // Same JSON number, different Java type.
+        values.add(1.0);
+        assertFalse(plan.isValid(values));
+
+        // Aa and BB have the same Java String hash.
+        List<Object> collisions = new java.util.ArrayList<>();
+        for (int i = 0; i < 32; i++) {
+            collisions.add("item-" + i);
+        }
+        collisions.add("Aa");
+        collisions.add("BB");
+
+        assertTrue(plan.isValid(collisions));
+
+        collisions.add("Aa");
+        assertFalse(plan.isValid(collisions));
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     @NodeValue
     public static class StringValue {
         private int encodes;

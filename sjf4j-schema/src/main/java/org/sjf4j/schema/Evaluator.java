@@ -909,6 +909,9 @@ public interface Evaluator {
 
     // minItems / maxItems / uniqueItems
     final class ArrayEvaluator implements Evaluator {
+        private static final int SMALL_ARRAY_LIMIT = 2;
+        private static final Object NULL_ITEM = new Object();
+
         final PathSegment minItemsKeywordPs;
         final PathSegment maxItemsKeywordPs;
         final PathSegment uniqueItemsKeywordPs;
@@ -971,19 +974,78 @@ public interface Evaluator {
             }
             if (ctx.shouldAbort()) return result;
             if (uniqueItems) {
-                Set<Object> set = new HashSet<>();
-                for (Iterator<Object> it = Nodes.iteratorInArray(actual); it.hasNext(); ) {
-                    Object v = it.next();
-                    if (!set.add(v)) {
-                        ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
-                                "expected unique array items");
-                        result = false;
-                        break;
-                    }
+//                Set<Object> set = new HashSet<>();
+//                for (Iterator<Object> it = Nodes.iteratorInArray(actual); it.hasNext(); ) {
+//                    Object v = it.next();
+//                    if (!set.add(v)) {
+//                        ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
+//                                "expected unique array items");
+//                        result = false;
+//                        break;
+//                    }
+//                }
 
+                if (hasDuplicate(actual, size)) {
+                    ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
+                            "expected unique array items");
+                    result = false;
                 }
             }
             return result;
+        }
+
+
+        private static boolean hasDuplicate(Object array, int size) {
+            if (size < 2) return false;
+            Iterator<Object> it = Nodes.iteratorInArray(array);
+            // Small arrays: linear search avoids hash-table overhead.
+            if (size <= SMALL_ARRAY_LIMIT) {
+                Object[] seen = new Object[size];
+                int count = 0;
+                while (it.hasNext()) {
+                    Object value = it.next();
+                    for (int i = 0; i < count; i++) {
+                        if (Nodes.equals(seen[i], value)) return true;
+                    }
+                    seen[count++] = value;
+                }
+                return false;
+            }
+
+            // Keep load factor <= 0.5 for inexpensive linear probing.
+            int capacity = 16;
+            while (capacity < (long) size * 2) {
+                if (capacity == (1 << 30)) {
+                    throw new OutOfMemoryError("uniqueItems hash table exceeds maximum capacity");
+                }
+                capacity <<= 1;
+            }
+
+            Object[] table = new Object[capacity];
+            int[] hashes = new int[capacity];
+            int mask = capacity - 1;
+
+            while (it.hasNext()) {
+                Object value = it.next();
+                int hash = Nodes.hash(value);
+
+                // Spread high hash bits before applying the power-of-two mask.
+                int slot = (hash ^ (hash >>> 16)) & mask;
+                while (true) {
+                    Object previous = table[slot];
+                    if (previous == null) {
+                        // null is the empty-slot marker.
+                        table[slot] = value == null ? NULL_ITEM : value;
+                        hashes[slot] = hash;
+                        break;
+                    }
+                    if (hashes[slot] == hash && Nodes.equals(previous == NULL_ITEM ? null : previous, value)) {
+                        return true;
+                    }
+                    slot = (slot + 1) & mask;
+                }
+            }
+            return false;
         }
     }
 
@@ -1011,7 +1073,7 @@ public interface Evaluator {
             int i = 0;
             if (prefixItemsPlans != null) {
                 for (; i < size && i < prefixItemsPlans.length; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), null);
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -1021,7 +1083,7 @@ public interface Evaluator {
             }
             if (itemsPlan != null) {
                 for (; i < size; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), null);
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -1089,7 +1151,7 @@ public interface Evaluator {
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
-                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, null);
+                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                 boolean result = containsPlan.evaluate(subInstance, cps, ctx);
                 ctx.popIgnoreError();
@@ -1404,7 +1466,7 @@ public interface Evaluator {
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();
                     if (!merged.get(i)) {
-                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, null);
+                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                         boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);

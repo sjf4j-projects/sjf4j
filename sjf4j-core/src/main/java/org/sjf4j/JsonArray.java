@@ -900,7 +900,7 @@ public class JsonArray extends JsonContainer {
     /**
      * Copies all elements from the given array node representation.
      * <p>
-     * Supported inputs follow {@link Nodes#forEachArray(Object, BiConsumer)}:
+     * Supported inputs follow {@link Nodes#forEachArray(Object, IdxConsumer)}:
      * {@link List}, {@link JsonArray}, Java arrays, {@link Set}, and supported
      * backend-native tree representations that participate as array nodes.
      * Values are appended through {@link #add(Object)} without deep recursion, so
