@@ -362,6 +362,7 @@ public class NodeWalker {
 
                         @Override
                         public String next() {
+                            if (!hasNext()) throw new NoSuchElementException();
                             return pi.readableProperties[index++].name;
                         }
                     };
