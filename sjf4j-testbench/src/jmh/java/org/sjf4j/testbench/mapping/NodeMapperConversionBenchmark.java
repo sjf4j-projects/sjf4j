@@ -16,7 +16,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonArray;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;

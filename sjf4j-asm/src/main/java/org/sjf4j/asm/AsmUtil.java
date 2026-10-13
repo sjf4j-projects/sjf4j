@@ -6,7 +6,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.Nodes;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

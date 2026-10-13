@@ -2,6 +2,7 @@ package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.util.Numbers;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

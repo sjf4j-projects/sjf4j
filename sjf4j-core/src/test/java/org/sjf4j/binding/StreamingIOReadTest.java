@@ -7,8 +7,8 @@ import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueRegistry;
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.TypeInfo;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.value.ValueCodec;
 
 import java.io.StringReader;

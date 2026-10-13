@@ -6,9 +6,9 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.simple.SimpleJsonReader;
 import org.sjf4j.binding.simple.SimpleJsonWriter;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.ContainerInfo;
-import org.sjf4j.node.CreatorInfo;
-import org.sjf4j.node.PojoAccess;
+import org.sjf4j.meta.ContainerInfo;
+import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.util.Invokers;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
@@ -40,9 +40,9 @@ class BindingExceptionPropagationTest {
         MethodHandle setter = lookup.unreflect(Accessor.class.getMethod("setValue", Object.class));
 
         assertSame(failure, assertThrowsExactly(BindingException.class,
-                () -> PojoAccess.invokeGetter("value", getter, null, accessor)));
+                () -> Invokers.invokeGetter("value", getter, null, accessor)));
         assertSame(failure, assertThrowsExactly(BindingException.class,
-                () -> PojoAccess.invokeSetter("value", setter, null, accessor, "value")));
+                () -> Invokers.invokeSetter("value", setter, null, accessor, "value")));
     }
 
     @Test

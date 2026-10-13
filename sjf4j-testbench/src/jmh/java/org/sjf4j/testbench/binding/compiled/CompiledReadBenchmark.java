@@ -54,7 +54,8 @@ import java.util.concurrent.TimeUnit;
 public class CompiledReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
+//        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
+        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".fastjson2"});
     }
 
 
@@ -204,26 +205,26 @@ public class CompiledReadBenchmark {
         checkMap("simple compiled JSON_UTF8", SIMPLE_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("simple runtime JSON_UTF8", SIMPLE_RUNTIME.readNode(JSON_UTF8, Map.class));
 
-        checkPojo("jackson2 native string", expected, json_jackson2_pojo_string_native());
-        checkPojo("jackson2 blackbird string", expected, json_jackson2_pojo_string_blackbird());
-        checkPojo("jackson2 native utf8", expected, json_jackson2_pojo_utf8_native());
-        checkPojo("jackson2 blackbird utf8", expected, json_jackson2_pojo_utf8_blackbird());
-        checkMap("jackson2 native string", json_jackson2_map_string_native());
-        checkMap("jackson2 native utf8", json_jackson2_map_utf8_native());
-        checkPojo("jackson3 native string", expected, json_jackson3_pojo_string_native());
-        checkPojo("jackson3 blackbird string", expected, json_jackson3_pojo_string_blackbird());
-        checkPojo("jackson3 native utf8", expected, json_jackson3_pojo_utf8_native());
-        checkPojo("jackson3 blackbird utf8", expected, json_jackson3_pojo_utf8_blackbird());
-        checkMap("jackson3 native string", json_jackson3_map_string_native());
-        checkMap("jackson3 native utf8", json_jackson3_map_utf8_native());
-        checkPojo("gson native string", expected, json_gson_pojo_string_native());
-        checkPojo("gson native utf8", expected, json_gson_pojo_utf8_native_reader());
-        checkMap("gson native string", json_gson_map_string_native());
-        checkMap("gson native utf8", json_gson_map_utf8_native_reader());
-        checkPojo("fastjson2 native string", expected, json_fastjson2_pojo_string_native());
-        checkPojo("fastjson2 native utf8", expected, json_fastjson2_pojo_utf8_native());
-        checkMap("fastjson2 native string", json_fastjson2_map_string_native());
-        checkMap("fastjson2 native utf8", json_fastjson2_map_utf8_native());
+        checkPojo("jackson2 native string", expected, jackson2_pojo_string_native());
+        checkPojo("jackson2 blackbird string", expected, jackson2_pojo_string_blackbird());
+        checkPojo("jackson2 native utf8", expected, jackson2_pojo_utf8_native());
+        checkPojo("jackson2 blackbird utf8", expected, jackson2_pojo_utf8_blackbird());
+        checkMap("jackson2 native string", jackson2_map_string_native());
+        checkMap("jackson2 native utf8", jackson2_map_utf8_native());
+        checkPojo("jackson3 native string", expected, jackson3_pojo_string_native());
+        checkPojo("jackson3 blackbird string", expected, jackson3_pojo_string_blackbird());
+        checkPojo("jackson3 native utf8", expected, jackson3_pojo_utf8_native());
+        checkPojo("jackson3 blackbird utf8", expected, jackson3_pojo_utf8_blackbird());
+        checkMap("jackson3 native string", jackson3_map_string_native());
+        checkMap("jackson3 native utf8", jackson3_map_utf8_native());
+        checkPojo("gson native string", expected, gson_pojo_string_native());
+        checkPojo("gson native utf8", expected, gson_pojo_utf8_native_reader());
+        checkMap("gson native string", gson_map_string_native());
+        checkMap("gson native utf8", gson_map_utf8_native_reader());
+        checkPojo("fastjson2 native string", expected, fastjson2_pojo_string_native());
+        checkPojo("fastjson2 native utf8", expected, fastjson2_pojo_utf8_native());
+        checkMap("fastjson2 native string", fastjson2_map_string_native());
+        checkMap("fastjson2 native utf8", fastjson2_map_utf8_native());
     }
 
     private static void checkPojo(String label, User expected, Object result) {
@@ -242,72 +243,72 @@ public class CompiledReadBenchmark {
 
     // ----- JACKSON2 -----
     @Benchmark
-    public Object json_jackson2_pojo_string_compiled() throws IOException {
+    public Object jackson2_pojo_string_compiled() throws IOException {
         return JACKSON2_COMPILED.readPojo(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_string_runtime() {
+    public Object jackson2_pojo_string_runtime() {
         return JACKSON2_RUNTIME.readNode(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_string_native() throws Exception {
+    public Object jackson2_pojo_string_native() throws Exception {
         return JACKSON2_NATIVE.readValue(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_string_blackbird() throws Exception {
+    public Object jackson2_pojo_string_blackbird() throws Exception {
         return JACKSON2_BLACKBIRD.readValue(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_utf8_compiled() throws IOException {
+    public Object jackson2_pojo_utf8_compiled() throws IOException {
         return JACKSON2_COMPILED.readPojoUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_utf8_runtime() {
+    public Object jackson2_pojo_utf8_runtime() {
         return JACKSON2_RUNTIME.readNode(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_utf8_native() throws Exception {
+    public Object jackson2_pojo_utf8_native() throws Exception {
         return JACKSON2_NATIVE.readValue(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_pojo_utf8_blackbird() throws Exception {
+    public Object jackson2_pojo_utf8_blackbird() throws Exception {
         return JACKSON2_BLACKBIRD.readValue(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_jackson2_map_string_compiled() throws IOException {
+    public Object jackson2_map_string_compiled() throws IOException {
         return JACKSON2_COMPILED.readMap(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_jackson2_map_string_runtime() {
+    public Object jackson2_map_string_runtime() {
         return JACKSON2_RUNTIME.readNode(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson2_map_string_native() throws Exception {
+    public Object jackson2_map_string_native() throws Exception {
         return JACKSON2_NATIVE.readValue(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson2_map_utf8_compiled() throws IOException {
+    public Object jackson2_map_utf8_compiled() throws IOException {
         return JACKSON2_COMPILED.readMapUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_jackson2_map_utf8_runtime() {
+    public Object jackson2_map_utf8_runtime() {
         return JACKSON2_RUNTIME.readNode(JSON_UTF8, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson2_map_utf8_native() throws Exception {
+    public Object jackson2_map_utf8_native() throws Exception {
         return JACKSON2_NATIVE.readValue(JSON_UTF8, Map.class);
     }
 
@@ -321,72 +322,72 @@ public class CompiledReadBenchmark {
 
     // ----- JACKSON3 -----
     @Benchmark
-    public Object json_jackson3_pojo_string_compiled() throws IOException {
+    public Object jackson3_pojo_string_compiled() throws IOException {
         return JACKSON3_COMPILED.readPojo(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_jackson3_pojo_string_runtime() {
+    public Object jackson3_pojo_string_runtime() {
         return JACKSON3_RUNTIME.readNode(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_jackson3_pojo_string_native() throws Exception {
+    public Object jackson3_pojo_string_native() throws Exception {
         return JACKSON3_NATIVE.readValue(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_jackson3_pojo_string_blackbird() throws Exception {
+    public Object jackson3_pojo_string_blackbird() throws Exception {
         return JACKSON3_BLACKBIRD.readValue(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_jackson3_pojo_utf8_compiled() throws IOException {
+    public Object jackson3_pojo_utf8_compiled() throws IOException {
         return JACKSON3_COMPILED.readPojoUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_jackson3_pojo_utf8_runtime() {
+    public Object jackson3_pojo_utf8_runtime() {
         return JACKSON3_RUNTIME.readNode(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_jackson3_pojo_utf8_native() throws Exception {
+    public Object jackson3_pojo_utf8_native() throws Exception {
         return JACKSON3_NATIVE.readValue(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_jackson3_pojo_utf8_blackbird() throws Exception {
+    public Object jackson3_pojo_utf8_blackbird() throws Exception {
         return JACKSON3_BLACKBIRD.readValue(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_jackson3_map_string_compiled() throws IOException {
+    public Object jackson3_map_string_compiled() throws IOException {
         return JACKSON3_COMPILED.readMap(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_jackson3_map_string_runtime() {
+    public Object jackson3_map_string_runtime() {
         return JACKSON3_RUNTIME.readNode(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson3_map_string_native() throws Exception {
+    public Object jackson3_map_string_native() throws Exception {
         return JACKSON3_NATIVE.readValue(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson3_map_utf8_compiled() throws IOException {
+    public Object jackson3_map_utf8_compiled() throws IOException {
         return JACKSON3_COMPILED.readMapUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_jackson3_map_utf8_runtime() {
+    public Object jackson3_map_utf8_runtime() {
         return JACKSON3_RUNTIME.readNode(JSON_UTF8, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson3_map_utf8_native() throws Exception {
+    public Object jackson3_map_utf8_native() throws Exception {
         return JACKSON3_NATIVE.readValue(JSON_UTF8, Map.class);
     }
 
@@ -400,63 +401,63 @@ public class CompiledReadBenchmark {
 
     // ----- GSON -----
     @Benchmark
-    public Object json_gson_pojo_string_compiled() throws IOException {
+    public Object gson_pojo_string_compiled() throws IOException {
         return GSON_COMPILED.readPojo(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_gson_pojo_string_runtime() {
+    public Object gson_pojo_string_runtime() {
         return GSON_RUNTIME.readNode(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_gson_pojo_string_native() throws Exception {
+    public Object gson_pojo_string_native() throws Exception {
         return GSON_NATIVE.fromJson(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_gson_pojo_utf8_compiled() throws IOException {
+    public Object gson_pojo_utf8_compiled() throws IOException {
         return GSON_COMPILED.readPojoUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_gson_pojo_utf8_runtime() {
+    public Object gson_pojo_utf8_runtime() {
         return GSON_RUNTIME.readNode(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_gson_pojo_utf8_native_reader() throws Exception {
+    public Object gson_pojo_utf8_native_reader() throws Exception {
         return GSON_NATIVE.fromJson(new InputStreamReader(
                 new ByteArrayInputStream(JSON_UTF8), StandardCharsets.UTF_8), User.class);
     }
 
     @Benchmark
-    public Object json_gson_map_string_compiled() throws IOException {
+    public Object gson_map_string_compiled() throws IOException {
         return GSON_COMPILED.readMap(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_gson_map_string_runtime() {
+    public Object gson_map_string_runtime() {
         return GSON_RUNTIME.readNode(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_gson_map_string_native() throws Exception {
+    public Object gson_map_string_native() throws Exception {
         return GSON_NATIVE.fromJson(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_gson_map_utf8_compiled() throws IOException {
-        return GSON_COMPILED.readMapUtf8(JSON_UTF8);
+    public Object gson_map_utf8_compiled() throws IOException {
+        return GSON_COMPILED.readMapUtf8(UTF8);
     }
 
     @Benchmark
-    public Object json_gson_map_utf8_runtime() {
+    public Object gson_map_utf8_runtime() {
         return GSON_RUNTIME.readNode(JSON_UTF8, Map.class);
     }
 
     @Benchmark
-    public Object json_gson_map_utf8_native_reader() throws Exception {
+    public Object gson_map_utf8_native_reader() throws Exception {
         return GSON_NATIVE.fromJson(new InputStreamReader(
                 new ByteArrayInputStream(JSON_UTF8), StandardCharsets.UTF_8), Map.class);
     }
@@ -471,88 +472,88 @@ public class CompiledReadBenchmark {
 
     // ----- FASTJSON2 -----
     @Benchmark
-    public Object json_fastjson2_pojo_reversed_string_compiled() throws IOException {
+    public Object fastjson2_pojo_reversed_string_compiled() throws IOException {
         return FASTJSON2_COMPILED.readPojo(JSON_REVERSED);
     }
 
-    @Benchmark
-    public Object json_fastjson2_pojo_reversed_string_runtime() {
+    @Benchmark 
+    public Object fastjson2_pojo_reversed_string_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_reversed_utf8_compiled() throws IOException {
+    public Object fastjson2_pojo_reversed_utf8_compiled() throws IOException {
         return FASTJSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_reversed_utf8_runtime() {
+    public Object fastjson2_pojo_reversed_utf8_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_string_compiled() throws IOException {
+    public Object fastjson2_pojo_string_compiled() throws IOException {
         return FASTJSON2_COMPILED.readPojo(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_string_runtime() {
+    public Object fastjson2_pojo_string_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_string_native() {
+    public Object fastjson2_pojo_string_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(User.class);
         }
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_utf8_compiled() throws IOException {
+    public Object fastjson2_pojo_utf8_compiled() throws IOException {
         return FASTJSON2_COMPILED.readPojoUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_utf8_runtime() {
+    public Object fastjson2_pojo_utf8_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_fastjson2_pojo_utf8_native() {
+    public Object fastjson2_pojo_utf8_native() {
         try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(User.class);
         }
     }
 
     @Benchmark
-    public Object json_fastjson2_map_string_compiled() throws IOException {
+    public Object fastjson2_map_string_compiled() throws IOException {
         return FASTJSON2_COMPILED.readMap(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_fastjson2_map_string_runtime() {
+    public Object fastjson2_map_string_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_fastjson2_map_string_native() {
+    public Object fastjson2_map_string_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
         }
     }
 
     @Benchmark
-    public Object json_fastjson2_map_utf8_compiled() throws IOException {
+    public Object fastjson2_map_utf8_compiled() throws IOException {
         return FASTJSON2_COMPILED.readMapUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_fastjson2_map_utf8_runtime() {
+    public Object fastjson2_map_utf8_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_UTF8, Map.class);
     }
 
     @Benchmark
-    public Object json_fastjson2_map_utf8_native() {
+    public Object fastjson2_map_utf8_native() {
         try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
         }
@@ -568,55 +569,55 @@ public class CompiledReadBenchmark {
 
     // ----- JSONP -----
     @Benchmark
-    public Object json_jsonp_pojo_string_compiled() throws IOException {
+    public Object jsonp_pojo_string_compiled() throws IOException {
         return JSONP_COMPILED.readPojo(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_jsonp_pojo_string_runtime() {
+    public Object jsonp_pojo_string_runtime() {
         return JSONP_RUNTIME.readNode(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_jsonp_pojo_utf8_compiled() throws IOException {
+    public Object jsonp_pojo_utf8_compiled() throws IOException {
         return JSONP_COMPILED.readPojoUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_jsonp_pojo_utf8_runtime() {
+    public Object jsonp_pojo_utf8_runtime() {
         return JSONP_RUNTIME.readNode(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_jsonp_map_string_compiled() throws IOException {
+    public Object jsonp_map_string_compiled() throws IOException {
         return JSONP_COMPILED.readMap(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_jsonp_map_string_runtime() {
+    public Object jsonp_map_string_runtime() {
         return JSONP_RUNTIME.readNode(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_jsonp_map_utf8_compiled() throws IOException {
+    public Object jsonp_map_utf8_compiled() throws IOException {
         return JSONP_COMPILED.readMapUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_jsonp_map_utf8_runtime() {
+    public Object jsonp_map_utf8_runtime() {
         return JSONP_RUNTIME.readNode(JSON_UTF8, Map.class);
     }
 
     // A separate JSON-P tree reference only; NOT the same return type as Map.
     @Benchmark
-    public Object json_jsonp_tree_string_native() {
+    public Object jsonp_tree_string_native() {
         try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(JSON_DATA))) {
             return reader.read();
         }
     }
 
     @Benchmark
-    public Object json_jsonp_tree_utf8_native() {
+    public Object jsonp_tree_utf8_native() {
         try (jakarta.json.JsonReader reader = Json.createReader(new ByteArrayInputStream(JSON_UTF8))) {
             return reader.read();
         }
@@ -632,42 +633,42 @@ public class CompiledReadBenchmark {
 
     // ----- SIMPLE -----
     @Benchmark
-    public Object json_simple_pojo_string_compiled() throws IOException {
+    public Object simple_pojo_string_compiled() throws IOException {
         return SIMPLE_COMPILED.readPojo(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_simple_pojo_string_runtime() {
+    public Object simple_pojo_string_runtime() {
         return SIMPLE_RUNTIME.readNode(JSON_DATA, User.class);
     }
 
     @Benchmark
-    public Object json_simple_pojo_utf8_compiled() throws IOException {
+    public Object simple_pojo_utf8_compiled() throws IOException {
         return SIMPLE_COMPILED.readPojoUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_simple_pojo_utf8_runtime() {
+    public Object simple_pojo_utf8_runtime() {
         return SIMPLE_RUNTIME.readNode(JSON_UTF8, User.class);
     }
 
     @Benchmark
-    public Object json_simple_map_string_compiled() throws IOException {
+    public Object simple_map_string_compiled() throws IOException {
         return SIMPLE_COMPILED.readMap(JSON_DATA);
     }
 
     @Benchmark
-    public Object json_simple_map_string_runtime() {
+    public Object simple_map_string_runtime() {
         return SIMPLE_RUNTIME.readNode(JSON_DATA, Map.class);
     }
 
     @Benchmark
-    public Object json_simple_map_utf8_compiled() throws IOException {
+    public Object simple_map_utf8_compiled() throws IOException {
         return SIMPLE_COMPILED.readMapUtf8(JSON_UTF8);
     }
 
     @Benchmark
-    public Object json_simple_map_utf8_runtime() {
+    public Object simple_map_utf8_runtime() {
         return SIMPLE_RUNTIME.readNode(JSON_UTF8, Map.class);
     }
 

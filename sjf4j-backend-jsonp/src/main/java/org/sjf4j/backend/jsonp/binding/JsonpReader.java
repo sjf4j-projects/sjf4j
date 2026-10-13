@@ -4,7 +4,7 @@ import jakarta.json.stream.JsonParser;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingReader;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.Numbers;
+import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;

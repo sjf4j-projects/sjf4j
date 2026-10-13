@@ -1,7 +1,6 @@
-package org.sjf4j.node;
+package org.sjf4j.util;
 
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.util.Asserts;
 
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
@@ -10,7 +9,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -18,11 +16,11 @@ import java.util.function.Supplier;
 /**
  * Compiles method-handle accessors into functional interfaces.
  */
-public final class PojoAccess {
+public final class Invokers {
 
-    private PojoAccess() {}
+    private Invokers() {}
 
-    static final boolean IS_JDK8 = System.getProperty("java.version").startsWith("1.");
+    public static final boolean IS_JDK8 = System.getProperty("java.version").startsWith("1.");
 
     private static final MethodHandles.Lookup ROOT_LOOKUP = MethodHandles.lookup();
     private static final Method PRIVATE_LOOKUP_IN;

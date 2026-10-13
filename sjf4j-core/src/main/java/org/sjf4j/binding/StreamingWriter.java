@@ -1,15 +1,13 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 

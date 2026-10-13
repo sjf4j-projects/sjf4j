@@ -8,8 +8,8 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
-import org.sjf4j.node.TypeInfo;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.meta.TypeInfo;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

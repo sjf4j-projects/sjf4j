@@ -14,8 +14,8 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.node.CreatorInfo;
-import org.sjf4j.node.TypeRegistry;
+import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.util.concurrent.TimeUnit;
 

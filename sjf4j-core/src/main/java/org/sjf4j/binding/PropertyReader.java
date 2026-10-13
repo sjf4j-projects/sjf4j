@@ -5,11 +5,11 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueInfo;
-import org.sjf4j.node.OneOfInfo;
-import org.sjf4j.node.PojoAccess;
-import org.sjf4j.node.TypeInfo;
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.Types;
+import org.sjf4j.meta.OneOfInfo;
+import org.sjf4j.util.Invokers;
+import org.sjf4j.meta.TypeInfo;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.util.Types;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
@@ -79,21 +79,21 @@ public interface PropertyReader {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 Type runtimeFieldType = Types.resolveMemberType(ownerType, ownerBoxed, fieldType);
                 Object value = StreamingIO.readNode(reader, runtimeFieldType, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
         if (oneOfInfo != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 Object value = OneOfIO.readOneOf(reader, oneOfInfo, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
         if (resolvedValueCodec != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 Object value = StreamingIO.readValueCodec(reader, resolvedValueCodec, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
@@ -148,7 +148,7 @@ public interface PropertyReader {
                     valueTiRef[0] = valueTi;
                 }
                 Object value = StreamingIO.readMap(reader, fieldType, fieldBoxed, valueType, valueBoxed, valueTi, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
@@ -157,7 +157,7 @@ public interface PropertyReader {
                 Object value = null;
                 Object raw = reader.readRawNode();
                 if (raw != null) value = new JsonObject(StreamingIO.castMap(raw));
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
@@ -172,7 +172,7 @@ public interface PropertyReader {
                     elementTiRef[0] = elementTi;
                 }
                 Object value = StreamingIO.readList(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
@@ -181,7 +181,7 @@ public interface PropertyReader {
                 Object value = null;
                 Object raw = reader.readRawNode();
                 if (raw != null) value = new JsonArray(StreamingIO.castList(raw));
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
@@ -196,7 +196,7 @@ public interface PropertyReader {
                     elementTiRef[0] = elementTi;
                 }
                 Object value = StreamingIO.readSet(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
@@ -212,7 +212,7 @@ public interface PropertyReader {
                 }
                 Object value = StreamingIO.readArray(reader, fieldType, fieldBoxed, componentClazz, componentBoxed,
                         componentTi, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
@@ -224,62 +224,62 @@ public interface PropertyReader {
 
         if (fieldBoxed == String.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readString());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readString());
             };
         }
         if (fieldBoxed == Integer.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readInt());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readInt());
             };
         }
         if (fieldBoxed == Long.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readLong());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readLong());
             };
         }
         if (fieldBoxed == Double.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readDouble());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readDouble());
             };
         }
         if (fieldBoxed == Float.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readFloat());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readFloat());
             };
         }
         if (fieldBoxed == Short.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readShort());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readShort());
             };
         }
         if (fieldBoxed == Byte.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readByte());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readByte());
             };
         }
         if (fieldBoxed == Boolean.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBoolean());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBoolean());
             };
         }
         if (fieldBoxed == Character.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readChar());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readChar());
             };
         }
         if (fieldBoxed == Number.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readNumber());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readNumber());
             };
         }
         if (fieldBoxed == BigInteger.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigInteger());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigInteger());
             };
         }
         if (fieldBoxed == BigDecimal.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigDecimal());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigDecimal());
             };
         }
         if (fieldBoxed.isEnum()) {
@@ -287,7 +287,7 @@ public interface PropertyReader {
             Class<? extends Enum> enumType = fieldBoxed.asSubclass(Enum.class);
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 Object enumValue = StreamingIO.readEnum(reader, fieldBoxed, context);
-                PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, enumValue);
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, enumValue);
             };
         }
 
@@ -301,7 +301,7 @@ public interface PropertyReader {
                 fieldTiRef[0] = fieldTi;
             }
             Object value = StreamingIO.readNode(reader, fieldType, fieldBoxed, fieldTi, context);
-            PojoAccess.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+            Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
         };
 
     }
@@ -313,7 +313,7 @@ public interface PropertyReader {
 
 
     static PropertyReader _createForPrimitiveInt(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjIntConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjIntConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjIntConsumer.class), int.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
@@ -335,7 +335,7 @@ public interface PropertyReader {
     }
 
     static PropertyReader _createForPrimitiveLong(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjLongConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjLongConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjLongConsumer.class), long.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
@@ -357,7 +357,7 @@ public interface PropertyReader {
     }
 
     static PropertyReader _createForPrimitiveDouble(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjDoubleConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjDoubleConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjDoubleConsumer.class), double.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
@@ -379,7 +379,7 @@ public interface PropertyReader {
     }
 
     static PropertyReader _createForPrimitiveFloat(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjFloatConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjFloatConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjFloatConsumer.class), float.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
@@ -401,7 +401,7 @@ public interface PropertyReader {
     }
 
     static PropertyReader _createForPrimitiveShort(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjShortConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjShortConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjShortConsumer.class), short.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
@@ -423,7 +423,7 @@ public interface PropertyReader {
     }
 
     static PropertyReader _createForPrimitiveByte(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjByteConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjByteConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjByteConsumer.class), byte.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
@@ -445,7 +445,7 @@ public interface PropertyReader {
     }
 
     static PropertyReader _createForPrimitiveBoolean(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjBooleanConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjBooleanConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjBooleanConsumer.class), boolean.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
@@ -467,7 +467,7 @@ public interface PropertyReader {
     }
 
     static PropertyReader _createForPrimitiveChar(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
-        ObjCharConsumer<Object> setterLambda = PojoAccess.createSetterLambda(lookup, setterHandle,
+        ObjCharConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjCharConsumer.class), char.class);
         if (setterLambda != null) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {

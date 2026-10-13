@@ -6,14 +6,18 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.fixture.JsonObjectPersonFixture.Baby;
 import org.sjf4j.fixture.JsonObjectPersonFixture.Person;
+import org.sjf4j.node.NodeMapper;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,15 +37,17 @@ class NodeMapperTest {
 
     @Test
     void convertClassHandlesNullScalarsAndEnums() {
-        assertNull(NodeMapper.convert(null, String.class, false));
-        assertEquals(Integer.valueOf(12), NodeMapper.convert(12L, Integer.class, false));
-        assertEquals(Character.valueOf('a'), NodeMapper.convert("a", Character.class, false));
-        assertThrows(BindingException.class, () -> NodeMapper.convert("abc", Character.class, false));
-        assertThrows(BindingException.class, () -> NodeMapper.convert("", Character.class, false));
-        assertEquals("a", NodeMapper.convert('a', String.class, false));
-        assertEquals(Boolean.TRUE, NodeMapper.convert(true, Boolean.class, false));
-        assertEquals(Status.OK, NodeMapper.convert("OK", Status.class, false));
-        assertEquals("OK", NodeMapper.convert(Status.OK, String.class, false));
+        assertNull(NodeMapper.convert(null, String.class, false, RuntimeContext.EMPTY));
+        assertEquals(Integer.valueOf(12), NodeMapper.convert(12L, Integer.class, false, RuntimeContext.EMPTY));
+        assertEquals(Character.valueOf('a'), NodeMapper.convert("a", Character.class, false, RuntimeContext.EMPTY));
+        assertThrows(BindingException.class, () -> NodeMapper.convert("abc", Character.class, false, RuntimeContext.EMPTY));
+        assertThrows(BindingException.class, () -> NodeMapper.convert("", Character.class, false, RuntimeContext.EMPTY));
+        assertEquals("a", NodeMapper.convert('a', String.class, false, RuntimeContext.EMPTY));
+        assertEquals(Boolean.TRUE, NodeMapper.convert(true, Boolean.class, false, RuntimeContext.EMPTY));
+        assertEquals(Status.OK, NodeMapper.convert("OK", Status.class, false, RuntimeContext.EMPTY));
+        assertEquals("OK", NodeMapper.convert(Status.OK, String.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(null, void.class, false, RuntimeContext.EMPTY));
+        assertThrows(BindingException.class, () -> NodeMapper.convert("x", Void.class, false, RuntimeContext.EMPTY));
 
         assertEquals(Integer.valueOf(7),
                 NodeMapper.convert(7L, Integer.class, false, RuntimeContext.EMPTY));
@@ -54,7 +60,7 @@ class NodeMapperTest {
                 JsonObject.of("name", "A", "age", 7),
                 JsonObject.of("name", "B", "age", 8));
 
-        List<User> fromReference = (List<User>) NodeMapper.convert(node, reference.getType(), false);
+        List<User> fromReference = (List<User>) NodeMapper.convert(node, reference.getType(), false, RuntimeContext.EMPTY);
         List<User> fromReferenceWithContext =
                 (List<User>) NodeMapper.convert(node, reference.getType(), false, RuntimeContext.EMPTY);
         Type type = reference.getType();
@@ -77,7 +83,7 @@ class NodeMapperTest {
                         JsonObject.of("name", "B", "age", 8)));
 
         Envelope<List<User>> result = (Envelope<List<User>>) NodeMapper.convert(node,
-                new TypeReference<Envelope<List<User>>>() {}.getType(), false);
+                new TypeReference<Envelope<List<User>>>() {}.getType(), false, RuntimeContext.EMPTY);
 
         assertEquals(200, result.code);
         assertInstanceOf(User.class, result.body.get(0));
@@ -89,15 +95,15 @@ class NodeMapperTest {
         Profile source = profile();
 
         Map<String, Object> map = (Map<String, Object>) NodeMapper.convert(source,
-                new TypeReference<Map<String, Object>>() {}.getType(), false);
-        JsonObject json = (JsonObject) NodeMapper.convert(map, JsonObject.class, false);
-        Profile rebuilt = (Profile) NodeMapper.convert(json, Profile.class, false);
-        String[] names = (String[]) NodeMapper.convert(JsonArray.of("A", "B"), String[].class, false);
+                new TypeReference<Map<String, Object>>() {}.getType(), false, RuntimeContext.EMPTY);
+        JsonObject json = (JsonObject) NodeMapper.convert(map, JsonObject.class, false, RuntimeContext.EMPTY);
+        Profile rebuilt = (Profile) NodeMapper.convert(json, Profile.class, false, RuntimeContext.EMPTY);
+        String[] names = (String[]) NodeMapper.convert(JsonArray.of("A", "B"), String[].class, false, RuntimeContext.EMPTY);
         Set<Integer> values = (Set<Integer>) NodeMapper.convert(new int[]{1, 2, 2},
-                new TypeReference<Set<Integer>>() {}.getType(), false);
+                new TypeReference<Set<Integer>>() {}.getType(), false, RuntimeContext.EMPTY);
         List<String> ordered = (List<String>) NodeMapper.convert(
                 new LinkedHashSet<>(Arrays.asList("first", "second")),
-                new TypeReference<List<String>>() {}.getType(), false);
+                new TypeReference<List<String>>() {}.getType(), false, RuntimeContext.EMPTY);
 
         assertEquals("Ada", map.get("name"));
         assertInstanceOf(JsonObject.class, json);
@@ -121,21 +127,21 @@ class NodeMapperTest {
         };
 
         for (Object source : sources) {
-            List<Integer> list = (List<Integer>) NodeMapper.convert(source, integers, false);
+            List<Integer> list = (List<Integer>) NodeMapper.convert(source, integers, false, RuntimeContext.EMPTY);
             assertEquals(Arrays.asList(1, 2, 2), list);
 
-            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false);
+            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false, RuntimeContext.EMPTY);
             assertEquals(3, jsonArray.size());
             assertEquals(2, jsonArray.getNode(2));
 
-            IntJajo jajo = (IntJajo) NodeMapper.convert(source, IntJajo.class, false);
+            IntJajo jajo = (IntJajo) NodeMapper.convert(source, IntJajo.class, false, RuntimeContext.EMPTY);
             assertEquals(3, jajo.size());
             assertEquals(2, jajo.getNode(1));
 
-            int[] array = (int[]) NodeMapper.convert(source, int[].class, false);
+            int[] array = (int[]) NodeMapper.convert(source, int[].class, false, RuntimeContext.EMPTY);
             assertArrayEquals(new int[]{1, 2, 2}, array);
 
-            Set<Long> set = (Set<Long>) NodeMapper.convert(source, longSet, false);
+            Set<Long> set = (Set<Long>) NodeMapper.convert(source, longSet, false, RuntimeContext.EMPTY);
             assertEquals(new LinkedHashSet<>(Arrays.asList(1L, 2L)), set);
         }
     }
@@ -148,7 +154,7 @@ class NodeMapperTest {
                 new Integer[]{1, null}
         }) {
             List<Integer> list = (List<Integer>) NodeMapper.convert(
-                    source, new TypeReference<List<Integer>>() {}.getType(), false);
+                    source, new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY);
             assertEquals(Arrays.asList(1, null), list);
         }
 
@@ -158,7 +164,7 @@ class NodeMapperTest {
                 new Object[]{1, true}
         }) {
             BindingException error = assertThrows(BindingException.class,
-                    () -> NodeMapper.convert(source, new TypeReference<List<Integer>>() {}.getType(), false));
+                    () -> NodeMapper.convert(source, new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY));
             assertTrue(error.getMessage().contains("$[1]"));
         }
     }
@@ -175,29 +181,29 @@ class NodeMapperTest {
                 new Integer[]{1, 2, 3}
         }) {
             assertEquals(Arrays.asList(1, 2, 3),
-                    NodeMapper.convert(source, integers, false));
+                    NodeMapper.convert(source, integers, false, RuntimeContext.EMPTY));
             assertEquals(Arrays.asList(1L, 2L, 3L),
-                    NodeMapper.convert(source, longs, true));
+                    NodeMapper.convert(source, longs, true, RuntimeContext.EMPTY));
             assertArrayEquals(new int[]{1, 2, 3},
-                    (int[]) NodeMapper.convert(source, int[].class, false));
+                    (int[]) NodeMapper.convert(source, int[].class, false, RuntimeContext.EMPTY));
         }
 
         assertEquals(Arrays.asList(1, null, 3),
-                NodeMapper.convert(new Long[]{1L, null, 3L}, integers, false));
+                NodeMapper.convert(new Long[]{1L, null, 3L}, integers, false, RuntimeContext.EMPTY));
 
         BindingException overflow = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(
                         new long[]{1L, ((long) Integer.MAX_VALUE) + 1},
-                        integers, false));
+                        integers, false, RuntimeContext.EMPTY));
         assertTrue(overflow.getMessage().contains("$[1]"));
 
         BindingException shortOverflow = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(new int[]{1, Short.MAX_VALUE + 1},
-                        new TypeReference<List<Short>>() {}.getType(), false));
+                        new TypeReference<List<Short>>() {}.getType(), false, RuntimeContext.EMPTY));
         assertTrue(shortOverflow.getMessage().contains("$[1]"));
 
         BindingException incompatible = assertThrows(BindingException.class,
-                () -> NodeMapper.convert(new Object[]{1, true}, integers, false));
+                () -> NodeMapper.convert(new Object[]{1, true}, integers, false, RuntimeContext.EMPTY));
         assertTrue(incompatible.getMessage().contains("$[1]"));
     }
 
@@ -211,31 +217,31 @@ class NodeMapperTest {
         Type strings = new TypeReference<List<String>>() {}.getType();
 
         assertEquals(Arrays.asList(1, 2, 3),
-                NodeMapper.convert(new byte[]{1, 2, 3}, ints, false));
+                NodeMapper.convert(new byte[]{1, 2, 3}, ints, false, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(1, 2, 3),
-                NodeMapper.convert(new short[]{1, 2, 3}, ints, false));
+                NodeMapper.convert(new short[]{1, 2, 3}, ints, false, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(1.25d, 2.5d),
-                NodeMapper.convert(new float[]{1.25f, 2.5f}, doubles, false));
+                NodeMapper.convert(new float[]{1.25f, 2.5f}, doubles, false, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(1.25f, 2.5f),
-                NodeMapper.convert(new double[]{1.25d, 2.5d}, floats, false));
+                NodeMapper.convert(new double[]{1.25d, 2.5d}, floats, false, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(true, false, true),
-                NodeMapper.convert(new boolean[]{true, false, true}, booleans, false));
+                NodeMapper.convert(new boolean[]{true, false, true}, booleans, false, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList('A', 'B'),
-                NodeMapper.convert(new char[]{'A', 'B'}, characters, false));
+                NodeMapper.convert(new char[]{'A', 'B'}, characters, false, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList("A", "B"),
-                NodeMapper.convert(new char[]{'A', 'B'}, strings, false));
+                NodeMapper.convert(new char[]{'A', 'B'}, strings, false, RuntimeContext.EMPTY));
 
         // Direct primitive reads must keep indexed paths on checked numeric failures.
         BindingException overflow = assertThrows(BindingException.class,
-                () -> NodeMapper.convert(new double[]{1.0, Double.MAX_VALUE}, floats, false));
+                () -> NodeMapper.convert(new double[]{1.0, Double.MAX_VALUE}, floats, false, RuntimeContext.EMPTY));
         assertTrue(overflow.getMessage().contains("$[1]"));
 
         // Non-List targets still use the same generic target-conversion engine.
         assertArrayEquals(new int[]{1, 2},
-                (int[]) NodeMapper.convert(new short[]{1, 2}, int[].class, false));
+                (int[]) NodeMapper.convert(new short[]{1, 2}, int[].class, false, RuntimeContext.EMPTY));
         assertEquals(Arrays.asList(true, false),
                 NodeMapper.convert(new boolean[]{true, false},
-                        new TypeReference<List<Boolean>>() {}.getType(), true));
+                        new TypeReference<List<Boolean>>() {}.getType(), true, RuntimeContext.EMPTY));
     }
 
     @Test
@@ -243,11 +249,11 @@ class NodeMapperTest {
         Profile empty = (Profile) NodeMapper.convert(JsonObject.of(
                 "aliases", JsonArray.of(),
                 "scores", JsonArray.of(),
-                "ranks", JsonArray.of()), Profile.class, false);
+                "ranks", JsonArray.of()), Profile.class, false, RuntimeContext.EMPTY);
         Profile nullable = (Profile) NodeMapper.convert(JsonObject.of(
                 "name", null,
                 "aliases", JsonArray.of("Ada", null),
-                "details", null), Profile.class, false);
+                "details", null), Profile.class, false, RuntimeContext.EMPTY);
 
         assertTrue(empty.aliases.isEmpty());
         assertTrue(empty.scores.isEmpty());
@@ -266,15 +272,15 @@ class NodeMapperTest {
 
         // Repeated conversions preserve Creator and JOJO dynamic fields.
         for (int i = 0; i < 2; i++) {
-            NameOnly only = (NameOnly) NodeMapper.convert(source, NameOnly.class, false);
+            NameOnly only = (NameOnly) NodeMapper.convert(source, NameOnly.class, false, RuntimeContext.EMPTY);
             assertEquals("Ada", only.name);
 
             CreatorTarget creator = (CreatorTarget) NodeMapper.convert(
-                    source, CreatorTarget.class, false);
+                    source, CreatorTarget.class, false, RuntimeContext.EMPTY);
             assertEquals("Ada", creator.name);
             assertEquals(32, creator.age);
 
-            OpenTarget open = (OpenTarget) NodeMapper.convert(source, OpenTarget.class, false);
+            OpenTarget open = (OpenTarget) NodeMapper.convert(source, OpenTarget.class, false, RuntimeContext.EMPTY);
             assertEquals("Ada", open.name);
             assertEquals(32, open.getNode("age"));
             assertEquals("extra", open.getNode("unused"));
@@ -297,11 +303,11 @@ class NodeMapperTest {
         // POJO reads cached per-class metadata; Map and JsonObject traverse
         // entries. All must apply identical Creator/JOJO semantics.
         for (Object source : new Object[]{pojo, map, new JsonObject(map)}) {
-            CreatorTarget creator = (CreatorTarget) NodeMapper.convert(source, CreatorTarget.class, false);
+            CreatorTarget creator = (CreatorTarget) NodeMapper.convert(source, CreatorTarget.class, false, RuntimeContext.EMPTY);
             assertEquals("Ada", creator.name);
             assertEquals(32, creator.age);
 
-            OpenTarget open = (OpenTarget) NodeMapper.convert(source, OpenTarget.class, false);
+            OpenTarget open = (OpenTarget) NodeMapper.convert(source, OpenTarget.class, false, RuntimeContext.EMPTY);
             assertEquals("Ada", open.name);
             assertEquals(32, open.getNode("age"));
             assertEquals("extra", open.getNode("unused"));
@@ -324,7 +330,7 @@ class NodeMapperTest {
         map.put("unused", "extra");
 
         for (Object input : new Object[]{source, map, new JsonObject(map)}) {
-            CountingTarget target = (CountingTarget) NodeMapper.convert(input, CountingTarget.class, false);
+            CountingTarget target = (CountingTarget) NodeMapper.convert(input, CountingTarget.class, false, RuntimeContext.EMPTY);
             assertEquals("Ada", target.name);
             assertEquals(32, target.age);
             assertEquals("extra", target.unused);
@@ -333,7 +339,7 @@ class NodeMapperTest {
 
         // The same direct-creation path must support JOJO's static properties
         // and dynamically stored keys.
-        OpenTarget jojo = (OpenTarget) NodeMapper.convert(map, OpenTarget.class, false);
+        OpenTarget jojo = (OpenTarget) NodeMapper.convert(map, OpenTarget.class, false, RuntimeContext.EMPTY);
         assertEquals("Ada", jojo.name);
         assertEquals(32, jojo.getNode("age"));
         assertEquals("extra", jojo.getNode("unused"));
@@ -343,9 +349,9 @@ class NodeMapperTest {
     void copyRecreatesNestedMutableNodesWhileConvertPreservesIdentity() {
         Profile source = profile();
 
-        assertSame(source, NodeMapper.convert(source, Profile.class, false));
+        assertSame(source, NodeMapper.convert(source, Profile.class, false, RuntimeContext.EMPTY));
 
-        Profile copied = (Profile) NodeMapper.convert(source, source.getClass(), true);
+        Profile copied = (Profile) NodeMapper.convert(source, source.getClass(), true, RuntimeContext.EMPTY);
 
         assertNotSame(source, copied);
         assertNotSame(source.aliases, copied.aliases);
@@ -397,7 +403,7 @@ class NodeMapperTest {
     void convertReportsTheNestedPathForAnIncompatibleScalar() {
         BindingException error = assertThrows(BindingException.class, () ->
                 NodeMapper.convert(JsonArray.of(1, true),
-                        new TypeReference<List<Integer>>() {}.getType(), false));
+                        new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY));
 
         assertTrue(error.hasPathSegment());
         assertTrue(error.getMessage().contains("$[1]"));
@@ -405,26 +411,92 @@ class NodeMapperTest {
 
     @Test
     void convertDecodesNullWithNodeValue() {
-        NullValue root = (NullValue) NodeMapper.convert(null, NullValue.class, false);
-        NullValueHolder holder = (NullValueHolder) NodeMapper.convert(JsonObject.of("value", null), NullValueHolder.class, false);
+        NullValue root = (NullValue) NodeMapper.convert(null, NullValue.class, false, RuntimeContext.EMPTY);
+        NullValueHolder holder = (NullValueHolder) NodeMapper.convert(JsonObject.of("value", null), NullValueHolder.class, false, RuntimeContext.EMPTY);
+        List<NullValue> list = (List<NullValue>) NodeMapper.convert(JsonArray.of((Object) null),
+                new TypeReference<List<NullValue>>() {}.getType(), false, RuntimeContext.EMPTY);
 
         assertEquals("<null>", root.value);
         assertEquals("<null>", holder.value.value);
+        assertEquals("<null>", list.get(0).value);
+    }
+
+    @Test
+    void annotatedJsonSubclassesSelectOneOfBeforeStructuralOrIdentityConversion() {
+        JsonObject object = JsonObject.of("kind", "child", "name", "A");
+        JsonArray array = JsonArray.of(1, 2);
+
+        assertInstanceOf(SelectedObject.class, NodeMapper.convert(object, ObjectChoice.class, false, RuntimeContext.EMPTY));
+        assertInstanceOf(SelectedArray.class, NodeMapper.convert(array, ArrayChoice.class, false, RuntimeContext.EMPTY));
+        SelectedObject compatibleObject = new SelectedObject();
+        compatibleObject.put("kind", "child");
+        assertSame(compatibleObject, NodeMapper.convert(compatibleObject, ObjectChoice.class, false, RuntimeContext.EMPTY));
+        compatibleObject.put("kind", "unknown");
+        assertThrows(BindingException.class,
+                () -> NodeMapper.convert(compatibleObject, ObjectChoice.class, false, RuntimeContext.EMPTY));
+        SelectedArray compatibleArray = new SelectedArray();
+        assertSame(compatibleArray, NodeMapper.convert(compatibleArray, ArrayChoice.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(null, ObjectChoice.class, false, RuntimeContext.EMPTY));
+    }
+
+    @Test
+    void memberOneOfOverridesClassSelectionAndNullCodec() {
+        ChoiceHolder holder = (ChoiceHolder) NodeMapper.convert(
+                JsonObject.of("value", JsonObject.of("kind", "child")), ChoiceHolder.class, false, RuntimeContext.EMPTY);
+        assertInstanceOf(OtherChoice.class, holder.value);
+
+        ChoiceHolder empty = (ChoiceHolder) NodeMapper.convert(
+                JsonObject.of("value", null), ChoiceHolder.class, false, RuntimeContext.EMPTY);
+        assertNull(empty.value);
+
+        NullOverrideHolder nullOverride = (NullOverrideHolder) NodeMapper.convert(
+                JsonObject.of("value", null), NullOverrideHolder.class, false, RuntimeContext.EMPTY);
+        assertNull(nullOverride.value);
+    }
+
+    @Test
+    void oneOfTreatsUnknownSourcesAsNoMatchWithoutEncodingThem() {
+        assertInstanceOf(EncodedChoice.class, NodeMapper.convert(
+                Map.of("kind", "child"), ValueChoice.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(Map.of("kind", "missing"), NullableValueChoice.class, false, RuntimeContext.EMPTY));
+
+        BindingException valueBinding = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new EncodedChoice(Map.of("kind", "child")), ValueChoice.class, false, RuntimeContext.EMPTY));
+        assertTrue(valueBinding.getMessage().contains("node must be a JSON object"));
+        assertNull(NodeMapper.convert(new RawChoice(null), NullableValueChoice.class, false, RuntimeContext.EMPTY));
+        BindingException unknown = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new Object(), ValueChoice.class, false, RuntimeContext.EMPTY));
+        assertTrue(unknown.getMessage().contains("node must be a JSON object"));
+
+        BindingException failure = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(Collections.singletonList(new RawChoice(Map.of("kind", "error"))),
+                        new TypeReference<List<ValueChoice>>() {}.getType(), false, RuntimeContext.EMPTY));
+        assertTrue(failure.getMessage().contains("$[0]"));
+        assertTrue(failure.getMessage().contains("node must be a JSON object"));
+    }
+
+    @Test
+    void oneOfMatchesRawShapeButRejectsValueBindingSource() {
+        StringChoice decoded = (StringChoice) NodeMapper.convert("text", ShapeChoice.class, false, RuntimeContext.EMPTY);
+        assertEquals("text", decoded.value);
+        BindingException error = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new StringChoice("text"), ShapeChoice.class, false, RuntimeContext.EMPTY));
+        assertTrue(error.getMessage().contains("jsonType=UNKNOWN"));
     }
 
     @Test
     void convertsBetweenNodeValuesUsingCompatibleRawRepresentations() {
         EncodedA source = new EncodedA("hello");
 
-        EncodedB converted = (EncodedB) NodeMapper.convert(source, EncodedB.class, false);
+        EncodedB converted = (EncodedB) NodeMapper.convert(source, EncodedB.class, false, RuntimeContext.EMPTY);
         assertEquals("hello", converted.value);
 
         // No implicit String -> Number coercion at a ValueCodec boundary.
         BindingException error = assertThrows(BindingException.class,
-                () -> NodeMapper.convert(source, NumericValue.class, false));
+                () -> NodeMapper.convert(source, NumericValue.class, false, RuntimeContext.EMPTY));
         assertTrue(error.getMessage().contains("raw type"));
 
-        assertSame(source, NodeMapper.convert(source, EncodedA.class, false));
+        assertSame(source, NodeMapper.convert(source, EncodedA.class, false, RuntimeContext.EMPTY));
     }
 
     @Test
@@ -433,13 +505,13 @@ class NodeMapperTest {
         source.code = new EncodedA("abc");
 
         TargetValueHolder fromPojo = (TargetValueHolder) NodeMapper.convert(
-                source, TargetValueHolder.class, false);
+                source, TargetValueHolder.class, false, RuntimeContext.EMPTY);
         assertEquals("abc", fromPojo.code.value);
 
         Map<String, Object> values = new java.util.LinkedHashMap<>();
         values.put("code", new EncodedA("xyz"));
         TargetValueHolder fromMap = (TargetValueHolder) NodeMapper.convert(
-                values, TargetValueHolder.class, false);
+                values, TargetValueHolder.class, false, RuntimeContext.EMPTY);
         assertEquals("xyz", fromMap.code.value);
     }
 
@@ -568,6 +640,78 @@ class NodeMapperTest {
 
     static class NullValueHolder {
         public NullValue value;
+    }
+
+    @OneOf(value = @OneOf.Mapping(value = SelectedObject.class, when = "child"), key = "kind")
+    static class ObjectChoice extends JsonObject {}
+
+    static class SelectedObject extends ObjectChoice {}
+
+    @OneOf(@OneOf.Mapping(SelectedArray.class))
+    static class ArrayChoice extends JsonArray {}
+
+    static class SelectedArray extends ArrayChoice {}
+
+    @OneOf(value = @OneOf.Mapping(value = SelectedChoice.class, when = "child"), key = "kind")
+    static class Choice extends JsonObject {}
+
+    static class SelectedChoice extends Choice {}
+
+    static class OtherChoice extends Choice {}
+
+    static class ChoiceHolder {
+        @OneOf(value = @OneOf.Mapping(value = OtherChoice.class, when = "child"), key = "kind")
+        public Choice value;
+    }
+
+    static class NullOverrideHolder {
+        @OneOf(value = @OneOf.Mapping(value = NullValueSubtype.class, when = "child"), key = "kind")
+        public NullValue value;
+    }
+
+    static class NullValueSubtype extends NullValue {
+        NullValueSubtype(String value) { super(value); }
+    }
+
+    @OneOf(value = @OneOf.Mapping(value = EncodedChoice.class, when = "child"), key = "kind")
+    static abstract class ValueChoice {}
+
+    @NodeValue
+    static class EncodedChoice extends ValueChoice {
+        final Map<String, Object> raw;
+        EncodedChoice(Map<String, Object> raw) { this.raw = raw; }
+        @ValueToRaw Map<String, Object> encode() { return raw; }
+        @RawToValue static EncodedChoice decode(Map<String, Object> raw) { return new EncodedChoice(raw); }
+        @ValueCopy EncodedChoice copy() { return new EncodedChoice(raw); }
+    }
+
+    @NodeValue
+    static class RawChoice {
+        final Map<String, Object> raw;
+        RawChoice(Map<String, Object> raw) { this.raw = raw; }
+        @ValueToRaw Map<String, Object> encode() {
+            if (raw != null && "error".equals(raw.get("kind"))) throw new IllegalStateException("bad raw");
+            return raw;
+        }
+        @RawToValue static RawChoice decode(Map<String, Object> raw) { return new RawChoice(raw); }
+    }
+
+    @OneOf(value = @OneOf.Mapping(value = NullableValueSubtype.class, when = "child"),
+            key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
+    static abstract class NullableValueChoice extends ValueChoice {}
+
+    static class NullableValueSubtype extends NullableValueChoice {}
+
+    @OneOf(@OneOf.Mapping(StringChoice.class))
+    static abstract class ShapeChoice {}
+
+    @NodeValue
+    static class StringChoice extends ShapeChoice {
+        final String value;
+        StringChoice(String value) { this.value = value; }
+        @ValueToRaw String encode() { return value; }
+        @RawToValue static StringChoice decode(String raw) { return new StringChoice(raw); }
+        @ValueCopy StringChoice copy() { return new StringChoice(value); }
     }
 
     static class Profile {

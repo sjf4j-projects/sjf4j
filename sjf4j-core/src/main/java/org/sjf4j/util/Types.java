@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.util;
 
 import org.sjf4j.exception.NodeException;
 

@@ -3,6 +3,7 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.util.Types;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;

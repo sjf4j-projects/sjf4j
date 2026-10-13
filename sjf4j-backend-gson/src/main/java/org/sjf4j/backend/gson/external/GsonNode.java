@@ -6,10 +6,10 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import org.sjf4j.JsonType;
-import org.sjf4j.Nodes;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
-import org.sjf4j.node.Types;
+import org.sjf4j.node.NodeWalker;
+import org.sjf4j.util.Types;
 
 import java.util.AbstractSet;
 import java.util.Iterator;
@@ -58,12 +58,6 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public String asString(JsonElement node) {
-        if (node.isJsonNull()) return null;
-        return node.getAsString();
-    }
-
-    @Override
     public Number toNumber(JsonElement node) {
         if (node.isJsonNull()) return null;
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isNumber()) {
@@ -73,42 +67,12 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public Number asNumber(JsonElement node) {
-        if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isNumber()) {
-            return node.getAsNumber();
-        }
-        if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isString()) {
-            return Nodes.asNumber(node.getAsString());
-        }
-        if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isBoolean()) {
-            return Nodes.asNumber(node.getAsBoolean());
-        }
-        if (node.isJsonNull()) return null;
-        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Number");
-    }
-
-    @Override
     public Boolean toBoolean(JsonElement node) {
         if (node.isJsonNull()) return null;
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isBoolean()) {
             return node.getAsBoolean();
         }
         throw _expected("JsonPrimitive(Boolean)", node);
-    }
-
-    @Override
-    public Boolean asBoolean(JsonElement node) {
-        if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isBoolean()) {
-            return node.getAsBoolean();
-        }
-        if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isString()) {
-            return Nodes.asBoolean(node.getAsString());
-        }
-        if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isNumber()) {
-            return Nodes.asBoolean(node.getAsNumber());
-        }
-        if (node.isJsonNull()) return null;
-        throw new NodeException("cannot convert node type '" + Types.name(node) + "' to Boolean");
     }
 
     @Override
@@ -261,14 +225,14 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public void getAccessInObject(JsonElement node, String key, Nodes.Access out) {
+    public void getAccessInObject(JsonElement node, String key, NodeWalker.Access out) {
         JsonObject object = _object(node);
         out.node = object.get(key);
         out.present = object.has(key);
     }
 
     @Override
-    public void putAccessInObject(JsonElement node, String key, Nodes.Access out) {
+    public void putAccessInObject(JsonElement node, String key, NodeWalker.Access out) {
         JsonObject object = _object(node);
         out.node = object.get(key);
         out.type = JsonElement.class;
@@ -276,7 +240,7 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public void getAccessInArray(JsonElement node, int idx, Nodes.Access out) {
+    public void getAccessInArray(JsonElement node, int idx, NodeWalker.Access out) {
         JsonArray array = _array(node);
         out.node = null;
         out.present = false;
@@ -288,7 +252,7 @@ public final class GsonNode implements ExternalNode<JsonElement> {
     }
 
     @Override
-    public void putAccessInArray(JsonElement node, Integer idx, Nodes.Access out) {
+    public void putAccessInArray(JsonElement node, Integer idx, NodeWalker.Access out) {
         JsonArray array = _array(node);
         out.type = JsonElement.class;
         out.node = null;

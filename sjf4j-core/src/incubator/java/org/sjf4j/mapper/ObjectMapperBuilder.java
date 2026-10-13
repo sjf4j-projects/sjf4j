@@ -3,7 +3,7 @@ package org.sjf4j.mapper;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.util.Asserts;

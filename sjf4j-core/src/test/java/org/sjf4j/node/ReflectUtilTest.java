@@ -5,6 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.ReflectUtil;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.util.Invokers;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -188,17 +192,17 @@ class ReflectUtilTest {
 
         MethodHandles.Lookup root = MethodHandles.lookup();
         MethodHandles.Lookup lookup = root;
-        if (!ReflectUtil.IS_JDK8) {
+        if (!Invokers.IS_JDK8) {
             lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrivateFieldPojo.class, root);
         }
 
         MethodHandle setter = lookup.unreflect(PrivateFieldPojo.class.getDeclaredMethod("setName", String.class));
-        BiConsumer<Object, Object> lambda = PojoAccess.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
+        BiConsumer<Object, Object> lambda = Invokers.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
         assertNotNull(lambda);
         lambda.accept(p, "ok");
         assertEquals("ok", p.getName());
 
-        BiConsumer<Object, Object> lambda2 = PojoAccess.createSetterLambda(lookup, null, BiConsumer.class, Object.class);
+        BiConsumer<Object, Object> lambda2 = Invokers.createSetterLambda(lookup, null, BiConsumer.class, Object.class);
         assertNull(lambda2);
     }
 
@@ -209,14 +213,14 @@ class ReflectUtilTest {
 
         MethodHandles.Lookup root = MethodHandles.lookup();
         MethodHandles.Lookup lookup = root;
-        if (!ReflectUtil.IS_JDK8) {
+        if (!Invokers.IS_JDK8) {
             lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrimitiveFieldPojo.class, root);
         }
 
         Field f = PrimitiveFieldPojo.class.getDeclaredField("age");
         MethodHandle setter = lookup.unreflectSetter(f);
 
-        BiConsumer<Object, Object> lambda = PojoAccess.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
+        BiConsumer<Object, Object> lambda = Invokers.createSetterLambda(lookup, setter, BiConsumer.class, Object.class);
         assertNull(lambda);
     }
 

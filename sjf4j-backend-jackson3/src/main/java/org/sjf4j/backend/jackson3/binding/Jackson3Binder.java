@@ -4,7 +4,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;

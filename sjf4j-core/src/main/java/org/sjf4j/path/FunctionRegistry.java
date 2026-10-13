@@ -4,11 +4,10 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 

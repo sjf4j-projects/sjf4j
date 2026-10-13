@@ -2,8 +2,7 @@ package org.sjf4j.binding;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.meta.PropertyInfo;
 
 import java.io.Closeable;
 import java.io.IOException;

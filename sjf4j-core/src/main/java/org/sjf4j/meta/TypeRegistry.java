@@ -1,4 +1,4 @@
-package org.sjf4j.node;
+package org.sjf4j.meta;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.NodeKind;
@@ -8,6 +8,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
+import org.sjf4j.util.Types;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
 

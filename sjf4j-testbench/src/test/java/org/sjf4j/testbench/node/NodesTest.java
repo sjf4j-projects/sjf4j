@@ -34,11 +34,11 @@ public class NodesTest {
         JsonObject jo = sjf4j.fromJson(json, JsonObject.class);
         log.info("jo={}", Nodes.inspect(jo));
 
-        User user1 = Nodes.toPojo(jo, User.class);
+        User user1 = Nodes.to(jo, User.class);
         log.info("user1={}", Nodes.inspect(user1));
 
         JsonObject jo2 = JsonObject.of("name", "yes");
-        User user2 = Nodes.toPojo(jo2, User.class);
+        User user2 = Nodes.to(jo2, User.class);
         log.info("user2={}", Nodes.inspect(user2));
         assertEquals("yes", user2.name);
     }

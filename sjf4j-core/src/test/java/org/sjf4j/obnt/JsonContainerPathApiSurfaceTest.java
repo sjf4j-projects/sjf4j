@@ -4,8 +4,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.Patches;
 
@@ -136,9 +136,9 @@ class JsonContainerPathApiSurfaceTest {
             visits.incrementAndGet();
             return true;
         });
-        root.walk(Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (path, node) -> true);
-        root.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, -1, (path, node) -> true);
-        root.walk(Nodes.WalkTarget.VALUE, Nodes.WalkOrder.BOTTOM_UP, 3, (path, node) -> true);
+        root.walk(NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.TOP_DOWN, -1, (path, node) -> true);
+        root.walk(NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.TOP_DOWN, -1, (path, node) -> true);
+        root.walk(NodeWalker.WalkTarget.VALUE, NodeWalker.WalkOrder.BOTTOM_UP, 3, (path, node) -> true);
         assertTrue(visits.get() > 0);
 
         root.apply(sjf4j.fromJson("[{\"op\":\"add\",\"path\":\"/patched\",\"value\":1}]", JsonPatch.class));

@@ -2,10 +2,11 @@ package org.sjf4j;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.mapping.NodeMapper;
-import org.sjf4j.node.TypeRegistry;
-import org.sjf4j.node.PojoInfo;
-import org.sjf4j.node.PropertyInfo;
+import org.sjf4j.node.NodeMapper;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.node.NodeStream;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -16,7 +17,6 @@ import java.util.AbstractSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,7 +48,7 @@ public class JsonObject extends JsonContainer {
     protected transient Map<String, Object> dynamicProperties;
     
     /**
-     * Stores property metadata for POJO mapping.
+     * Stores object-binding metadata for declared JOJO properties.
      */
     protected final transient PojoInfo pi;
 
@@ -63,7 +63,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates a JOJO with precomputed property metadata.
+     * Creates a JOJO with precomputed object-binding metadata.
      */
     protected JsonObject(PojoInfo pi) {
         super();
@@ -430,7 +430,7 @@ public class JsonObject extends JsonContainer {
      * Structurally converts a value to a JsonObject.
      */
     public static JsonObject fromNode(Object node) {
-        return (JsonObject) NodeMapper.convert(node, JsonObject.class, false);
+        return (JsonObject) NodeMapper.convert(node, JsonObject.class, false, RuntimeContext.EMPTY);
     }
 
 

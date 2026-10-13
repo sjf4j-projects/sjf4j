@@ -7,6 +7,8 @@ import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.PropertyStrategy;
+import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.util.Arrays;
 

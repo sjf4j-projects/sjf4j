@@ -3,11 +3,10 @@ package org.sjf4j.patch;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.node.Types;
+import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * JSON Patch document modeled as a JsonArray of {@link PatchOperation}.

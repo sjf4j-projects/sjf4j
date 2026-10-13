@@ -14,6 +14,11 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.OneOfInfo;
+import org.sjf4j.meta.ReflectUtil;
+import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.util.Invokers;
 import org.sjf4j.util.Strings;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
@@ -176,6 +181,19 @@ class ReflectUtilEdgeCaseTest {
 
     static class MissingWhenSubtype extends JsonObject implements MissingWhenOneOf {}
 
+    @OneOf(value = @OneOf.Mapping(value = SelfDiscriminatorOneOf.class, when = "self"), key = "kind")
+    static class SelfDiscriminatorOneOf {}
+
+    @OneOf(@OneOf.Mapping(SelfShapeOneOf.class))
+    static class SelfShapeOneOf {}
+
+    static class SelfFieldChoice {}
+
+    static class SelfFieldOneOf {
+        @OneOf(value = @OneOf.Mapping(value = SelfFieldChoice.class, when = "self"), key = "kind")
+        public SelfFieldChoice value;
+    }
+
     @NodeObject(naming = NamingStrategy.IDENTITY)
     static class IdentityNamingPojo {}
 
@@ -301,6 +319,15 @@ class ReflectUtilEdgeCaseTest {
                 MissingWhenOneOf.class.getAnnotation(OneOf.class)
         ));
 
+        for (Class<?> clazz : new Class<?>[]{SelfDiscriminatorOneOf.class, SelfShapeOneOf.class}) {
+            BindingException error = assertThrows(BindingException.class,
+                    () -> TypeRegistry.registerTypeInfo(clazz));
+            assertTrue(error.getMessage().contains("must differ from declared type"));
+        }
+        BindingException fieldError = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(SelfFieldOneOf.class));
+        assertTrue(fieldError.getMessage().contains("must differ from declared type"));
+
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(null));
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(IdentityNamingPojo.class));
         assertThrows(BindingException.class,
@@ -327,32 +354,32 @@ class ReflectUtilEdgeCaseTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         MethodHandle nameGetter = lookup.unreflect(GetterPojo.class.getDeclaredMethod("getName"));
-        assertEquals("han", PojoAccess.createGetterLambda(lookup, nameGetter, Function.class, Object.class).apply(new GetterPojo()));
+        assertEquals("han", Invokers.createGetterLambda(lookup, nameGetter, Function.class, Object.class).apply(new GetterPojo()));
 
         MethodHandle activeGetter = lookup.unreflect(BooleanPojo.class.getDeclaredMethod("isActive"));
-        assertEquals(true, PojoAccess.createGetterLambda(lookup, activeGetter, Function.class, Object.class).apply(new BooleanPojo()));
+        assertEquals(true, Invokers.createGetterLambda(lookup, activeGetter, Function.class, Object.class).apply(new BooleanPojo()));
 
         MethodHandle boolObjGetter = lookup.unreflect(BooleanGetterPojo.class.getDeclaredMethod("getActive"));
-        assertEquals(Boolean.TRUE, PojoAccess.createGetterLambda(lookup, boolObjGetter, Function.class, Object.class).apply(new BooleanGetterPojo()));
+        assertEquals(Boolean.TRUE, Invokers.createGetterLambda(lookup, boolObjGetter, Function.class, Object.class).apply(new BooleanGetterPojo()));
 
-        assertNull(PojoAccess.createGetterLambda(lookup, null, Function.class, Object.class));
+        assertNull(Invokers.createGetterLambda(lookup, null, Function.class, Object.class));
 
         assertEquals("Name", Strings.capitalize("name"));
         assertEquals("X", Strings.capitalize("x"));
 
         MethodHandle ctor = lookup.unreflectConstructor(NoArgsCtorPojo.class.getDeclaredConstructor());
-        Supplier<NoArgsCtorPojo> noArgsCtor = PojoAccess.createConstructorLambda(lookup, NoArgsCtorPojo.class, ctor);
+        Supplier<NoArgsCtorPojo> noArgsCtor = Invokers.createConstructorLambda(lookup, NoArgsCtorPojo.class, ctor);
         assertNotNull(noArgsCtor);
         assertNotNull(noArgsCtor.get());
-        assertNull(PojoAccess.createConstructorLambda(lookup, LambdaCtorPojo.class, null));
+        assertNull(Invokers.createConstructorLambda(lookup, LambdaCtorPojo.class, null));
 
         CreatorInfo creatorInfo = ReflectUtil.analyzeCreator(LambdaCtorPojo.class, lookup);
-        TypeRegistry.Func1 creator = PojoAccess.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 1);
+        TypeRegistry.Func1 creator = Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 1);
         assertNotNull(creator);
         LambdaCtorPojo created = (LambdaCtorPojo) creator.apply("han");
         assertEquals("han", created.name);
-        assertNull(PojoAccess.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 0));
-        assertNull(PojoAccess.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, null, 1));
+        assertNull(Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 0));
+        assertNull(Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, null, 1));
 
         assertFalse(ReflectUtil.isRecord(GetterPojo.class));
         assertNull(ReflectUtil.analyzeRecord(GetterPojo.class, lookup));

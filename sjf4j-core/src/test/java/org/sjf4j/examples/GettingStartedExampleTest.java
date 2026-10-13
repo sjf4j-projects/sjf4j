@@ -7,6 +7,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.patch.JsonPatch;
 
 import java.util.ArrayList;
@@ -130,7 +131,7 @@ public class GettingStartedExampleTest {
 
         /// Walk and stream
 
-        jo.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1, (path, node) -> {
+        jo.walk(NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.BOTTOM_UP, -1, (path, node) -> {
             // Target: CONTAINER or VALUE
             // Order: BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf)
             System.out.println("path=" + path + ", node=" + node);

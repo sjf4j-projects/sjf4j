@@ -7,8 +7,8 @@ import org.sjf4j.binding.Format;
 import org.sjf4j.binding.PropertiesBinder;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.simple.SimplePropertiesBinder;
-import org.sjf4j.mapping.NodeMapper;
-import org.sjf4j.node.Types;
+import org.sjf4j.node.NodeMapper;
+import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.io.InputStream;
@@ -357,7 +357,8 @@ public final class Sjf4j {
     /**
      * Creates a recursive copy of supported OBNT structures.
      * <p>
-     * Delegates to {@link NodeMapper#deepcopy(Object)}. Unsupported values,
+     * Delegates to {@link NodeMapper#convert(Object, java.lang.reflect.Type, boolean, RuntimeContext)}
+     * with deep copying enabled. Unsupported values,
      * including external mutable containers without a deep-copy implementation,
      * fail with {@link org.sjf4j.exception.BindingException}.
      */

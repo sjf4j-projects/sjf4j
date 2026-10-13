@@ -2,6 +2,7 @@ package org.sjf4j.patch;
 
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.node.NodeMapper;
 import org.sjf4j.path.JsonPointer;
 
 
@@ -15,7 +16,7 @@ import org.sjf4j.path.JsonPointer;
  * {@link Patches#diff(Object, Object)} likewise retain values from the target graph, which can
  * also be reachable from the source graph when the inputs alias. {@code copy} calls
  * {@link org.sjf4j.Sjf4j#copyNode(Object)}; supported structures are copied by
- * {@link org.sjf4j.mapping.NodeMapper}.
+ * {@link NodeMapper}.
  */
 public final class PatchOperation {
 

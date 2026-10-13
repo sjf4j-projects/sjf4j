@@ -47,3 +47,5 @@
  * interface instances.
  */
 package org.sjf4j;
+
+import org.sjf4j.node.NodeStream;

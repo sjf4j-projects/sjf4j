@@ -2,7 +2,8 @@ package org.sjf4j;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.mapping.NodeMapper;
+import org.sjf4j.node.NodeMapper;
+import org.sjf4j.node.NodeStream;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -284,7 +285,7 @@ public class JsonArray extends JsonContainer {
      * Structurally converts a value to a JsonArray.
      */
     public static JsonArray fromNode(Object node) {
-        return (JsonArray) NodeMapper.convert(node, JsonArray.class, false);
+        return (JsonArray) NodeMapper.convert(node, JsonArray.class, false, RuntimeContext.EMPTY);
     }
 
 
