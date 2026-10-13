@@ -1,4 +1,4 @@
-name: Temporary Fastjson2 Fused Raw A-B Conformance
+name: Temporary Fastjson2 Fused Ordered String Retest
 on:
   push:
     branches:
@@ -52,7 +52,118 @@ jobs:
             rev="${tag%-*}"
             echo "::group::JMH ${tag}"
             java -jar /tmp/bench-${rev}/sjf4j-testbench/build/libs/*-jmh.jar \
-              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_(reversed_)?(string|utf8)_(compiled|native)$|.*HandReadBenchmark[.]json_fastjson2_pojo_(native|handwritten_raw)$' \
+              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_string_(compiled|native)$|.*HandReadBenchmark[.]json_fastjson2_pojo_(native|handwritten_raw) \
+              -f 1 -wi 8 -w 350ms -i 12 -r 400ms -t 1 -rf json \
+              -rff results/${tag}.json | tee results/${tag}.txt
+            echo "::endgroup::"
+          done
+      - name: PR34 standalone reference
+        shell: bash
+        run: |
+          java -jar /tmp/bench-pr34/sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledReadBenchmark[.]json_fastjson2_pojo_string_compiled \
+            -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
+            -rff results/pr34.json | tee results/pr34.txt
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cases={}
+          for tag in ['pr35-1','fused-1','fused-2','pr35-2','pr34']:
+            rows=json.loads(Path('results',tag+'.json').read_text())
+            print(tag,'benchmarks',len(rows))
+            for row in rows:
+              name=row['benchmark'].split('.')[-1]
+              if name.startswith('json_fastjson2_pojo_'):
+                cases.setdefault(name,{})[tag]=row['primaryMetric']['score']
+          for name,s in sorted(cases.items()):
+            if all(x in s for x in ('pr35-1','fused-1','fused-2','pr35-2')):
+              a=(s['pr35-1']+s['pr35-2'])/2
+              b=(s['fused-1']+s['fused-2'])/2
+              print(f'{name}: PR35 {a:.6f}, fused {b:.6f}, delta {(b/a-1)*100:+.2f}%, reference PR34={s.get("pr34")}')
+            else: print(name, s)
+          PY
+      - name: Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-fused-p0-ab
+          path: results/
+          if-no-files-found: ignore
+ \
+              -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
+              -rff results/${tag}.json | tee results/${tag}.txt
+            echo "::endgroup::"
+          done
+      - name: PR34 standalone reference
+        shell: bash
+        run: |
+          java -jar /tmp/bench-pr34/sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledReadBenchmark[.]json_fastjson2_pojo_(reversed_)?(string|utf8)_compiled$' \
+            -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
+            -rff results/pr34.json | tee results/pr34.txt
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cases={}
+          for tag in ['pr35-1','fused-1','fused-2','pr35-2','pr34']:
+            rows=json.loads(Path('results',tag+'.json').read_text())
+            print(tag,'benchmarks',len(rows))
+            for row in rows:
+              name=row['benchmark'].split('.')[-1]
+              if name.startswith('json_fastjson2_pojo_'):
+                cases.setdefault(name,{})[tag]=row['primaryMetric']['score']
+          for name,s in sorted(cases.items()):
+            if all(x in s for x in ('pr35-1','fused-1','fused-2','pr35-2')):
+              a=(s['pr35-1']+s['pr35-2'])/2
+              b=(s['fused-1']+s['fused-2'])/2
+              print(f'{name}: PR35 {a:.6f}, fused {b:.6f}, delta {(b/a-1)*100:+.2f}%, reference PR34={s.get("pr34")}')
+            else: print(name, s)
+          PY
+      - name: Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-fused-p0-ab
+          path: results/
+          if-no-files-found: ignore
+ \
+            -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
+            -rff results/pr34.json | tee results/pr34.txt
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cases={}
+          for tag in ['pr35-1','fused-1','fused-2','pr35-2','pr34']:
+            rows=json.loads(Path('results',tag+'.json').read_text())
+            print(tag,'benchmarks',len(rows))
+            for row in rows:
+              name=row['benchmark'].split('.')[-1]
+              if name.startswith('json_fastjson2_pojo_'):
+                cases.setdefault(name,{})[tag]=row['primaryMetric']['score']
+          for name,s in sorted(cases.items()):
+            if all(x in s for x in ('pr35-1','fused-1','fused-2','pr35-2')):
+              a=(s['pr35-1']+s['pr35-2'])/2
+              b=(s['fused-1']+s['fused-2'])/2
+              print(f'{name}: PR35 {a:.6f}, fused {b:.6f}, delta {(b/a-1)*100:+.2f}%, reference PR34={s.get("pr34")}')
+            else: print(name, s)
+          PY
+      - name: Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-fused-p0-ab
+          path: results/
+          if-no-files-found: ignore
+ \
               -f 1 -wi 4 -w 250ms -i 6 -r 300ms -t 1 -rf json \
               -rff results/${tag}.json | tee results/${tag}.txt
             echo "::endgroup::"
