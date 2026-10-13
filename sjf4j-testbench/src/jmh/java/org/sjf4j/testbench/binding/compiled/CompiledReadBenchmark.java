@@ -448,7 +448,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object gson_map_utf8_compiled() throws IOException {
-        return GSON_COMPILED.readMapUtf8(UTF8);
+        return GSON_COMPILED.readMapUtf8(JSON_UTF8);
     }
 
     @Benchmark
