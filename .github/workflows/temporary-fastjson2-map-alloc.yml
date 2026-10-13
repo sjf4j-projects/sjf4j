@@ -1,4 +1,4 @@
-name: Temporary Fastjson2 Map Allocation Diagnostics
+name: Temporary Fastjson2 Map Ordered Native Diagnostics
 on:
   push:
     branches:
@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CompiledReadBenchmark[.]fastjson2_map_(string|utf8)_(compiled|runtime|native|handwritten_v2)$' \
+            '.*CompiledReadBenchmark[.]fastjson2_map_(string|utf8)_(compiled|runtime|native|native_linkedhashmap|handwritten_v2)$' \
             -f 1 -wi 4 -w 300ms -i 8 -r 450ms -t 1 -prof gc \
             -rf json -rff map-profile.json | tee map-profile.txt
       - name: Summary
