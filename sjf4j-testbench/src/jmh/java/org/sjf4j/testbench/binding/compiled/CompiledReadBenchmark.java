@@ -448,7 +448,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object gson_map_utf8_compiled() throws IOException {
-        return GSON_COMPILED.readMapUtf8(UTF8);
+        return GSON_COMPILED.readMapUtf8(JSON_UTF8);
     }
 
     @Benchmark
@@ -476,7 +476,7 @@ public class CompiledReadBenchmark {
         return FASTJSON2_COMPILED.readPojo(JSON_REVERSED);
     }
 
-    @Benchmark 
+    @Benchmark
     public Object fastjson2_pojo_reversed_string_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
     }
