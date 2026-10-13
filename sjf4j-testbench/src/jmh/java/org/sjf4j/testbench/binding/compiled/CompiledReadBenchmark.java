@@ -476,7 +476,7 @@ public class CompiledReadBenchmark {
         return FASTJSON2_COMPILED.readPojo(JSON_REVERSED);
     }
 
-    @Benchmark 
+    @Benchmark
     public Object fastjson2_pojo_reversed_string_runtime() {
         return FASTJSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
     }
