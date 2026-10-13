@@ -1,0 +1,64 @@
+name: Temporary Fastjson2 Fused Ordered String Retest
+on:
+  push:
+    branches:
+      - experiment/compiled-fastjson2-raw-fused
+    paths:
+      - .github/workflows/temporary-fastjson2-string-retest.yml
+permissions:
+  contents: read
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Build comparison JMH jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach /tmp/strict-pr35 f0ab7669b0cf85e746ba60865ba3a770c602efd1
+          git worktree add --detach /tmp/strict-fused HEAD
+          (cd /tmp/strict-pr35 && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          (cd /tmp/strict-fused && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+      - name: Ordered String A-B-B-A
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for tag in pr35-1 fused-1 fused-2 pr35-2; do
+            kind="${tag%-*}"
+            java -jar /tmp/strict-${kind}/sjf4j-testbench/build/libs/*-jmh.jar \
+              '.*CompiledReadBenchmark[.]json_fastjson2_pojo_string_(compiled|native)$|.*HandReadBenchmark[.]json_fastjson2_pojo_(native|handwritten_raw)$' \
+              -f 1 -wi 8 -w 350ms -i 12 -r 400ms -t 1 -rf json \
+              -rff results/${tag}.json | tee results/${tag}.txt
+          done
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cases={}
+          for tag in ('pr35-1','fused-1','fused-2','pr35-2'):
+            for row in json.loads(Path('results',tag+'.json').read_text()):
+              cases.setdefault(row['benchmark'].split('.')[-1],{})[tag]=row['primaryMetric']['score']
+          for name,s in sorted(cases.items()):
+            a=(s['pr35-1']+s['pr35-2'])/2
+            b=(s['fused-1']+s['fused-2'])/2
+            print(f'{name}: PR35={a:.6f}, P0={b:.6f}, delta={(b/a-1)*100:+.2f}%')
+          PY
+      - name: Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-fused-ordered-string-retest
+          path: results/
+          if-no-files-found: ignore
