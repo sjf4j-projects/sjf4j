@@ -24,7 +24,7 @@ jobs:
         run: |
           set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CompiledWriteBenchmark.json_fastjson2_(pojo|map)_utf8_(compiled|native|runtime|handwritten_streaming)' \
+            '.*CompiledWriteBenchmark.json_fastjson2_(pojo|map)_utf8_(compiled|native|runtime|handwritten_streaming|handwritten_serialized)' \
             -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc \
             -rf json -rff fastjson2-bytes.json | tee fastjson2-bytes.log
       - uses: actions/upload-artifact@v4
