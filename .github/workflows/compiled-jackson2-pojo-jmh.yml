@@ -1,0 +1,35 @@
+name: Jackson2 POJO JMH experiment
+on:
+  push:
+    branches:
+      - perf/compiled-jackson-pojo-read
+  workflow_dispatch:
+
+jobs:
+  jackson2-pojo-jmh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Jackson2 compiled POJO benchmark
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar             '.*CompiledReadBenchmark.jackson2_pojo_.*'             -wi 5 -i 10 -w 500ms -r 500ms -f 2 -prof gc             -rf json -rff jackson2-pojo-jmh.json | tee jackson2-pojo-jmh.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jackson2-pojo-jmh
+          path: |
+            jackson2-pojo-jmh.json
+            jackson2-pojo-jmh.log
+          if-no-files-found: ignore
