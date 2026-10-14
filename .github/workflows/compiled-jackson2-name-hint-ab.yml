@@ -24,7 +24,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for variant in hinted unhinted; do
+          run_id=0
+          for variant in hinted unhinted unhinted hinted; do
+            run_id="$((run_id + 1))"
             if [[ "$variant" == hinted ]]; then
               git checkout --detach 378a925e214c47723d18b1ad9bfc924e2aa703cd
             else
@@ -34,15 +36,15 @@ jobs:
             java -jar sjf4j-testbench/build/libs/*-jmh.jar \
               '.*CompiledReadBenchmark.jackson2_pojo_(reversed_)?(string|utf8)_compiled' \
               -wi 5 -i 10 -w 500ms -r 500ms -f 2 -prof gc \
-              -rf json -rff "jackson2-$variant.json" | tee "jackson2-$variant.log"
+              -rf json -rff "jackson2-$variant-$run_id.json" | tee "jackson2-$variant-$run_id.log"
           done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: jackson2-name-hint-ab
           path: |
-            jackson2-hinted.json
-            jackson2-hinted.log
-            jackson2-unhinted.json
-            jackson2-unhinted.log
+            jackson2-hinted-*.json
+            jackson2-hinted-*.log
+            jackson2-unhinted-*.json
+            jackson2-unhinted-*.log
           if-no-files-found: ignore
