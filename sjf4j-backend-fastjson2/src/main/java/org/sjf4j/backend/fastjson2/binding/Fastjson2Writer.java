@@ -207,6 +207,11 @@ public final class Fastjson2Writer extends StreamingWriter {
         }
     }
 
+    /** Returns UTF-8 bytes from the native in-memory writer buffer. */
+    public byte[] toBytes() {
+        return writer.getBytes();
+    }
+
     /**
      * Returns the buffered JSON when this writer was created without an external output.
      */
