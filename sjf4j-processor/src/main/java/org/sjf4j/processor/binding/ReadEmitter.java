@@ -397,7 +397,8 @@ final class ReadEmitter {
 
         // Raw Map<String, Object> uses the same backend-independent strategy
         // as List<Object>; typed containers keep their compiled element plan.
-        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
+        if (backend.backend() != org.sjf4j.annotation.binding.Backend.GSON
+                && context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
                 && context.types.isObject(value.mapValue().type())) {
             out.line("Object raw = reader.readRawNode();");
             out.line("return raw == null ? null : " + STREAMING_IO + ".castMap(raw);");
