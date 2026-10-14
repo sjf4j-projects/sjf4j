@@ -31,7 +31,8 @@ import java.util.concurrent.TimeUnit;
 public class SchemaBenchmark {
 
     public static void main(String[] args) throws IOException {
-        Main.main(new String[]{SchemaBenchmark.class.getName()});
+//        Main.main(new String[]{SchemaBenchmark.class.getName()});
+        Main.main(new String[]{SchemaBenchmark.class.getName() + ".schema_validate_array"});
     }
 
     private static final String OBJECT_SCHEMA_JSON =

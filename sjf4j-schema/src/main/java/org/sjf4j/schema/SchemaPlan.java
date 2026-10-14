@@ -132,8 +132,10 @@ public final class SchemaPlan {
         if (!byDynamicAnchorPlans.isEmpty()) ctx.pushPlan(this);
         for (Evaluator evaluator : evaluators) {
             boolean matched = evaluator.evaluate(instance, ps, ctx);
-            if (!matched) result = false;
-            if (ctx.shouldAbort()) return false;
+            if (!matched) {
+                result = false;
+                if (ctx.shouldAbort()) return false;
+            }
         }
         if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
         return result;

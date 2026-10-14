@@ -682,12 +682,12 @@ public interface Evaluator {
                 if (properties != null) {
                     SchemaPlan plan = properties.get(key);
                     if (plan != null) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
+                        InstancedNode subInstance = instance.inferSubByKey(key, value, null);
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = plan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
-                        if (ctx.shouldAbort()) return result;
+                        if (!subResult && ctx.shouldAbort()) return false;
                         matched = true;
                     }
                 }
@@ -702,7 +702,7 @@ public interface Evaluator {
                                 boolean subResult = plan.evaluate(subInstance, cps, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
                                 result = result && subResult;
-                                if (ctx.shouldAbort()) return result;
+                                if (!subResult && ctx.shouldAbort()) return false;
                                 matched = true;
                             }
                         }
@@ -715,7 +715,7 @@ public interface Evaluator {
                     boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
                     result = result && subResult;
-                    if (ctx.shouldAbort()) return result;
+                    if (!subResult && ctx.shouldAbort()) return false;
                 }
                 propIdx++;
             }
@@ -758,7 +758,7 @@ public interface Evaluator {
                         result = false;
                     }
                 }
-                if (ctx.shouldAbort()) return result;
+                if (ctx.shouldAbort()) return false;
             }
 
             if (dependentRequired != null) {
@@ -773,7 +773,7 @@ public interface Evaluator {
                                 result = false;
                             }
                         }
-                        if (ctx.shouldAbort()) return result;
+                        if (ctx.shouldAbort()) return false;
                     }
                 }
             }
@@ -818,7 +818,7 @@ public interface Evaluator {
                                 result = false;
                             }
                         }
-                        if (ctx.shouldAbort()) return result;
+                        if (ctx.shouldAbort()) return false;
                     }
                 }
             }
@@ -828,7 +828,7 @@ public interface Evaluator {
                     if (Nodes.containsInObject(actual, key)) {
                         boolean subResult = entry.getValue().evaluate(instance, ps, ctx);
                         result = result && subResult;
-                        if (ctx.shouldAbort()) return result;
+                        if (!subResult && ctx.shouldAbort()) return false;
                     }
                 }
             }
@@ -860,7 +860,7 @@ public interface Evaluator {
                     SchemaPlan plan = dependentPlans.get(key);
                     boolean subResult = plan.evaluate(instance, ps, ctx);
                     result = result && subResult;
-                    if (ctx.shouldAbort()) return result;
+                    if (!subResult && ctx.shouldAbort()) return false;
                 }
             }
             return result;
@@ -900,7 +900,7 @@ public interface Evaluator {
                     ctx.addError(instance, instanceKeywordPs, keywordPs, schemaUri, "propertyNames",
                             "invalid property name '" + key + "'");
                     result = false;
-                    if (ctx.shouldAbort()) return result;
+                    if (ctx.shouldAbort()) return false;
                 }
             }
             return result;
@@ -909,7 +909,6 @@ public interface Evaluator {
 
     // minItems / maxItems / uniqueItems
     final class ArrayEvaluator implements Evaluator {
-        private static final int SMALL_ARRAY_LIMIT = 2;
         private static final Object NULL_ITEM = new Object();
 
         final PathSegment minItemsKeywordPs;
@@ -949,6 +948,7 @@ public interface Evaluator {
             }
             this.uniqueItems = Boolean.TRUE.equals(uniqueItems);
         }
+
         /**
          * Enforces minItems/maxItems/uniqueItems for arrays.
          * <p>
@@ -972,19 +972,8 @@ public interface Evaluator {
                         "expected at most " + maxItems + " items, found " + size);
                 result = false;
             }
-            if (ctx.shouldAbort()) return result;
-            if (uniqueItems) {
-//                Set<Object> set = new HashSet<>();
-//                for (Iterator<Object> it = Nodes.iteratorInArray(actual); it.hasNext(); ) {
-//                    Object v = it.next();
-//                    if (!set.add(v)) {
-//                        ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
-//                                "expected unique array items");
-//                        result = false;
-//                        break;
-//                    }
-//                }
-
+            if (ctx.shouldAbort()) return false;
+            if (uniqueItems && size > 1) {
                 if (hasDuplicate(actual, size)) {
                     ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
                             "expected unique array items");
@@ -998,20 +987,6 @@ public interface Evaluator {
         private static boolean hasDuplicate(Object array, int size) {
             if (size < 2) return false;
             Iterator<Object> it = Nodes.iteratorInArray(array);
-            // Small arrays: linear search avoids hash-table overhead.
-            if (size <= SMALL_ARRAY_LIMIT) {
-                Object[] seen = new Object[size];
-                int count = 0;
-                while (it.hasNext()) {
-                    Object value = it.next();
-                    for (int i = 0; i < count; i++) {
-                        if (Nodes.equals(seen[i], value)) return true;
-                    }
-                    seen[count++] = value;
-                }
-                return false;
-            }
-
             // Keep load factor <= 0.5 for inexpensive linear probing.
             int capacity = 16;
             while (capacity < (long) size * 2) {
@@ -1024,7 +999,6 @@ public interface Evaluator {
             Object[] table = new Object[capacity];
             int[] hashes = new int[capacity];
             int mask = capacity - 1;
-
             while (it.hasNext()) {
                 Object value = it.next();
                 int hash = Nodes.hash(value);
@@ -1066,28 +1040,29 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.ARRAY) return true;
+            if (prefixItemsPlans == null && itemsPlan == null) return true;
 
-            Object actual = instance.node();
+            Iterator<Object> it = Nodes.iteratorInArray(instance.node());
             boolean result = true;
-            int size = Nodes.sizeInArray(actual);
             int i = 0;
             if (prefixItemsPlans != null) {
-                for (; i < size && i < prefixItemsPlans.length; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
+                for (; i < prefixItemsPlans.length && it.hasNext(); i++) {
+                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), null);
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
-                    if (ctx.shouldAbort()) return result;
+                    if (!subResult && ctx.shouldAbort()) return false;
                 }
                 if (result) instance.markEvaluated(0, i);
             }
+
             if (itemsPlan != null) {
-                for (; i < size; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
+                for (; it.hasNext(); i++) {
+                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), null);
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
-                    if (ctx.shouldAbort()) return result;
+                    if (!subResult && ctx.shouldAbort()) return false;
                 }
                 if (result) instance.markEvaluated(0, i);
             }
@@ -1151,7 +1126,7 @@ public interface Evaluator {
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
-                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, null);
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                 boolean result = containsPlan.evaluate(subInstance, cps, ctx);
                 ctx.popIgnoreError();
@@ -1259,7 +1234,7 @@ public interface Evaluator {
                 BitSet childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 result = result && subResult;
-                if (ctx.shouldAbort()) return result;
+                if (!subResult && ctx.shouldAbort()) return false;
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
@@ -1455,7 +1430,7 @@ public interface Evaluator {
                         boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
-                        if (ctx.shouldAbort()) return false;
+                        if (!subResult && ctx.shouldAbort()) return false;
                     }
                     propIdx++;
                 }
@@ -1466,12 +1441,12 @@ public interface Evaluator {
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();
                     if (!merged.get(i)) {
-                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, null);
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                         boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);
                         result = result && subResult;
-                        if (ctx.shouldAbort()) return false;
+                        if (!subResult && ctx.shouldAbort()) return false;
                     }
                 }
             }
