@@ -12,6 +12,9 @@ import jakarta.json.Json;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.RuntimeContext;
+import org.sjf4j.binding.StreamingIO;
+import org.sjf4j.backend.gson.binding.GsonReader;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
@@ -446,6 +449,49 @@ public class CompiledReadBenchmark {
     }
 
     // ----- GSON -----
+    @Benchmark
+    public Object gson_map_direct_raw_string() throws IOException {
+        try (GsonReader reader = GSON_RUNTIME.createReader(JSON_DATA)) {
+            reader.startDocument();
+            Object value = reader.readRawNode();
+            reader.endDocument();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object gson_map_direct_runtime_string() throws IOException {
+        try (GsonReader reader = GSON_RUNTIME.createReader(JSON_DATA)) {
+            reader.startDocument();
+            Object value = StreamingIO.readMap(reader, Map.class, Map.class,
+                    null, null, null, RuntimeContext.EMPTY);
+            reader.endDocument();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object gson_map_direct_raw_utf8() throws IOException {
+        try (GsonReader reader = GSON_RUNTIME.createReader(JSON_UTF8)) {
+            reader.startDocument();
+            Object value = reader.readRawNode();
+            reader.endDocument();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object gson_map_direct_runtime_utf8() throws IOException {
+        try (GsonReader reader = GSON_RUNTIME.createReader(JSON_UTF8)) {
+            reader.startDocument();
+            Object value = StreamingIO.readMap(reader, Map.class, Map.class,
+                    null, null, null, RuntimeContext.EMPTY);
+            reader.endDocument();
+            return value;
+        }
+    }
+
+
     @Benchmark
     public Object gson_pojo_string_compiled() throws IOException {
         return GSON_COMPILED.readPojo(JSON_DATA);
