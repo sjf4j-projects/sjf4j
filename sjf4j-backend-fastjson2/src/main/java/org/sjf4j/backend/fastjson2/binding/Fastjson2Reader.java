@@ -28,6 +28,15 @@ public final class Fastjson2Reader extends StreamingReader {
         this.reader = Asserts.notNull(reader, "reader");
     }
 
+    /**
+     * Provides the native parser to generated compiled binders for fused
+     * raw-name matching. Callers must only advance property names through
+     * nextIfName4MatchN; values and object boundaries stay on this reader.
+     */
+    public JSONReader rawReader() {
+        return reader;
+    }
+
     @Override
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
         return new Fastjson2NameMatcher(writableProperties);

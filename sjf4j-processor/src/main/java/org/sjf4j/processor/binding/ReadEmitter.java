@@ -19,6 +19,7 @@ final class ReadEmitter {
 
     private final ProcessorContext context;
     private final BackendSpec backend;
+    private final Fastjson2PojoReadEmitter fastjson2Pojo;
 
     ReadEmitter(
             ProcessorContext context,
@@ -26,6 +27,9 @@ final class ReadEmitter {
 
         this.context = context;
         this.backend = backend;
+        this.fastjson2Pojo = backend.backend()
+                == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                ? new Fastjson2PojoReadEmitter() : null;
     }
 
     boolean usesNameMatcher() {
@@ -192,6 +196,11 @@ final class ReadEmitter {
         }
 
         out.endBlock();
+        if (fastjson2Pojo != null && value.kind() == BindingValue.Kind.POJO
+                && !value.properties().isEmpty()) {
+            out.blank();
+            fastjson2Pojo.emitFallback(out, value, this);
+        }
     }
 
     private void emitPojo(
@@ -206,7 +215,9 @@ final class ReadEmitter {
                         value.type() +
                         "();");
 
-        if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
+        if (fastjson2Pojo != null && !value.properties().isEmpty()) {
+            fastjson2Pojo.emitProperties(out, value, this);
+        } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) {
                 out.line("int expectedNameIndex = 0;");
@@ -229,7 +240,9 @@ final class ReadEmitter {
             emitStringPojoProperty(out, value);
         }
 
-        out.endBlock();
+        if (fastjson2Pojo == null || value.properties().isEmpty()) {
+            out.endBlock();
+        }
         out.line("return value;");
     }
 
@@ -247,13 +260,7 @@ final class ReadEmitter {
             if (backend.usesExpectedNameMatch()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
-            out.line(
-                    assignment(
-                            property.access(),
-                            "value",
-                            readExpression(
-                                    property.value(),
-                                    "reader")));
+            emitPropertyRead(out, property, "value", "reader");
             out.line("break;");
             out.dedent();
         }
@@ -312,13 +319,33 @@ final class ReadEmitter {
         out.endBlock();
     }
 
-    private String matcherFieldName(BindingValue value) {
+    String matcherFieldName(BindingValue value) {
         return value.helperName() + "_names";
+    }
+
+    void emitPropertyRead(JavaWriter out, BindingProperty property,
+                          String owner, String reader) {
+        emitPropertyReadExpression(out, property, owner,
+                readExpression(property.value(), reader));
+    }
+
+    /** Reuses the normal POJO assignment semantics for backend-native reads. */
+    void emitPropertyReadExpression(JavaWriter out, BindingProperty property,
+                                    String owner, String expression) {
+        out.line(assignment(property.access(), owner, expression));
     }
 
     private void emitList(
             JavaWriter out,
             BindingValue value) {
+
+        // Raw List<Object> is already handled by each backend's raw reader.
+        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.List")
+                && context.types.isObject(value.elementValue().type())) {
+            out.line("Object raw = reader.readRawNode();");
+            out.line("return raw == null ? null : " + STREAMING_IO + ".castList(raw);");
+            return;
+        }
 
         emitArrayStart(out);
 
@@ -367,6 +394,15 @@ final class ReadEmitter {
     private void emitMap(
             JavaWriter out,
             BindingValue value) {
+
+        // Raw Map<String, Object> uses the same backend-independent strategy
+        // as List<Object>; typed containers keep their compiled element plan.
+        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
+                && context.types.isObject(value.mapValue().type())) {
+            out.line("Object raw = reader.readRawNode();");
+            out.line("return raw == null ? null : " + STREAMING_IO + ".castMap(raw);");
+            return;
+        }
 
         emitObjectStart(out);
 

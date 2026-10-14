@@ -164,6 +164,192 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2FusedRawNameMatchesSharedPrefixesAndPreservesFallback() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + "  public int createdAt, createdBy, createdOn, id;\n"
+                        + "  @NodeProperty(value=\"displayName\", aliases={\"legacy\"}) public String display;\n"
+                        + "  public int café;\n"
+                        + "  @NodeProperty(\"longPropertyNameTooLong\") public int longValue;\n"
+                        + "  public Nested nested;\n"
+                        + "  public static class Nested { public String name; public int count; }\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            Object binder = impl.getConstructor().newInstance();
+            String json = "{\"createdOn\":3,\"createdBy\":2,\"created\\u0041t\":1,"
+                    + "\"legacy\":\"alias\",\"id\" :4,\"café\":9,"
+                    + "\"longPropertyNameTooLong\":11,"
+                    + "\"nested\":{\"count\":6,\"name\":\"n\"},"
+                    + "\"unknown\":{\"k\":[1,2]}}";
+            Object[] values = {
+                    impl.getMethod("read", String.class).invoke(binder, json),
+                    impl.getMethod("readBytes", byte[].class).invoke(binder,
+                            (Object) json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            };
+            for (Object bean : values) {
+                assertEquals(1, beanType.getField("createdAt").getInt(bean));
+                assertEquals(2, beanType.getField("createdBy").getInt(bean));
+                assertEquals(3, beanType.getField("createdOn").getInt(bean));
+                assertEquals(4, beanType.getField("id").getInt(bean));
+                assertEquals(9, beanType.getField("café").getInt(bean));
+                assertEquals(11, beanType.getField("longValue").getInt(bean));
+                assertEquals("alias", beanType.getField("display").get(bean));
+                Object nested = beanType.getField("nested").get(bean);
+                assertEquals("n", nested.getClass().getField("name").get(nested));
+                assertEquals(6, nested.getClass().getField("count").getInt(nested));
+            }
+            Object nullResult = impl.getMethod("read", String.class).invoke(binder, "null");
+            assertNull(nullResult);
+        }
+    }
+
+    @Test
+    void fastjson2DirectScalarsKeepRawAndFallbackSemantics() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + " public long id;\n"
+                        + " public int count;\n"
+                        + " public boolean active;\n"
+                        + " public double score;\n"
+                        + " public float ratio;\n"
+                        + " public short shortValue;\n"
+                        + " public byte byteValue;\n"
+                        + " @NodeProperty(aliases={\"previousName\"}) public String name;\n"
+                        + " public Integer boxed;\n"
+                        + " public Child child;\n"
+                        + " public static class Child { public int id; public String label; }\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @ReadFrom Bean read(String source) throws java.io.IOException;\n"
+                        + " @ReadFrom Bean readBytes(byte[] source) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("value.id = raw.readInt64Value();"), generated);
+        assertTrue(generated.contains("value.name = raw.readString();"), generated);
+        assertTrue(generated.contains("value.count = raw.readInt32Value();"), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> type = Class.forName("fixture.Bean", true, loader);
+            Object binder = impl.getConstructor().newInstance();
+            String[] inputs = {
+                    "{\"id\":100,\"count\":5,\"active\":true,\"score\":2.5,"
+                            + "\"ratio\":1.25,\"shortValue\":8,\"byteValue\":3,"
+                            + "\"name\":\"raw\",\"boxed\":null,\"child\":{\"id\":4,\"label\":\"ok\"}}",
+                    "{\"previousName\":\"alias\",\"count\" : 5,\"id\":100,"
+                            + "\"active\":true,\"score\":2.5,\"ratio\":1.25,"
+                            + "\"shortValue\":8,\"byteValue\":3,"
+                            + "\"unknown\":{\"array\":[1,true,null]},"
+                            + "\"boxed\":null,\"child\":{\"id\":4,\"label\":\"ok\"}}",
+                    "{\"id\":100,\"count\":5,\"active\":true,\"score\":2.5,"
+                            + "\"ratio\":1.25,\"shortValue\":8,\"byteValue\":3,"
+                            + "\"name\":null,\"boxed\":null,\"child\":{\"id\":4,\"label\":\"ok\"}}"
+            };
+            for (int i = 0; i < inputs.length; i++) {
+                String input = inputs[i];
+                Object[] values = {
+                        impl.getMethod("read", String.class).invoke(binder, input),
+                        impl.getMethod("readBytes", byte[].class).invoke(binder,
+                                (Object) input.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                };
+                for (Object bean : values) {
+                    assertEquals(100L, type.getField("id").getLong(bean));
+                    assertEquals(5, type.getField("count").getInt(bean));
+                    assertTrue(type.getField("active").getBoolean(bean));
+                    assertEquals(2.5d, type.getField("score").getDouble(bean));
+                    assertEquals(1.25f, type.getField("ratio").getFloat(bean));
+                    assertEquals((short) 8, type.getField("shortValue").getShort(bean));
+                    assertEquals((byte) 3, type.getField("byteValue").getByte(bean));
+                    assertEquals(i == 0 ? "raw" : i == 1 ? "alias" : null,
+                            type.getField("name").get(bean));
+                    assertNull(type.getField("boxed").get(bean));
+                    Object child = type.getField("child").get(bean);
+                    assertEquals(4, child.getClass().getField("id").getInt(child));
+                    assertEquals("ok", child.getClass().getField("label").get(child));
+                }
+            }
+        }
+    }
+
+    @Test
+    void fastjson2FusedRawNameSupportsLengths2Through43() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        StringBuilder bean = new StringBuilder("package fixture;\npublic class Bean {\n");
+        StringBuilder json = new StringBuilder("{");
+        for (int length = 1; length <= 44; length++) {
+            // All names of length >= 4 share the same 4-byte raw prefix.
+            String name = "p" + "x".repeat(length - 1);
+            bean.append("  public int ").append(name).append(";\n");
+            if (length != 1) json.append(',');
+            json.append('"').append(name).append("\":").append(length);
+        }
+        bean.append("}\n");
+        json.append(",\"unknownExtra\":{\"nested\":[1,true,null]}}");
+        sources.put("fixture/Bean.java", bean.toString());
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;\n"
+                        + "}\n");
+
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        String generated = compiled.generatedSource("fixture/Binder_Impl.java");
+        for (int length = 2; length <= 43; length++) {
+            assertTrue(generated.contains("raw.nextIfName4Match" + length + "("),
+                    "Generated raw matcher missing for length " + length);
+        }
+        assertFalse(generated.contains("raw.nextIfName4Match44("));
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            Object binder = impl.getConstructor().newInstance();
+            String input = json.toString();
+            Object[] decoded = {
+                    impl.getMethod("read", String.class).invoke(binder, input),
+                    impl.getMethod("readBytes", byte[].class).invoke(binder,
+                            (Object) input.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            };
+            for (Object value : decoded) {
+                for (int length = 1; length <= 44; length++) {
+                    String name = "p" + "x".repeat(length - 1);
+                    assertEquals(length, beanType.getField(name).getInt(value),
+                            "Length " + length);
+                }
+            }
+        }
+    }
+
+    @Test
     void snakeRoundTripCompiledBinder() throws Exception {
         verifyBackend("SNAKE", true);
     }
