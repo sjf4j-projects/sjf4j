@@ -19,7 +19,7 @@ final class Fastjson2PojoReadEmitter {
 
     void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads) {
         out.line("com.alibaba.fastjson2.JSONReader raw = reader.rawReader();");
-        out.beginBlock("while (!reader.nextIfObjectEnd())");
+        out.beginBlock("while (!raw.nextIfObjectEnd())");
 
         Map<Integer, List<BindingProperty>> rawNames =
                 new LinkedHashMap<Integer, List<BindingProperty>>();
@@ -45,7 +45,12 @@ final class Fastjson2PojoReadEmitter {
                 out.indent();
                 for (BindingProperty property : entry.getValue()) {
                     out.beginBlock("if (" + rawMatchCall(property.name()) + ")");
-                    reads.emitPropertyRead(out, property, "value", "reader");
+                    String nativeRead = nativeScalarRead(property.value());
+                    if (nativeRead != null) {
+                        reads.emitPropertyReadExpression(out, property, "value", nativeRead);
+                    } else {
+                        reads.emitPropertyRead(out, property, "value", "reader");
+                    }
                     out.line("continue;");
                     out.endBlock();
                 }
@@ -85,6 +90,39 @@ final class Fastjson2PojoReadEmitter {
         out.dedent();
         out.endBlock();
         out.endBlock();
+    }
+
+    /**
+     * Experimental native scalar path. Keep nullable wrappers, enums, custom
+     * conversions, containers and fallback on the existing StreamingReader
+     * contract. Raw name matching in the enclosing loop guarantees a pending
+     * value; the wrapper peek cache is already clear at this point.
+     */
+    private static String nativeScalarRead(BindingValue value) {
+        if (value.kind() == BindingValue.Kind.STRING) {
+            return "raw.readString()";
+        }
+        if (!value.primitive()) {
+            return null;
+        }
+        switch (value.kind()) {
+            case BOOLEAN:
+                return "raw.readBoolValue()";
+            case BYTE:
+                return "raw.readInt8Value()";
+            case SHORT:
+                return "raw.readInt16Value()";
+            case INT:
+                return "raw.readInt32Value()";
+            case LONG:
+                return "raw.readInt64Value()";
+            case FLOAT:
+                return "raw.readFloatValue()";
+            case DOUBLE:
+                return "raw.readDoubleValue()";
+            default:
+                return null;
+        }
     }
 
     private static String fallbackMethod(BindingValue value) {

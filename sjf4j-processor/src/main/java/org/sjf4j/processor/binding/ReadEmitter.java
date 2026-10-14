@@ -325,13 +325,27 @@ final class ReadEmitter {
 
     void emitPropertyRead(JavaWriter out, BindingProperty property,
                           String owner, String reader) {
-        out.line(assignment(property.access(), owner,
-                readExpression(property.value(), reader)));
+        emitPropertyReadExpression(out, property, owner,
+                readExpression(property.value(), reader));
+    }
+
+    /** Reuses the normal POJO assignment semantics for backend-native reads. */
+    void emitPropertyReadExpression(JavaWriter out, BindingProperty property,
+                                    String owner, String expression) {
+        out.line(assignment(property.access(), owner, expression));
     }
 
     private void emitList(
             JavaWriter out,
             BindingValue value) {
+
+        // Raw List<Object> is already handled by each backend's raw reader.
+        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.List")
+                && context.types.isObject(value.elementValue().type())) {
+            out.line("Object raw = reader.readRawNode();");
+            out.line("return raw == null ? null : " + STREAMING_IO + ".castList(raw);");
+            return;
+        }
 
         emitArrayStart(out);
 
@@ -380,6 +394,15 @@ final class ReadEmitter {
     private void emitMap(
             JavaWriter out,
             BindingValue value) {
+
+        // Raw Map<String, Object> uses the same backend-independent strategy
+        // as List<Object>; typed containers keep their compiled element plan.
+        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
+                && context.types.isObject(value.mapValue().type())) {
+            out.line("Object raw = reader.readRawNode();");
+            out.line("return raw == null ? null : " + STREAMING_IO + ".castMap(raw);");
+            return;
+        }
 
         emitObjectStart(out);
 
