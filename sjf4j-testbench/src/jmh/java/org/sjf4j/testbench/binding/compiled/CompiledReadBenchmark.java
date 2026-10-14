@@ -257,6 +257,16 @@ public class CompiledReadBenchmark {
     }
 
     @Benchmark
+    public Object jackson2_pojo_reversed_string_runtime() {
+        return JACKSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
+    }
+
+    @Benchmark
+    public Object jackson2_pojo_reversed_utf8_runtime() {
+        return JACKSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
+    }
+
+    @Benchmark
     public Object jackson2_pojo_string_compiled() throws IOException {
         return JACKSON2_COMPILED.readPojo(JSON_DATA);
     }
