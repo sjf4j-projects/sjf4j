@@ -7,6 +7,7 @@ import org.sjf4j.node.NodeStream;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.IdxConsumer;
+import org.sjf4j.util.IdxPredicate;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -186,7 +187,7 @@ public class JsonArray extends JsonContainer {
         }
     }
 
-    public boolean anyMatch(BiPredicate<Integer, Object> predicate) {
+    public boolean anyMatch(IdxPredicate<Object> predicate) {
         if (dynamicList == null) return false;
         for (int i = 0; i < dynamicList.size(); i++) {
             if (predicate.test(i, dynamicList.get(i))) return true;

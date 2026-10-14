@@ -8,6 +8,7 @@ import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.IdxConsumer;
+import org.sjf4j.util.IdxPredicate;
 import org.sjf4j.util.Types;
 
 import java.util.Iterator;
@@ -128,7 +129,7 @@ public interface ExternalNode<N> {
     }
 
     /** Returns whether an array element matches. */
-    default boolean anyMatchInArray(N node, BiPredicate<Integer, Object> predicate) {
+    default boolean anyMatchInArray(N node, IdxPredicate<Object> predicate) {
         throw unsupported("anyMatchArray");
     }
 

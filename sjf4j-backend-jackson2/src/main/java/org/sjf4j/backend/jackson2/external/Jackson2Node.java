@@ -14,6 +14,7 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.IdxConsumer;
+import org.sjf4j.util.IdxPredicate;
 import org.sjf4j.util.Types;
 
 import java.util.AbstractSet;
@@ -131,7 +132,7 @@ public final class Jackson2Node implements ExternalNode<JsonNode> {
     }
 
     @Override
-    public boolean anyMatchInArray(JsonNode node, BiPredicate<Integer, Object> predicate) {
+    public boolean anyMatchInArray(JsonNode node, IdxPredicate<Object> predicate) {
         ArrayNode array = _array(node);
         for (int i = 0, size = array.size(); i < size; i++) {
             if (predicate.test(i, array.get(i))) return true;

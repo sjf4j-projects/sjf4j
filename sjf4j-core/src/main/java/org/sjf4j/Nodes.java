@@ -7,6 +7,7 @@ import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.meta.ContainerInfo;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.IdxConsumer;
+import org.sjf4j.util.IdxPredicate;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
@@ -385,6 +386,7 @@ public final class Nodes {
      * --------------------------------------------------------------
      */
 
+
     /**
      * Compares two values using OBNT semantics instead of Java type identity.
      * <p>
@@ -393,10 +395,24 @@ public final class Nodes {
      * compared by numeric value (not boxed type).
      */
     public static boolean equals(Object source, Object target) {
-        if (target == source) return true;
+        if (source == target) return true;
 
+        // Fast paths for ordinary JSON scalar values.
+        // Numeric equality must preserve cross-type semantics.
+        if (source instanceof Number && target instanceof Number) {
+            return Numbers.compare((Number) source, (Number) target) == 0;
+        }
+        if (source instanceof String && target instanceof String) {
+            return source.equals(target);
+        }
+        if (source instanceof Boolean && target instanceof Boolean) {
+            return source.equals(target);
+        }
+
+        // Generic OBNT dispatch, including external and mixed representations.
         JsonType jtSource = JsonType.of(source);
         JsonType jtTarget = JsonType.of(target);
+
         if (jtSource.isNull() || jtTarget.isNull()) {
             return jtSource.isNull() && jtTarget.isNull();
         }
@@ -415,8 +431,10 @@ public final class Nodes {
             });
         } else if (jtSource.isArray() && jtTarget.isArray()) {
             if (sizeInArray(source) != sizeInArray(target)) return false;
+
             Iterator<Object> itSource = iteratorInArray(source);
             Iterator<Object> itTarget = iteratorInArray(target);
+
             while (itSource.hasNext() && itTarget.hasNext()) {
                 Object subSource = itSource.next();
                 Object subTarget = itTarget.next();
@@ -430,39 +448,42 @@ public final class Nodes {
     }
 
     /**
-     * Computes a hash code aligned with {@link #equals(Object, Object)} OBNT semantics.
+     * Computes a hash code aligned with {@link #equals(Object, Object)}
+     * OBNT semantics.
      * <p>
      * Object nodes are hashed from readable key/value pairs (order-insensitive
      * for object members), while array nodes are hashed in iteration order.
      */
     public static int hash(Object node) {
         if (node == null) return 0;
-        JsonType jt = JsonType.of(node);
-        if (jt.isNull()) {
-            return 0;
-        } else if (jt.isNumber()) {
-            return Numbers.hash(toNumber(node));
-        } else if (jt.isString()) {
-            return toString(node).hashCode();
-        } else if (jt.isBoolean()) {
-            return toBoolean(node).hashCode();
-        } else if (jt.isObject()) {
-            final int[] hash = {1};
-            forEachObject(node, (k, v) -> {
-                // disorder
-                hash[0] += 31 * k.hashCode() + hash(v);
-            });
-            return hash[0];
-        } else if (jt.isArray()) {
-            final int[] hash = {1};
-            forEachArray(node, (i, v) -> {
-                hash[0] = 31 * hash[0] + hash(v);
-            });
-            return hash[0];
-        } else if (jt.isUnknown()) {
-            return node.hashCode();
+        if (node instanceof Number) return Numbers.hash((Number) node);
+        if (node instanceof String || node instanceof Boolean) return node.hashCode();
+
+        switch (JsonType.of(node)) {
+            case NULL:
+                return 0;
+            case NUMBER:
+            case INTEGER:
+                return Numbers.hash(toNumber(node));
+            case STRING:
+                return toString(node).hashCode();
+            case BOOLEAN:
+                return toBoolean(node).hashCode();
+            case OBJECT:
+                final int[] objectHash = {1};
+                forEachObject(node, (k, v) ->
+                        objectHash[0] += 31 * k.hashCode() + hash(v));
+                return objectHash[0];
+            case ARRAY:
+                final int[] arrayHash = {1};
+                forEachArray(node, (i, v) ->
+                        arrayHash[0] = 31 * arrayHash[0] + hash(v));
+                return arrayHash[0];
+            case UNKNOWN:
+                return node.hashCode();
+            default:
+                return 0;
         }
-        return 0;
     }
 
     /**
@@ -857,7 +878,7 @@ public final class Nodes {
     /**
      * Returns true if any element matches the predicate.
      */
-    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchInArray(Object node, IdxPredicate<Object> predicate) {
         return NodeWalker.anyMatchInArray(node, predicate);
     }
 

@@ -453,20 +453,61 @@ public final class Numbers {
         return new BigDecimal(number.toString()).stripTrailingZeros();
     }
 
+//    /**
+//     * Compares two numbers with cross-type numeric semantics.
+//     */
+//    public static int compare(Number source, Number target) {
+//        Asserts.notNull(source, "source");
+//        Asserts.notNull(target, "target");
+//        if (isIntegralType(source) && isIntegralType(target)) {
+//            if (source instanceof BigInteger || target instanceof BigInteger) {
+//                return toBigInteger(source).compareTo(toBigInteger(target));
+//            }
+//            return Long.compare(source.longValue(), target.longValue());
+//        }
+//        return toBigDecimal(source).compareTo(toBigDecimal(target));
+//    }
+
+
     /**
-     * Compares two numbers with cross-type numeric semantics.
+     * Compares two numbers using cross-type numeric semantics.
      */
     public static int compare(Number source, Number target) {
         Asserts.notNull(source, "source");
         Asserts.notNull(target, "target");
+
         if (isIntegralType(source) && isIntegralType(target)) {
             if (source instanceof BigInteger || target instanceof BigInteger) {
                 return toBigInteger(source).compareTo(toBigInteger(target));
             }
             return Long.compare(source.longValue(), target.longValue());
         }
+
+        boolean sourceFloating = isFloatingType(source);
+        boolean targetFloating = isFloatingType(target);
+        if (sourceFloating || targetFloating) {
+            boolean canCompareAsDouble = sourceFloating && targetFloating;
+
+            if (!canCompareAsDouble) {
+                Number integer = sourceFloating ? target : source;
+                if (isIntegralType(integer) && !(integer instanceof BigInteger)) {
+                    long value = integer.longValue();
+                    canCompareAsDouble = value >= -(1L << 53) && value <= (1L << 53);
+                }
+            }
+
+            if (canCompareAsDouble) {
+                double a = source.doubleValue();
+                double b = target.doubleValue();
+                if (Double.isFinite(a) && Double.isFinite(b)) {
+                    return a < b ? -1 : a > b ? 1 : 0; // Don't replace with 'Double.compare()'
+                }
+            }
+        }
+
         return toBigDecimal(source).compareTo(toBigDecimal(target));
     }
+
 
     /**
      * Computes a stable numeric hash across number implementations.

@@ -2,5 +2,5 @@ package org.sjf4j.util;
 
 @FunctionalInterface
 public interface IdxConsumer<T> {
-    void accept(int index, T value);
+    void accept(int idx, T value);
 }

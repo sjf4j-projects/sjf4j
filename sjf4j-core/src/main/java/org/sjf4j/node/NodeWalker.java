@@ -12,6 +12,7 @@ import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.IdxConsumer;
+import org.sjf4j.util.IdxPredicate;
 import org.sjf4j.util.Types;
 
 import java.lang.reflect.Array;
@@ -233,7 +234,7 @@ public class NodeWalker {
      * Returns true if any element matches the predicate.
      */
     @SuppressWarnings("unchecked")
-    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchInArray(Object node, IdxPredicate<Object> predicate) {
         Asserts.notNull(node, "node");
         Asserts.notNull(predicate, "predicate");
         if (node instanceof List) {
