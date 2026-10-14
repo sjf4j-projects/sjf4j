@@ -164,6 +164,8 @@ public class CompiledReadBenchmark {
         checkMap("jackson2 compiled JSON_UTF8", JACKSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("jackson2 runtime JSON_UTF8", JACKSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
         checkPojo("jackson3 compiled JSON_DATA", expected, JACKSON3_COMPILED.readPojo(JSON_DATA));
+        checkPojo("jackson3 compiled reversed String", expected, JACKSON3_COMPILED.readPojo(JSON_REVERSED));
+        checkPojo("jackson3 compiled reversed UTF-8", expected, JACKSON3_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8));
         checkPojo("jackson3 runtime JSON_DATA", expected, JACKSON3_RUNTIME.readNode(JSON_DATA, User.class));
         checkPojo("jackson3 compiled JSON_UTF8", expected, JACKSON3_COMPILED.readPojoUtf8(JSON_UTF8));
         checkPojo("jackson3 runtime JSON_UTF8", expected, JACKSON3_RUNTIME.readNode(JSON_UTF8, User.class));
@@ -345,6 +347,26 @@ public class CompiledReadBenchmark {
     }
 
     // ----- JACKSON3 -----
+    @Benchmark
+    public Object jackson3_pojo_reversed_string_compiled() throws IOException {
+        return JACKSON3_COMPILED.readPojo(JSON_REVERSED);
+    }
+
+    @Benchmark
+    public Object jackson3_pojo_reversed_string_runtime() {
+        return JACKSON3_RUNTIME.readNode(JSON_REVERSED, User.class);
+    }
+
+    @Benchmark
+    public Object jackson3_pojo_reversed_utf8_compiled() throws IOException {
+        return JACKSON3_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
+    }
+
+    @Benchmark
+    public Object jackson3_pojo_reversed_utf8_runtime() {
+        return JACKSON3_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
+    }
+
     @Benchmark
     public Object jackson3_pojo_string_compiled() throws IOException {
         return JACKSON3_COMPILED.readPojo(JSON_DATA);
