@@ -1,0 +1,37 @@
+name: Jackson3 POJO ordered vs reversed JMH
+on:
+  push:
+    branches:
+      - perf/compiled-jackson-pojo-read
+  workflow_dispatch:
+jobs:
+  jackson3-pojo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Benchmark Jackson3 POJO
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledReadBenchmark.jackson3_pojo_.*' \
+            -wi 5 -i 10 -w 500ms -r 500ms -f 2 -prof gc \
+            -rf json -rff jackson3-pojo.json | tee jackson3-pojo.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jackson3-pojo-jmh
+          path: |
+            jackson3-pojo.json
+            jackson3-pojo.log
+          if-no-files-found: ignore
