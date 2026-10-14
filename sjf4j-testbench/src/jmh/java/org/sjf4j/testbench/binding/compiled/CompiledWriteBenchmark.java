@@ -21,6 +21,7 @@ import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.binding.handwritten.Fastjson2HandPojoStringedWriter;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
@@ -429,6 +430,14 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_fastjson2_pojo_string_native() throws Exception {
         return JSON.toJSONString(USER, FASTJSON2_NATIVE_CONTEXT);
+    }
+
+    @Benchmark
+    public byte[] json_fastjson2_pojo_utf8_handwritten_streaming() {
+        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
+            Fastjson2HandPojoStringedWriter.writeUser(writer, USER);
+            return writer.getBytes();
+        }
     }
 
     @Benchmark
