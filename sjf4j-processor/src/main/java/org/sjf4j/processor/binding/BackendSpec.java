@@ -111,9 +111,8 @@ final class BackendSpec {
     }
 
     boolean usesExpectedNameMatch() {
-        // Experimental ablation: compare Jackson2 compiled POJO reads
-        // without the expected-name hint against the existing main branch.
-        return backend == Backend.FASTJSON2;
+        return backend == Backend.JACKSON2
+                || backend == Backend.FASTJSON2;
     }
 
 }
