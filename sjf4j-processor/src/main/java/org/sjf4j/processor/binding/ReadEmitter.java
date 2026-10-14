@@ -339,6 +339,14 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
+        // Raw List<Object> is already handled by each backend's raw reader.
+        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.List")
+                && context.types.isObject(value.elementValue().type())) {
+            out.line("Object raw = reader.readRawNode();");
+            out.line("return raw == null ? null : " + STREAMING_IO + ".castList(raw);");
+            return;
+        }
+
         emitArrayStart(out);
 
         out.line(
@@ -387,15 +395,12 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
-        // Dynamic raw Map values have no statically known fields.
-        // Delegate traversal to the backend raw reader; typed maps retain
-        // their compiled element plan.
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
-                && context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
-                && value.mapValue().kind() == BindingValue.Kind.RUNTIME
+        // Raw Map<String, Object> uses the same backend-independent strategy
+        // as List<Object>; typed containers keep their compiled element plan.
+        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
                 && context.types.isObject(value.mapValue().type())) {
             out.line("Object raw = reader.readRawNode();");
-            out.line("return raw == null ? null : org.sjf4j.binding.StreamingIO.castMap(raw);");
+            out.line("return raw == null ? null : " + STREAMING_IO + ".castMap(raw);");
             return;
         }
 
