@@ -157,6 +157,16 @@ final class WriteEmitter {
             String source,
             NameAllocator names) {
 
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+            String writer = names.newName("writer");
+            out.beginBlock("try (" + backend.writerType() + " " + writer
+                    + " = this.binder.createWriterUtf8())");
+            emitWriteBody(out, value, source, writer);
+            out.line("return " + writer + ".toBytes();");
+            out.endBlock();
+            return;
+        }
+
         String output =
                 names.newName("output");
 
