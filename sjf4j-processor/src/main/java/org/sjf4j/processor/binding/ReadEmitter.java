@@ -231,6 +231,12 @@ final class ReadEmitter {
                                     : "") +
                             ")) != " + NAME_MATCHER + ".OBJECT_END)");
 
+            if (backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2) {
+                // Keep the ordered-name hint until the first mismatch.
+                // A missing, unknown, or out-of-order name switches the rest
+                // of this object to Jackson's normal name lookup.
+                out.line("expectedNameIndex = nameIndex == expectedNameIndex ? nameIndex + 1 : -1;");
+            }
             emitMatchedPojoProperty(out, value);
         } else {
             out.line("String name;");
@@ -257,7 +263,8 @@ final class ReadEmitter {
             int propertyIndex = index++;
             out.line("case " + propertyIndex + ":");
             out.indent();
-            if (backend.usesExpectedNameMatch()) {
+            if (backend.usesExpectedNameMatch()
+                    && backend.backend() != org.sjf4j.annotation.binding.Backend.JACKSON2) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
             emitPropertyRead(out, property, "value", "reader");
