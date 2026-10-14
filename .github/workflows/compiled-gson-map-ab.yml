@@ -1,0 +1,49 @@
+name: Gson Map raw-vs-loop ABBA
+on:
+  push:
+    branches:
+      - perf/gson-map-raw-ab
+  workflow_dispatch:
+jobs:
+  gson-map-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compare raw and generated-loop map binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=73594692763333de3a3273bfef2fb2c4da177f8f
+          LOOP=569fd97b26f025c9b2e6a836ba7b2847484f1f4c
+          round=0
+          for variant in raw loop loop raw; do
+            round=$((round + 1))
+            if [[ "$variant" == raw ]]; then
+              git checkout --detach "$BASE"
+            else
+              git checkout --detach "$LOOP"
+            fi
+            ./gradlew :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon --rerun-tasks
+            java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+              '.*CompiledReadBenchmark.gson_map_(string|utf8)_(compiled|runtime|native|native_reader)' \
+              -wi 5 -i 10 -w 500ms -r 500ms -f 2 -prof gc \
+              -rf json -rff "gson-$variant-$round.json" | tee "gson-$variant-$round.log"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gson-map-ab
+          path: |
+            gson-*.json
+            gson-*.log
+          if-no-files-found: ignore
