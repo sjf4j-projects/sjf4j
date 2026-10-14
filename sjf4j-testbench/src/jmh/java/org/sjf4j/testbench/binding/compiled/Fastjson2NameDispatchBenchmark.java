@@ -26,6 +26,7 @@ public class Fastjson2NameDispatchBenchmark {
     private static final byte[][] RAW = new byte[COUNT][];
     private static final Fastjson2CompiledName[] COMPILED = new Fastjson2CompiledName[COUNT];
     private static final Fastjson2Binder BINDER = new Fastjson2Binder();
+    private static final JSONWriter.Context CONTEXT = JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
 
     static {
         for (int i = 0; i < COUNT; i++) {
@@ -37,7 +38,7 @@ public class Fastjson2NameDispatchBenchmark {
 
     @Benchmark
     public byte[] native_raw_name() {
-        try (JSONWriter w = JSONWriter.ofUTF8(JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls))) {
+        try (JSONWriter w = JSONWriter.ofUTF8(CONTEXT)) {
             w.startObject();
             for (int i = 0; i < COUNT; i++) {
                 if (i != 0) w.writeComma();
