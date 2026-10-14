@@ -12,6 +12,9 @@ import org.sjf4j.node.NodeMapper;
  * <p>
  * Implementations are lightweight schema models. Runtime validation uses the
  * compiled {@link SchemaPlan} returned by {@link #createPlan(SchemaRegistry)}.
+ * A schema may be boolean ({@link BooleanSchema}) or object-shaped
+ * ({@link ObjectSchema}); invalid schema content fails during parsing or
+ * compilation rather than yielding a validation result for an instance.
  */
 @OneOf({
         @OneOf.Mapping(BooleanSchema.class),

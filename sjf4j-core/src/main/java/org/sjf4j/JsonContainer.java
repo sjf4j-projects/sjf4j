@@ -54,6 +54,8 @@ public abstract class JsonContainer {
 
     /**
      * Structurally converts this container with {@link NodeMapper}.
+     * When {@code deepCopy} is true, supported nested structures are copied
+     * recursively; otherwise compatible values may be reused.
      */
     @SuppressWarnings("unchecked")
     public <T> T toNode(Class<T> clazz, boolean deepCopy) {
@@ -63,6 +65,8 @@ public abstract class JsonContainer {
 
     /**
      * Converts this container to its raw JSON-compatible representation.
+     * Object and array nodes become maps and lists respectively; value bindings
+     * are encoded using their configured codecs.
      */
     public Object toRaw() {
         return NodeMapper.convertToRaw(this, RuntimeContext.EMPTY);

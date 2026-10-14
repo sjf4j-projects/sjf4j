@@ -23,6 +23,10 @@ import org.yaml.snakeyaml.resolver.Resolver;
 import java.io.IOException;
 import java.io.Writer;
 
+/**
+ * SnakeYAML event writer for JSON-semantic nodes. String scalars that would
+ * otherwise resolve to another YAML type are quoted to preserve their type.
+ */
 public final class SnakeWriter extends StreamingWriter {
 
     private static final Resolver RESOLVER = new Resolver();
@@ -35,6 +39,11 @@ public final class SnakeWriter extends StreamingWriter {
     private final Writer output;
     private final DumperOptions options;
 
+    /**
+     * Creates an event writer using the supplied output and emitter options.
+     * @param output the character output stream
+     * @param options the SnakeYAML emitter options
+     */
     public SnakeWriter(Writer output, DumperOptions options) {
         super(Backend.SNAKE);
         this.output = Asserts.notNull(output, "output");

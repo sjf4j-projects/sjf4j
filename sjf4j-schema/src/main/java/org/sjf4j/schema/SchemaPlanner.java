@@ -18,7 +18,9 @@ import java.util.Objects;
  * Compilation helpers that translate schema keywords into evaluator pipelines.
  * <p>
  * These utilities normalize subschema nodes, resolve references, and build the
- * ordered evaluator list executed at validation time.
+ * ordered evaluator list executed at validation time. Planning errors throw
+ * {@link SchemaException} with a keyword location and schema resource URI;
+ * ordinary instance mismatches are reported later as validation messages.
  */
 public final class SchemaPlanner {
 
@@ -466,7 +468,7 @@ public final class SchemaPlanner {
         PathSegment cps = new PathSegment.Name(ps, key);
         if (!JsonType.of(objectNode).isObject()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
-                    "invalid schema node: expected JSON object",
+                    "invalid schema node: expected JSON object, but found '" + objectNode.getClass().getName() + "'",
                     cps, baseUri));
         }
 
@@ -498,7 +500,7 @@ public final class SchemaPlanner {
         PathSegment cps = new PathSegment.Name(ps, key);
         if (!JsonType.of(arrayNode).isArray()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
-                    "invalid schema node: expected JSON array",
+                    "invalid schema node: expected JSON array, but found '" + arrayNode.getClass().getName() + "'",
                     cps, baseUri));
         }
         int size = Nodes.sizeInArray(arrayNode);

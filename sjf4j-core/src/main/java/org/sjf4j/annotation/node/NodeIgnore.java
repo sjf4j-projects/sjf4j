@@ -11,8 +11,10 @@ import java.lang.annotation.Target;
  *     <li>On a type, any property referencing this type is excluded from discovery
  *         (equivalent to Jackson's {@code @JsonIgnoreType}).</li>
  *     <li>On a field, that field source does not participate.</li>
- *     <li>On a getter, no bean reader is created from that getter.</li>
- *     <li>On a setter, no bean writer is created from that setter.</li>
+ *     <li>On a getter, that getter is excluded from reading a Java property
+ *         for serialization or structural access.</li>
+ *     <li>On a setter, that setter is excluded from writing a Java property
+ *         during deserialization or structural mutation.</li>
  * </ul>
  */
 @Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})

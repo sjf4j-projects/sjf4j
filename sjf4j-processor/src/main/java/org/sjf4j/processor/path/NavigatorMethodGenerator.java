@@ -473,8 +473,8 @@ public final class NavigatorMethodGenerator {
             error(
                     method,
                     generated,
-                    "Invalid JSON Path value: " +
-                            e.getMessage());
+                    "Invalid JSON Path value: " + e.getMessage() +
+                            " (expression '" + expression + "')");
             return null;
         }
 
@@ -482,7 +482,7 @@ public final class NavigatorMethodGenerator {
             error(
                     method,
                     generated,
-                    "Invalid JSON Path value: requires a non-root path");
+                    "Invalid JSON Path value: requires a non-root path, but was '" + expression + "'");
             return null;
         }
 

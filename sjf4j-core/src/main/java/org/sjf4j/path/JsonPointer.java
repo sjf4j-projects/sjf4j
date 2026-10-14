@@ -40,7 +40,8 @@ public class JsonPointer extends JsonPath {
     /**
      * Parses the supported JSON Pointer subset. A {@code null} expression maps
      * to {@code null}; the empty string denotes root; every non-root expression
-     * must start with {@code /}.
+     * must start with {@code /}. Unlike {@link JsonPath#parse(String)}, this
+     * method does not trim the expression, since whitespace can be part of a token.
      */
     @RawToValue
     public static JsonPointer parse(String expr) {
@@ -85,7 +86,8 @@ public class JsonPointer extends JsonPath {
     }
 
     /**
-     * Returns child pointer with one array index segment appended.
+     * Returns a child pointer with one array index segment appended. The index
+     * is not validated here; parsed JSON Pointers recognize nonnegative indexes.
      */
     public JsonPointer childIndex(int index) {
         PathSegment[] childSegs = Arrays.copyOf(segments, segments.length + 1);

@@ -49,6 +49,11 @@ import java.util.function.Function;
  * copying, and container access for {@link JsonObject}, {@link JsonArray}, and
  * plain {@link Map}/{@link List} values. Backend-native or external tree
  * representations are supported only by individual operations where documented.
+ * <p>
+ * Conversion methods prefixed with {@code to} use strict scalar semantics;
+ * methods prefixed with {@code as} allow scalar coercion where supported.
+ * Both return {@code null} for a null input, but incompatible non-null values
+ * can still throw rather than silently becoming {@code null}.
  */
 public final class Nodes {
 
@@ -299,7 +304,8 @@ public final class Nodes {
     }
 
     /**
-     * Converts a node to typed Map.
+     * Converts object entries to the requested value type. Unlike
+     * {@link #toMap(Object)}, this may convert entry values.
      */
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
         return NodeMapper.toMap(node, valueClazz, RuntimeContext.EMPTY);
@@ -330,7 +336,8 @@ public final class Nodes {
     }
 
     /**
-     * Converts a node to typed List.
+     * Converts array elements to the requested element type. Unlike
+     * {@link #toList(Object)}, this may convert elements.
      */
     public static <T> List<T> toList(Object node, Class<T> elementClazz) {
         return NodeMapper.toList(node, elementClazz, RuntimeContext.EMPTY);
@@ -364,6 +371,10 @@ public final class Nodes {
         return NodeMapper.toSet(node, elementClazz, RuntimeContext.EMPTY);
     }
 
+    /**
+     * Adapts a node to the requested class using strict scalar conversion.
+     * Compatible values may be returned without copying.
+     */
     public static <T> T to(Object node, Class<T> clazz) {
         return NodeMapper.to(node, clazz, RuntimeContext.EMPTY);
     }
@@ -371,9 +382,10 @@ public final class Nodes {
     /**
      * Converts a node to target type using lenient conversion.
      * <p>
-     * Lenient mode allows cross-type coercion when possible (for example string
-     * to number/boolean). Failed coercions generally yield {@code null} in the
-     * lower-level converters.
+     * Lenient mode allows cross-type scalar coercion when possible (for example
+     * string to number/boolean). It does not make nested structural mapping
+     * lenient; an invalid enum may return {@code null}, while other invalid
+     * conversions can throw.
      */
     public static <T> T as(Object node, Class<T> clazz) {
         return NodeMapper.as(node, clazz, RuntimeContext.EMPTY);

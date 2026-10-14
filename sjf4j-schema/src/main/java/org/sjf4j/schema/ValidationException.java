@@ -10,8 +10,8 @@ import java.util.Objects;
  * <p>
  * Thrown by convenience APIs such as {@link SchemaPlan#requireValid(Object)}
  * and {@link SchemaValidator#requireValid(Object)}.
- * The exception message is a compact summary of the last validation message,
- * which now includes both instance and keyword JSON Pointer paths when present.
+ * The exception message summarizes the error count and the first error;
+ * the full result remains available through {@link #getResult()}.
  */
 public class ValidationException extends SchemaException {
     private final ValidationResult result;
@@ -28,9 +28,15 @@ public class ValidationException extends SchemaException {
      * Builds concise exception message from result state.
      */
     private static String buildMessage(ValidationResult result) {
-        ValidationMessage first = result.getMessages().isEmpty() ? null : result.getMessages().get(0);
-        if (first == null) return "Validation failed with " + result.count() + " error(s)";
-        return "Validation failed with " + result.count() + " error(s); first: " + first;
+        ValidationMessage first = null;
+        int errors = 0;
+        for (ValidationMessage message : result.getMessages()) {
+            if (message.getSeverity() != ValidationMessage.Severity.ERROR) continue;
+            if (first == null) first = message;
+            errors++;
+        }
+        if (first == null) return "Validation failed with 0 error(s)";
+        return "Validation failed with " + errors + " error(s); first: " + first;
     }
 
     /**

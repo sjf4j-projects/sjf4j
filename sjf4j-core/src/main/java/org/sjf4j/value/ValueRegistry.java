@@ -94,6 +94,8 @@ public final class ValueRegistry {
      * The raw class must be a fixed supported type: String, Number, Boolean,
      * Map, or List. A JSON null is a runtime value and is not represented by
      * a raw class.
+     *
+     * @param forceDefault whether to replace the current default when a codec is already registered
      */
     public static void register(ValueInfo valueInfo, boolean forceDefault) {
         Asserts.notNull(valueInfo, "nodeValueInfo");
@@ -129,6 +131,9 @@ public final class ValueRegistry {
      * The raw class must be a fixed supported type: String, Number, Boolean,
      * Map, or List. A JSON null is a runtime value and is not represented by
      * a raw class.
+     *
+     * @param valueFormat the named format, or {@code null} for the default format
+     * @param forceDefault whether to replace the current default when a codec is already registered
      */
     public static <N, R> void registerByCodec(ValueCodec<N, R> codec, String valueFormat, boolean forceDefault) {
         Asserts.notNull(codec, "codec");
@@ -143,8 +148,8 @@ public final class ValueRegistry {
     private static void validateRegistration(ValueInfo valueInfo) {
         Class<?> rawClazz = Asserts.notNull(valueInfo.rawClazz, "rawClazz");
         if (rawClazz == Object.class || !NodeKind.plainOf(rawClazz).isRaw()) {
-            throw new BindingException("invalid raw type in ValueInfo: " + rawClazz.getName() +
-                    ". The raw type must be one of String, Number, Boolean, Map, or List.");
+            throw new BindingException("invalid ValueCodec raw type '" + rawClazz.getName() +
+                    "': expected a supported String, Number, Boolean, Map, or List type");
         }
 
         Class<?> valueClazz = Asserts.notNull(valueInfo.valueClazz, "valueClazz");
@@ -185,6 +190,11 @@ public final class ValueRegistry {
 
 
 
+    /**
+     * Analyzes {@code @NodeValue} conversion methods on a class, returning
+     * {@code null} if it is not annotated. Invalid declarations fail with
+     * {@link BindingException}.
+     */
     public static ValueInfo analyzeByAnnotation(Class<?> clazz) {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
@@ -279,7 +289,8 @@ public final class ValueRegistry {
         if (!NodeKind.plainOf(valueToRawReturnBoxed).isRaw())
             throw new BindingException("@" + ValueToRaw.class.getName() + " method return invalid type " +
                     valueToRawReturnBoxed.getName() + " in " + clazz.getName() +
-                    ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
+                    ". The return type must be a supported String, Number, Boolean, Map, or List type; " +
+                    "JSON null is a value, not a declared raw type.");
 
         if (rawToValueHandle == null)
             throw new BindingException("missing @" + RawToValue.class.getName() + " method in " + clazz.getName());

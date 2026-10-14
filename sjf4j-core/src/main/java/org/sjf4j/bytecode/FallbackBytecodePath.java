@@ -22,6 +22,11 @@ public class FallbackBytecodePath<R, V> implements BytecodePath<R, V> {
     protected final Class<V> valueClazz;
 
 
+    /**
+     * Creates a delegating path accessor without generating bytecode.
+     * The value class is used by typed reads; writes follow {@link JsonPath}
+     * behavior for the underlying object graph.
+     */
     public FallbackBytecodePath(JsonPath path, Class<R> rootClazz, Class<V> valueClazz) {
         this.path = path;
         this.rootClazz = rootClazz;

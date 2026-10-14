@@ -18,7 +18,11 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Base streaming binding for reading and writing structured data.
+ * Base streaming binding for reading and writing one structured document.
+ * String and byte-array read helpers close their internally created readers;
+ * stream and {@link Reader} inputs remain owned by the caller. Writes flush
+ * caller-supplied outputs but do not close them. Byte streams use UTF-8 unless
+ * a backend overrides the corresponding reader or writer factory.
  */
 public abstract class Binder<R extends StreamingReader, W extends StreamingWriter> {
 
@@ -78,7 +82,7 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read node as '" + type.getTypeName() + "'", e);
         }
     }
 
@@ -97,7 +101,7 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read node as '" + type.getTypeName() + "'", e);
         }
     }
 
@@ -115,7 +119,7 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read node as '" + type.getTypeName() + "'", e);
         }
     }
 
@@ -133,7 +137,7 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read node as '" + type.getTypeName() + "'", e);
         }
     }
 

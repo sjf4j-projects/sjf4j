@@ -7,18 +7,24 @@ import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
-/** Service provider for the Jackson 2 JSON binder. */
+/**
+ * Service provider for Jackson 2 JSON binding, selected below Jackson 3 by
+ * default. {@link #of(JsonFactory)} reuses and configures the supplied factory.
+ */
 public final class Jackson2BinderProvider implements BinderProvider {
 
     private static final String JSON_FACTORY_TYPE = "com.fasterxml.jackson.core.JsonFactory";
     private static final boolean AVAILABLE = BinderProvider.isClassAvailable(
             JSON_FACTORY_TYPE, Jackson2BinderProvider.class.getClassLoader());
 
+    /** Creates a discoverable provider with a default Jackson 2 factory. */
     public Jackson2BinderProvider() {
     }
 
     /**
      * Creates a provider that uses {@code factory} for every binder it creates.
+     * @param factory the shared Jackson 2 factory, configured in place
+     * @return a JSON binder provider using this factory
      */
     public static BinderProvider of(JsonFactory factory) {
         JsonFactory checkedFactory = Asserts.notNull(factory, "factory");

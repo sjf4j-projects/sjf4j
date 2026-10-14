@@ -47,12 +47,15 @@ public final class InstancedNode {
         this.converted = converted;
     }
 
+    /** Returns the representation evaluated by schema keywords. */
     public Object node() {
         return node;
     }
+    /** Returns the JSON-semantic shape of the evaluated representation. */
     public JsonType jsonType() {
         return jsonType;
     }
+    /** Returns whether a value binding encoded the domain node into raw OBNT. */
     public boolean converted() {
         return converted;
     }

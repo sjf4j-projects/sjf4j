@@ -22,6 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Invoked getters, value bindings, and user extensions can have side effects.
  * Nested {@code @NodeValue} properties are encoded by their configured value
  * binding before evaluation.
+ * Unlike {@link SchemaPlan#validate(Object)}, this facade uses fail-fast
+ * validation and strict format assertions by default.
  */
 public final class SchemaValidator {
     private static final String SCHEMA_FILE_SUFFIX_2 = ".json";
@@ -68,6 +70,9 @@ public final class SchemaValidator {
     /**
      * Validates an annotated POJO and throws when its first resolved plan fails.
      * Null and a hierarchy with no {@link ValidJsonSchema} annotation are accepted.
+     *
+     * @throws ValidationException if an annotated schema rejects the instance
+     * @throws SchemaException if a schema cannot be loaded or compiled
      */
     public void requireValid(Object pojo) {
         ValidationResult result = validate(pojo);
@@ -86,6 +91,9 @@ public final class SchemaValidator {
      * The framework does not write the POJO, but invoked getters, value bindings,
      * and user extensions can have side effects. Nested {@code @NodeValue}
      * properties are encoded before validation.
+     *
+     * @return a success result or the first failing plan's fail-fast result
+     * @throws SchemaException if a schema cannot be loaded or compiled
      */
     public ValidationResult validate(Object pojo) {
         if (pojo == null) return ValidationResult.SUCCESS;
@@ -108,7 +116,8 @@ public final class SchemaValidator {
      * Preloads and compiles schemas by relative references.
      * <p>
      * References are resolved against validator base URI. Returns {@code null}
-     * when no schema can be loaded from the resolved location.
+     * when no schema can be loaded from the resolved location. An unsupported
+     * URI scheme or invalid schema raises {@link SchemaException}.
      */
     public SchemaPlan load(String ref) {
         Asserts.notNull(ref, "ref");
@@ -164,7 +173,8 @@ public final class SchemaValidator {
             URI refUri = baseDirUri.resolve(ref);
             SchemaPlan plan = _registerByRef(refUri);
             if (plan == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                    "failed to load schema by ref uri", PathSegment.Root.INSTANCE, refUri));
+                    "schema referenced by @ValidJsonSchema.ref on '" + clazz.getName() + "' was not found",
+                    PathSegment.Root.INSTANCE, refUri));
             return plan;
         }
 

@@ -110,6 +110,10 @@ public class PojoInfo {
     }
 
 
+    /**
+     * Returns a read-only key view of declared readable property names.
+     * Alias names are excluded.
+     */
     public Set<String> readablePropertyNameSet() {
         if (readableProperties.length == 0) {
             return Collections.emptySet();
@@ -153,6 +157,10 @@ public class PojoInfo {
         };
     }
 
+    /**
+     * Returns a declared property only when {@code key} is its primary name;
+     * aliases accepted during binding are excluded from structural access.
+     */
     public PropertyInfo getPropertyNoAlias(String key) {
         PropertyInfo propertyInfo = propertyLookup.get(key);
         if (propertyInfo != null && (propertyInfo.alias.length == 0 || propertyInfo.name.equals(key))) {
@@ -161,6 +169,7 @@ public class PojoInfo {
         return null;
     }
 
+    /** Returns the lazily created, reusable cache for the given backend. */
     public BackendCache backendCache(Backend backend) {
         int index = backend.ordinal();
         BackendCache cache = backendCache[index];

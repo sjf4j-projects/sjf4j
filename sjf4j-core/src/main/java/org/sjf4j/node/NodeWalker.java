@@ -31,6 +31,11 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * Structural access and traversal over native and supported external OBNT
+ * representations. Readable properties participate in object views; indexed
+ * mutations depend on whether an array representation supports them.
+ */
 public class NodeWalker {
 
 

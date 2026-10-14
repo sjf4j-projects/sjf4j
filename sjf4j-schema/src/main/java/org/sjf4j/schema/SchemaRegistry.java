@@ -19,6 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * inside each compiled plan. The implementation is safe for concurrent access
  * at the map level, but root schema objects stored in the registry still carry
  * mutable retrieval-URI metadata.
+ * Lookup first checks local mappings and then the built-in global meta-schemas;
+ * it does not fetch arbitrary remote resources.
  */
 public class SchemaRegistry {
 
@@ -29,7 +31,8 @@ public class SchemaRegistry {
 
 
     /**
-     * Creates an empty schema registry.
+     * Creates a registry with the supplied default dialect. Built-in global
+     * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
         this.byIdPlans = new ConcurrentHashMap<>();
@@ -37,11 +40,13 @@ public class SchemaRegistry {
         this.defaultDialect = defaultDialect;
     }
 
+    /** Creates a registry defaulting to draft 2020-12. */
     public SchemaRegistry() {
         this(SchemaDialect.DRAFT_2020_12);
     }
 
 
+    /** Returns the dialect used when a schema does not declare a known {@code $schema}. */
     public SchemaDialect getDefaultDialect() {
         return defaultDialect;
     }
@@ -50,7 +55,8 @@ public class SchemaRegistry {
      * Indexes a root schema by its declared canonical URI or retrieval URI.
      * <p>
      * For object schemas this may reuse or populate the schema's root
-     * retrieval-URI metadata before the schema is compiled.
+     * retrieval-URI metadata before the schema is compiled. A boolean schema
+     * has no resource URI and is not indexed.
      */
     public void index(JsonSchema schema) {
         index(null, schema);
@@ -63,6 +69,9 @@ public class SchemaRegistry {
      * delayed compilation and order-independent loading of referenced schemas.
      * The provided retrieval URI is written back to the root {@link ObjectSchema}
      * so later compilation can resolve a relative root {@code $id}.
+     *
+     * @throws SchemaException if no URI is available, the URI is not absolute,
+     *                         or it conflicts with another resource
      */
     public void index(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
@@ -78,7 +87,7 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: no $id or retrievalUri",
+                    "missing root schema uri: specify $id or a retrieval URI",
                     PathSegment.Root.INSTANCE, null));
         }
         _putSchema(canonicalUri, os);
@@ -96,6 +105,7 @@ public class SchemaRegistry {
      * Unlike {@link #index(URI, JsonSchema)}, duplicate target mappings are a
      * no-op instead of a conflict. The check is local to this registry; global
      * built-in schemas remain fallback-only and do not block local indexing.
+     * A boolean schema is not indexed.
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
@@ -111,7 +121,7 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: no $id or retrievalUri",
+                    "missing root schema uri: specify $id or a retrieval URI",
                     PathSegment.Root.INSTANCE, null));
         }
 
@@ -128,6 +138,7 @@ public class SchemaRegistry {
 
     /**
      * Returns the compiled root plan for a schema, indexing it first if needed.
+     * A boolean schema produces an independent plan without an indexed URI.
      */
     public SchemaPlan register(JsonSchema schema) {
         return register(null, schema);
@@ -135,6 +146,7 @@ public class SchemaRegistry {
 
     /**
      * Indexes a root schema if needed and returns its compiled root plan.
+     * A missing or relative root URI without a retrieval base is rejected.
      */
     public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
@@ -149,7 +161,7 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: no $id or retrievalUri",
+                    "missing root schema uri: specify $id or a retrieval URI",
                     PathSegment.Root.INSTANCE, null));
         }
         index(os);
@@ -202,7 +214,9 @@ public class SchemaRegistry {
     /**
      * Imports all schema mappings from another registry.
      * <p>
-     * Existing mappings must resolve to the same canonical schema resource.
+     * The returned registry has independent lookup maps but shares the indexed
+     * schema models and compiled plans with {@code other}. A null source creates
+     * a registry with the default dialect.
      */
     public static SchemaRegistry copyOf(SchemaRegistry other) {
         if (other == null) return new SchemaRegistry();
@@ -233,7 +247,9 @@ public class SchemaRegistry {
      * Resolves schema by absolute URI (canonical or alias).
      * <p>
      * The URI fragment, when present, is resolved within the compiled target
-     * resource rather than as a separate registry key.
+     * resource rather than as a separate registry key. Missing resources return
+     * {@code null}; a missing fragment in a known resource throws
+     * {@link SchemaException}.
      */
     public SchemaPlan resolve(URI uri) {
         Asserts.notNull(uri, "uri");
@@ -249,6 +265,8 @@ public class SchemaRegistry {
      * <p>
      * If no compiled plan exists yet but a root schema model is indexed for the
      * same resource URI, compilation is triggered lazily at this point.
+     * Missing resources return {@code null}; unresolved fragments throw
+     * {@link SchemaException}.
      */
     public SchemaPlan resolve(String id, String fragment) {
         Asserts.notNull(id, "id");
@@ -360,11 +378,13 @@ public class SchemaRegistry {
     }
 
 
+    /** Returns the count of distinct visible resource URI keys, including built-ins. */
     public int size() {
         return idSet().size();
     }
 
 
+    /** Returns whether an absolute resource URI key is visible locally or globally. */
     public boolean contains(String id) {
         return _contains(SchemaUtil.normalizeUriKey(id));
     }
@@ -385,7 +405,8 @@ public class SchemaRegistry {
     }
 
     /**
-     * Returns all registered absolute resource URIs visible from this registry.
+     * Returns a new set of local and built-in resource URI keys. Canonical and
+     * retrieval aliases may each contribute a key for the same schema model.
      */
     public Set<String> idSet() {
         Set<String> idSet = new HashSet<>(byIdPlans.keySet());
@@ -401,7 +422,9 @@ public class SchemaRegistry {
      * Global
      * --------------------------------------------------------------
      */
+    /** Global registry of built-in meta-schema resources. */
     public static final SchemaRegistry GLOBAL_SCHEMA_REGISTRY = new SchemaRegistry();
+    /** Default classpath directory for annotation-based schema discovery. */
     public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
 
     /**
@@ -414,6 +437,7 @@ public class SchemaRegistry {
         return GLOBAL_SCHEMA_REGISTRY.resolve(uri);
     }
 
+    /** Resolves a built-in resource URI and optional fragment, or returns null if absent. */
     public static SchemaPlan globalResolve(String id, String fragment) {
         return GLOBAL_SCHEMA_REGISTRY.resolve(id, fragment);
     }

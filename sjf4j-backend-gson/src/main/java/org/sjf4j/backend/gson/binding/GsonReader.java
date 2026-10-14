@@ -22,6 +22,10 @@ public final class GsonReader extends StreamingReader {
 
     private final JsonReader reader;
 
+    /**
+     * Creates a reader around a Gson JSON cursor.
+     * @param reader the Gson reader
+     */
     public GsonReader(JsonReader reader) {
         super(Backend.GSON);
         this.reader = Asserts.notNull(reader, "reader");

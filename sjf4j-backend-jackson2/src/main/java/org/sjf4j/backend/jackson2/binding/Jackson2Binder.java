@@ -20,19 +20,33 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 
-/** JSON binder backed directly by a Jackson 2 {@link JsonFactory}. */
+/**
+ * JSON binder backed directly by a Jackson 2 {@link JsonFactory}.
+ * The constructor disables charset detection and automatic source closing on
+ * the supplied factory; writers do not close caller-supplied output targets.
+ */
 public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer> {
 
     private final JsonFactory factory;
 
+    /** Creates a binder with a default Jackson 2 factory. */
     public Jackson2Binder() {
         this(new JsonFactory(), RuntimeContext.EMPTY);
     }
 
+    /**
+     * Creates a binder using a supplied factory, which is configured in place.
+     * @param factory the Jackson 2 factory to configure
+     */
     public Jackson2Binder(JsonFactory factory) {
         this(factory, RuntimeContext.EMPTY);
     }
 
+    /**
+     * Creates a binder using a supplied factory and runtime settings.
+     * @param factory the Jackson 2 factory to configure
+     * @param context the SJF4J runtime settings
+     */
     @SuppressWarnings("deprecation")
     public Jackson2Binder(JsonFactory factory, RuntimeContext context) {
         super(context);
@@ -42,7 +56,11 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         this.factory.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
     }
 
-    /** Creates a streaming reader that wraps the supplied Jackson parser. */
+    /**
+     * Creates a streaming reader that wraps the supplied Jackson parser.
+     * @param parser the Jackson 2 parser
+     * @return a SJF4J streaming reader
+     */
     public Jackson2Reader createReader(JsonParser parser) {
         return new Jackson2Reader(Asserts.notNull(parser, "parser"));
     }
@@ -71,7 +89,11 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
 
 
 
-    /** Creates a streaming writer that wraps the supplied Jackson generator. */
+    /**
+     * Creates a streaming writer that wraps the supplied Jackson generator.
+     * @param generator the Jackson 2 generator
+     * @return a SJF4J streaming writer
+     */
     public Jackson2Writer createWriter(JsonGenerator generator) {
         return new Jackson2Writer(Asserts.notNull(generator, "generator"));
     }
@@ -90,7 +112,11 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         return new Jackson2Writer(generator);
     }
 
-    /** Creates an in-memory writer backed by a pooled Jackson buffer. */
+    /**
+     * Creates an in-memory writer backed by a pooled Jackson buffer.
+     * @return a writer that owns the pooled buffer
+     * @throws IOException if the generator cannot be created
+     */
     public Jackson2Writer createWriter() throws IOException {
         BufferRecycler recycler = factory._getBufferRecycler();
         SegmentedStringWriter output = new SegmentedStringWriter(recycler);

@@ -10,8 +10,8 @@ import java.lang.annotation.Target;
  *
  * <p>Options are source-retained because they affect only generation of the
  * method currently being compiled. They are not inherited across already
- * compiled mapper interfaces; use {@link MappingCreator} for inherited target
- * creation rules.</p>
+ * compiled mapper interfaces. For target construction rules that can be
+ * inherited across compiled mapper interfaces, use {@link MappingCreator}.</p>
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)

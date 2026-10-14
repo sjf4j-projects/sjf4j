@@ -7,7 +7,9 @@ import java.lang.annotation.Target;
 
 
 /**
- * Marks an encode method for @NodeValue types.
+ * Marks a non-static, no-argument encoder on a {@link NodeValue} type. Its
+ * result must be a supported raw OBNT type such as String, Number, Boolean,
+ * Map, or List; returning {@code null} represents JSON null at runtime.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

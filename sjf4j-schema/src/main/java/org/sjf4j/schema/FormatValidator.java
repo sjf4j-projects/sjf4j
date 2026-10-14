@@ -24,6 +24,8 @@ public interface FormatValidator {
      * <p>
      * Unknown formats return {@link #NOOP}, matching JSON Schema's
      * annotation-only behavior for unsupported format names.
+     *
+     * @throws NullPointerException if {@code format} is null
      */
     static FormatValidator of(String format) {
         switch (format) {

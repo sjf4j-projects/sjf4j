@@ -52,7 +52,8 @@ final class BackendResolver {
                     type,
                     generated,
                     "No usable " + format +
-                            " backend is visible on the compilation classpath");
+                            " backend is visible on the compilation classpath; " +
+                            "add an SJF4J backend adapter and its native library");
             return null;
         }
 

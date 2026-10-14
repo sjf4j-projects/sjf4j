@@ -23,31 +23,42 @@ import org.sjf4j.TypeReference;
  */
 public interface BytecodePath<R, V> {
 
+    /** Returns the compiled path as a JSONPath expression. */
     String expr();
 
+    /** Returns the path value, or the default when missing or null. */
     default V get(R root, V defaultValue) {
         V v = get(root);
         return v == null ? defaultValue : v;
     }
 
+    /** Reads one value from the supplied root. */
     V get(R root);
 
+    /** Writes at the path and returns the previous value when available. */
     default V put(R root, V value) {
         throw new UnsupportedOperationException("put() is not implemented");
     }
 
+    /** Writes only when the final segment's parent exists. */
     default V putIfParentPresent(R root, V value) {
         throw new UnsupportedOperationException("putIfParentPresent() is not implemented");
     }
 
+    /** Creates supported intermediate containers before writing the value. */
     default V ensurePut(R root, V value) {
         throw new UnsupportedOperationException("ensurePut() is not implemented");
     }
 
+    /** Writes only when the target value is absent or null. */
     default V ensurePutIfAbsent(R root, V value) {
         throw new UnsupportedOperationException("ensurePutIfAbsent() is not implemented");
     }
 
+    /**
+     * Recomputes matched locations from their parent and current value.
+     * @return the number of locations written
+     */
     default int compute(R root, java.util.function.BiFunction<Object, Object, Object> computer) {
         throw new UnsupportedOperationException("compute() is not implemented");
     }
@@ -59,11 +70,30 @@ public interface BytecodePath<R, V> {
      * --------------------------------------------------------------
      */
 
+    /**
+     * Compiles a typed single-target path through the optional runtime provider.
+     *
+     * @param pathExpr a JSONPath or JSON Pointer expression
+     * @param rootClazz declared root class
+     * @param valueClazz declared value class
+     * @return the compiled accessor
+     * @throws org.sjf4j.exception.NodeException if no provider is installed or the path is unsupported
+     */
     @SuppressWarnings("unchecked")
     static <R, V> BytecodePath<R, V> compile(String pathExpr, Class<R> rootClazz, Class<V> valueClazz) {
         return (BytecodePath<R, V>) BytecodeCompilers.compilePath(pathExpr, rootClazz, valueClazz, false);
     }
 
+    /**
+     * Compiles a typed single-target path with generic root and value types.
+     * The requested types are passed to the compiler without erasing them.
+     *
+     * @param pathExpr a JSONPath or JSON Pointer expression
+     * @param rootType declared generic root type
+     * @param valueType declared generic value type
+     * @return the compiled accessor
+     * @throws org.sjf4j.exception.NodeException if no provider is installed or the path is unsupported
+     */
     @SuppressWarnings("unchecked")
     static <R, V> BytecodePath<R, V> compile(String pathExpr, TypeReference<R> rootType, TypeReference<V> valueType) {
         return (BytecodePath<R, V>) BytecodeCompilers.compilePath(pathExpr, rootType.getType(), valueType.getType(), false);

@@ -61,9 +61,10 @@ public @interface OneOf {
     Scope scope() default Scope.CURRENT;
 
     /**
-     * Path resolution scope for discriminator lookup.
+     * Scope for discriminator lookup.
      *
-     * TODO: ROOT is currently not supported.
+     * {@link Scope#PARENT} is supported for property-level discriminators in
+     * streaming binding. {@link Scope#ROOT} is declared but not supported.
      */
     enum Scope {CURRENT, PARENT, ROOT }
 

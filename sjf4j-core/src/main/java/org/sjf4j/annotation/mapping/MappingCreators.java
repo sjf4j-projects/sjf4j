@@ -8,13 +8,13 @@ import java.lang.annotation.Target;
 /**
  * Container annotation for repeated {@link MappingCreator} declarations.
  *
- * <p>Users normally write repeated {@code @MappingCreator} annotations directly
- * on a {@link CompiledMapper} interface or mapper method. The Java compiler
- * uses this annotation as the repeatable container.</p>
+ * <p>Users normally repeat {@code @MappingCreator} directly on a compiled
+ * mapper interface or one of its abstract methods. The Java compiler uses
+ * this annotation as their repeatable container.</p>
  */
 @Retention(RetentionPolicy.CLASS)
-@Target(ElementType.METHOD)
+@Target({ElementType.TYPE, ElementType.METHOD})
 public @interface MappingCreators {
-    /** Creator declarations for one mapper interface. */
+    /** Creator declarations for one mapper interface or method. */
     MappingCreator[] value();
 }

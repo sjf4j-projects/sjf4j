@@ -35,6 +35,10 @@ public final class Jackson2Reader extends StreamingReader {
     private final JsonParser parser;
     private boolean prefetched;
 
+    /**
+     * Creates a reader, preserving a parser already positioned on a token.
+     * @param parser the Jackson 2 parser
+     */
     public Jackson2Reader(JsonParser parser) {
         super(Backend.JACKSON2);
         this.parser = Asserts.notNull(parser, "parser");

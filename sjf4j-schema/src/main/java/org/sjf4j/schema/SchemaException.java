@@ -4,6 +4,8 @@ import org.sjf4j.exception.NodeException;
 
 /**
  * Exception for schema compilation, loading, and linking errors.
+ * {@link ValidationException} is the subtype for a schema that compiled
+ * successfully but rejected an instance.
  */
 public class SchemaException extends NodeException {
 

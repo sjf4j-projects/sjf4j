@@ -10,11 +10,14 @@ import org.sjf4j.path.PathSegment;
  * Boolean schema representation ({@code true}/{@code false}).
  * <p>
  * {@code true} accepts any instance; {@code false} rejects every instance.
+ * Use {@link #TRUE}, {@link #FALSE}, or {@link #of(boolean)} for shared instances.
  */
 @NodeValue
 public final class BooleanSchema implements JsonSchema {
 
+    /** Schema that accepts all instances. */
     public static final BooleanSchema TRUE = new BooleanSchema(true);
+    /** Schema that rejects all instances. */
     public static final BooleanSchema FALSE = new BooleanSchema(false);
 
     private final boolean booleanValue;

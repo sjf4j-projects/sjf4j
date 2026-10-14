@@ -15,6 +15,8 @@ import java.util.Map;
  * different set of fragment maps. Additional JSON Pointer fragment targets may
  * be compiled lazily on first resolution and cached back into the same resource
  * lookup maps for reuse.
+ * Call {@link #validate(Object)} to collect messages, {@link #isValid(Object)}
+ * for a fail-fast boolean, or {@link #requireValid(Object)} to throw on failure.
  */
 public final class SchemaPlan {
 
@@ -74,11 +76,13 @@ public final class SchemaPlan {
         return ctx.toResult();
     }
 
+    /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
         ValidationResult result = validate(node, true, false);
         return result.isValid();
     }
 
+    /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
         ValidationResult result = validate(node, true, strictFormat);
         return result.isValid();

@@ -12,15 +12,26 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 
-/** YAML binder backed by SnakeYAML's event parser and emitter. */
+/**
+ * YAML binder backed by SnakeYAML's event parser and emitter. Input is
+ * interpreted as a JSON-semantic object graph: aliases, anchors, and
+ * non-JSON-compatible tags are rejected by the reader.
+ */
 public final class SnakeBinder extends Binder<SnakeReader, SnakeWriter> {
     private final LoaderOptions loaderOptions;
     private final DumperOptions dumperOptions;
 
+    /** Creates a binder with default SnakeYAML options. */
     public SnakeBinder() {
         this(new LoaderOptions(), new DumperOptions(), RuntimeContext.EMPTY);
     }
 
+    /**
+     * Creates a binder with supplied SnakeYAML options and runtime settings.
+     * @param loaderOptions the parser options
+     * @param dumperOptions the emitter options
+     * @param context the SJF4J runtime settings
+     */
     public SnakeBinder(LoaderOptions loaderOptions, DumperOptions dumperOptions,
                        RuntimeContext context) {
         super(context);

@@ -8,9 +8,10 @@ import java.lang.reflect.InvocationTargetException;
 /**
  * Creates and caches runtime instances of annotation-processor generated interfaces.
  *
- * <p>For an interface annotated with {@code @CompiledNavigator}, {@code @CompiledMapper}, or
- * {@code @CompiledJdbcMapper}, the processor generates an implementation named by appending
- * {@code _Impl} to the interface's binary name. {@link #of(Class)} loads that implementation with
+ * <p>For an interface annotated with {@code @CompiledNavigator}, {@code @CompiledMapper},
+ * {@code @CompiledJdbcMapper}, or {@code @CompiledBinder}, the processor
+ * generates an implementation named by appending {@code _Impl} to the interface's
+ * binary name. {@link #of(Class)} loads that implementation with
  * the interface's class loader and invokes its public no-argument constructor.
  *
  * <p>One instance is cached per interface class. The generated implementation must therefore be
@@ -29,6 +30,13 @@ public final class CompiledInstances {
 
     private CompiledInstances() {}
 
+    /**
+     * Returns the cached generated instance for an annotated interface.
+     * The class must be compiled with the SJF4J annotation processor enabled.
+     *
+     * @param type the annotated interface class
+     * @return its shared generated implementation
+     */
     @SuppressWarnings("unchecked")
     public static <T> T of(Class<T> type) {
         Asserts.notNull(type, "type");
@@ -49,6 +57,7 @@ public final class CompiledInstances {
             throw new NodeException("Cannot find generated SJF4J implementation " + implName
                     + " for interface " + type.getName()
                     + "; ensure the interface is annotated with @CompiledXxx"
+                    + " (@CompiledNavigator, @CompiledMapper, @CompiledJdbcMapper, or @CompiledBinder)"
                     + ", annotation processing is enabled, and generated sources are compiled", e);
         } catch (LinkageError e) {
             throw new NodeException("Generated SJF4J implementation " + implName

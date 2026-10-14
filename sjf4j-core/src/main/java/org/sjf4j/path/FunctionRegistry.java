@@ -17,7 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Built-in functions are registered in the static initializer and cover
  * common JSONPath operations (length, sum, match, etc.). Custom functions
- * can be added at runtime via {@link #register}.
+ * can be added at runtime via {@link #register(FunctionDescriptor)}. A new
+ * descriptor with the same name replaces the previous implementation globally.
  */
 public class FunctionRegistry {
 
@@ -157,11 +158,11 @@ public class FunctionRegistry {
             try {
                 pattern = Nodes.toString(args[0]);
             } catch (Exception e) {
-                throw new NodeException("match(): expected the second argument to be a string, but was " +
+                throw new NodeException("match(): expected a string pattern argument, but was " +
                         Types.name(args[0]), e);
             }
             if (pattern == null) {
-                throw new NodeException("match(): expected the second argument to be a string, but was null");
+                throw new NodeException("match(): expected a string pattern argument, but was null");
             }
             switch (JsonType.of(node)) {
                 case STRING:
@@ -179,11 +180,11 @@ public class FunctionRegistry {
             try {
                 pattern = Nodes.toString(args[0]);
             } catch (Exception e) {
-                throw new NodeException("search(): expected the second argument to be a string, but was " +
+                throw new NodeException("search(): expected a string pattern argument, but was " +
                         Types.name(args[0]), e);
             }
             if (pattern == null) {
-                throw new NodeException("search(): expected the second argument to be a string, but was null");
+                throw new NodeException("search(): expected a string pattern argument, but was null");
             }
             switch (JsonType.of(node)) {
                 case STRING:

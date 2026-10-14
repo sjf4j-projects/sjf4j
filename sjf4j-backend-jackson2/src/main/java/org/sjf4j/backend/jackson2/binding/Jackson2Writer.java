@@ -24,6 +24,10 @@ public final class Jackson2Writer extends StreamingWriter {
     private final SegmentedStringWriter stringOutput;
     private final BufferRecycler recycler;
 
+    /**
+     * Creates a writer around an existing Jackson 2 generator.
+     * @param generator the Jackson 2 generator
+     */
     public Jackson2Writer(JsonGenerator generator) {
         this(generator, null, null);
     }

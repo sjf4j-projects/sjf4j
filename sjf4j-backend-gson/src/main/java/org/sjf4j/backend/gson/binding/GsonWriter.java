@@ -12,6 +12,10 @@ public final class GsonWriter extends StreamingWriter {
 
     private final JsonWriter writer;
 
+    /**
+     * Creates a writer around a Gson JSON output cursor.
+     * @param writer the Gson writer
+     */
     public GsonWriter(JsonWriter writer) {
         super(Backend.GSON);
         this.writer = Asserts.notNull(writer, "writer");

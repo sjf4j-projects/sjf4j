@@ -23,16 +23,21 @@ public enum NodeKind {
 
     /** Represents a string value node. */
     VALUE_STRING,
+    /** Represents a character as a string value. */
     VALUE_STRING_CHARACTER,
+    /** Represents an enum as a string value. */
     VALUE_STRING_ENUM,
+    /** Represents an external string value. */
     VALUE_STRING_EXTERNAL,
 
     /** Represents a numeric value node. */
     VALUE_NUMBER,
+    /** Represents an external numeric value. */
     VALUE_NUMBER_EXTERNAL,
 
     /** Represents a boolean value node. */
     VALUE_BOOLEAN,
+    /** Represents an external boolean value. */
     VALUE_BOOLEAN_EXTERNAL,
 
     /**
@@ -52,6 +57,7 @@ public enum NodeKind {
     OBJECT_JOJO,
     /** Represents a Plain Old Java Object (POJO). */
     OBJECT_POJO,
+    /** Represents an external object node. */
     OBJECT_EXTERNAL,
 
     /** Represents a {@link List} collection. */
@@ -64,6 +70,7 @@ public enum NodeKind {
     ARRAY_ARRAY,
     /** Represents a {@link Set}. */
     ARRAY_SET,
+    /** Represents an external array node. */
     ARRAY_EXTERNAL,
 
     /** Represents an unclassified runtime representation. */
@@ -76,6 +83,10 @@ public enum NodeKind {
     COMPILE_TIME_UNKNOWN;
 
 
+    /**
+     * Classifies a runtime value, including registered codecs and external nodes.
+     * The class of a non-null value may be analyzed and cached on first use.
+     */
     public static NodeKind of(Object node) {
         if (node == null) return VALUE_NULL;
         Class<?> clazz = node.getClass();
@@ -96,6 +107,10 @@ public enum NodeKind {
         return NodeKind.UNKNOWN;
     }
 
+    /**
+     * Classifies a Java class without consulting registered codecs or adapters.
+     * An unrecognized class returns {@link #UNKNOWN}.
+     */
     public static NodeKind plainOf(Class<?> clazz) {
         Asserts.notNull(clazz, "clazz");
         if (clazz == Object.class) {

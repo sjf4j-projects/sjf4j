@@ -22,14 +22,28 @@ public final class Fastjson2Writer extends StreamingWriter {
     private final boolean utf8;
     private final boolean useRawName;
 
+    /**
+     * Creates a writer using a Fastjson2-owned output buffer.
+     * @param writer the Fastjson2 writer
+     */
     public Fastjson2Writer(JSONWriter writer) {
         this(writer, null, null);
     }
 
+    /**
+     * Creates a writer that flushes its JSON output to a character stream.
+     * @param writer the Fastjson2 writer
+     * @param output the character stream
+     */
     public Fastjson2Writer(JSONWriter writer, Writer output) {
         this(writer, Asserts.notNull(output, "output"), null);
     }
 
+    /**
+     * Creates a writer that flushes its JSON output to a byte stream.
+     * @param writer the Fastjson2 writer
+     * @param output the byte stream
+     */
     public Fastjson2Writer(JSONWriter writer, OutputStream output) {
         this(writer, null, Asserts.notNull(output, "output"));
     }

@@ -3,7 +3,10 @@ package org.sjf4j.schema;
 import java.net.URI;
 
 /**
- * Lightweight JSON Schema draft detection for planning decisions.
+ * JSON Schema draft used for keyword and vocabulary planning. Unknown
+ * {@code $schema} URIs are not guessed from their text: detection returns
+ * {@code null}, and the planner may resolve a registered custom meta-schema
+ * or report that it is missing.
  */
 public enum SchemaDialect {
     DRAFT_07,
@@ -11,6 +14,7 @@ public enum SchemaDialect {
     DRAFT_2020_12;
 
 
+    /** Returns the recognized draft for a standard meta-schema URI, or null. */
     public static SchemaDialect detect(String schemaUri) {
         if (schemaUri == null || schemaUri.isEmpty()) return null;
         switch (SchemaUtil.normalizeUriKey(schemaUri)) {
@@ -26,6 +30,7 @@ public enum SchemaDialect {
         }
     }
 
+    /** Returns the recognized draft for a standard meta-schema URI, or null. */
     public static SchemaDialect detect(URI schemaUri) {
         return schemaUri == null ? null : detect(schemaUri.toString());
     }

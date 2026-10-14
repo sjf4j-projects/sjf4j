@@ -38,7 +38,10 @@ import java.util.function.Predicate;
  *
  * <p>Dynamic entries are stored in {@code dynamicProperties}; declared properties
  * are mapped via {@link PropertyInfo}. Accessors use {@link Nodes} strict and
- * lenient conversion semantics.
+ * lenient conversion semantics. A missing key and a key whose value is
+ * {@code null} both return {@code null} from value getters; overloads with a
+ * default value use that default in either case. A strict getter rejects an
+ * incompatible value rather than returning the default.
  */
 public class JsonObject extends JsonContainer {
 
@@ -83,7 +86,10 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates a JsonObject from alternating key-value pairs.
+     * Creates a JsonObject from alternating string keys and values.
+     * A {@code null} or empty argument array creates an empty object.
+     *
+     * @throws IllegalArgumentException if the number of arguments is odd or a key is not a String
      */
     public static JsonObject of(Object... keyValues) {
         JsonObject jo = new JsonObject();
@@ -102,7 +108,9 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the current dynamic properties as an unmodifiable map.
+     * Returns an unmodifiable view of the dynamic entries, excluding declared
+     * JOJO properties. The view reflects subsequent writes to the same backing map;
+     * if no dynamic map exists yet, an empty map is returned.
      */
     public Map<String, Object> dynamicProperties() {
         return dynamicProperties == null
@@ -193,7 +201,8 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a merged key set of readable declared properties and dynamic entries.
+     * Returns a key view of readable declared properties and dynamic entries.
+     * Dynamic keys are backed by the underlying map; declared keys cannot be removed.
      */
     public Set<String> keySet() {
         if (pi == null || pi.readableProperties.length == 0) {
@@ -242,7 +251,8 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a merged entry set of readable declared properties and dynamic entries.
+     * Returns an entry view of readable declared properties and dynamic entries.
+     * Declared-property entries are snapshots; dynamic entries are backed by the map.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
         if (pi == null || pi.readableProperties.length == 0) {
@@ -324,7 +334,9 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Replaces values for readable-and-writable declared properties and dynamic
-     * entries in place.
+     * entries in place. Only a change of value reference counts as a replacement.
+     *
+     * @return whether at least one value reference changed
      */
     public boolean replaceAll(BiFunction<String, Object, Object> mapper) {
         Asserts.notNull(mapper, "mapper");
@@ -357,7 +369,7 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Returns a new map containing readable declared properties and dynamic entries.
-     * Values are not copied.
+     * Dynamic entries take precedence on duplicate keys; values are not copied.
      */
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
@@ -497,7 +509,8 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the OBNT value for the given key or the default value.
+     * Returns the OBNT value for the given key, or the default when the key is
+     * absent or its value is {@code null}.
      */
     public Object getNode(String key, Object defaultValue) {
         Object value = getNode(key);
@@ -1055,8 +1068,8 @@ public class JsonObject extends JsonContainer {
     public Object remove(String key) {
         Asserts.notNull(key, "key");
         if (pi != null && pi.getPropertyNoAlias(key) != null) {
-            throw new NodeException("cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
-                    "'. Only dynamic properties in JsonObject are removable.");
+            throw new NodeException("cannot remove declared property '" + key + "' from JOJO '" +
+                    getClass().getName() + "'; only dynamic properties are removable");
         }
         if (dynamicProperties != null) {
             return dynamicProperties.remove(key);
@@ -1117,8 +1130,8 @@ public class JsonObject extends JsonContainer {
      * Creates a deep copy of this JsonObject.
      * <p>
      * Delegates to {@link Sjf4j#copyNode(Object)} and {@link NodeMapper}.
-     * Declared and dynamic entries are copied structurally; unsupported values,
-     * including backend-native or external nodes, may be retained by reference.
+     * Declared and dynamic entries are copied structurally; unsupported nested
+     * values can cause binding to fail rather than being copied.
      */
     public JsonObject deepCopy() {
         return Sjf4j.global().copyNode(this);

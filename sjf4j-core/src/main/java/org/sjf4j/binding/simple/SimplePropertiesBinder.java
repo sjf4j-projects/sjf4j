@@ -9,6 +9,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.Types;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,7 +20,8 @@ import java.util.Properties;
 import java.util.Set;
 
 /**
- * Properties binder based on JSONPath expansion.
+ * Properties binder based on JSONPath expansion. The root must be an object;
+ * array paths must be dense and must not contain null or empty elements.
  */
 public final class SimplePropertiesBinder implements PropertiesBinder {
 
@@ -49,7 +51,8 @@ public final class SimplePropertiesBinder implements PropertiesBinder {
     public void writeNode(Properties properties, Object node) {
         Asserts.notNull(properties, "properties");
         if (!JsonType.of(node).isObject()) {
-            throw new BindingException("Properties binding requires an object root");
+            throw new BindingException("Properties binding requires an object root, but was '" +
+                    Types.name(node) + "'");
         }
 
         Properties flattened = new Properties();
@@ -119,9 +122,11 @@ public final class SimplePropertiesBinder implements PropertiesBinder {
             boolean[] written = {false};
             Nodes.forEachArray(node, (index, value) -> {
                 if (value == null)
-                    throw new BindingException("arrays cannot contain null elements at index " + index);
+                    throw new BindingException("Properties array cannot contain a null element at '" +
+                            _jsonPath2PropKey(new PathSegment.Index(path, index)) + "'");
                 if (!_write(properties, value, new PathSegment.Index(path, index)))
-                    throw new BindingException("arrays cannot contain empty elements at index " + index);
+                    throw new BindingException("Properties array cannot contain an empty element at '" +
+                            _jsonPath2PropKey(new PathSegment.Index(path, index)) + "'");
                 written[0] = true;
             });
             return written[0];

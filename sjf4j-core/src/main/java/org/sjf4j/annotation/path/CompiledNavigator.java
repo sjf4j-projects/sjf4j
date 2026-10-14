@@ -10,10 +10,12 @@ import java.lang.annotation.Target;
  *
  * <p>Abstract methods in the interface are implemented by the SJF4J annotation
  * processor when they are annotated with one path operation annotation such as
- * {@link GetByPath}, {@link PutByPath}, {@link PutIfParentPresentByPath},
- * {@link EnsurePutByPath}, or {@link EnsurePutIfAbsentByPath}. Default and
- * static methods are copied through by normal Java interface dispatch and are
- * not generated.</p>
+ * {@link GetByPath}, {@link FindByPath}, {@link PutByPath},
+ * {@link PutIfParentPresentByPath}, {@link EnsurePutByPath}, or
+ * {@link EnsurePutIfAbsentByPath}. Default methods remain inherited by the
+ * generated implementation; static interface methods stay on the interface.
+ * Neither kind needs a generated implementation. The annotated interface and
+ * generated methods cannot declare type parameters.</p>
  *
  * <p>The generated class is named after the interface with the {@code _Impl}
  * suffix. Runtime lookup is normally done through

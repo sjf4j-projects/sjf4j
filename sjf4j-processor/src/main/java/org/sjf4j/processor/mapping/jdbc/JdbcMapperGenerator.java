@@ -10,7 +10,9 @@ import java.util.List;
 
 
 /**
- * Generates implementations for @CompiledJdbcMapper interfaces.
+ * Generates implementations for {@code @CompiledJdbcMapper} interfaces.
+ * Validates method plans and column mappings before emitting direct
+ * {@code ResultSet} reads into the generated implementation.
  */
 public final class JdbcMapperGenerator {
 
@@ -28,6 +30,7 @@ public final class JdbcMapperGenerator {
     }
 
 
+    /** Generates one JDBC mapper implementation. */
     public void generate(
             TypeElement mapper) {
 

@@ -32,7 +32,9 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Validates annotation ownership rules shared by compiled SJF4J features.
+ * Checks method shape and annotation placement shared by compiled SJF4J
+ * features. Feature generators validate path, mapper, binder, and JDBC
+ * signatures after these common checks.
  */
 final class AnnotationValidator {
 
@@ -212,7 +214,7 @@ final class AnnotationValidator {
             context.error(
                     element,
                     "@" + annotation +
-                            " method must be declared in a compiled interface");
+                            " method must be declared in an interface");
             return;
         }
 

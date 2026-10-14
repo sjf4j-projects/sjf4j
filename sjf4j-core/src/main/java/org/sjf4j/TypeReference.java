@@ -16,6 +16,8 @@ import java.lang.reflect.Type;
  * <pre>{@code
  * List<User> users = Sjf4j.global().fromJson(json, new TypeReference<List<User>>() {});
  * }</pre>
+ * <p>The type argument must appear on a parameterized subclass declaration;
+ * a raw subclass cannot capture it.
  */
 public abstract class TypeReference<T> {
     /**
@@ -31,7 +33,8 @@ public abstract class TypeReference<T> {
         if (superclass instanceof ParameterizedType) {
             this.type = ((ParameterizedType) superclass).getActualTypeArguments()[0];
         } else {
-            throw new BindingException("invalid TypeReference declaration: missing type parameter");
+            throw new BindingException("TypeReference requires a parameterized subclass " +
+                    "(for example, new TypeReference<List<String>>() {})");
         }
     }
 

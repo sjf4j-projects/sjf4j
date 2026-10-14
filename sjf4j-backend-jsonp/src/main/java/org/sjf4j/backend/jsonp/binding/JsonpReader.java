@@ -28,6 +28,10 @@ public final class JsonpReader extends StreamingReader {
     private final JsonParser parser;
     private JsonParser.Event current;
 
+    /**
+     * Creates a reader around a JSON-P event parser.
+     * @param parser the JSON-P parser
+     */
     public JsonpReader(JsonParser parser) {
         super(Backend.JSONP);
         this.parser = Asserts.notNull(parser, "parser");

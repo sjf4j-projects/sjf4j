@@ -8,18 +8,25 @@ import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 
-/** Service provider for the SnakeYAML binder. */
+/**
+ * Service provider for YAML binding when SnakeYAML is present. The supplied
+ * loader and dumper options are shared across binders created by {@link #of}.
+ */
 public final class SnakeBinderProvider implements BinderProvider {
 
     private static final String YAML_TYPE = "org.yaml.snakeyaml.Yaml";
     private static final boolean AVAILABLE = BinderProvider.isClassAvailable(
             YAML_TYPE, SnakeBinderProvider.class.getClassLoader());
 
+    /** Creates a discoverable SnakeYAML provider. */
     public SnakeBinderProvider() {
     }
 
     /**
      * Creates a provider that uses the supplied options for every binder it creates.
+     * @param loaderOptions the shared parser options
+     * @param dumperOptions the shared emitter options
+     * @return a YAML binder provider using these options
      */
     public static BinderProvider of(LoaderOptions loaderOptions, DumperOptions dumperOptions) {
         LoaderOptions checkedLoaderOptions = Asserts.notNull(loaderOptions, "loaderOptions");

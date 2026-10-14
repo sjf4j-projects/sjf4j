@@ -11,6 +11,10 @@ public final class Fastjson2CompiledName extends CompiledName {
     final byte[] rawNameUtf8;
 
 
+    /**
+     * Prepares a property name for UTF-8 and UTF-16 raw-name writes.
+     * @param name the property name
+     */
     public Fastjson2CompiledName(String name) {
         super(name);
 

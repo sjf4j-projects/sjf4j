@@ -24,7 +24,11 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 
-/** JSON binder backed directly by a Jackson 3 {@link JsonFactory}. */
+/**
+ * JSON binder backed by a Jackson 3 {@link JsonFactory}. The supplied factory
+ * is rebuilt with charset detection and automatic source closing disabled;
+ * caller-supplied output targets are not closed by the binder.
+ */
 public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer> {
 
     private static final ObjectReadContext READ_CONTEXT = ObjectReadContext.empty();
@@ -32,14 +36,24 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
 
     private final JsonFactory factory;
 
+    /** Creates a binder with a default Jackson 3 factory. */
     public Jackson3Binder() {
         this(new JsonFactory(), RuntimeContext.EMPTY);
     }
 
+    /**
+     * Creates a binder from a supplied factory without mutating that factory.
+     * @param factory the Jackson 3 factory to rebuild
+     */
     public Jackson3Binder(JsonFactory factory) {
         this(factory, RuntimeContext.EMPTY);
     }
 
+    /**
+     * Creates a binder from a supplied factory with runtime settings.
+     * @param factory the Jackson 3 factory to rebuild
+     * @param context the SJF4J runtime settings
+     */
     public Jackson3Binder(JsonFactory factory, RuntimeContext context) {
         super(context);
         Asserts.notNull(factory, "factory");
@@ -63,7 +77,11 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
                 Asserts.notNull(input, "input")));
     }
 
-    /** Creates a streaming reader that wraps the supplied Jackson parser. */
+    /**
+     * Creates a streaming reader that wraps the supplied Jackson parser.
+     * @param parser the Jackson 3 parser
+     * @return a SJF4J streaming reader
+     */
     public Jackson3Reader createReader(JsonParser parser) {
         return new Jackson3Reader(Asserts.notNull(parser, "parser"));
     }
@@ -89,7 +107,11 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         return new Jackson3Writer(generator);
     }
 
-    /** Creates a streaming writer that wraps the supplied Jackson generator. */
+    /**
+     * Creates a streaming writer that wraps the supplied Jackson generator.
+     * @param generator the Jackson 3 generator
+     * @return a SJF4J streaming writer
+     */
     public Jackson3Writer createWriter(JsonGenerator generator) {
         return new Jackson3Writer(Asserts.notNull(generator, "generator"));
     }
@@ -102,7 +124,11 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         return new Jackson3Writer(generator);
     }
 
-    /** Creates an in-memory writer backed by a pooled Jackson buffer. */
+    /**
+     * Creates an in-memory writer backed by a pooled Jackson buffer.
+     * @return a writer that owns the pooled buffer
+     * @throws IOException if the generator cannot be created
+     */
     public Jackson3Writer createWriter() throws IOException {
         BufferRecycler recycler = factory._getBufferRecycler();
         SegmentedStringWriter output = new SegmentedStringWriter(recycler);

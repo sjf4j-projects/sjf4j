@@ -21,6 +21,7 @@ public class VocabularyRegistry {
      * Registers one keyword-to-vocabulary mapping.
      * <p>
      * Later registrations for the same keyword overwrite previous mapping.
+     * The supplied array is retained; callers must not modify it afterward.
      */
     public static void registerKeyword(String keyword, String... vocabUris) {
         Asserts.notNull(keyword, "keyword");
@@ -29,7 +30,8 @@ public class VocabularyRegistry {
     }
 
     /**
-     * Returns vocabulary URI for a keyword, or {@code null} if unknown.
+     * Returns the registered vocabulary URI array for a keyword, or
+     * {@code null} if unknown. The array is shared and must not be modified.
      */
     public static String[] getVocabUris(String keyword) {
         return KEYWORD_VOCAB_CACHE.get(keyword);

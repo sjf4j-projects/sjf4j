@@ -130,6 +130,7 @@ public class JsonPath {
      * <p>
      * Empty input resolves to root. Expressions starting with {@code /} are
      * parsed as JSON Pointer; others are parsed as the supported JSONPath subset.
+     * Leading and trailing whitespace is removed before either syntax is parsed.
      */
     public static JsonPath parse(String expr) {
         Asserts.notNull(expr, "expr");
@@ -156,6 +157,8 @@ public class JsonPath {
 
     /**
      * Converts the path tokens to a JSON Pointer expression string.
+     * Only segments representable as pointer tokens can be formatted this way;
+     * wildcard, filter, and other JSONPath-only segments fail.
      *
      * @return the JSON Pointer expression string
      */
@@ -175,7 +178,8 @@ public class JsonPath {
     /**
      * Returns the parsed path segments in stored order.
      * <p>
-     * The returned array is the internal segment array and is not copied.
+     * The returned array is the internal segment array and is not copied;
+     * callers must not change it. Use {@link #copy()} for a separate path.
      */
     public PathSegment[] segments() {
         return segments;
@@ -232,6 +236,11 @@ public class JsonPath {
         return segments[segments.length - 1];
     }
 
+    /**
+     * Returns whether the path consists only of root/current, name, index,
+     * or parameter segments. Parameter segments require generated binding and
+     * cannot be resolved by ordinary {@code JsonPath} reads.
+     */
     public boolean isSingleGet() {
         return singleGet;
     }
@@ -257,6 +266,7 @@ public class JsonPath {
         return appendCount;
     }
 
+    /** Returns the number of annotation-bound parameter segments. */
     public int paramCount() {
         return paramCount;
     }
@@ -287,8 +297,8 @@ public class JsonPath {
      * Returns a single-location value or the default value for missing or null.
      *
      * @param container the JSON container to search
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the object found at the path, or the default value if not found
+     * @param defaultValue the value to return if the path is missing or null
+     * @return the matched value, or the default for a missing or null value
      */
     public Object getNode(Object container, Object defaultValue) {
         Object value = getNode(container);
@@ -996,6 +1006,8 @@ public class JsonPath {
 
     /**
      * Evaluates the path and converts the result using strict conversion.
+     * A single-element multi-match list is unwrapped when the requested target
+     * is neither a collection, {@link JsonArray}, nor a Java array.
      */
     public <T> T eval(Object container, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
@@ -1024,6 +1036,8 @@ public class JsonPath {
 
     /**
      * Evaluates the path and converts the result using lenient conversion.
+     * A single-element multi-match list is unwrapped when the requested target
+     * is neither a collection, {@link JsonArray}, nor a Java array.
      */
     public <T> T evalAs(Object container, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");

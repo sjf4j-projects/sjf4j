@@ -19,6 +19,8 @@ import java.math.BigInteger;
  *
  * <p>Generated binders should prefer prepared {@link CompiledName}s,
  * primitive value methods, and property-value fused methods where possible.</p>
+ * Value-only methods for reference types expect non-null input; the nullable
+ * {@code writeXxx} variants write JSON null for a null argument.
  */
 public abstract class StreamingWriter implements Closeable, Flushable {
 
@@ -33,9 +35,11 @@ public abstract class StreamingWriter implements Closeable, Flushable {
      * Document
      */
 
+    /** Begins one document before writing its root value. */
     public void startDocument() throws IOException {
     }
 
+    /** Completes the document after writing its root value. */
     public void endDocument() throws IOException {
     }
 
@@ -44,12 +48,16 @@ public abstract class StreamingWriter implements Closeable, Flushable {
      * Structure
      */
 
+    /** Begins an object value. */
     public abstract void startObject() throws IOException;
 
+    /** Ends the current object. */
     public abstract void endObject() throws IOException;
 
+    /** Begins an array value. */
     public abstract void startArray() throws IOException;
 
+    /** Ends the current array. */
     public abstract void endArray() throws IOException;
 
     public void separateProperty() throws IOException {
@@ -63,8 +71,10 @@ public abstract class StreamingWriter implements Closeable, Flushable {
      * Property name
      */
 
+    /** Writes an object member name before its value. */
     public abstract void writeName(String name) throws IOException;
 
+    /** Writes a member name, separating it from a preceding member when needed. */
     public void writeName(String name, boolean separated) throws IOException {
         if (separated) {
             separateProperty();
@@ -72,6 +82,10 @@ public abstract class StreamingWriter implements Closeable, Flushable {
         writeName(name);
     }
 
+    /**
+     * Returns prepared names for readable POJO properties in metadata order.
+     * The array is cached per POJO metadata and backend; callers must not modify it.
+     */
     public final CompiledName[] compiledNames(PojoInfo pojoInfo) {
         BackendCache cache = pojoInfo.backendCache(backend);
         CompiledName[] compiledNames = cache.compiledNames;
@@ -86,6 +100,7 @@ public abstract class StreamingWriter implements Closeable, Flushable {
         return compiledNames;
     }
 
+    /** Prepares a property name, overridable by backends with native encodings. */
     public CompiledName createCompiledName(String name) {
         return new CompiledName(name);
     }
@@ -106,8 +121,10 @@ public abstract class StreamingWriter implements Closeable, Flushable {
      * Null / String
      */
 
+    /** Writes a JSON-semantic null value. */
     public abstract void writeNull() throws IOException;
 
+    /** Writes a non-null string value. */
     public abstract void writeStringValue(String value) throws IOException;
 
     public void writeString(String value) throws IOException {

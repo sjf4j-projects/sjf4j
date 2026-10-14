@@ -14,6 +14,10 @@ public final class JsonpWriter extends StreamingWriter {
 
     private final JsonGenerator generator;
 
+    /**
+     * Creates a writer around a JSON-P generator.
+     * @param generator the JSON-P generator
+     */
     public JsonpWriter(JsonGenerator generator) {
         super(Backend.JSONP);
         this.generator = Asserts.notNull(generator, "generator");

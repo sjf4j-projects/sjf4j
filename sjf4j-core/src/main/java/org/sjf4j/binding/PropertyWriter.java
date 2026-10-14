@@ -25,6 +25,10 @@ import java.util.Set;
 import java.util.function.Function;
 
 
+/**
+ * Precomputed writer for a readable POJO property, including primitive and
+ * value-codec fast paths.
+ */
 @FunctionalInterface
 public interface PropertyWriter {
 
@@ -84,6 +88,10 @@ public interface PropertyWriter {
      * --------------------------------------------------------------
      */
 
+    /**
+     * Selects a property writer once from its getter and resolved type metadata.
+     * Returns {@code null} when no getter is available.
+     */
     static PropertyWriter create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                                  MethodHandle getterHandle, Function<Object, Object> getterLambda,
                                  ValueInfo resolvedValueCodec,

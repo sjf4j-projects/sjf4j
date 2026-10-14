@@ -23,6 +23,10 @@ public final class Fastjson2Reader extends StreamingReader {
     private final JSONReader reader;
     private Token peeked;
 
+    /**
+     * Creates a reader around a Fastjson2 JSON cursor.
+     * @param reader the Fastjson2 reader
+     */
     public Fastjson2Reader(JSONReader reader) {
         super(Backend.FASTJSON2);
         this.reader = Asserts.notNull(reader, "reader");
@@ -32,6 +36,7 @@ public final class Fastjson2Reader extends StreamingReader {
      * Provides the native parser to generated compiled binders for fused
      * raw-name matching. Callers must only advance property names through
      * nextIfName4MatchN; values and object boundaries stay on this reader.
+     * @return the underlying Fastjson2 reader
      */
     public JSONReader rawReader() {
         return reader;
@@ -72,7 +77,7 @@ public final class Fastjson2Reader extends StreamingReader {
     @Override
     public void endDocument() throws IOException {
         if (!reader.isEnd()) {
-            throw new IOException("Expected end of document");
+            throw new IOException("expected end of document");
         }
     }
 
@@ -278,7 +283,7 @@ public final class Fastjson2Reader extends StreamingReader {
     @Override
     public void skipNode() throws IOException {
         if (peekToken().jsonType() == JsonType.UNKNOWN) {
-            throw new IOException("Expected value");
+            throw new IOException("expected value, but was '" + peekToken() + "'");
         }
         peeked = null;
         reader.skipValue();
@@ -315,7 +320,7 @@ public final class Fastjson2Reader extends StreamingReader {
 
     private Map<String, Object> _readRawObject() throws IOException {
         if (!reader.nextIfObjectStart()) {
-            throw new BindingException("expected token '{', but was " + reader.current());
+            throw new BindingException("expected token '{', but was '" + reader.current() + "'");
         }
 
         Map<String, Object> value = new LinkedHashMap<>();
@@ -327,7 +332,7 @@ public final class Fastjson2Reader extends StreamingReader {
 
     private List<Object> _readRawArray() throws IOException {
         if (!reader.nextIfArrayStart()) {
-            throw new BindingException("expected token '[', but was " + reader.current());
+            throw new BindingException("expected token '[', but was '" + reader.current() + "'");
         }
 
         List<Object> value = new ArrayList<>();

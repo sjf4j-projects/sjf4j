@@ -11,7 +11,7 @@ import java.io.Reader;
 import java.io.Writer;
 
 /**
- * Placeholder YAML binder used when SnakeYAML is not available.
+ * Unavailable YAML binder used when no YAML backend provider is selected.
  */
 public final class SimpleYamlBinder extends Binder<StreamingReader, StreamingWriter> {
 
@@ -21,12 +21,12 @@ public final class SimpleYamlBinder extends Binder<StreamingReader, StreamingWri
 
     @Override
     public StreamingReader createReader(Reader input) throws IOException {
-        throw new BindingException("YAML reading is unavailable: no supported YAML library detected (SnakeYAML).");
+        throw new BindingException("YAML reading is unavailable: add sjf4j-backend-snake and SnakeYAML");
     }
 
     @Override
     public StreamingWriter createWriter(Writer output) throws IOException {
-        throw new BindingException("YAML writing is unavailable: no supported YAML library detected (SnakeYAML).");
+        throw new BindingException("YAML writing is unavailable: add sjf4j-backend-snake and SnakeYAML");
     }
 
 

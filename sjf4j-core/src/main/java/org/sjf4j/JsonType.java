@@ -100,6 +100,10 @@ public enum JsonType {
 
     /**
      * Resolves {@link JsonType} from a JSON Schema {@code type} keyword.
+     * The {@code integer} schema type is distinct from {@code number}, even
+     * though ordinary numeric Java values classify as {@link #NUMBER}.
+     *
+     * @throws NodeException if the keyword is not a recognized JSON Schema type
      */
     public static JsonType ofSchema(String type) {
         switch (type) {
@@ -110,7 +114,7 @@ public enum JsonType {
             case "integer": return JsonType.INTEGER;
             case "boolean": return JsonType.BOOLEAN;
             case "null": return JsonType.NULL;
-            default: throw new NodeException("Unknown JSON Schema type: " + type);
+            default: throw new NodeException("unknown JSON Schema type '" + type + "'");
         }
     }
 

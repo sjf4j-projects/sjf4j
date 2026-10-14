@@ -1,7 +1,7 @@
 package org.sjf4j.annotation.binding;
 
 /**
- * Runtime backend selected for a {@link CompiledBinder}.
+ * Backend baked into a generated {@link CompiledBinder} implementation.
  *
  * <p>{@link #AUTO} is resolved by the annotation processor from the backends
  * visible on the current compilation classpath. Backend compatibility is

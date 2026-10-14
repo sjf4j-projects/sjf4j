@@ -12,7 +12,8 @@ import java.util.List;
  * JSON Patch document modeled as a JsonArray of {@link PatchOperation}.
  *
  * <p>Supports RFC 6902 operations plus a small set of SJF4J extensions
- * (e.g. {@code exist}, {@code ensurePut}).
+ * (e.g. {@code exist}, {@code ensurePut}). Applying a patch can replace the
+ * root document; always use the value returned by {@link #apply(Object)}.
  */
 public class JsonPatch extends JsonArray {
 
@@ -32,7 +33,8 @@ public class JsonPatch extends JsonArray {
     }
 
     /**
-     * Creates a patch document from operation list.
+     * Creates a patch document backed by the supplied operation list. Changes
+     * to the list remain visible to this patch.
      */
     public JsonPatch(List<PatchOperation> operations) {
         super(operations);
@@ -46,7 +48,8 @@ public class JsonPatch extends JsonArray {
     }
 
     /**
-     * Computes patch operations that transform source into target.
+     * Computes patch operations that transform source into target. Operation
+     * payload values may still reference the target graph.
      */
     public static JsonPatch diff(Object source, Object target) {
         List<PatchOperation> ops = Patches.diff(source, target);
@@ -74,6 +77,8 @@ public class JsonPatch extends JsonArray {
      * operations can change the patch. Capture the return value when an operation
      * may replace or remove the root document. A failing later operation does not
      * roll back earlier mutations.
+     *
+     * @return the resulting root, which may differ from {@code target} or be null
      */
     public Object apply(Object target) {
         Object current = target;
@@ -82,7 +87,7 @@ public class JsonPatch extends JsonArray {
             Object v = get(i, Object.class);
             if (v instanceof PatchOperation) {
                 current = ((PatchOperation) v).apply(current);
-            } else throw new NodeException("unsupported patch type: " + Types.name(v));
+            } else throw new NodeException("unsupported patch operation at index " + i + ": '" + Types.name(v) + "'");
         }
         return current;
     }

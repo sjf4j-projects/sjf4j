@@ -13,7 +13,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
 
-/** Analyzes one abstract @CompiledBinder method. */
+/** Analyzes one abstract {@code @CompiledBinder} method before source emission. */
 final class BindingMethodGenerator {
 
     private final ProcessorContext context;

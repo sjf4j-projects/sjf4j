@@ -24,6 +24,10 @@ public final class Jackson3Writer extends StreamingWriter {
     private final SegmentedStringWriter stringOutput;
     private final BufferRecycler recycler;
 
+    /**
+     * Creates a writer around an existing Jackson 3 generator.
+     * @param generator the Jackson 3 generator
+     */
     public Jackson3Writer(JsonGenerator generator) {
         super(Backend.JACKSON3);
         this.generator = Asserts.notNull(generator, "generator");

@@ -16,6 +16,11 @@ import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.util.Objects;
 
+/**
+ * Compiler services and shared metadata resolvers for one processing run.
+ * Errors are reported against source elements rather than written into
+ * generated code.
+ */
 public final class ProcessorContext {
 
     public final Types typeUtils;
@@ -63,6 +68,7 @@ public final class ProcessorContext {
                         types);
     }
 
+    /** Emits a compile-time error at the supplied source element. */
     public void error(Element element, String message) {
         messager.printMessage(Diagnostic.Kind.ERROR, message, element);
     }

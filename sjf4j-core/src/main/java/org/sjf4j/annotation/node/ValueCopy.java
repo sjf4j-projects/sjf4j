@@ -7,7 +7,9 @@ import java.lang.annotation.Target;
 
 
 /**
- * Marks a copy method for @NodeValue types.
+ * Marks an optional non-static, no-argument copy method on a
+ * {@link NodeValue} type. It must return the annotated type. Without a copy
+ * method, value copying retains the existing value reference.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

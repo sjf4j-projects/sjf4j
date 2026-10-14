@@ -26,6 +26,11 @@ import java.util.function.ObjDoubleConsumer;
 import java.util.function.ObjIntConsumer;
 import java.util.function.ObjLongConsumer;
 
+/**
+ * Precomputed reader for a writable POJO property. The incoming member name
+ * has already been consumed; {@link #read} consumes its value and assigns it
+ * to the owning instance.
+ */
 @FunctionalInterface
 public interface PropertyReader {
 
@@ -65,6 +70,10 @@ public interface PropertyReader {
      * --------------------------------------------------------------
      */
 
+    /**
+     * Selects a property reader once from its setter and resolved type metadata.
+     * Returns {@code null} when no setter is available.
+     */
     static PropertyReader create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                                  boolean genericDependent, OneOfInfo oneOfInfo,
                                  MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,

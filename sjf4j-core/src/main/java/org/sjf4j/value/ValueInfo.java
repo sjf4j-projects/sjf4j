@@ -35,6 +35,9 @@ public class ValueInfo {
         this.valueCopyHandle = valueCopyHandle;
     }
 
+    /**
+     * Adapts metadata from a registered parent type to a resolved runtime class.
+     */
     public ValueInfo(Class<?> runtimeClazz, ValueInfo info) {
         this.runtimeClazz = runtimeClazz;
         this.valueFormat = info.valueFormat;
@@ -43,7 +46,7 @@ public class ValueInfo {
         this.codec = info.codec;
         this.valueToRawHandle = info.valueToRawHandle;
         this.rawToValueHandle = info.rawToValueHandle;
-        this.valueCopyHandle = info.rawToValueHandle;
+        this.valueCopyHandle = info.valueCopyHandle;
     }
 
 
@@ -57,8 +60,8 @@ public class ValueInfo {
             } catch (BindingException e) {
                 throw e;
             } catch (Exception e) {
-                throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
-                        " using ValueCodec " + codec.getClass().getName(), e);
+                throw new BindingException("failed to encode value type '" + valueClazz.getName() +
+                        "' with ValueCodec '" + codec.getClass().getName() + "'", e);
             }
         } else if (valueToRawHandle != null) {
             try {
@@ -66,8 +69,8 @@ public class ValueInfo {
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
-                throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
-                        " using annotated method " + valueToRawHandle, e);
+                throw new BindingException("failed to encode value type '" + valueClazz.getName() +
+                        "' with annotated method " + valueToRawHandle, e);
             }
         }
         throw new BindingException("no value binding found for type " + valueClazz.getName() +
@@ -79,12 +82,12 @@ public class ValueInfo {
      */
     public Object rawToValue(Object raw) {
         if (runtimeClazz != null && runtimeClazz != valueClazz) {
-            throw new BindingException("cannot rawToValue() to runtime subtype " + runtimeClazz.getName() +
-                        " from node value type " + valueClazz.getName());
+            throw new BindingException("cannot decode value type '" + valueClazz.getName() +
+                    "' as runtime subtype '" + runtimeClazz.getName() + "'");
         }
         if (raw != null && !rawClazz.isInstance(raw)) {
-            throw new BindingException("cannot rawToValue() from raw type " + raw.getClass().getName() +
-                    " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
+            throw new BindingException("cannot decode raw type '" + raw.getClass().getName() +
+                    "' as value type '" + valueClazz.getName() + "': expected raw type '" + rawClazz.getName() + "'");
         }
         if (codec != null) {
             try {
@@ -92,8 +95,8 @@ public class ValueInfo {
             } catch (BindingException e) {
                 throw e;
             } catch (Exception e) {
-                throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
-                        " using ValueCodec " + codec.getClass().getName(), e);
+                throw new BindingException("failed to decode value type '" + valueClazz.getName() +
+                        "' with ValueCodec '" + codec.getClass().getName() + "'", e);
             }
         } else if (rawToValueHandle != null) {
             try {
@@ -101,8 +104,8 @@ public class ValueInfo {
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
-                throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
-                        " using annotated method " + rawToValueHandle, e);
+                throw new BindingException("failed to decode value type '" + valueClazz.getName() +
+                        "' with annotated method " + rawToValueHandle, e);
             }
         }
         throw new BindingException("no value binding found for type " + valueClazz.getName() +
@@ -110,7 +113,8 @@ public class ValueInfo {
     }
 
     /**
-     * Copies value using codec-defined semantics.
+     * Copies a value using codec-defined semantics when supplied; otherwise
+     * returns the original value. Mutable value types need an explicit copy hook.
      */
     public Object valueCopy(Object value) {
         if (codec != null) {
@@ -119,8 +123,8 @@ public class ValueInfo {
             } catch (BindingException e) {
                 throw e;
             } catch (Exception e) {
-                throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
-                        " using ValueCodec " + codec.getClass().getName(), e);
+                throw new BindingException("failed to copy value type '" + valueClazz.getName() +
+                        "' with ValueCodec '" + codec.getClass().getName() + "'", e);
             }
         } else if (valueCopyHandle != null) {
             try {
@@ -128,8 +132,8 @@ public class ValueInfo {
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
-                throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
-                        " using annotated method " + valueCopyHandle, e);
+                throw new BindingException("failed to copy value type '" + valueClazz.getName() +
+                        "' with annotated method " + valueCopyHandle, e);
             }
         }
         return value;

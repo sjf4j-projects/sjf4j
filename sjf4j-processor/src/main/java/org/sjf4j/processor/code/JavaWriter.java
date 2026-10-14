@@ -110,7 +110,7 @@ public final class JavaWriter implements Closeable {
     }
 
     /**
-     * Writes {@code header + " {"} and enters the block.
+     * Writes the header followed by an opening brace and enters the block.
      */
     public void beginBlock(String header) {
         line(header + " {");
@@ -118,7 +118,7 @@ public final class JavaWriter implements Closeable {
     }
 
     /**
-     * Leaves the current block and writes {@code }}.
+     * Leaves the current block and writes a closing brace.
      */
     public void endBlock() {
         dedent();
@@ -126,9 +126,8 @@ public final class JavaWriter implements Closeable {
     }
 
     /**
-     * Leaves the current block and writes {@code }suffix}.
-     *
-     * <p>Useful for forms such as {@code } else { }.</p>
+     * Leaves the current block and writes a closing brace followed by the suffix.
+     * For example, a suffix can start an {@code else} clause.
      */
     public void endBlock(String suffix) {
         dedent();

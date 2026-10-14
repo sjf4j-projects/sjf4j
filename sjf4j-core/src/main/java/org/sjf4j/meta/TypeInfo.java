@@ -38,6 +38,7 @@ public class TypeInfo {
         this.externalNode = (ExternalNode<Object>) externalNode;
     }
 
+    /** Returns whether this is the shared marker for a type without metadata. */
     public boolean isNone() {
         return this == NONE;
     }
@@ -57,6 +58,10 @@ public class TypeInfo {
         return null;
     }
 
+    /**
+     * Returns the requested value binding or fails with the type and format
+     * when no matching binding exists.
+     */
     public ValueInfo requireValueInfo(String valueFormat) {
         ValueInfo info = getValueInfo(valueFormat);
         if (info == null) {

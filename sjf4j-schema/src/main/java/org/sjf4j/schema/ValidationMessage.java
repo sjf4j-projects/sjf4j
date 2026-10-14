@@ -10,8 +10,8 @@ import java.util.Objects;
  * Single validation message produced during schema evaluation.
  * <p>
  * Captures severity, instance path, keyword path, schema resource, source
- * keyword, and detail. Public path accessors expose JSON Pointer strings by
- * default.
+ * keyword, and detail. Path accessors return segment chains; {@link #toString()}
+ * formats them as JSON Pointer locations. A root location displays as {@code /}.
  */
 public class ValidationMessage {
 

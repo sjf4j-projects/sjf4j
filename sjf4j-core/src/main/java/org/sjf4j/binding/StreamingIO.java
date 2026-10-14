@@ -36,7 +36,11 @@ import java.util.Map;
 import java.util.RandomAccess;
 import java.util.Set;
 
-/** Target-directed V4 streaming binding helpers. */
+/**
+ * Shared target-directed streaming binding for POJOs, containers, logical
+ * values, and raw OBNT nodes. Backend readers and writers provide format
+ * tokens while this class applies the common Java binding rules.
+ */
 public final class StreamingIO {
 
     private static final Object UNSET = new Object();
@@ -45,12 +49,12 @@ public final class StreamingIO {
     }
 
 
-    /**
-     * --------------------------------------------------------------
-     * Read
-     * --------------------------------------------------------------
-     */
+    /* Read */
 
+    /**
+     * Reads one pending value into the requested class or generic type.
+     * The caller owns document start/end and reader lifecycle.
+     */
     public static Object readNode(StreamingReader reader, Type type,
                                   RuntimeContext context) throws IOException {
         Asserts.notNull(reader, "reader");
@@ -205,7 +209,7 @@ public final class StreamingIO {
         } catch (BindingException | IOException e) {
             throw e;
         } catch (Throwable e) {
-            throw new BindingException("failed to read streaming into '" + type + "'", e);
+            throw new BindingException("failed to read node as '" + type.getTypeName() + "'", e);
         }
     }
 
@@ -1015,12 +1019,12 @@ public final class StreamingIO {
     }
 
 
-    /**
-     * --------------------------------------------------------------
-     * Write
-     * --------------------------------------------------------------
-     */
+    /* Write */
 
+    /**
+     * Writes one node value to a streaming writer. The caller controls the
+     * document boundaries, flushing, and writer lifecycle.
+     */
     public static void writeNode(StreamingWriter writer, Object node,
                                  RuntimeContext context) throws IOException {
         Asserts.notNull(writer, "writer");

@@ -83,6 +83,7 @@ public interface FilterExpr {
             this.path = JsonPath.parse(path);
         }
 
+        /** Creates an expression from an already parsed path. */
         public PathExpr(JsonPath path) {
             this.path = Asserts.notNull(path, "path");
         }

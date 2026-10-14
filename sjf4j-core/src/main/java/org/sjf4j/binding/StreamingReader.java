@@ -24,7 +24,7 @@ import java.math.BigInteger;
  * reader.startObject();
  *
  * int index;
- * while ((index = reader.nextNameMatch(matcher)) != NameMatcher.END_OF_OBJECT) {
+ * while ((index = reader.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
  *
  *     switch (index) {
  *         case 0:
@@ -34,7 +34,7 @@ import java.math.BigInteger;
  *             bean.name = reader.readString();
  *             break;
  *         default:
- *             reader.skipValue();
+ *             reader.skipNode();
  *     }
  * }
  * }</pre>
@@ -291,8 +291,8 @@ public abstract class StreamingReader implements Closeable {
      *
      * @param matcher prepared member-name matcher
      * @param expectedIndex expected member index
-     * @return a non-negative member index, or
-     *         {@link NameMatcher#UNKNOWN}
+     * @return a non-negative member index, {@link NameMatcher#UNKNOWN}, or
+     *         {@link NameMatcher#OBJECT_END} when the object ends
      */
     public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
         return nextNameMatch(matcher);

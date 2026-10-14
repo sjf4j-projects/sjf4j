@@ -54,6 +54,10 @@ public final class SnakeReader extends StreamingReader {
     private byte[] scopes = new byte[16];
     private int depth;
     private byte[] skipScopes;
+    /**
+     * Creates a reader over a SnakeYAML event parser.
+     * @param parser the SnakeYAML parser
+     */
     public SnakeReader(Parser parser) {
         super(Backend.SNAKE);
         this.parser = Asserts.notNull(parser, "parser");

@@ -10,7 +10,21 @@ import java.lang.annotation.Target;
  * compile time.
  *
  * <p>The format and backend are fixed for one generated binder interface.
- * Binding operations are declared with {@link ReadFrom} and {@link WriteTo}.</p>
+ * Binding operations are declared with {@link ReadFrom} and {@link WriteTo}.
+ * Each abstract method must have exactly one of these annotations and declare
+ * {@link java.io.IOException} or a supertype. The interface itself cannot be
+ * generic; inherited abstract methods must resolve to concrete types.</p>
+ *
+ * <pre>{@code
+ * @CompiledBinder
+ * interface UserJson {
+ *     @ReadFrom User read(String json) throws IOException;
+ *     @WriteTo String write(User user) throws IOException;
+ * }
+ * }</pre>
+ *
+ * <p>Generated implementations have the {@code _Impl} suffix and can be
+ * obtained through {@link org.sjf4j.CompiledInstances#of(Class)}.</p>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)

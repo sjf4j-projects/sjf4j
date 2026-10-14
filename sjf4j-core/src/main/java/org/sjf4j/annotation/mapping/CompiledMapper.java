@@ -20,9 +20,9 @@ import java.lang.annotation.Target;
  * properties, or write to an SJF4J target path. Use {@link MappingOptions} for
  * null handling, method-level converter preferences, and collection/map update
  * policies. Use repeatable {@link MappingCreator} annotations to customize
- * target instantiation, especially for interface or abstract targets. Type-level
- * creators apply to all generated mapper methods, while method-level creators
- * apply only to the declaring method and take precedence when they match.</p>
+ * target instantiation, especially for interface or abstract targets.
+ * Interface-level rules apply to all generated methods and are inherited
+ * from compiled parent mappers; matching method-level rules take precedence.</p>
  *
  * <p>{@code CompiledMapper} is a MapStruct-like compiled structural mapper. It
  * is not a compile-time replacement for {@code NodeMapper.convert}; runtime

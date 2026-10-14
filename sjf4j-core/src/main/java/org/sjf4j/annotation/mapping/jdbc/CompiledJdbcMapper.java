@@ -15,6 +15,8 @@ import java.lang.annotation.Target;
  * or {@code ResultSet, int}. They return a supported declared target, {@code Map<String, Object>}, or,
  * for the one-argument form only, a {@code List} of either. {@link MappingCreator} may select a concrete implementation
  * or a default/static mapper factory for interface and abstract declared results.
+ * Rules may be placed on the mapper interface or an individual method; a
+ * matching method-level rule takes precedence.
  *
  * <p>One-argument methods require a result set positioned before its first row. Generated methods
  * advance its cursor but never close it; the caller retains ownership of the result set, statement,
@@ -35,12 +37,15 @@ import java.lang.annotation.Target;
  * target paths such as {@code $.profile.name} and {@code /profile/name} are also supported for mutable
  * POJOs when every intermediate parent already exists; they are not allocated. JDBC mapper SQL exceptions
  * are wrapped in {@code BindingException}.
- * Version 1 supports
+ * Generated JDBC mapping supports
  * direct flat mapping to POJOs, JOJOs, records, single-constructor targets, creator-selected implementations, and
  * {@code Map<String, Object>}. JOJO declared properties map as POJO properties; unconsumed result columns are retained
  * as raw JDBC values in its dynamic map (including last-column-wins duplicate labels), while columns consumed by aliases
  * are not copied dynamically. It does not support updates, nested JDBC source paths, nested mapping, or arbitrary
  * collection targets.</p>
+ *
+ * <p>The annotated interface cannot declare type parameters. Generic methods
+ * inherited from a parent interface must resolve to concrete signatures.</p>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)

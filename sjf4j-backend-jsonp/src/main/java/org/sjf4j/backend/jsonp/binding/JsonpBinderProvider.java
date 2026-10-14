@@ -8,17 +8,24 @@ import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
-/** Service provider for the JSON-P JSON binder. */
+/**
+ * Service provider for JSON-P binding. Availability requires a JSON-P
+ * implementation, not just the Jakarta API; this is the lowest-priority
+ * optional JSON backend.
+ */
 public final class JsonpBinderProvider implements BinderProvider {
 
     private static final String JSON_PROVIDER_TYPE = "jakarta.json.spi.JsonProvider";
     private static final boolean AVAILABLE = detectAvailability();
 
+    /** Creates a discoverable provider for the installed JSON-P implementation. */
     public JsonpBinderProvider() {
     }
 
     /**
      * Creates a provider that uses {@code provider} for every binder it creates.
+     * @param provider the JSON-P implementation
+     * @return a JSON binder provider using this implementation
      */
     public static BinderProvider of(JsonProvider provider) {
         JsonProvider checkedProvider = Asserts.notNull(provider, "provider");
@@ -44,7 +51,7 @@ public final class JsonpBinderProvider implements BinderProvider {
     @Override
     public Binder<?, ?> create(RuntimeContext context) {
         if (!AVAILABLE) {
-            throw new IllegalStateException("no Jakarta JSON-P implementation available");
+            throw new IllegalStateException("no Jakarta JSON-P implementation available; add a JSON-P provider");
         }
         return new JsonpBinder(JsonProvider.provider(), context);
     }

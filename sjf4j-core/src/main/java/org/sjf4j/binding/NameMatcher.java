@@ -8,11 +8,15 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Prepared member-name matcher for runtime and compiled binding.
+ * Prepared member-name matcher for runtime and compiled binding. A match
+ * returns its property index; unknown names and object end use distinct
+ * negative sentinels.
  */
 public class NameMatcher {
 
+    /** A member was consumed, but no declared name or alias matched. */
     public static final int UNKNOWN = -1;
+    /** The enclosing object ended; there is no pending member value. */
     public static final int OBJECT_END = -2;
 
     // Null for compiled binding.
@@ -36,8 +40,8 @@ public class NameMatcher {
     }
 
     /**
-     * Shared initialization for backend subclasses.
-     * Exactly one argument must be non-null.
+     * Prepares static names and optional index-aligned aliases.
+     * The two arrays must have the same length when aliases are provided.
      */
     public NameMatcher(String[] names, String[][] aliases) {
         this(null, names, aliases);
@@ -86,10 +90,12 @@ public class NameMatcher {
         this.fallback = map;
     }
 
+    /** Returns the number of declared names, excluding aliases. */
     public final int size() {
         return names.length;
     }
 
+    /** Returns the primary name at a declared index. */
     public final String name(int index) {
         return names[index];
     }
@@ -104,6 +110,10 @@ public class NameMatcher {
         return writableProperties[index];
     }
 
+    /**
+     * Matches a member name or alias by lookup, returning {@link #UNKNOWN}
+     * if it is not declared.
+     */
     public int fallback(String name) {
         Integer index = fallback.get(name);
         return index != null ? index : UNKNOWN;

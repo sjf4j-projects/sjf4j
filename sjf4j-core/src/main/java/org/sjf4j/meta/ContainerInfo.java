@@ -31,6 +31,10 @@ public final class ContainerInfo {
         this(clazz, kind, noArgsCtorHandle, noArgsCtorLambda, null);
     }
 
+    /**
+     * Creates container metadata with an optional external adapter for
+     * mapping or copying non-directly-constructible containers.
+     */
     @SuppressWarnings("unchecked")
     public ContainerInfo(Class<?> clazz, NodeKind kind,
                          MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
@@ -63,6 +67,6 @@ public final class ContainerInfo {
                 throw new BindingException("failed to create container instance of " + clazz.getName(), e);
             }
         }
-        throw new BindingException("failed to create container instance of " + clazz.getName());
+        throw new BindingException("no no-argument constructor available for container '" + clazz.getName() + "'");
     }
 }

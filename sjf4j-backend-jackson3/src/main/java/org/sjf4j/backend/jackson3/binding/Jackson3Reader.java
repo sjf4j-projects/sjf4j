@@ -36,6 +36,10 @@ public final class Jackson3Reader extends StreamingReader {
     private final JsonParser parser;
     private boolean prefetched;
 
+    /**
+     * Creates a reader, preserving a parser already positioned on a token.
+     * @param parser the Jackson 3 parser
+     */
     public Jackson3Reader(JsonParser parser) {
         super(Backend.JACKSON3);
         this.parser = Asserts.notNull(parser, "parser");

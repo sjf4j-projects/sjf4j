@@ -86,6 +86,9 @@ public class CreatorInfo {
         return -1;
     }
 
+    /**
+     * Returns the creator argument index for a name or its alias, or {@code -1}.
+     */
     public int getArgIndexOrAlias(String name) {
         int idx = getArgIndex(name);
         if (idx >= 0) return idx;
@@ -106,7 +109,7 @@ public class CreatorInfo {
     }
 
     /**
-     * Creates an object through its no-argument constructor.
+     * Creates an object through its no-argument constructor or supplier.
      */
     public Object newPojoNoArgs() {
         if (noArgsCtorLambda != null) {
@@ -117,20 +120,21 @@ public class CreatorInfo {
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
-                throw new BindingException("failed to invoke constructor of " + clazz, e);
+                throw new BindingException("failed to invoke no-argument constructor of '" + clazz.getName() + "'", e);
             }
         }
-        throw new BindingException("failed to create instance of " + clazz + ": Not found no-args constructor");
+        throw new BindingException("no no-argument creator available for '" + clazz.getName() + "'");
     }
 
 
     /**
-     * Creates an object through its argument-based creator.
+     * Creates an object through its argument-based constructor or factory.
+     * Missing primitive arguments are replaced with Java defaults.
      */
     public Object newPojoWithArgs(Object[] args) {
         Asserts.notNull(args, "args");
         if (argsCreatorHandle == null) {
-            throw new BindingException("failed to create instance of " + clazz + ": No creator constructor");
+            throw new BindingException("no argument-based creator available for '" + clazz.getName() + "'");
         }
         try {
             for (int i = 0; i < args.length; i++) {
@@ -160,7 +164,7 @@ public class CreatorInfo {
         } catch (BindingException e) {
             throw e;
         } catch (Throwable e) {
-            throw new BindingException("failed to invoke creator constructor of " + clazz, e);
+            throw new BindingException("failed to invoke creator of '" + clazz.getName() + "'", e);
         }
     }
 
@@ -190,6 +194,3 @@ public class CreatorInfo {
         return null;
     }
 }
-    /**
-     * Returns the creator argument index for a name or its alias, or {@code -1}.
-     */

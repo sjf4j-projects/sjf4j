@@ -15,7 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Registry for patch operation handlers.
  *
  * <p>Handlers are registered at startup for RFC 6902 ops and
- * SJF4J-specific extensions.
+ * SJF4J-specific extensions. Registration replaces a handler with the same
+ * name globally. Custom handlers receive a non-null target for non-root paths;
+ * root replacement is handled by {@link #apply(Object, PatchOperation)}.
  */
 public class OperationRegistry {
 
@@ -53,7 +55,9 @@ public class OperationRegistry {
     }
 
     /**
-     * Applies operation and returns the possibly replaced root document.
+     * Applies an operation and returns the possibly replaced root document.
+     * A handler failure is wrapped with the operation and its target pointer;
+     * the original failure is preserved as the cause.
      */
     public static Object apply(Object target, PatchOperation operation) {
         Asserts.notNull(operation, "operation");
@@ -64,14 +68,15 @@ public class OperationRegistry {
             }
             if (target == null) {
                 throw new NodeException("cannot apply patch operation '" + operation.getOp() +
-                        "' to null target at non-root path " + path);
+                        "' to null target at non-root path '" + path + "'");
             }
             OperationHandler handler = OPERATION_CACHE.get(operation.getOp());
             if (handler == null) throw new NodeException("no operation handler for '" + operation.getOp() + "'");
             handler.apply(target, operation);
             return target;
         } catch (Exception e) {
-            throw new NodeException("failed to apply patch operation '" + operation.getOp() + "'", e);
+            throw new NodeException("failed to apply patch operation '" + operation.getOp() +
+                    "' at path '" + path + "'", e);
         }
     }
 
@@ -84,7 +89,7 @@ public class OperationRegistry {
                 return null;
             case PatchOperation.STD_TEST:
                 if (!Nodes.equals(target, operation.getValue())) {
-                    throw new NodeException("'test' operation failed at path : expected " +
+                    throw new NodeException("'test' operation failed at root path '': expected " +
                             operation.getValue() + ", but was " + target);
                 }
                 return target;

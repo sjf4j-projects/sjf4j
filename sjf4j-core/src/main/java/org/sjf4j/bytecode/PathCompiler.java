@@ -18,5 +18,9 @@ import java.lang.reflect.Type;
  */
 public interface PathCompiler {
 
+    /**
+     * Compiles a parsed path for declared root and target types.
+     * Implementations may reject unsupported path segments or type shapes.
+     */
     BytecodePath<?, ?> compilePath(JsonPath path, Type rootType, Type valueType);
 }

@@ -29,7 +29,11 @@ import java.util.function.Consumer;
  * <p>{@link JsonArray} can be subclassed to define a JAJO, a Java representation
  * category that participates as an array node.
  *
- * <p>Element access and conversion are delegated to {@link Nodes}.
+ * <p>Element access and conversion are delegated to {@link Nodes}. Negative
+ * indexes count from the end ({@code -1} is the last element). Out-of-range
+ * reads return {@code null}; indexed add and set operations reject invalid
+ * indexes. Getters with a default value use it for both absent and {@code null}
+ * elements, but do not suppress conversion errors.
  */
 public class JsonArray extends JsonContainer {
 
@@ -46,7 +50,9 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Creates JsonArray from literal element values.
+     * Creates JsonArray from literal element values. A {@code null} argument
+     * array creates an empty array; an explicit {@code (Object) null} adds one
+     * null element.
      */
     public static JsonArray of(Object... values) {
         JsonArray ja = new JsonArray();
@@ -62,7 +68,8 @@ public class JsonArray extends JsonContainer {
      * Creates an array node backed directly by {@code list}.
      * <p>
      * The provided list becomes this array's storage directly, so element reads
-     * and writes are shared with the same list instance.
+     * and writes are shared with the same list instance. JAJO subtypes validate
+     * non-null elements against {@link #elementClass()} at construction time.
      */
     @SuppressWarnings("unchecked")
     public JsonArray(List<?> list) {
@@ -89,7 +96,8 @@ public class JsonArray extends JsonContainer {
      */
 
     /**
-     * Returns the expected element class for this array.
+     * Returns the expected class of non-null elements. JAJO subtypes can
+     * override this to restrict added, inserted, and replaced elements.
      */
     public Class<?> elementClass() {
         return Object.class;
@@ -135,8 +143,7 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Returns a shallow element snapshot; element references are preserved.
-     * When no backing list exists, the empty result may be unmodifiable.
+     * Returns a mutable shallow element snapshot; element references are preserved.
      */
     public List<Object> toList() {
         return dynamicList == null ? new ArrayList<>() : new ArrayList<>(dynamicList);
@@ -187,6 +194,9 @@ public class JsonArray extends JsonContainer {
         }
     }
 
+    /**
+     * Returns whether any index/value pair matches the predicate.
+     */
     public boolean anyMatch(IdxPredicate<Object> predicate) {
         if (dynamicList == null) return false;
         for (int i = 0; i < dynamicList.size(); i++) {
@@ -333,7 +343,8 @@ public class JsonArray extends JsonContainer {
         }
     }
     /**
-     * Returns the OBNT value at the given index or the default value.
+     * Returns the OBNT value at the given index, or the default when the
+     * index is out of range or the element is {@code null}.
      */
     public Object getNode(int idx, Object defaultValue) {
         Object value = getNode(idx);
@@ -823,7 +834,7 @@ public class JsonArray extends JsonContainer {
     public void add(Object object) {
         if (object != null && !elementClass().isInstance(object))
             throw new NodeException("cannot add element of type '" + object.getClass().getName() +
-                    " to JsonArray with elementType '" + elementClass().getName() + "'");
+                    "' to JsonArray with element type '" + elementClass().getName() + "'");
 
         if (dynamicList == null) dynamicList = new ArrayList<>();
         dynamicList.add(object);
@@ -857,7 +868,7 @@ public class JsonArray extends JsonContainer {
     public void add(int idx, Object object) {
         if (object != null && !elementClass().isInstance(object))
             throw new NodeException("cannot add element of type '" + object.getClass().getName() +
-                    " to JsonArray with elementType '" + elementClass().getName() + "'");
+                    "' to JsonArray with element type '" + elementClass().getName() + "'");
 
         int pidx = _pos(idx);
         if (pidx < 0 || pidx > size()) {
@@ -877,7 +888,7 @@ public class JsonArray extends JsonContainer {
     public Object set(int idx, Object object) {
         if (object != null && !elementClass().isInstance(object))
             throw new NodeException("cannot set element of type '" + object.getClass().getName() +
-                    " in JsonArray with elementType '" + elementClass().getName() + "'");
+                    "' in JsonArray with element type '" + elementClass().getName() + "'");
 
         int pidx = _pos(idx);
         if (pidx < 0 || pidx >= size()) {
@@ -888,7 +899,8 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Sets a value only when the current value is null.
+     * Sets a value only when the current element is {@code null}. The index
+     * must exist; an out-of-range index is not an append operation.
      */
     public Object setIfAbsent(int idx, Object object) {
         Object old = getNode(idx);
@@ -972,8 +984,8 @@ public class JsonArray extends JsonContainer {
      * Creates a deep copy of this JsonArray.
      * <p>
      * Delegates to {@link Sjf4j#copyNode} and {@link NodeMapper}; array
-     * elements are copied structurally. Unsupported values, including backend-native
-     * or external nodes, may be retained by reference.
+     * elements are copied structurally. Unsupported nested values can cause
+     * binding to fail rather than being copied.
      */
     public JsonArray deepCopy() {
         return Sjf4j.global().copyNode(this);

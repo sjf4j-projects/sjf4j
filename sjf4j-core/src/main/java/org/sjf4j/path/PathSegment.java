@@ -18,7 +18,7 @@ public abstract class PathSegment {
     protected final PathSegment parent;
 
     /**
-     * Creates a path segment with parent and container type.
+     * Creates a path segment linked to its parent.
      */
     public PathSegment(PathSegment parent) {
         this.parent = parent;

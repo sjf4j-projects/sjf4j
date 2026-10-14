@@ -9,7 +9,11 @@ import javax.lang.model.element.TypeElement;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Generates implementations for {@code @CompiledBinder} interfaces. */
+/**
+ * Generates implementations for {@code @CompiledBinder} interfaces. The
+ * backend is resolved once per interface; method plans are checked before
+ * shared read/write helpers and generated source are emitted.
+ */
 public final class BindingGenerator {
 
     private final ProcessorContext context;
@@ -24,6 +28,7 @@ public final class BindingGenerator {
                 new BackendResolver(context);
     }
 
+    /** Generates a binder implementation for one annotated interface. */
     public void generate(TypeElement type) {
         if (!type.getTypeParameters()
                 .isEmpty()) {

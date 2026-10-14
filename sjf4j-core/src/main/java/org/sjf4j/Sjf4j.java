@@ -32,6 +32,9 @@ import java.util.Properties;
  * <p>
  * Use {@link #global()} for the shared process-wide default instance, or {@link #builder()}
  * to create an isolated instance with custom binders and formatting behavior.
+ * Format reads and writes use the binders selected for this instance; the
+ * static convenience methods on {@link JsonObject} and {@link JsonArray} use
+ * {@link #global()}.
  */
 public final class Sjf4j {
 
@@ -426,6 +429,11 @@ public final class Sjf4j {
      * --------------------------------------------------------------
      */
 
+    /**
+     * Configures binder providers and runtime value-format settings for a new
+     * {@link Sjf4j} instance. Calling {@link #build()} does not modify the
+     * shared {@link Sjf4j#global()} instance.
+     */
     public static final class Builder {
         private BinderProvider jsonBinderProvider;
         private BinderProvider yamlBinderProvider;
@@ -464,7 +472,7 @@ public final class Sjf4j {
             Asserts.notNull(provider, "provider");
             if (!Format.JSON.equals(provider.format())) {
                 throw new IllegalArgumentException(
-                        "expected a JSON binder provider, but got format: " + provider.format());
+                        "expected JSON binder provider, but format was '" + provider.format() + "'");
             }
             this.jsonBinderProvider = provider;
             return this;
@@ -477,12 +485,15 @@ public final class Sjf4j {
             Asserts.notNull(provider, "provider");
             if (!Format.YAML.equals(provider.format())) {
                 throw new IllegalArgumentException(
-                        "expected a YAML binder provider, but got format: " + provider.format());
+                        "expected YAML binder provider, but format was '" + provider.format() + "'");
             }
             this.yamlBinderProvider = provider;
             return this;
         }
 
+        /**
+         * Overrides the binder used to read and write Java Properties.
+         */
         public Builder propertiesBinder(PropertiesBinder propertiesBinder) {
             Asserts.notNull(propertiesBinder, "propertiesBinder");
             this.propertiesBinder = propertiesBinder;

@@ -7,7 +7,7 @@ import java.util.Properties;
 /**
  * Properties binder for mapping {@link Properties} to object-rooted {@link JsonObject}s.
  *
- * <p>Warning: {@link Properties} does not preserve key order.
+ * <p>{@link Properties} does not preserve key order.
  * Scalar leaves are written with {@link String#valueOf(Object)} and read as
  * strings. Null object properties and empty containers have no properties and
  * are therefore omitted. Each top-level property in a write replaces its prior
@@ -18,8 +18,17 @@ import java.util.Properties;
  */
 public interface PropertiesBinder {
 
+    /**
+     * Reads flattened properties into an object-rooted node.
+     *
+     * @throws org.sjf4j.exception.BindingException if a property path is invalid
+     */
     JsonObject readNode(Properties props);
 
+    /**
+     * Writes an object-rooted node into the supplied Properties instance.
+     * Unsupported array entries fail instead of changing the array's shape.
+     */
     void writeNode(Properties props, Object node);
 
 }

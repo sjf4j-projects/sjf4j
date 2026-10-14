@@ -43,7 +43,8 @@ import java.util.Set;
  * access are returned as-is.
  *
  * <p>Unsupported shapes fail fast instead of silently delegating back to the reflective fallback
- * implementation.
+ * implementation. In particular, the root cannot be {@code Object} and the
+ * requested value type must be a reference type.
  */
 public class AsmPathCompiler implements PathCompiler {
 
@@ -56,18 +57,18 @@ public class AsmPathCompiler implements PathCompiler {
         Class<?> valueClazz = Types.rawClazz(valueType);
 
         if (rootClazz == Object.class) {
-            throw new NodeException("ASM CompiledPath does not support Object root for '" + path.toExpr() +
-                    "'; use FallbackCompiledPath for fully dynamic roots");
+            throw new NodeException("ASM BytecodePath does not support Object root for '" + path.toExpr() +
+                    "'; use FallbackBytecodePath for fully dynamic roots");
         }
         if (valueClazz.isPrimitive()) {
-            throw new NodeException("ASM CompiledPath valueType must be a reference type for '" + path.toExpr() +
+            throw new NodeException("ASM BytecodePath valueType must be a reference type for '" + path.toExpr() +
                     "'; use " + Types.box(valueClazz).getName() + " instead of " + valueClazz.getName());
         }
         if (path.length() < 2) {
-            throw new NodeException("ASM CompiledPath requires a non-root target path: '" + path.toExpr() + "'");
+            throw new NodeException("ASM BytecodePath requires a non-root target path: '" + path.toExpr() + "'");
         }
         if (!path.isSinglePut()) {
-            throw new NodeException("ASM CompiledPath supports only a single target path with Name/Index/Append segments: '" +
+            throw new NodeException("ASM BytecodePath supports only a single target path with Name/Index/Append segments: '" +
                     path.toExpr() + "'");
         }
 
@@ -87,7 +88,7 @@ public class AsmPathCompiler implements PathCompiler {
         try {
             return (BytecodePath<?, ?>) compiledClass.getConstructor().newInstance();
         } catch (Exception e) {
-            throw new NodeException("failed to instantiate ASM CompiledPath for '" + path.toExpr() +
+            throw new NodeException("failed to instantiate ASM BytecodePath for '" + path.toExpr() +
                     "' (rootType=" + rootClazz.getName() + ", valueType=" + valueClazz.getName() + ")", e);
         }
     }
@@ -379,9 +380,9 @@ public class AsmPathCompiler implements PathCompiler {
                 Class<?> boxedCurrentClazz = Types.box(currentClazz);
                 if (boxedCurrentClazz != Object.class && boxedValueClazz != Object.class &&
                         !boxedValueClazz.isAssignableFrom(boxedCurrentClazz)) {
-                    throw new NodeException("ASM CompiledPath '" + expr +
+                    throw new NodeException("ASM BytecodePath '" + expr +
                             "' does not coerce terminal type " + boxedCurrentClazz.getName() +
-                            " to requested valueType " + boxedValueClazz.getName());
+                            " to requested value type '" + boxedValueClazz.getName() + "'");
                 }
 
                 // return _2;

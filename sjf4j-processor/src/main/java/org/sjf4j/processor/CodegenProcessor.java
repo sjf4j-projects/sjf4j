@@ -21,7 +21,10 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Annotation processor entry point for SJF4J compiled features.
+ * Annotation processor entry point for compiled navigation, binding, object
+ * mapping, and JDBC mapping. It validates annotation placement and delegates
+ * each annotated interface to its feature generator. Diagnostics are attached
+ * to the offending interface or method through {@link ProcessorContext}.
  */
 public final class CodegenProcessor extends AbstractProcessor {
 
@@ -33,6 +36,10 @@ public final class CodegenProcessor extends AbstractProcessor {
     private JdbcMapperGenerator jdbcMapperGenerator;
     private BindingGenerator bindingGenerator;
 
+    /**
+     * Lists both root and method-level annotations so invalid element kinds
+     * and non-abstract methods can be diagnosed independently of generation.
+     */
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         return AnnotationValidator.supportedAnnotationTypes();
@@ -68,6 +75,7 @@ public final class CodegenProcessor extends AbstractProcessor {
                 new BindingGenerator(context);
     }
 
+    /** Processes each discovered interface; other processors may see the same annotations. */
     @Override
     public boolean process(
             Set<? extends TypeElement> annotations,

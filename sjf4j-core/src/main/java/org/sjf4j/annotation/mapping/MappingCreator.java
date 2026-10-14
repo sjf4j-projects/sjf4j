@@ -13,10 +13,9 @@ import java.lang.annotation.Target;
  *
  * <p>Use this annotation when the declared target type cannot or should not be
  * instantiated by the default rules. The common case is an interface or
- * abstract target. It may be declared on a {@link CompiledMapper} or {@link CompiledJdbcMapper} interface, or
- * on an inherited factory/mixin interface, to apply to all generated mapping
- * methods. It may also be declared on an individual mapper method to apply only
- * to that method's generated mapping logic:</p>
+ * abstract target. Declare a rule on a {@link CompiledMapper} or
+ * {@link CompiledJdbcMapper} interface to make it available to all its generated
+ * methods, or on an individual mapper method to limit it to that method.</p>
  *
  * <pre>{@code
  * @CompiledMapper
@@ -36,18 +35,17 @@ import java.lang.annotation.Target;
  * <p>Creators are selected by assignability: a creator whose
  * {@link #targetType()} is a supertype of the requested target may match, and
  * the most specific matching target type wins. Equal or unrelated matches are
- * rejected as ambiguous. Method-level creators take precedence over
- * interface-level creators: when one or more method-level creators match, only
- * those method-level matches participate in selection. Creators declared on
- * parent mapper interfaces are inherited.</p>
+ * rejected as ambiguous. Matching method-level rules take precedence over
+ * interface-level rules. Interface-level rules are also inherited from parent
+ * compiled mapper interfaces; an unannotated mixin interface cannot declare
+ * this annotation.</p>
  *
- * <p>This annotation is retained in class files so a child mapper compiled in a
- * later module can inherit creators from an already compiled parent interface.
- * It is still processor-consumed metadata and is not retained for runtime
- * reflection.</p>
+ * <p>This annotation is retained in class files so a child mapper compiled in
+ * another module can inherit interface-level rules. It is not retained for
+ * runtime reflection.</p>
  */
 @Retention(RetentionPolicy.CLASS)
-@Target(ElementType.METHOD)
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Repeatable(MappingCreators.class)
 public @interface MappingCreator {
     /**

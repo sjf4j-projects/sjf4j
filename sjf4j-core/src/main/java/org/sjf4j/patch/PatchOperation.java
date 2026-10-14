@@ -86,7 +86,10 @@ public final class PatchOperation {
      * Mutating non-root operations write the addressed target container; {@code test}
      * and {@code exist} are read-only. Root add and replace return the operation
      * value; root remove returns {@code null}. The operation itself is not directly
-     * modified.
+     * modified. A failed operation can leave changes from earlier operations
+     * in the same patch document in place.
+     *
+     * @return the resulting root document
      */
     public Object apply(Object target) {
         return OperationRegistry.apply(target, this);

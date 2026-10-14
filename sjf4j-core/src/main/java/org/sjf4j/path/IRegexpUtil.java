@@ -8,7 +8,9 @@ import org.sjf4j.exception.NodeException;
  * See: <a href="https://www.rfc-editor.org/rfc/rfc9485.html">RFC 9485</a>
  *
  * <p>This is a lightweight matcher used by JSONPath functions such as
- * {@code match()} and {@code search()}.
+ * {@code match()} and {@code search()}. It recognizes literals, single-character
+ * wildcards, escapes, and character classes/ranges; it is not a general
+ * {@link java.util.regex.Pattern} implementation.
  */
 public class IRegexpUtil {
 
@@ -96,7 +98,8 @@ public class IRegexpUtil {
         for (int i = start + 1; i < p.length(); i++) {
             if (p.charAt(i) == ']') return i;
         }
-        throw new NodeException("unclosed character class '['");
+        throw new NodeException("unclosed character class '[' at position " + start +
+                " in I-Regexp pattern '" + p + "'");
     }
 
     /**
@@ -107,7 +110,7 @@ public class IRegexpUtil {
             char c = p.charAt(i);
             if (c == '\\') {
                 i++;
-                if (i >= to) throw new NodeException("invalid escape in []");
+                if (i >= to) throw new NodeException("invalid escape in character class of I-Regexp pattern '" + p + "'");
                 if (p.charAt(i) == ch) return true;
             } else if (i + 2 < to && p.charAt(i + 1) == '-') {
                 char lo = c;

@@ -11,7 +11,8 @@ import java.lang.annotation.Target;
  * <p>A one-parameter method binds the value to a returned {@link String} or
  * {@code byte[]}. A two-parameter method uses the first parameter as the value
  * and requires the second parameter to be {@link java.io.OutputStream} or
- * {@link java.io.Writer}; that form returns {@code void}.</p>
+ * {@link java.io.Writer} (or a subtype); that form returns {@code void}. Both
+ * forms must declare {@link java.io.IOException} or a supertype.</p>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)

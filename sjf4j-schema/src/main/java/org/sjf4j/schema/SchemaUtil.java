@@ -137,12 +137,17 @@ public final class SchemaUtil {
         if (count > 0) sb.append(')');
     }
 
+    /**
+     * Formats a schema or instance location for diagnostics. The root is
+     * shown as {@code /} for readability, although its JSON Pointer is empty.
+     */
     public static String displayPath(PathSegment ps) {
         if (ps == null) return null;
         String path = PathSyntax.rootedPointerExpr(ps);
         return path == null || path.isEmpty() ? "/" : path;
     }
 
+    /** Returns a display URI, using {@code <inline>} for synthetic or absent URIs. */
     public static String displaySchemaUri(URI schemaUri) {
         if (schemaUri == null) return "<inline>";
         if ("sjf4j".equalsIgnoreCase(schemaUri.getScheme())) return "<inline>";
@@ -399,7 +404,8 @@ public final class SchemaUtil {
             schema = _loadSchemaFromResource(uri, path);
         } else {
             throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
-                    "unsupported local schema uri", PathSegment.Root.INSTANCE, uri));
+                    "unsupported local schema uri scheme '" + uri.getScheme() + "': expected file or classpath",
+                    PathSegment.Root.INSTANCE, uri));
         }
         if (schema == null) return null;
         schema.setRetrievalUri(uri);

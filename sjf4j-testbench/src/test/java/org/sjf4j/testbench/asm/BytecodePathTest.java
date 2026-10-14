@@ -36,7 +36,7 @@ public class BytecodePathTest {
         NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.a", Object.class, Integer.class));
         assertTrue(ex.getMessage().contains("Object"));
-        assertTrue(ex.getMessage().contains("FallbackCompiledPath"));
+        assertTrue(ex.getMessage().contains("FallbackBytecodePath"));
     }
 
     @Test

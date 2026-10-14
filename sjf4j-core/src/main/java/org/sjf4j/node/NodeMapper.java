@@ -772,7 +772,10 @@ public final class NodeMapper {
 
 
     /**
-     * Root conversion entry with deep-copy control.
+     * Converts a node to a declared class or generic target type. When
+     * {@code deepCopy} is true, supported nested structures are copied;
+     * otherwise compatible values can be reused. Binding failures can carry
+     * a node path to the value that could not be converted.
      */
     public static Object convert(Object node, Type type, boolean deepCopy, RuntimeContext context) {
         Asserts.notNull(type, "type");
@@ -783,7 +786,8 @@ public final class NodeMapper {
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("failed to convert node from '" + Types.name(node) + "' to '" + type + "'", e);
+            throw new BindingException("failed to convert node from '" + Types.name(node) +
+                    "' to '" + type.getTypeName() + "'", e);
         }
     }
 
