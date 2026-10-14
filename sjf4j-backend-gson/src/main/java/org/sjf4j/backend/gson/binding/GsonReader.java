@@ -28,6 +28,13 @@ public final class GsonReader extends StreamingReader {
     }
 
     @Override
+    public void endDocument() throws IOException {
+        if (reader.peek() != JsonToken.END_DOCUMENT) {
+            throw new IOException("expected end of document");
+        }
+    }
+
+    @Override
     public Token peekToken() throws IOException {
         try {
             return _token(reader.peek());
@@ -172,10 +179,11 @@ public final class GsonReader extends StreamingReader {
 
     @Override
     public Object readRawNode() throws IOException {
-        switch (peekToken()) {
-            case OBJECT_START:
+        JsonToken token = reader.peek();
+        switch (token) {
+            case BEGIN_OBJECT:
                 return _readRawObject();
-            case ARRAY_START:
+            case BEGIN_ARRAY:
                 return _readRawArray();
             case STRING:
                 return reader.nextString();
@@ -187,7 +195,7 @@ public final class GsonReader extends StreamingReader {
                 reader.nextNull();
                 return null;
             default:
-                throw new BindingException("unexpected token '" + peekToken() + "'");
+                throw new BindingException("unexpected token '" + token + "'");
         }
     }
 

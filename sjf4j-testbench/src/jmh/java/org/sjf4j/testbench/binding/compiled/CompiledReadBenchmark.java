@@ -55,7 +55,7 @@ public class CompiledReadBenchmark {
 
     public static void main(String[] args) throws Exception {
 //        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
-        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".fastjson2"});
+        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*map"});
     }
 
 

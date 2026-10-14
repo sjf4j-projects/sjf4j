@@ -125,11 +125,7 @@ public abstract class StreamingReader implements Closeable {
      * <p>The default implementation verifies that the logical input has
      * reached the end of the document.</p>
      */
-    public void endDocument() throws IOException {
-        if (peekToken() != Token.EOF) {
-            throw new IOException("expected end of document");
-        }
-    }
+    public abstract void endDocument() throws IOException;
 
 
     /**
