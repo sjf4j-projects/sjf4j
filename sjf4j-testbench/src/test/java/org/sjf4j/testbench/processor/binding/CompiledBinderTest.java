@@ -11,6 +11,7 @@ import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -219,7 +220,7 @@ public class CompiledBinderTest {
         BinderContract binder = CompiledInstances.of(Jackson2Binder.class);
 
         assertNull(binder.readObjectMap("null"));
-        assertThrows(IOException.class, () -> binder.readObjectMap("[]"));
+        assertThrows(BindingException.class, () -> binder.readObjectMap("[]"));
 
         Map<String, Object> value = binder.readObjectMap(
                 "{\"name\":\"Ada\",\"nested\":{\"enabled\":true},\"items\":[1,null]}");
