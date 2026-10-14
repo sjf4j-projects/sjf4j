@@ -42,6 +42,11 @@ public final class Jackson2Reader extends StreamingReader {
         this.prefetched = parser.currentToken() != null;
     }
 
+    /** Native parser access for compiled POJO scalar reads after name matching. */
+    public JsonParser rawParser() {
+        return parser;
+    }
+
     /* --------------------------------------------------------------
      * Document / inspection
      * -------------------------------------------------------------- */
