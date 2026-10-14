@@ -47,6 +47,12 @@ public final class JsonpReader extends StreamingReader {
     }
 
     @Override
+    public void endDocument() throws IOException {
+        if (current != null) {
+            throw new IOException("expected end of document");
+        }
+    }
+    @Override
     public Token peekToken() {
         return token(current);
     }
