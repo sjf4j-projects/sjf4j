@@ -31,8 +31,8 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          java -jar sjf4j-testbench/build/libs/*-jmh.jar \\
-            '.*Fastjson2NameDispatchBenchmark.*' \\
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*Fastjson2NameDispatchBenchmark.*' \
             -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc | tee fastjson2-name-dispatch.log
       - uses: actions/upload-artifact@v4
         if: always()
