@@ -391,9 +391,11 @@ final class ReadEmitter {
         // Delegate traversal to the backend raw reader; typed maps retain
         // their compiled element plan.
         if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
                 && value.mapValue().kind() == BindingValue.Kind.RUNTIME
                 && context.types.isObject(value.mapValue().type())) {
-            out.line("return (" + value.type() + ") reader.readRawNode();");
+            out.line("Object raw = reader.readRawNode();");
+            out.line("return raw == null ? null : org.sjf4j.binding.StreamingIO.castMap(raw);");
             return;
         }
 
