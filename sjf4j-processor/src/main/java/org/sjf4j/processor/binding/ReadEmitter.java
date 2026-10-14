@@ -218,9 +218,6 @@ final class ReadEmitter {
         if (fastjson2Pojo != null && !value.properties().isEmpty()) {
             fastjson2Pojo.emitProperties(out, value, this);
         } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
-            if (backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2) {
-                out.line("com.fasterxml.jackson.core.JsonParser raw = reader.rawParser();");
-            }
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) {
                 out.line("int expectedNameIndex = 0;");
@@ -263,15 +260,7 @@ final class ReadEmitter {
             if (backend.usesExpectedNameMatch()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
-            String nativeRead = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
-                    ? jackson2NativeScalarRead(property.value()) : null;
-            if (nativeRead != null) {
-                // The native parser is at FIELD_NAME after nextNameMatch.
-                out.line("raw.nextToken();");
-                emitPropertyReadExpression(out, property, "value", nativeRead);
-            } else {
-                emitPropertyRead(out, property, "value", "reader");
-            }
+            emitPropertyRead(out, property, "value", "reader");
             out.line("break;");
             out.dedent();
         }
@@ -283,27 +272,6 @@ final class ReadEmitter {
         out.dedent();
 
         out.endBlock();
-    }
-
-    // Experimental direct Jackson2 scalar read. Keep nullable values,
-    // narrow integers, chars, and dynamically typed values on the shared
-    // reader path until their exact semantics have been independently checked.
-    private static String jackson2NativeScalarRead(BindingValue value) {
-        if (!value.primitive()) return null;
-        switch (value.kind()) {
-            case BOOLEAN:
-                return "raw.getBooleanValue()";
-            case INT:
-                return "raw.getIntValue()";
-            case LONG:
-                return "raw.getLongValue()";
-            case FLOAT:
-                return "raw.getFloatValue()";
-            case DOUBLE:
-                return "raw.getDoubleValue()";
-            default:
-                return null;
-        }
     }
 
     private void emitStringPojoProperty(
