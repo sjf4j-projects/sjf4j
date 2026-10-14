@@ -154,6 +154,8 @@ public class CompiledReadBenchmark {
     public void verify() throws Exception {
         User expected = JACKSON2_NATIVE.readValue(JSON_DATA, User.class);
         checkPojo("jackson2 compiled JSON_DATA", expected, JACKSON2_COMPILED.readPojo(JSON_DATA));
+        checkPojo("jackson2 compiled reversed String", expected, JACKSON2_COMPILED.readPojo(JSON_REVERSED));
+        checkPojo("jackson2 compiled reversed UTF-8", expected, JACKSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8));
         checkPojo("jackson2 runtime JSON_DATA", expected, JACKSON2_RUNTIME.readNode(JSON_DATA, User.class));
         checkPojo("jackson2 compiled JSON_UTF8", expected, JACKSON2_COMPILED.readPojoUtf8(JSON_UTF8));
         checkPojo("jackson2 runtime JSON_UTF8", expected, JACKSON2_RUNTIME.readNode(JSON_UTF8, User.class));
@@ -242,6 +244,18 @@ public class CompiledReadBenchmark {
     }
 
     // ----- JACKSON2 -----
+    // Exercise the same compiled name-match path with the opposite field
+    // order; the existing JSON_DATA benchmark covers ordered fields.
+    @Benchmark
+    public Object jackson2_pojo_reversed_string_compiled() throws IOException {
+        return JACKSON2_COMPILED.readPojo(JSON_REVERSED);
+    }
+
+    @Benchmark
+    public Object jackson2_pojo_reversed_utf8_compiled() throws IOException {
+        return JACKSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
+    }
+
     @Benchmark
     public Object jackson2_pojo_string_compiled() throws IOException {
         return JACKSON2_COMPILED.readPojo(JSON_DATA);
