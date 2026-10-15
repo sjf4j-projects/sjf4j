@@ -21,6 +21,9 @@ import java.math.BigInteger;
 public final class Jackson3Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
+
+    /** Access for backend-specific compiled POJO property writers. */
+    public JsonGenerator nativeGenerator() { return generator; }
     private final SegmentedStringWriter stringOutput;
     private final BufferRecycler recycler;
 
