@@ -17,8 +17,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Compiled binder conformance
-        run: ./gradlew :sjf4j-processor:test --tests org.sjf4j.processor.CompiledBinderConformanceTest --no-daemon
+      - name: Full affected module regression
+        run: ./gradlew :sjf4j-core:test :sjf4j-backend-gson:test :sjf4j-backend-jsonp:test :sjf4j-backend-fastjson2:test :sjf4j-processor:test --no-daemon
       - name: Build JMH
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Compare compiled String transcode versus byte stream
