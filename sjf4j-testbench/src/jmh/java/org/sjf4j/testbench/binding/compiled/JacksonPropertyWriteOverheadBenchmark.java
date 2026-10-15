@@ -108,4 +108,65 @@ public class JacksonPropertyWriteOverheadBenchmark {
             return out.toString();
         }
     }
+
+    @Benchmark
+    public byte[] jackson2_utf8_direct() throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        try (JsonGenerator g = J2_FACTORY.createGenerator(out)) {
+            g.writeStartObject();
+            g.writeFieldName(J2_ID);
+            g.writeNumber(42);
+            g.writeFieldName(J2_NAME);
+            g.writeString("sample");
+            g.writeEndObject();
+        }
+        return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] jackson2_utf8_adapter() throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        try (Jackson2Writer w = J2_BINDER.createWriter(out)) {
+            w.startDocument();
+            w.startObject();
+            w.writeName(J2_COMPILED_ID);
+            w.writeIntValue(42);
+            w.writeName(J2_COMPILED_NAME);
+            w.writeStringValue("sample");
+            w.endObject();
+            w.endDocument();
+        }
+        return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] jackson3_utf8_direct() throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        try (tools.jackson.core.JsonGenerator g =
+                 J3_FACTORY.createGenerator(tools.jackson.core.ObjectWriteContext.empty(), out)) {
+            g.writeStartObject();
+            g.writeName(J3_ID);
+            g.writeNumber(42);
+            g.writeName(J3_NAME);
+            g.writeString("sample");
+            g.writeEndObject();
+        }
+        return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] jackson3_utf8_adapter() throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        try (Jackson3Writer w = J3_BINDER.createWriter(out)) {
+            w.startDocument();
+            w.startObject();
+            w.writeName(J3_COMPILED_ID);
+            w.writeIntValue(42);
+            w.writeName(J3_COMPILED_NAME);
+            w.writeStringValue("sample");
+            w.endObject();
+            w.endDocument();
+        }
+        return out.toByteArray();
+    }
 }
