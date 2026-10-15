@@ -646,7 +646,7 @@ final class WriteEmitter {
         switch (value.kind()) {
             case POJO:
                 out.line("w.startObject();");
-                out.line(value.helperName() + "Properties(w, value);");
+                emitNativeProperties(out, value);
                 out.line("w.endObject();");
                 break;
             case LIST:
@@ -679,14 +679,18 @@ final class WriteEmitter {
         if (value.kind() == BindingValue.Kind.POJO) {
             out.beginBlock("private static void " + value.helperName()
                     + "Properties(" + type + " w, " + value.type() + " value)");
-            int index = 0;
-            for (BindingProperty property : value.properties()) {
-                out.line("w.writeNameRaw(" + compiledNameField(value, index++)
-                        + "_rawUtf8);");
-                emitNativeValue(out, property.value(),
-                        access(property.access(), "value"));
-            }
+            emitNativeProperties(out, value);
             out.endBlock();
+        }
+    }
+
+    private void emitNativeProperties(JavaWriter out, BindingValue value) {
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            out.line("w.writeNameRaw(" + compiledNameField(value, index++)
+                    + "_rawUtf8);");
+            emitNativeValue(out, property.value(),
+                    access(property.access(), "value"));
         }
     }
 
@@ -699,11 +703,14 @@ final class WriteEmitter {
         String method;
         switch (value.kind()) {
             case STRING:
-                out.beginBlock("if (" + expression + " == null)");
+                out.beginBlock("");
+                out.line("String stringValue = " + expression + ";");
+                out.beginBlock("if (stringValue == null)");
                 out.line("w.writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line("w.writeString(" + expression + ");");
+                out.line("w.writeString(stringValue);");
+                out.endBlock();
                 out.endBlock();
                 return;
             case BOOLEAN: method = "writeBool"; break;
