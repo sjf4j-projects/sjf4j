@@ -1,5 +1,8 @@
 name: Fastjson2 cached name A/B
 on:
+  push:
+    branches:
+      - perf/compiled-fastjson2-write-bytes
   workflow_dispatch:
 jobs:
   benchmark:
