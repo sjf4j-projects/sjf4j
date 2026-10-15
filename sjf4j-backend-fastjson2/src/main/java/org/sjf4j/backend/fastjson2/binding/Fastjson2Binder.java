@@ -135,6 +135,11 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         return new Fastjson2Writer(JSONWriter.of(writerContext));
     }
 
+    /** Creates an in-memory UTF-8 writer for compiled byte[] output. */
+    public Fastjson2Writer createWriterUtf8() {
+        return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext));
+    }
+
     /**
      * Serializes through the SJF4J binding pipeline while retaining Fastjson2's
      * native in-memory output buffer. The base implementation writes through
