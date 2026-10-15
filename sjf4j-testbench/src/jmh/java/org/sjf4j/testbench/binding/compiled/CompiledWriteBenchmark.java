@@ -507,6 +507,12 @@ public class CompiledWriteBenchmark {
         return JSONP_RUNTIME.writeNodeAsString(USER);
     }
 
+    /** Experimental JSON-P compiled String -> UTF-8, compared against streaming. */
+    @Benchmark
+    public byte[] json_jsonp_pojo_utf8_compiled_transcode() throws IOException {
+        return JSONP_COMPILED.writePojo(USER).getBytes(StandardCharsets.UTF_8);
+    }
+
     @Benchmark
     public byte[] json_jsonp_pojo_utf8_compiled() throws IOException {
         return JSONP_COMPILED.writePojoUtf8(USER);
@@ -525,6 +531,12 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_jsonp_map_string_runtime() {
         return JSONP_RUNTIME.writeNodeAsString(MAP);
+    }
+
+    /** Experimental JSON-P compiled String -> UTF-8, compared against streaming. */
+    @Benchmark
+    public byte[] json_jsonp_map_utf8_compiled_transcode() throws IOException {
+        return JSONP_COMPILED.writeMap(MAP).getBytes(StandardCharsets.UTF_8);
     }
 
     @Benchmark
