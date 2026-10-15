@@ -500,7 +500,7 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.node.NodeProperty;\n"
                         + "public class Bean {\n"
-                        + "  @NodeProperty(\\\"special-key\\\") public String name;\n"
+                        + "  @NodeProperty(\"special-key\") public String name;\n"
                         + "  public java.util.List<Inner> children;\n"
                         + "  public java.util.Map<String, Inner> byName;\n"
                         + "  public static class Inner { public int count; public String text; }\n"
