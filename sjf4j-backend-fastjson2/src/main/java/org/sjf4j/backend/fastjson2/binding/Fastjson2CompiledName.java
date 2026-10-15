@@ -10,6 +10,11 @@ public final class Fastjson2CompiledName extends CompiledName {
     final char[] rawNameUtf16;
     final byte[] rawNameUtf8;
 
+    /** Pre-escaped UTF-8 property token for compiled Fastjson2 UTF-8 writers. */
+    public byte[] rawNameUtf8() {
+        return rawNameUtf8;
+    }
+
 
     /**
      * Prepares a property name for UTF-8 and UTF-16 raw-name writes.
