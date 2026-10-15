@@ -542,4 +542,54 @@ class CompiledBinderConformanceTest {
         }
     }
 
+    @Test
+    void fastjson2NativePropertiesHandleRecursivePojo() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Node.java",
+                "package fixture;\n"
+                        + "public class Node { public String name; public Node child; }\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @WriteTo String write(Node value) throws java.io.IOException;\n"
+                        + " @WriteTo byte[] writeBytes(Node value) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> type = Class.forName("fixture.Node", true, loader);
+            Class<?> binderType = Class.forName("fixture.Binder_Impl", true, loader);
+            Object parent = type.getConstructor().newInstance();
+            Object child = type.getConstructor().newInstance();
+            type.getField("name").set(parent, "parent");
+            type.getField("name").set(child, "child");
+            type.getField("child").set(parent, child);
+            Object binder = binderType.getConstructor().newInstance();
+            String expected = (String) binderType.getMethod("write", type).invoke(binder, parent);
+            byte[] actual = (byte[]) binderType.getMethod("writeBytes", type).invoke(binder, parent);
+            assertEquals(expected, new String(actual, java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void fastjson2NativeRawNameFeatureSafety() {
+        com.alibaba.fastjson2.JSONWriter.Context context =
+                com.alibaba.fastjson2.JSONFactory.createWriteContext();
+        try (com.alibaba.fastjson2.JSONWriter nativeWriter =
+                     com.alibaba.fastjson2.JSONWriter.ofUTF8(context)) {
+            org.sjf4j.backend.fastjson2.binding.Fastjson2Writer adapter =
+                    new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(nativeWriter);
+            assertTrue(adapter.supportsRawUtf8Names());
+        }
+        context.config(com.alibaba.fastjson2.JSONWriter.Feature.EscapeNoneAscii);
+        try (com.alibaba.fastjson2.JSONWriter nativeWriter =
+                     com.alibaba.fastjson2.JSONWriter.ofUTF8(context)) {
+            org.sjf4j.backend.fastjson2.binding.Fastjson2Writer adapter =
+                    new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(nativeWriter);
+            assertFalse(adapter.supportsRawUtf8Names());
+        }
+    }
+
 }
