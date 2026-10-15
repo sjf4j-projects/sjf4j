@@ -155,4 +155,21 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         }
     }
 
+
+    /** Serializes directly into Fastjson2's UTF-8 byte buffer. */
+    @Override
+    public byte[] writeNodeAsBytes(Object node) {
+        try (JSONWriter output = JSONWriter.ofUTF8(writerContext)) {
+            Fastjson2Writer writer = new Fastjson2Writer(output);
+            writer.startDocument();
+            StreamingIO.writeNode(writer, node, context);
+            writer.endDocument();
+            return output.getBytes();
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("failed to write node type '" + Types.name(node)
+                    + "' as UTF-8 JSON with Fastjson2", e);
+        }
+    }
 }
