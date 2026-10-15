@@ -32,7 +32,7 @@ jobs:
         run: |
           set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*Fastjson2EquivalentWriterBenchmark.*' \
+            '.*Fastjson2Equivalent(Writer|Facade)Benchmark.*' \
             -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc | tee fastjson2-equivalent-write.log
       - uses: actions/upload-artifact@v4
         if: always()
