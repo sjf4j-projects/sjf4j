@@ -157,11 +157,12 @@ final class WriteEmitter {
             String source,
             NameAllocator names) {
 
-        // Gson and Simple write small in-memory byte[] more efficiently through
+        // Gson, Simple and JSON-P write in-memory byte[] more efficiently through
         // their compiled character path than through OutputStreamWriter.
         // Caller-owned OutputStream methods remain streaming.
         if (backend.backend() == org.sjf4j.annotation.binding.Backend.GSON
-                || backend.backend() == org.sjf4j.annotation.binding.Backend.SIMPLE) {
+                || backend.backend() == org.sjf4j.annotation.binding.Backend.SIMPLE
+                || backend.backend() == org.sjf4j.annotation.binding.Backend.JSONP) {
             String output = names.newName("output");
             String writer = names.newName("writer");
             out.beginBlock("try (org.sjf4j.binding.FastStringWriter " + output
