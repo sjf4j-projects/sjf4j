@@ -163,11 +163,16 @@ final class WriteEmitter {
                     + " = this.binder.createWriterUtf8())");
             if (value.helperRequired() && nativeEligible(value,
                     new java.util.HashSet<BindingValue>())) {
+                out.beginBlock("if (" + writer + ".supportsRawUtf8Names())");
                 out.line(writer + ".startDocument();");
                 out.line(value.helperName() + "Native(" + writer
                         + ".nativeWriter(), " + source + ");");
                 out.line(writer + ".endDocument();");
                 out.line(writer + ".flush();");
+                out.endBlock(" else {");
+                out.indent();
+                emitWriteBody(out, value, source, writer);
+                out.endBlock();
             } else {
                 emitWriteBody(out, value, source, writer);
             }
