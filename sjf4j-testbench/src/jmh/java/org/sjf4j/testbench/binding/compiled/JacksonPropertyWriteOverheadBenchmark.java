@@ -13,6 +13,8 @@ import org.sjf4j.backend.jackson3.binding.Jackson3Writer;
 import org.sjf4j.binding.FastStringWriter;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import org.sjf4j.testbench.binding.handwritten.Fast2ByteArrayOutputStream;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -260,5 +262,64 @@ public class JacksonPropertyWriteOverheadBenchmark {
             out.release();
             recycler.releaseToPool();
         }
+    }
+
+    // Identical initial capacity, no recycling: isolate synchronization/implementation overhead.
+    @Benchmark
+    public byte[] jackson2_utf8_baos_2048() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(2048);
+        try (JsonGenerator g = J2_FACTORY.createGenerator(out)) {
+            g.writeStartObject();
+            g.writeFieldName(J2_ID);
+            g.writeNumber(42);
+            g.writeFieldName(J2_NAME);
+            g.writeString("sample");
+            g.writeEndObject();
+        }
+        return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] jackson2_utf8_fast2_2048() throws IOException {
+        Fast2ByteArrayOutputStream out = new Fast2ByteArrayOutputStream(2048);
+        try (JsonGenerator g = J2_FACTORY.createGenerator(out)) {
+            g.writeStartObject();
+            g.writeFieldName(J2_ID);
+            g.writeNumber(42);
+            g.writeFieldName(J2_NAME);
+            g.writeString("sample");
+            g.writeEndObject();
+        }
+        return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] jackson3_utf8_baos_2048() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(2048);
+        try (tools.jackson.core.JsonGenerator g =
+                J3_FACTORY.createGenerator(tools.jackson.core.ObjectWriteContext.empty(), out)) {
+            g.writeStartObject();
+            g.writeName(J3_ID);
+            g.writeNumber(42);
+            g.writeName(J3_NAME);
+            g.writeString("sample");
+            g.writeEndObject();
+        }
+        return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] jackson3_utf8_fast2_2048() throws IOException {
+        Fast2ByteArrayOutputStream out = new Fast2ByteArrayOutputStream(2048);
+        try (tools.jackson.core.JsonGenerator g =
+                J3_FACTORY.createGenerator(tools.jackson.core.ObjectWriteContext.empty(), out)) {
+            g.writeStartObject();
+            g.writeName(J3_ID);
+            g.writeNumber(42);
+            g.writeName(J3_NAME);
+            g.writeString("sample");
+            g.writeEndObject();
+        }
+        return out.toByteArray();
     }
 }
