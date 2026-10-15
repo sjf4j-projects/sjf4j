@@ -62,6 +62,16 @@ public final class Fastjson2Writer extends StreamingWriter {
                 && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
     }
 
+    /** Whether the native UTF-8 raw-name fast path preserves writer features. */
+    public boolean supportsRawUtf8Names() {
+        return utf8 && useRawName;
+    }
+
+    /** Native Fastjson2 writer for backend-specific compiled hot paths. */
+    public JSONWriter nativeWriter() {
+        return writer;
+    }
+
     @Override
     public void startObject() {
         writer.startObject();
@@ -118,6 +128,15 @@ public final class Fastjson2Writer extends StreamingWriter {
     @Override
     public void writeNull() {
         writer.writeNull();
+    }
+
+    @Override
+    public void writeString(String value) {
+        if (value == null) {
+            writer.writeNull();
+        } else {
+            writer.writeString(value);
+        }
     }
 
     @Override
@@ -205,6 +224,11 @@ public final class Fastjson2Writer extends StreamingWriter {
         } else if (byteOutput != null) {
             writer.flushTo(byteOutput);
         }
+    }
+
+    /** Returns UTF-8 bytes from the native in-memory writer buffer. */
+    public byte[] toBytes() {
+        return writer.getBytes();
     }
 
     /**

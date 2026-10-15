@@ -157,26 +157,37 @@ final class WriteEmitter {
             String source,
             NameAllocator names) {
 
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+            String writer = names.newName("writer");
+            out.beginBlock("try (" + backend.writerType() + " " + writer
+                    + " = this.binder.createWriterUtf8())");
+            if (value.helperRequired() && nativeEligible(value,
+                    new java.util.HashSet<BindingValue>())) {
+                out.beginBlock("if (" + writer + ".supportsRawUtf8Names())");
+                out.line(writer + ".startDocument();");
+                out.line(value.helperName() + "Native(" + writer
+                        + ".nativeWriter(), " + source + ");");
+                out.line(writer + ".endDocument();");
+                out.line(writer + ".flush();");
+                out.endBlock(" else {");
+                out.indent();
+                emitWriteBody(out, value, source, writer);
+                out.endBlock();
+            } else {
+                emitWriteBody(out, value, source, writer);
+            }
+            out.line("return " + writer + ".toBytes();");
+            out.endBlock();
+            return;
+        }
+
         // Gson, Simple and JSON-P write in-memory byte[] more efficiently through
         // their compiled character path than through OutputStreamWriter.
         // Caller-owned OutputStream methods remain streaming.
         if (backend.backend() == org.sjf4j.annotation.binding.Backend.GSON
                 || backend.backend() == org.sjf4j.annotation.binding.Backend.SIMPLE
                 || backend.backend() == org.sjf4j.annotation.binding.Backend.JSONP) {
-            String output = names.newName("output");
-            String writer = names.newName("writer");
-            out.beginBlock("try (org.sjf4j.binding.FastStringWriter " + output
-                    + " = new org.sjf4j.binding.FastStringWriter(); "
-                    + backend.writerType() + " " + writer
-                    + " = this.binder.createWriter(" + output + "))");
-            emitWriteBody(out, value, source, writer);
-            out.line("return " + output
-                    + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
-            out.endBlock();
-            return;
-        }
-
-        String output =
+            String output =
                 names.newName("output");
 
         String writer =
@@ -277,6 +288,11 @@ final class WriteEmitter {
         }
 
         out.endBlock();
+
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
+            emitNativeHelper(out, value);
+        }
     }
 
     private void emitPojo(
@@ -530,6 +546,24 @@ final class WriteEmitter {
             String expression,
             String suffix) {
 
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && value.primitive()) {
+            String nativeMethod;
+            switch (suffix) {
+                case "Boolean": nativeMethod = "writeBool"; break;
+                case "Byte": nativeMethod = "writeInt8"; break;
+                case "Short": nativeMethod = "writeInt16"; break;
+                case "Int": nativeMethod = "writeInt32"; break;
+                case "Long": nativeMethod = "writeInt64"; break;
+                case "Float": nativeMethod = "writeFloat"; break;
+                case "Double": nativeMethod = "writeDouble"; break;
+                default: nativeMethod = null; break;
+            }
+            if (nativeMethod != null) {
+                out.line(writer + ".nativeWriter()." + nativeMethod + "(" + expression + ");");
+                return;
+            }
+        }
         out.line(
                 writer +
                         (value.primitive()
@@ -544,6 +578,142 @@ final class WriteEmitter {
         out.line("writer.writeNull();");
         out.line("return;");
         out.endBlock();
+    }
+
+
+    /** Experimental native UTF-8 helper; dynamic/runtime nodes keep the adapter path. */
+    private boolean nativeEligible(BindingValue value,
+            java.util.Set<BindingValue> visited) {
+        if (!visited.add(value)) return true;
+        switch (value.kind()) {
+            case RUNTIME:
+            case NUMBER:
+                return false;
+            case POJO:
+                for (BindingProperty p : value.properties()) {
+                    if (!nativeEligible(p.value(), visited)) return false;
+                }
+                return true;
+            case LIST:
+            case SET:
+                return nativeEligible(value.elementValue(), visited);
+            case MAP:
+                return nativeEligible(value.mapValue(), visited);
+            default:
+                return true;
+        }
+    }
+
+    private void emitNativeHelper(JavaWriter out, BindingValue value) {
+        String name = value.helperName() + "Native";
+        String type = "com.alibaba.fastjson2.JSONWriter";
+        out.beginBlock("private static void " + name + "(" + type
+                + " w, " + value.type() + " value)");
+        out.beginBlock("if (value == null)");
+        out.line("w.writeNull();");
+        out.line("return;");
+        out.endBlock();
+        switch (value.kind()) {
+            case POJO:
+                out.line("w.startObject();");
+                out.line(value.helperName() + "Properties(w, value);");
+                out.line("w.endObject();");
+                break;
+            case LIST:
+            case SET:
+                out.line("w.startArray();");
+                out.line("int count = 0;");
+                out.beginBlock("for (" + value.elementValue().type()
+                        + " element : value)");
+                out.beginBlock("if (count++ > 0)");
+                out.line("w.writeComma();");
+                out.endBlock();
+                emitNativeValue(out, value.elementValue(), "element");
+                out.endBlock();
+                out.line("w.endArray();");
+                break;
+            case MAP:
+                out.line("w.startObject();");
+                out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
+                out.line("w.writeName((String) entry.getKey());");
+                out.line("w.writeColon();");
+                emitNativeValue(out, value.mapValue(),
+                        "(" + value.mapValue().type() + ") entry.getValue()");
+                out.endBlock();
+                out.line("w.endObject();");
+                break;
+            default:
+                throw new AssertionError(value.kind());
+        }
+        out.endBlock();
+        if (value.kind() == BindingValue.Kind.POJO) {
+            out.beginBlock("private static void " + value.helperName()
+                    + "Properties(" + type + " w, " + value.type() + " value)");
+            int index = 0;
+            for (BindingProperty property : value.properties()) {
+                out.line("w.writeNameRaw(((org.sjf4j.backend.fastjson2.binding."
+                        + "Fastjson2CompiledName) " + compiledNameField(value, index++)
+                        + ").rawNameUtf8());");
+                emitNativeValue(out, property.value(),
+                        access(property.access(), "value"));
+            }
+            out.endBlock();
+        }
+    }
+
+    private void emitNativeValue(JavaWriter out, BindingValue value,
+            String expression) {
+        if (value.helperRequired()) {
+            out.line(value.helperName() + "Native(w, " + expression + ");");
+            return;
+        }
+        String method;
+        switch (value.kind()) {
+            case STRING:
+                out.beginBlock("if (" + expression + " == null)");
+                out.line("w.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("w.writeString(" + expression + ");");
+                out.endBlock();
+                return;
+            case BOOLEAN: method = "writeBool"; break;
+            case BYTE: method = "writeInt8"; break;
+            case SHORT: method = "writeInt16"; break;
+            case INT: method = "writeInt32"; break;
+            case LONG: method = "writeInt64"; break;
+            case FLOAT: method = "writeFloat"; break;
+            case DOUBLE: method = "writeDouble"; break;
+            case CHARACTER:
+                if (!value.primitive()) {
+                    out.beginBlock("if (" + expression + " == null)");
+                    out.line("w.writeNull();");
+                    out.endBlock(" else {");
+                    out.indent();
+                }
+                out.line("w.writeString(Character.toString(" + expression + "));");
+                if (!value.primitive()) out.endBlock();
+                return;
+            case ENUM:
+                out.beginBlock("if (" + expression + " == null)");
+                out.line("w.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("w.writeString(" + expression + ".name());");
+                out.endBlock();
+                return;
+            case BIG_INTEGER: method = "writeBigInt"; break;
+            case BIG_DECIMAL: method = "writeDecimal"; break;
+            default: throw new AssertionError(value.kind());
+        }
+        if (!value.primitive()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line("w.writeNull();");
+            out.endBlock(" else {");
+            out.indent();
+        }
+        out.line("w." + method + "(" + expression + ");");
+        if (!value.primitive()) out.endBlock();
     }
 
     private String access(

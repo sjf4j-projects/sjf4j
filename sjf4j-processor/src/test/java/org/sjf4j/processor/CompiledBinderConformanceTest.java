@@ -492,4 +492,104 @@ class CompiledBinderConformanceTest {
             }
         }
     }
+
+    @Test
+    void fastjson2NativePropertiesPreserveNestedAndEscapedNames() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + "  @NodeProperty(\"special-key\") public String name;\n"
+                        + "  public java.util.List<Inner> children;\n"
+                        + "  public java.util.Map<String, Inner> byName;\n"
+                        + "  public static class Inner { public int count; public String text; }\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @WriteTo String write(Bean value) throws java.io.IOException;\n"
+                        + " @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binderType = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            Class<?> innerType = Class.forName("fixture.Bean$Inner", true, loader);
+            Object binder = binderType.getConstructor().newInstance();
+            Object bean = beanType.getConstructor().newInstance();
+            beanType.getField("name").set(bean, "quoted value");
+            Object child = innerType.getConstructor().newInstance();
+            innerType.getField("count").setInt(child, 3);
+            innerType.getField("text").set(child, null);
+            beanType.getField("children").set(bean,
+                    java.util.Arrays.asList(child, null));
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("dynamic-key", child);
+            map.put("null-key", null);
+            beanType.getField("byName").set(bean, map);
+            String json = (String) binderType.getMethod("write", beanType)
+                    .invoke(binder, bean);
+            byte[] bytes = (byte[]) binderType.getMethod("writeBytes", beanType)
+                    .invoke(binder, bean);
+            assertEquals(
+                    com.alibaba.fastjson2.JSON.parse(json),
+                    com.alibaba.fastjson2.JSON.parse(new String(bytes,
+                            java.nio.charset.StandardCharsets.UTF_8)));
+        }
+    }
+
+    @Test
+    void fastjson2NativePropertiesHandleRecursivePojo() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Node.java",
+                "package fixture;\n"
+                        + "public class Node { public String name; public Node child; }\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @WriteTo String write(Node value) throws java.io.IOException;\n"
+                        + " @WriteTo byte[] writeBytes(Node value) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> type = Class.forName("fixture.Node", true, loader);
+            Class<?> binderType = Class.forName("fixture.Binder_Impl", true, loader);
+            Object parent = type.getConstructor().newInstance();
+            Object child = type.getConstructor().newInstance();
+            type.getField("name").set(parent, "parent");
+            type.getField("name").set(child, "child");
+            type.getField("child").set(parent, child);
+            Object binder = binderType.getConstructor().newInstance();
+            String expected = (String) binderType.getMethod("write", type).invoke(binder, parent);
+            byte[] actual = (byte[]) binderType.getMethod("writeBytes", type).invoke(binder, parent);
+            assertEquals(expected, new String(actual, java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void fastjson2NativeRawNameFeatureSafety() {
+        com.alibaba.fastjson2.JSONWriter.Context context =
+                com.alibaba.fastjson2.JSONFactory.createWriteContext();
+        try (com.alibaba.fastjson2.JSONWriter nativeWriter =
+                     com.alibaba.fastjson2.JSONWriter.ofUTF8(context)) {
+            org.sjf4j.backend.fastjson2.binding.Fastjson2Writer adapter =
+                    new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(nativeWriter);
+            assertTrue(adapter.supportsRawUtf8Names());
+        }
+        context.config(com.alibaba.fastjson2.JSONWriter.Feature.EscapeNoneAscii);
+        try (com.alibaba.fastjson2.JSONWriter nativeWriter =
+                     com.alibaba.fastjson2.JSONWriter.ofUTF8(context)) {
+            org.sjf4j.backend.fastjson2.binding.Fastjson2Writer adapter =
+                    new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(nativeWriter);
+            assertFalse(adapter.supportsRawUtf8Names());
+        }
+    }
+
 }
