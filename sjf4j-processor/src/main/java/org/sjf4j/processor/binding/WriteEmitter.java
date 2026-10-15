@@ -26,10 +26,16 @@ final class WriteEmitter {
     void emitCompiledNames(JavaWriter out, BindingValue value) {
         int index = 0;
         for (BindingProperty property : value.properties()) {
+            String field = compiledNameField(value, index++);
             out.line("private static final org.sjf4j.binding.CompiledName " +
-                    compiledNameField(value, index++) + " = new " +
+                    field + " = new " +
                     backend.compiledNameType() + "(" +
                     JavaWriter.stringLiteral(property.name()) + ");");
+            if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+                out.line("private static final byte[] " + field + "_utf8 = ((" +
+                        backend.compiledNameType() + ") " + field +
+                        ").rawNameUtf8();");
+            }
         }
     }
 
@@ -645,9 +651,8 @@ final class WriteEmitter {
                     + "Properties(" + type + " w, " + value.type() + " value)");
             int index = 0;
             for (BindingProperty property : value.properties()) {
-                out.line("w.writeNameRaw(((org.sjf4j.backend.fastjson2.binding."
-                        + "Fastjson2CompiledName) " + compiledNameField(value, index++)
-                        + ").rawNameUtf8());");
+                out.line("w.writeNameRaw(" + compiledNameField(value, index++)
+                        + "_utf8);");
                 emitNativeValue(out, property.value(),
                         access(property.access(), "value"));
             }
