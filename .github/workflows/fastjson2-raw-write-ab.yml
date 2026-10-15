@@ -1,0 +1,32 @@
+name: Fastjson2 raw writer A/B
+on:
+  push:
+    branches:
+      - perf/jackson-compiled-write
+  workflow_dispatch:
+jobs:
+  fastjson2-raw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Run equivalent bare JSONWriter and compiled baseline
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*(Fastjson2EquivalentWriterBenchmark.direct|CompiledWriteBenchmark.json_fastjson2_pojo_utf8_(compiled|native|runtime))' \
+            -wi 10 -i 10 -w 400ms -r 400ms -f 2 -prof gc | tee fastjson2-raw-write-ab.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fastjson2-raw-write-ab
+          path: fastjson2-raw-write-ab.log
+          if-no-files-found: ignore
