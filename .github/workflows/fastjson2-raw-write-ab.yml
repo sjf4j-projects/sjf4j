@@ -22,7 +22,7 @@ jobs:
         run: |
           set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*(Fastjson2EquivalentWriterBenchmark.direct|CompiledWriteBenchmark.json_fastjson2_pojo_utf8_(compiled|native|runtime))' \
+            '.*(Fastjson2EquivalentWriterBenchmark.(direct|direct_matched_context|raw_through_facade)|CompiledWriteBenchmark.json_fastjson2_pojo_utf8_(compiled|native|runtime))' \
             -wi 10 -i 10 -w 400ms -r 400ms -f 2 -prof gc | tee fastjson2-raw-write-ab.log
       - uses: actions/upload-artifact@v4
         if: always()
