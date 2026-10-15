@@ -62,6 +62,11 @@ public final class Fastjson2Writer extends StreamingWriter {
                 && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
     }
 
+    /** Whether the native UTF-8 raw-name fast path preserves writer features. */
+    public boolean supportsRawUtf8Names() {
+        return utf8 && useRawName;
+    }
+
     /** Native Fastjson2 writer for backend-specific compiled hot paths. */
     public JSONWriter nativeWriter() {
         return writer;
