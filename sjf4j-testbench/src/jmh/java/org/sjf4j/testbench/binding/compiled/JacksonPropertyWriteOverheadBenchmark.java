@@ -169,4 +169,96 @@ public class JacksonPropertyWriteOverheadBenchmark {
         }
         return out.toByteArray();
     }
+
+    @Benchmark
+    public byte[] jackson2_utf8_pooled_direct() throws IOException {
+        com.fasterxml.jackson.core.util.BufferRecycler recycler = J2_FACTORY._getBufferRecycler();
+        com.fasterxml.jackson.core.util.ByteArrayBuilder out =
+                new com.fasterxml.jackson.core.util.ByteArrayBuilder(recycler);
+        try {
+            try (JsonGenerator g = J2_FACTORY.createGenerator(
+                    out, com.fasterxml.jackson.core.JsonEncoding.UTF8)) {
+                g.writeStartObject();
+                g.writeFieldName(J2_ID);
+                g.writeNumber(42);
+                g.writeFieldName(J2_NAME);
+                g.writeString("sample");
+                g.writeEndObject();
+            }
+            return out.toByteArray();
+        } finally {
+            out.release();
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public byte[] jackson2_utf8_pooled_adapter() throws IOException {
+        com.fasterxml.jackson.core.util.BufferRecycler recycler = J2_FACTORY._getBufferRecycler();
+        com.fasterxml.jackson.core.util.ByteArrayBuilder out =
+                new com.fasterxml.jackson.core.util.ByteArrayBuilder(recycler);
+        try {
+            try (Jackson2Writer w = new Jackson2Writer(J2_FACTORY.createGenerator(
+                    out, com.fasterxml.jackson.core.JsonEncoding.UTF8))) {
+                w.startDocument();
+                w.startObject();
+                w.writeName(J2_COMPILED_ID);
+                w.writeIntValue(42);
+                w.writeName(J2_COMPILED_NAME);
+                w.writeStringValue("sample");
+                w.endObject();
+                w.endDocument();
+            }
+            return out.toByteArray();
+        } finally {
+            out.release();
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public byte[] jackson3_utf8_pooled_direct() throws IOException {
+        tools.jackson.core.util.BufferRecycler recycler = J3_FACTORY._getBufferRecycler();
+        tools.jackson.core.util.ByteArrayBuilder out =
+                new tools.jackson.core.util.ByteArrayBuilder(recycler);
+        try {
+            try (tools.jackson.core.JsonGenerator g = J3_FACTORY.createGenerator(
+                    tools.jackson.core.ObjectWriteContext.empty(), out)) {
+                g.writeStartObject();
+                g.writeName(J3_ID);
+                g.writeNumber(42);
+                g.writeName(J3_NAME);
+                g.writeString("sample");
+                g.writeEndObject();
+            }
+            return out.toByteArray();
+        } finally {
+            out.release();
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public byte[] jackson3_utf8_pooled_adapter() throws IOException {
+        tools.jackson.core.util.BufferRecycler recycler = J3_FACTORY._getBufferRecycler();
+        tools.jackson.core.util.ByteArrayBuilder out =
+                new tools.jackson.core.util.ByteArrayBuilder(recycler);
+        try {
+            try (Jackson3Writer w = new Jackson3Writer(J3_FACTORY.createGenerator(
+                    tools.jackson.core.ObjectWriteContext.empty(), out))) {
+                w.startDocument();
+                w.startObject();
+                w.writeName(J3_COMPILED_ID);
+                w.writeIntValue(42);
+                w.writeName(J3_COMPILED_NAME);
+                w.writeStringValue("sample");
+                w.endObject();
+                w.endDocument();
+            }
+            return out.toByteArray();
+        } finally {
+            out.release();
+            recycler.releaseToPool();
+        }
+    }
 }
