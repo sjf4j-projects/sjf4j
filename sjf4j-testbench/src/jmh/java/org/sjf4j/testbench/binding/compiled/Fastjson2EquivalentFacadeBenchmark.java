@@ -94,8 +94,8 @@ public class Fastjson2EquivalentFacadeBenchmark {
             throw new ExceptionInInitializerError(e);
         }
     }
-    @Benchmark public byte[] facade() {
-        try (Fastjson2Writer writer = JSONWriter.ofUTF8()) {
+    @Benchmark public byte[] facade() throws Exception {
+        try (Fastjson2Writer writer = BINDER.createWriterUtf8()) {
             writeUser(writer, USER);
             return writer.toBytes();
         }
