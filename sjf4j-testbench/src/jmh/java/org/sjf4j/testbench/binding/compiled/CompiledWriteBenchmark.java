@@ -362,6 +362,12 @@ public class CompiledWriteBenchmark {
         return GSON_NATIVE.toJson(USER);
     }
 
+    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
+    @Benchmark
+    public byte[] json_gson_pojo_utf8_compiled_transcode() throws IOException {
+        return GSON_COMPILED.writePojo(USER).getBytes(StandardCharsets.UTF_8);
+    }
+
     @Benchmark
     public byte[] json_gson_pojo_utf8_compiled() throws IOException {
         return GSON_COMPILED.writePojoUtf8(USER);
@@ -390,6 +396,12 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_gson_map_string_native() throws Exception {
         return GSON_NATIVE.toJson(MAP);
+    }
+
+    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
+    @Benchmark
+    public byte[] json_gson_map_utf8_compiled_transcode() throws IOException {
+        return GSON_COMPILED.writeMap(MAP).getBytes(StandardCharsets.UTF_8);
     }
 
     @Benchmark
@@ -563,6 +575,12 @@ public class CompiledWriteBenchmark {
         return SIMPLE_RUNTIME.writeNodeAsString(USER);
     }
 
+    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
+    @Benchmark
+    public byte[] json_simple_pojo_utf8_compiled_transcode() throws IOException {
+        return SIMPLE_COMPILED.writePojo(USER).getBytes(StandardCharsets.UTF_8);
+    }
+
     @Benchmark
     public byte[] json_simple_pojo_utf8_compiled() throws IOException {
         return SIMPLE_COMPILED.writePojoUtf8(USER);
@@ -581,6 +599,12 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_simple_map_string_runtime() {
         return SIMPLE_RUNTIME.writeNodeAsString(MAP);
+    }
+
+    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
+    @Benchmark
+    public byte[] json_simple_map_utf8_compiled_transcode() throws IOException {
+        return SIMPLE_COMPILED.writeMap(MAP).getBytes(StandardCharsets.UTF_8);
     }
 
     @Benchmark
