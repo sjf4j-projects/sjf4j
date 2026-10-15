@@ -7,6 +7,7 @@ import org.sjf4j.util.Asserts;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Built-in lightweight JSON binding.
@@ -46,4 +47,9 @@ public final class SimpleJsonBinder extends Binder<SimpleJsonReader, SimpleJsonW
     }
 
 
+
+    @Override
+    public byte[] writeNodeAsBytes(Object node) {
+        return writeNodeAsString(node).getBytes(StandardCharsets.UTF_8);
+    }
 }
