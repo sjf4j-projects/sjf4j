@@ -183,7 +183,12 @@ public final class GsonReader extends StreamingReader {
 
     @Override
     public Object readRawNode() throws IOException {
-        JsonToken token = reader.peek();
+        JsonToken token;
+        try {
+            token = reader.peek();
+        } catch (EOFException e) {
+            throw new BindingException("unexpected token 'EOF'", e);
+        }
         switch (token) {
             case BEGIN_OBJECT:
                 return _readRawObject();
