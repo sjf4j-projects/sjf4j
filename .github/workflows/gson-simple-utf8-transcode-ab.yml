@@ -17,6 +17,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Compiled binder conformance
+        run: ./gradlew :sjf4j-processor:test --tests org.sjf4j.processor.CompiledBinderConformanceTest --no-daemon
       - name: Build JMH
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Compare compiled String transcode versus byte stream
@@ -24,7 +26,7 @@ jobs:
         run: |
           set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CompiledWriteBenchmark.json_(gson|simple)_(pojo|map)_utf8_(compiled|compiled_transcode|runtime|native_transcode)' \
+            '.*CompiledWriteBenchmark.json_(gson|simple|jsonp)_(pojo|map)_utf8_(compiled|compiled_transcode|runtime|native_transcode)' \
             -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc | tee gson-simple-utf8-ab.log
       - uses: actions/upload-artifact@v4
         if: always()
