@@ -1,0 +1,44 @@
+name: Fastjson2 cached name A/B
+on:
+  workflow_dispatch:
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Uncached Compiled and Native
+        shell: bash
+        run: |
+          set -o pipefail
+          git checkout 63714a09d7f2fae38028d1649caaaa488dd5ea06
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledWriteBenchmark.json_fastjson2_(pojo|map)_utf8_(compiled|native)' \
+            -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc | tee fastjson2-uncached.log
+      - name: Cached Compiled and Native
+        shell: bash
+        run: |
+          set -o pipefail
+          git checkout 825aaf0aa57f7a9c8e19fbfbe4bef2f94b08a61e
+          ./gradlew :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledWriteBenchmark.json_fastjson2_(pojo|map)_utf8_(compiled|native)' \
+            -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc | tee fastjson2-cached.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fastjson2-name-cache-ab
+          path: |
+            fastjson2-uncached.log
+            fastjson2-cached.log
+          if-no-files-found: ignore
