@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - perf/gson-simple-utf8-transcode-ab
+      - perf/compiled-write-consolidated
   workflow_dispatch:
 jobs:
   benchmark:
