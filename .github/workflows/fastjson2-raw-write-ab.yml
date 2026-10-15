@@ -15,8 +15,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build JMH
-        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Verify compiled Binder conformance and build JMH
+        run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jmhJar --no-daemon
       - name: Run equivalent bare JSONWriter and compiled baseline
         shell: bash
         run: |
