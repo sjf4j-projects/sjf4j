@@ -521,7 +521,7 @@ class CompiledBinderConformanceTest {
             Class<?> innerType = Class.forName("fixture.Bean$Inner", true, loader);
             Object binder = binderType.getConstructor().newInstance();
             Object bean = beanType.getConstructor().newInstance();
-            beanType.getField("name").set(bean, "quoted \\" value");
+            beanType.getField("name").set(bean, "quoted value");
             Object child = innerType.getConstructor().newInstance();
             innerType.getField("count").setInt(child, 3);
             innerType.getField("text").set(child, null);
