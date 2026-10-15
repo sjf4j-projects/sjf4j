@@ -51,7 +51,7 @@ public class JsonObjectPojoTest {
         // only untyped branches may keep source aliases.
         assertEquals(p1, p2);
 
-        Person p3 = Sjf4j.global().fromNode(JsonObject.fromJson(json1), Person.class, true);
+        Person p3 = Sjf4j.global().deepNode(JsonObject.fromJson(json1), Person.class);
         log.info("p3={}", p3.inspect());
         assertEquals(p1, p3);
     }

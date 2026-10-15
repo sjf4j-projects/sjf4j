@@ -98,7 +98,7 @@ public class OperationRegistry {
                 if (!_contains(target, from)) {
                     throw new NodeException("'copy' operation failed at from " + from + ": no value exists");
                 }
-                return Sjf4j.global().copyNode(_valueAt(target, from));
+                return Sjf4j.global().deepCopy(_valueAt(target, from));
             }
             case PatchOperation.STD_MOVE: {
                 JsonPointer from = _requireFrom(operation);
@@ -204,7 +204,7 @@ public class OperationRegistry {
             if (!_contains(target, from)) {
                 throw new NodeException("'copy' operation failed at from " + from + ": no value exists");
             }
-            Object value = Sjf4j.global().copyNode(_valueAt(target, from));
+            Object value = Sjf4j.global().deepCopy(_valueAt(target, from));
             _requirePath(operation).add(target, value);
         });
 

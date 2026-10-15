@@ -178,7 +178,7 @@ class Jackson2NodeTest {
         assertEquals(Nodes.hash(number.get("value")), Nodes.hash(1));
 
         ObjectNode source = object("{\"child\":{\"value\":1}}");
-        ObjectNode copy = Sjf4j.global().copyNode(source);
+        ObjectNode copy = Sjf4j.global().deepCopy(source);
         ((ObjectNode) copy.get("child")).put("value", 2);
         assertEquals(1, source.get("child").get("value").intValue());
 

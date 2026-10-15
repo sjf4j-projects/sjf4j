@@ -336,29 +336,54 @@ public final class Sjf4j {
     /**
      * Converts an existing OBNT value into the requested target type.
      * <p>
-     * Uses {@link NodeMapper} for structural conversion. When {@code deepCopy} is
-     * true, compatible structures are copied recursively and {@code @NodeValue}
-     * types use their configured value-copy behavior.
+     * Uses {@link NodeMapper} for structural conversion. Compatible values may
+     * be reused, so mutable source structures can be shared with the result.
+     * Use {@link #deepNode(Object, Class)} to copy supported nested structures.
      */
     @SuppressWarnings("unchecked")
-    public <T> T fromNode(Object node, Class<T> clazz, boolean deepCopy) {
-        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), deepCopy, runtimeContext);
+    public <T> T fromNode(Object node, Class<T> clazz) {
+        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), false, runtimeContext);
     }
 
     /**
      * Converts an existing OBNT value into the requested generic target type.
      * <p>
-     * Uses {@link NodeMapper} for structural conversion. When {@code deepCopy} is
-     * true, compatible structures are copied recursively and {@code @NodeValue}
-     * types use their configured value-copy behavior.
+     * Uses {@link NodeMapper} for structural conversion. Compatible values may
+     * be reused, so mutable source structures can be shared with the result.
+     * Use {@link #deepNode(Object, TypeReference)} to copy supported nested structures.
      */
     @SuppressWarnings("unchecked")
-    public <T> T fromNode(Object node, TypeReference<T> type, boolean deepCopy) {
-        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), deepCopy, runtimeContext);
+    public <T> T fromNode(Object node, TypeReference<T> type) {
+        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), false, runtimeContext);
     }
 
     /**
-     * Creates a recursive copy of supported OBNT structures.
+     * Converts an existing OBNT value into the requested target type, copying
+     * supported nested structures recursively. {@code @NodeValue} types use
+     * their configured value-copy behavior.
+     *
+     * @see #fromNode(Object, Class)
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T deepNode(Object node, Class<T> clazz) {
+        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), true, runtimeContext);
+    }
+
+    /**
+     * Converts an existing OBNT value into the requested generic target type,
+     * copying supported nested structures recursively. {@code @NodeValue} types
+     * use their configured value-copy behavior.
+     *
+     * @see #fromNode(Object, TypeReference)
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T deepNode(Object node, TypeReference<T> type) {
+        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), true, runtimeContext);
+    }
+
+    /**
+     * Creates a recursive copy of supported OBNT structures, retaining the
+     * source's runtime type. Returns {@code null} for a null source.
      * <p>
      * Delegates to {@link NodeMapper#convert(Object, java.lang.reflect.Type, boolean, RuntimeContext)}
      * with deep copying enabled. Unsupported values,
@@ -366,7 +391,7 @@ public final class Sjf4j {
      * fail with {@link org.sjf4j.exception.BindingException}.
      */
     @SuppressWarnings("unchecked")
-    public <T> T copyNode(T node) {
+    public <T> T deepCopy(T node) {
         if (node == null) return null;
         return (T) NodeMapper.convert(node, node.getClass(), true, runtimeContext);
     }
@@ -402,7 +427,7 @@ public final class Sjf4j {
     public <T> T fromProperties(Properties props, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         JsonObject jo = propertiesBinder.readNode(props);
-        return fromNode(jo, clazz, false);
+        return fromNode(jo, clazz);
     }
 
     /**
@@ -411,7 +436,7 @@ public final class Sjf4j {
     public <T> T fromProperties(Properties props, TypeReference<T> type) {
         Asserts.notNull(type, "type");
         JsonObject jo = propertiesBinder.readNode(props);
-        return fromNode(jo, type, false);
+        return fromNode(jo, type);
     }
 
     /**

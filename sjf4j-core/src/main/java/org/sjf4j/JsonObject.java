@@ -1129,12 +1129,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Creates a deep copy of this JsonObject.
      * <p>
-     * Delegates to {@link Sjf4j#copyNode(Object)} and {@link NodeMapper}.
+     * Delegates to {@link Sjf4j#deepCopy(Object)} and {@link NodeMapper}.
      * Declared and dynamic entries are copied structurally; unsupported nested
      * values can cause binding to fail rather than being copied.
      */
     public JsonObject deepCopy() {
-        return Sjf4j.global().copyNode(this);
+        return Sjf4j.global().deepCopy(this);
     }
 
     /*

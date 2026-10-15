@@ -54,7 +54,7 @@ class NodesSetTest {
     void setConvertsToNodeAndRawArray() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
-        Object node = Sjf4j.global().copyNode(set);
+        Object node = Sjf4j.global().deepCopy(set);
         assertInstanceOf(Set.class, node);
         assertEquals("[\"a\"]", Sjf4j.global().toJsonString(node));
         Object node2 = Sjf4j.global().toRaw(set);

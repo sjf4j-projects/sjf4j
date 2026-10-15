@@ -255,7 +255,7 @@ public class GettingStartedExampleTest {
 
         // JOJO <==> POJO
         tmpUser = user2.toNode(User.class, false);
-        User2 tmpUser2 = Sjf4j.global().fromNode(user, User2.class, true);
+        User2 tmpUser2 = Sjf4j.global().deepNode(user, User2.class);
 
         System.out.println("keys=" + user2.keySet());
         // ["id",  "name",  "friends",  "age"]
