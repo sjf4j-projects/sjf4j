@@ -5,8 +5,10 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson2.binding.Jackson2CompiledName;
 import org.sjf4j.backend.jackson2.binding.Jackson2Writer;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3CompiledName;
 import org.sjf4j.backend.jackson3.binding.Jackson3Writer;
 import org.sjf4j.binding.FastStringWriter;
 
@@ -31,6 +33,10 @@ public class JacksonPropertyWriteOverheadBenchmark {
             new tools.jackson.core.json.JsonFactory();
     private static final Jackson2Binder J2_BINDER = new Jackson2Binder(J2_FACTORY);
     private static final Jackson3Binder J3_BINDER = new Jackson3Binder(J3_FACTORY);
+    private static final Jackson2CompiledName J2_COMPILED_ID = new Jackson2CompiledName("id");
+    private static final Jackson2CompiledName J2_COMPILED_NAME = new Jackson2CompiledName("name");
+    private static final Jackson3CompiledName J3_COMPILED_ID = new Jackson3CompiledName("id");
+    private static final Jackson3CompiledName J3_COMPILED_NAME = new Jackson3CompiledName("name");
     private static final SerializedString J2_ID = new SerializedString("id");
     private static final SerializedString J2_NAME = new SerializedString("name");
     private static final tools.jackson.core.io.SerializedString J3_ID =
@@ -59,9 +65,9 @@ public class JacksonPropertyWriteOverheadBenchmark {
              Jackson2Writer w = J2_BINDER.createWriter(out)) {
             w.startDocument();
             w.startObject();
-            w.writeName("id");
+            w.writeName(J2_COMPILED_ID);
             w.writeIntValue(42);
-            w.writeName("name");
+            w.writeName(J2_COMPILED_NAME);
             w.writeStringValue("sample");
             w.endObject();
             w.endDocument();
