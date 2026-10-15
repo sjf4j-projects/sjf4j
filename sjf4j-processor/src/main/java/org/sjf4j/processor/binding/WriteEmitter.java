@@ -165,8 +165,8 @@ final class WriteEmitter {
                     new java.util.HashSet<BindingValue>())) {
                 out.beginBlock("if (" + writer + ".supportsRawUtf8Names())");
                 out.line(writer + ".startDocument();");
-                out.line(value.helperName() + "Native(" + writer
-                        + ".nativeWriter(), " + source + ");");
+                out.line(value.helperName() + "(" + writer
+                        + ", " + source + ");");
                 out.line(writer + ".endDocument();");
                 out.line(writer + ".flush();");
                 out.endBlock(" else {");
@@ -314,6 +314,17 @@ final class WriteEmitter {
 
         emitNullReturn(out);
         out.line("writer.startObject();");
+
+        // Reuse the native property emitter directly inside the normal POJO
+        // helper. This keeps its lifecycle, recursion and fallback unchanged.
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
+            out.beginBlock("if (writer.supportsRawUtf8Names())");
+            out.line(value.helperName() + "Properties(writer.nativeWriter(), value);");
+            out.line("writer.endObject();");
+            out.line("return;");
+            out.endBlock();
+        }
 
         int index = 0;
 
