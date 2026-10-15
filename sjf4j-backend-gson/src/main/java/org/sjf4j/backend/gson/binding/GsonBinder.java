@@ -100,4 +100,9 @@ public final class GsonBinder extends Binder<GsonReader, GsonWriter> {
         return createWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
     }
 
+
+    @Override
+    public byte[] writeNodeAsBytes(Object node) {
+        return writeNodeAsString(node).getBytes(StandardCharsets.UTF_8);
+    }
 }
