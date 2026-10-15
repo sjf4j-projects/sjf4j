@@ -62,6 +62,11 @@ public final class Fastjson2Writer extends StreamingWriter {
                 && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
     }
 
+    /** Native Fastjson2 writer for backend-specific compiled hot paths. */
+    public JSONWriter nativeWriter() {
+        return writer;
+    }
+
     @Override
     public void startObject() {
         writer.startObject();
