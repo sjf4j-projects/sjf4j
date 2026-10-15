@@ -1,6 +1,7 @@
 package org.sjf4j.testbench.binding.compiled;
 
 import com.alibaba.fastjson2.JSONWriter;
+import com.alibaba.fastjson2.JSONFactory;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Writer;
@@ -24,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class Fastjson2EquivalentWriterBenchmark {
     private static final Fastjson2Binder BINDER = new Fastjson2Binder();
+    private static final JSONWriter.Context MATCHED_CONTEXT =
+            JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
     private static final User USER;
     private static final byte[] N_ID = ("\"id\":").getBytes(StandardCharsets.UTF_8);
     private static final byte[] N_CREATEDAT = ("\"createdAt\":").getBytes(StandardCharsets.UTF_8);
@@ -69,6 +72,26 @@ public class Fastjson2EquivalentWriterBenchmark {
             return writer.getBytes();
         }
     }
+
+    /** Same Fastjson2 writer context as the default SJF4J Fastjson2Binder. */
+    @Benchmark public byte[] direct_matched_context() {
+        try (JSONWriter writer = JSONWriter.ofUTF8(MATCHED_CONTEXT)) {
+            writeUser(writer, USER);
+            return writer.getBytes();
+        }
+    }
+
+    /** Includes the SJF4J writer wrapper/lifecycle while using identical raw writes. */
+    @Benchmark public byte[] raw_through_facade() throws IOException {
+        try (Fastjson2Writer writer = BINDER.createWriterUtf8()) {
+            writer.startDocument();
+            writeUser(writer.nativeWriter(), USER);
+            writer.endDocument();
+            writer.flush();
+            return writer.toBytes();
+        }
+    }
+
     private static void writeString(JSONWriter w, String v) {
         if (v == null) w.writeNull();
         else w.writeString(v);
