@@ -7,6 +7,8 @@ import org.sjf4j.binding.CompiledName;
 public final class Jackson2CompiledName extends CompiledName {
     final SerializedString serializedName;
 
+    public SerializedString serializedName() { return serializedName; }
+
     /**
      * Prepares a property name for repeated Jackson 2 writes.
      * @param name the property name

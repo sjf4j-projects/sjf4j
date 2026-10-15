@@ -8,6 +8,8 @@ public final class Jackson3CompiledName extends CompiledName {
 
     final SerializedString serializedName;
 
+    public SerializedString serializedName() { return serializedName; }
+
     /**
      * Prepares a property name for repeated Jackson 3 writes.
      * @param name the property name

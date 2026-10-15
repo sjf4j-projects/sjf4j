@@ -26,10 +26,16 @@ final class WriteEmitter {
     void emitCompiledNames(JavaWriter out, BindingValue value) {
         int index = 0;
         for (BindingProperty property : value.properties()) {
+            String field = compiledNameField(value, index++);
             out.line("private static final " + backend.compiledNameType() + " " +
-                    compiledNameField(value, index++) + " = new " +
-                    backend.compiledNameType() + "(" +
+                    field + " = new " + backend.compiledNameType() + "(" +
                     JavaWriter.stringLiteral(property.name()) + ");");
+            if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+                out.line("private static final byte[] " + field + "_rawUtf8 = " +
+                        "(com.alibaba.fastjson2.JSON.toJSONString(" +
+                        JavaWriter.stringLiteral(property.name()) + ") + \":\")" +
+                        ".getBytes(java.nio.charset.StandardCharsets.UTF_8);");
+            }
         }
     }
 
@@ -165,8 +171,8 @@ final class WriteEmitter {
                     new java.util.HashSet<BindingValue>())) {
                 out.beginBlock("if (" + writer + ".supportsRawUtf8Names())");
                 out.line(writer + ".startDocument();");
-                out.line(value.helperName() + "Native(" + writer
-                        + ".nativeWriter(), " + source + ");");
+                out.line(value.helperName() + "(" + writer
+                        + ", " + source + ");");
                 out.line(writer + ".endDocument();");
                 out.line(writer + ".flush();");
                 out.endBlock(" else {");
@@ -306,6 +312,68 @@ final class WriteEmitter {
                 && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
             emitNativeHelper(out, value);
         }
+        if (value.kind() == BindingValue.Kind.POJO
+                && (backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
+                || backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON3)) {
+            emitJacksonProperties(out, value);
+        }
+    }
+
+    private void emitJacksonProperties(JavaWriter out, BindingValue value) {
+        boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
+        String generatorType = jackson2
+                ? "com.fasterxml.jackson.core.JsonGenerator"
+                : "tools.jackson.core.JsonGenerator";
+        out.beginBlock("private static void " + value.helperName()
+                + "Properties(" + generatorType + " g, "
+                + backend.writerType() + " writer, " + value.type()
+                + " value) throws java.io.IOException");
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            String field = compiledNameField(value, index++);
+            out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
+                    + "(" + field + ".serializedName());");
+            BindingValue child = property.value();
+            String expr = access(property.access(), "value");
+            if (child.helperRequired() || child.kind() == BindingValue.Kind.RUNTIME
+                    || child.kind() == BindingValue.Kind.NUMBER) {
+                writeValue(out, child, "writer", expr);
+                continue;
+            }
+            String method = null;
+            switch (child.kind()) {
+                case STRING:
+                    method = "writeString"; break;
+                case BOOLEAN:
+                    method = "writeBoolean"; break;
+                case BYTE:
+                case SHORT:
+                case INT:
+                case LONG:
+                case FLOAT:
+                case DOUBLE:
+                case BIG_INTEGER:
+                case BIG_DECIMAL:
+                    method = "writeNumber"; break;
+                default: break;
+            }
+            if (method == null) {
+                writeValue(out, child, "writer", expr);
+            } else if (child.primitive()) {
+                out.line("g." + method + "(" + expr + ");");
+            } else {
+                out.beginBlock("");
+                out.line(child.type() + " fieldValue = " + expr + ";");
+                out.beginBlock("if (fieldValue == null)");
+                out.line("g.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("g." + method + "(fieldValue);");
+                out.endBlock();
+                out.endBlock();
+            }
+        }
+        out.endBlock();
     }
 
     private void emitPojo(
@@ -314,6 +382,24 @@ final class WriteEmitter {
 
         emitNullReturn(out);
         out.line("writer.startObject();");
+
+        // Reuse the native property emitter directly inside the normal POJO
+        // helper. This keeps its lifecycle, recursion and fallback unchanged.
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
+            out.beginBlock("if (writer.supportsRawUtf8Names())");
+            out.line(value.helperName() + "Properties(writer.nativeWriter(), value);");
+            out.line("writer.endObject();");
+            out.line("return;");
+            out.endBlock();
+        }
+
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
+                || backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON3) {
+            out.line(value.helperName() + "Properties(writer.nativeGenerator(), writer, value);");
+            out.line("writer.endObject();");
+            return;
+        }
 
         int index = 0;
 
@@ -629,7 +715,7 @@ final class WriteEmitter {
         switch (value.kind()) {
             case POJO:
                 out.line("w.startObject();");
-                out.line(value.helperName() + "Properties(w, value);");
+                emitNativeProperties(out, value);
                 out.line("w.endObject();");
                 break;
             case LIST:
@@ -662,14 +748,18 @@ final class WriteEmitter {
         if (value.kind() == BindingValue.Kind.POJO) {
             out.beginBlock("private static void " + value.helperName()
                     + "Properties(" + type + " w, " + value.type() + " value)");
-            int index = 0;
-            for (BindingProperty property : value.properties()) {
-                out.line("w.writeNameRaw(" + compiledNameField(value, index++)
-                        + ".rawNameUtf8());");
-                emitNativeValue(out, property.value(),
-                        access(property.access(), "value"));
-            }
+            emitNativeProperties(out, value);
             out.endBlock();
+        }
+    }
+
+    private void emitNativeProperties(JavaWriter out, BindingValue value) {
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            out.line("w.writeNameRaw(" + compiledNameField(value, index++)
+                    + "_rawUtf8);");
+            emitNativeValue(out, property.value(),
+                    access(property.access(), "value"));
         }
     }
 
@@ -682,11 +772,14 @@ final class WriteEmitter {
         String method;
         switch (value.kind()) {
             case STRING:
-                out.beginBlock("if (" + expression + " == null)");
+                out.beginBlock("");
+                out.line("String stringValue = " + expression + ";");
+                out.beginBlock("if (stringValue == null)");
                 out.line("w.writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line("w.writeString(" + expression + ");");
+                out.line("w.writeString(stringValue);");
+                out.endBlock();
                 out.endBlock();
                 return;
             case BOOLEAN: method = "writeBool"; break;
