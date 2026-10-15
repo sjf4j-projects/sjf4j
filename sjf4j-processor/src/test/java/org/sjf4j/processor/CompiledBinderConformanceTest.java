@@ -497,21 +497,21 @@ class CompiledBinderConformanceTest {
     void fastjson2NativePropertiesPreserveNestedAndEscapedNames() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Bean.java",
-                "package fixture;\\n"
-                        + "import org.sjf4j.annotation.node.NodeProperty;\\n"
-                        + "public class Bean {\\n"
-                        + "  @NodeProperty(\\\"quote\\\\\\\"key\\\") public String name;\\n"
-                        + "  public java.util.List<Inner> children;\\n"
-                        + "  public java.util.Map<String, Inner> byName;\\n"
-                        + "  public static class Inner { public int count; public String text; }\\n"
-                        + "}\\n");
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + "  @NodeProperty(\\\"special-key\\\") public String name;\n"
+                        + "  public java.util.List<Inner> children;\n"
+                        + "  public java.util.Map<String, Inner> byName;\n"
+                        + "  public static class Inner { public int count; public String text; }\n"
+                        + "}\n");
         sources.put("fixture/Binder.java",
-                "package fixture;\\n"
-                        + "import org.sjf4j.annotation.binding.*;\\n"
-                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\\n"
-                        + " @WriteTo String write(Bean value) throws java.io.IOException;\\n"
-                        + " @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\\n"
-                        + "}\\n");
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
+                        + " @WriteTo String write(Bean value) throws java.io.IOException;\n"
+                        + " @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\n"
+                        + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
