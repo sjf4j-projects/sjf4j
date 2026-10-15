@@ -10,6 +10,7 @@ import org.sjf4j.util.Asserts;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Streaming JSON binder backed by a Jakarta JSON-P {@link JsonProvider}.
@@ -72,5 +73,10 @@ public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
     @Override
     public JsonpWriter createWriter(Writer output) throws IOException {
         return createWriter(provider.createGenerator(Asserts.notNull(output, "output")));
+    }
+
+    @Override
+    public byte[] writeNodeAsBytes(Object node) {
+        return writeNodeAsString(node).getBytes(StandardCharsets.UTF_8);
     }
 }
