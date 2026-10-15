@@ -26,12 +26,12 @@ jobs:
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
             '.*JacksonPropertyWriteOverheadBenchmark.*' \
             -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc | tee jackson-write-isolation.log
-      - name: POJO write end-to-end reference
+      - name: Full POJO comparison including pooled Runtime
         shell: bash
         run: |
           set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CompiledWriteBenchmark.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird)' \
+            '.*CompiledWriteBenchmark.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|runtime)' \
             -wi 3 -i 5 -w 300ms -r 500ms -f 1 -prof gc | tee jackson-write-endtoend.log
       - uses: actions/upload-artifact@v4
         if: always()
