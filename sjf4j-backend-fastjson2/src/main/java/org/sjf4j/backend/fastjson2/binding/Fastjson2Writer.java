@@ -126,6 +126,15 @@ public final class Fastjson2Writer extends StreamingWriter {
     }
 
     @Override
+    public void writeString(String value) {
+        if (value == null) {
+            writer.writeNull();
+        } else {
+            writer.writeString(value);
+        }
+    }
+
+    @Override
     public void writeStringValue(String value) {
         writer.writeString(value);
     }
