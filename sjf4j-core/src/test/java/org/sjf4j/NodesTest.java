@@ -7,11 +7,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
-import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
-import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -212,7 +207,7 @@ public class NodesTest {
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
         JsonObject byClass = Nodes.to(map, JsonObject.class);
-        JsonObject byTypeReference = Sjf4j.global().fromNode(map, new TypeReference<JsonObject>() {}, true);
+        JsonObject byTypeReference = Sjf4j.global().deepNode(map, new TypeReference<JsonObject>() {});
         map.put("later", 2);
 
         assertEquals("value", byClass.getString("key"));
@@ -223,7 +218,7 @@ public class NodesTest {
         List<Object> list = new ArrayList<>();
         list.add(1);
         JsonArray arrayByClass = Nodes.to(list, JsonArray.class);
-        JsonArray arrayByTypeReference = Sjf4j.global().fromNode(list, new TypeReference<JsonArray>() {}, true);
+        JsonArray arrayByTypeReference = Sjf4j.global().deepNode(list, new TypeReference<JsonArray>() {});
         list.add(2);
 
         assertEquals(2, arrayByClass.size());
@@ -233,8 +228,8 @@ public class NodesTest {
 
         Map<String, Object> rawUser = new HashMap<>();
         rawUser.put("name", "Ada");
-        List<GenericUser> users = Sjf4j.global().fromNode(
-                Arrays.asList(rawUser), new TypeReference<List<GenericUser>>() {}, true);
+        List<GenericUser> users = Sjf4j.global().deepNode(
+                Arrays.asList(rawUser), new TypeReference<List<GenericUser>>() {});
         assertEquals("Ada", users.get(0).name);
         assertNotSame(rawUser, users.get(0));
     }
@@ -245,7 +240,7 @@ public class NodesTest {
                 () -> Nodes.to(JsonArray.of("not an object"), GenericUser.class));
         BindingException byTypeReference = assertThrows(BindingException.class,
                 () -> Sjf4j.global().fromNode(JsonArray.of("not an object"),
-                        new TypeReference<GenericUser>() {}, false));
+                        new TypeReference<GenericUser>() {}));
 
         assertTrue(byClass.getMessage().contains("GenericUser"));
         assertTrue(byTypeReference.getMessage().contains("GenericUser"));
@@ -523,7 +518,7 @@ public class NodesTest {
     public void testCopy1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}");
         JsonObject jo2 = Nodes.copy(jo1);
-        JsonObject jo3 = Sjf4j.global().copyNode(jo1);
+        JsonObject jo3 = Sjf4j.global().deepCopy(jo1);
         assertEquals(jo1, jo2);
         assertEquals(jo1, jo3);
 
@@ -541,7 +536,7 @@ public class NodesTest {
                 "street", "5th Ave"));
         Person p1 = jo.toNode(Person.class, false);
         Person p2 = Nodes.copy(p1);
-        Person p3 = Sjf4j.global().copyNode(p1);
+        Person p3 = Sjf4j.global().deepCopy(p1);
         assertEquals(p1, p2);
         assertEquals(p1, p3);
 
@@ -560,7 +555,7 @@ public class NodesTest {
                 "friends", new String[]{"Tom", "Jay"});
         Baby b1 = jo.toNode(Baby.class, false);
         Baby b2 = Nodes.copy(b1);
-        Baby b3 = Sjf4j.global().copyNode(b1);
+        Baby b3 = Sjf4j.global().deepCopy(b1);
         log.info("b1={}, b3={}", b1, b3);
         log.info("b2={}, b3={}", b2, b3);
         assertEquals(b1, b2);
@@ -728,7 +723,7 @@ public class NodesTest {
     @Test
     public void testInspect2() {
         LocalDate date1 = LocalDate.now();
-        LocalDate date2 = Sjf4j.global().fromNode(date1.toString(), LocalDate.class, true);
+        LocalDate date2 = Sjf4j.global().deepNode(date1.toString(), LocalDate.class);
         log.info("date2={}", date2);
         assertEquals(date1, date2);
 

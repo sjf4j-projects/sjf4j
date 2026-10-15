@@ -343,10 +343,10 @@ class NodesStructuralOperationsTest {
     void testNodeConversionEqualityHashAndWalkCoverage() {
         JsonObject object = JsonObject.of("name", "han");
         assertSame(object, Nodes.to(object, JsonObject.class));
-        assertNull(Sjf4j.global().fromNode(null, DynamicArray.class, false));
-        DynamicArray dynamicArray = Sjf4j.global().fromNode(Arrays.asList(1, 2), DynamicArray.class, false);
+        assertNull(Sjf4j.global().fromNode(null, DynamicArray.class));
+        DynamicArray dynamicArray = Sjf4j.global().fromNode(Arrays.asList(1, 2), DynamicArray.class);
         assertEquals(Arrays.asList(1, 2), dynamicArray.toList());
-        TypedArray typed = Sjf4j.global().fromNode(Arrays.asList(1L, 2L), TypedArray.class, false);
+        TypedArray typed = Sjf4j.global().fromNode(Arrays.asList(1L, 2L), TypedArray.class);
         assertEquals(Arrays.asList(1, 2), typed.toList());
         assertInstanceOf(Integer.class, typed.getNode(0));
         assertEquals(Arrays.asList(1, 2), Nodes.to(Arrays.asList(1, 2), JsonArray.class).toList());

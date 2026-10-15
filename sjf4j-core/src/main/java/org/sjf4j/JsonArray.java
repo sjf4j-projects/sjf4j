@@ -19,9 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
-import java.util.function.Consumer;
 
 /**
  * Mutable array node in SJF4J's OBNT model.
@@ -983,12 +980,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Creates a deep copy of this JsonArray.
      * <p>
-     * Delegates to {@link Sjf4j#copyNode} and {@link NodeMapper}; array
+     * Delegates to {@link Sjf4j#deepCopy} and {@link NodeMapper}; array
      * elements are copied structurally. Unsupported nested values can cause
      * binding to fail rather than being copied.
      */
     public JsonArray deepCopy() {
-        return Sjf4j.global().copyNode(this);
+        return Sjf4j.global().deepCopy(this);
     }
 
 }
