@@ -664,7 +664,12 @@ final class WriteEmitter {
         String method;
         switch (value.kind()) {
             case STRING:
+                out.beginBlock("if (" + expression + " == null)");
+                out.line("w.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
                 out.line("w.writeString(" + expression + ");");
+                out.endBlock();
                 return;
             case BOOLEAN: method = "writeBool"; break;
             case BYTE: method = "writeInt8"; break;
@@ -684,8 +689,12 @@ final class WriteEmitter {
                 if (!value.primitive()) out.endBlock();
                 return;
             case ENUM:
-                out.line("w.writeString(" + expression
-                        + " == null ? null : " + expression + ".name());");
+                out.beginBlock("if (" + expression + " == null)");
+                out.line("w.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("w.writeString(" + expression + ".name());");
+                out.endBlock();
                 return;
             case BIG_INTEGER: method = "writeBigInt"; break;
             case BIG_DECIMAL: method = "writeDecimal"; break;
