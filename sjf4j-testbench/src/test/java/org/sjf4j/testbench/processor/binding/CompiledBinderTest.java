@@ -215,6 +215,32 @@ public class CompiledBinderTest {
         assertEquals(ArrayList.class, holderValues.get(2).getClass());
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void writesDynamicMapUsingRuntimeAcrossOutputs(String backend, BinderContract binder)
+            throws IOException {
+        Map<String, Object> values = new LinkedHashMap<String, Object>();
+        values.put("text", "héllo");
+        values.put("number", 7);
+        values.put("nested", new LinkedHashMap<String, Object>());
+        values.put("items", Arrays.asList(true, null, 3));
+
+        // Map<String, Object> cannot be specialized; all four output shapes
+        // must delegate to the backend's configured runtime binder.
+        String expected = binder.writeAny(values);
+        assertEquals(expected, binder.writeObjectMap(values));
+        assertEquals(expected, new String(binder.writeObjectMapBytes(values),
+                StandardCharsets.UTF_8));
+
+        StringWriter chars = new StringWriter();
+        binder.writeObjectMap(values, chars);
+        assertEquals(expected, chars.toString());
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        binder.writeObjectMap(values, bytes);
+        assertEquals(expected, new String(bytes.toByteArray(), StandardCharsets.UTF_8));
+    }
+
     @Test
     public void jackson2ReadsExactObjectMapAsRawGraph() throws IOException {
         BinderContract binder = CompiledInstances.of(Jackson2Binder.class);
@@ -553,6 +579,18 @@ public class CompiledBinderTest {
 
         @ReadFrom
         Map<String, Object> readObjectMap(String input) throws IOException;
+
+        @WriteTo
+        String writeObjectMap(Map<String, Object> value) throws IOException;
+
+        @WriteTo
+        byte[] writeObjectMapBytes(Map<String, Object> value) throws IOException;
+
+        @WriteTo
+        void writeObjectMap(Map<String, Object> value, Writer output) throws IOException;
+
+        @WriteTo
+        void writeObjectMap(Map<String, Object> value, OutputStream output) throws IOException;
 
         @ReadFrom
         ObjectHolder readObjectHolder(String input) throws IOException;
