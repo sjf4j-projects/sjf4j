@@ -112,7 +112,8 @@ final class WriteEmitter {
                         BindingSource.parameterName(
                                 plan,
                                 1),
-                        names);
+                        names,
+                        plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM);
                 break;
 
             default:
@@ -154,11 +155,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(
-                out,
-                value,
-                source,
-                writer);
+        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16);
 
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -176,7 +173,7 @@ final class WriteEmitter {
         out.beginBlock("try (" + backend.writerType() + " " + writer +
                 " = this.binder.createWriter())");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16);
 
         out.line("return " + writer + ".toString();");
         out.endBlock();
@@ -192,7 +189,7 @@ final class WriteEmitter {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer);
+            emitWriteBody(out, value, source, writer, FastjsonMode.UTF8);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -202,7 +199,7 @@ final class WriteEmitter {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer);
+            emitWriteBody(out, value, source, writer, null);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -220,7 +217,7 @@ final class WriteEmitter {
                     + " = new org.sjf4j.binding.FastStringWriter(); "
                     + backend.writerType() + " " + writer
                     + " = this.binder.createWriter(" + output + "))");
-            emitWriteBody(out, value, source, writer);
+            emitWriteBody(out, value, source, writer, null);
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
             out.endBlock();
@@ -242,11 +239,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(
-                out,
-                value,
-                source,
-                writer);
+        emitWriteBody(out, value, source, writer, null);
 
         out.line("return " + output + ".toByteArray();");
         out.endBlock();
@@ -257,7 +250,8 @@ final class WriteEmitter {
             BindingValue value,
             String source,
             String output,
-            NameAllocator names) {
+            NameAllocator names,
+            boolean utf8) {
 
         String writer =
                 names.newName("writer");
@@ -268,11 +262,8 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + ");");
 
-        emitWriteBody(
-                out,
-                value,
-                source,
-                writer);
+        emitWriteBody(out, value, source, writer,
+                utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16);
 
     }
 
@@ -280,20 +271,24 @@ final class WriteEmitter {
             JavaWriter out,
             BindingValue value,
             String source,
-            String writer) {
+            String writer,
+            FastjsonMode mode) {
 
         out.line(writer + ".startDocument();");
 
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
             if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
-                FastjsonMode mode = fastjsonModes.contains(FastjsonMode.UTF8)
-                        && !fastjsonModes.contains(FastjsonMode.UTF16)
-                        ? FastjsonMode.UTF8 : null;
-                // The caller's output kind determines the native encoding; the
-                // caller is specialized below rather than carrying a mode through recursion.
-                out.line(value.helperName() + "(" + writer + ".nativeWriter(), "
-                        + source + ", " + writer + ".compiledNameMode());");
+                if (mode == null) throw new AssertionError("Fastjson2 output mode missing");
+                out.beginBlock("if (" + writer + ".compiledNameMode() == "
+                        + (mode == FastjsonMode.UTF8 ? "1" : "2") + ")");
+                out.line(fastjsonHelperName(value, mode) + "("
+                        + writer + ".nativeWriter(), " + source + ");");
+                out.endBlock(" else {");
+                out.indent();
+                out.line(fastjsonHelperName(value, FastjsonMode.SAFE) + "("
+                        + writer + ".nativeWriter(), " + source + ");");
+                out.endBlock();
             } else {
                 out.line(value.helperName() + "(" + writer
                         + "." + nativeJsonAccessor() + "(), " + source + ");");
@@ -317,7 +312,12 @@ final class WriteEmitter {
                     emitJacksonNativeHelper(out, value);
                     return;
                 case FASTJSON2:
-                    emitNativeHelper(out, value);
+                    for (FastjsonMode mode : fastjsonModes) {
+                        emitNativeHelper(out, value, mode);
+                    }
+                    if (!fastjsonModes.isEmpty()) {
+                        emitNativeHelper(out, value, FastjsonMode.SAFE);
+                    }
                     return;
                 case GSON:
                 case JSONP:
@@ -436,6 +436,7 @@ final class WriteEmitter {
     }
 
     boolean needsNativeStringMember(BindingValue value) {
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) return false;
         if (!hasNativeJsonWriter() || value.direction() != BindingPlan.Direction.WRITE_TO
                 || value.kind() != BindingValue.Kind.POJO
                 || !nativeEligible(value, new java.util.HashSet<BindingValue>())) {
