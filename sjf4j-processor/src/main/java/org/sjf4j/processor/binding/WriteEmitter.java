@@ -187,6 +187,16 @@ final class WriteEmitter {
             return;
         }
 
+        if (isJackson()) {
+            String writer = names.newName("writer");
+            out.beginBlock("try (" + backend.writerType() + " " + writer
+                    + " = this.binder.createWriterUtf8())");
+            emitWriteBody(out, value, source, writer);
+            out.line("return " + writer + ".toBytes();");
+            out.endBlock();
+            return;
+        }
+
         // Gson, Simple and JSON-P write in-memory byte[] more efficiently through
         // their compiled character path than through OutputStreamWriter.
         // Caller-owned OutputStream methods remain streaming.
@@ -263,11 +273,13 @@ final class WriteEmitter {
 
         out.line(writer + ".startDocument();");
 
-        writeValue(
-                out,
-                value,
-                writer,
-                source);
+        if (isJackson() && value.helperRequired()
+                && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
+            out.line(value.helperName() + "Native(" + writer
+                    + ".nativeGenerator(), " + source + ");");
+        } else {
+            writeValue(out, value, writer, source);
+        }
 
         out.line(writer + ".endDocument();");
         out.line(writer + ".flush();");
@@ -347,7 +359,7 @@ final class WriteEmitter {
                     BindingValue child = property.value();
                     String expr = access(property.access(), "value");
                     if (child.kind() == BindingValue.Kind.STRING) {
-                        out.line(value.helperName() + "Str(g, " + field + ", " + expr + ");");
+                        out.line("_writeStringField(g, " + field + ", " + expr + ");");
                     } else {
                         out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
                                 + "(" + field + ");");
@@ -384,17 +396,31 @@ final class WriteEmitter {
                 throw new AssertionError(value.kind());
         }
         out.endBlock();
-        if (value.kind() == BindingValue.Kind.POJO) {
-            String serializedType = jackson2
-                    ? "com.fasterxml.jackson.core.io.SerializedString"
-                    : "tools.jackson.core.io.SerializedString";
-            out.beginBlock("private static void " + value.helperName() + "Str("
-                    + jacksonGeneratorType() + " g, " + serializedType
-                    + " name, String text) throws java.io.IOException");
-            out.line("g." + (jackson2 ? "writeFieldName" : "writeName") + "(name);");
-            out.line("g.writeString(text);");
-            out.endBlock();
+    }
+
+    boolean needsJacksonStringField(BindingValue value) {
+        if (!isJackson() || value.direction() != BindingPlan.Direction.WRITE_TO
+                || value.kind() != BindingValue.Kind.POJO
+                || !nativeEligible(value, new java.util.HashSet<BindingValue>())) {
+            return false;
         }
+        for (BindingProperty property : value.properties()) {
+            if (property.value().kind() == BindingValue.Kind.STRING) return true;
+        }
+        return false;
+    }
+
+    void emitJacksonStringField(JavaWriter out) {
+        boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
+        String serializedType = jackson2
+                ? "com.fasterxml.jackson.core.io.SerializedString"
+                : "tools.jackson.core.io.SerializedString";
+        out.beginBlock("private static void _writeStringField("
+                + jacksonGeneratorType() + " g, " + serializedType
+                + " name, String text) throws java.io.IOException");
+        out.line("g." + (jackson2 ? "writeFieldName" : "writeName") + "(name);");
+        out.line("g.writeString(text);");
+        out.endBlock();
     }
 
     private void emitJacksonNativeValue(JavaWriter out, BindingValue child, String expr) {
