@@ -357,6 +357,12 @@ final class WriteEmitter {
                 out.line("g.writeEndObject();");
                 break;
             case LIST:
+                out.line("g.writeStartArray();");
+                out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
+                emitJacksonNativeValue(out, value.elementValue(), "value.get(i)");
+                out.endBlock();
+                out.line("g.writeEndArray();");
+                break;
             case SET:
                 out.line("g.writeStartArray();");
                 out.beginBlock("for (" + value.elementValue().type() + " element : value)");
