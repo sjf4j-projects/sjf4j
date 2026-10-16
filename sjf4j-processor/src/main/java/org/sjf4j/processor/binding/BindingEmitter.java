@@ -8,6 +8,7 @@ final class BindingEmitter {
 
     private final ReadEmitter reads;
     private final WriteEmitter writes;
+    private boolean nativeStringMemberEmitted;
 
     BindingEmitter(
             ProcessorContext context,
@@ -60,6 +61,11 @@ final class BindingEmitter {
                 writes.usesCompiledNames()) {
             generated.addField(
                     out -> writes.emitCompiledNames(out, value));
+        }
+
+        if (!nativeStringMemberEmitted && writes.needsNativeStringMember(value)) {
+            generated.addHelper(out -> writes.emitNativeStringMember(out));
+            nativeStringMemberEmitted = true;
         }
 
         generated.addHelper(

@@ -141,6 +141,19 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         }
     }
 
+    /** Creates an owned UTF-8 writer using Jackson's pooled output buffer. */
+    public Jackson3Writer createWriterUtf8() throws IOException {
+        BufferRecycler recycler = factory._getBufferRecycler();
+        ByteArrayBuilder output = new ByteArrayBuilder(recycler);
+        try {
+            return new Jackson3Writer(factory.createGenerator(WRITE_CONTEXT, output), output, recycler);
+        } catch (RuntimeException e) {
+            output.release();
+            recycler.releaseToPool();
+            throw e;
+        }
+    }
+
     @Override
     public String writeNodeAsString(Object node) {
         final BufferRecycler recycler = factory._getBufferRecycler();
