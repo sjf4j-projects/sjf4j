@@ -603,13 +603,33 @@ class CompiledBinderConformanceTest {
             org.sjf4j.backend.fastjson2.binding.Fastjson2Writer adapter =
                     new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(nativeWriter);
             assertTrue(adapter.supportsRawUtf8Names());
+            assertEquals(1, adapter.compiledNameMode());
         }
-        context.config(com.alibaba.fastjson2.JSONWriter.Feature.EscapeNoneAscii);
         try (com.alibaba.fastjson2.JSONWriter nativeWriter =
-                     com.alibaba.fastjson2.JSONWriter.ofUTF8(context)) {
+                     com.alibaba.fastjson2.JSONWriter.of(context)) {
             org.sjf4j.backend.fastjson2.binding.Fastjson2Writer adapter =
                     new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(nativeWriter);
-            assertFalse(adapter.supportsRawUtf8Names());
+            assertEquals(2, adapter.compiledNameMode());
+        }
+        for (com.alibaba.fastjson2.JSONWriter.Feature feature :
+                new com.alibaba.fastjson2.JSONWriter.Feature[] {
+                        com.alibaba.fastjson2.JSONWriter.Feature.EscapeNoneAscii,
+                        com.alibaba.fastjson2.JSONWriter.Feature.BrowserSecure,
+                        com.alibaba.fastjson2.JSONWriter.Feature.UnquoteFieldName,
+                        com.alibaba.fastjson2.JSONWriter.Feature.UseSingleQuotes}) {
+            com.alibaba.fastjson2.JSONWriter.Context custom =
+                    com.alibaba.fastjson2.JSONFactory.createWriteContext(feature);
+            try (com.alibaba.fastjson2.JSONWriter utf8 =
+                         com.alibaba.fastjson2.JSONWriter.ofUTF8(custom);
+                 com.alibaba.fastjson2.JSONWriter utf16 =
+                         com.alibaba.fastjson2.JSONWriter.of(custom)) {
+                assertEquals(0,
+                        new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(utf8)
+                                .compiledNameMode(), feature.name() + " UTF-8");
+                assertEquals(0,
+                        new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(utf16)
+                                .compiledNameMode(), feature.name() + " UTF-16");
+            }
         }
     }
 
