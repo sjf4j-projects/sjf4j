@@ -255,8 +255,13 @@ final class WriteEmitter {
 
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
-            out.line(value.helperName() + "(" + writer
-                    + "." + nativeJsonAccessor() + "(), " + source + ");");
+            if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+                out.line(value.helperName() + "(" + writer + ".nativeWriter(), "
+                        + source + ", " + writer + ".compiledNameMode());");
+            } else {
+                out.line(value.helperName() + "(" + writer
+                        + "." + nativeJsonAccessor() + "(), " + source + ");");
+            }
         } else {
             writeValue(out, value, writer, source);
         }
@@ -443,9 +448,11 @@ final class WriteEmitter {
                 throw new AssertionError(backend.backend());
         }
         out.beginBlock("private static void _writeMember(" + generatorType
-                + " g, " + nameType + " name, String value) throws java.io.IOException");
+                + " g, " + nameType + " name, String value"
+                + (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                ? ", int nameMode" : "") + ") throws java.io.IOException");
         if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
-            out.line("_writeName(g, name);");
+            out.line("_writeName(g, name, nameMode);");
         } else {
             out.line("g." + fieldMethod + "(name);");
         }
@@ -934,7 +941,7 @@ final class WriteEmitter {
         String name = value.helperName();
         String type = "com.alibaba.fastjson2.JSONWriter";
         out.beginBlock("private static void " + name + "(" + type
-                + " w, " + value.type() + " value) throws java.io.IOException");
+                + " w, " + value.type() + " value, int nameMode) throws java.io.IOException");
         out.beginBlock("if (value == null)");
         out.line("w.writeNull();");
         out.line("return;");
@@ -980,9 +987,9 @@ final class WriteEmitter {
             String name = compiledNameField(value, index++);
             String expr = access(property.access(), "value");
             if (property.value().kind() == BindingValue.Kind.STRING) {
-                out.line("_writeMember(w, " + name + ", " + expr + ");");
+                out.line("_writeMember(w, " + name + ", " + expr + ", nameMode);");
             } else {
-                out.line("_writeName(w, " + name + ");");
+                out.line("_writeName(w, " + name + ", nameMode);");
                 emitNativeValue(out, property.value(), expr);
             }
         }
@@ -997,12 +1004,13 @@ final class WriteEmitter {
 
     void emitFastjsonNameHelper(JavaWriter out) {
         out.beginBlock("private static void _writeName(com.alibaba.fastjson2.JSONWriter w,"
-                + " org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName name)");
-        out.beginBlock("if (w.isUTF8())");
-        out.line("w.writeNameRaw(name.rawNameUtf8());");
-        out.endBlock(" else if (w.isUTF16()) {");
+                + " org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName name,"
+                + " int nameMode)");
+        out.beginBlock("if (nameMode == 1)");
+        out.line("w.writeNameRaw(name.rawNameUtf8);");
+        out.endBlock(" else if (nameMode == 2) {");
         out.indent();
-        out.line("w.writeNameRaw(name.rawNameUtf16());");
+        out.line("w.writeNameRaw(name.rawNameUtf16);");
         out.endBlock(" else {");
         out.indent();
         out.line("w.writeName(name.name());");
@@ -1014,7 +1022,7 @@ final class WriteEmitter {
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(w, " + expression + ");");
+            out.line(value.helperName() + "(w, " + expression + ", nameMode);");
             return;
         }
         String method;
