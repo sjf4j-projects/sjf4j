@@ -135,9 +135,32 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         return new Fastjson2Writer(JSONWriter.of(writerContext));
     }
 
-    /** Creates a native UTF-8 writer for code-generated serializers. */
+    /** Creates a configured native UTF-16 writer for compiled String output. */
+    public JSONWriter createNativeWriter() {
+        return JSONWriter.of(writerContext);
+    }
+
+    /** Creates a configured native UTF-8 writer for compiled byte[] output. */
     public JSONWriter createNativeWriterUtf8() {
         return JSONWriter.ofUTF8(writerContext);
+    }
+
+    /** Whether a native UTF-8 writer can emit pre-escaped field names. */
+    public static boolean supportsRawUtf8Names(JSONWriter writer) {
+        return writer.isUTF8() && rawNamesCompatible(writer);
+    }
+
+    /** Whether a native UTF-16 writer can emit pre-escaped field names. */
+    public static boolean supportsRawUtf16Names(JSONWriter writer) {
+        return writer.isUTF16() && rawNamesCompatible(writer);
+    }
+
+    /** Shared feature gate used by both native compiled and runtime writers. */
+    static boolean rawNamesCompatible(JSONWriter writer) {
+        return !writer.isUseSingleQuotes()
+                && !writer.isEnabled(JSONWriter.Feature.UnquoteFieldName)
+                && !writer.isEnabled(JSONWriter.Feature.BrowserSecure)
+                && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
     }
 
     /** Creates an in-memory UTF-8 writer for compiled byte[] output. */
