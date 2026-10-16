@@ -424,6 +424,11 @@ final class WriteEmitter {
                 generatorType = "tools.jackson.core.JsonGenerator";
                 fieldMethod = "writeName"; stringMethod = "writeString"; nullMethod = "writeNull";
                 break;
+            case FASTJSON2:
+                nameType = "org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName";
+                generatorType = "com.alibaba.fastjson2.JSONWriter";
+                fieldMethod = "_writeName"; stringMethod = "writeString"; nullMethod = "writeNull";
+                break;
             case GSON:
                 nameType = "String";
                 generatorType = "com.google.gson.stream.JsonWriter";
@@ -439,7 +444,11 @@ final class WriteEmitter {
         }
         out.beginBlock("private static void _writeMember(" + generatorType
                 + " g, " + nameType + " name, String value) throws java.io.IOException");
-        out.line("g." + fieldMethod + "(name);");
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+            out.line("_writeName(g, name);");
+        } else {
+            out.line("g." + fieldMethod + "(name);");
+        }
         out.beginBlock("if (value == null)");
         out.line("g." + nullMethod + "();");
         out.endBlock(" else {");
@@ -968,11 +977,35 @@ final class WriteEmitter {
     private void emitNativeProperties(JavaWriter out, BindingValue value) {
         int index = 0;
         for (BindingProperty property : value.properties()) {
-            out.line("w.writeNameRaw(" + compiledNameField(value, index++)
-                    + ".rawNameUtf8());");
-            emitNativeValue(out, property.value(),
-                    access(property.access(), "value"));
+            String name = compiledNameField(value, index++);
+            String expr = access(property.access(), "value");
+            if (property.value().kind() == BindingValue.Kind.STRING) {
+                out.line("_writeMember(w, " + name + ", " + expr + ");");
+            } else {
+                out.line("_writeName(w, " + name + ");");
+                emitNativeValue(out, property.value(), expr);
+            }
         }
+    }
+
+    boolean needsFastjsonNameHelper(BindingValue value) {
+        return backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && value.direction() == BindingPlan.Direction.WRITE_TO
+                && value.kind() == BindingValue.Kind.POJO
+                && nativeEligible(value, new java.util.HashSet<BindingValue>());
+    }
+
+    void emitFastjsonNameHelper(JavaWriter out) {
+        out.beginBlock("private static void _writeName(com.alibaba.fastjson2.JSONWriter w,"
+                + " org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName name)");
+        out.beginBlock("if (w.isUTF8())");
+        out.line("w.writeNameRaw(name.rawNameUtf8());");
+        out.endBlock(" else {");
+        out.indent();
+        out.line("w.writeName(name.name());");
+        out.line("w.writeColon();");
+        out.endBlock();
+        out.endBlock();
     }
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
