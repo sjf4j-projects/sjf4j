@@ -135,6 +135,11 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         return new Fastjson2Writer(JSONWriter.of(writerContext));
     }
 
+    /** Creates a native UTF-8 writer for code-generated serializers. */
+    public JSONWriter createNativeWriterUtf8() {
+        return JSONWriter.ofUTF8(writerContext);
+    }
+
     /** Creates an in-memory UTF-8 writer for compiled byte[] output. */
     public Fastjson2Writer createWriterUtf8() {
         return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext));
