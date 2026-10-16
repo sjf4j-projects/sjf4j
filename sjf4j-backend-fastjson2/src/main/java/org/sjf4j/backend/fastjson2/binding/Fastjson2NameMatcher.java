@@ -10,7 +10,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 
 /** Prepared Fastjson2 property-name matcher. */
-public final class Fastjson2NameMatcher extends NameMatcher {
+public class Fastjson2NameMatcher extends NameMatcher {
 
     static final int HASH_COLLISION = -3;
     private static final boolean RAW_LITTLE_ENDIAN = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
@@ -160,6 +160,24 @@ public final class Fastjson2NameMatcher extends NameMatcher {
             case 11: return reader.nextIfName4Match11(suffix);
             default: return false;
         }
+    }
+
+    /**
+     * Matcher-driven compiled entry point. Fastjson2Reader retains ownership
+     * of parser state and unknown/alias fallback; generated call sites can
+     * bind to the specialized POJO matcher type.
+     */
+    public final int nextNameMatch(Fastjson2Reader reader) {
+        return reader.nextNameMatch(this);
+    }
+
+    /**
+     * Overridden by compiled, per-POJO matchers that can switch on raw
+     * prefixes and embed native Fastjson2 name constants in bytecode.
+     * Runtime matchers retain the existing prepared lookup table.
+     */
+    protected int matchRaw(JSONReader reader, int expectedIndex) {
+        return matchOtherRaw(reader, expectedIndex);
     }
 
     /**

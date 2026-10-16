@@ -52,6 +52,10 @@ final class BindingEmitter {
                 reads.usesNameMatcher()) {
             generated.addField(
                     out -> reads.emitNameMatcherField(out, value));
+            if (reads.generatesFastjson2Matcher() && !value.properties().isEmpty()) {
+                generated.addHelper(
+                        out -> reads.emitFastjson2MatcherClass(out, value));
+            }
         }
 
         if (value.direction() ==
