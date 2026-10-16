@@ -618,7 +618,8 @@ final class WriteEmitter {
             if (!gson && (child.kind() == BindingValue.Kind.BYTE
                     || child.kind() == BindingValue.Kind.SHORT)) {
                 valueExpr = "item.intValue()";
-            } else if (!gson && child.kind() == BindingValue.Kind.FLOAT) {
+            } else if (child.kind() == BindingValue.Kind.FLOAT) {
+                // Both adapters widen boxed float to double before serialization.
                 valueExpr = "item.doubleValue()";
             }
             out.line("g." + scalarMethod + "(" + valueExpr + ");");
