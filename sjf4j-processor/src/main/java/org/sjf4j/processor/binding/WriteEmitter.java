@@ -16,7 +16,7 @@ final class WriteEmitter {
     private final BackendSpec backend;
 
     private enum FastjsonMode {
-        UTF8("Utf8"), UTF16("Utf16"), SAFE("Safe");
+        UTF8("Utf8"), UTF16("Utf16");
 
         final String suffix;
 
@@ -155,7 +155,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16);
+        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16, false);
 
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -189,7 +189,7 @@ final class WriteEmitter {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer, FastjsonMode.UTF8);
+            emitWriteBody(out, value, source, writer, FastjsonMode.UTF8, true);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -199,7 +199,7 @@ final class WriteEmitter {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer, null);
+            emitWriteBody(out, value, source, writer, null, true);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -217,7 +217,7 @@ final class WriteEmitter {
                     + " = new org.sjf4j.binding.FastStringWriter(); "
                     + backend.writerType() + " " + writer
                     + " = this.binder.createWriter(" + output + "))");
-            emitWriteBody(out, value, source, writer, null);
+            emitWriteBody(out, value, source, writer, null, false);
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
             out.endBlock();
@@ -239,7 +239,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer, null);
+        emitWriteBody(out, value, source, writer, null, false);
 
         out.line("return " + output + ".toByteArray();");
         out.endBlock();
@@ -263,7 +263,7 @@ final class WriteEmitter {
                         output + ");");
 
         emitWriteBody(out, value, source, writer,
-                utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16);
+                utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16, false);
 
     }
 
@@ -272,7 +272,8 @@ final class WriteEmitter {
             BindingValue value,
             String source,
             String writer,
-            FastjsonMode mode) {
+            FastjsonMode mode,
+            boolean inMemoryOutput) {
 
         out.line(writer + ".startDocument();");
 
@@ -286,8 +287,8 @@ final class WriteEmitter {
                         + writer + ".nativeWriter(), " + source + ");");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(fastjsonHelperName(value, FastjsonMode.SAFE) + "("
-                        + writer + ".nativeWriter(), " + source + ");");
+                out.line(STREAMING_IO + ".writeNode(" + writer + ", " + source
+                        + ", " + RUNTIME_CONTEXT + ".EMPTY);");
                 out.endBlock();
             } else {
                 out.line(value.helperName() + "(" + writer
@@ -298,7 +299,12 @@ final class WriteEmitter {
         }
 
         out.line(writer + ".endDocument();");
-        out.line(writer + ".flush();");
+        // Fastjson2 in-memory writers expose their complete native buffer directly.
+        // Other backends and all caller-owned destinations require flush.
+        if (backend.backend() != org.sjf4j.annotation.binding.Backend.FASTJSON2
+                || !inMemoryOutput) {
+            out.line(writer + ".flush();");
+        }
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
@@ -314,9 +320,6 @@ final class WriteEmitter {
                 case FASTJSON2:
                     for (FastjsonMode mode : fastjsonModes) {
                         emitNativeHelper(out, value, mode);
-                    }
-                    if (!fastjsonModes.isEmpty()) {
-                        emitNativeHelper(out, value, FastjsonMode.SAFE);
                     }
                     return;
                 case GSON:
@@ -982,18 +985,12 @@ final class WriteEmitter {
         switch (mode) {
             case UTF8: return name + ".rawNameUtf8";
             case UTF16: return name + ".rawNameUtf16";
-            case SAFE: return name + ".name()";
             default: throw new AssertionError(mode);
         }
     }
 
     private void emitFastjsonName(JavaWriter out, String name, FastjsonMode mode) {
-        if (mode == FastjsonMode.SAFE) {
-            out.line("w.writeName(" + name + ");");
-            out.line("w.writeColon();");
-        } else {
-            out.line("w.writeNameRaw(" + name + ");");
-        }
+        out.line("w.writeNameRaw(" + name + ");");
     }
 
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
@@ -1085,9 +1082,6 @@ final class WriteEmitter {
         for (FastjsonMode mode : fastjsonModes) {
             emitFastjsonMemberOverloads(out, mode);
         }
-        if (!fastjsonModes.isEmpty()) {
-            emitFastjsonMemberOverloads(out, FastjsonMode.SAFE);
-        }
     }
 
     private void emitFastjsonMemberOverloads(JavaWriter out, FastjsonMode mode) {
@@ -1095,7 +1089,6 @@ final class WriteEmitter {
         switch (mode) {
             case UTF8: nameType = "byte[]"; break;
             case UTF16: nameType = "char[]"; break;
-            case SAFE: nameType = "String"; break;
             default: throw new AssertionError(mode);
         }
 
