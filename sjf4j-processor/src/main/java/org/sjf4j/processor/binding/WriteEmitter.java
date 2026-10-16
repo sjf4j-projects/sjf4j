@@ -161,21 +161,7 @@ final class WriteEmitter {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            if (value.helperRequired() && nativeEligible(value,
-                    new java.util.HashSet<BindingValue>())) {
-                out.beginBlock("if (" + writer + ".supportsRawUtf8Names())");
-                out.line(writer + ".startDocument();");
-                out.line(value.helperName() + "(" + writer
-                        + ", " + source + ");");
-                out.line(writer + ".endDocument();");
-                out.line(writer + ".flush();");
-                out.endBlock(" else {");
-                out.indent();
-                emitWriteBody(out, value, source, writer);
-                out.endBlock();
-            } else {
-                emitWriteBody(out, value, source, writer);
-            }
+            emitWriteBody(out, value, source, writer);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -269,7 +255,7 @@ final class WriteEmitter {
 
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
-            out.line(value.helperName() + "Native(" + writer
+            out.line(value.helperName() + "(" + writer
                     + "." + nativeJsonAccessor() + "(), " + source + ");");
         } else {
             writeValue(out, value, writer, source);
@@ -279,56 +265,53 @@ final class WriteEmitter {
         out.line(writer + ".flush();");
     }
 
-    void emitHelper(
-            JavaWriter out,
-            BindingValue value) {
+    void emitHelper(JavaWriter out, BindingValue value) {
+        // Generate a single native helper when the full type graph is concrete.
+        // Unresolved graphs retain the StreamingWriter fallback.
+        if (hasNativeJsonWriter() && nativeEligible(value,
+                new java.util.HashSet<BindingValue>())) {
+            switch (backend.backend()) {
+                case JACKSON2:
+                case JACKSON3:
+                    emitJacksonNativeHelper(out, value);
+                    return;
+                case FASTJSON2:
+                    emitNativeHelper(out, value);
+                    return;
+                case GSON:
+                case JSONP:
+                    emitOtherNativeHelper(out, value);
+                    return;
+                default:
+                    throw new AssertionError(backend.backend());
+            }
+        }
 
-        out.beginBlock(
-                "private static void " +
-                        value.helperName() +
-                        "(" +
-                        backend.writerType() +
-                        " writer, " +
-                        value.type() +
-                        " value) throws java.io.IOException");
-
+        out.beginBlock("private static void " + value.helperName()
+                + "(" + backend.writerType() + " writer, "
+                + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
             case POJO:
                 emitPojo(out, value);
                 break;
-
             case LIST:
             case SET:
                 emitCollection(out, value);
                 break;
-
             case MAP:
                 emitMap(out, value);
                 break;
-
             default:
-                throw new AssertionError(
-                        "No write helper for " +
-                                value.kind());
+                throw new AssertionError("No write helper for " + value.kind());
         }
-
         out.endBlock();
-
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
-                && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
-            emitNativeHelper(out, value);
-        }
-        if (hasNativeJsonWriter() && nativeEligible(value,
-                new java.util.HashSet<BindingValue>())) {
-            if (isJackson()) emitJacksonNativeHelper(out, value);
-            else emitOtherNativeHelper(out, value);
-        }
     }
 
     private boolean hasNativeJsonWriter() {
         switch (backend.backend()) {
             case JACKSON2:
             case JACKSON3:
+            case FASTJSON2:
             case GSON:
             case JSONP:
                 return true;
@@ -339,6 +322,7 @@ final class WriteEmitter {
 
     private String nativeJsonAccessor() {
         return backend.backend() == org.sjf4j.annotation.binding.Backend.GSON
+                || backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
                 ? "nativeWriter" : "nativeGenerator";
     }
 
@@ -355,7 +339,7 @@ final class WriteEmitter {
 
     private void emitJacksonNativeHelper(JavaWriter out, BindingValue value) {
         boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
-        out.beginBlock("private static void " + value.helperName() + "Native("
+        out.beginBlock("private static void " + value.helperName() + "("
                 + jacksonGeneratorType() + " g, " + value.type()
                 + " value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
@@ -467,7 +451,7 @@ final class WriteEmitter {
 
     private void emitJacksonNativeValue(JavaWriter out, BindingValue child, String expr) {
         if (child.helperRequired()) {
-            out.line(child.helperName() + "Native(g, " + expr + ");");
+            out.line(child.helperName() + "(g, " + expr + ");");
             return;
         }
         if (child.kind() == BindingValue.Kind.STRING) {
@@ -526,7 +510,7 @@ final class WriteEmitter {
         String endArray = gson ? "endArray" : "writeEnd";
         String nullMethod = gson ? "nullValue" : "writeNull";
         String nameMethod = gson ? "name" : "writeKey";
-        out.beginBlock("private static void " + value.helperName() + "Native("
+        out.beginBlock("private static void " + value.helperName() + "("
                 + generatorType + " g, " + value.type() + " value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
         out.line("g." + nullMethod + "();");
@@ -577,7 +561,7 @@ final class WriteEmitter {
         String scalarMethod = gson ? "value" : "write";
         String nullMethod = gson ? "nullValue" : "writeNull";
         if (child.helperRequired()) {
-            out.line(child.helperName() + "Native(g, " + expr + ");");
+            out.line(child.helperName() + "(g, " + expr + ");");
             return;
         }
         if (child.kind() == BindingValue.Kind.ENUM || child.kind() == BindingValue.Kind.CHARACTER) {
@@ -632,27 +616,8 @@ final class WriteEmitter {
             JavaWriter out,
             BindingValue value) {
 
-        if (hasNativeJsonWriter() && nativeEligible(value,
-                new java.util.HashSet<BindingValue>())) {
-            out.line(value.helperName() + "Native(writer." + nativeJsonAccessor()
-                    + "(), value);");
-            return;
-        }
         emitNullReturn(out);
         out.line("writer.startObject();");
-
-        // Reuse the native property emitter directly inside the normal POJO
-        // helper. This keeps its lifecycle, recursion and fallback unchanged.
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
-                && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
-            out.beginBlock("if (writer.supportsRawUtf8Names())");
-            out.line(value.helperName() + "Properties(writer.nativeWriter(), value);");
-            out.line("writer.endObject();");
-            out.line("return;");
-            out.endBlock();
-        }
-
-
 
         int index = 0;
 
@@ -957,7 +922,7 @@ final class WriteEmitter {
     }
 
     private void emitNativeHelper(JavaWriter out, BindingValue value) {
-        String name = value.helperName() + "Native";
+        String name = value.helperName();
         String type = "com.alibaba.fastjson2.JSONWriter";
         out.beginBlock("private static void " + name + "(" + type
                 + " w, " + value.type() + " value)");
@@ -998,12 +963,6 @@ final class WriteEmitter {
                 throw new AssertionError(value.kind());
         }
         out.endBlock();
-        if (value.kind() == BindingValue.Kind.POJO) {
-            out.beginBlock("private static void " + value.helperName()
-                    + "Properties(" + type + " w, " + value.type() + " value)");
-            emitNativeProperties(out, value);
-            out.endBlock();
-        }
     }
 
     private void emitNativeProperties(JavaWriter out, BindingValue value) {
@@ -1019,7 +978,7 @@ final class WriteEmitter {
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "Native(w, " + expression + ");");
+            out.line(value.helperName() + "(w, " + expression + ");");
             return;
         }
         String method;
