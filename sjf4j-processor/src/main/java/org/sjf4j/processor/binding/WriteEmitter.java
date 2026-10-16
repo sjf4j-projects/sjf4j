@@ -1000,6 +1000,9 @@ final class WriteEmitter {
                 + " org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName name)");
         out.beginBlock("if (w.isUTF8())");
         out.line("w.writeNameRaw(name.rawNameUtf8());");
+        out.endBlock(" else if (w.isUTF16()) {");
+        out.indent();
+        out.line("w.writeNameRaw(name.rawNameUtf16());");
         out.endBlock(" else {");
         out.indent();
         out.line("w.writeName(name.name());");
