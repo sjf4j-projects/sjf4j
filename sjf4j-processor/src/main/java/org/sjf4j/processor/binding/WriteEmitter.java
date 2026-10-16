@@ -1183,7 +1183,15 @@ final class WriteEmitter {
 
         switch (value.kind()) {
             case STRING:
-                out.line("w.writeString(" + expression + ");");
+                out.beginBlock("");
+                out.line("String item = " + expression + ";");
+                out.beginBlock("if (item == null)");
+                out.line("w.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("w.writeString(item);");
+                out.endBlock();
+                out.endBlock();
                 return;
             case CHARACTER:
                 if (value.primitive()) {
@@ -1191,14 +1199,24 @@ final class WriteEmitter {
                 } else {
                     out.beginBlock("");
                     out.line("Character item = " + expression + ";");
-                    out.line("w.writeString(item == null ? null : item.toString());");
+                    out.beginBlock("if (item == null)");
+                    out.line("w.writeNull();");
+                    out.endBlock(" else {");
+                    out.indent();
+                    out.line("w.writeString(item.toString());");
+                    out.endBlock();
                     out.endBlock();
                 }
                 return;
             case ENUM:
                 out.beginBlock("");
                 out.line(value.type() + " item = " + expression + ";");
-                out.line("w.writeString(item == null ? null : item.name());");
+                out.beginBlock("if (item == null)");
+                out.line("w.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("w.writeString(item.name());");
+                out.endBlock();
                 out.endBlock();
                 return;
             default:
