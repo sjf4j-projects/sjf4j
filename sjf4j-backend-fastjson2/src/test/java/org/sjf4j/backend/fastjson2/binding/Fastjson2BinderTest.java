@@ -125,6 +125,34 @@ class Fastjson2BinderTest {
     }
 
     @Test
+    void nativeUtf8WriterSharesRawNameFeatureContract() {
+        Fastjson2Binder plain = new Fastjson2Binder();
+        try (JSONWriter writer = plain.createNativeWriterUtf8()) {
+            assertTrue(Fastjson2Writer.supportsRawUtf8Names(writer));
+            writer.startObject();
+            writer.writeName("text");
+            writer.writeColon();
+            writer.writeString("héllo");
+            writer.endObject();
+            assertEquals("{\\\"text\\\":\\\"héllo\\\"}",
+                    new String(writer.getBytes(), StandardCharsets.UTF_8));
+        }
+
+        for (JSONWriter.Feature feature : Arrays.asList(
+                JSONWriter.Feature.UseSingleQuotes,
+                JSONWriter.Feature.UnquoteFieldName,
+                JSONWriter.Feature.BrowserSecure,
+                JSONWriter.Feature.EscapeNoneAscii)) {
+            Fastjson2Binder configured = new Fastjson2Binder(
+                    JSONFactory.createReadContext(),
+                    JSONFactory.createWriteContext(feature));
+            try (JSONWriter writer = configured.createNativeWriterUtf8()) {
+                assertFalse(Fastjson2Writer.supportsRawUtf8Names(writer), feature.name());
+            }
+        }
+    }
+
+    @Test
     void createsNativeReadersWritersAndFlushesToSuppliedOutputs() throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder();
         StringWriter text = new StringWriter();
