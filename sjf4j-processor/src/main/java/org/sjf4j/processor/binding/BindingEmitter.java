@@ -51,6 +51,12 @@ final class BindingEmitter {
         if (!value.helperRequired()) {
             return;
         }
+        // Methods with dynamic type graphs are delegated entirely to Runtime.
+        // Do not generate unused StreamingWriter helpers for them.
+        if (value.direction() == BindingPlan.Direction.WRITE_TO
+                && !writes.requiresWriteHelper(value)) {
+            return;
+        }
 
         if (value.direction() ==
                 BindingPlan.Direction.READ_FROM &&
