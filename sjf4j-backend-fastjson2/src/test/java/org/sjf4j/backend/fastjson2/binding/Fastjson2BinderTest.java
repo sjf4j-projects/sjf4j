@@ -125,10 +125,19 @@ class Fastjson2BinderTest {
     }
 
     @Test
-    void nativeUtf8WriterSharesRawNameFeatureContract() {
+    void nativeWritersShareRawNameFeatureContract() {
         Fastjson2Binder plain = new Fastjson2Binder();
+        try (JSONWriter writer = plain.createNativeWriter()) {
+            assertTrue(Fastjson2Binder.supportsRawUtf16Names(writer));
+            writer.startObject();
+            writer.writeName("text");
+            writer.writeColon();
+            writer.writeString("héllo");
+            writer.endObject();
+            assertEquals("{\"text\":\"héllo\"}", writer.toString());
+        }
         try (JSONWriter writer = plain.createNativeWriterUtf8()) {
-            assertTrue(Fastjson2Writer.supportsRawUtf8Names(writer));
+            assertTrue(Fastjson2Binder.supportsRawUtf8Names(writer));
             writer.startObject();
             writer.writeName("text");
             writer.writeColon();
@@ -146,8 +155,11 @@ class Fastjson2BinderTest {
             Fastjson2Binder configured = new Fastjson2Binder(
                     JSONFactory.createReadContext(),
                     JSONFactory.createWriteContext(feature));
+            try (JSONWriter writer = configured.createNativeWriter()) {
+                assertFalse(Fastjson2Binder.supportsRawUtf16Names(writer), feature.name());
+            }
             try (JSONWriter writer = configured.createNativeWriterUtf8()) {
-                assertFalse(Fastjson2Writer.supportsRawUtf8Names(writer), feature.name());
+                assertFalse(Fastjson2Binder.supportsRawUtf8Names(writer), feature.name());
             }
         }
     }
