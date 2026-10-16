@@ -143,8 +143,7 @@ final class WriteEmitter {
                         BindingSource.parameterName(
                                 plan,
                                 1),
-                        names,
-                        plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM);
+                        names);
                 break;
 
             default:
@@ -334,8 +333,7 @@ final class WriteEmitter {
             BindingValue value,
             String source,
             String output,
-            NameAllocator names,
-            boolean utf8) {
+            NameAllocator names) {
 
         String writer =
                 names.newName("writer");
