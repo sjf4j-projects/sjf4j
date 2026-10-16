@@ -6,9 +6,8 @@ import tools.jackson.core.io.SerializedString;
 /** Compiled Jackson 3 property name. */
 public final class Jackson3CompiledName extends CompiledName {
 
-    final SerializedString serializedName;
+    public final SerializedString serializedName;
 
-    public SerializedString serializedName() { return serializedName; }
 
     /**
      * Prepares a property name for repeated Jackson 3 writes.

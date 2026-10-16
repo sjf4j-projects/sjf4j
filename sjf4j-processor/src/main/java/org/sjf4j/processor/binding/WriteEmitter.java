@@ -325,14 +325,14 @@ final class WriteEmitter {
                 ? "com.fasterxml.jackson.core.JsonGenerator"
                 : "tools.jackson.core.JsonGenerator";
         out.beginBlock("private static void " + value.helperName()
-                + "Properties(" + generatorType + " g, "
-                + backend.writerType() + " writer, " + value.type()
-                + " value) throws java.io.IOException");
+                + "Properties(" + backend.writerType() + " writer, "
+                + value.type() + " value) throws java.io.IOException");
+        out.line(generatorType + " g = writer.nativeGenerator();");
         int index = 0;
         for (BindingProperty property : value.properties()) {
             String field = compiledNameField(value, index++);
             out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
-                    + "(" + field + ".serializedName());");
+                    + "(" + field + ".serializedName);");
             BindingValue child = property.value();
             String expr = access(property.access(), "value");
             if (child.helperRequired() || child.kind() == BindingValue.Kind.RUNTIME
@@ -396,7 +396,7 @@ final class WriteEmitter {
 
         if (backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
                 || backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON3) {
-            out.line(value.helperName() + "Properties(writer.nativeGenerator(), writer, value);");
+            out.line(value.helperName() + "Properties(writer, value);");
             out.line("writer.endObject();");
             return;
         }
