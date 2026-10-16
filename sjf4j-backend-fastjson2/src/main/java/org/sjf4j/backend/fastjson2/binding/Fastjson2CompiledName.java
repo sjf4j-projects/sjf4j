@@ -7,8 +7,10 @@ import java.nio.charset.StandardCharsets;
 /** Pre-escaped Fastjson2 object property name for its raw-name writer path. */
 public final class Fastjson2CompiledName extends CompiledName {
 
-    final char[] rawNameUtf16;
-    final byte[] rawNameUtf8;
+    /** Internal generated-code contract. Do not mutate these pre-escaped arrays. */
+    public final char[] rawNameUtf16;
+    /** Internal generated-code contract. Do not mutate these pre-escaped arrays. */
+    public final byte[] rawNameUtf8;
 
     /** Pre-escaped UTF-8 property token for compiled Fastjson2 UTF-8 writers. */
     public byte[] rawNameUtf8() {
