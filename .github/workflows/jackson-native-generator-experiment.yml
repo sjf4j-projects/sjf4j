@@ -1,11 +1,11 @@
-name: Jackson native generator experiment
+name: Compiled native writer experiment
 on:
   push:
     branches:
       - perf/jackson-native-generator-experiment
   workflow_dispatch:
 jobs:
-  jackson-write:
+  native-write:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -15,18 +15,18 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Compile, regression, JMH
-        run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jmhJar --no-daemon
-      - name: Compare native generator output
+      - name: Compile and regression
+        run: ./gradlew :sjf4j-core:test :sjf4j-backend-jackson2:test :sjf4j-backend-jackson3:test :sjf4j-backend-fastjson2:test :sjf4j-backend-gson:test :sjf4j-backend-jsonp:test :sjf4j-backend-snake:test :sjf4j-processor:test :sjf4j-testbench:jmhJar --no-daemon
+      - name: Compare native JSON backends
         shell: bash
         run: |
           set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CompiledWriteBenchmark.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|runtime)' \
-            -wi 10 -i 10 -w 400ms -r 400ms -f 2 -prof gc | tee jackson-native-write.log
+            '.*CompiledWriteBenchmark.json_(jackson[23]|gson|jsonp|fastjson2|simple)_pojo_(string|utf8)_(compiled|native|blackbird|runtime)' \
+            -wi 5 -i 7 -w 250ms -r 300ms -f 1 -prof gc | tee native-write.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: jackson-native-write
-          path: jackson-native-write.log
+          name: compiled-native-write
+          path: native-write.log
           if-no-files-found: ignore
