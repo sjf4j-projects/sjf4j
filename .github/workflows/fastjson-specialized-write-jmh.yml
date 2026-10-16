@@ -1,0 +1,33 @@
+name: Fastjson2 specialized writer JMH
+on:
+  push:
+    branches: [perf/compiled-write-consolidated]
+    paths:
+      - '.github/workflows/fastjson-specialized-write-jmh.yml'
+  workflow_dispatch:
+jobs:
+  jmh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build compiled write benchmark
+        run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jmhJar --no-daemon
+      - name: Benchmark Fastjson2 native and compiled writes
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledWriteBenchmark.json_fastjson2_(pojo|map)_(string|utf8)_(compiled|native|runtime)$' \
+            -wi 5 -i 8 -w 300ms -r 350ms -f 1 -prof gc | tee fastjson-specialized-jmh.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fastjson-specialized-write-jmh
+          path: fastjson-specialized-jmh.log
+          if-no-files-found: ignore
