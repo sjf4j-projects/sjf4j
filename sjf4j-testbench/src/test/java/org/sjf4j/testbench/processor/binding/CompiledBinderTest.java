@@ -75,6 +75,10 @@ public class CompiledBinderTest {
 
         assertEquals("\"Ada\"", binder.writeString("Ada"));
         assertEquals("null", binder.writeString(null));
+        assertEquals("\"héllo\"", new String(
+                binder.writeStringUtf8("héllo"), StandardCharsets.UTF_8));
+        assertEquals("null", new String(
+                binder.writeStringUtf8(null), StandardCharsets.UTF_8));
         assertEquals("\"USER\"", binder.writeRole(Role.USER));
         assertEquals("98.75", binder.writeDecimal(new BigDecimal("98.75")));
     }
@@ -531,6 +535,9 @@ public class CompiledBinderTest {
 
         @WriteTo
         String writeString(String value) throws IOException;
+
+        @WriteTo
+        byte[] writeStringUtf8(String value) throws IOException;
 
         @ReadFrom
         Role readRole(String input) throws IOException;
