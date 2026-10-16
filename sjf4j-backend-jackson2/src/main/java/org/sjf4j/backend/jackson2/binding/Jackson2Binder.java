@@ -128,6 +128,19 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         }
     }
 
+    /** Creates an owned UTF-8 writer using Jackson's pooled output buffer. */
+    public Jackson2Writer createWriterUtf8() throws IOException {
+        BufferRecycler recycler = factory._getBufferRecycler();
+        ByteArrayBuilder output = new ByteArrayBuilder(recycler);
+        try {
+            return new Jackson2Writer(factory.createGenerator(output, JsonEncoding.UTF8), output, recycler);
+        } catch (IOException | RuntimeException e) {
+            output.release();
+            recycler.releaseToPool();
+            throw e;
+        }
+    }
+
     @Override
     public String writeNodeAsString(Object node) {
         final BufferRecycler br = factory._getBufferRecycler();
