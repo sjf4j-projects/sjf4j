@@ -55,14 +55,22 @@ public final class Fastjson2Writer extends StreamingWriter {
         this.byteOutput = byteOutput;
 
         this.utf8 = writer.isUTF8();
-        this.useRawName = (utf8 || writer.isUTF16())
-                && !writer.isUseSingleQuotes()
+        this.useRawName = (utf8 || writer.isUTF16()) && rawNamesCompatible(writer);
+    }
+
+    /** Whether a native UTF-8 writer may safely use pre-escaped field names. */
+    public static boolean supportsRawUtf8Names(JSONWriter writer) {
+        return writer.isUTF8() && rawNamesCompatible(writer);
+    }
+
+    private static boolean rawNamesCompatible(JSONWriter writer) {
+        return !writer.isUseSingleQuotes()
                 && !writer.isEnabled(JSONWriter.Feature.UnquoteFieldName)
                 && !writer.isEnabled(JSONWriter.Feature.BrowserSecure)
                 && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
     }
 
-    /** Whether the native UTF-8 raw-name fast path preserves writer features. */
+    /** Whether the wrapped writer supports pre-escaped UTF-8 field names. */
     public boolean supportsRawUtf8Names() {
         return utf8 && useRawName;
     }
