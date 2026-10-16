@@ -22,6 +22,7 @@ import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.testbench.binding.handwritten.Fastjson2HandMapV2Reader;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayInputStream;
@@ -30,6 +31,7 @@ import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -229,6 +231,10 @@ public class CompiledReadBenchmark {
         checkPojo("fastjson2 native utf8", expected, fastjson2_pojo_utf8_native());
         checkMap("fastjson2 native string", fastjson2_map_string_native());
         checkMap("fastjson2 native utf8", fastjson2_map_utf8_native());
+        checkMap("fastjson2 handwritten v2 string", fastjson2_map_string_handwritten_v2());
+        checkMap("fastjson2 handwritten v2 utf8", fastjson2_map_utf8_handwritten_v2());
+        checkMap("fastjson2 native linked string", fastjson2_map_string_native_linkedhashmap());
+        checkMap("fastjson2 native linked utf8", fastjson2_map_utf8_native_linkedhashmap());
     }
 
     private static void checkPojo(String label, User expected, Object result) {
@@ -585,6 +591,36 @@ public class CompiledReadBenchmark {
     public Object fastjson2_map_string_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
+        }
+    }
+
+    /** Same input and reader context as the compiled/native Map baselines. */
+    /** Match SJF4J's insertion-ordered Map root rather than native Map.class (HashMap). */
+    @Benchmark
+    public Object fastjson2_map_string_native_linkedhashmap() {
+        try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.read(LinkedHashMap.class);
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_utf8_native_linkedhashmap() {
+        try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.read(LinkedHashMap.class);
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_string_handwritten_v2() {
+        try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
+            return Fastjson2HandMapV2Reader.read(reader);
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_utf8_handwritten_v2() {
+        try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
+            return Fastjson2HandMapV2Reader.read(reader);
         }
     }
 
