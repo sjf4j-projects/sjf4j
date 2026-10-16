@@ -595,6 +595,94 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2GeneratesOnlyRequiredEncodingAndTypedMemberOverloads() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Sample.java",
+                "package fixture;\\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\\n"
+                        + "public class Sample {\\n"
+                        + " @NodeProperty(\\\"café\\\") public String text;\\n"
+                        + " public float primitive = 0.1f;\\n"
+                        + " public Float boxed = 0.1f;\\n"
+                        + " public Integer number = null;\\n"
+                        + " public int reads;\\n"
+                        + " public Float getScore() { reads++; return 0.1f; }\\n"
+                        + "}\\n");
+        sources.put("fixture/StringOnly.java",
+                "package fixture;\\n"
+                        + "import org.sjf4j.annotation.binding.*;\\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface StringOnly {\\n"
+                        + " @WriteTo String write(Sample value) throws java.io.IOException;\\n"
+                        + "}\\n");
+        sources.put("fixture/BytesOnly.java",
+                "package fixture;\\n"
+                        + "import org.sjf4j.annotation.binding.*;\\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface BytesOnly {\\n"
+                        + " @WriteTo byte[] write(Sample value) throws java.io.IOException;\\n"
+                        + "}\\n");
+
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> sampleType = Class.forName("fixture.Sample", true, loader);
+            Class<?> stringType = Class.forName("fixture.StringOnly_Impl", true, loader);
+            Class<?> bytesType = Class.forName("fixture.BytesOnly_Impl", true, loader);
+            java.util.Set<String> stringMethods = new java.util.HashSet<>();
+            java.util.Set<String> bytesMethods = new java.util.HashSet<>();
+            for (java.lang.reflect.Method method : stringType.getDeclaredMethods()) {
+                stringMethods.add(method.getName());
+            }
+            for (java.lang.reflect.Method method : bytesType.getDeclaredMethods()) {
+                bytesMethods.add(method.getName());
+            }
+            assertTrue(stringMethods.contains("_writeSampleUtf16"), stringMethods.toString());
+            assertFalse(stringMethods.contains("_writeSampleUtf8"), stringMethods.toString());
+            assertTrue(bytesMethods.contains("_writeSampleUtf8"), bytesMethods.toString());
+            assertFalse(bytesMethods.contains("_writeSampleUtf16"), bytesMethods.toString());
+            assertTrue(stringMethods.contains("_writeSampleSafe"));
+            assertTrue(bytesMethods.contains("_writeSampleSafe"));
+
+            Object sample = sampleType.getConstructor().newInstance();
+            Object stringBinder = stringType.getConstructor().newInstance();
+            String json = (String) stringType.getMethod("write", sampleType)
+                    .invoke(stringBinder, sample);
+            assertEquals(1, sampleType.getField("reads").getInt(sample));
+            com.alibaba.fastjson2.JSONObject parsed = com.alibaba.fastjson2.JSON.parseObject(json);
+            assertEquals(new java.math.BigDecimal("0.1"), parsed.getBigDecimal("boxed"));
+            assertEquals(new java.math.BigDecimal("0.1"), parsed.getBigDecimal("primitive"));
+            assertEquals(new java.math.BigDecimal("0.1"), parsed.getBigDecimal("score"));
+            assertTrue(parsed.containsKey("café"));
+            assertNull(parsed.get("number"));
+
+            sampleType.getField("reads").setInt(sample, 0);
+            Object bytesBinder = bytesType.getConstructor().newInstance();
+            byte[] bytes = (byte[]) bytesType.getMethod("write", sampleType)
+                    .invoke(bytesBinder, sample);
+            assertEquals(1, sampleType.getField("reads").getInt(sample));
+            com.alibaba.fastjson2.JSONObject parsedBytes = com.alibaba.fastjson2.JSON.parseObject(
+                    new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+            assertEquals(parsed.getBigDecimal("boxed"), parsedBytes.getBigDecimal("boxed"));
+            assertEquals(parsed.getBigDecimal("score"), parsedBytes.getBigDecimal("score"));
+
+            // Exercise the feature-safe compiled helper without switching to runtime POJO mapping.
+            java.lang.reflect.Method safe = stringType.getDeclaredMethod(
+                    "_writeSampleSafe", com.alibaba.fastjson2.JSONWriter.class, sampleType);
+            safe.setAccessible(true);
+            com.alibaba.fastjson2.JSONWriter.Context custom =
+                    com.alibaba.fastjson2.JSONFactory.createWriteContext(
+                            com.alibaba.fastjson2.JSONWriter.Feature.EscapeNoneAscii);
+            try (com.alibaba.fastjson2.JSONWriter writer = com.alibaba.fastjson2.JSONWriter.of(custom)) {
+                safe.invoke(null, writer, sample);
+                String escaped = writer.toString();
+                assertTrue(escaped.contains("\\\\u"), escaped);
+                assertEquals(parsed.getBigDecimal("boxed"),
+                        com.alibaba.fastjson2.JSON.parseObject(escaped).getBigDecimal("boxed"));
+            }
+        }
+    }
+
+    @Test
     void fastjson2NativeRawNameFeatureSafety() {
         com.alibaba.fastjson2.JSONWriter.Context context =
                 com.alibaba.fastjson2.JSONFactory.createWriteContext();
