@@ -83,6 +83,28 @@ final class WriteEmitter {
                         plan,
                         0);
 
+        // Dynamic children invalidate whole-method specialization. Delegate to
+        // the configured runtime binder rather than emitting mixed static/dynamic code.
+        if (!nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())) {
+            switch (plan.writeOutput()) {
+                case STRING:
+                    out.line("return this.binder.writeNodeAsString(" + source + ");");
+                    break;
+                case BYTES:
+                    out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                    break;
+                case WRITER:
+                case OUTPUT_STREAM:
+                    out.line("this.binder.writeNode(" +
+                            BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                    break;
+                default:
+                    throw new AssertionError(plan.writeOutput());
+            }
+            BindingSource.endOverride(out);
+            return;
+        }
+
         NameAllocator names =
                 methodNames(plan);
 
@@ -186,12 +208,29 @@ final class WriteEmitter {
             NameAllocator names) {
 
         if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
-            String writer = names.newName("writer");
-            out.beginBlock("try (" + backend.writerType() + " " + writer
-                    + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer, FastjsonMode.UTF8, true);
-            out.line("return " + writer + ".toBytes();");
-            out.endBlock();
+            if (value.kind() == BindingValue.Kind.POJO) {
+                // A/B experiment: the same generated POJO helper, but without
+                // the StreamingWriter adapter on the native UTF-8 hot path.
+                String writer = names.newName("writer");
+                out.beginBlock("try (com.alibaba.fastjson2.JSONWriter " + writer
+                        + " = this.binder.createNativeWriterUtf8())");
+                out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Writer"
+                        + ".supportsRawUtf8Names(" + writer + "))");
+                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                out.endBlock();
+                out.line(fastjsonHelperName(value, FastjsonMode.UTF8) + "("
+                        + writer + ", " + source + ");");
+                out.line("return " + writer + ".getBytes();");
+                out.endBlock();
+            } else {
+                // Keep the existing adapter path for statically typed containers.
+                String writer = names.newName("writer");
+                out.beginBlock("try (" + backend.writerType() + " " + writer
+                        + " = this.binder.createWriterUtf8())");
+                emitWriteBody(out, value, source, writer, FastjsonMode.UTF8, true);
+                out.line("return " + writer + ".toBytes();");
+                out.endBlock();
+            }
             return;
         }
 
