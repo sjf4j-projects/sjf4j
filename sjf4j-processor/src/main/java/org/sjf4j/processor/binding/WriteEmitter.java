@@ -127,7 +127,8 @@ final class WriteEmitter {
                 out,
                 value,
                 source,
-                writer);
+                writer,
+                true);
 
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -145,7 +146,7 @@ final class WriteEmitter {
         out.beginBlock("try (" + backend.writerType() + " " + writer +
                 " = this.binder.createWriter())");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, backend.backend() != org.sjf4j.annotation.binding.Backend.FASTJSON2);
 
         out.line("return " + writer + ".toString();");
         out.endBlock();
@@ -176,7 +177,8 @@ final class WriteEmitter {
                 out,
                 value,
                 source,
-                writer);
+                writer,
+                true);
 
         out.line("return " + output + ".toByteArray();");
         out.endBlock();
@@ -202,7 +204,8 @@ final class WriteEmitter {
                 out,
                 value,
                 source,
-                writer);
+                writer,
+                true);
 
     }
 
@@ -210,7 +213,8 @@ final class WriteEmitter {
             JavaWriter out,
             BindingValue value,
             String source,
-            String writer) {
+            String writer,
+            boolean requiresFlush) {
 
         out.line(writer + ".startDocument();");
 
@@ -221,7 +225,9 @@ final class WriteEmitter {
                 source);
 
         out.line(writer + ".endDocument();");
-        out.line(writer + ".flush();");
+        if (requiresFlush) {
+            out.line(writer + ".flush();");
+        }
     }
 
     void emitHelper(
