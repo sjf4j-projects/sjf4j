@@ -359,6 +359,9 @@ final class WriteEmitter {
             }
             if (method == null) {
                 writeValue(out, child, "writer", expr);
+            } else if (child.kind() == BindingValue.Kind.STRING) {
+                // Both Jackson generators serialize a null String as JSON null.
+                out.line("g.writeString(" + expr + ");");
             } else if (child.primitive()) {
                 out.line("g." + method + "(" + expr + ");");
             } else {
