@@ -598,28 +598,28 @@ class CompiledBinderConformanceTest {
     void fastjson2GeneratesOnlyRequiredEncodingAndTypedMemberOverloads() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Sample.java",
-                "package fixture;\\n"
-                        + "import org.sjf4j.annotation.node.NodeProperty;\\n"
-                        + "public class Sample {\\n"
-                        + " @NodeProperty(\\\"café\\\") public String text;\\n"
-                        + " public float primitive = 0.1f;\\n"
-                        + " public Float boxed = 0.1f;\\n"
-                        + " public Integer number = null;\\n"
-                        + " public int reads;\\n"
-                        + " public Float getScore() { reads++; return 0.1f; }\\n"
-                        + "}\\n");
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Sample {\n"
+                        + " @NodeProperty(\"café\") public String text;\n"
+                        + " public float primitive = 0.1f;\n"
+                        + " public Float boxed = 0.1f;\n"
+                        + " public Integer number = null;\n"
+                        + " public int reads;\n"
+                        + " public Float getScore() { reads++; return 0.1f; }\n"
+                        + "}\n");
         sources.put("fixture/StringOnly.java",
-                "package fixture;\\n"
-                        + "import org.sjf4j.annotation.binding.*;\\n"
-                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface StringOnly {\\n"
-                        + " @WriteTo String write(Sample value) throws java.io.IOException;\\n"
-                        + "}\\n");
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface StringOnly {\n"
+                        + " @WriteTo String write(Sample value) throws java.io.IOException;\n"
+                        + "}\n");
         sources.put("fixture/BytesOnly.java",
-                "package fixture;\\n"
-                        + "import org.sjf4j.annotation.binding.*;\\n"
-                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface BytesOnly {\\n"
-                        + " @WriteTo byte[] write(Sample value) throws java.io.IOException;\\n"
-                        + "}\\n");
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface BytesOnly {\n"
+                        + " @WriteTo byte[] write(Sample value) throws java.io.IOException;\n"
+                        + "}\n");
 
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
