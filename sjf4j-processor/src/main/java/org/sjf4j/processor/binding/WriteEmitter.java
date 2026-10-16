@@ -1232,8 +1232,13 @@ final class WriteEmitter {
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode) {
+        emitNativeValue(out, value, expression, mode, "w");
+    }
+
+    private void emitNativeValue(JavaWriter out, BindingValue value,
+            String expression, FastjsonMode mode, String writer) {
         if (value.helperRequired()) {
-            out.line(fastjsonHelperName(value, mode) + "(w, " + expression + ");");
+            out.line(fastjsonHelperName(value, mode) + "(" + writer + ", " + expression + ");");
             return;
         }
 
@@ -1242,24 +1247,24 @@ final class WriteEmitter {
                 out.beginBlock("");
                 out.line("String item = " + expression + ";");
                 out.beginBlock("if (item == null)");
-                out.line("w.writeNull();");
+                out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line("w.writeString(item);");
+                out.line(writer + ".writeString(item);");
                 out.endBlock();
                 out.endBlock();
                 return;
             case CHARACTER:
                 if (value.primitive()) {
-                    out.line("w.writeString(Character.toString(" + expression + "));");
+                    out.line(writer + ".writeString(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
                     out.line("Character item = " + expression + ";");
                     out.beginBlock("if (item == null)");
-                    out.line("w.writeNull();");
+                    out.line(writer + ".writeNull();");
                     out.endBlock(" else {");
                     out.indent();
-                    out.line("w.writeString(item.toString());");
+                    out.line(writer + ".writeString(item.toString());");
                     out.endBlock();
                     out.endBlock();
                 }
@@ -1268,10 +1273,10 @@ final class WriteEmitter {
                 out.beginBlock("");
                 out.line(value.type() + " item = " + expression + ";");
                 out.beginBlock("if (item == null)");
-                out.line("w.writeNull();");
+                out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line("w.writeString(item.name());");
+                out.line(writer + ".writeString(item.name());");
                 out.endBlock();
                 out.endBlock();
                 return;
@@ -1281,16 +1286,16 @@ final class WriteEmitter {
 
         String method = fastjsonWriteMethod(value.kind());
         if (value.primitive()) {
-            out.line("w." + method + "(" + expression + ");");
+            out.line(writer + "." + method + "(" + expression + ");");
         } else {
             out.beginBlock("");
             out.line(value.type() + " item = " + expression + ";");
             out.beginBlock("if (item == null)");
-            out.line("w.writeNull();");
+            out.line(writer + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
             String arg = fastjsonUnboxArgument(value.type().toString()).replace("value", "item");
-            out.line("w." + method + "(" + arg + ");");
+            out.line(writer + "." + method + "(" + arg + ");");
             out.endBlock();
             out.endBlock();
         }
