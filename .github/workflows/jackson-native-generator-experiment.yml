@@ -1,0 +1,32 @@
+name: Jackson native generator experiment
+on:
+  push:
+    branches:
+      - perf/jackson-native-generator-experiment
+  workflow_dispatch:
+jobs:
+  jackson-write:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile, regression, JMH
+        run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jmhJar --no-daemon
+      - name: Compare native generator output
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledWriteBenchmark.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|runtime)' \
+            -wi 10 -i 10 -w 400ms -r 400ms -f 2 -prof gc | tee jackson-native-write.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jackson-native-write
+          path: jackson-native-write.log
+          if-no-files-found: ignore
