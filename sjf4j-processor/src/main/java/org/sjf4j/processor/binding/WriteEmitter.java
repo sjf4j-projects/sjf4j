@@ -312,77 +312,143 @@ final class WriteEmitter {
                 && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
             emitNativeHelper(out, value);
         }
-        if (value.kind() == BindingValue.Kind.POJO
-                && (backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
-                || backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON3)) {
-            emitJacksonProperties(out, value);
+        if (isJackson() && nativeEligible(value,
+                new java.util.HashSet<BindingValue>())) {
+            emitJacksonNativeHelper(out, value);
         }
     }
 
-    private void emitJacksonProperties(JavaWriter out, BindingValue value) {
-        boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
-        String generatorType = jackson2
+    private boolean isJackson() {
+        return backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
+                || backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON3;
+    }
+
+    private String jacksonGeneratorType() {
+        return backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
                 ? "com.fasterxml.jackson.core.JsonGenerator"
                 : "tools.jackson.core.JsonGenerator";
-        out.beginBlock("private static void " + value.helperName()
-                + "Properties(" + backend.writerType() + " writer, "
-                + value.type() + " value) throws java.io.IOException");
-        out.line(generatorType + " g = writer.nativeGenerator();");
-        int index = 0;
-        for (BindingProperty property : value.properties()) {
-            String field = compiledNameField(value, index++);
-            out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
-                    + "(" + field + ".serializedName);");
-            BindingValue child = property.value();
-            String expr = access(property.access(), "value");
-            if (child.helperRequired() || child.kind() == BindingValue.Kind.RUNTIME
-                    || child.kind() == BindingValue.Kind.NUMBER) {
-                writeValue(out, child, "writer", expr);
-                continue;
-            }
-            String method = null;
-            switch (child.kind()) {
-                case STRING:
-                    method = "writeString"; break;
-                case BOOLEAN:
-                    method = "writeBoolean"; break;
-                case BYTE:
-                case SHORT:
-                case INT:
-                case LONG:
-                case FLOAT:
-                case DOUBLE:
-                case BIG_INTEGER:
-                case BIG_DECIMAL:
-                    method = "writeNumber"; break;
-                default: break;
-            }
-            if (method == null) {
-                writeValue(out, child, "writer", expr);
-            } else if (child.kind() == BindingValue.Kind.STRING) {
-                // Both Jackson generators serialize a null String as JSON null.
-                out.line("g.writeString(" + expr + ");");
-            } else if (child.primitive()) {
-                out.line("g." + method + "(" + expr + ");");
-            } else {
-                out.beginBlock("");
-                out.line(child.type() + " fieldValue = " + expr + ";");
-                out.beginBlock("if (fieldValue == null)");
-                out.line("g.writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line("g." + method + "(fieldValue);");
+    }
+
+    private void emitJacksonNativeHelper(JavaWriter out, BindingValue value) {
+        boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
+        out.beginBlock("private static void " + value.helperName() + "Native("
+                + jacksonGeneratorType() + " g, " + value.type()
+                + " value) throws java.io.IOException");
+        out.beginBlock("if (value == null)");
+        out.line("g.writeNull();");
+        out.line("return;");
+        out.endBlock();
+        switch (value.kind()) {
+            case POJO:
+                out.line("g.writeStartObject();");
+                int index = 0;
+                for (BindingProperty property : value.properties()) {
+                    String field = compiledNameField(value, index++) + ".serializedName";
+                    BindingValue child = property.value();
+                    String expr = access(property.access(), "value");
+                    if (child.kind() == BindingValue.Kind.STRING) {
+                        out.line(value.helperName() + "Str(g, " + field + ", " + expr + ");");
+                    } else {
+                        out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
+                                + "(" + field + ");");
+                        emitJacksonNativeValue(out, child, expr);
+                    }
+                }
+                out.line("g.writeEndObject();");
+                break;
+            case LIST:
+            case SET:
+                out.line("g.writeStartArray();");
+                out.beginBlock("for (" + value.elementValue().type() + " element : value)");
+                emitJacksonNativeValue(out, value.elementValue(), "element");
                 out.endBlock();
+                out.line("g.writeEndArray();");
+                break;
+            case MAP:
+                out.line("g.writeStartObject();");
+                out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
+                out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
+                        + "((String) entry.getKey());");
+                emitJacksonNativeValue(out, value.mapValue(),
+                        "(" + value.mapValue().type() + ") entry.getValue()");
                 out.endBlock();
-            }
+                out.line("g.writeEndObject();");
+                break;
+            default:
+                throw new AssertionError(value.kind());
         }
         out.endBlock();
+        if (value.kind() == BindingValue.Kind.POJO) {
+            String serializedType = jackson2
+                    ? "com.fasterxml.jackson.core.io.SerializedString"
+                    : "tools.jackson.core.io.SerializedString";
+            out.beginBlock("private static void " + value.helperName() + "Str("
+                    + jacksonGeneratorType() + " g, " + serializedType
+                    + " name, String text) throws java.io.IOException");
+            out.line("g." + (jackson2 ? "writeFieldName" : "writeName") + "(name);");
+            out.line("g.writeString(text);");
+            out.endBlock();
+        }
+    }
+
+    private void emitJacksonNativeValue(JavaWriter out, BindingValue child, String expr) {
+        if (child.helperRequired()) {
+            out.line(child.helperName() + "Native(g, " + expr + ");");
+            return;
+        }
+        if (child.kind() == BindingValue.Kind.STRING) {
+            out.line("g.writeString(" + expr + ");");
+            return;
+        }
+        String method;
+        switch (child.kind()) {
+            case BOOLEAN: method = "writeBoolean"; break;
+            case BYTE: case SHORT: case INT: case LONG:
+            case FLOAT: case DOUBLE: case BIG_INTEGER: case BIG_DECIMAL:
+                method = "writeNumber"; break;
+            case ENUM:
+                out.beginBlock("");
+                out.line(child.type() + " item = " + expr + ";");
+                out.line("g.writeString(item == null ? null : item.name());");
+                out.endBlock();
+                return;
+            case CHARACTER:
+                if (child.primitive()) {
+                    out.line("g.writeString(Character.toString(" + expr + "));");
+                } else {
+                    out.beginBlock("");
+                    out.line(child.type() + " item = " + expr + ";");
+                    out.line("g.writeString(item == null ? null : item.toString());");
+                    out.endBlock();
+                }
+                return;
+            default:
+                throw new AssertionError("Unsupported Jackson native value " + child.kind());
+        }
+        if (child.primitive()) {
+            out.line("g." + method + "(" + expr + ");");
+        } else {
+            out.beginBlock("");
+            out.line(child.type() + " item = " + expr + ";");
+            out.beginBlock("if (item == null)");
+            out.line("g.writeNull();");
+            out.endBlock(" else {");
+            out.indent();
+            out.line("g." + method + "(item);");
+            out.endBlock();
+            out.endBlock();
+        }
     }
 
     private void emitPojo(
             JavaWriter out,
             BindingValue value) {
 
+        if (isJackson() && nativeEligible(value,
+                new java.util.HashSet<BindingValue>())) {
+            out.line(value.helperName() + "Native(writer.nativeGenerator(), value);");
+            return;
+        }
         emitNullReturn(out);
         out.line("writer.startObject();");
 
@@ -397,12 +463,7 @@ final class WriteEmitter {
             out.endBlock();
         }
 
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
-                || backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON3) {
-            out.line(value.helperName() + "Properties(writer, value);");
-            out.line("writer.endObject();");
-            return;
-        }
+
 
         int index = 0;
 
