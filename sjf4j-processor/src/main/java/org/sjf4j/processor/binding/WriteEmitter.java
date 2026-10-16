@@ -108,6 +108,15 @@ final class WriteEmitter {
         NameAllocator names =
                 methodNames(plan);
 
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+            String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
+                    || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
+                    ? BindingSource.parameterName(plan, 1) : null;
+            emitFastjsonMethod(out, compiled.value(), source, target, plan.writeOutput(), names);
+            BindingSource.endOverride(out);
+            return;
+        }
+
         switch (plan.writeOutput()) {
             case STRING:
                 emitStringMethod(
@@ -146,6 +155,70 @@ final class WriteEmitter {
         BindingSource.endOverride(out);
     }
 
+    /** Emits Fastjson2 code using only its native writer on the compiled path. */
+    private void emitFastjsonMethod(
+            JavaWriter out,
+            BindingValue value,
+            String source,
+            String target,
+            BindingPlan.WriteOutput output,
+            NameAllocator names) {
+
+        boolean utf8 = output == BindingPlan.WriteOutput.BYTES
+                || output == BindingPlan.WriteOutput.OUTPUT_STREAM;
+        FastjsonMode mode = utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16;
+        String writer = names.newName("nativeWriter");
+
+        out.beginBlock("try (com.alibaba.fastjson2.JSONWriter " + writer
+                + " = this.binder." + (utf8 ? "createNativeWriterUtf8()" : "createNativeWriter()")
+                + ")");
+
+        // Feature-sensitive escaped field names cannot be written as raw bytes/chars.
+        // Return to the configured runtime Binder, never to a second Safe helper.
+        out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
+                + (utf8 ? "supportsRawUtf8Names(" : "supportsRawUtf16Names(")
+                + writer + "))");
+        switch (output) {
+            case STRING:
+                out.line("return this.binder.writeNodeAsString(" + source + ");");
+                break;
+            case BYTES:
+                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                break;
+            case WRITER:
+            case OUTPUT_STREAM:
+                out.line("this.binder.writeNode(" + target + ", " + source + ");");
+                out.line("return;");
+                break;
+            default:
+                throw new AssertionError(output);
+        }
+        out.endBlock();
+
+        if (value.helperRequired()) {
+            out.line(fastjsonHelperName(value, mode) + "("
+                    + writer + ", " + source + ");");
+        } else {
+            emitNativeValue(out, value, source, mode, writer);
+        }
+
+        switch (output) {
+            case STRING:
+                out.line("return " + writer + ".toString();");
+                break;
+            case BYTES:
+                out.line("return " + writer + ".getBytes();");
+                break;
+            case WRITER:
+            case OUTPUT_STREAM:
+                out.line(writer + ".flushTo(" + target + ");");
+                break;
+            default:
+                throw new AssertionError(output);
+        }
+        out.endBlock();
+    }
+
     private void emitStringMethod(
             JavaWriter out,
             BindingValue value,
@@ -155,7 +228,6 @@ final class WriteEmitter {
         switch (backend.backend()) {
             case JACKSON2:
             case JACKSON3:
-            case FASTJSON2:
                 emitBufferedStringMethod(out, value, source, names);
                 return;
             default:
@@ -177,7 +249,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16, false);
+        emitWriteBody(out, value, source, writer);
 
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -195,7 +267,7 @@ final class WriteEmitter {
         out.beginBlock("try (" + backend.writerType() + " " + writer +
                 " = this.binder.createWriter())");
 
-        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16, true);
+        emitWriteBody(out, value, source, writer);
 
         out.line("return " + writer + ".toString();");
         out.endBlock();
@@ -207,38 +279,11 @@ final class WriteEmitter {
             String source,
             NameAllocator names) {
 
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
-            if (value.kind() == BindingValue.Kind.POJO) {
-                // A/B experiment: the same generated POJO helper, but without
-                // the StreamingWriter adapter on the native UTF-8 hot path.
-                String writer = names.newName("writer");
-                out.beginBlock("try (com.alibaba.fastjson2.JSONWriter " + writer
-                        + " = this.binder.createNativeWriterUtf8())");
-                out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Writer"
-                        + ".supportsRawUtf8Names(" + writer + "))");
-                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
-                out.endBlock();
-                out.line(fastjsonHelperName(value, FastjsonMode.UTF8) + "("
-                        + writer + ", " + source + ");");
-                out.line("return " + writer + ".getBytes();");
-                out.endBlock();
-            } else {
-                // Keep the existing adapter path for statically typed containers.
-                String writer = names.newName("writer");
-                out.beginBlock("try (" + backend.writerType() + " " + writer
-                        + " = this.binder.createWriterUtf8())");
-                emitWriteBody(out, value, source, writer, FastjsonMode.UTF8, true);
-                out.line("return " + writer + ".toBytes();");
-                out.endBlock();
-            }
-            return;
-        }
-
         if (isJackson()) {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer, null, true);
+            emitWriteBody(out, value, source, writer);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -256,7 +301,7 @@ final class WriteEmitter {
                     + " = new org.sjf4j.binding.FastStringWriter(); "
                     + backend.writerType() + " " + writer
                     + " = this.binder.createWriter(" + output + "))");
-            emitWriteBody(out, value, source, writer, null, false);
+            emitWriteBody(out, value, source, writer);
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
             out.endBlock();
@@ -278,7 +323,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer, null, false);
+        emitWriteBody(out, value, source, writer);
 
         out.line("return " + output + ".toByteArray();");
         out.endBlock();
@@ -301,8 +346,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + ");");
 
-        emitWriteBody(out, value, source, writer,
-                utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16, false);
+        emitWriteBody(out, value, source, writer);
 
     }
 
@@ -310,40 +354,20 @@ final class WriteEmitter {
             JavaWriter out,
             BindingValue value,
             String source,
-            String writer,
-            FastjsonMode mode,
-            boolean inMemoryOutput) {
+            String writer) {
 
         out.line(writer + ".startDocument();");
 
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
-            if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
-                if (mode == null) throw new AssertionError("Fastjson2 output mode missing");
-                out.beginBlock("if (" + writer + ".compiledNameMode() == "
-                        + (mode == FastjsonMode.UTF8 ? "1" : "2") + ")");
-                out.line(fastjsonHelperName(value, mode) + "("
-                        + writer + ".nativeWriter(), " + source + ");");
-                out.endBlock(" else {");
-                out.indent();
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", " + source
-                        + ", " + RUNTIME_CONTEXT + ".EMPTY);");
-                out.endBlock();
-            } else {
-                out.line(value.helperName() + "(" + writer
-                        + "." + nativeJsonAccessor() + "(), " + source + ");");
-            }
+            out.line(value.helperName() + "(" + writer
+                    + "." + nativeJsonAccessor() + "(), " + source + ");");
         } else {
             writeValue(out, value, writer, source);
         }
 
         out.line(writer + ".endDocument();");
-        // Fastjson2 in-memory writers expose their complete native buffer directly.
-        // Other backends and all caller-owned destinations require flush.
-        if (backend.backend() != org.sjf4j.annotation.binding.Backend.FASTJSON2
-                || !inMemoryOutput) {
-            out.line(writer + ".flush();");
-        }
+        out.line(writer + ".flush();");
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
