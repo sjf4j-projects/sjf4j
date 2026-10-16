@@ -173,7 +173,7 @@ final class WriteEmitter {
         out.beginBlock("try (" + backend.writerType() + " " + writer +
                 " = this.binder.createWriter())");
 
-        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16);
+        emitWriteBody(out, value, source, writer, FastjsonMode.UTF16, true);
 
         out.line("return " + writer + ".toString();");
         out.endBlock();
