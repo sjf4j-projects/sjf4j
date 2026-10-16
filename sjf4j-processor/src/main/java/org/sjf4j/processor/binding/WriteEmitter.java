@@ -934,7 +934,7 @@ final class WriteEmitter {
         String name = value.helperName();
         String type = "com.alibaba.fastjson2.JSONWriter";
         out.beginBlock("private static void " + name + "(" + type
-                + " w, " + value.type() + " value)");
+                + " w, " + value.type() + " value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
         out.line("w.writeNull();");
         out.line("return;");
