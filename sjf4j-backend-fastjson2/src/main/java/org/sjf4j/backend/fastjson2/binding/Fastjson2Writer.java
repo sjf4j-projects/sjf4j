@@ -60,14 +60,11 @@ public final class Fastjson2Writer extends StreamingWriter {
 
     /** Whether a native UTF-8 writer may safely use pre-escaped field names. */
     public static boolean supportsRawUtf8Names(JSONWriter writer) {
-        return writer.isUTF8() && rawNamesCompatible(writer);
+        return Fastjson2Binder.supportsRawUtf8Names(writer);
     }
 
     private static boolean rawNamesCompatible(JSONWriter writer) {
-        return !writer.isUseSingleQuotes()
-                && !writer.isEnabled(JSONWriter.Feature.UnquoteFieldName)
-                && !writer.isEnabled(JSONWriter.Feature.BrowserSecure)
-                && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
+        return Fastjson2Binder.rawNamesCompatible(writer);
     }
 
     /** Whether the wrapped writer supports pre-escaped UTF-8 field names. */
