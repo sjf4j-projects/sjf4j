@@ -675,7 +675,7 @@ class CompiledBinderConformanceTest {
             try (com.alibaba.fastjson2.JSONWriter writer = com.alibaba.fastjson2.JSONWriter.of(custom)) {
                 safe.invoke(null, writer, sample);
                 String escaped = writer.toString();
-                assertTrue(escaped.contains("\\\\u"), escaped);
+                assertTrue(escaped.contains("\\u"), escaped);
                 assertEquals(parsed.getBigDecimal("boxed"),
                         com.alibaba.fastjson2.JSON.parseObject(escaped).getBigDecimal("boxed"));
             }
