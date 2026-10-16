@@ -199,7 +199,7 @@ final class WriteEmitter {
             out.line(fastjsonHelperName(value, mode) + "("
                     + writer + ", " + source + ");");
         } else {
-            emitNativeValue(out, value, source, mode, writer);
+            emitNativeValue(out, value, source, mode, writer, names.newName("item"));
         }
 
         switch (output) {
@@ -1018,6 +1018,10 @@ final class WriteEmitter {
 
 
     /** Experimental native UTF-8 helper; dynamic/runtime nodes keep the adapter path. */
+    boolean requiresWriteHelper(BindingValue value) {
+        return nativeEligible(value, new java.util.HashSet<BindingValue>());
+    }
+
     private boolean nativeEligible(BindingValue value,
             java.util.Set<BindingValue> visited) {
         if (!visited.add(value)) return true;
@@ -1237,6 +1241,11 @@ final class WriteEmitter {
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode, String writer) {
+        emitNativeValue(out, value, expression, mode, writer, "item");
+    }
+
+    private void emitNativeValue(JavaWriter out, BindingValue value,
+            String expression, FastjsonMode mode, String writer, String item) {
         if (value.helperRequired()) {
             out.line(fastjsonHelperName(value, mode) + "(" + writer + ", " + expression + ");");
             return;
@@ -1245,12 +1254,12 @@ final class WriteEmitter {
         switch (value.kind()) {
             case STRING:
                 out.beginBlock("");
-                out.line("String item = " + expression + ";");
-                out.beginBlock("if (item == null)");
+                out.line("String " + item + " = " + expression + ";");
+                out.beginBlock("if (" + item + " == null)");
                 out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(writer + ".writeString(item);");
+                out.line(writer + ".writeString(" + item + ");");
                 out.endBlock();
                 out.endBlock();
                 return;
@@ -1259,24 +1268,24 @@ final class WriteEmitter {
                     out.line(writer + ".writeString(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
-                    out.line("Character item = " + expression + ";");
-                    out.beginBlock("if (item == null)");
+                    out.line("Character " + item + " = " + expression + ";");
+                    out.beginBlock("if (" + item + " == null)");
                     out.line(writer + ".writeNull();");
                     out.endBlock(" else {");
                     out.indent();
-                    out.line(writer + ".writeString(item.toString());");
+                    out.line(writer + ".writeString(" + item + ".toString());");
                     out.endBlock();
                     out.endBlock();
                 }
                 return;
             case ENUM:
                 out.beginBlock("");
-                out.line(value.type() + " item = " + expression + ";");
-                out.beginBlock("if (item == null)");
+                out.line(value.type() + " " + item + " = " + expression + ";");
+                out.beginBlock("if (" + item + " == null)");
                 out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(writer + ".writeString(item.name());");
+                out.line(writer + ".writeString(" + item + ".name());");
                 out.endBlock();
                 out.endBlock();
                 return;
@@ -1289,12 +1298,12 @@ final class WriteEmitter {
             out.line(writer + "." + method + "(" + expression + ");");
         } else {
             out.beginBlock("");
-            out.line(value.type() + " item = " + expression + ";");
-            out.beginBlock("if (item == null)");
+            out.line(value.type() + " " + item + " = " + expression + ";");
+            out.beginBlock("if (" + item + " == null)");
             out.line(writer + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            String arg = fastjsonUnboxArgument(value.type().toString()).replace("value", "item");
+            String arg = fastjsonUnboxArgument(value.type().toString()).replace("value", item);
             out.line(writer + "." + method + "(" + arg + ");");
             out.endBlock();
             out.endBlock();
