@@ -127,6 +127,27 @@ class CompiledBinderConformanceTest {
                     .invoke(binder, borrowedInput);
             assertFalse(inputClosed[0], backend + " input stream ownership");
             assertEquals("Alice", beanType.getField("name").get(fromStream), backend);
+
+            if (!yaml) {
+                // Null object members, null collection elements, and null map values
+                // must survive every compiled JSON writer's native path.
+                beanType.getField("name").set(bean, null);
+                @SuppressWarnings("unchecked")
+                java.util.List<String> values =
+                        (java.util.List<String>) beanType.getField("values").get(bean);
+                values.add(null);
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Integer> numbers =
+                        (java.util.Map<String, Integer>) beanType.getField("numbers").get(bean);
+                numbers.put("nullMember", null);
+                String nullableJson = (String) implementation
+                        .getMethod("write", beanType).invoke(binder, bean);
+                com.fasterxml.jackson.databind.JsonNode tree =
+                        new com.fasterxml.jackson.databind.ObjectMapper().readTree(nullableJson);
+                assertTrue(tree.has("name") && tree.get("name").isNull(), backend);
+                assertTrue(tree.get("values").get(tree.get("values").size() - 1).isNull(), backend);
+                assertTrue(tree.get("numbers").get("nullMember").isNull(), backend);
+            }
         }
     }
 
