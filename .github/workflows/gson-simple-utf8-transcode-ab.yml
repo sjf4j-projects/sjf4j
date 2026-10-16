@@ -20,6 +20,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Full affected module regression
         run: ./gradlew :sjf4j-core:test :sjf4j-backend-gson:test :sjf4j-backend-jsonp:test :sjf4j-backend-fastjson2:test :sjf4j-processor:test --no-daemon
+      - name: Show processor test failures
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for f in glob.glob('sjf4j-processor/build/test-results/test/TEST-*.xml'):
+              root = ET.parse(f).getroot()
+              for case in root.findall('testcase'):
+                  for failure in case.findall('failure'):
+                      print('FAILED:', case.get('classname'), case.get('name'))
+                      print((failure.get('message') or '')[:5000])
+                      print((failure.text or '')[:2000])
+          PY
       - name: Build JMH
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Compare compiled String transcode versus byte stream
