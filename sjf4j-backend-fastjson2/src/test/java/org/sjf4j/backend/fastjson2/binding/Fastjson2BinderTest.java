@@ -134,7 +134,7 @@ class Fastjson2BinderTest {
             writer.writeColon();
             writer.writeString("héllo");
             writer.endObject();
-            assertEquals("{\\\"text\\\":\\\"héllo\\\"}",
+            assertEquals("{\"text\":\"héllo\"}",
                     new String(writer.getBytes(), StandardCharsets.UTF_8));
         }
 
