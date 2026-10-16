@@ -21,6 +21,9 @@ public final class GsonWriter extends StreamingWriter {
         this.writer = Asserts.notNull(writer, "writer");
     }
 
+    /** Native Gson writer for compiled binding hot paths. */
+    public JsonWriter nativeWriter() { return writer; }
+
     @Override
     public void startObject() throws IOException {
         writer.beginObject();
