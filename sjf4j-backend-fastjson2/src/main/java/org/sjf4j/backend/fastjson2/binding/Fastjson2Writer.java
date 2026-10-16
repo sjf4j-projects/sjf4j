@@ -67,6 +67,15 @@ public final class Fastjson2Writer extends StreamingWriter {
         return utf8 && useRawName;
     }
 
+    /**
+     * Stable name-writing mode, computed from the writer's encoding and
+     * feature compatibility once per output. 0 = native name fallback,
+     * 1 = pre-escaped UTF-8, 2 = pre-escaped UTF-16.
+     */
+    public int compiledNameMode() {
+        return useRawName ? (utf8 ? 1 : 2) : 0;
+    }
+
     /** Native Fastjson2 writer for backend-specific compiled hot paths. */
     public JSONWriter nativeWriter() {
         return writer;
