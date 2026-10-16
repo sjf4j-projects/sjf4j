@@ -359,7 +359,7 @@ final class WriteEmitter {
                     BindingValue child = property.value();
                     String expr = access(property.access(), "value");
                     if (child.kind() == BindingValue.Kind.STRING) {
-                        out.line("_writeStringField(g, " + field + ", " + expr + ");");
+                        out.line("_writeMember(g, " + field + ", " + expr + ");");
                     } else {
                         out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
                                 + "(" + field + ");");
@@ -415,11 +415,16 @@ final class WriteEmitter {
         String serializedType = jackson2
                 ? "com.fasterxml.jackson.core.io.SerializedString"
                 : "tools.jackson.core.io.SerializedString";
-        out.beginBlock("private static void _writeStringField("
+        out.beginBlock("private static void _writeMember("
                 + jacksonGeneratorType() + " g, " + serializedType
-                + " name, String text) throws java.io.IOException");
+                + " name, String value) throws java.io.IOException");
         out.line("g." + (jackson2 ? "writeFieldName" : "writeName") + "(name);");
-        out.line("g.writeString(text);");
+        out.beginBlock("if (value == null)");
+        out.line("g.writeNull();");
+        out.endBlock(" else {");
+        out.indent();
+        out.line("g.writeString(value);");
+        out.endBlock();
         out.endBlock();
     }
 
