@@ -56,6 +56,24 @@ class CompiledBinderConformanceTest {
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> implementation = Class.forName("fixture.Binder_Impl", true, loader);
             Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            java.util.Set<String> helperNames = new java.util.HashSet<>();
+            for (java.lang.reflect.Method method : implementation.getDeclaredMethods()) {
+                helperNames.add(method.getName());
+            }
+            assertFalse(helperNames.contains("_writeMember"), backend);
+            if (!yaml && !"SIMPLE".equals(backend)) {
+                assertTrue(helperNames.contains("_writeString"), backend);
+            }
+            if (yaml || "SIMPLE".equals(backend)) {
+                boolean hasPreparedName = false;
+                for (java.lang.reflect.Field field : implementation.getDeclaredFields()) {
+                    if (field.getType() == org.sjf4j.binding.CompiledName.class) {
+                        hasPreparedName = true;
+                        break;
+                    }
+                }
+                assertTrue(hasPreparedName, backend + " prepared names");
+            }
             Object binder = implementation.getConstructor().newInstance();
 
             String input = yaml
