@@ -77,6 +77,27 @@ class RegistryDiscoveryTest {
     }
 
     @Test
+    void explicitRegistriesAreScopedPerCompiledInterface() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@BindingOptions(registries={ClasspathRegistries.First.class}) "
+                + "@CompiledBinder public interface Binder {}");
+        input.put("fixture/OtherBinder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@BindingOptions(registries={ClasspathRegistries.Second.class}) "
+                + "@CompiledBinder public interface OtherBinder {}");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                input, RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("DISCOVER java.time.Instant/alpha"), result.diagnostics());
+        assertFalse(result.diagnostics().contains("DISCOVER java.time.Instant/beta"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("OTHER beta -> java.lang.String"), result.diagnostics());
+        assertFalse(result.diagnostics().contains("OTHER alpha"), result.diagnostics());
+    }
+
+    @Test
     void duplicateExplicitHolderIsDeduplicated() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources(
                 "package fixture; "
