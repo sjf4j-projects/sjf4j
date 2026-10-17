@@ -1,8 +1,12 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /** Emits direct concrete-writer binding code. */
 final class WriteEmitter {
@@ -84,9 +88,9 @@ final class WriteEmitter {
 
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
-        if (!nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())
+        if (!nativeEligible(compiled.value(), new HashSet<BindingValue>())
                 && !containsAdaptedValue(compiled.value(),
-                        new java.util.HashSet<BindingValue>())) {
+                        new HashSet<BindingValue>())) {
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -109,8 +113,8 @@ final class WriteEmitter {
         NameAllocator names =
                 methodNames(plan);
 
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
-                && nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())) {
+        if (backend.backend() == Backend.FASTJSON2
+                && nativeEligible(compiled.value(), new HashSet<BindingValue>())) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
@@ -229,9 +233,9 @@ final class WriteEmitter {
         // Gson, Simple and JSON-P write in-memory byte[] more efficiently through
         // their compiled character path than through OutputStreamWriter.
         // Caller-owned OutputStream methods remain streaming.
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.GSON
-                || backend.backend() == org.sjf4j.annotation.binding.Backend.SIMPLE
-                || backend.backend() == org.sjf4j.annotation.binding.Backend.JSONP) {
+        if (backend.backend() == Backend.GSON
+                || backend.backend() == Backend.SIMPLE
+                || backend.backend() == Backend.JSONP) {
             String output = names.newName("output");
             String writer = names.newName("writer");
             out.beginBlock("try (org.sjf4j.binding.FastStringWriter " + output
@@ -295,7 +299,7 @@ final class WriteEmitter {
         out.line(writer + ".startDocument();");
 
         if (hasNativeJsonWriter() && value.helperRequired()
-                && nativeEligible(value, new java.util.HashSet<BindingValue>())) {
+                && nativeEligible(value, new HashSet<BindingValue>())) {
             out.line(value.helperName() + "(" + writer
                     + "." + nativeJsonAccessor() + "(), " + source + ");");
         } else {
@@ -310,7 +314,7 @@ final class WriteEmitter {
         // Generate a single native helper when the full type graph is concrete.
         // Unresolved graphs retain the StreamingWriter fallback.
         if (hasNativeJsonWriter() && nativeEligible(value,
-                new java.util.HashSet<BindingValue>())) {
+                new HashSet<BindingValue>())) {
             switch (backend.backend()) {
                 case JACKSON2:
                 case JACKSON3:
@@ -362,29 +366,29 @@ final class WriteEmitter {
     }
 
     private String nativeJsonAccessor() {
-        return backend.backend() == org.sjf4j.annotation.binding.Backend.GSON
-                || backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+        return backend.backend() == Backend.GSON
+                || backend.backend() == Backend.FASTJSON2
                 ? "nativeWriter" : "nativeGenerator";
     }
 
     private boolean isJackson() {
-        return backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
-                || backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON3;
+        return backend.backend() == Backend.JACKSON2
+                || backend.backend() == Backend.JACKSON3;
     }
 
     boolean needsStringHelper(BindingValue value) {
         if (!hasNativeJsonWriter()
                 || (!value.helperRequired()
-                    && !(backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                    && !(backend.backend() == Backend.FASTJSON2
                          && value.kind() == BindingValue.Kind.STRING))
                 || value.direction() != BindingPlan.Direction.WRITE_TO
-                || !nativeEligible(value, new java.util.HashSet<BindingValue>())) {
+                || !nativeEligible(value, new HashSet<BindingValue>())) {
             return false;
         }
-        return containsString(value, new java.util.HashSet<BindingValue>());
+        return containsString(value, new HashSet<BindingValue>());
     }
 
-    private boolean containsString(BindingValue value, java.util.Set<BindingValue> visited) {
+    private boolean containsString(BindingValue value, Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
             case STRING:
@@ -709,7 +713,7 @@ final class WriteEmitter {
             String expression,
             String suffix) {
 
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+        if (backend.backend() == Backend.FASTJSON2
                 && value.primitive()) {
             String nativeMethod;
             switch (suffix) {
@@ -746,13 +750,13 @@ final class WriteEmitter {
 
     /** Native helpers require a fully concrete type graph. */
     boolean requiresWriteHelper(BindingValue value) {
-        return nativeEligible(value, new java.util.HashSet<BindingValue>())
-                || containsAdaptedValue(value, new java.util.HashSet<BindingValue>());
+        return nativeEligible(value, new HashSet<BindingValue>())
+                || containsAdaptedValue(value, new HashSet<BindingValue>());
     }
 
     /** Codec subtrees use compiled StreamingWriter, preserving native POJO fast paths. */
     private boolean containsAdaptedValue(BindingValue value,
-            java.util.Set<BindingValue> visited) {
+            Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
             case VALUE_CODEC:
@@ -773,7 +777,7 @@ final class WriteEmitter {
     }
 
     private boolean nativeEligible(BindingValue value,
-            java.util.Set<BindingValue> visited) {
+            Set<BindingValue> visited) {
         if (!visited.add(value)) return true;
         switch (value.kind()) {
             case RUNTIME:
