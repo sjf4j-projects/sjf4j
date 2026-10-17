@@ -24,6 +24,9 @@ final class BindingValue {
         BIG_DECIMAL,
         ENUM,
         POJO,
+        JOJO,
+        JSON_OBJECT,
+        JSON_ARRAY,
         LIST,
         SET,
         MAP,
@@ -41,6 +44,9 @@ final class BindingValue {
     private List<BindingProperty> properties = Collections.emptyList();
     private BindingValue elementValue;
     private BindingValue mapValue;
+    private List<String> ignoredNames = Collections.emptyList();
+    private boolean readDynamic;
+    private boolean writeDynamic;
 
     BindingValue(
             BindingPlan.Direction direction,
@@ -72,6 +78,9 @@ final class BindingValue {
 
     boolean helperRequired() {
         return kind == Kind.POJO
+                || kind == Kind.JOJO
+                || kind == Kind.JSON_OBJECT
+                || kind == Kind.JSON_ARRAY
                 || kind == Kind.LIST
                 || kind == Kind.SET
                 || kind == Kind.MAP;
@@ -91,6 +100,27 @@ final class BindingValue {
 
     void properties(List<BindingProperty> properties) {
         this.properties = Collections.unmodifiableList(properties);
+    }
+
+    List<String> ignoredNames() {
+        return ignoredNames;
+    }
+
+    void ignoredNames(List<String> names) {
+        this.ignoredNames = Collections.unmodifiableList(names);
+    }
+
+    boolean readDynamic() {
+        return readDynamic;
+    }
+
+    boolean writeDynamic() {
+        return writeDynamic;
+    }
+
+    void dynamicOptions(boolean read, boolean write) {
+        this.readDynamic = read;
+        this.writeDynamic = write;
     }
 
     BindingValue elementValue() {
