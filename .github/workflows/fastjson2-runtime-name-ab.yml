@@ -1,0 +1,90 @@
+name: Fastjson2 Runtime Prepared Name A/B
+
+on:
+  push:
+    branches:
+      - perf/fastjson2-runtime-name-ab
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build fixed-width A variant
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+
+      - name: Benchmark A1 fixed-width names
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar             '.*(Fastjson2RuntimeNameBenchmark.runtimePreparedNamesUtf8|CompiledWriteBenchmark.json_fastjson2_pojo_(utf8|string)_runtime)'             -wi 8 -i 10 -w 300ms -r 400ms -f 2 -prof gc             -rf json -rff fastjson2-name-a1.json | tee fastjson2-name-a1.log
+
+      - name: Switch only runtime prepared-name writer to original raw-array path
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Writer.java')
+          code = p.read_text()
+          start = code.index('        switch (name.rawNameLength) {')
+          end = code.index('\n    }\n\n    @Override\n    public CompiledName createCompiledName', start)
+          code = code[:start] + '''        if (utf8) {
+              writer.writeNameRaw(name.rawNameUtf8);
+          } else {
+              writer.writeNameRaw(name.rawNameUtf16);
+          }''' + code[end:]
+          p.write_text(code)
+          assert 'switch (name.rawNameLength)' not in code
+          PY
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+
+      - name: Benchmark B original array names
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar             '.*(Fastjson2RuntimeNameBenchmark.runtimePreparedNamesUtf8|CompiledWriteBenchmark.json_fastjson2_pojo_(utf8|string)_runtime)'             -wi 8 -i 10 -w 300ms -r 400ms -f 2 -prof gc             -rf json -rff fastjson2-name-b.json | tee fastjson2-name-b.log
+
+      - name: Restore fixed-width A and rebuild
+        shell: bash
+        run: |
+          git restore -- sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Writer.java
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+
+      - name: Benchmark A2 fixed-width names
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar             '.*(Fastjson2RuntimeNameBenchmark.runtimePreparedNamesUtf8|CompiledWriteBenchmark.json_fastjson2_pojo_(utf8|string)_runtime)'             -wi 8 -i 10 -w 300ms -r 400ms -f 2 -prof gc             -rf json -rff fastjson2-name-a2.json | tee fastjson2-name-a2.log
+
+      - name: Summarize results
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          for variant in ['a1','b','a2']:
+              path = f'fastjson2-name-{variant}.json'
+              if not os.path.exists(path):
+                  continue
+              print(f'=== {variant.upper()} ===')
+              for record in json.load(open(path)):
+                  metric = record['primaryMetric']
+                  print(f"{record['benchmark'].split('.')[-1]}: {metric['score']:.4f} +/- {metric['scoreError']:.4f} {metric['scoreUnit']}")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fastjson2-runtime-name-ab
+          path: fastjson2-name-*
+          if-no-files-found: ignore
