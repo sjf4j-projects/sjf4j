@@ -572,6 +572,11 @@ final class WriteEmitter {
         }
 
         switch (value.kind()) {
+            case VALUE_CODEC:
+                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
+                        + value.helperName() + ".valueToRaw(" + expression + "), "
+                        + RUNTIME_CONTEXT + ".EMPTY);");
+                return;
             case STRING:
                 out.line(
                         writer +
@@ -769,6 +774,7 @@ final class WriteEmitter {
         switch (value.kind()) {
             case RUNTIME:
             case NUMBER:
+            case VALUE_CODEC:
             case JOJO:
             case JSON_OBJECT:
             case JSON_ARRAY:
