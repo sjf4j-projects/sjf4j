@@ -29,11 +29,21 @@ public final class ValueCodecResolver {
         this.codecType = context.elements.getTypeElement("org.sjf4j.value.ValueCodec").asType();
     }
 
-    public ValueCodecMetadata resolve(TypeMirror valueType, String format) {
+    /** True if any format is declared for this value type. */
+    public boolean contains(TypeMirror valueType) {
+        ensureScanned();
+        return byType.containsKey(context.typeUtils.erasure(valueType).toString());
+    }
+
+    private void ensureScanned() {
         if (!scanned) {
             scanned = true;
             scan();
         }
+    }
+
+    public ValueCodecMetadata resolve(TypeMirror valueType, String format) {
+        ensureScanned();
         Map<String, ValueCodecMetadata> codecs =
                 byType.get(context.typeUtils.erasure(valueType).toString());
         return codecs == null ? null : codecs.get(format == null ? "" : format);
