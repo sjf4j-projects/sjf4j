@@ -1,5 +1,6 @@
 package org.sjf4j.processor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.value.ValueRegistry;
 
@@ -28,17 +29,20 @@ class CompiledValueCodecDiscoveryTest {
             sources.put("fixture/Bean.java",
                     "package fixture; "
                     + "import org.sjf4j.annotation.node.NodeProperty; "
+                    + "import java.time.Instant; import java.time.LocalDate; "
+                    + "import java.util.UUID; import java.util.List; "
                     + "public class Bean { "
-                    + " @NodeProperty(codecName=\"epochMillis\") public java.time.Instant when; "
-                    + " @NodeProperty(codecPattern=\"yyyy/MM/dd\") public java.time.LocalDate day; "
-                    + " public java.util.UUID id; "
-                    + " public java.util.List<java.util.UUID> ids; "
+                    + " @NodeProperty(codecName=\"epochMillis\") public Instant when; "
+                    + " @NodeProperty(codecPattern=\"yyyy/MM/dd\") public LocalDate day; "
+                    + " public UUID id; "
+                    + " public List<UUID> ids; "
                     + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
+                    + "import java.io.IOException; "
                     + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
-                    + " @ReadFrom Bean read(String json) throws java.io.IOException; "
-                    + " @WriteTo String write(Bean value) throws java.io.IOException; "
+                    + " @ReadFrom Bean read(String json) throws IOException; "
+                    + " @WriteTo String write(Bean value) throws IOException; "
                     + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -60,8 +64,8 @@ class CompiledValueCodecDiscoveryTest {
                 assertEquals(LocalDate.of(2024, 1, 1), beanType.getField("day").get(bean), backend);
                 assertEquals(UUID.fromString(UUID_TEXT), beanType.getField("id").get(bean), backend);
                 String result = (String) binderType.getMethod("write", beanType).invoke(binder, bean);
-                assertEquals(new com.fasterxml.jackson.databind.ObjectMapper().readTree(json),
-                        new com.fasterxml.jackson.databind.ObjectMapper().readTree(result),
+                assertEquals(new ObjectMapper().readTree(json),
+                        new ObjectMapper().readTree(result),
                         backend + " output: " + result);
             }
         }
@@ -82,9 +86,10 @@ class CompiledValueCodecDiscoveryTest {
                 + " x -> x.value, Money::new); }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @ReadFrom Money read(String json) throws java.io.IOException; "
-                + " @WriteTo String write(Money value) throws java.io.IOException; }");
+                + " @ReadFrom Money read(String json) throws IOException; "
+                + " @WriteTo String write(Money value) throws IOException; }");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -108,10 +113,11 @@ class CompiledValueCodecDiscoveryTest {
     void classpathCodecRequiresExplicitRegistryAndExecutesWhenRegistered() throws Exception {
         String base = "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
-                + "import org.sjf4j.processor.ClasspathRegistries; ";
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "import java.io.IOException; ";
         String body = "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @ReadFrom ClasspathRegistries.Money read(String json) throws java.io.IOException; "
-                + " @WriteTo String write(ClasspathRegistries.Money value) throws java.io.IOException; }";
+                + " @ReadFrom ClasspathRegistries.Money read(String json) throws IOException; "
+                + " @WriteTo String write(ClasspathRegistries.Money value) throws IOException; }";
 
         NavigatorTestCompiler.Result missing = NavigatorTestCompiler.compile(
                 Map.of("fixture/Binder.java", base + body), CodegenProcessor.class);
@@ -143,15 +149,17 @@ class CompiledValueCodecDiscoveryTest {
     void explicitClasspathRegistryFormatIsVisibleToBindingCompiler() throws Exception {
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bean.java",
-                "package fixture; public class Bean { "
-                + "@org.sjf4j.annotation.node.NodeProperty(codecName=\"alpha\") "
-                + "public java.time.Instant when; }",
+                "package fixture; import org.sjf4j.annotation.node.NodeProperty; "
+                + "import java.time.Instant; public class Bean { "
+                + "@NodeProperty(codecName=\"alpha\") "
+                + "public Instant when; }",
                 "fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
+                    + "import java.io.IOException; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "@BindingOptions(registries={ClasspathRegistries.First.class, ClasspathRegistries.Second.class}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@ReadFrom Bean read(String source) throws java.io.IOException; }"),
+                + "@ReadFrom Bean read(String source) throws IOException; }"),
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
