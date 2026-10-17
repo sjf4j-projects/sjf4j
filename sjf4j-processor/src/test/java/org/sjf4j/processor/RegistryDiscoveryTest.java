@@ -111,6 +111,34 @@ class RegistryDiscoveryTest {
     }
 
     @Test
+    void bindingOptionsDoNotChangeExistingCodeGeneration() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Binder.java",
+                "package fixture; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@BindingOptions(registries={ClasspathRegistries.First.class, "
+                + "ClasspathRegistries.Second.class}) "
+                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+                + " @ReadFrom String read(String json) throws java.io.IOException; "
+                + " }"), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.generatedSource("fixture/Binder_Impl.java").contains("class Binder_Impl"));
+    }
+
+    @Test
+    void bindingOptionsRequireCompiledInterface() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Bad.java",
+                "package fixture; "
+                + "@org.sjf4j.annotation.binding.BindingOptions "
+                + "public class Bad {}"), CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("@BindingOptions can be applied only"),
+                result.diagnostics());
+    }
+
+    @Test
     void rejectsDuplicateFormatAcrossSourceRegistryFields() throws Exception {
         Map<String, String> input = sources(
                 "package fixture; @org.sjf4j.annotation.binding.CompiledBinder "
