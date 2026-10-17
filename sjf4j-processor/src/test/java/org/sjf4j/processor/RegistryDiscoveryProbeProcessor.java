@@ -1,5 +1,6 @@
 package org.sjf4j.processor;
 
+import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.discovery.ValueCodecMetadata;
 
@@ -9,7 +10,9 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
+import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
 
 /** Test-only annotation processor that queries discovered metadata without generating code. */
 public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
@@ -24,7 +27,7 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of("org.sjf4j.annotation.binding.CompiledBinder");
+        return Set.of(CompiledBinder.class.getName());
     }
 
     @Override
@@ -39,7 +42,7 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
         context.discovery.collect(round);
         TypeElement owner = context.elements.getTypeElement("fixture.Binder");
         CompiledMetadata metadata = context.metadata(owner);
-        for (String name : new String[]{"fixture.Money", "java.util.UUID", "java.time.Instant"}) {
+        for (String name : new String[]{"fixture.Money", UUID.class.getName(), Instant.class.getName()}) {
             TypeElement value = context.elements.getTypeElement(name);
             if (value == null) continue;
             for (String format : new String[]{"", "iso", "epochMillis", "compact", "alpha", "beta"}) {
@@ -54,7 +57,7 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
         TypeElement otherOwner = context.elements.getTypeElement("fixture.OtherBinder");
         if (otherOwner != null) {
             CompiledMetadata other = context.metadata(otherOwner);
-            TypeElement instant = context.elements.getTypeElement("java.time.Instant");
+            TypeElement instant = context.elements.getTypeElement(Instant.class.getName());
             for (String format : new String[]{"alpha", "beta"}) {
                 ValueCodecMetadata info = other.valueCodec(instant.asType(), format);
                 if (info != null) {
