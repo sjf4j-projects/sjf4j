@@ -3,12 +3,15 @@ package org.sjf4j.meta;
 import org.sjf4j.JsonArray;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.util.Types;
+import org.sjf4j.value.PatternedValueCodec;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
 
@@ -32,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Most application code does not need to call this class directly, but its
  * metadata model defines the runtime binding semantics used across
- * {@link Nodes}, {@link org.sjf4j.Sjf4j}, binders, and structural processing.
+ * {@link Nodes}, {@link Sjf4j}, binders, and structural processing.
  */
 public final class TypeRegistry {
     /**
@@ -176,13 +179,13 @@ public final class TypeRegistry {
             return requireRegisteredValueInfo(clazz, codecName);
         }
         ValueInfo base = requireRegisteredValueInfo(clazz, null);
-        if (!(base.codec instanceof org.sjf4j.value.PatternedValueCodec)) {
-            throw new org.sjf4j.exception.BindingException("type '" + clazz.getName()
+        if (!(base.codec instanceof PatternedValueCodec)) {
+            throw new BindingException("type '" + clazz.getName()
                     + "' does not support codecPattern; its ValueCodec does not implement "
-                    + org.sjf4j.value.PatternedValueCodec.class.getName());
+                    + PatternedValueCodec.class.getName());
         }
-        org.sjf4j.value.ValueCodec<?, ?> patterned =
-                ((org.sjf4j.value.PatternedValueCodec<?, ?>) base.codec).withPattern(codecPattern);
+        ValueCodec<?, ?> patterned =
+                ((PatternedValueCodec<?, ?>) base.codec).withPattern(codecPattern);
         return new ValueInfo(codecPattern, patterned.valueClazz(), patterned.rawClazz(),
                 patterned, null, null, null);
     }
