@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 
 
 /**
- * Marks a type as a logical value node with a raw OBNT representation.
+ * Marks a type as a logical value node or a public static final ValueCodec registration field.
  * <p>
  * In SJF4J's OBNT model, a {@code @NodeValue} type is a logical value node rather
  * than a POJO, JOJO, or JAJO. A {@link ValueCodec} or methods annotated with
@@ -30,8 +30,18 @@ import java.lang.annotation.Target;
  * Use this for domain-specific values such as IDs, wrappers, or small
  * immutable types that should serialize as one logical value node rather than a
  * POJO with declared properties.
+ *
+ * <p>On a {@code public static final ValueCodec<V, R>} field, this annotation
+ * declares one or more registered formats for {@code V}; call
+ * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} during
+ * application initialization. The empty format name denotes the default.
+ * The existing type-level annotation uses conversion methods and does not
+ * require an external codec field.
  */
 @Inherited
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NodeValue {}
+public @interface NodeValue {
+    /** Format names for an annotated ValueCodec field; empty denotes the default. */
+    String[] formats() default {""};
+}
