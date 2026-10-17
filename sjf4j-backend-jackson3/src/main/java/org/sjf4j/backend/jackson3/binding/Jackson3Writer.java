@@ -23,8 +23,6 @@ public final class Jackson3Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    /** Access for backend-specific compiled POJO property writers. */
-    public JsonGenerator nativeGenerator() { return generator; }
     private final SegmentedStringWriter stringOutput;
     private final ByteArrayBuilder byteOutput;
     private final BufferRecycler recycler;
@@ -57,6 +55,8 @@ public final class Jackson3Writer extends StreamingWriter {
         this.recycler = recycler;
     }
 
+    /** Access for backend-specific compiled POJO property writers. */
+    public JsonGenerator nativeGenerator() { return generator; }
 
     /*
      * Structure

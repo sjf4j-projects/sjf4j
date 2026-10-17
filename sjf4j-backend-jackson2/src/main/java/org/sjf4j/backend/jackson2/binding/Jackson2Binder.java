@@ -101,14 +101,12 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
     @Override
     public Jackson2Writer createWriter(Writer output) throws IOException {
         JsonGenerator generator = factory.createGenerator(Asserts.notNull(output, "output"));
-        generator.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
         return new Jackson2Writer(generator);
     }
 
     @Override
     public Jackson2Writer createWriter(OutputStream output) throws IOException {
         JsonGenerator generator = factory.createGenerator(Asserts.notNull(output, "output"), JsonEncoding.UTF8);
-        generator.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
         return new Jackson2Writer(generator);
     }
 

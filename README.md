@@ -12,8 +12,8 @@
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
 
-SJF4J is a lightweight JSON facade for Java, 
-and is evolving into **a high-performance structural processing layer built around JSON semantics**.
+SJF4J is firstly a simple JSON facade for Java, 
+yet evolving into **a high-performance JSON structural processing layer**.
 
 SJF4J provides a consistent JSON facade across parsers including [Jackson](https://github.com/FasterXML/jackson-databind),
 [Gson](https://github.com/google/gson), 

@@ -103,7 +103,6 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
     public Jackson3Writer createWriter(Writer output) throws IOException {
         JsonGenerator generator = factory.createGenerator(
                 WRITE_CONTEXT, Asserts.notNull(output, "output"));
-        generator.configure(StreamWriteFeature.AUTO_CLOSE_TARGET, false);
         return new Jackson3Writer(generator);
     }
 
@@ -120,7 +119,6 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
     public Jackson3Writer createWriter(OutputStream output) throws IOException {
         JsonGenerator generator = factory.createGenerator(
                 WRITE_CONTEXT, Asserts.notNull(output, "output"));
-        generator.configure(StreamWriteFeature.AUTO_CLOSE_TARGET, false);
         return new Jackson3Writer(generator);
     }
 
@@ -133,8 +131,7 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         BufferRecycler recycler = factory._getBufferRecycler();
         SegmentedStringWriter output = new SegmentedStringWriter(recycler);
         try {
-            return new Jackson3Writer(
-                    factory.createGenerator(WRITE_CONTEXT, output), output, recycler);
+            return new Jackson3Writer(factory.createGenerator(WRITE_CONTEXT, output), output, recycler);
         } catch (RuntimeException e) {
             recycler.releaseToPool();
             throw e;
