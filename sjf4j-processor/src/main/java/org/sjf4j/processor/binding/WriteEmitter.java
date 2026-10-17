@@ -84,7 +84,9 @@ final class WriteEmitter {
 
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
-        if (!nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())) {
+        if (!nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())
+                && !containsStructuredWrapper(compiled.value(),
+                        new java.util.HashSet<BindingValue>())) {
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -107,7 +109,8 @@ final class WriteEmitter {
         NameAllocator names =
                 methodNames(plan);
 
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
@@ -330,7 +333,13 @@ final class WriteEmitter {
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
             case POJO:
+            case JOJO:
                 emitPojo(out, value);
+                break;
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+                out.line(STREAMING_IO + ".writeNode(writer, value, "
+                        + RUNTIME_CONTEXT + ".EMPTY);");
                 break;
             case LIST:
             case SET:
@@ -475,6 +484,16 @@ final class WriteEmitter {
                     access(
                             property.access(),
                             "value"));
+        }
+
+        if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
+            out.line("int count = " + index + ";");
+            out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
+                    + "value.dynamicProperties().entrySet())");
+            out.line("writer.writeName(entry.getKey(), count++ > 0);");
+            out.line(STREAMING_IO + ".writeNode(writer, entry.getValue(), "
+                    + RUNTIME_CONTEXT + ".EMPTY);");
+            out.endBlock();
         }
 
         out.line("writer.endObject();");
@@ -733,7 +752,32 @@ final class WriteEmitter {
 
     /** Native helpers require a fully concrete type graph. */
     boolean requiresWriteHelper(BindingValue value) {
-        return nativeEligible(value, new java.util.HashSet<BindingValue>());
+        return nativeEligible(value, new java.util.HashSet<BindingValue>())
+                || containsStructuredWrapper(value, new java.util.HashSet<BindingValue>());
+    }
+
+    /** Wrapper subtrees use the compiled StreamingWriter, without changing POJO native code. */
+    private boolean containsStructuredWrapper(BindingValue value,
+            java.util.Set<BindingValue> visited) {
+        if (!visited.add(value)) return false;
+        switch (value.kind()) {
+            case JOJO:
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+                return true;
+            case POJO:
+                for (BindingProperty property : value.properties()) {
+                    if (containsStructuredWrapper(property.value(), visited)) return true;
+                }
+                return false;
+            case LIST:
+            case SET:
+                return containsStructuredWrapper(value.elementValue(), visited);
+            case MAP:
+                return containsStructuredWrapper(value.mapValue(), visited);
+            default:
+                return false;
+        }
     }
 
     private boolean nativeEligible(BindingValue value,
@@ -742,6 +786,9 @@ final class WriteEmitter {
         switch (value.kind()) {
             case RUNTIME:
             case NUMBER:
+            case JOJO:
+            case JSON_OBJECT:
+            case JSON_ARRAY:
                 return false;
             case POJO:
                 for (BindingProperty p : value.properties()) {
