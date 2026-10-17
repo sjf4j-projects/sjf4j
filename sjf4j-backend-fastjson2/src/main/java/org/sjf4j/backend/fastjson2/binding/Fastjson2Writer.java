@@ -55,35 +55,7 @@ public final class Fastjson2Writer extends StreamingWriter {
         this.byteOutput = byteOutput;
 
         this.utf8 = writer.isUTF8();
-        this.useRawName = (utf8 || writer.isUTF16()) && rawNamesCompatible(writer);
-    }
-
-    /** Whether a native UTF-8 writer may safely use pre-escaped field names. */
-    public static boolean supportsRawUtf8Names(JSONWriter writer) {
-        return Fastjson2Binder.supportsRawUtf8Names(writer);
-    }
-
-    private static boolean rawNamesCompatible(JSONWriter writer) {
-        return Fastjson2Binder.rawNamesCompatible(writer);
-    }
-
-    /** Whether the wrapped writer supports pre-escaped UTF-8 field names. */
-    public boolean supportsRawUtf8Names() {
-        return utf8 && useRawName;
-    }
-
-    /**
-     * Stable name-writing mode, computed from the writer's encoding and
-     * feature compatibility once per output. 0 = native name fallback,
-     * 1 = pre-escaped UTF-8, 2 = pre-escaped UTF-16.
-     */
-    public int compiledNameMode() {
-        return useRawName ? (utf8 ? 1 : 2) : 0;
-    }
-
-    /** Native Fastjson2 writer for backend-specific compiled hot paths. */
-    public JSONWriter nativeWriter() {
-        return writer;
+        this.useRawName = (utf8 || writer.isUTF16()) && Fastjson2Binder.rawNamesCompatible(writer);
     }
 
     @Override
