@@ -26,7 +26,6 @@ import tools.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -88,8 +87,6 @@ public class CompiledWriteBenchmark {
             throw new ExceptionInInitializerError(e);
         }
     }
-
-    private static final List<String> FASTJSON2_TAGS = USER.getTags();
 
     private static final Jackson2CompiledBinder JACKSON2_COMPILED =
             CompiledInstances.of(Jackson2CompiledBinder.class);
@@ -177,12 +174,6 @@ public class CompiledWriteBenchmark {
         check("fastjson2 native pojo utf8", json_fastjson2_pojo_utf8_native());
         check("fastjson2 native map string", json_fastjson2_map_string_native());
         check("fastjson2 native map utf8", json_fastjson2_map_utf8_native());
-        byte[] tags = json_fastjson2_list_string_native_direct();
-        if (!java.util.Arrays.equals(tags, json_fastjson2_list_string_compiled())
-                || !java.util.Arrays.equals(tags, json_fastjson2_list_string_iterator())
-                || !java.util.Arrays.equals(tags, json_fastjson2_list_string_indexed())) {
-            throw new IllegalStateException("Fastjson2 List<String> encodings differ");
-        }
     }
 
     private static void check(String label, String json) throws IOException {
@@ -501,55 +492,8 @@ public class CompiledWriteBenchmark {
     public interface Fastjson2CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
         @WriteTo byte[] writePojoUtf8(User value) throws IOException;
-        @WriteTo byte[] writeStringsUtf8(List<String> value) throws IOException;
         @WriteTo String writeMap(Map<String, Object> value) throws IOException;
         @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
-    }
-
-    // ----- FASTJSON2 List<String> microbenchmark -----
-    // All variants include native writer allocation and byte[] materialization.
-    @Benchmark
-    public byte[] json_fastjson2_list_string_compiled() throws IOException {
-        return FASTJSON2_COMPILED.writeStringsUtf8(FASTJSON2_TAGS);
-    }
-
-    @Benchmark
-    public byte[] json_fastjson2_list_string_native_direct() {
-        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
-            writer.writeString(FASTJSON2_TAGS);
-            return writer.getBytes();
-        }
-    }
-
-    @Benchmark
-    public byte[] json_fastjson2_list_string_indexed() {
-        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
-            writer.startArray();
-            for (int i = 0, size = FASTJSON2_TAGS.size(); i < size; i++) {
-                if (i != 0) {
-                    writer.writeComma();
-                }
-                writer.writeString(FASTJSON2_TAGS.get(i));
-            }
-            writer.endArray();
-            return writer.getBytes();
-        }
-    }
-
-    @Benchmark
-    public byte[] json_fastjson2_list_string_iterator() {
-        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
-            writer.startArray();
-            int count = 0;
-            for (String element : FASTJSON2_TAGS) {
-                if (count++ != 0) {
-                    writer.writeComma();
-                }
-                writer.writeString(element);
-            }
-            writer.endArray();
-            return writer.getBytes();
-        }
     }
 
     // ----- JSONP -----
