@@ -1,5 +1,7 @@
 package org.sjf4j.annotation.binding;
 
+import org.sjf4j.value.ValueRegistry;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -12,7 +14,7 @@ import java.lang.annotation.Target;
  * already-compiled dependency. This option only exposes their declarations
  * to the annotation processor. Application initialization is still responsible
  * for runtime registration (for example, via
- * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)}).
+ * {@link ValueRegistry#registerAnnotated(Class)}).
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
