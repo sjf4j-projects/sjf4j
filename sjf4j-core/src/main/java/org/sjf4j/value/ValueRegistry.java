@@ -14,9 +14,18 @@ import org.sjf4j.util.Asserts;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -145,6 +154,94 @@ public final class ValueRegistry {
         register(info, forceDefault);
     }
 
+    /**
+     * Registers the public static final ValueCodec fields annotated with
+     * {@link NodeValue} on the specified declaring class. Registration must
+     * precede metadata analysis; this does not rescan inherited fields.
+     *
+     * <p>All declarations are checked before publishing any registrations.
+     * Default formats are registered first; named-only fields are ordered by
+     * field name to avoid dependence on reflection's field enumeration order.
+     */
+    public static void registerAnnotated(Class<?> registryClass) {
+        Asserts.notNull(registryClass, "registryClass");
+
+        Field[] fields = registryClass.getDeclaredFields();
+        // Default-bearing fields come first, including their named aliases.
+        // This preserves Instant's historical default/iso/epochMillis order.
+        Arrays.sort(fields, Comparator
+                .comparing((Field f) -> !hasDefaultFormat(f))
+                .thenComparing(Field::getName));
+
+        List<ValueInfo> defaults = new ArrayList<>();
+        List<ValueInfo> named = new ArrayList<>();
+        Map<Class<?>, Set<String>> declaredFormats = new HashMap<>();
+
+        for (Field field : fields) {
+            NodeValue annotation = field.getAnnotation(NodeValue.class);
+            if (annotation == null) continue;
+
+            int modifiers = field.getModifiers();
+            if (!Modifier.isPublic(modifiers) || !Modifier.isStatic(modifiers)
+                    || !Modifier.isFinal(modifiers)
+                    || !ValueCodec.class.isAssignableFrom(field.getType())) {
+                throw new BindingException("@NodeValue codec field must be public static final ValueCodec: "
+                        + field);
+            }
+
+            Type declaredType = field.getGenericType();
+            if (!(declaredType instanceof ParameterizedType)) {
+                throw new BindingException("@NodeValue codec field must declare concrete V/R types: " + field);
+            }
+            Type[] arguments = ((ParameterizedType) declaredType).getActualTypeArguments();
+            if (arguments.length != 2 || !(arguments[0] instanceof Class)
+                    || !(arguments[1] instanceof Class)) {
+                throw new BindingException("@NodeValue codec field must declare concrete V/R classes: " + field);
+            }
+
+            ValueCodec<?, ?> codec;
+            try {
+                codec = (ValueCodec<?, ?>) field.get(null);
+            } catch (IllegalAccessException e) {
+                throw new BindingException("cannot access @NodeValue codec field: " + field, e);
+            }
+            if (codec == null) {
+                throw new BindingException("@NodeValue codec field is null: " + field);
+            }
+            if (codec.valueClazz() != arguments[0] || codec.rawClazz() != arguments[1]) {
+                throw new BindingException("@NodeValue codec field V/R types do not match codec: " + field);
+            }
+
+            String[] formats = annotation.formats();
+            if (formats.length == 0) {
+                throw new BindingException("@NodeValue codec field has no formats: " + field);
+            }
+            Set<String> seen = declaredFormats.computeIfAbsent(codec.valueClazz(), k -> new HashSet<>());
+            for (String format : formats) {
+                if (!seen.add(format)) {
+                    throw new BindingException("duplicate @NodeValue codec format '" + format
+                            + "' for type '" + codec.valueClazz().getName() + "'");
+                }
+                ValueInfo info = new ValueInfo(format, codec.valueClazz(), codec.rawClazz(),
+                        codec, null, null, null);
+                validateRegistration(info);
+                (format.isEmpty() ? defaults : named).add(info);
+            }
+        }
+
+        for (ValueInfo info : defaults) register(info, false);
+        for (ValueInfo info : named) register(info, false);
+    }
+
+    private static boolean hasDefaultFormat(Field field) {
+        NodeValue annotation = field.getAnnotation(NodeValue.class);
+        if (annotation == null) return false;
+        for (String format : annotation.formats()) {
+            if (format.isEmpty()) return true;
+        }
+        return false;
+    }
+
     private static void validateRegistration(ValueInfo valueInfo) {
         Class<?> rawClazz = Asserts.notNull(valueInfo.rawClazz, "rawClazz");
         if (rawClazz == Object.class || !NodeKind.plainOf(rawClazz).isRaw()) {
@@ -161,33 +258,10 @@ public final class ValueRegistry {
     }
 
 
-    // Bootstrap JDK Types
+    // Bootstrap all built-in codecs from their annotated declarations.
     static {
-        registerByCodec(ValueCodec.URI_CODEC, null, false);
-        registerByCodec(ValueCodec.URL_CODEC, null, false);
-        registerByCodec(ValueCodec.UUID_CODEC, null, false);
-        registerByCodec(ValueCodec.CHARSET, null, false);
-        registerByCodec(ValueCodec.LOCALE, null, false);
-        registerByCodec(ValueCodec.CURRENCY, null, false);
-        registerByCodec(ValueCodec.ZONE_ID, null, false);
-        registerByCodec(ValueCodec.INSTANT_STR, null, false);
-        registerByCodec(ValueCodec.INSTANT_STR, "iso", false);
-        registerByCodec(ValueCodec.INSTANT_EPOCH_MILLIS, "epochMillis", false);
-        registerByCodec(PatternedValueCodec.LOCAL_DATE, null, false);
-        registerByCodec(PatternedValueCodec.LOCAL_TIME, null, false);
-        registerByCodec(PatternedValueCodec.LOCAL_DATE_TIME, null, false);
-        registerByCodec(PatternedValueCodec.OFFSET_DATE_TIME, null, false);
-        registerByCodec(PatternedValueCodec.ZONED_DATE_TIME, null, false);
-        registerByCodec(ValueCodec.DURATION, null, false);
-        registerByCodec(ValueCodec.PERIOD, null, false);
-        registerByCodec(ValueCodec.PATH, null, false);
-        registerByCodec(ValueCodec.FILE, null, false);
-        registerByCodec(ValueCodec.PATTERN, null, false);
-        registerByCodec(ValueCodec.INET_ADDR, null, false);
-        registerByCodec(ValueCodec.DATE, null, false);
-        registerByCodec(ValueCodec.CALENDAR, null, false);
+        registerAnnotated(ValueCodec.class);
     }
-
 
 
     /**
