@@ -823,7 +823,7 @@ class CompiledBinderConformanceTest {
             Object binder = implementation.getConstructor().newInstance();
 
             Object tree = implementation.getMethod("read", String.class)
-                    .invoke(binder, "name: Ada\\nextra: { nested: [1, 2] }\\n");
+                    .invoke(binder, "name: Ada\nextra: { nested: [1, 2] }\n");
             assertEquals("Ada", treeType.getField("name").get(tree));
             assertTrue(((org.sjf4j.JsonObject) tree).dynamicProperties().containsKey("extra"));
             String yaml = (String) implementation.getMethod("write", treeType)
