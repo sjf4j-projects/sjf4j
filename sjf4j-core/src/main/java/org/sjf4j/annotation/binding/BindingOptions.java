@@ -1,0 +1,23 @@
+package org.sjf4j.annotation.binding;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Compile-time options for an SJF4J compiled interface.
+ *
+ * <p>Registry holder classes may be declared in the current module or an
+ * already-compiled dependency. This option only exposes their declarations
+ * to the annotation processor. Application initialization is still responsible
+ * for runtime registration (for example, via
+ * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)}).
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.CLASS)
+public @interface BindingOptions {
+
+    /** Additional classes containing annotated registration fields. */
+    Class<?>[] registries() default {};
+}
