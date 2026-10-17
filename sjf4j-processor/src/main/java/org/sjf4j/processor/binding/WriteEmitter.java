@@ -466,13 +466,9 @@ final class WriteEmitter {
                     String field = compiledNameField(value, index++) + ".serializedName";
                     BindingValue child = property.value();
                     String expr = access(property.access(), "value");
-                    if (child.kind() == BindingValue.Kind.STRING) {
-                        out.line("_writeMember(g, " + field + ", " + expr + ");");
-                    } else {
-                        out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
-                                + "(" + field + ");");
-                        emitJacksonNativeValue(out, child, expr);
-                    }
+                    out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
+                            + "(" + field + ");");
+                    emitJacksonNativeValue(out, child, expr);
                 }
                 out.line("g.writeEndObject();");
                 break;
@@ -506,58 +502,75 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    boolean needsNativeStringMember(BindingValue value) {
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) return false;
-        if (!hasNativeJsonWriter() || value.direction() != BindingPlan.Direction.WRITE_TO
-                || value.kind() != BindingValue.Kind.POJO
+    boolean needsStringHelper(BindingValue value) {
+        if (!hasNativeJsonWriter() || !value.helperRequired()
+                || value.direction() != BindingPlan.Direction.WRITE_TO
                 || !nativeEligible(value, new java.util.HashSet<BindingValue>())) {
             return false;
         }
-        for (BindingProperty property : value.properties()) {
-            if (property.value().kind() == BindingValue.Kind.STRING) return true;
-        }
-        return false;
+        return containsString(value, new java.util.HashSet<BindingValue>());
     }
 
-    void emitNativeStringMember(JavaWriter out) {
-        boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
-        String nameType;
-        String generatorType;
-        String fieldMethod;
-        String stringMethod;
-        String nullMethod;
+    private boolean containsString(BindingValue value, java.util.Set<BindingValue> visited) {
+        if (!visited.add(value)) return false;
+        switch (value.kind()) {
+            case STRING:
+                return true;
+            case POJO:
+                for (BindingProperty property : value.properties()) {
+                    if (containsString(property.value(), visited)) return true;
+                }
+                return false;
+            case LIST:
+            case SET:
+                return containsString(value.elementValue(), visited);
+            case MAP:
+                return containsString(value.mapValue(), visited);
+            default:
+                return false;
+        }
+    }
+
+    void emitStringHelper(JavaWriter out) {
+        String generator;
+        String writeString;
+        String writeNull;
         switch (backend.backend()) {
             case JACKSON2:
-                nameType = "com.fasterxml.jackson.core.io.SerializedString";
-                generatorType = "com.fasterxml.jackson.core.JsonGenerator";
-                fieldMethod = "writeFieldName"; stringMethod = "writeString"; nullMethod = "writeNull";
+                generator = "com.fasterxml.jackson.core.JsonGenerator";
+                writeString = "writeString";
+                writeNull = "writeNull";
                 break;
             case JACKSON3:
-                nameType = "tools.jackson.core.io.SerializedString";
-                generatorType = "tools.jackson.core.JsonGenerator";
-                fieldMethod = "writeName"; stringMethod = "writeString"; nullMethod = "writeNull";
+                generator = "tools.jackson.core.JsonGenerator";
+                writeString = "writeString";
+                writeNull = "writeNull";
+                break;
+            case FASTJSON2:
+                generator = "com.alibaba.fastjson2.JSONWriter";
+                writeString = "writeString";
+                writeNull = "writeNull";
                 break;
             case GSON:
-                nameType = "String";
-                generatorType = "com.google.gson.stream.JsonWriter";
-                fieldMethod = "name"; stringMethod = "value"; nullMethod = "nullValue";
+                generator = "com.google.gson.stream.JsonWriter";
+                writeString = "value";
+                writeNull = "nullValue";
                 break;
             case JSONP:
-                nameType = "String";
-                generatorType = "jakarta.json.stream.JsonGenerator";
-                fieldMethod = "writeKey"; stringMethod = "write"; nullMethod = "writeNull";
+                generator = "jakarta.json.stream.JsonGenerator";
+                writeString = "write";
+                writeNull = "writeNull";
                 break;
             default:
                 throw new AssertionError(backend.backend());
         }
-        out.beginBlock("private static void _writeMember(" + generatorType
-                + " g, " + nameType + " name, String value) throws java.io.IOException");
-        out.line("g." + fieldMethod + "(name);");
+        out.beginBlock("private static void _writeString(" + generator
+                + " g, String value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
-        out.line("g." + nullMethod + "();");
+        out.line("g." + writeNull + "();");
         out.endBlock(" else {");
         out.indent();
-        out.line("g." + stringMethod + "(value);");
+        out.line("g." + writeString + "(value);");
         out.endBlock();
         out.endBlock();
     }
@@ -568,7 +581,7 @@ final class WriteEmitter {
             return;
         }
         if (child.kind() == BindingValue.Kind.STRING) {
-            out.line("g.writeString(" + expr + ");");
+            out.line("_writeString(g, " + expr + ");");
             return;
         }
         String method;
@@ -634,15 +647,9 @@ final class WriteEmitter {
                 out.line("g." + beginObject + "();");
                 for (BindingProperty property : value.properties()) {
                     String expr = access(property.access(), "value");
-                    if (property.value().kind() == BindingValue.Kind.STRING) {
-                        out.line("_writeMember(g, "
-                                + JavaWriter.stringLiteral(property.name()) + ", "
-                                + expr + ");");
-                    } else {
-                        out.line("g." + nameMethod + "("
-                                + JavaWriter.stringLiteral(property.name()) + ");");
-                        emitOtherNativeValue(out, property.value(), expr);
-                    }
+                    out.line("g." + nameMethod + "("
+                            + JavaWriter.stringLiteral(property.name()) + ");");
+                    emitOtherNativeValue(out, property.value(), expr);
                 }
                 out.line("g." + endObject + "();");
                 break;
@@ -675,6 +682,10 @@ final class WriteEmitter {
         String nullMethod = gson ? "nullValue" : "writeNull";
         if (child.helperRequired()) {
             out.line(child.helperName() + "(g, " + expr + ");");
+            return;
+        }
+        if (child.kind() == BindingValue.Kind.STRING) {
+            out.line("_writeString(g, " + expr + ");");
             return;
         }
         if (child.kind() == BindingValue.Kind.ENUM || child.kind() == BindingValue.Kind.CHARACTER) {
@@ -1142,49 +1153,6 @@ final class WriteEmitter {
             }
             emitNativeValue(out, child, expr, mode);
         }
-    }
-
-    boolean needsFastjsonStringHelper(BindingValue value) {
-        if (backend.backend() != org.sjf4j.annotation.binding.Backend.FASTJSON2
-                || value.direction() != BindingPlan.Direction.WRITE_TO
-                || !nativeEligible(value, new java.util.HashSet<BindingValue>())) return false;
-        return containsFastjsonString(value, new java.util.HashSet<BindingValue>());
-    }
-
-    private boolean containsFastjsonString(BindingValue value,
-            java.util.Set<BindingValue> visited) {
-        if (!visited.add(value)) return false;
-        switch (value.kind()) {
-            case STRING:
-                return true;
-            case POJO:
-                for (BindingProperty property : value.properties()) {
-                    if (containsFastjsonString(property.value(), visited)) return true;
-                }
-                return false;
-            case LIST:
-                // List<String> already calls JSONWriter.writeString(String) directly.
-                return value.elementValue().kind() != BindingValue.Kind.STRING
-                        && containsFastjsonString(value.elementValue(), visited);
-            case SET:
-                return containsFastjsonString(value.elementValue(), visited);
-            case MAP:
-                return containsFastjsonString(value.mapValue(), visited);
-            default:
-                return false;
-        }
-    }
-
-    void emitFastjsonStringHelper(JavaWriter out) {
-        out.beginBlock("private static void _writeString(com.alibaba.fastjson2.JSONWriter w,"
-                + " String value)");
-        out.beginBlock("if (value == null)");
-        out.line("w.writeNull();");
-        out.endBlock(" else {");
-        out.indent();
-        out.line("w.writeString(value);");
-        out.endBlock();
-        out.endBlock();
     }
 
     private String fastjsonWriteMethod(BindingValue.Kind kind) {
