@@ -1,6 +1,7 @@
 package org.sjf4j.value;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.annotation.node.NodeValue;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -13,6 +14,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -143,9 +148,11 @@ public interface ValueCodec<V, R> {
     //  Built-in codec instances
     // ──────────────────────────────────────────────────────────────
 
+    @NodeValue
     ValueCodec<URI, String> URI_CODEC = new SimpleValueCodec<>(URI.class, String.class,
             URI::toString, URI::create);
 
+    @NodeValue
     ValueCodec<URL, String> URL_CODEC = new SimpleValueCodec<>(URL.class, String.class,
             URL::toString, raw -> {
                 try {
@@ -155,55 +162,87 @@ public interface ValueCodec<V, R> {
                 }
             });
 
+    @NodeValue
     ValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,
             UUID::toString, UUID::fromString);
 
+    @NodeValue
     ValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,
             Charset::name, Charset::forName);
 
+    @NodeValue
     ValueCodec<Locale, String> LOCALE = new SimpleValueCodec<>(Locale.class, String.class,
             Locale::toLanguageTag, Locale::forLanguageTag);
 
+    @NodeValue
     ValueCodec<Currency, String> CURRENCY = new SimpleValueCodec<>(Currency.class, String.class,
             Currency::getCurrencyCode, Currency::getInstance);
 
+    @NodeValue
     ValueCodec<ZoneId, String> ZONE_ID = new SimpleValueCodec<>(ZoneId.class, String.class,
             ZoneId::getId, ZoneId::of);
 
+    @NodeValue(formats = {"", "iso"})
     ValueCodec<Instant, String> INSTANT_STR = new SimpleValueCodec<>(Instant.class, String.class,
             Instant::toString, Instant::parse);
 
+    @NodeValue(formats = {"epochMillis"})
     ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
             Instant::toEpochMilli, Instant::ofEpochMilli);
 
+    @NodeValue
     ValueCodec<Duration, String> DURATION = new SimpleValueCodec<>(Duration.class, String.class,
             Duration::toString, Duration::parse);
 
+    @NodeValue
     ValueCodec<Period, String> PERIOD = new SimpleValueCodec<>(Period.class, String.class,
             Period::toString, Period::parse);
 
+    @NodeValue
     ValueCodec<Path, String> PATH = new SimpleValueCodec<>(Path.class, String.class,
             Path::toString, Paths::get);
 
+    @NodeValue
     ValueCodec<File, String> FILE = new SimpleValueCodec<>(File.class, String.class,
             File::toString, File::new);
 
+    @NodeValue
     ValueCodec<Pattern, String> PATTERN = new SimpleValueCodec<>(Pattern.class, String.class,
             Pattern::pattern, Pattern::compile);
 
+    @NodeValue
     ValueCodec<InetAddress, String> INET_ADDR = new SimpleValueCodec<>(InetAddress.class, String.class,
             InetAddress::getHostAddress, raw -> {
                 try { return InetAddress.getByName(raw); }
                 catch (UnknownHostException e) { throw new BindingException("invalid InetAddress '" + raw + "'", e); }
             });
 
+    @NodeValue
     ValueCodec<Date, String> DATE = new SimpleValueCodec<>(Date.class, String.class,
             v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)));
+
+    // Retain the historical PatternedValueCodec fields as aliases; register
+    // all built-in value types from this single declaration surface.
+    @NodeValue
+    ValueCodec<LocalDate, String> LOCAL_DATE = PatternedValueCodec.LOCAL_DATE;
+
+    @NodeValue
+    ValueCodec<LocalTime, String> LOCAL_TIME = PatternedValueCodec.LOCAL_TIME;
+
+    @NodeValue
+    ValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = PatternedValueCodec.LOCAL_DATE_TIME;
+
+    @NodeValue
+    ValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = PatternedValueCodec.OFFSET_DATE_TIME;
+
+    @NodeValue
+    ValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = PatternedValueCodec.ZONED_DATE_TIME;
 
     // ──────────────────────────────────────────────────────────────
     //  Complex codecs → private static methods + method reference
     // ──────────────────────────────────────────────────────────────
 
+    @NodeValue
     ValueCodec<Calendar, String> CALENDAR = new SimpleValueCodec<>(Calendar.class, String.class,
             ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw);
 
