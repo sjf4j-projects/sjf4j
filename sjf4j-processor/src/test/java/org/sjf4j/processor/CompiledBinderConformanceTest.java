@@ -841,4 +841,83 @@ class CompiledBinderConformanceTest {
         }
     }
 
+
+    @Test
+    void compiledValueCodecsRoundTripAcrossJsonBackends() throws Exception {
+        for (String backend : JSON_BACKENDS) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Identifier.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.node.*;\n"
+                            + "@NodeValue public final class Identifier {\n"
+                            + "  private final String raw;\n"
+                            + "  public Identifier(String raw) { this.raw = raw; }\n"
+                            + "  @ValueToRaw public String valueToRaw() { return raw; }\n"
+                            + "  @RawToValue public static Identifier rawToValue(String raw) {\n"
+                            + "    return new Identifier(raw == null ? \"NULL_INPUT\" : raw);\n"
+                            + "  }\n"
+                            + "  public String toString() { return raw; }\n"
+                            + "}\n");
+            sources.put("fixture/Bean.java",
+                    "package fixture;\n"
+                            + "import java.time.*;\n"
+                            + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                            + "public class Bean {\n"
+                            + "  public Identifier id;\n"
+                            + "  @NodeProperty(codecName=\"epochMillis\") public Instant epoch;\n"
+                            + "  @NodeProperty(codecPattern=\"yyyy/MM/dd\") public LocalDate day;\n"
+                            + "  public Instant standard;\n"
+                            + "  public java.util.List<Identifier> ids;\n"
+                            + "}\n");
+            sources.put("fixture/Binder.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.binding.*;\n"
+                            + "@CompiledBinder(backend=Backend." + backend + ")\n"
+                            + "public interface Binder {\n"
+                            + "  @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                            + "  @WriteTo String write(Bean bean) throws java.io.IOException;\n"
+                            + "  @ReadFrom Identifier readId(String json) throws java.io.IOException;\n"
+                            + "  @WriteTo String writeId(Identifier id) throws java.io.IOException;\n"
+                            + "}\n");
+            NavigatorTestCompiler.Result compiled =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class<?> beanClass = Class.forName("fixture.Bean", true, loader);
+                Class<?> idClass = Class.forName("fixture.Identifier", true, loader);
+                Class<?> binderClass = Class.forName("fixture.Binder_Impl", true, loader);
+                Object binder = binderClass.getConstructor().newInstance();
+                String input = "{\"id\":null,\"epoch\":1000,\"day\":\"2026/04/05\","
+                        + "\"standard\":\"2026-01-01T00:00:00Z\",\"ids\":[\"a\",\"b\"]}";
+                Object bean = binderClass.getMethod("read", String.class).invoke(binder, input);
+                assertEquals("NULL_INPUT", beanClass.getField("id").get(bean).toString(), backend);
+                assertEquals(java.time.Instant.ofEpochMilli(1000),
+                        beanClass.getField("epoch").get(bean), backend);
+                assertEquals(java.time.LocalDate.of(2026, 4, 5),
+                        beanClass.getField("day").get(bean), backend);
+                assertEquals(java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                        beanClass.getField("standard").get(bean), backend);
+                assertEquals(2, ((java.util.List<?>) beanClass.getField("ids")
+                        .get(bean)).size(), backend);
+                String written = (String) binderClass.getMethod("write", beanClass)
+                        .invoke(binder, bean);
+                com.fasterxml.jackson.databind.JsonNode tree =
+                        new com.fasterxml.jackson.databind.ObjectMapper().readTree(written);
+                assertEquals("NULL_INPUT", tree.get("id").asText(), backend);
+                assertEquals(1000L, tree.get("epoch").asLong(), backend);
+                assertEquals("2026/04/05", tree.get("day").asText(), backend);
+                assertEquals("2026-01-01T00:00:00Z", tree.get("standard").asText(), backend);
+                assertEquals("a", tree.get("ids").get(0).asText(), backend);
+
+                Object decodedNull = binderClass.getMethod("readId", String.class)
+                        .invoke(binder, "null");
+                assertEquals("NULL_INPUT", decodedNull.toString(), backend);
+                assertEquals("\"NULL_INPUT\"", binderClass.getMethod("writeId", idClass)
+                        .invoke(binder, decodedNull), backend);
+                assertEquals("null", binderClass.getMethod("writeId", idClass)
+                        .invoke(binder, new Object[]{null}), backend);
+            }
+        }
+    }
+
 }
