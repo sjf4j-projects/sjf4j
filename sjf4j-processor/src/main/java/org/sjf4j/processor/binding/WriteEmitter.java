@@ -1074,6 +1074,26 @@ final class WriteEmitter {
                 out.line("w.endObject();");
                 break;
             case LIST:
+                out.line("w.startArray();");
+                out.beginBlock("if (value instanceof java.util.RandomAccess)");
+                out.beginBlock("for (int i = 0, size = value.size(); i < size; i++)");
+                out.beginBlock("if (i != 0)");
+                out.line("w.writeComma();");
+                out.endBlock();
+                emitNativeValue(out, value.elementValue(), "value.get(i)", mode);
+                out.endBlock();
+                out.endBlock(" else {");
+                out.indent();
+                out.line("int count = 0;");
+                out.beginBlock("for (" + value.elementValue().type() + " element : value)");
+                out.beginBlock("if (count++ > 0)");
+                out.line("w.writeComma();");
+                out.endBlock();
+                emitNativeValue(out, value.elementValue(), "element", mode);
+                out.endBlock();
+                out.endBlock();
+                out.line("w.endArray();");
+                break;
             case SET:
                 out.line("w.startArray();");
                 out.line("int count = 0;");
