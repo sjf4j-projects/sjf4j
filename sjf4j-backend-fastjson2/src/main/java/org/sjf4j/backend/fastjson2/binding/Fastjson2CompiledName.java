@@ -21,17 +21,6 @@ public final class Fastjson2CompiledName extends CompiledName {
     /** Native-endian second word (or low 32-bit int for length 9). */
     public final long rawName1;
 
-    /** Pre-escaped UTF-8 property token for compiled Fastjson2 UTF-8 writers. */
-    public byte[] rawNameUtf8() {
-        return rawNameUtf8;
-    }
-
-    /** Pre-escaped UTF-16 property token for native compiled String writers. */
-    public char[] rawNameUtf16() {
-        return rawNameUtf16;
-    }
-
-
     /**
      * Prepares a property name for UTF-8 and UTF-16 raw-name writes.
      * @param name the property name
