@@ -47,6 +47,49 @@ class RegistryDiscoveryTest {
     }
 
     @Test
+    void importsMultipleExplicitClasspathRegistries() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources(
+                "package fixture; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@BindingOptions(registries = {ClasspathRegistries.First.class, "
+                + "ClasspathRegistries.Second.class}) "
+                + "@CompiledBinder public interface Binder {}"),
+                RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("DISCOVER java.time.Instant/alpha -> java.lang.String"),
+                result.diagnostics());
+        assertTrue(result.diagnostics().contains("DISCOVER java.time.Instant/beta -> java.lang.String"),
+                result.diagnostics());
+    }
+
+    @Test
+    void classpathRegistriesAreNotGloballyDiscovered() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources(
+                "package fixture; "
+                + "@org.sjf4j.annotation.binding.CompiledBinder public interface Binder {}"),
+                RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.diagnostics().contains("DISCOVER java.time.Instant/alpha"),
+                result.diagnostics());
+        assertFalse(result.diagnostics().contains("DISCOVER java.time.Instant/beta"),
+                result.diagnostics());
+    }
+
+    @Test
+    void duplicateExplicitHolderIsDeduplicated() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources(
+                "package fixture; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@BindingOptions(registries = {ClasspathRegistries.First.class, "
+                + "ClasspathRegistries.First.class}) "
+                + "@CompiledBinder public interface Binder {}"),
+                RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+    }
+
+    @Test
     void rejectsDuplicateFormatAcrossSourceRegistryFields() throws Exception {
         Map<String, String> input = sources(
                 "package fixture; @org.sjf4j.annotation.binding.CompiledBinder "
