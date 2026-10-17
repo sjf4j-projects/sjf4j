@@ -127,8 +127,13 @@ public final class Fastjson2Writer extends StreamingWriter {
         }
 
         Fastjson2CompiledName name = (Fastjson2CompiledName) compiledName;
-        // The name's fixed-width arguments were packed once when prepared,
-        // and are usable by both native UTF-8 and UTF-16 writers.
+        // UTF-8 benefits from Fastjson2's packed name methods. UTF-16 is
+        // faster with the pre-escaped char[] path (verified by A/B/A JMH).
+        if (!utf8) {
+            writer.writeNameRaw(name.rawNameUtf16);
+            return;
+        }
+
         switch (name.rawNameLength) {
             case 2: writer.writeName2Raw(name.rawName0); return;
             case 3: writer.writeName3Raw(name.rawName0); return;
@@ -145,12 +150,7 @@ public final class Fastjson2Writer extends StreamingWriter {
             case 14: writer.writeName14Raw(name.rawName0, name.rawName1); return;
             case 15: writer.writeName15Raw(name.rawName0, name.rawName1); return;
             case 16: writer.writeName16Raw(name.rawName0, name.rawName1); return;
-            default:
-                if (utf8) {
-                    writer.writeNameRaw(name.rawNameUtf8);
-                } else {
-                    writer.writeNameRaw(name.rawNameUtf16);
-                }
+            default: writer.writeNameRaw(name.rawNameUtf8);
         }
     }
 
