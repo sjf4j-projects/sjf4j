@@ -85,6 +85,9 @@ public final class CodegenProcessor extends AbstractProcessor {
                 annotations,
                 roundEnv);
 
+        // Discovery precedes generation within each annotation processing round.
+        context.discovery.collect(roundEnv);
+
         processInterfaces(
                 roundEnv,
                 CompiledNavigator.class,
