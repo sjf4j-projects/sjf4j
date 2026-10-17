@@ -595,7 +595,7 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
-    void fastjson2GeneratesOnlyRequiredEncodingAndTypedMemberOverloads() throws Exception {
+    void fastjson2GeneratesOnlyRequiredEncodingAndNullableStringHelper() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Sample.java",
                 "package fixture;\n"
@@ -640,8 +640,12 @@ class CompiledBinderConformanceTest {
             assertFalse(stringMethods.contains("_writeSampleUtf8"), stringMethods.toString());
             assertTrue(bytesMethods.contains("_writeSampleUtf8"), bytesMethods.toString());
             assertFalse(bytesMethods.contains("_writeSampleUtf16"), bytesMethods.toString());
-            assertTrue(stringMethods.contains("_writeSampleSafe"));
-            assertTrue(bytesMethods.contains("_writeSampleSafe"));
+            assertTrue(stringMethods.contains("_writeString"), stringMethods.toString());
+            assertTrue(bytesMethods.contains("_writeString"), bytesMethods.toString());
+            assertFalse(stringMethods.contains("_writeSampleSafe"), stringMethods.toString());
+            assertFalse(bytesMethods.contains("_writeSampleSafe"), bytesMethods.toString());
+            assertFalse(stringMethods.contains("_writeMember"), stringMethods.toString());
+            assertFalse(bytesMethods.contains("_writeMember"), bytesMethods.toString());
 
             Object sample = sampleType.getConstructor().newInstance();
             Object stringBinder = stringType.getConstructor().newInstance();
@@ -665,20 +669,6 @@ class CompiledBinderConformanceTest {
             assertEquals(parsed.getBigDecimal("boxed"), parsedBytes.getBigDecimal("boxed"));
             assertEquals(parsed.getBigDecimal("score"), parsedBytes.getBigDecimal("score"));
 
-            // Exercise the feature-safe compiled helper without switching to runtime POJO mapping.
-            java.lang.reflect.Method safe = stringType.getDeclaredMethod(
-                    "_writeSampleSafe", com.alibaba.fastjson2.JSONWriter.class, sampleType);
-            safe.setAccessible(true);
-            com.alibaba.fastjson2.JSONWriter.Context custom =
-                    com.alibaba.fastjson2.JSONFactory.createWriteContext(
-                            com.alibaba.fastjson2.JSONWriter.Feature.EscapeNoneAscii);
-            try (com.alibaba.fastjson2.JSONWriter writer = com.alibaba.fastjson2.JSONWriter.of(custom)) {
-                safe.invoke(null, writer, sample);
-                String escaped = writer.toString();
-                assertTrue(escaped.contains("\\u"), escaped);
-                assertEquals(parsed.getBigDecimal("boxed"),
-                        com.alibaba.fastjson2.JSON.parseObject(escaped).getBigDecimal("boxed"));
-            }
         }
     }
 
