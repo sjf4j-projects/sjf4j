@@ -746,6 +746,7 @@ final class WriteEmitter {
             case JOJO:
             case JSON_OBJECT:
             case JSON_ARRAY:
+            case VALUE_CODEC:
                 return true;
             case POJO:
                 for (BindingProperty property : value.properties()) {
