@@ -27,9 +27,6 @@ final class WriteEmitter {
 
     private final java.util.Set<FastjsonMode> fastjsonModes =
             java.util.EnumSet.noneOf(FastjsonMode.class);
-    private final java.util.Set<String> fastjsonMemberTypes =
-            new java.util.LinkedHashSet<String>();
-
     void registerWriteOutput(BindingPlan.WriteOutput output) {
         if (backend.backend() != org.sjf4j.annotation.binding.Backend.FASTJSON2) return;
         switch (output) {
@@ -61,24 +58,6 @@ final class WriteEmitter {
             out.line("private static final " + backend.compiledNameType() + " " +
                     field + " = new " + backend.compiledNameType() + "(" +
                     JavaWriter.stringLiteral(property.name()) + ");");
-            if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
-                    && fixedRawName(property.name())) {
-                String name = property.name();
-                int length = name.length();
-                // Fastjson2's writeNameXRaw overloads use native-endian packed
-                // ASCII data. Resolve byte order at class initialization, not per field.
-                String encoded = "\"" + name + "\":";
-                String raw = length == 8 || length == 16 ? name : encoded;
-                out.line("private static final long " + field + "_raw0 = " +
-                        packedLong(raw, 0) + ";");
-                if (length == 9) {
-                    out.line("private static final int " + field + "_raw1 = " +
-                            packedInt(encoded, 8) + ";");
-                } else if (length >= 10) {
-                    out.line("private static final long " + field + "_raw1 = " +
-                            packedLong(raw, 8) + ";");
-                }
-            }
         }
     }
 
@@ -94,24 +73,6 @@ final class WriteEmitter {
             if (c < 0x20 || c > 0x7E || c == '"' || c == '\\') return false;
         }
         return true;
-    }
-
-    private static String packedLong(String source, int start) {
-        long packed = 0;
-        for (int i = 0; i < 8 && start + i < source.length(); i++) {
-            packed |= ((long) source.charAt(start + i)) << (i * 8);
-        }
-        return "java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN ? "
-                + packed + "L : " + Long.reverseBytes(packed) + "L";
-    }
-
-    private static String packedInt(String source, int start) {
-        int packed = 0;
-        for (int i = 0; i < 4 && start + i < source.length(); i++) {
-            packed |= source.charAt(start + i) << (i * 8);
-        }
-        return "java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN ? "
-                + packed + " : " + Integer.reverseBytes(packed);
     }
 
     void emitMethod(
@@ -1175,26 +1136,6 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    private boolean fastjsonMemberSupported(BindingValue child) {
-        switch (child.kind()) {
-            case STRING: case BOOLEAN: case BYTE: case SHORT:
-            case INT: case LONG: case FLOAT: case DOUBLE:
-            case BIG_INTEGER: case BIG_DECIMAL:
-                return true;
-            default: return false;
-        }
-    }
-
-    void collectFastjsonMemberTypes(BindingValue value) {
-        if (!needsFastjsonNameHelper(value)) return;
-        for (BindingProperty p : value.properties()) {
-            BindingValue child = p.value();
-            if (fastjsonMemberSupported(child)) {
-                fastjsonMemberTypes.add(child.type().toString());
-            }
-        }
-    }
-
     private void emitNativeProperties(JavaWriter out, BindingValue value, FastjsonMode mode) {
         int index = 0;
         for (BindingProperty property : value.properties()) {
@@ -1203,80 +1144,58 @@ final class WriteEmitter {
             String expr = access(property.access(), "value");
             if (fixedRawName(property.name())) {
                 int length = property.name().length();
-                String args = field + "_raw0";
-                if (length >= 9) args += ", " + field + "_raw1";
+                String args = field + ".rawName0";
+                if (length == 9) args += ", (int) " + field + ".rawName1";
+                else if (length > 9) args += ", " + field + ".rawName1";
                 out.line("w.writeName" + length + "Raw(" + args + ");");
-                emitNativeValue(out, child, expr, mode);
             } else {
-                String name = fastjsonNameExpr(field, mode);
-                if (fastjsonMemberSupported(child)) {
-                    out.line("_writeMember(w, " + name + ", " + expr + ");");
-                } else {
-                    emitFastjsonName(out, name, mode);
-                    emitNativeValue(out, child, expr, mode);
+                emitFastjsonName(out, fastjsonNameExpr(field, mode), mode);
+            }
+            emitNativeValue(out, child, expr, mode);
+        }
+    }
+
+    boolean needsFastjsonStringHelper(BindingValue value) {
+        if (backend.backend() != org.sjf4j.annotation.binding.Backend.FASTJSON2
+                || value.direction() != BindingPlan.Direction.WRITE_TO
+                || !nativeEligible(value, new java.util.HashSet<BindingValue>())) return false;
+        return containsFastjsonString(value, new java.util.HashSet<BindingValue>());
+    }
+
+    private boolean containsFastjsonString(BindingValue value,
+            java.util.Set<BindingValue> visited) {
+        if (!visited.add(value)) return false;
+        switch (value.kind()) {
+            case STRING:
+                return true;
+            case POJO:
+                for (BindingProperty property : value.properties()) {
+                    if (containsFastjsonString(property.value(), visited)) return true;
                 }
-            }
+                return false;
+            case LIST:
+                // List<String> already calls JSONWriter.writeString(String) directly.
+                return value.elementValue().kind() != BindingValue.Kind.STRING
+                        && containsFastjsonString(value.elementValue(), visited);
+            case SET:
+                return containsFastjsonString(value.elementValue(), visited);
+            case MAP:
+                return containsFastjsonString(value.mapValue(), visited);
+            default:
+                return false;
         }
     }
 
-    boolean needsFastjsonNameHelper(BindingValue value) {
-        return backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
-                && value.direction() == BindingPlan.Direction.WRITE_TO
-                && value.kind() == BindingValue.Kind.POJO
-                && nativeEligible(value, new java.util.HashSet<BindingValue>());
-    }
-
-    void emitFastjsonNameHelper(JavaWriter out) {
-        for (FastjsonMode mode : fastjsonModes) {
-            emitFastjsonMemberOverloads(out, mode);
-        }
-    }
-
-    private void emitFastjsonMemberOverloads(JavaWriter out, FastjsonMode mode) {
-        String nameType;
-        switch (mode) {
-            case UTF8: nameType = "byte[]"; break;
-            case UTF16: nameType = "char[]"; break;
-            default: throw new AssertionError(mode);
-        }
-
-        for (String type : fastjsonMemberTypes) {
-            BindingValue.Kind kind = fastjsonMemberKind(type);
-            String method = fastjsonWriteMethod(kind);
-            boolean primitive = fastjsonIsPrimitive(type);
-            out.beginBlock("private static void _writeMember(com.alibaba.fastjson2.JSONWriter w,"
-                    + " " + nameType + " name, " + type
-                    + " value) throws java.io.IOException");
-            emitFastjsonName(out, "name", mode);
-            if (primitive) {
-                out.line("w." + method + "(value);");
-            } else {
-                out.beginBlock("if (value == null)");
-                out.line("w.writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                String argument = fastjsonUnboxArgument(type);
-                out.line("w." + method + "(" + argument + ");");
-                out.endBlock();
-            }
-            out.endBlock();
-        }
-    }
-
-    private BindingValue.Kind fastjsonMemberKind(String type) {
-        switch (type) {
-            case "java.lang.String": return BindingValue.Kind.STRING;
-            case "boolean": case "java.lang.Boolean": return BindingValue.Kind.BOOLEAN;
-            case "byte": case "java.lang.Byte": return BindingValue.Kind.BYTE;
-            case "short": case "java.lang.Short": return BindingValue.Kind.SHORT;
-            case "int": case "java.lang.Integer": return BindingValue.Kind.INT;
-            case "long": case "java.lang.Long": return BindingValue.Kind.LONG;
-            case "float": case "java.lang.Float": return BindingValue.Kind.FLOAT;
-            case "double": case "java.lang.Double": return BindingValue.Kind.DOUBLE;
-            case "java.math.BigInteger": return BindingValue.Kind.BIG_INTEGER;
-            case "java.math.BigDecimal": return BindingValue.Kind.BIG_DECIMAL;
-            default: throw new AssertionError(type);
-        }
+    void emitFastjsonStringHelper(JavaWriter out) {
+        out.beginBlock("private static void _writeString(com.alibaba.fastjson2.JSONWriter w,"
+                + " String value)");
+        out.beginBlock("if (value == null)");
+        out.line("w.writeNull();");
+        out.endBlock(" else {");
+        out.indent();
+        out.line("w.writeString(value);");
+        out.endBlock();
+        out.endBlock();
     }
 
     private String fastjsonWriteMethod(BindingValue.Kind kind) {
@@ -1293,13 +1212,6 @@ final class WriteEmitter {
             case BIG_DECIMAL: return "writeDecimal";
             default: throw new AssertionError(kind);
         }
-    }
-
-    private boolean fastjsonIsPrimitive(String type) {
-        return "boolean".equals(type) || "byte".equals(type)
-                || "short".equals(type) || "int".equals(type)
-                || "long".equals(type) || "float".equals(type)
-                || "double".equals(type);
     }
 
     private String fastjsonUnboxArgument(String type) {
@@ -1334,15 +1246,7 @@ final class WriteEmitter {
 
         switch (value.kind()) {
             case STRING:
-                out.beginBlock("");
-                out.line("String " + item + " = " + expression + ";");
-                out.beginBlock("if (" + item + " == null)");
-                out.line(writer + ".writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line(writer + ".writeString(" + item + ");");
-                out.endBlock();
-                out.endBlock();
+                out.line("_writeString(" + writer + ", " + expression + ");");
                 return;
             case CHARACTER:
                 if (value.primitive()) {
