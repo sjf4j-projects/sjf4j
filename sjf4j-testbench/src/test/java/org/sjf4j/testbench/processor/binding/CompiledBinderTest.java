@@ -154,6 +154,38 @@ public class CompiledBinderTest {
 
 
     @Test
+    public void fastjson2CompiledUsesFixedRawNamesAndEscapedFallback() throws IOException {
+        FastjsonPackedNameBinder compiled = CompiledInstances.of(FastjsonPackedNameBinder.class);
+        PackedNames source = new PackedNames();
+        String stringJson = compiled.writeString(source);
+        String utf8Json = new String(compiled.writeUtf8(source), StandardCharsets.UTF_8);
+        assertEquals(stringJson, utf8Json);
+
+        Map<?, ?> object = (Map<?, ?>) new SimpleJsonBinder().readNode(stringJson, Map.class);
+        assertEquals(20, object.size());
+        assertEquals("2", object.get("aa"));
+        assertEquals("3", object.get("aaa"));
+        assertEquals("4", object.get("aaaa"));
+        assertEquals("5", object.get("aaaaa"));
+        assertEquals("6", object.get("aaaaaa"));
+        assertEquals("7", object.get("aaaaaaa"));
+        assertEquals("8", object.get("aaaaaaaa"));
+        assertEquals("9", object.get("aaaaaaaaa"));
+        assertEquals("10", object.get("aaaaaaaaaa"));
+        assertEquals("11", object.get("aaaaaaaaaaa"));
+        assertEquals("12", object.get("aaaaaaaaaaaa"));
+        assertEquals("13", object.get("aaaaaaaaaaaaa"));
+        assertEquals("14", object.get("aaaaaaaaaaaaaa"));
+        assertEquals("15", object.get("aaaaaaaaaaaaaaa"));
+        assertEquals("16", object.get("aaaaaaaaaaaaaaaa"));
+        assertEquals("one", object.get("x"));
+        assertEquals("17", object.get("aaaaaaaaaaaaaaaaa"));
+        assertEquals("quote", object.get("a\"b"));
+        assertEquals("slash", object.get("a\\b"));
+        assertEquals("unicode", object.get("名字"));
+    }
+
+    @Test
     public void fastjson2CompiledListsSupportRandomAccessAndLinkedList() throws IOException {
         BinderContract compiled = CompiledInstances.of(Fastjson2Binder.class);
         List<String> randomAccess = new ArrayList<String>(Arrays.asList(
@@ -668,6 +700,77 @@ public class CompiledBinderTest {
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonBinder extends BinderContract {}
+
+    @CompiledBinder(backend = Backend.FASTJSON2)
+    public interface FastjsonPackedNameBinder {
+        @WriteTo
+        String writeString(PackedNames value) throws IOException;
+
+        @WriteTo
+        byte[] writeUtf8(PackedNames value) throws IOException;
+    }
+
+    public static final class PackedNames {
+        @NodeProperty("aa")
+        public String n2 = "2";
+
+        @NodeProperty("aaa")
+        public String n3 = "3";
+
+        @NodeProperty("aaaa")
+        public String n4 = "4";
+
+        @NodeProperty("aaaaa")
+        public String n5 = "5";
+
+        @NodeProperty("aaaaaa")
+        public String n6 = "6";
+
+        @NodeProperty("aaaaaaa")
+        public String n7 = "7";
+
+        @NodeProperty("aaaaaaaa")
+        public String n8 = "8";
+
+        @NodeProperty("aaaaaaaaa")
+        public String n9 = "9";
+
+        @NodeProperty("aaaaaaaaaa")
+        public String n10 = "10";
+
+        @NodeProperty("aaaaaaaaaaa")
+        public String n11 = "11";
+
+        @NodeProperty("aaaaaaaaaaaa")
+        public String n12 = "12";
+
+        @NodeProperty("aaaaaaaaaaaaa")
+        public String n13 = "13";
+
+        @NodeProperty("aaaaaaaaaaaaaa")
+        public String n14 = "14";
+
+        @NodeProperty("aaaaaaaaaaaaaaa")
+        public String n15 = "15";
+
+        @NodeProperty("aaaaaaaaaaaaaaaa")
+        public String n16 = "16";
+
+        @NodeProperty("x")
+        public String one = "one";
+
+        @NodeProperty("aaaaaaaaaaaaaaaaa")
+        public String seventeen = "17";
+
+        @NodeProperty("a\"b")
+        public String quote = "quote";
+
+        @NodeProperty("a\\b")
+        public String slash = "slash";
+
+        @NodeProperty("名字")
+        public String unicode = "unicode";
+    }
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2Binder extends BinderContract {}
