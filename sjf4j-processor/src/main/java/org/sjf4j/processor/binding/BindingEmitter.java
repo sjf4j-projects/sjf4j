@@ -58,9 +58,11 @@ final class BindingEmitter {
                             + value.helperName() + " = "
                             + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
                             + value.type() + ".class, "
-                            + org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecName())
+                            + (value.codecName() == null ? "null"
+                                    : org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecName()))
                             + ", "
-                            + org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecPattern())
+                            + (value.codecPattern() == null ? "null"
+                                    : org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecPattern()))
                             + ");"));
             return;
         }
