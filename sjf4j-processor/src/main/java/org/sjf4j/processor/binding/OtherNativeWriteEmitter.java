@@ -11,7 +11,7 @@ final class OtherNativeWriteEmitter {
         this.backend = backend;
     }
 
-    private void emitHelper(JavaWriter out, BindingValue value) {
+    void emitHelper(JavaWriter out, BindingValue value) {
         boolean gson = backend.backend() == org.sjf4j.annotation.binding.Backend.GSON;
         String generatorType = gson
                 ? "com.google.gson.stream.JsonWriter"
