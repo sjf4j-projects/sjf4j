@@ -1,6 +1,8 @@
 package org.sjf4j.processor.discovery;
 
+import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.annotation.processing.RoundEnvironment;
@@ -26,7 +28,7 @@ import java.util.Map;
  */
 public final class RegistryDiscovery {
 
-    private static final String BUILTIN_VALUE_CODECS = "org.sjf4j.value.ValueCodec";
+    private static final String BUILTIN_VALUE_CODECS = ValueCodec.class.getName();
 
     private final ProcessorContext context;
     private final Map<String, TypeElement> sourceRegistries = new LinkedHashMap<>();
@@ -73,7 +75,7 @@ public final class RegistryDiscovery {
             Element declaration = annotation.getAnnotationType().asElement();
             if (!(declaration instanceof TypeElement)
                     || !((TypeElement) declaration).getQualifiedName().contentEquals(
-                            "org.sjf4j.annotation.binding.BindingOptions")) continue;
+                            BindingOptions.class.getName())) continue;
 
             for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
                     context.elements.getElementValuesWithDefaults(annotation).entrySet()) {
