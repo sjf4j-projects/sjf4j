@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -531,7 +532,7 @@ final class BindingCompiler {
 
     private boolean hasMemberOneOf(PropertyAccess access) {
         return access != null &&
-                access.member().getAnnotation(org.sjf4j.annotation.node.OneOf.class) != null;
+                access.member().getAnnotation(OneOf.class) != null;
     }
 
     private boolean compileElement(
