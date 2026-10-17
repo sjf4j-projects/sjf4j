@@ -122,9 +122,15 @@ final class BindingCompiler {
             return existing;
         }
 
+        boolean explicitCodec = codecName != null || codecPattern != null;
+        if (explicitCodec && !context.types.isNodeValue(type)
+                && cannotRegisterCodecFor(type)) {
+            unsupported(method, generated, type,
+                    "@NodeProperty codecName/codecPattern cannot be applied to a native OBNT type");
+            return null;
+        }
         BindingValue.Kind kind =
-                codecName != null || codecPattern != null
-                        ? BindingValue.Kind.VALUE_CODEC
+                explicitCodec ? BindingValue.Kind.VALUE_CODEC
                         : resolveKind(direction, type, method, generated);
 
         if (kind == null) {
@@ -370,6 +376,27 @@ final class BindingCompiler {
                         type,
                         "node kind " + nodeKind +
                                 " is not yet supported by V2 direct binding");
+        }
+    }
+
+    private boolean cannotRegisterCodecFor(TypeMirror type) {
+        switch (context.types.nodeKind(type)) {
+            case VALUE_STRING:
+            case VALUE_STRING_CHARACTER:
+            case VALUE_STRING_ENUM:
+            case VALUE_NUMBER:
+            case VALUE_BOOLEAN:
+            case OBJECT_MAP:
+            case OBJECT_JSON_OBJECT:
+            case OBJECT_JOJO:
+            case ARRAY_LIST:
+            case ARRAY_SET:
+            case ARRAY_JSON_ARRAY:
+            case ARRAY_JAJO:
+            case ARRAY_ARRAY:
+                return true;
+            default:
+                return type.getKind().isPrimitive();
         }
     }
 
