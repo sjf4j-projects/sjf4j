@@ -767,7 +767,7 @@ class CompiledBinderConformanceTest {
 
                 Class<?> closedClass = Class.forName("fixture.ClosedModel", true, loader);
                 Object closed = impl.getMethod("readClosed", String.class)
-                        .invoke(binder, "{\\"name\\":\\"Ada\\",\\"unknown\\":42}");
+                        .invoke(binder, "{\"name\":\"Ada\",\"unknown\":42}");
                 org.sjf4j.JsonObject closedJojo = (org.sjf4j.JsonObject) closed;
                 assertEquals("Ada", closedClass.getField("name").get(closed), backend);
                 assertTrue(closedJojo.dynamicProperties().isEmpty(), backend);
