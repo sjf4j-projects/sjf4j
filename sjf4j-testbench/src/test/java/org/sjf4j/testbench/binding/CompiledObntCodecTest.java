@@ -14,7 +14,13 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.gson.binding.GsonBinder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
+import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.Binder;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -53,42 +59,42 @@ class CompiledObntCodecTest {
     @Test
     void allJsonBackendsMatchRuntimeAndRespectCodecAndJojoContracts() throws Exception {
         Fastjson2Compiled fastjson2 = CompiledInstances.of(Fastjson2Compiled.class);
-        check("Fastjson2", new org.sjf4j.backend.fastjson2.binding.Fastjson2Binder(),
+        check("Fastjson2", new Fastjson2Binder(),
                 fastjson2::readCodec, fastjson2::writeCodec,
                 fastjson2::readJojo, fastjson2::writeJojo,
                 fastjson2::readObject, fastjson2::writeObject,
                 fastjson2::readArray, fastjson2::writeArray,
                 fastjson2::readToken, fastjson2::writeToken);
         Jackson2Compiled jackson2 = CompiledInstances.of(Jackson2Compiled.class);
-        check("Jackson2", new org.sjf4j.backend.jackson2.binding.Jackson2Binder(),
+        check("Jackson2", new Jackson2Binder(),
                 jackson2::readCodec, jackson2::writeCodec,
                 jackson2::readJojo, jackson2::writeJojo,
                 jackson2::readObject, jackson2::writeObject,
                 jackson2::readArray, jackson2::writeArray,
                 jackson2::readToken, jackson2::writeToken);
         Jackson3Compiled jackson3 = CompiledInstances.of(Jackson3Compiled.class);
-        check("Jackson3", new org.sjf4j.backend.jackson3.binding.Jackson3Binder(),
+        check("Jackson3", new Jackson3Binder(),
                 jackson3::readCodec, jackson3::writeCodec,
                 jackson3::readJojo, jackson3::writeJojo,
                 jackson3::readObject, jackson3::writeObject,
                 jackson3::readArray, jackson3::writeArray,
                 jackson3::readToken, jackson3::writeToken);
         GsonCompiled gson = CompiledInstances.of(GsonCompiled.class);
-        check("Gson", new org.sjf4j.backend.gson.binding.GsonBinder(),
+        check("Gson", new GsonBinder(),
                 gson::readCodec, gson::writeCodec,
                 gson::readJojo, gson::writeJojo,
                 gson::readObject, gson::writeObject,
                 gson::readArray, gson::writeArray,
                 gson::readToken, gson::writeToken);
         JsonpCompiled jsonp = CompiledInstances.of(JsonpCompiled.class);
-        check("Jsonp", new org.sjf4j.backend.jsonp.binding.JsonpBinder(),
+        check("Jsonp", new JsonpBinder(),
                 jsonp::readCodec, jsonp::writeCodec,
                 jsonp::readJojo, jsonp::writeJojo,
                 jsonp::readObject, jsonp::writeObject,
                 jsonp::readArray, jsonp::writeArray,
                 jsonp::readToken, jsonp::writeToken);
         SimpleCompiled simple = CompiledInstances.of(SimpleCompiled.class);
-        check("Simple", new org.sjf4j.binding.simple.SimpleJsonBinder(),
+        check("Simple", new SimpleJsonBinder(),
                 simple::readCodec, simple::writeCodec,
                 simple::readJojo, simple::writeJojo,
                 simple::readObject, simple::writeObject,

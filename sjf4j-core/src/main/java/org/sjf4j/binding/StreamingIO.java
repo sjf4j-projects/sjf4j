@@ -344,7 +344,7 @@ public final class StreamingIO {
 
     public static Object readValueCodec(StreamingReader reader, ValueInfo valueInfo,
                                         RuntimeContext context) throws IOException {
-        Class<?> raw = valueInfo.rawClazz;
+        Class<?> rawClazz = valueInfo.rawClazz;
 
         /*
          * Use nullable read APIs directly instead of probing null first.
@@ -353,51 +353,51 @@ public final class StreamingIO {
          * values.
          */
 
-        if (raw == String.class) {
+        if (rawClazz == String.class) {
             return valueInfo.rawToValue(reader.readString());
         }
 
-        if (raw == Boolean.class) {
+        if (rawClazz == Boolean.class) {
             return valueInfo.rawToValue(reader.readBoolean());
         }
 
-        if (raw == Integer.class) {
+        if (rawClazz == Integer.class) {
             return valueInfo.rawToValue(reader.readInt());
         }
 
-        if (raw == Long.class) {
+        if (rawClazz == Long.class) {
             return valueInfo.rawToValue(reader.readLong());
         }
 
-        if (raw == Double.class) {
+        if (rawClazz == Double.class) {
             return valueInfo.rawToValue(reader.readDouble());
         }
 
-        if (raw == Float.class) {
+        if (rawClazz == Float.class) {
             return valueInfo.rawToValue(reader.readFloat());
         }
 
-        if (raw == Short.class) {
+        if (rawClazz == Short.class) {
             return valueInfo.rawToValue(reader.readShort());
         }
 
-        if (raw == Byte.class) {
+        if (rawClazz == Byte.class) {
             return valueInfo.rawToValue(reader.readByte());
         }
 
-        if (raw == BigInteger.class) {
+        if (rawClazz == BigInteger.class) {
             return valueInfo.rawToValue(reader.readBigInteger());
         }
 
-        if (raw == BigDecimal.class) {
+        if (rawClazz == BigDecimal.class) {
             return valueInfo.rawToValue(reader.readBigDecimal());
         }
 
-        if (raw == Number.class) {
+        if (rawClazz == Number.class) {
             return valueInfo.rawToValue(reader.readNumber());
         }
 
-        if (raw == Map.class) {
+        if (rawClazz == Map.class) {
             Object value = reader.readRawNode();
             if (value == null) {
                 return valueInfo.rawToValue(null);
@@ -405,7 +405,7 @@ public final class StreamingIO {
             return valueInfo.rawToValue(castMap(value));
         }
 
-        if (raw == List.class) {
+        if (rawClazz == List.class) {
             Object value = reader.readRawNode();
             if (value == null) {
                 return valueInfo.rawToValue(null);
@@ -413,7 +413,7 @@ public final class StreamingIO {
             return valueInfo.rawToValue(castList(value));
         }
 
-        throw new BindingException("cannot read value with ValueCodec into type '" + raw.getName() + "'");
+        throw new BindingException("cannot read value with ValueCodec into type '" + rawClazz.getName() + "'");
     }
 
     /**
