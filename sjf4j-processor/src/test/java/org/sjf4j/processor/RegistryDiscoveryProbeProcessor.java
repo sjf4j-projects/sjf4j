@@ -51,6 +51,18 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
                 }
             }
         }
+        TypeElement otherOwner = context.elements.getTypeElement("fixture.OtherBinder");
+        if (otherOwner != null) {
+            CompiledMetadata other = context.metadata(otherOwner);
+            TypeElement instant = context.elements.getTypeElement("java.time.Instant");
+            for (String format : new String[]{"alpha", "beta"}) {
+                ValueCodecMetadata info = other.valueCodec(instant.asType(), format);
+                if (info != null) {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                            "OTHER " + format + " -> " + info.rawType);
+                }
+            }
+        }
         return false;
     }
 }
