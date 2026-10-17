@@ -127,10 +127,30 @@ public final class Fastjson2Writer extends StreamingWriter {
         }
 
         Fastjson2CompiledName name = (Fastjson2CompiledName) compiledName;
-        if (utf8) {
-            writer.writeNameRaw(name.rawNameUtf8);
-        } else {
-            writer.writeNameRaw(name.rawNameUtf16);
+        // The name's fixed-width arguments were packed once when prepared,
+        // and are usable by both native UTF-8 and UTF-16 writers.
+        switch (name.rawNameLength) {
+            case 2: writer.writeName2Raw(name.rawName0); return;
+            case 3: writer.writeName3Raw(name.rawName0); return;
+            case 4: writer.writeName4Raw(name.rawName0); return;
+            case 5: writer.writeName5Raw(name.rawName0); return;
+            case 6: writer.writeName6Raw(name.rawName0); return;
+            case 7: writer.writeName7Raw(name.rawName0); return;
+            case 8: writer.writeName8Raw(name.rawName0); return;
+            case 9: writer.writeName9Raw(name.rawName0, (int) name.rawName1); return;
+            case 10: writer.writeName10Raw(name.rawName0, name.rawName1); return;
+            case 11: writer.writeName11Raw(name.rawName0, name.rawName1); return;
+            case 12: writer.writeName12Raw(name.rawName0, name.rawName1); return;
+            case 13: writer.writeName13Raw(name.rawName0, name.rawName1); return;
+            case 14: writer.writeName14Raw(name.rawName0, name.rawName1); return;
+            case 15: writer.writeName15Raw(name.rawName0, name.rawName1); return;
+            case 16: writer.writeName16Raw(name.rawName0, name.rawName1); return;
+            default:
+                if (utf8) {
+                    writer.writeNameRaw(name.rawNameUtf8);
+                } else {
+                    writer.writeNameRaw(name.rawNameUtf16);
+                }
         }
     }
 
