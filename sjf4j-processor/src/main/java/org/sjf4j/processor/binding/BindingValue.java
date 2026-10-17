@@ -23,6 +23,7 @@ final class BindingValue {
         BIG_INTEGER,
         BIG_DECIMAL,
         ENUM,
+        VALUE_CODEC,
         POJO,
         LIST,
         SET,
@@ -41,6 +42,8 @@ final class BindingValue {
     private List<BindingProperty> properties = Collections.emptyList();
     private BindingValue elementValue;
     private BindingValue mapValue;
+    private String codecName;
+    private String codecPattern;
 
     BindingValue(
             BindingPlan.Direction direction,
@@ -91,6 +94,23 @@ final class BindingValue {
 
     void properties(List<BindingProperty> properties) {
         this.properties = Collections.unmodifiableList(properties);
+    }
+
+    boolean isCodec() {
+        return kind == Kind.VALUE_CODEC;
+    }
+
+    void codecSelection(String name, String pattern) {
+        this.codecName = name;
+        this.codecPattern = pattern;
+    }
+
+    String codecName() {
+        return codecName;
+    }
+
+    String codecPattern() {
+        return codecPattern;
     }
 
     BindingValue elementValue() {
