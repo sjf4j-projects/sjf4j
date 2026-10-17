@@ -1074,33 +1074,17 @@ final class WriteEmitter {
                 out.line("w.endObject();");
                 break;
             case LIST:
-                if (value.elementValue().kind() == BindingValue.Kind.STRING) {
-                    // Fastjson2 writes List<String> directly into its UTF-8/UTF-16
-                    // buffer. It uses indexed access, so keep iterators for linked lists.
-                    out.beginBlock("if (value instanceof java.util.RandomAccess)");
-                    out.line("w.writeString(value);");
-                    out.endBlock(" else {");
-                    out.indent();
-                    out.line("w.startArray();");
-                    out.line("int count = 0;");
-                    out.beginBlock("for (String element : value)");
-                    out.beginBlock("if (count++ > 0)");
-                    out.line("w.writeComma();");
-                    out.endBlock();
-                    out.line("w.writeString(element);");
-                    out.endBlock();
-                    out.line("w.endArray();");
-                    out.endBlock();
-                    break;
-                }
-
                 out.line("w.startArray();");
                 out.beginBlock("if (value instanceof java.util.RandomAccess)");
                 out.beginBlock("for (int i = 0, size = value.size(); i < size; i++)");
                 out.beginBlock("if (i != 0)");
                 out.line("w.writeComma();");
                 out.endBlock();
-                emitNativeValue(out, value.elementValue(), "value.get(i)", mode);
+                if (value.elementValue().kind() == BindingValue.Kind.STRING) {
+                    out.line("w.writeString(value.get(i));");
+                } else {
+                    emitNativeValue(out, value.elementValue(), "value.get(i)", mode);
+                }
                 out.endBlock();
                 out.endBlock(" else {");
                 out.indent();
@@ -1109,7 +1093,11 @@ final class WriteEmitter {
                 out.beginBlock("if (count++ > 0)");
                 out.line("w.writeComma();");
                 out.endBlock();
-                emitNativeValue(out, value.elementValue(), "element", mode);
+                if (value.elementValue().kind() == BindingValue.Kind.STRING) {
+                    out.line("w.writeString(element);");
+                } else {
+                    emitNativeValue(out, value.elementValue(), "element", mode);
+                }
                 out.endBlock();
                 out.endBlock();
                 out.line("w.endArray();");
