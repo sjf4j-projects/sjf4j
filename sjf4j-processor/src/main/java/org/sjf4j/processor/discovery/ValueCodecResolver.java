@@ -10,7 +10,10 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,10 +32,10 @@ public final class ValueCodecResolver {
         this.codecType = context.elements.getTypeElement("org.sjf4j.value.ValueCodec").asType();
     }
 
-    /** True if any format is declared for this value type. */
+    /** True if a codec is registered for this type or its nearest ancestor. */
     public boolean contains(TypeMirror valueType) {
         ensureScanned();
-        return byType.containsKey(context.typeUtils.erasure(valueType).toString());
+        return registrations(valueType) != null;
     }
 
     private void ensureScanned() {
@@ -44,9 +47,51 @@ public final class ValueCodecResolver {
 
     public ValueCodecMetadata resolve(TypeMirror valueType, String format) {
         ensureScanned();
-        Map<String, ValueCodecMetadata> codecs =
-                byType.get(context.typeUtils.erasure(valueType).toString());
-        return codecs == null ? null : codecs.get(format == null ? "" : format);
+        Map<String, ValueCodecMetadata> codecs = registrations(valueType);
+        if (codecs == null) return null;
+        if (format == null) return codecs.values().iterator().next();
+        return codecs.get(format);
+    }
+
+    /**
+     * Runtime ValueRegistry resolves registered types breadth-first through
+     * supertypes. Match that precedence, including ambiguity at equal distance.
+     */
+    private Map<String, ValueCodecMetadata> registrations(TypeMirror valueType) {
+        ArrayDeque<TypeMirror> queue = new ArrayDeque<>();
+        Set<String> visited = new HashSet<>();
+        queue.add(valueType);
+        visited.add(context.typeUtils.erasure(valueType).toString());
+
+        while (!queue.isEmpty()) {
+            Map<String, ValueCodecMetadata> found = null;
+            String matched = null;
+            int breadth = queue.size();
+            for (int i = 0; i < breadth; i++) {
+                TypeMirror candidate = queue.remove();
+                String key = context.typeUtils.erasure(candidate).toString();
+                Map<String, ValueCodecMetadata> codecs = byType.get(key);
+                if (codecs != null) {
+                    if (found != null) {
+                        TypeElement element = context.types.typeElement(valueType);
+                        if (element != null) {
+                            context.error(element, "ambiguous @NodeValue codecs for '"
+                                    + valueType + "': registered for '" + matched
+                                    + "' and '" + key + "' at the same type distance");
+                        }
+                        return found;
+                    }
+                    found = codecs;
+                    matched = key;
+                }
+                for (TypeMirror parent : context.typeUtils.directSupertypes(candidate)) {
+                    String name = context.typeUtils.erasure(parent).toString();
+                    if (visited.add(name)) queue.add(parent);
+                }
+            }
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private void scan() {
