@@ -105,6 +105,41 @@ class CompiledValueCodecDiscoveryTest {
     }
 
     @Test
+    void classpathCodecRequiresExplicitRegistryAndExecutesWhenRegistered() throws Exception {
+        String base = "package fixture; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; ";
+        String body = "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+                + " @ReadFrom ClasspathRegistries.Money read(String json) throws java.io.IOException; "
+                + " @WriteTo String write(ClasspathRegistries.Money value) throws java.io.IOException; }";
+
+        NavigatorTestCompiler.Result missing = NavigatorTestCompiler.compile(
+                Map.of("fixture/Binder.java", base + body), CodegenProcessor.class);
+        assertFalse(missing.success, "without registry, Money must not become a ValueCodec");
+
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
+                Map.of("fixture/Binder.java", base
+                        + "@BindingOptions(registries={ClasspathRegistries.Third.class, "
+                        + "ClasspathRegistries.First.class}) " + body),
+                CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
+                        .contains("readValueCodec"), compiled.generatedSource("fixture/Binder_Impl.java"));
+
+        ValueRegistry.registerAnnotated(ClasspathRegistries.Third.class);
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
+            Object binder = binderType.getConstructor().newInstance();
+            ClasspathRegistries.Money read =
+                    (ClasspathRegistries.Money) binderType.getMethod("read", String.class)
+                            .invoke(binder, "\"123\"");
+            assertEquals("123", read.text);
+            assertEquals("\"123\"", binderType.getMethod("write", ClasspathRegistries.Money.class)
+                    .invoke(binder, read));
+        }
+    }
+
+    @Test
     void explicitClasspathRegistryFormatIsVisibleToBindingCompiler() throws Exception {
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bean.java",
