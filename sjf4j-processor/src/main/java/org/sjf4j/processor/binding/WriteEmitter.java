@@ -84,7 +84,9 @@ final class WriteEmitter {
 
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
-        if (!nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())) {
+        if (!nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())
+                && !containsAdaptedValue(compiled.value(),
+                        new java.util.HashSet<BindingValue>())) {
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -107,7 +109,8 @@ final class WriteEmitter {
         NameAllocator names =
                 methodNames(plan);
 
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
+        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                && nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
@@ -384,6 +387,16 @@ final class WriteEmitter {
     private boolean containsString(BindingValue value, java.util.Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
+            case VALUE_CODEC:
+                out.beginBlock("if (" + expression + " == null)");
+                out.line(writer + ".writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
+                        + value.helperName() + ".valueToRaw(" + expression + "), "
+                        + RUNTIME_CONTEXT + ".EMPTY);");
+                out.endBlock();
+                return;
             case STRING:
                 return true;
             case POJO:
@@ -733,7 +746,30 @@ final class WriteEmitter {
 
     /** Native helpers require a fully concrete type graph. */
     boolean requiresWriteHelper(BindingValue value) {
-        return nativeEligible(value, new java.util.HashSet<BindingValue>());
+        return nativeEligible(value, new java.util.HashSet<BindingValue>())
+                || containsAdaptedValue(value, new java.util.HashSet<BindingValue>());
+    }
+
+    /** Codec subtrees use compiled StreamingWriter, preserving native POJO fast paths. */
+    private boolean containsAdaptedValue(BindingValue value,
+            java.util.Set<BindingValue> visited) {
+        if (!visited.add(value)) return false;
+        switch (value.kind()) {
+            case VALUE_CODEC:
+                return true;
+            case POJO:
+                for (BindingProperty property : value.properties()) {
+                    if (containsAdaptedValue(property.value(), visited)) return true;
+                }
+                return false;
+            case LIST:
+            case SET:
+                return containsAdaptedValue(value.elementValue(), visited);
+            case MAP:
+                return containsAdaptedValue(value.mapValue(), visited);
+            default:
+                return false;
+        }
     }
 
     private boolean nativeEligible(BindingValue value,
@@ -742,6 +778,7 @@ final class WriteEmitter {
         switch (value.kind()) {
             case RUNTIME:
             case NUMBER:
+            case VALUE_CODEC:
                 return false;
             case POJO:
                 for (BindingProperty p : value.properties()) {
