@@ -125,6 +125,61 @@ class Fastjson2BinderTest {
     }
 
     @Test
+    void cachedPackedNamesMatchOrdinaryNamesInBothEncodings() throws Exception {
+        List<String> names = new ArrayList<>();
+        for (int size = 1; size <= 17; size++) {
+            char[] letters = new char[size];
+            Arrays.fill(letters, 'a');
+            names.add(new String(letters));
+        }
+        names.addAll(Arrays.asList("", "a\\\"b", "a\\\\b", "名字", "é", "line\\nfeed"));
+
+        for (String name : names) {
+            Fastjson2CompiledName compiled = new Fastjson2CompiledName(name);
+            boolean eligible = name.length() >= 2 && name.length() <= 16
+                    && name.chars().allMatch(ch -> ch >= 32 && ch <= 126
+                            && ch != '"' && ch != '\\\\');
+            assertEquals(eligible ? name.length() : 0, compiled.rawNameLength, name);
+            for (boolean utf8 : new boolean[]{false, true}) {
+                assertEquals(writePreparedName(name, utf8, false),
+                        writePreparedName(name, utf8, true), name);
+            }
+        }
+    }
+
+    @Test
+    void cachedPackedNamesRespectNonRawWriterFeatures() throws Exception {
+        for (JSONWriter.Feature feature : Arrays.asList(
+                JSONWriter.Feature.UseSingleQuotes,
+                JSONWriter.Feature.UnquoteFieldName,
+                JSONWriter.Feature.BrowserSecure,
+                JSONWriter.Feature.EscapeNoneAscii)) {
+            for (boolean utf8 : new boolean[]{false, true}) {
+                assertEquals(writePreparedName("property", utf8, false, feature),
+                        writePreparedName("property", utf8, true, feature), feature.name());
+            }
+        }
+    }
+
+    private static String writePreparedName(String name, boolean utf8, boolean prepared,
+            JSONWriter.Feature... features) throws Exception {
+        Fastjson2Binder binder = new Fastjson2Binder(
+                JSONFactory.createReadContext(), JSONFactory.createWriteContext(features));
+        try (Fastjson2Writer writer = utf8 ? binder.createWriterUtf8() : binder.createWriter()) {
+            writer.startObject();
+            if (prepared) writer.writeName(writer.createCompiledName(name));
+            else writer.writeName(name);
+            writer.writeString("héllo");
+            // Also exercise the second-property separator after the cached name.
+            if (prepared) writer.writeName(writer.createCompiledName("tail"));
+            else writer.writeName("tail");
+            writer.writeNull();
+            writer.endObject();
+            return utf8 ? new String(writer.toBytes(), StandardCharsets.UTF_8) : writer.toString();
+        }
+    }
+
+    @Test
     void nativeWritersShareRawNameFeatureContract() {
         Fastjson2Binder plain = new Fastjson2Binder();
         try (JSONWriter writer = plain.createNativeWriter()) {
