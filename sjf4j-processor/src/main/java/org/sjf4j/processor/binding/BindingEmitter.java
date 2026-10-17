@@ -8,8 +8,7 @@ final class BindingEmitter {
 
     private final ReadEmitter reads;
     private final WriteEmitter writes;
-    private boolean nativeStringMemberEmitted;
-    private boolean fastjsonStringEmitted;
+    private boolean stringHelperEmitted;
 
     BindingEmitter(
             ProcessorContext context,
@@ -31,9 +30,9 @@ final class BindingEmitter {
 
         if (method.plan().direction() == BindingPlan.Direction.WRITE_TO) {
             writes.registerWriteOutput(method.plan().writeOutput());
-            if (!fastjsonStringEmitted && writes.needsFastjsonStringHelper(method.value())) {
-                generated.addHelper(out -> writes.emitFastjsonStringHelper(out));
-                fastjsonStringEmitted = true;
+            if (!stringHelperEmitted && writes.needsStringHelper(method.value())) {
+                generated.addHelper(out -> writes.emitStringHelper(out));
+                stringHelperEmitted = true;
             }
         }
 
@@ -76,11 +75,6 @@ final class BindingEmitter {
                 writes.usesCompiledNames()) {
             generated.addField(
                     out -> writes.emitCompiledNames(out, value));
-        }
-
-        if (!nativeStringMemberEmitted && writes.needsNativeStringMember(value)) {
-            generated.addHelper(out -> writes.emitNativeStringMember(out));
-            nativeStringMemberEmitted = true;
         }
 
         generated.addHelper(
