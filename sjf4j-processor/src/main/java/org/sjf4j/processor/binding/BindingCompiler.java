@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -180,6 +181,12 @@ final class BindingCompiler {
         }
 
         switch (kind) {
+            case JOJO:
+                TypeElement jojoType = context.types.typeElement(type);
+                NodeObject options = jojoType == null ? null : jojoType.getAnnotation(NodeObject.class);
+                value.dynamicOptions(options == null || options.readDynamic(),
+                        options == null || options.writeDynamic());
+                // JOJO declared members use the existing POJO property compiler.
             case POJO:
                 if (!compilePojo(
                         value,
@@ -319,14 +326,23 @@ final class BindingCompiler {
             case COMPILE_TIME_UNKNOWN:
                 return BindingValue.Kind.RUNTIME;
 
+            case OBJECT_JSON_OBJECT:
+                return BindingValue.Kind.JSON_OBJECT;
+
+            case ARRAY_JSON_ARRAY:
+                return BindingValue.Kind.JSON_ARRAY;
+
+            case OBJECT_JOJO:
             case OBJECT_POJO:
                 if (direction ==
                         BindingPlan.Direction.WRITE_TO) {
-                    return BindingValue.Kind.POJO;
+                    return nodeKind == NodeKind.OBJECT_JOJO
+                            ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
                 }
 
                 if (hasPublicNoArgsConstructor(type)) {
-                    return BindingValue.Kind.POJO;
+                    return nodeKind == NodeKind.OBJECT_JOJO
+                            ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
                 }
 
                 return unsupported(
@@ -417,6 +433,7 @@ final class BindingCompiler {
                         properties.size());
 
         Map<String, String> claimedNames = new LinkedHashMap<String, String>();
+        List<String> ignored = new ArrayList<String>();
 
         for (Property property :
                 properties.values()) {
@@ -428,6 +445,15 @@ final class BindingCompiler {
                             : property.read();
 
             if (access == null) {
+                if (value.kind() == BindingValue.Kind.JOJO
+                        && value.direction() == BindingPlan.Direction.READ_FROM) {
+                    ignored.add(property.name());
+                    PropertyAccess readable = property.read();
+                    if (readable != null) {
+                        NodeProperty ann = readable.member().getAnnotation(NodeProperty.class);
+                        if (ann != null) Collections.addAll(ignored, ann.aliases());
+                    }
+                }
                 continue;
             }
 
@@ -499,6 +525,7 @@ final class BindingCompiler {
         }
 
         value.properties(compiled);
+        value.ignoredNames(ignored);
         return true;
     }
 

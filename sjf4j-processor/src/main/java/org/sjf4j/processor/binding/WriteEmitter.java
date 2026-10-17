@@ -337,7 +337,13 @@ final class WriteEmitter {
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
             case POJO:
+            case JOJO:
                 emitPojo(out, value);
+                break;
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+                out.line(STREAMING_IO + ".writeNode(writer, value, "
+                        + RUNTIME_CONTEXT + ".EMPTY);");
                 break;
             case LIST:
             case SET:
@@ -394,6 +400,7 @@ final class WriteEmitter {
             case STRING:
                 return true;
             case POJO:
+            case JOJO:
                 for (BindingProperty property : value.properties()) {
                     if (containsString(property.value(), visited)) return true;
                 }
@@ -482,6 +489,16 @@ final class WriteEmitter {
                     access(
                             property.access(),
                             "value"));
+        }
+
+        if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
+            out.line("int count = " + index + ";");
+            out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
+                    + "value.dynamicProperties().entrySet())");
+            out.line("writer.writeName(entry.getKey(), count++ > 0);");
+            out.line(STREAMING_IO + ".writeNode(writer, entry.getValue(), "
+                    + RUNTIME_CONTEXT + ".EMPTY);");
+            out.endBlock();
         }
 
         out.line("writer.endObject();");
@@ -689,6 +706,12 @@ final class WriteEmitter {
                 out.endBlock();
                 return;
 
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
+                        + expression + ", " + RUNTIME_CONTEXT + ".EMPTY);");
+                return;
+
             case RUNTIME:
                 out.line(
                         STREAMING_IO +
@@ -713,24 +736,6 @@ final class WriteEmitter {
             String expression,
             String suffix) {
 
-        if (backend.backend() == Backend.FASTJSON2
-                && value.primitive()) {
-            String nativeMethod;
-            switch (suffix) {
-                case "Boolean": nativeMethod = "writeBool"; break;
-                case "Byte": nativeMethod = "writeInt8"; break;
-                case "Short": nativeMethod = "writeInt16"; break;
-                case "Int": nativeMethod = "writeInt32"; break;
-                case "Long": nativeMethod = "writeInt64"; break;
-                case "Float": nativeMethod = "writeFloat"; break;
-                case "Double": nativeMethod = "writeDouble"; break;
-                default: nativeMethod = null; break;
-            }
-            if (nativeMethod != null) {
-                out.line(writer + ".nativeWriter()." + nativeMethod + "(" + expression + ");");
-                return;
-            }
-        }
         out.line(
                 writer +
                         (value.primitive()
@@ -760,6 +765,9 @@ final class WriteEmitter {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
             case VALUE_CODEC:
+            case JOJO:
+            case JSON_OBJECT:
+            case JSON_ARRAY:
                 return true;
             case POJO:
                 for (BindingProperty property : value.properties()) {
@@ -783,6 +791,9 @@ final class WriteEmitter {
             case RUNTIME:
             case NUMBER:
             case VALUE_CODEC:
+            case JOJO:
+            case JSON_OBJECT:
+            case JSON_ARRAY:
                 return false;
             case POJO:
                 for (BindingProperty p : value.properties()) {

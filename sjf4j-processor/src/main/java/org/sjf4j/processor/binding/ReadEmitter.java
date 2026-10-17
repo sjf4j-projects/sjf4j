@@ -129,7 +129,7 @@ final class ReadEmitter {
             BindingValue value) {
 
         if (!backend.usesNameMatcher() ||
-                value.kind() != BindingValue.Kind.POJO ||
+                (value.kind() != BindingValue.Kind.POJO && value.kind() != BindingValue.Kind.JOJO) ||
                 value.properties().isEmpty()) {
             return;
         }
@@ -177,7 +177,18 @@ final class ReadEmitter {
 
         switch (value.kind()) {
             case POJO:
+            case JOJO:
                 emitPojo(out, value);
+                break;
+            case JSON_OBJECT:
+                out.line("Object raw = reader.readRawNode();");
+                out.line("return raw == null ? null : new org.sjf4j.JsonObject("
+                        + STREAMING_IO + ".castMap(raw));");
+                break;
+            case JSON_ARRAY:
+                out.line("Object raw = reader.readRawNode();");
+                out.line("return raw == null ? null : new org.sjf4j.JsonArray("
+                        + STREAMING_IO + ".castList(raw));");
                 break;
 
             case LIST:
@@ -199,7 +210,7 @@ final class ReadEmitter {
         }
 
         out.endBlock();
-        if (fastjson2Pojo != null && value.kind() == BindingValue.Kind.POJO
+        if (fastjson2Pojo != null && (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO)
                 && !value.properties().isEmpty()) {
             out.blank();
             fastjson2Pojo.emitFallback(out, value, this);
@@ -270,7 +281,7 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        out.line("reader.skipNode();");
+        emitUnknownObjectProperty(out, value, "reader.currentName()");
         out.line("break;");
         out.dedent();
 
@@ -315,11 +326,38 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        out.line("reader.skipNode();");
+        emitUnknownObjectProperty(out, value, "name");
         out.line("break;");
         out.dedent();
 
         out.endBlock();
+    }
+
+    /** Only JOJO unknown members are dynamic; read-only declared names remain ignored. */
+    void emitUnknownObjectProperty(JavaWriter out, BindingValue value, String nameExpression) {
+        if (value.kind() != BindingValue.Kind.JOJO || !value.readDynamic()) {
+            out.line("reader.skipNode();");
+            return;
+        }
+        out.line("String unknownName = " + nameExpression + ";");
+        if (!value.ignoredNames().isEmpty()) {
+            StringBuilder condition = new StringBuilder();
+            for (String name : value.ignoredNames()) {
+                if (condition.length() > 0) condition.append(" || ");
+                condition.append(JavaWriter.stringLiteral(name)).append(".equals(unknownName)");
+            }
+            out.beginBlock("if (" + condition + ")");
+            out.line("reader.skipNode();");
+            out.endBlock(" else {");
+            out.indent();
+        }
+        out.line("java.util.Map<String, Object> dynamic = org.sjf4j.InternalAccess.dynamicProperties(value);");
+        out.beginBlock("if (dynamic == null)");
+        out.line("dynamic = new java.util.LinkedHashMap<>();");
+        out.line("org.sjf4j.InternalAccess.dynamicProperties(value, dynamic);");
+        out.endBlock();
+        out.line("dynamic.put(unknownName, reader.readRawNode());");
+        if (!value.ignoredNames().isEmpty()) out.endBlock();
     }
 
     String matcherFieldName(BindingValue value) {
