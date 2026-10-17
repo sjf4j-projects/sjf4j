@@ -93,7 +93,9 @@ final class BackendSpec {
     boolean usesCompiledNames() {
         return backend == Backend.JACKSON2
                 || backend == Backend.JACKSON3
-                || backend == Backend.FASTJSON2;
+                || backend == Backend.FASTJSON2
+                || backend == Backend.SIMPLE
+                || backend == Backend.SNAKE;
     }
 
     String compiledNameType() {
@@ -104,6 +106,9 @@ final class BackendSpec {
                 return "org.sjf4j.backend.jackson3.binding.Jackson3CompiledName";
             case FASTJSON2:
                 return "org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName";
+            case SIMPLE:
+            case SNAKE:
+                return "org.sjf4j.binding.CompiledName";
             default:
                 throw new IllegalStateException(
                         "No compiled property names for backend " + backend);
