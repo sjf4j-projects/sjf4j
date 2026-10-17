@@ -13,6 +13,10 @@ public final class CompiledMetadata {
         this.valueCodecs = new ValueCodecResolver(context, context.discovery.registries(owner));
     }
 
+    public boolean hasValueCodec(TypeMirror type) {
+        return valueCodecs.contains(type);
+    }
+
     public ValueCodecMetadata valueCodec(TypeMirror type, String format) {
         return valueCodecs.resolve(type, format);
     }
