@@ -61,11 +61,57 @@ final class WriteEmitter {
             out.line("private static final " + backend.compiledNameType() + " " +
                     field + " = new " + backend.compiledNameType() + "(" +
                     JavaWriter.stringLiteral(property.name()) + ");");
+            if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                    && fixedRawName(property.name())) {
+                String name = property.name();
+                int length = name.length();
+                // Fastjson2's writeNameXRaw overloads use native-endian packed
+                // ASCII data. Resolve byte order at class initialization, not per field.
+                String encoded = "\"" + name + "\":";
+                String raw = length == 8 || length == 16 ? name : encoded;
+                out.line("private static final long " + field + "_raw0 = " +
+                        packedLong(raw, 0) + ";");
+                if (length == 9) {
+                    out.line("private static final int " + field + "_raw1 = " +
+                            packedInt(encoded, 8) + ";");
+                } else if (length >= 10) {
+                    out.line("private static final long " + field + "_raw1 = " +
+                            packedLong(raw, 8) + ";");
+                }
+            }
         }
     }
 
     private String compiledNameField(BindingValue value, int index) {
         return value.helperName() + "_name_" + index;
+    }
+
+    private static boolean fixedRawName(String name) {
+        int length = name.length();
+        if (length < 2 || length > 16) return false;
+        for (int i = 0; i < length; i++) {
+            char c = name.charAt(i);
+            if (c < 0x20 || c > 0x7E || c == '"' || c == '\\') return false;
+        }
+        return true;
+    }
+
+    private static String packedLong(String source, int start) {
+        long packed = 0;
+        for (int i = 0; i < 8 && start + i < source.length(); i++) {
+            packed |= ((long) source.charAt(start + i)) << (i * 8);
+        }
+        return "java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN ? "
+                + packed + "L : " + Long.reverseBytes(packed) + "L";
+    }
+
+    private static String packedInt(String source, int start) {
+        int packed = 0;
+        for (int i = 0; i < 4 && start + i < source.length(); i++) {
+            packed |= source.charAt(start + i) << (i * 8);
+        }
+        return "java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN ? "
+                + packed + " : " + Integer.reverseBytes(packed);
     }
 
     void emitMethod(
@@ -1153,13 +1199,22 @@ final class WriteEmitter {
         int index = 0;
         for (BindingProperty property : value.properties()) {
             BindingValue child = property.value();
-            String name = fastjsonNameExpr(compiledNameField(value, index++), mode);
+            String field = compiledNameField(value, index++);
             String expr = access(property.access(), "value");
-            if (fastjsonMemberSupported(child)) {
-                out.line("_writeMember(w, " + name + ", " + expr + ");");
-            } else {
-                emitFastjsonName(out, name, mode);
+            if (fixedRawName(property.name())) {
+                int length = property.name().length();
+                String args = field + "_raw0";
+                if (length >= 9) args += ", " + field + "_raw1";
+                out.line("w.writeName" + length + "Raw(" + args + ");");
                 emitNativeValue(out, child, expr, mode);
+            } else {
+                String name = fastjsonNameExpr(field, mode);
+                if (fastjsonMemberSupported(child)) {
+                    out.line("_writeMember(w, " + name + ", " + expr + ");");
+                } else {
+                    emitFastjsonName(out, name, mode);
+                    emitNativeValue(out, child, expr, mode);
+                }
             }
         }
     }
