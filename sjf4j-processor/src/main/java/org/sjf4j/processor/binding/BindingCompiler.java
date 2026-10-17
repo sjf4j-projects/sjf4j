@@ -384,7 +384,6 @@ final class BindingCompiler {
             case "java.util.UUID":
             case "java.util.Locale":
             case "java.util.Currency":
-            case "java.util.TimeZone":
             case "java.time.ZoneId":
             case "java.time.Instant":
             case "java.time.LocalDate":
