@@ -2,13 +2,12 @@ package org.sjf4j.backend.fastjson2.binding;
 
 import org.sjf4j.binding.CompiledName;
 
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 /** Pre-escaped Fastjson2 object property name for its raw-name writer path. */
 public final class Fastjson2CompiledName extends CompiledName {
-
-    private static final boolean LITTLE_ENDIAN = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
 
     /** Internal generated-code contract. Do not mutate these pre-escaped arrays. */
     public final char[] rawNameUtf16;
@@ -111,29 +110,19 @@ public final class Fastjson2CompiledName extends CompiledName {
         this.rawNameUtf16 = raw;
         this.rawNameUtf8 = new String(raw).getBytes(StandardCharsets.UTF_8);
 
-        // Fastjson2's fixed-width methods use the original ASCII bytes:
-        // lengths 8 and 16 add quotes/colon in the writer itself; other
-        // lengths consume the pre-quoted name, including trailing punctuation.
+        // Fastjson2 writes names of lengths 8 and 16 with quotes supplied
+        // by the writer; the other fixed-width variants consume quoted bytes.
         this.rawNameLength = fixedRaw ? length : 0;
         if (fixedRaw) {
-            int offset = length == 8 || length == 16 ? 1 : 0;
-            this.rawName0 = pack(rawNameUtf8, offset, 8);
-            this.rawName1 = length == 9
-                    ? pack(rawNameUtf8, offset + 8, 4)
-                    : length >= 10 ? pack(rawNameUtf8, offset + 8, 8) : 0;
+            int start = length == 8 || length == 16 ? 1 : 0;
+            ByteBuffer packed = ByteBuffer.allocate(16).order(ByteOrder.nativeOrder());
+            packed.put(rawNameUtf8, start, Math.min(16, rawNameUtf8.length - start));
+            this.rawName0 = packed.getLong(0);
+            this.rawName1 = length == 9 ? packed.getInt(8)
+                    : length >= 10 ? packed.getLong(8) : 0;
         } else {
             this.rawName0 = 0;
             this.rawName1 = 0;
         }
-    }
-
-    private static long pack(byte[] bytes, int offset, int width) {
-        long result = 0;
-        for (int i = 0; i < width && offset + i < bytes.length; i++) {
-            result |= (bytes[offset + i] & 0xffL) << (i * 8);
-        }
-        if (LITTLE_ENDIAN) return result;
-        return width == 4 ? (Integer.reverseBytes((int) result) & 0xffffffffL)
-                : Long.reverseBytes(result);
     }
 }
