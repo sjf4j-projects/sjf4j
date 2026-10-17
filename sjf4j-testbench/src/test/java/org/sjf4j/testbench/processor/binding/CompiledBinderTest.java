@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,6 +152,28 @@ public class CompiledBinderTest {
         assertNull(roundTrip.get("work"));
     }
 
+
+    @Test
+    public void fastjson2CompiledListsSupportRandomAccessAndLinkedList() throws IOException {
+        BinderContract compiled = CompiledInstances.of(Fastjson2Binder.class);
+        List<String> randomAccess = new ArrayList<String>(Arrays.asList(
+                "héllo", null, "a\\\"b", "汉字"));
+        List<String> sequential = new LinkedList<String>(randomAccess);
+        assertEquals(compiled.writeStrings(randomAccess), compiled.writeStrings(sequential));
+        assertEquals(new String(compiled.writeStringsUtf8(randomAccess), StandardCharsets.UTF_8),
+                new String(compiled.writeStringsUtf8(sequential), StandardCharsets.UTF_8));
+
+        List<Integer> numbers = new LinkedList<Integer>(Arrays.asList(1, null, 3));
+        assertEquals("[1,null,3]", compiled.writeNumbers(numbers));
+        assertEquals("[1,null,3]", new String(compiled.writeNumbersUtf8(numbers),
+                StandardCharsets.UTF_8));
+
+        Person person = personFixture();
+        person.setTags(new LinkedList<String>(Arrays.asList("java", null, "json")));
+        String json = compiled.writePerson(person);
+        assertPersonEquals(person, compiled.readPerson(json));
+        assertPersonEquals(person, compiled.readPerson(compiled.writePersonBytes(person)));
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("jsonBackends")
@@ -580,6 +603,15 @@ public class CompiledBinderTest {
 
         @WriteTo
         String writeNumbers(List<Integer> values) throws IOException;
+
+        @WriteTo
+        byte[] writeNumbersUtf8(List<Integer> values) throws IOException;
+
+        @WriteTo
+        String writeStrings(List<String> values) throws IOException;
+
+        @WriteTo
+        byte[] writeStringsUtf8(List<String> values) throws IOException;
 
         @ReadFrom
         Map<String, Address> readAddresses(String input) throws IOException;
