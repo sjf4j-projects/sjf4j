@@ -9,6 +9,18 @@ import java.time.Instant;
 public final class ClasspathRegistries {
     private ClasspathRegistries() {}
 
+    public static final class Money {
+        public final String text;
+        public Money(String text) { this.text = text; }
+    }
+
+    public static final class Third {
+        @NodeValue
+        public static final ValueCodec<Money, String> MONEY =
+                new ValueCodec.SimpleValueCodec<>(Money.class, String.class,
+                        value -> value.text, Money::new);
+    }
+
     public static final class First {
         @NodeValue(formats = {"alpha"})
         public static final ValueCodec<Instant, String> ALPHA = ValueCodec.INSTANT_STR;
