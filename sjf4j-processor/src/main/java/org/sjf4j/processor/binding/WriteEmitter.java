@@ -387,16 +387,6 @@ final class WriteEmitter {
     private boolean containsString(BindingValue value, java.util.Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
-            case VALUE_CODEC:
-                out.beginBlock("if (" + expression + " == null)");
-                out.line(writer + ".writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + value.helperName() + ".valueToRaw(" + expression + "), "
-                        + RUNTIME_CONTEXT + ".EMPTY);");
-                out.endBlock();
-                return;
             case STRING:
                 return true;
             case POJO:
@@ -566,6 +556,16 @@ final class WriteEmitter {
         }
 
         switch (value.kind()) {
+            case VALUE_CODEC:
+                out.beginBlock("if (" + expression + " == null)");
+                out.line(writer + ".writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
+                        + value.helperName() + ".valueToRaw(" + expression + "), "
+                        + RUNTIME_CONTEXT + ".EMPTY);");
+                out.endBlock();
+                return;
             case STRING:
                 out.line(
                         writer +
