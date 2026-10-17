@@ -118,9 +118,9 @@ class RegistryDiscoveryTest {
                 "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "import java.io.IOException; "
                 + "@BindingOptions(registries={ClasspathRegistries.First.class, "
                 + "ClasspathRegistries.Second.class}) "
-                + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
                 + " @ReadFrom String read(String json) throws IOException; "
                 + " }"), CodegenProcessor.class);
