@@ -19,7 +19,6 @@ final class Fastjson2WriteEmitter {
     private final java.util.Set<FastjsonMode> fastjsonModes =
             java.util.EnumSet.noneOf(FastjsonMode.class);
     void registerWriteOutput(BindingPlan.WriteOutput output) {
-        if (backend.backend() != org.sjf4j.annotation.binding.Backend.FASTJSON2) return;
         switch (output) {
             case STRING:
             case WRITER:
