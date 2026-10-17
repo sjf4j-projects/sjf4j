@@ -1,6 +1,8 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.processor.access.NodeAccessResolver;
+import org.sjf4j.processor.discovery.CompiledMetadata;
+import org.sjf4j.processor.discovery.RegistryDiscovery;
 import org.sjf4j.processor.annotation.NodeAnnotations;
 import org.sjf4j.processor.method.InterfaceMethodResolver;
 import org.sjf4j.processor.property.PropertyResolver;
@@ -11,6 +13,7 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
@@ -29,6 +32,7 @@ public final class ProcessorContext {
     public final Filer filer;
 
     public final TypeSystem types;
+    public final RegistryDiscovery discovery;
     public final NodeAnnotations annotations;
     public final PropertyResolver properties;
     public final NodeAccessResolver access;
@@ -44,6 +48,7 @@ public final class ProcessorContext {
 
         this.types =
                 new TypeSystem(typeUtils, elements);
+        this.discovery = new RegistryDiscovery(this);
 
         this.annotations =
                 new NodeAnnotations();
@@ -66,6 +71,11 @@ public final class ProcessorContext {
                         typeUtils,
                         elements,
                         types);
+    }
+
+    /** Per-interface, immutable-source metadata view. */
+    public CompiledMetadata metadata(TypeElement owner) {
+        return new CompiledMetadata(this, owner);
     }
 
     /** Emits a compile-time error at the supplied source element. */
