@@ -1,0 +1,30 @@
+name: Annotated ValueCodec Runtime Validation
+on:
+  push:
+    branches: [test/nodevalue-annotated-runtime-ci]
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Core tests
+        run: ./gradlew :sjf4j-core:test --no-daemon
+      - name: Backend and processor regressions
+        run: |
+          ./gradlew :sjf4j-processor:test :sjf4j-backend-fastjson2:test \
+            :sjf4j-backend-jackson2:test :sjf4j-backend-jackson3:compileTestJava \
+            :sjf4j-backend-gson:test :sjf4j-backend-jsonp:test \
+            :sjf4j-backend-snake:test --no-daemon
+      - name: Explain core test failures
+        if: failure()
+        run: |
+          grep -A 35 '<failure' sjf4j-core/build/test-results/test/TEST-org.sjf4j.value.AnnotatedValueCodecTest.xml | head -n 150 || true
