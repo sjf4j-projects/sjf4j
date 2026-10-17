@@ -42,7 +42,7 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
         for (String name : new String[]{"fixture.Money", "java.util.UUID", "java.time.Instant"}) {
             TypeElement value = context.elements.getTypeElement(name);
             if (value == null) continue;
-            for (String format : new String[]{"", "iso", "epochMillis", "compact"}) {
+            for (String format : new String[]{"", "iso", "epochMillis", "compact", "alpha", "beta"}) {
                 ValueCodecMetadata info = metadata.valueCodec(value.asType(), format);
                 if (info != null) {
                     processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
