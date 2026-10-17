@@ -509,8 +509,13 @@ final class BindingCompiler {
                 }
             }
 
-            // Runtime merges getter/setter metadata per property family.
-            // Explicit pattern overrides a named variant.
+            // Preserve the runtime property-family contract when both accessors
+            // declare a format. One accessor cannot silently override the other.
+            if (conflictingCodecOptions(readAnnotation, writeAnnotation)) {
+                error(method, generated, "Conflicting @NodeProperty codecName/codecPattern on "
+                        + value.type() + "." + property.name());
+                return false;
+            }
             String codecName = selectedCodecName(readAnnotation, writeAnnotation);
             String codecPattern = selectedCodecPattern(readAnnotation, writeAnnotation);
             BindingValue propertyValue =
@@ -537,6 +542,18 @@ final class BindingCompiler {
         value.properties(compiled);
         value.ignoredNames(ignored);
         return true;
+    }
+
+    private static boolean conflictingCodecOptions(NodeProperty getter, NodeProperty setter) {
+        if (getter == null || setter == null) return false;
+        String leftName = NodeProperty.CODEC_NAME_UNSET.equals(getter.codecName())
+                ? null : getter.codecName();
+        String rightName = NodeProperty.CODEC_NAME_UNSET.equals(setter.codecName())
+                ? null : setter.codecName();
+        if (leftName != null && rightName != null && !leftName.equals(rightName)) return true;
+        String leftPattern = getter.codecPattern().isEmpty() ? null : getter.codecPattern();
+        String rightPattern = setter.codecPattern().isEmpty() ? null : setter.codecPattern();
+        return leftPattern != null && rightPattern != null && !leftPattern.equals(rightPattern);
     }
 
     private static String selectedCodecName(NodeProperty getter, NodeProperty setter) {
