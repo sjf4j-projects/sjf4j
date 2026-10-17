@@ -280,7 +280,7 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        emitUnknownObjectProperty(out, value, "name");
+        emitUnknownObjectProperty(out, value, "reader.currentName()");
         out.line("break;");
         out.dedent();
 
@@ -325,7 +325,7 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        emitUnknownObjectProperty(out, value);
+        emitUnknownObjectProperty(out, value, "name");
         out.line("break;");
         out.dedent();
 
