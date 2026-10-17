@@ -159,12 +159,25 @@ public class CompiledBinderTest {
         List<String> randomAccess = new ArrayList<String>(Arrays.asList(
                 "héllo", null, "a\\\"b", "汉字"));
         List<String> sequential = new LinkedList<String>(randomAccess);
-        assertEquals(compiled.writeStrings(randomAccess), compiled.writeStrings(sequential));
-        assertEquals(new String(compiled.writeStringsUtf8(randomAccess), StandardCharsets.UTF_8),
-                new String(compiled.writeStringsUtf8(sequential), StandardCharsets.UTF_8));
+        String stringJson = compiled.writeStrings(randomAccess);
+        assertEquals(randomAccess, new SimpleJsonBinder().readNode(stringJson, List.class));
+        assertEquals(stringJson, compiled.writeStrings(sequential));
+        assertEquals(stringJson, new String(compiled.writeStringsUtf8(randomAccess),
+                StandardCharsets.UTF_8));
+        assertEquals(stringJson, new String(compiled.writeStringsUtf8(sequential),
+                StandardCharsets.UTF_8));
+        assertEquals("[]", compiled.writeStrings(new ArrayList<String>()));
+        assertEquals("[]", compiled.writeStrings(new LinkedList<String>()));
+        assertEquals("null", compiled.writeStrings(null));
+        assertEquals("null", new String(compiled.writeStringsUtf8(null),
+                StandardCharsets.UTF_8));
 
         List<Integer> numbers = new LinkedList<Integer>(Arrays.asList(1, null, 3));
+        List<Integer> indexedNumbers = new ArrayList<Integer>(numbers);
+        assertEquals("[1,null,3]", compiled.writeNumbers(indexedNumbers));
         assertEquals("[1,null,3]", compiled.writeNumbers(numbers));
+        assertEquals("[1,null,3]", new String(compiled.writeNumbersUtf8(indexedNumbers),
+                StandardCharsets.UTF_8));
         assertEquals("[1,null,3]", new String(compiled.writeNumbersUtf8(numbers),
                 StandardCharsets.UTF_8));
 
