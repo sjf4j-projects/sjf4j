@@ -1,7 +1,6 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
@@ -110,11 +109,6 @@ public final class SnakeWriter extends StreamingWriter {
     @Override
     public void writeName(String name) throws IOException {
         writeStringValue(Asserts.notNull(name, "name"));
-    }
-
-    @Override
-    public void writeName(CompiledName name) throws IOException {
-        writeName(name.name());
     }
 
     /**
