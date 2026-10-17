@@ -503,7 +503,10 @@ final class WriteEmitter {
     }
 
     boolean needsStringHelper(BindingValue value) {
-        if (!hasNativeJsonWriter() || !value.helperRequired()
+        if (!hasNativeJsonWriter()
+                || (!value.helperRequired()
+                    && !(backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                         && value.kind() == BindingValue.Kind.STRING))
                 || value.direction() != BindingPlan.Direction.WRITE_TO
                 || !nativeEligible(value, new java.util.HashSet<BindingValue>())) {
             return false;
