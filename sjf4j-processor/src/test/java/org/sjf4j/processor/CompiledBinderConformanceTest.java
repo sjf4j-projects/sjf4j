@@ -707,6 +707,14 @@ class CompiledBinderConformanceTest {
                             + "  public JsonArray flags;\n"
                             + "  public String getReadOnly() { return \"computed\"; }\n"
                             + "}\n");
+            sources.put("fixture/ClosedModel.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.JsonObject;\n"
+                            + "import org.sjf4j.annotation.node.NodeObject;\n"
+                            + "@NodeObject(readDynamic=false, writeDynamic=false)\n"
+                            + "public class ClosedModel extends JsonObject {\n"
+                            + "  public String name;\n"
+                            + "}\n");
             sources.put("fixture/Binder.java",
                     "package fixture;\n"
                             + "import org.sjf4j.annotation.binding.*;\n"
@@ -715,6 +723,8 @@ class CompiledBinderConformanceTest {
                             + "@CompiledBinder(backend=Backend." + backend + ")\n"
                             + "public interface Binder {\n"
                             + "  @ReadFrom Model read(String json) throws java.io.IOException;\n"
+                            + "  @ReadFrom ClosedModel readClosed(String json) throws java.io.IOException;\n"
+                            + "  @WriteTo String writeClosed(ClosedModel value) throws java.io.IOException;\n"
                             + "  @WriteTo String write(Model value) throws java.io.IOException;\n"
                             + "  @ReadFrom JsonObject readObject(String json) throws java.io.IOException;\n"
                             + "  @WriteTo String writeObject(JsonObject value) throws java.io.IOException;\n"
@@ -754,6 +764,19 @@ class CompiledBinderConformanceTest {
                 assertTrue(tree.get("note").isNull(), backend);
                 assertEquals(2, tree.get("unknown").get("nested").size(), backend);
                 assertTrue(tree.get("flags").get(1).isNull(), backend);
+
+                Class<?> closedClass = Class.forName("fixture.ClosedModel", true, loader);
+                Object closed = impl.getMethod("readClosed", String.class)
+                        .invoke(binder, "{\\"name\\":\\"Ada\\",\\"unknown\\":42}");
+                org.sjf4j.JsonObject closedJojo = (org.sjf4j.JsonObject) closed;
+                assertEquals("Ada", closedClass.getField("name").get(closed), backend);
+                assertTrue(closedJojo.dynamicProperties().isEmpty(), backend);
+                closedJojo.put("unknown", 42);
+                String closedJson = (String) impl.getMethod("writeClosed", closedClass)
+                        .invoke(binder, closed);
+                com.fasterxml.jackson.databind.JsonNode closedTree =
+                        new com.fasterxml.jackson.databind.ObjectMapper().readTree(closedJson);
+                assertFalse(closedTree.has("unknown"), backend);
 
                 org.sjf4j.JsonObject object = (org.sjf4j.JsonObject) impl
                         .getMethod("readObject", String.class).invoke(binder, "{\"x\":[1,2]}");
