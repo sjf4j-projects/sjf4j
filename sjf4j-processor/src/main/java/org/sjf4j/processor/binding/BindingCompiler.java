@@ -140,6 +140,18 @@ final class BindingCompiler {
             return null;
         }
 
+        // A discovered codec declaration makes named formats statically
+        // checkable. Runtime-only registrations remain dynamically resolved.
+        // A codecPattern overrides codecName and is validated by the codec
+        // instance when the generated binder initializes.
+        if (kind == BindingValue.Kind.VALUE_CODEC && codecName != null
+                && codecPattern == null && metadata.hasValueCodec(type)
+                && metadata.valueCodec(type, codecName) == null) {
+            error(method, generated, "Unknown @NodeProperty codecName '"
+                    + codecName + "' for type " + type);
+            return null;
+        }
+
         BindingValue value =
                 new BindingValue(
                         direction,
@@ -487,12 +499,6 @@ final class BindingCompiler {
 
         value.properties(compiled);
         return true;
-    }
-
-    private boolean unsupportedCodec(NodeProperty annotation) {
-        return annotation != null &&
-                (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                        || !annotation.codecPattern().isEmpty());
     }
 
     private static boolean conflictingCodecOptions(NodeProperty getter, NodeProperty setter) {
