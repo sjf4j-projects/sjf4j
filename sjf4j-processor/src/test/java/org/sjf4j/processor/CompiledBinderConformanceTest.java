@@ -920,4 +920,70 @@ class CompiledBinderConformanceTest {
         }
     }
 
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void compiledPropertyCanUseExplicitlyRegisteredNamedCodec() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/ExternalId.java",
+                "package fixture;\n"
+                        + "public final class ExternalId {\n"
+                        + "  private final String raw;\n"
+                        + "  public ExternalId(String raw) { this.raw = raw; }\n"
+                        + "  @Override public String toString() { return raw; }\n"
+                        + "}\n");
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + "  @NodeProperty(codecName=\"special\") public ExternalId id;\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.JACKSON2)\n"
+                        + "public interface Binder {\n"
+                        + "  @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + "  @WriteTo String write(Bean value) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> domainType = Class.forName("fixture.ExternalId", true, loader);
+            java.lang.reflect.Constructor<?> ctor = domainType.getConstructor(String.class);
+            org.sjf4j.value.ValueCodec<Object, String> codec =
+                    new org.sjf4j.value.ValueCodec<Object, String>() {
+                        @Override public Class<Object> valueClazz() {
+                            return (Class<Object>) domainType;
+                        }
+                        @Override public Class<String> rawClazz() {
+                            return String.class;
+                        }
+                        @Override public String valueToRaw(Object value) {
+                            return value.toString();
+                        }
+                        @Override public Object rawToValue(String raw) {
+                            try {
+                                return ctor.newInstance(raw == null ? "decoded-null" : raw);
+                            } catch (ReflectiveOperationException e) {
+                                throw new IllegalStateException(e);
+                            }
+                        }
+                    };
+            org.sjf4j.value.ValueRegistry.registerByCodec(codec, "special", false);
+            Class<?> beanType = Class.forName("fixture.Bean", true, loader);
+            Class<?> binderType = Class.forName("fixture.Binder_Impl", true, loader);
+            Object binder = binderType.getConstructor().newInstance();
+            Object bean = binderType.getMethod("read", String.class)
+                    .invoke(binder, "{\"id\":\"abc\"}");
+            assertEquals("abc", beanType.getField("id").get(bean).toString());
+            assertEquals("{\"id\":\"abc\"}", binderType.getMethod("write", beanType)
+                    .invoke(binder, bean));
+            Object nullBean = binderType.getMethod("read", String.class)
+                    .invoke(binder, "{\"id\":null}");
+            assertEquals("decoded-null", beanType.getField("id").get(nullBean).toString());
+        }
+    }
+
 }
