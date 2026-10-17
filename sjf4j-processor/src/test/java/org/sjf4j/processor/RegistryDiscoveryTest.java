@@ -67,7 +67,8 @@ class RegistryDiscoveryTest {
     void classpathRegistriesAreNotGloballyDiscovered() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources(
                 "package fixture; "
-                + "@org.sjf4j.annotation.binding.CompiledBinder public interface Binder {}"),
+                + "import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder public interface Binder {}"),
                 RegistryDiscoveryProbeProcessor.class);
         assertTrue(result.success, result.diagnostics());
         assertFalse(result.diagnostics().contains("DISCOVER java.time.Instant/alpha"),
@@ -119,8 +120,9 @@ class RegistryDiscoveryTest {
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "@BindingOptions(registries={ClasspathRegistries.First.class, "
                 + "ClasspathRegistries.Second.class}) "
+                + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @ReadFrom String read(String json) throws java.io.IOException; "
+                + " @ReadFrom String read(String json) throws IOException; "
                 + " }"), CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         assertTrue(result.generatedSource("fixture/Binder_Impl.java").contains("class Binder_Impl"));
@@ -131,7 +133,8 @@ class RegistryDiscoveryTest {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bad.java",
                 "package fixture; "
-                + "@org.sjf4j.annotation.binding.BindingOptions "
+                + "import org.sjf4j.annotation.binding.BindingOptions; "
+                + "@BindingOptions "
                 + "public class Bad {}"), CodegenProcessor.class);
         assertFalse(result.success, result.diagnostics());
         assertTrue(result.diagnostics().contains("@BindingOptions can be applied only"),
@@ -141,7 +144,7 @@ class RegistryDiscoveryTest {
     @Test
     void rejectsDuplicateFormatAcrossSourceRegistryFields() throws Exception {
         Map<String, String> input = sources(
-                "package fixture; @org.sjf4j.annotation.binding.CompiledBinder "
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; @CompiledBinder "
                 + "public interface Binder {}");
         input.put("fixture/ExtraCodecs.java",
                 "package fixture; "
