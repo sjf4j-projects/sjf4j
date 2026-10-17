@@ -303,8 +303,8 @@ final class BindingCompiler {
         // Native containers and external trees precede codecs in the runtime
         // classification contract. Never override their structural semantics.
         NodeKind nodeKind = context.types.nodeKind(type);
-        if (!nodeKind.isContainer()
-                && nodeKind != NodeKind.COMPILE_TIME_UNKNOWN
+        if ((nodeKind == NodeKind.OBJECT_POJO || nodeKind == NodeKind.UNKNOWN
+                || nodeKind.isValue())
                 && (context.types.isNodeValue(type) || metadata.hasValueCodec(type))) {
             return BindingValue.Kind.VALUE_CODEC;
         }
