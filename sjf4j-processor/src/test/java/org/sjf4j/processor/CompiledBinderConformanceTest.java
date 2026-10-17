@@ -795,4 +795,50 @@ class CompiledBinderConformanceTest {
         }
     }
 
+
+    @Test
+    void compiledJojoSnakeYamlPreservesDynamicEntries() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Tree.java",
+                "package fixture;\n"
+                        + "public class Tree extends org.sjf4j.JsonObject {\n"
+                        + "  public String name;\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.SNAKE, format=BindingFormat.YAML)\n"
+                        + "public interface Binder {\n"
+                        + "  @ReadFrom Tree read(String yaml) throws java.io.IOException;\n"
+                        + "  @WriteTo String write(Tree value) throws java.io.IOException;\n"
+                        + "  @ReadFrom org.sjf4j.JsonArray readArray(String yaml) throws java.io.IOException;\n"
+                        + "  @WriteTo String writeArray(org.sjf4j.JsonArray value) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> implementation = Class.forName("fixture.Binder_Impl", true, loader);
+            Class<?> treeType = Class.forName("fixture.Tree", true, loader);
+            Object binder = implementation.getConstructor().newInstance();
+
+            Object tree = implementation.getMethod("read", String.class)
+                    .invoke(binder, "name: Ada\nextra: { nested: [1, 2] }\n");
+            assertEquals("Ada", treeType.getField("name").get(tree));
+            assertTrue(((org.sjf4j.JsonObject) tree).dynamicProperties().containsKey("extra"));
+            String yaml = (String) implementation.getMethod("write", treeType)
+                    .invoke(binder, tree);
+            Object again = implementation.getMethod("read", String.class).invoke(binder, yaml);
+            assertEquals("Ada", treeType.getField("name").get(again));
+            assertTrue(((org.sjf4j.JsonObject) again).dynamicProperties().containsKey("extra"));
+
+            org.sjf4j.JsonArray array = (org.sjf4j.JsonArray) implementation
+                    .getMethod("readArray", String.class).invoke(binder, "[1, {x: 2}]");
+            String arrayYaml = (String) implementation.getMethod("writeArray",
+                    org.sjf4j.JsonArray.class).invoke(binder, array);
+            assertEquals(2, ((org.sjf4j.JsonArray) implementation
+                    .getMethod("readArray", String.class).invoke(binder, arrayYaml)).size());
+        }
+    }
+
 }
