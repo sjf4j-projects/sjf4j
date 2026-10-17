@@ -986,4 +986,33 @@ class CompiledBinderConformanceTest {
         }
     }
 
+
+    @Test
+    void compiledCodecRejectsConflictingAccessorFormats() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture;\n"
+                        + "import java.time.Instant;\n"
+                        + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                        + "public class Bean {\n"
+                        + "  private Instant stamp;\n"
+                        + "  @NodeProperty(codecName=\"epochMillis\")\n"
+                        + "  public Instant getStamp() { return stamp; }\n"
+                        + "  @NodeProperty(codecName=\"iso\")\n"
+                        + "  public void setStamp(Instant stamp) { this.stamp = stamp; }\n"
+                        + "}\n");
+        sources.put("fixture/Binder.java",
+                "package fixture;\n"
+                        + "import org.sjf4j.annotation.binding.*;\n"
+                        + "@CompiledBinder(backend=Backend.SIMPLE)\n"
+                        + "public interface Binder {\n"
+                        + "  @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("Conflicting @NodeProperty codecName/codecPattern"),
+                result.diagnostics());
+    }
+
 }
