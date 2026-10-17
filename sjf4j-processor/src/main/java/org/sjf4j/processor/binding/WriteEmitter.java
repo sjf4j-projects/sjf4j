@@ -736,24 +736,6 @@ final class WriteEmitter {
             String expression,
             String suffix) {
 
-        if (backend.backend() == Backend.FASTJSON2
-                && value.primitive()) {
-            String nativeMethod;
-            switch (suffix) {
-                case "Boolean": nativeMethod = "writeBool"; break;
-                case "Byte": nativeMethod = "writeInt8"; break;
-                case "Short": nativeMethod = "writeInt16"; break;
-                case "Int": nativeMethod = "writeInt32"; break;
-                case "Long": nativeMethod = "writeInt64"; break;
-                case "Float": nativeMethod = "writeFloat"; break;
-                case "Double": nativeMethod = "writeDouble"; break;
-                default: nativeMethod = null; break;
-            }
-            if (nativeMethod != null) {
-                out.line(writer + ".nativeWriter()." + nativeMethod + "(" + expression + ");");
-                return;
-            }
-        }
         out.line(
                 writer +
                         (value.primitive()
