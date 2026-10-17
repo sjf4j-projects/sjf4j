@@ -1,0 +1,30 @@
+name: CompiledBinder ValueCodec P2
+on:
+  push:
+    branches: [test/compiled-binder-value-codec-p2-ci]
+  workflow_dispatch:
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Core and processor tests
+        run: ./gradlew :sjf4j-core:test :sjf4j-processor:test --no-daemon
+      - name: Explain processor test failures
+        if: failure()
+        run: |
+          grep -A 28 '<failure' sjf4j-processor/build/test-results/test/TEST-org.sjf4j.processor.CompiledBinderConformanceTest.xml | head -n 135 || true
+      - name: Backend integration and JMH compile
+        run: |
+          ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-backend-jackson2:test \
+            :sjf4j-backend-jackson3:compileTestJava :sjf4j-backend-gson:test \
+            :sjf4j-backend-jsonp:test :sjf4j-backend-snake:test \
+            :sjf4j-testbench:test :sjf4j-testbench:jmhJar --no-daemon
