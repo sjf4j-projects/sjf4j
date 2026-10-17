@@ -87,7 +87,8 @@ final class BindingEmitter {
 
         if (value.direction() ==
                 BindingPlan.Direction.WRITE_TO &&
-                value.kind() == BindingValue.Kind.POJO &&
+                (value.kind() == BindingValue.Kind.POJO
+                        || value.kind() == BindingValue.Kind.JOJO) &&
                 writes.usesCompiledNames()) {
             generated.addField(
                     out -> writes.emitCompiledNames(out, value));
