@@ -1,6 +1,7 @@
 package org.sjf4j.processor.discovery;
 
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.Element;
@@ -29,7 +30,7 @@ public final class ValueCodecResolver {
     public ValueCodecResolver(ProcessorContext context, List<TypeElement> registries) {
         this.context = context;
         this.registries = registries;
-        this.codecType = context.elements.getTypeElement("org.sjf4j.value.ValueCodec").asType();
+        this.codecType = context.elements.getTypeElement(ValueCodec.class.getName()).asType();
     }
 
     /** True if a codec is registered for this type or its nearest ancestor. */
