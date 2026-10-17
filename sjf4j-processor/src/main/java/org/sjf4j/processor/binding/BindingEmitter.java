@@ -51,6 +51,21 @@ final class BindingEmitter {
             BindingValue value,
             GeneratedClass generated) {
 
+        if (value.isCodec()) {
+            // One resolved ValueInfo per selected type/format, not per field access.
+            generated.addField(out -> out.line(
+                    "private static final org.sjf4j.value.ValueInfo "
+                            + value.helperName() + " = "
+                            + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
+                            + value.type() + ".class, "
+                            + (value.codecName() == null ? "null"
+                                    : org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecName()))
+                            + ", "
+                            + (value.codecPattern() == null ? "null"
+                                    : org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecPattern()))
+                            + ");"));
+            return;
+        }
         if (!value.helperRequired()) {
             return;
         }
