@@ -505,6 +505,12 @@ final class ReadEmitter {
             case BIG_DECIMAL:
                 return reader + ".readBigDecimal()";
 
+            case VALUE_CODEC:
+                return "(" + value.type() + ") " + STREAMING_IO
+                        + ".readValueCodec(" + reader + ", "
+                        + value.helperName() + ", "
+                        + RUNTIME_CONTEXT + ".EMPTY)";
+
             case ENUM:
                 // Keep string, ordinal and null semantics aligned with StreamingIO.
                 return "(" + value.type() + ") " +
