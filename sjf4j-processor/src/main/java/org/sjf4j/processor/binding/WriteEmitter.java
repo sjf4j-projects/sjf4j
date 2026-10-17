@@ -537,11 +537,6 @@ final class WriteEmitter {
                 generatorType = "tools.jackson.core.JsonGenerator";
                 fieldMethod = "writeName"; stringMethod = "writeString"; nullMethod = "writeNull";
                 break;
-            case FASTJSON2:
-                nameType = "org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName";
-                generatorType = "com.alibaba.fastjson2.JSONWriter";
-                fieldMethod = "_writeName"; stringMethod = "writeString"; nullMethod = "writeNull";
-                break;
             case GSON:
                 nameType = "String";
                 generatorType = "com.google.gson.stream.JsonWriter";
@@ -556,14 +551,8 @@ final class WriteEmitter {
                 throw new AssertionError(backend.backend());
         }
         out.beginBlock("private static void _writeMember(" + generatorType
-                + " g, " + nameType + " name, String value"
-                + (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2
-                ? ", int nameMode" : "") + ") throws java.io.IOException");
-        if (backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2) {
-            out.line("_writeName(g, name, nameMode);");
-        } else {
-            out.line("g." + fieldMethod + "(name);");
-        }
+                + " g, " + nameType + " name, String value) throws java.io.IOException");
+        out.line("g." + fieldMethod + "(name);");
         out.beginBlock("if (value == null)");
         out.line("g." + nullMethod + "();");
         out.endBlock(" else {");
@@ -1022,7 +1011,7 @@ final class WriteEmitter {
     }
 
 
-    /** Experimental native UTF-8 helper; dynamic/runtime nodes keep the adapter path. */
+    /** Native helpers require a fully concrete type graph. */
     boolean requiresWriteHelper(BindingValue value) {
         return nativeEligible(value, new java.util.HashSet<BindingValue>());
     }
@@ -1061,7 +1050,7 @@ final class WriteEmitter {
         }
     }
 
-    private void emitFastjsonName(JavaWriter out, String name, FastjsonMode mode) {
+    private void emitFastjsonName(JavaWriter out, String name) {
         out.line("w.writeNameRaw(" + name + ");");
     }
 
@@ -1149,7 +1138,7 @@ final class WriteEmitter {
                 else if (length > 9) args += ", " + field + ".rawName1";
                 out.line("w.writeName" + length + "Raw(" + args + ");");
             } else {
-                emitFastjsonName(out, fastjsonNameExpr(field, mode), mode);
+                emitFastjsonName(out, fastjsonNameExpr(field, mode));
             }
             emitNativeValue(out, child, expr, mode);
         }
