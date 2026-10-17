@@ -27,6 +27,7 @@ final class BindingValue {
         JOJO,
         JSON_OBJECT,
         JSON_ARRAY,
+        VALUE_CODEC,
         LIST,
         SET,
         MAP,
@@ -47,6 +48,10 @@ final class BindingValue {
     private List<String> ignoredNames = Collections.emptyList();
     private boolean readDynamic;
     private boolean writeDynamic;
+    // Codec selection belongs to the compiled value plan, not the backend.
+    // Future @BindingOptions may supply defaults without changing emitters.
+    private String codecName;
+    private String codecPattern;
 
     BindingValue(
             BindingPlan.Direction direction,
@@ -121,6 +126,23 @@ final class BindingValue {
     void dynamicOptions(boolean read, boolean write) {
         this.readDynamic = read;
         this.writeDynamic = write;
+    }
+
+    boolean isCodec() {
+        return kind == Kind.VALUE_CODEC;
+    }
+
+    void codecSelection(String name, String pattern) {
+        this.codecName = name;
+        this.codecPattern = pattern;
+    }
+
+    String codecName() {
+        return codecName;
+    }
+
+    String codecPattern() {
+        return codecPattern;
     }
 
     BindingValue elementValue() {
