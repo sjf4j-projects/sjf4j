@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.JavaWriter;
 
 /** Coordinates source emission for compiled binder methods and helpers. */
 final class BindingEmitter {
@@ -59,10 +60,10 @@ final class BindingEmitter {
                             + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
                             + value.type() + ".class, "
                             + (value.codecName() == null ? "null"
-                                    : org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecName()))
+                                    : JavaWriter.stringLiteral(value.codecName()))
                             + ", "
                             + (value.codecPattern() == null ? "null"
-                                    : org.sjf4j.processor.code.JavaWriter.stringLiteral(value.codecPattern()))
+                                    : JavaWriter.stringLiteral(value.codecPattern()))
                             + ");"));
             return;
         }
