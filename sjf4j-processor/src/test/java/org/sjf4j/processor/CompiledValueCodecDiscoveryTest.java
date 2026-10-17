@@ -132,9 +132,9 @@ class CompiledValueCodecDiscoveryTest {
             Object binder = binderType.getConstructor().newInstance();
             ClasspathRegistries.Money read =
                     (ClasspathRegistries.Money) binderType.getMethod("read", String.class)
-                            .invoke(binder, "\\"123\\"");
+                            .invoke(binder, "\"123\"");
             assertEquals("123", read.text);
-            assertEquals("\\"123\\"", binderType.getMethod("write", ClasspathRegistries.Money.class)
+            assertEquals("\"123\"", binderType.getMethod("write", ClasspathRegistries.Money.class)
                     .invoke(binder, read));
         }
     }
