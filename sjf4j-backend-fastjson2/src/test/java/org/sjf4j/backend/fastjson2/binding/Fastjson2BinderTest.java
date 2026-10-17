@@ -132,13 +132,13 @@ class Fastjson2BinderTest {
             Arrays.fill(letters, 'a');
             names.add(new String(letters));
         }
-        names.addAll(Arrays.asList("", "a\\\"b", "a\\\\b", "名字", "é", "line\\nfeed"));
+        names.addAll(Arrays.asList("", "a\"b", "a\\b", "名字", "é", "line\nfeed"));
 
         for (String name : names) {
             Fastjson2CompiledName compiled = new Fastjson2CompiledName(name);
             boolean eligible = name.length() >= 2 && name.length() <= 16
                     && name.chars().allMatch(ch -> ch >= 32 && ch <= 126
-                            && ch != '"' && ch != '\\\\');
+                            && ch != '"' && ch != '\\');
             assertEquals(eligible ? name.length() : 0, compiled.rawNameLength, name);
             for (boolean utf8 : new boolean[]{false, true}) {
                 assertEquals(writePreparedName(name, utf8, false),
