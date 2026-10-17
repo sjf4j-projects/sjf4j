@@ -161,7 +161,12 @@ public class CompiledBinderTest {
         String utf8Json = new String(compiled.writeUtf8(source), StandardCharsets.UTF_8);
         assertEquals(stringJson, utf8Json);
 
-        Map<?, ?> object = (Map<?, ?>) new SimpleJsonBinder().readNode(stringJson, Map.class);
+        SimpleJsonBinder parser = new SimpleJsonBinder();
+        Map<?, ?> object = (Map<?, ?>) parser.readNode(stringJson, Map.class);
+        org.sjf4j.backend.fastjson2.binding.Fastjson2Binder runtime =
+                new org.sjf4j.backend.fastjson2.binding.Fastjson2Binder();
+        assertEquals(object, parser.readNode(runtime.writeNodeAsString(source), Map.class));
+        assertEquals(object, parser.readNode(runtime.writeNodeAsBytes(source), Map.class));
         assertEquals(20, object.size());
         assertEquals("2", object.get("aa"));
         assertEquals("3", object.get("aaa"));
