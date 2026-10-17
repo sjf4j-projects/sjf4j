@@ -1,5 +1,35 @@
 # SJF4J Testbench
 
+## CompiledBinder P1/P2 standalone regression and benchmark
+
+These tests are **independent of the existing CompiledRead/WriteBenchmark**:
+
+- `src/test/java/org/sjf4j/testbench/binding/CompiledObntCodecTest.java`: JUnit correctness across Simple, Gson, Jackson2/3, Fastjson2, and JSON-P. Covers JOJO declared/unknown/aliased/read-only fields, JsonObject/JsonArray, @NodeValue, named and patterned codecs, collection codecs, and JSON null.
+- `src/jmh/java/org/sjf4j/testbench/binding/compiled/CompiledObntCodecBenchmark.java`: same six backends, comparing Runtime and Compiled for four workloads (Codec POJO, JOJO, JsonObject, JsonArray) with read/write operations. The JMH trial setup checks correctness before timing.
+
+Run correctness tests first:
+
+```bash
+./gradlew :sjf4j-testbench:test --tests '*CompiledObntCodecTest'
+```
+
+Build and run a focused Fastjson2/Jackson2 benchmark (from the **project root**):
+
+```bash
+./gradlew :sjf4j-testbench:jmhJar
+java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+  '.*CompiledObntCodecBenchmark.*' \
+  -p backend=fastjson2,jackson2 -wi 5 -i 8 -w 400ms -r 400ms -f 2 -prof gc
+```
+
+To isolate one codec workload, replace the JMH regex with
+`'.*CompiledObntCodecBenchmark.codec_.*'`. To cover all six backends, omit
+`-p backend=...`. Both the input JSON and write-model construction are outside
+JMH measurements; parser/writer creation is **inside** each operation.
+The benchmark selects the backend via a pre-bound method reference, introducing
+a small, symmetric adapter overhead. Compare Runtime and Compiled **within the
+same backend and workload**, not absolute numbers across different machines.
+
 ## JOJO read benchmarks (JVM)
 
 `JojoReadBenchmark` isolates the cost of binding a `JsonObject` subclass versus
