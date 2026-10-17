@@ -85,7 +85,7 @@ final class Fastjson2PojoReadEmitter {
         }
         out.line("default:");
         out.indent();
-        out.line("reader.skipNode();");
+        reads.emitUnknownObjectProperty(out, value);
         out.line("break;");
         out.dedent();
         out.endBlock();
