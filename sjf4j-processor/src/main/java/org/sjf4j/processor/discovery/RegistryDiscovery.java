@@ -4,9 +4,13 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -56,6 +60,36 @@ public final class RegistryDiscovery {
         for (String name : names) {
             result.putIfAbsent(name, sourceRegistries.get(name));
         }
+        // An explicit list is scoped to the annotated compiled interface.
+        for (TypeElement registry : explicitRegistries(owner)) {
+            result.putIfAbsent(registry.getQualifiedName().toString(), registry);
+        }
         return new ArrayList<>(result.values());
+    }
+
+    private List<TypeElement> explicitRegistries(TypeElement owner) {
+        List<TypeElement> registries = new ArrayList<>();
+        for (AnnotationMirror annotation : owner.getAnnotationMirrors()) {
+            Element declaration = annotation.getAnnotationType().asElement();
+            if (!(declaration instanceof TypeElement)
+                    || !((TypeElement) declaration).getQualifiedName().contentEquals(
+                            "org.sjf4j.annotation.binding.BindingOptions")) continue;
+
+            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
+                    context.elements.getElementValuesWithDefaults(annotation).entrySet()) {
+                if (!entry.getKey().getSimpleName().contentEquals("registries")) continue;
+
+                for (Object item : (List<?>) entry.getValue().getValue()) {
+                    TypeMirror type = (TypeMirror) ((AnnotationValue) item).getValue();
+                    Element element = context.typeUtils.asElement(type);
+                    if (!(element instanceof TypeElement)) {
+                        context.error(owner, "cannot resolve @BindingOptions registry class '" + type + "'");
+                        continue;
+                    }
+                    registries.add((TypeElement) element);
+                }
+            }
+        }
+        return registries;
     }
 }
