@@ -300,9 +300,12 @@ final class BindingCompiler {
             return BindingValue.Kind.ENUM;
         }
 
-        // Built-in, current-source, and explicit registry declarations are
-        // all resolved from compiler types rather than hardcoded class names.
-        if (context.types.isNodeValue(type) || metadata.hasValueCodec(type)) {
+        // Native containers and external trees precede codecs in the runtime
+        // classification contract. Never override their structural semantics.
+        NodeKind nodeKind = context.types.nodeKind(type);
+        if (!nodeKind.isContainer()
+                && nodeKind != NodeKind.COMPILE_TIME_UNKNOWN
+                && (context.types.isNodeValue(type) || metadata.hasValueCodec(type))) {
             return BindingValue.Kind.VALUE_CODEC;
         }
 
@@ -310,9 +313,6 @@ final class BindingCompiler {
             return unsupported(method, generated, type,
                     "@OneOf is not supported by direct compiled binding");
         }
-
-        NodeKind nodeKind =
-                context.types.nodeKind(type);
 
         switch (nodeKind) {
             case COMPILE_TIME_UNKNOWN:
