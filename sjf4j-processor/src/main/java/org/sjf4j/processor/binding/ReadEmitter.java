@@ -280,7 +280,7 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        emitUnknownObjectProperty(out, value);
+        emitUnknownObjectProperty(out, value, "name");
         out.line("break;");
         out.dedent();
 
@@ -333,12 +333,12 @@ final class ReadEmitter {
     }
 
     /** Only JOJO unknown members are dynamic; read-only declared names remain ignored. */
-    void emitUnknownObjectProperty(JavaWriter out, BindingValue value) {
+    void emitUnknownObjectProperty(JavaWriter out, BindingValue value, String nameExpression) {
         if (value.kind() != BindingValue.Kind.JOJO || !value.readDynamic()) {
             out.line("reader.skipNode();");
             return;
         }
-        out.line("String unknownName = reader.currentName();");
+        out.line("String unknownName = " + nameExpression + ";");
         if (!value.ignoredNames().isEmpty()) {
             StringBuilder condition = new StringBuilder();
             for (String name : value.ignoredNames()) {
