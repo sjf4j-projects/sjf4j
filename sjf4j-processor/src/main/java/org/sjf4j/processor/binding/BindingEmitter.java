@@ -79,7 +79,7 @@ final class BindingEmitter {
 
         if (value.direction() ==
                 BindingPlan.Direction.READ_FROM &&
-                value.kind() == BindingValue.Kind.POJO &&
+                (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO) &&
                 reads.usesNameMatcher()) {
             generated.addField(
                     out -> reads.emitNameMatcherField(out, value));
