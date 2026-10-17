@@ -87,6 +87,17 @@ final class BindingCompiler {
             TypeMirror inputType,
             ExecutableElement method,
             GeneratedClass generated) {
+        return compileValue(direction, inputType, method, generated, null, null);
+    }
+
+    /** The codec selection is a value-local plan; no Backend reads annotations. */
+    private BindingValue compileValue(
+            BindingPlan.Direction direction,
+            TypeMirror inputType,
+            ExecutableElement method,
+            GeneratedClass generated,
+            String codecName,
+            String codecPattern) {
 
         if (inputType == null) {
             error(
@@ -100,7 +111,9 @@ final class BindingCompiler {
                 context.types.concrete(inputType);
 
         String key =
-                direction.name() + ':' + type.toString();
+                direction.name() + ':' + type.toString()
+                        + ':' + String.valueOf(codecName)
+                        + ':' + String.valueOf(codecPattern);
 
         BindingValue existing =
                 cache.get(key);
@@ -110,11 +123,9 @@ final class BindingCompiler {
         }
 
         BindingValue.Kind kind =
-                resolveKind(
-                        direction,
-                        type,
-                        method,
-                        generated);
+                codecName != null || codecPattern != null
+                        ? BindingValue.Kind.VALUE_CODEC
+                        : resolveKind(direction, type, method, generated);
 
         if (kind == null) {
             return null;
@@ -132,8 +143,11 @@ final class BindingCompiler {
          * recursive POJO/container graphs terminate correctly.
          */
         cache.put(key, value);
+        if (kind == BindingValue.Kind.VALUE_CODEC) {
+            value.codecSelection(codecName, codecPattern);
+        }
 
-        if (value.helperRequired()) {
+        if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC) {
             value.helperName(
                     names.newName(
                             helperSuggestion(
@@ -271,6 +285,10 @@ final class BindingCompiler {
             return BindingValue.Kind.ENUM;
         }
 
+        if (context.types.isNodeValue(type) || builtInCodec(erased)) {
+            return BindingValue.Kind.VALUE_CODEC;
+        }
+
         if (context.annotations.hasOneOf(type)) {
             return unsupported(method, generated, type,
                     "@OneOf is not supported by direct compiled binding");
@@ -355,6 +373,37 @@ final class BindingCompiler {
         }
     }
 
+    /** Built-in registered codecs whose registration is guaranteed at runtime. */
+    private static boolean builtInCodec(String erased) {
+        switch (erased) {
+            case "java.net.URI":
+            case "java.net.URL":
+            case "java.net.InetAddress":
+            case "java.nio.charset.Charset":
+            case "java.nio.file.Path":
+            case "java.util.UUID":
+            case "java.util.Locale":
+            case "java.util.Currency":
+            case "java.util.TimeZone":
+            case "java.time.ZoneId":
+            case "java.time.Instant":
+            case "java.time.LocalDate":
+            case "java.time.LocalTime":
+            case "java.time.LocalDateTime":
+            case "java.time.OffsetDateTime":
+            case "java.time.ZonedDateTime":
+            case "java.time.Duration":
+            case "java.time.Period":
+            case "java.io.File":
+            case "java.util.regex.Pattern":
+            case "java.util.Date":
+            case "java.util.Calendar":
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private boolean compilePojo(
             BindingValue value,
             ExecutableElement method,
@@ -398,12 +447,6 @@ final class BindingCompiler {
             NodeProperty writeAnnotation = property.write() == null ? null
                     : property.write().member().getAnnotation(NodeProperty.class);
 
-            if (unsupportedCodec(readAnnotation) || unsupportedCodec(writeAnnotation)) {
-                error(method, generated, "Cannot generate direct binding for "
-                        + value.type() + "." + property.name()
-                        + ": @NodeProperty codecName/codecPattern is not supported");
-                return false;
-            }
             if (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write())) {
                 error(method, generated, "Cannot generate direct binding for "
                         + value.type() + "." + property.name()
@@ -440,12 +483,18 @@ final class BindingCompiler {
                 }
             }
 
+            // Runtime merges getter/setter metadata per property family.
+            // Explicit pattern overrides a named variant.
+            String codecName = selectedCodecName(readAnnotation, writeAnnotation);
+            String codecPattern = selectedCodecPattern(readAnnotation, writeAnnotation);
             BindingValue propertyValue =
                     compileValue(
                             value.direction(),
                             access.type(),
                             method,
-                            generated);
+                            generated,
+                            codecName,
+                            codecPattern);
 
             if (propertyValue == null) {
                 return false;
@@ -464,10 +513,20 @@ final class BindingCompiler {
         return true;
     }
 
-    private boolean unsupportedCodec(NodeProperty annotation) {
-        return annotation != null &&
-                (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                        || !annotation.codecPattern().isEmpty());
+    private static String selectedCodecName(NodeProperty getter, NodeProperty setter) {
+        String fromGetter = getter == null || NodeProperty.CODEC_NAME_UNSET.equals(getter.codecName())
+                ? null : getter.codecName();
+        String fromSetter = setter == null || NodeProperty.CODEC_NAME_UNSET.equals(setter.codecName())
+                ? null : setter.codecName();
+        return fromSetter != null ? fromSetter : fromGetter;
+    }
+
+    private static String selectedCodecPattern(NodeProperty getter, NodeProperty setter) {
+        String fromGetter = getter == null || getter.codecPattern().isEmpty()
+                ? null : getter.codecPattern();
+        String fromSetter = setter == null || setter.codecPattern().isEmpty()
+                ? null : setter.codecPattern();
+        return fromSetter != null ? fromSetter : fromGetter;
     }
 
     private boolean hasMemberOneOf(PropertyAccess access) {
