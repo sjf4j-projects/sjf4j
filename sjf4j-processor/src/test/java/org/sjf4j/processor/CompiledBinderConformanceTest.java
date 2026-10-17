@@ -690,4 +690,86 @@ class CompiledBinderConformanceTest {
         }
     }
 
+
+    @Test
+    void compiledJojoAndRawWrappersRoundTripAcrossJsonBackends() throws Exception {
+        for (String backend : JSON_BACKENDS) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Model.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.JsonObject;\n"
+                            + "import org.sjf4j.JsonArray;\n"
+                            + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                            + "public class Model extends JsonObject {\n"
+                            + "  public long id;\n"
+                            + "  @NodeProperty(aliases={\"oldName\"}) public String name;\n"
+                            + "  public JsonObject payload;\n"
+                            + "  public JsonArray flags;\n"
+                            + "  public String getReadOnly() { return \"computed\"; }\n"
+                            + "}\n");
+            sources.put("fixture/Binder.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.binding.*;\n"
+                            + "import org.sjf4j.JsonObject;\n"
+                            + "import org.sjf4j.JsonArray;\n"
+                            + "@CompiledBinder(backend=Backend." + backend + ")\n"
+                            + "public interface Binder {\n"
+                            + "  @ReadFrom Model read(String json) throws java.io.IOException;\n"
+                            + "  @WriteTo String write(Model value) throws java.io.IOException;\n"
+                            + "  @ReadFrom JsonObject readObject(String json) throws java.io.IOException;\n"
+                            + "  @WriteTo String writeObject(JsonObject value) throws java.io.IOException;\n"
+                            + "  @ReadFrom JsonArray readArray(String json) throws java.io.IOException;\n"
+                            + "  @WriteTo String writeArray(JsonArray value) throws java.io.IOException;\n"
+                            + "}\n");
+            NavigatorTestCompiler.Result result =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(result.success, backend + ": " + result.diagnostics());
+
+            try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+                Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+                Class<?> modelClass = Class.forName("fixture.Model", true, loader);
+                Object binder = impl.getConstructor().newInstance();
+                String input = "{\"unknown\":{\"nested\":[1,2]},\"oldName\":\"Ada\","
+                        + "\"id\":7,\"payload\":{\"a\":1},\"flags\":[true,null],"
+                        + "\"readOnly\":\"discard\",\"note\":null}";
+                Object value = impl.getMethod("read", String.class).invoke(binder, input);
+                org.sjf4j.JsonObject jojo = (org.sjf4j.JsonObject) value;
+                assertEquals(7L, modelClass.getField("id").getLong(value), backend);
+                assertEquals("Ada", modelClass.getField("name").get(value), backend);
+                assertEquals(2, ((org.sjf4j.JsonArray) modelClass.getField("flags")
+                        .get(value)).size(), backend);
+                assertEquals(1, ((org.sjf4j.JsonObject) modelClass.getField("payload")
+                        .get(value)).size(), backend);
+                assertTrue(jojo.dynamicProperties().containsKey("unknown"), backend);
+                assertTrue(jojo.dynamicProperties().containsKey("note"), backend);
+                assertFalse(jojo.dynamicProperties().containsKey("readOnly"), backend);
+                assertFalse(jojo.dynamicProperties().containsKey("oldName"), backend);
+
+                String json = (String) impl.getMethod("write", modelClass).invoke(binder, value);
+                com.fasterxml.jackson.databind.JsonNode tree =
+                        new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+                assertEquals(7, tree.get("id").asLong(), backend);
+                assertEquals("Ada", tree.get("name").asText(), backend);
+                assertEquals("computed", tree.get("readOnly").asText(), backend);
+                assertTrue(tree.get("note").isNull(), backend);
+                assertEquals(2, tree.get("unknown").get("nested").size(), backend);
+                assertTrue(tree.get("flags").get(1).isNull(), backend);
+
+                org.sjf4j.JsonObject object = (org.sjf4j.JsonObject) impl
+                        .getMethod("readObject", String.class).invoke(binder, "{\"x\":[1,2]}");
+                String objectJson = (String) impl.getMethod("writeObject",
+                        org.sjf4j.JsonObject.class).invoke(binder, object);
+                assertEquals(2, new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readTree(objectJson).get("x").size(), backend);
+
+                org.sjf4j.JsonArray array = (org.sjf4j.JsonArray) impl
+                        .getMethod("readArray", String.class).invoke(binder, "[1,{\"x\":2}]");
+                String arrayJson = (String) impl.getMethod("writeArray",
+                        org.sjf4j.JsonArray.class).invoke(binder, array);
+                assertEquals(2, new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readTree(arrayJson).size(), backend);
+            }
+        }
+    }
+
 }
