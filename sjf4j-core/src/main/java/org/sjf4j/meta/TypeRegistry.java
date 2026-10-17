@@ -1,14 +1,17 @@
 package org.sjf4j.meta;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.JsonObject;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.external.ExternalRegistry;
 import org.sjf4j.util.Types;
+import org.sjf4j.value.PatternedValueCodec;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueRegistry;
 
@@ -32,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Most application code does not need to call this class directly, but its
  * metadata model defines the runtime binding semantics used across
- * {@link Nodes}, {@link org.sjf4j.Sjf4j}, binders, and structural processing.
+ * {@link Nodes}, {@link Sjf4j}, binders, and structural processing.
  */
 public final class TypeRegistry {
     /**
@@ -164,6 +167,29 @@ public final class TypeRegistry {
         TypeInfo ti = registerTypeInfo(clazz);
         return ti.requireValueInfo(valueFormat);
     }
+
+    /**
+     * Resolves an explicit property codec selection. A pattern takes precedence
+     * over the named variant, matching @NodeProperty runtime semantics.
+     * Call once per generated binder codec field, never inside a value loop.
+     */
+    public static ValueInfo requireRegisteredValueInfo(Class<?> clazz, String codecName,
+                                                       String codecPattern) {
+        if (codecPattern == null || codecPattern.isEmpty()) {
+            return requireRegisteredValueInfo(clazz, codecName);
+        }
+        ValueInfo base = requireRegisteredValueInfo(clazz, null);
+        if (!(base.codec instanceof PatternedValueCodec)) {
+            throw new BindingException("type '" + clazz.getName()
+                    + "' does not support codecPattern; its ValueCodec does not implement "
+                    + PatternedValueCodec.class.getName());
+        }
+        ValueCodec<?, ?> patterned =
+                ((PatternedValueCodec<?, ?>) base.codec).withPattern(codecPattern);
+        return new ValueInfo(codecPattern, patterned.valueClazz(), patterned.rawClazz(),
+                patterned, null, null, null);
+    }
+
 
 
     /*

@@ -1,6 +1,7 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.annotation.mapping.CompiledMapper;
@@ -151,6 +152,12 @@ final class AnnotationValidator {
             return;
         }
 
+        if (BindingOptions.class.getName()
+                .equals(annotationName)) {
+            validateBindingOptions(element);
+            return;
+        }
+
         if (MappingOptions.class.getName()
                 .equals(annotationName)) {
 
@@ -263,6 +270,20 @@ final class AnnotationValidator {
      * Options
      * --------------------------------------------------------------
      */
+
+    private void validateBindingOptions(Element element) {
+        if (element.getKind() != ElementKind.INTERFACE) {
+            context.error(element, "@BindingOptions can be applied only to compiled interfaces");
+            return;
+        }
+        TypeElement type = (TypeElement) element;
+        if (type.getAnnotation(CompiledBinder.class) == null
+                && type.getAnnotation(CompiledMapper.class) == null
+                && type.getAnnotation(CompiledJdbcMapper.class) == null
+                && type.getAnnotation(CompiledNavigator.class) == null) {
+            context.error(element, "@BindingOptions requires an SJF4J compiled interface");
+        }
+    }
 
     private void validateMappingOptions(
             Element element) {
@@ -471,6 +492,8 @@ final class AnnotationValidator {
         result.addAll(MAPPING_METHOD_ANNOTATIONS);
         result.addAll(BINDING_METHOD_ANNOTATIONS);
         result.addAll(CREATOR_ANNOTATIONS);
+
+        result.add(BindingOptions.class.getName());
 
         result.add(
                 MappingOptions.class.getName());

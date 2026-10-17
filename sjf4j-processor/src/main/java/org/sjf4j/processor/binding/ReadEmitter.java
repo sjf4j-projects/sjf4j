@@ -1,9 +1,12 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
+
+import javax.lang.model.element.VariableElement;
 
 /** Emits direct concrete-reader binding code. */
 final class ReadEmitter {
@@ -28,7 +31,7 @@ final class ReadEmitter {
         this.context = context;
         this.backend = backend;
         this.fastjson2Pojo = backend.backend()
-                == org.sjf4j.annotation.binding.Backend.FASTJSON2
+                == Backend.FASTJSON2
                 ? new Fastjson2PojoReadEmitter() : null;
     }
 
@@ -505,6 +508,12 @@ final class ReadEmitter {
             case BIG_DECIMAL:
                 return reader + ".readBigDecimal()";
 
+            case VALUE_CODEC:
+                return "(" + value.type() + ") " + STREAMING_IO
+                        + ".readValueCodec(" + reader + ", "
+                        + value.helperName() + ", "
+                        + RUNTIME_CONTEXT + ".EMPTY)";
+
             case ENUM:
                 // Keep string, ordinal and null semantics aligned with StreamingIO.
                 return "(" + value.type() + ") " +
@@ -559,7 +568,7 @@ final class ReadEmitter {
         NameAllocator names =
                 new NameAllocator();
 
-        for (javax.lang.model.element.VariableElement parameter :
+        for (VariableElement parameter :
                 plan.method()
                         .declaration()
                         .getParameters()) {

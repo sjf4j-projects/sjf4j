@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.JavaWriter;
 
 /** Coordinates source emission for compiled binder methods and helpers. */
 final class BindingEmitter {
@@ -51,6 +52,21 @@ final class BindingEmitter {
             BindingValue value,
             GeneratedClass generated) {
 
+        if (value.isCodec()) {
+            // One resolved ValueInfo per selected type/format, not per field access.
+            generated.addField(out -> out.line(
+                    "private static final org.sjf4j.value.ValueInfo "
+                            + value.helperName() + " = "
+                            + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
+                            + value.type() + ".class, "
+                            + (value.codecName() == null ? "null"
+                                    : JavaWriter.stringLiteral(value.codecName()))
+                            + ", "
+                            + (value.codecPattern() == null ? "null"
+                                    : JavaWriter.stringLiteral(value.codecPattern()))
+                            + ");"));
+            return;
+        }
         if (!value.helperRequired()) {
             return;
         }
