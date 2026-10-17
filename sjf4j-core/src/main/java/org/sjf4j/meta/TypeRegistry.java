@@ -165,6 +165,29 @@ public final class TypeRegistry {
         return ti.requireValueInfo(valueFormat);
     }
 
+    /**
+     * Resolves an explicit property codec selection. A pattern takes precedence
+     * over the named variant, matching @NodeProperty runtime semantics.
+     * Call once per generated binder codec field, never inside a value loop.
+     */
+    public static ValueInfo requireRegisteredValueInfo(Class<?> clazz, String codecName,
+                                                       String codecPattern) {
+        if (codecPattern == null || codecPattern.isEmpty()) {
+            return requireRegisteredValueInfo(clazz, codecName);
+        }
+        ValueInfo base = requireRegisteredValueInfo(clazz, null);
+        if (!(base.codec instanceof org.sjf4j.value.PatternedValueCodec)) {
+            throw new org.sjf4j.exception.BindingException("type '" + clazz.getName()
+                    + "' does not support codecPattern; its ValueCodec does not implement "
+                    + org.sjf4j.value.PatternedValueCodec.class.getName());
+        }
+        org.sjf4j.value.ValueCodec<?, ?> patterned =
+                ((org.sjf4j.value.PatternedValueCodec<?, ?>) base.codec).withPattern(codecPattern);
+        return new ValueInfo(codecPattern, patterned.valueClazz(), patterned.rawClazz(),
+                patterned, null, null, null);
+    }
+
+
 
     /*
      * --------------------------------------------------------------
