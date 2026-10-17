@@ -179,7 +179,8 @@ public class CompiledWriteBenchmark {
         check("fastjson2 native map utf8", json_fastjson2_map_utf8_native());
         byte[] tags = json_fastjson2_list_string_native_direct();
         if (!java.util.Arrays.equals(tags, json_fastjson2_list_string_compiled())
-                || !java.util.Arrays.equals(tags, json_fastjson2_list_string_iterator())) {
+                || !java.util.Arrays.equals(tags, json_fastjson2_list_string_iterator())
+                || !java.util.Arrays.equals(tags, json_fastjson2_list_string_indexed())) {
             throw new IllegalStateException("Fastjson2 List<String> encodings differ");
         }
     }
@@ -516,6 +517,21 @@ public class CompiledWriteBenchmark {
     public byte[] json_fastjson2_list_string_native_direct() {
         try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
             writer.writeString(FASTJSON2_TAGS);
+            return writer.getBytes();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_fastjson2_list_string_indexed() {
+        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
+            writer.startArray();
+            for (int i = 0, size = FASTJSON2_TAGS.size(); i < size; i++) {
+                if (i != 0) {
+                    writer.writeComma();
+                }
+                writer.writeString(FASTJSON2_TAGS.get(i));
+            }
+            writer.endArray();
             return writer.getBytes();
         }
     }
