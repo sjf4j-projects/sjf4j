@@ -16,13 +16,15 @@ class CompiledValueCodecReviewTest {
     void rejectsUnknownDiscoveredCodecFormatAtCompileTime() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bean.java",
-                "package fixture; public class Bean { "
-                + "@org.sjf4j.annotation.node.NodeProperty(codecName=\"misspelled\") "
-                + "public java.time.Instant when; }",
+                "package fixture; import org.sjf4j.annotation.node.NodeProperty; "
+                + "import java.time.Instant; public class Bean { "
+                + "@NodeProperty(codecName=\"misspelled\") "
+                + "public Instant when; }",
                 "fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@ReadFrom Bean read(String json) throws java.io.IOException; }"
+                + "@ReadFrom Bean read(String json) throws IOException; }"
         ), CodegenProcessor.class);
 
         assertFalse(result.success, result.diagnostics());
@@ -48,8 +50,9 @@ class CompiledValueCodecReviewTest {
                 + "x -> x.text, Parent::new); }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@WriteTo String write(Child value) throws java.io.IOException; }");
+                + "@WriteTo String write(Child value) throws IOException; }");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -73,15 +76,18 @@ class CompiledValueCodecReviewTest {
                 "package fixture; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
+                + "import com.google.gson.JsonElement; import com.google.gson.JsonNull; "
                 + "public class Codecs { "
-                + "@NodeValue public static final ValueCodec<com.google.gson.JsonElement,String> CODEC = "
-                + "new ValueCodec.SimpleValueCodec<>(com.google.gson.JsonElement.class, "
-                + "String.class, Object::toString, value -> com.google.gson.JsonNull.INSTANCE); }",
+                + "@NodeValue public static final ValueCodec<JsonElement,String> CODEC = "
+                + "new ValueCodec.SimpleValueCodec<>(JsonElement.class, "
+                + "String.class, Object::toString, value -> JsonNull.INSTANCE); }",
                 "fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "import java.io.IOException; "
+                + "import com.google.gson.JsonElement; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@WriteTo String write(com.google.gson.JsonElement value) "
-                + "throws java.io.IOException; }"
+                + "@WriteTo String write(JsonElement value) "
+                + "throws IOException; }"
         ), CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
