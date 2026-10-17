@@ -2,6 +2,7 @@ package org.sjf4j.value;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.TypeRegistry;
 
@@ -61,6 +62,9 @@ class AnnotatedValueCodecTest {
         assertEquals("", resolved[0].valueFormat);
         assertEquals("expanded", TypeRegistry.requireRegisteredValueInfo(Key.class, "expanded").valueFormat);
         assertEquals("short", TypeRegistry.requireRegisteredValueInfo(Key.class, "short").valueFormat);
+        Sjf4j json = Sjf4j.builder().build();
+        assertEquals("abc", json.fromJson("\"abc\"", Key.class).text);
+        assertEquals("\"abc\"", json.toJsonString(new Key("abc")));
         assertEquals("a", ((Key) resolved[0].rawToValue("a")).text);
         assertEquals("a!", ((Key) TypeRegistry.requireRegisteredValueInfo(Key.class, "expanded")
                 .rawToValue("a")).text);
@@ -140,6 +144,18 @@ class AnnotatedValueCodecTest {
                         x -> x.value, Mismatched::new);
     }
 
+
+    public static class DuplicateAcrossFields {
+        @NodeValue(formats = {"same"})
+        public static final ValueCodec<Mismatched, String> FIRST =
+                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
+                        x -> x.value, Mismatched::new);
+        @NodeValue(formats = {"same"})
+        public static final ValueCodec<Mismatched, String> SECOND =
+                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
+                        x -> x.value, Mismatched::new);
+    }
+
     @Test
     void rejectsInvalidFieldDeclarations() {
         assertInvalid(NotStatic.class, "public static final");
@@ -151,6 +167,7 @@ class AnnotatedValueCodecTest {
         assertInvalid(NullCodec.class, "is null");
         assertInvalid(EmptyFormats.class, "no formats");
         assertInvalid(DuplicateFormat.class, "duplicate");
+        assertInvalid(DuplicateAcrossFields.class, "duplicate");
     }
 
     private static void assertInvalid(Class<?> owner, String part) {
