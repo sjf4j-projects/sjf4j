@@ -2,8 +2,8 @@ package org.sjf4j.processor.discovery;
 
 import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.value.ValueCodec;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.value.ValueCodec;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.AnnotationMirror;
