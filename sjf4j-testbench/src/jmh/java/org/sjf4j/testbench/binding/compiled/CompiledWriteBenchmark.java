@@ -167,9 +167,7 @@ public class CompiledWriteBenchmark {
         check("jackson3 native map string", json_jackson3_map_string_native());
         check("jackson3 native map utf8", json_jackson3_map_utf8_native());
         check("gson native pojo string", json_gson_pojo_string_native());
-        check("gson native pojo utf8", json_gson_pojo_utf8_native_transcode());
         check("gson native map string", json_gson_map_string_native());
-        check("gson native map utf8", json_gson_map_utf8_native_transcode());
         check("fastjson2 native pojo string", json_fastjson2_pojo_string_native());
         check("fastjson2 native pojo utf8", json_fastjson2_pojo_utf8_native());
         check("fastjson2 native map string", json_fastjson2_map_string_native());
@@ -362,12 +360,6 @@ public class CompiledWriteBenchmark {
         return GSON_NATIVE.toJson(USER);
     }
 
-    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
-    @Benchmark
-    public byte[] json_gson_pojo_utf8_compiled_transcode() throws IOException {
-        return GSON_COMPILED.writePojo(USER).getBytes(StandardCharsets.UTF_8);
-    }
-
     @Benchmark
     public byte[] json_gson_pojo_utf8_compiled() throws IOException {
         return GSON_COMPILED.writePojoUtf8(USER);
@@ -376,11 +368,6 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_gson_pojo_utf8_runtime() {
         return GSON_RUNTIME.writeNodeAsBytes(USER);
-    }
-
-    @Benchmark
-    public byte[] json_gson_pojo_utf8_native_transcode() throws Exception {
-        return GSON_NATIVE.toJson(USER).getBytes(StandardCharsets.UTF_8);
     }
 
     @Benchmark
@@ -398,12 +385,6 @@ public class CompiledWriteBenchmark {
         return GSON_NATIVE.toJson(MAP);
     }
 
-    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
-    @Benchmark
-    public byte[] json_gson_map_utf8_compiled_transcode() throws IOException {
-        return GSON_COMPILED.writeMap(MAP).getBytes(StandardCharsets.UTF_8);
-    }
-
     @Benchmark
     public byte[] json_gson_map_utf8_compiled() throws IOException {
         return GSON_COMPILED.writeMapUtf8(MAP);
@@ -412,11 +393,6 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_gson_map_utf8_runtime() {
         return GSON_RUNTIME.writeNodeAsBytes(MAP);
-    }
-
-    @Benchmark
-    public byte[] json_gson_map_utf8_native_transcode() throws Exception {
-        return GSON_NATIVE.toJson(MAP).getBytes(StandardCharsets.UTF_8);
     }
 
     @CompiledBinder(backend = Backend.GSON)
@@ -507,12 +483,6 @@ public class CompiledWriteBenchmark {
         return JSONP_RUNTIME.writeNodeAsString(USER);
     }
 
-    /** Experimental JSON-P compiled String -> UTF-8, compared against streaming. */
-    @Benchmark
-    public byte[] json_jsonp_pojo_utf8_compiled_transcode() throws IOException {
-        return JSONP_COMPILED.writePojo(USER).getBytes(StandardCharsets.UTF_8);
-    }
-
     @Benchmark
     public byte[] json_jsonp_pojo_utf8_compiled() throws IOException {
         return JSONP_COMPILED.writePojoUtf8(USER);
@@ -531,12 +501,6 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_jsonp_map_string_runtime() {
         return JSONP_RUNTIME.writeNodeAsString(MAP);
-    }
-
-    /** Experimental JSON-P compiled String -> UTF-8, compared against streaming. */
-    @Benchmark
-    public byte[] json_jsonp_map_utf8_compiled_transcode() throws IOException {
-        return JSONP_COMPILED.writeMap(MAP).getBytes(StandardCharsets.UTF_8);
     }
 
     @Benchmark
@@ -587,12 +551,6 @@ public class CompiledWriteBenchmark {
         return SIMPLE_RUNTIME.writeNodeAsString(USER);
     }
 
-    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
-    @Benchmark
-    public byte[] json_simple_pojo_utf8_compiled_transcode() throws IOException {
-        return SIMPLE_COMPILED.writePojo(USER).getBytes(StandardCharsets.UTF_8);
-    }
-
     @Benchmark
     public byte[] json_simple_pojo_utf8_compiled() throws IOException {
         return SIMPLE_COMPILED.writePojoUtf8(USER);
@@ -611,12 +569,6 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_simple_map_string_runtime() {
         return SIMPLE_RUNTIME.writeNodeAsString(MAP);
-    }
-
-    /** Experimental compiled String -> UTF-8, including String allocation and transcode. */
-    @Benchmark
-    public byte[] json_simple_map_utf8_compiled_transcode() throws IOException {
-        return SIMPLE_COMPILED.writeMap(MAP).getBytes(StandardCharsets.UTF_8);
     }
 
     @Benchmark
