@@ -85,7 +85,7 @@ final class WriteEmitter {
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
         if (!nativeEligible(compiled.value(), new java.util.HashSet<BindingValue>())
-                && !containsStructuredWrapper(compiled.value(),
+                && !containsAdaptedValue(compiled.value(),
                         new java.util.HashSet<BindingValue>())) {
             switch (plan.writeOutput()) {
                 case STRING:
@@ -745,11 +745,11 @@ final class WriteEmitter {
     /** Native helpers require a fully concrete type graph. */
     boolean requiresWriteHelper(BindingValue value) {
         return nativeEligible(value, new java.util.HashSet<BindingValue>())
-                || containsStructuredWrapper(value, new java.util.HashSet<BindingValue>());
+                || containsAdaptedValue(value, new java.util.HashSet<BindingValue>());
     }
 
-    /** Wrapper subtrees use the compiled StreamingWriter, without changing POJO native code. */
-    private boolean containsStructuredWrapper(BindingValue value,
+    /** Adapted subtrees (dynamic wrappers or codecs) use compiled StreamingWriter without changing POJO native code. */
+    private boolean containsAdaptedValue(BindingValue value,
             java.util.Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
@@ -760,14 +760,14 @@ final class WriteEmitter {
                 return true;
             case POJO:
                 for (BindingProperty property : value.properties()) {
-                    if (containsStructuredWrapper(property.value(), visited)) return true;
+                    if (containsAdaptedValue(property.value(), visited)) return true;
                 }
                 return false;
             case LIST:
             case SET:
-                return containsStructuredWrapper(value.elementValue(), visited);
+                return containsAdaptedValue(value.elementValue(), visited);
             case MAP:
-                return containsStructuredWrapper(value.mapValue(), visited);
+                return containsAdaptedValue(value.mapValue(), visited);
             default:
                 return false;
         }
