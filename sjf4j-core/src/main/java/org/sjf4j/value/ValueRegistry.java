@@ -167,7 +167,11 @@ public final class ValueRegistry {
         Asserts.notNull(registryClass, "registryClass");
 
         Field[] fields = registryClass.getDeclaredFields();
-        Arrays.sort(fields, Comparator.comparing(Field::getName));
+        // Default-bearing fields come first, including their named aliases.
+        // This preserves Instant's historical default/iso/epochMillis order.
+        Arrays.sort(fields, Comparator
+                .comparing((Field f) -> !hasDefaultFormat(f))
+                .thenComparing(Field::getName));
 
         List<ValueInfo> defaults = new ArrayList<>();
         List<ValueInfo> named = new ArrayList<>();
@@ -227,6 +231,15 @@ public final class ValueRegistry {
 
         for (ValueInfo info : defaults) register(info, false);
         for (ValueInfo info : named) register(info, false);
+    }
+
+    private static boolean hasDefaultFormat(Field field) {
+        NodeValue annotation = field.getAnnotation(NodeValue.class);
+        if (annotation == null) return false;
+        for (String format : annotation.formats()) {
+            if (format.isEmpty()) return true;
+        }
+        return false;
     }
 
     private static void validateRegistration(ValueInfo valueInfo) {
