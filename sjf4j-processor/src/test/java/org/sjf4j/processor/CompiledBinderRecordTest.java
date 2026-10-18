@@ -115,7 +115,7 @@ class CompiledBinderRecordTest {
                 Class<?> iface = loader.loadClass("fixture.Binder");
                 Object binder = CompiledInstances.global(iface);
                 Object result = iface.getMethod("read", String.class)
-                        .invoke(binder, "{\\"p0\\":1,\\"p64\\":65}");
+                        .invoke(binder, "{\"p0\":1,\"p64\":65}");
                 assertEquals(1, result.getClass().getMethod("p0").invoke(result), backend);
                 assertEquals(65, result.getClass().getMethod("p64").invoke(result), backend);
             }
