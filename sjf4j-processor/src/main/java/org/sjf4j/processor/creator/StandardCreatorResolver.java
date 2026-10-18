@@ -131,8 +131,11 @@ public final class StandardCreatorResolver {
             return standard;
         }
 
-        if (!selected.getModifiers().contains(Modifier.PUBLIC)) {
-            error.accept("@NodeCreator must be accessible from generated code: " + selected);
+        Set<Modifier> modifiers = selected.getModifiers();
+        if (modifiers.contains(Modifier.PRIVATE)
+                || !modifiers.contains(Modifier.PUBLIC)
+                && !context.elements.getPackageOf(type).equals(context.elements.getPackageOf(origin))) {
+            error.accept("@NodeCreator is not accessible from generated code: " + selected);
             return null;
         }
         if (selected.getKind() == ElementKind.CONSTRUCTOR) {
