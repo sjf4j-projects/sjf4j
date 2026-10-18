@@ -139,6 +139,37 @@ class StreamingIOWriteTest {
     }
 
     @Test
+    void rawWriterPreservesJsonValuesWithoutBindingNestedTypes() throws Exception {
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("name", "Ada");
+        raw.put("skip", null);
+        raw.put("nested", List.of(3, true, Map.of("value", 2.5)));
+        StringWriter output = new StringWriter();
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
+            StreamingIO.writeRawNode(writer, raw, new RuntimeContext(false));
+            writer.flush();
+        }
+        assertEquals("{\"name\":\"Ada\",\"nested\":[3,true,{\"value\":2.5}]}",
+                output.toString());
+
+        Map<String, Object> withNull = new LinkedHashMap<>();
+        withNull.put("value", null);
+        withNull.put("list", java.util.Arrays.asList(null, 1));
+        StringWriter outputWithNull = new StringWriter();
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, outputWithNull)) {
+            StreamingIO.writeRawNode(writer, withNull, RuntimeContext.EMPTY);
+            writer.flush();
+        }
+        assertEquals("{\"value\":null,\"list\":[null,1]}", outputWithNull.toString());
+
+        StringWriter rejected = new StringWriter();
+        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, rejected)) {
+            assertThrows(BindingException.class,
+                    () -> StreamingIO.writeRawNode(writer, new UnsupportedNode(), RuntimeContext.EMPTY));
+        }
+    }
+
+    @Test
     void rejectsUnsupportedNodeTypes() throws Exception {
         StringWriter sw = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, sw)) {
