@@ -479,11 +479,11 @@ public final class Jackson2Reader extends StreamingReader {
     }
 
     @Override
-    public Object readRawNode() throws IOException {
-        return readRawNode(nextValue());
+    public Object readRaw() throws IOException {
+        return readRaw(nextValue());
     }
 
-    private Object readRawNode(JsonToken current) throws IOException {
+    private Object readRaw(JsonToken current) throws IOException {
         if (current == null) {
             throw expected("raw node", null);
         }
@@ -512,7 +512,7 @@ public final class Jackson2Reader extends StreamingReader {
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
         while ((name = parser.nextFieldName()) != null) {
-            value.put(name, readRawNode(parser.nextToken()));
+            value.put(name, readRaw(parser.nextToken()));
         }
         return value;
     }
@@ -521,7 +521,7 @@ public final class Jackson2Reader extends StreamingReader {
         List<Object> value = new ArrayList<>();
         JsonToken current;
         while ((current = parser.nextToken()) != JsonToken.END_ARRAY) {
-            value.add(readRawNode(current));
+            value.add(readRaw(current));
         }
         return value;
     }
