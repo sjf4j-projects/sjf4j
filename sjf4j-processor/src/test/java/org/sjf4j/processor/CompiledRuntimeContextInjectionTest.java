@@ -137,7 +137,11 @@ class CompiledRuntimeContextInjectionTest {
             NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
                     "fixture/Bean.java",
                     "package fixture; import java.time.Instant; "
-                    + "public class Bean { public Instant when; public String empty; }",
+                    + "public class Bean { public Instant when; public String empty; "
+                    + "public Address address; }",
+                    "fixture/Address.java",
+                    "package fixture; public class Address { "
+                    + "public String street = \"Main\"; public int zip = 12345; }",
                     "fixture/Binder.java",
                     "package fixture; import java.io.IOException; "
                     + "import org.sjf4j.annotation.binding.*; "
@@ -153,6 +157,8 @@ class CompiledRuntimeContextInjectionTest {
                 Class<?> beanType = loader.loadClass("fixture.Bean");
                 Object bean = beanType.getConstructor().newInstance();
                 beanType.getField("when").set(bean, java.time.Instant.parse("2024-01-01T10:00:00Z"));
+                beanType.getField("address").set(bean,
+                        loader.loadClass("fixture.Address").getConstructor().newInstance());
 
                 RuntimeContext context = new RuntimeContext(
                         Map.of(java.time.Instant.class, "epochMillis"), false);
@@ -161,8 +167,10 @@ class CompiledRuntimeContextInjectionTest {
                 String standard = (String) type.getMethod("write", beanType).invoke(defaults, bean);
                 String custom = (String) type.getMethod("write", beanType).invoke(configured, bean);
                 assertTrue(standard.contains("2024-01-01T10:00:00Z"), backend + ": " + standard);
+                assertTrue(standard.contains("\"street\":\"Main\""), backend + ": " + standard);
                 assertTrue(standard.contains("\"empty\":null"), backend + ": " + standard);
                 assertTrue(custom.contains("1704103200000"), backend + ": " + custom);
+                assertTrue(custom.contains("\"street\":\"Main\""), backend + ": " + custom);
                 assertFalse(custom.contains("\"empty\""), backend + ": " + custom);
 
                 Object decoded = type.getMethod("read", String.class).invoke(configured, custom);
