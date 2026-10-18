@@ -58,6 +58,7 @@ public final class Fastjson2Reader extends StreamingReader {
      * <p>Objects are represented by {@link LinkedHashMap} and arrays by
      * {@link ArrayList}.</p>
      */
+    @Override
     public Object readRaw() throws IOException {
         try {
             return _readRaw();
