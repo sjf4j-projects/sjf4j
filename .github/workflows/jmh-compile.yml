@@ -1,0 +1,28 @@
+name: JMH Compile and Creator Smoke
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'sjf4j-testbench/src/jmh/**'
+      - 'sjf4j-testbench/src/main/**'
+      - 'sjf4j-testbench/build.gradle.kts'
+      - 'sjf4j-processor/src/main/**'
+
+jobs:
+  jmh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile JMH benchmark jar
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Verify record benchmark correctness (non-performance smoke test)
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar             '.*CreatorReadBenchmark[.]fastjson2_record_string_compiled$'             -f 0 -wi 0 -i 1 -r 100ms
