@@ -601,6 +601,15 @@ public final class MappingCompiler {
         TypeMirror sourceType =
                 plan.primarySourceType();
 
+        if (plan.update() && converters.isCodecConversion(
+                sourceType, plan.targetType())) {
+            error(plan.method(), generated,
+                    "root ValueCodec update is not supported: "
+                            + sourceType + " -> " + plan.targetType()
+                            + "; use a create mapper returning the converted value");
+            return null;
+        }
+
         if (plan.update() &&
                 types.nodeKind(
                         plan.targetType()) ==
@@ -658,8 +667,10 @@ public final class MappingCompiler {
 
             conversion =
                     rootFallbackConversion(
+                            plan,
                             sourceType,
-                            plan.targetType());
+                            plan.targetType(),
+                            generated);
 
             if (conversion == null) {
                 error(
@@ -686,11 +697,14 @@ public final class MappingCompiler {
 
 
     private ConverterResolver.Conversion rootFallbackConversion(
+            MappingPlan plan,
             TypeMirror source,
-            TypeMirror target) {
+            TypeMirror target,
+            GeneratedClass generated) {
 
         if (converters.isCodecConversion(source, target)) {
-            return ConverterResolver.Conversion.valueCodec(source, target);
+            return converters.resolveCodecConversion(
+                    plan, source, target, generated);
         }
 
         NodeKind sourceKind =
