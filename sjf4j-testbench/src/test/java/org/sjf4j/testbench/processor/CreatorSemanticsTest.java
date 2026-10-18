@@ -151,7 +151,7 @@ public class CreatorSemanticsTest {
         public int setterCalls;
 
         @NodeCreator
-        public CreatorBean(@NodeProperty(aliases = "legacy_name") String name) {
+        public CreatorBean(@NodeProperty(value = "name", aliases = "legacy_name") String name) {
             this.name = name;
             this.age = 17;
         }
