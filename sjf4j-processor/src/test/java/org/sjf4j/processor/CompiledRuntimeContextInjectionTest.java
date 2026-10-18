@@ -35,6 +35,14 @@ class CompiledRuntimeContextInjectionTest {
                 "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
                 + "@CompiledMapper public interface Mapper { "
                 + "Token decode(String source); String encode(Token source); }");
+        sources.put("fixture/Source.java",
+                "package fixture; public class Source { public Token token; }");
+        sources.put("fixture/Target.java",
+                "package fixture; public class Target { public String token; }");
+        sources.put("fixture/Outer.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "@CompiledMapper(importing={Mapper.class}) public interface Outer { "
+                + "Target map(Source source); }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
@@ -51,6 +59,9 @@ class CompiledRuntimeContextInjectionTest {
         String mapperSource = compiled.generatedSource("fixture/Mapper_Impl.java");
         String binderSource = compiled.generatedSource("fixture/Binder_Impl.java");
         assertTrue(mapperSource.contains("RuntimeContext context)"), mapperSource);
+        String outerSource = compiled.generatedSource("fixture/Outer_Impl.java");
+        assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
+        assertFalse(outerSource.contains("CompiledInstances.of("), outerSource);
         assertTrue(binderSource.contains("RuntimeContext context)"), binderSource);
         assertTrue(binderSource.contains("context.defaultValueFormat("), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
@@ -91,6 +102,20 @@ class CompiledRuntimeContextInjectionTest {
                     .invoke(configuredBinder, token));
             assertEquals("hello", tokenClass.getField("value").get(
                     binderInterface.getMethod("read", String.class).invoke(configuredBinder, "\"a:hello\"")));
+
+            Class outerInterface = loader.loadClass("fixture.Outer");
+            Class<?> sourceClass = loader.loadClass("fixture.Source");
+            Class<?> targetClass = loader.loadClass("fixture.Target");
+            Object source = sourceClass.getConstructor().newInstance();
+            sourceClass.getField("token").set(source, token);
+            Object defaultOuter = CompiledInstances.global(outerInterface);
+            Object alternateOuter = CompiledInstances.create(outerInterface, context);
+            Object defaultTarget = outerInterface.getMethod("map", sourceClass)
+                    .invoke(defaultOuter, source);
+            Object alternateTarget = outerInterface.getMethod("map", sourceClass)
+                    .invoke(alternateOuter, source);
+            assertEquals("d:hello", targetClass.getField("token").get(defaultTarget));
+            assertEquals("a:hello", targetClass.getField("token").get(alternateTarget));
 
             Class<?> beanClass = loader.loadClass("fixture.Bean");
             Object bean = beanClass.getConstructor().newInstance();
