@@ -314,7 +314,7 @@ final class Fastjson2WriteEmitter {
 
         String method = fastjsonWriteMethod(value.kind());
         if (value.primitive()) {
-            out.line(writer + "." + method + "(" + expression + ");");
+            out.line(raw + "." + method + "(" + expression + ");");
         } else {
             out.beginBlock("");
             out.line(value.type() + " " + item + " = " + expression + ";");
@@ -323,7 +323,7 @@ final class Fastjson2WriteEmitter {
             out.endBlock(" else {");
             out.indent();
             String arg = fastjsonUnboxArgument(value.type().toString()).replace("value", item);
-            out.line(writer + "." + method + "(" + arg + ");");
+            out.line(raw + "." + method + "(" + arg + ");");
             out.endBlock();
             out.endBlock();
         }
