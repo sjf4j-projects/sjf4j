@@ -29,8 +29,10 @@ import org.sjf4j.testbench.model.User;
 import org.sjf4j.testbench.model.UserEvent;
 import org.sjf4j.testbench.model.UserGraph;
 import org.sjf4j.testbench.model.Users;
+import org.sjf4j.value.ValueCodec;
 
 import java.lang.reflect.Type;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -199,7 +201,7 @@ public class NodeMapperBenchmark {
 
     private static void assertUser(User actual, User expected) {
         require(actual.getId() == expected.getId() && actual.getCreatedAt() == expected.getCreatedAt()
-                && actual.getUpdatedAt() == expected.getUpdatedAt() && actual.getReputation() == expected.getReputation()
+                && actual.getUpdatedAt().equals(expected.getUpdatedAt()) && actual.getReputation() == expected.getReputation()
                 && actual.getLoginCount() == expected.getLoginCount() && actual.getAge() == expected.getAge()
                 && actual.isActive() == expected.isActive() && actual.isVerified() == expected.isVerified()
                 && actual.isAdmin() == expected.isAdmin() && actual.isSuspended() == expected.isSuspended()
@@ -239,7 +241,7 @@ public class NodeMapperBenchmark {
         User user = new User();
         user.setId(1000L + index);
         user.setCreatedAt(1_700_000_000_000L + index);
-        user.setUpdatedAt(1_712_345_000_000L + index);
+        user.setUpdatedAt(updatedAt(index));
         user.setReputation(50_000L + index * 11L);
         user.setLoginCount(40 + index);
         user.setAge(25 + index % 20);
@@ -255,7 +257,7 @@ public class NodeMapperBenchmark {
         user.setDisplayName("User " + index);
         user.setPasswordHash("hash-" + index);
         user.setBio("Platform engineer " + index);
-        user.setWebsite("https://example.test/users/" + index);
+        user.setWebsite(ValueCodec.URI_CODEC.rawToValue("https://example.test/users/" + index));
         user.setDepartment(index % 2 == 0 ? "Platform" : "Product");
         user.setAddress(new Address("Main Street " + index, "San Francisco", "CA", "9410" + index, "US"));
         user.setTags(List.of("java", "json", "team-" + index % 3));
@@ -267,7 +269,7 @@ public class NodeMapperBenchmark {
     private static JsonObject createUserNode(int index) {
         return JsonObject.of(
                 "id", 1000L + index, "createdAt", 1_700_000_000_000L + index,
-                "updatedAt", 1_712_345_000_000L + index, "reputation", 50_000L + index * 11L,
+                "updatedAt", ValueCodec.LOCAL_DATE_TIME.valueToRaw(updatedAt(index)), "reputation", 50_000L + index * 11L,
                 "loginCount", 40L + index, "age", 25L + index % 20, "active", index % 3 != 0,
                 "verified", index % 2 == 0, "admin", index == 0, "suspended", false,
                 "score", 84.5 + index, "latitude", 37.70 + index / 100.0, "longitude", -122.40 - index / 100.0,
@@ -283,6 +285,10 @@ public class NodeMapperBenchmark {
                                 "name", "Friend " + index, "close", true),
                         JsonObject.of("id", 3000L + index, "since", 1_610_000_000_000L + index,
                                 "name", "Colleague " + index, "close", false, RuntimeContext.EMPTY)));
+    }
+
+    private static LocalDateTime updatedAt(int index) {
+        return LocalDateTime.of(2024, 4, 5, 6, 7).plusSeconds(index);
     }
 
     private static UserGraph readUserGraph(JsonObject node) {
@@ -313,7 +319,7 @@ public class NodeMapperBenchmark {
         User user = new User();
         user.setId(node.getLong("id"));
         user.setCreatedAt(node.getLong("createdAt"));
-        user.setUpdatedAt(node.getLong("updatedAt"));
+        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(node.getString("updatedAt")));
         user.setReputation(node.getLong("reputation"));
         user.setLoginCount(node.getInt("loginCount"));
         user.setAge(node.getInt("age"));
@@ -329,7 +335,7 @@ public class NodeMapperBenchmark {
         user.setDisplayName(node.getString("displayName"));
         user.setPasswordHash(node.getString("passwordHash"));
         user.setBio(node.getString("bio"));
-        user.setWebsite(node.getString("website"));
+        user.setWebsite(ValueCodec.URI_CODEC.rawToValue(node.getString("website")));
         user.setDepartment(node.getString("department"));
         user.setAddress(readAddress(node.getJsonObject("address")));
 
@@ -426,7 +432,7 @@ public class NodeMapperBenchmark {
         JsonObject node = new JsonObject();
         node.put("id", user.getId());
         node.put("createdAt", user.getCreatedAt());
-        node.put("updatedAt", user.getUpdatedAt());
+        node.put("updatedAt", ValueCodec.LOCAL_DATE_TIME.valueToRaw(user.getUpdatedAt()));
         node.put("reputation", user.getReputation());
         node.put("loginCount", user.getLoginCount());
         node.put("age", user.getAge());
@@ -442,7 +448,7 @@ public class NodeMapperBenchmark {
         node.put("displayName", user.getDisplayName());
         node.put("passwordHash", user.getPasswordHash());
         node.put("bio", user.getBio());
-        node.put("website", user.getWebsite());
+        node.put("website", ValueCodec.URI_CODEC.valueToRaw(user.getWebsite()));
         node.put("department", user.getDepartment());
         node.put("address", writeAddress(user.getAddress()));
 

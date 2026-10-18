@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.testbench.model.Users;
 
 import java.nio.charset.StandardCharsets;
@@ -93,12 +94,12 @@ public final class Fastjson2HandLargeWriter {
     str(w, DISPLAY_NAME, v.getDisplayName());
     str(w, PASSWORD_HASH, v.getPasswordHash());
     str(w, BIO, v.getBio());
-    str(w, WEBSITE, v.getWebsite());
+    str(w, WEBSITE, ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
     str(w, DEPARTMENT, v.getDepartment());
     w.writeNameRaw(CREATED_AT);
     w.writeInt64(v.getCreatedAt());
     w.writeNameRaw(UPDATED_AT);
-    w.writeInt64(v.getUpdatedAt());
+    w.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
     w.writeNameRaw(LOGIN_COUNT);
     w.writeInt32(v.getLoginCount());
     w.writeNameRaw(REPUTATION);

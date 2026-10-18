@@ -6,6 +6,7 @@ import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ public final class Jackson2HandPojoReaderV1 {
                     user.setCreatedAt(reader.readLongValue());
                     break;
                 case 2:
-                    user.setUpdatedAt(reader.readLongValue());
+                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(readString(reader)));
                     break;
                 case 3:
                     user.setReputation(reader.readLongValue());
@@ -95,7 +96,7 @@ public final class Jackson2HandPojoReaderV1 {
                     user.setBio(readString(reader));
                     break;
                 case 18:
-                    user.setWebsite(readString(reader));
+                    user.setWebsite(ValueCodec.URI_CODEC.rawToValue(readString(reader)));
                     break;
                 case 19:
                     user.setDepartment(readString(reader));

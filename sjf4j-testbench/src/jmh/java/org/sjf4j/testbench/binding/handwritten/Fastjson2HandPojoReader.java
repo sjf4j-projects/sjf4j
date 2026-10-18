@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONReader;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +22,7 @@ public final class Fastjson2HandPojoReader {
             String name = reader.readFieldName();
             if ("id".equals(name)) user.setId(reader.readInt64Value());
             else if ("createdAt".equals(name)) user.setCreatedAt(reader.readInt64Value());
-            else if ("updatedAt".equals(name)) user.setUpdatedAt(reader.readInt64Value());
+            else if ("updatedAt".equals(name)) user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
             else if ("reputation".equals(name)) user.setReputation(reader.readInt64Value());
             else if ("loginCount".equals(name)) user.setLoginCount(reader.readInt32Value());
             else if ("age".equals(name)) user.setAge(reader.readInt32Value());
@@ -37,7 +38,7 @@ public final class Fastjson2HandPojoReader {
             else if ("displayName".equals(name)) user.setDisplayName(readString(reader));
             else if ("passwordHash".equals(name)) user.setPasswordHash(readString(reader));
             else if ("bio".equals(name)) user.setBio(readString(reader));
-            else if ("website".equals(name)) user.setWebsite(readString(reader));
+            else if ("website".equals(name)) user.setWebsite(ValueCodec.URI_CODEC.rawToValue(readString(reader)));
             else if ("department".equals(name)) user.setDepartment(readString(reader));
             else if ("address".equals(name)) user.setAddress(readAddress(reader));
             else if ("tags".equals(name)) user.setTags(readStrings(reader));

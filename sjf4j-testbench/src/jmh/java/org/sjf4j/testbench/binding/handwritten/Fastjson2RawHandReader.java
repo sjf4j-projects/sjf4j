@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.util.Fnv;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -177,7 +178,7 @@ public final class Fastjson2RawHandReader {
                 case RAW_UPDATED_AT:
                     if (reader.nextIfName4Match9(
                             0x3A22744164657461L)) {
-                        user.setUpdatedAt(reader.readInt64Value());
+                        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
                         continue;
                     }
                     break;
@@ -307,7 +308,7 @@ public final class Fastjson2RawHandReader {
                 case RAW_WEBSITE:
                     if (reader.nextIfName4Match7(
                             0x65746973)) {
-                        user.setWebsite(reader.readString());
+                        user.setWebsite(ValueCodec.URI_CODEC.rawToValue(reader.readString()));
                         continue;
                     }
                     break;
@@ -379,7 +380,7 @@ public final class Fastjson2RawHandReader {
 
             case KEY_UPDATED_AT:
                 if (hash == HASH_UPDATED_AT) {
-                    user.setUpdatedAt(reader.readInt64Value());
+                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
                 } else {
                     reader.skipValue();
                 }
@@ -507,7 +508,7 @@ public final class Fastjson2RawHandReader {
 
             case KEY_WEBSITE:
                 if (hash == HASH_WEBSITE) {
-                    user.setWebsite(reader.readString());
+                    user.setWebsite(ValueCodec.URI_CODEC.rawToValue(reader.readString()));
                 } else {
                     reader.skipValue();
                 }

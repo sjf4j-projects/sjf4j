@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.io.SerializedString;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -127,7 +128,7 @@ public final class Jackson2HandPojoReaderV4 {
         if (!parser.nextFieldName(UPDATED_AT)) {
             return readUserFallback(parser, user);
         }
-        user.setUpdatedAt(parser.nextLongValue(0L));
+        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(parser.nextTextValue()));
 
         if (!parser.nextFieldName(REPUTATION)) {
             return readUserFallback(parser, user);
@@ -210,7 +211,7 @@ public final class Jackson2HandPojoReaderV4 {
         if (!parser.nextFieldName(WEBSITE)) {
             return readUserFallback(parser, user);
         }
-        user.setWebsite(parser.nextTextValue());
+        user.setWebsite(ValueCodec.URI_CODEC.rawToValue(parser.nextTextValue()));
 
         if (!parser.nextFieldName(DEPARTMENT)) {
             return readUserFallback(parser, user);
@@ -284,7 +285,7 @@ public final class Jackson2HandPojoReaderV4 {
                     break;
 
                 case "updatedAt":
-                    user.setUpdatedAt(parser.nextLongValue(0L));
+                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(parser.nextTextValue()));
                     break;
 
                 case "reputation":
@@ -351,7 +352,7 @@ public final class Jackson2HandPojoReaderV4 {
                     break;
 
                 case "website":
-                    user.setWebsite(parser.nextTextValue());
+                    user.setWebsite(ValueCodec.URI_CODEC.rawToValue(parser.nextTextValue()));
                     break;
 
                 case "department":

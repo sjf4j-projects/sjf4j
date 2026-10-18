@@ -5,6 +5,7 @@ import com.google.gson.stream.JsonToken;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public final class GsonHandPojoReaderV2 {
                     user.setCreatedAt(reader.nextLong());
                     break;
                 case "updatedAt":
-                    user.setUpdatedAt(reader.nextLong());
+                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(readString(reader)));
                     break;
                 case "reputation":
                     user.setReputation(reader.nextLong());
@@ -81,7 +82,7 @@ public final class GsonHandPojoReaderV2 {
                     user.setBio(readString(reader));
                     break;
                 case "website":
-                    user.setWebsite(readString(reader));
+                    user.setWebsite(ValueCodec.URI_CODEC.rawToValue(readString(reader)));
                     break;
                 case "department":
                     user.setDepartment(readString(reader));

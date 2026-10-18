@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.util.Fnv;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -135,7 +136,7 @@ public final class Fastjson2SwitchHandReader {
 
                 case UPDATED_AT:
                     if (hash == HASH_UPDATED_AT) {
-                        user.setUpdatedAt(reader.readInt64Value());
+                        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
                     } else {
                         reader.skipValue();
                     }
@@ -263,7 +264,7 @@ public final class Fastjson2SwitchHandReader {
 
                 case WEBSITE:
                     if (hash == HASH_WEBSITE) {
-                        user.setWebsite(reader.readString());
+                        user.setWebsite(ValueCodec.URI_CODEC.rawToValue(reader.readString()));
                     } else {
                         reader.skipValue();
                     }

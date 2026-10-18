@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 
@@ -29,10 +30,10 @@ public final class Jackson2HandPojoStringedWriter {
         str(g, "displayName", v.getDisplayName());
         str(g, "passwordHash", v.getPasswordHash());
         str(g, "bio", v.getBio());
-        str(g, "website", v.getWebsite());
+        str(g, "website", ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
         str(g, "department", v.getDepartment());
         g.writeNumberField("createdAt", v.getCreatedAt());
-        g.writeNumberField("updatedAt", v.getUpdatedAt());
+        g.writeStringField("updatedAt", ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
         g.writeNumberField("loginCount", v.getLoginCount());
         g.writeNumberField("reputation", v.getReputation());
         g.writeBooleanField("active", v.isActive());

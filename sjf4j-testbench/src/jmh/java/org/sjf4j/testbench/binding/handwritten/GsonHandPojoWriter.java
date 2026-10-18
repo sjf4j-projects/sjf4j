@@ -4,6 +4,7 @@ import com.google.gson.stream.JsonWriter;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.testbench.model.Users;
 
 import java.io.IOException;
@@ -49,10 +50,10 @@ public final class GsonHandPojoWriter {
         str(w, "displayName", v.getDisplayName());
         str(w, "passwordHash", v.getPasswordHash());
         str(w, "bio", v.getBio());
-        str(w, "website", v.getWebsite());
+        str(w, "website", ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
         str(w, "department", v.getDepartment());
         w.name("createdAt").value(v.getCreatedAt());
-        w.name("updatedAt").value(v.getUpdatedAt());
+        w.name("updatedAt").value(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
         w.name("loginCount").value(v.getLoginCount());
         w.name("reputation").value(v.getReputation());
         w.name("active").value(v.isActive());
