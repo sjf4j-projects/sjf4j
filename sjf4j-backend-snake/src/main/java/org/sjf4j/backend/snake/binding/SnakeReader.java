@@ -454,7 +454,7 @@ public final class SnakeReader extends StreamingReader {
     }
 
     @Override
-    public Object readRawNode() throws IOException {
+    public Object readRaw() throws IOException {
         Token token = peekToken();
         if (token != Token.OBJECT_START && token != Token.ARRAY_START) {
             return readRawScalar(token);
