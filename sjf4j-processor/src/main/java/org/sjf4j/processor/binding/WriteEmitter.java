@@ -332,7 +332,7 @@ final class WriteEmitter {
             }
         }
 
-        out.beginBlock("private static void " + value.helperName()
+        out.beginBlock("private void " + value.helperName()
                 + "(" + backend.writerType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
