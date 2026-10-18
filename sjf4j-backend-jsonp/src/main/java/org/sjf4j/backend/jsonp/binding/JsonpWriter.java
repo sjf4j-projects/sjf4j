@@ -24,7 +24,7 @@ public final class JsonpWriter extends StreamingWriter {
     }
 
     /** Native JSON-P writer for compiled binding hot paths. */
-    public JsonGenerator nativeGenerator() { return generator; }
+    public JsonGenerator nativeWriter() { return generator; }
 
     @Override
     public void startObject() throws IOException {
