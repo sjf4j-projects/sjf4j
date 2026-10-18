@@ -402,14 +402,37 @@ final class WriteEmitter {
 
     boolean needsStringHelper(BindingValue value) {
         if (!hasNativeJsonWriter()
-                || (!value.helperRequired()
-                    && !(backend.backend() == Backend.FASTJSON2
-                         && value.kind() == BindingValue.Kind.STRING))
-                || value.direction() != BindingPlan.Direction.WRITE_TO
-                || !nativeEligible(value, new HashSet<BindingValue>())) {
+                || value.direction() != BindingPlan.Direction.WRITE_TO) {
             return false;
         }
-        return containsString(value, new HashSet<BindingValue>());
+        if (backend.backend() == Backend.FASTJSON2
+                && value.kind() == BindingValue.Kind.STRING) {
+            return true;
+        }
+        return containsNativeString(value, new HashSet<BindingValue>());
+    }
+
+    private boolean containsNativeString(BindingValue value, Set<BindingValue> visited) {
+        if (!visited.add(value)) return false;
+        if (value.helperRequired()
+                && nativeEligible(value, new HashSet<BindingValue>())) {
+            return containsString(value, new HashSet<BindingValue>());
+        }
+        switch (value.kind()) {
+            case POJO:
+            case JOJO:
+                for (BindingProperty property : value.properties()) {
+                    if (containsNativeString(property.value(), visited)) return true;
+                }
+                return false;
+            case LIST:
+            case SET:
+                return containsNativeString(value.elementValue(), visited);
+            case MAP:
+                return containsNativeString(value.mapValue(), visited);
+            default:
+                return false;
+        }
     }
 
     private boolean containsString(BindingValue value, Set<BindingValue> visited) {
