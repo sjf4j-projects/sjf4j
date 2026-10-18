@@ -14,9 +14,6 @@ final class WriteEmitter {
     private static final String STREAMING_IO =
             "org.sjf4j.binding.StreamingIO";
 
-    private static final String RUNTIME_CONTEXT =
-            "org.sjf4j.RuntimeContext";
-
     private final BackendSpec backend;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
@@ -343,7 +340,7 @@ final class WriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line(STREAMING_IO + ".writeNode(writer, value, "
-                        + RUNTIME_CONTEXT + ".EMPTY);");
+                        + "this.context);");
                 break;
             case LIST:
             case SET:
@@ -497,7 +494,7 @@ final class WriteEmitter {
                     + "value.dynamicProperties().entrySet())");
             out.line("writer.writeName(entry.getKey(), count++ > 0);");
             out.line(STREAMING_IO + ".writeNode(writer, entry.getValue(), "
-                    + RUNTIME_CONTEXT + ".EMPTY);");
+                    + "this.context);");
             out.endBlock();
         }
 
@@ -584,7 +581,7 @@ final class WriteEmitter {
                 out.indent();
                 out.line(STREAMING_IO + ".writeNode(" + writer + ", "
                         + value.helperName() + ".valueToRaw(" + expression + "), "
-                        + RUNTIME_CONTEXT + ".EMPTY);");
+                        + "this.context);");
                 out.endBlock();
                 return;
             case STRING:
@@ -709,7 +706,7 @@ final class WriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + expression + ", " + RUNTIME_CONTEXT + ".EMPTY);");
+                        + expression + ", " + "this.context);");
                 return;
 
             case RUNTIME:
@@ -718,8 +715,7 @@ final class WriteEmitter {
                                 ".writeNode(" +
                                 writer + ", " +
                                 expression + ", " +
-                                RUNTIME_CONTEXT +
-                                ".EMPTY);");
+                                "this.context);");
                 return;
 
             default:
