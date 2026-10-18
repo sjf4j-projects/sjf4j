@@ -34,6 +34,11 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         this(new JsonFactory(), RuntimeContext.EMPTY);
     }
 
+    /** Creates a binder with default backend settings and a supplied runtime context. */
+    public Jackson2Binder(RuntimeContext context) {
+        this(new JsonFactory(), context);
+    }
+
     /**
      * Creates a binder using a supplied factory, which is configured in place.
      * @param factory the Jackson 2 factory to configure
