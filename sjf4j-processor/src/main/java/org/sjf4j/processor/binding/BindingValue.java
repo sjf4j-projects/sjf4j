@@ -1,6 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.util.Asserts;
+import org.sjf4j.processor.creator.CreatorPlan;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
@@ -42,6 +43,7 @@ final class BindingValue {
     private final boolean primitive;
 
     private String helperName;
+    private CreatorPlan creator;
     private List<BindingProperty> properties = Collections.emptyList();
     private BindingValue elementValue;
     private BindingValue mapValue;
@@ -87,6 +89,14 @@ final class BindingValue {
                 || kind == Kind.LIST
                 || kind == Kind.SET
                 || kind == Kind.MAP;
+    }
+
+    CreatorPlan creator() {
+        return creator;
+    }
+
+    void creator(CreatorPlan creator) {
+        this.creator = creator;
     }
 
     String helperName() {
