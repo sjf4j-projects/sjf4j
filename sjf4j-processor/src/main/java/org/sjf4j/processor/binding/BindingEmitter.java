@@ -53,13 +53,16 @@ final class BindingEmitter {
             GeneratedClass generated) {
 
         if (value.isCodec()) {
-            // One resolved ValueInfo per selected type/format, not per field access.
+            // Resolve once per configured instance, never inside the read/write loops.
+            // Explicit property formats override RuntimeContext defaults.
             generated.addField(out -> out.line(
-                    "private static final org.sjf4j.value.ValueInfo "
-                            + value.helperName() + " = "
+                    "private final org.sjf4j.value.ValueInfo " + value.helperName() + ";"));
+            generated.addContextInitializer(out -> out.line(
+                    "this." + value.helperName() + " = "
                             + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
                             + value.type() + ".class, "
-                            + (value.codecName() == null ? "null"
+                            + (value.codecName() == null
+                                    ? "context.defaultValueFormat(" + value.type() + ".class)"
                                     : JavaWriter.stringLiteral(value.codecName()))
                             + ", "
                             + (value.codecPattern() == null ? "null"
