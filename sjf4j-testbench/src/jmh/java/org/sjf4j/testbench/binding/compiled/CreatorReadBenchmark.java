@@ -186,7 +186,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson2_record_string_runtime() throws Exception {
-        return JACKSON2_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON2_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -206,7 +206,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson2_record_utf8_runtime() throws Exception {
-        return JACKSON2_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON2_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -226,7 +226,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson2_record_reversed_string_runtime() throws Exception {
-        return JACKSON2_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON2_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -236,7 +236,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson2_record_reversed_utf8_runtime() throws Exception {
-        return JACKSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -246,7 +246,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson3_record_string_runtime() throws Exception {
-        return JACKSON3_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON3_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -266,7 +266,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson3_record_utf8_runtime() throws Exception {
-        return JACKSON3_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON3_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -286,7 +286,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson3_record_reversed_string_runtime() throws Exception {
-        return JACKSON3_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON3_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -296,7 +296,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jackson3_record_reversed_utf8_runtime() throws Exception {
-        return JACKSON3_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) JACKSON3_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -306,7 +306,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord gson_record_string_runtime() throws Exception {
-        return GSON_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
+        return (CreatorUserRecord) GSON_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -321,7 +321,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord gson_record_utf8_runtime() throws Exception {
-        return GSON_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) GSON_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -336,7 +336,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord gson_record_reversed_string_runtime() throws Exception {
-        return GSON_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
+        return (CreatorUserRecord) GSON_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -346,7 +346,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord gson_record_reversed_utf8_runtime() throws Exception {
-        return GSON_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) GSON_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -356,7 +356,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord fastjson2_record_string_runtime() throws IOException {
-        return FASTJSON2_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
+        return (CreatorUserRecord) FASTJSON2_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -371,7 +371,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord fastjson2_record_utf8_runtime() throws IOException {
-        return FASTJSON2_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) FASTJSON2_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -386,7 +386,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord fastjson2_record_reversed_string_runtime() throws IOException {
-        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
+        return (CreatorUserRecord) FASTJSON2_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -396,7 +396,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord fastjson2_record_reversed_utf8_runtime() throws IOException {
-        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) FASTJSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -406,7 +406,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jsonp_record_string_runtime() throws IOException {
-        return JSONP_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
+        return (CreatorUserRecord) JSONP_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -416,7 +416,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jsonp_record_utf8_runtime() throws IOException {
-        return JSONP_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) JSONP_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -426,7 +426,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jsonp_record_reversed_string_runtime() throws IOException {
-        return JSONP_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
+        return (CreatorUserRecord) JSONP_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -436,7 +436,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord jsonp_record_reversed_utf8_runtime() throws IOException {
-        return JSONP_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) JSONP_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -446,7 +446,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord simple_record_string_runtime() throws IOException {
-        return SIMPLE_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
+        return (CreatorUserRecord) SIMPLE_RUNTIME.readNode(JSON_DATA, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -456,7 +456,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord simple_record_utf8_runtime() throws IOException {
-        return SIMPLE_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) SIMPLE_RUNTIME.readNode(JSON_UTF8, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -466,7 +466,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord simple_record_reversed_string_runtime() throws IOException {
-        return SIMPLE_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
+        return (CreatorUserRecord) SIMPLE_RUNTIME.readNode(JSON_REVERSED, CreatorUserRecord.class);
     }
 
     @Benchmark
@@ -476,7 +476,7 @@ public class CreatorReadBenchmark {
 
     @Benchmark
     public CreatorUserRecord simple_record_reversed_utf8_runtime() throws IOException {
-        return SIMPLE_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
+        return (CreatorUserRecord) SIMPLE_RUNTIME.readNode(JSON_REVERSED_UTF8, CreatorUserRecord.class);
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
