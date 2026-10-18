@@ -128,7 +128,7 @@ public final class Jackson2HandPojoReaderV4 {
         if (!parser.nextFieldName(UPDATED_AT)) {
             return readUserFallback(parser, user);
         }
-        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(parser.nextTextValue()));
+        user.setUpdatedAt(parser.nextLongValue(0L));
 
         if (!parser.nextFieldName(REPUTATION)) {
             return readUserFallback(parser, user);
@@ -285,7 +285,7 @@ public final class Jackson2HandPojoReaderV4 {
                     break;
 
                 case "updatedAt":
-                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(parser.nextTextValue()));
+                    user.setUpdatedAt(parser.nextLongValue(0L));
                     break;
 
                 case "reputation":

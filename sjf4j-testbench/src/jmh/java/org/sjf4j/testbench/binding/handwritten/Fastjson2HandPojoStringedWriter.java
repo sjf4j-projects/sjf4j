@@ -35,7 +35,7 @@ public final class Fastjson2HandPojoStringedWriter {
         name(writer, "createdAt");
         writer.writeInt64(value.getCreatedAt());
         name(writer, "updatedAt");
-        writer.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(value.getUpdatedAt()));
+        writer.writeInt64(value.getUpdatedAt());
         name(writer, "loginCount");
         writer.writeInt32(value.getLoginCount());
         name(writer, "reputation");

@@ -27,7 +27,7 @@ public final class GsonHandPojoReader {
             String name = reader.nextName();
             if ("id".equals(name)) user.setId(reader.nextLong());
             else if ("createdAt".equals(name)) user.setCreatedAt(reader.nextLong());
-            else if ("updatedAt".equals(name)) user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(readString(reader)));
+            else if ("updatedAt".equals(name)) user.setUpdatedAt(reader.nextLong());
             else if ("reputation".equals(name)) user.setReputation(reader.nextLong());
             else if ("loginCount".equals(name)) user.setLoginCount(reader.nextInt());
             else if ("age".equals(name)) user.setAge(reader.nextInt());

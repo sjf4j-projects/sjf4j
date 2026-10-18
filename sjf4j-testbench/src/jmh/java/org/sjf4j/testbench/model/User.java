@@ -3,14 +3,13 @@ package org.sjf4j.testbench.model;
 import lombok.Data;
 
 import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 public class User {
     private long id;
     private long createdAt;
-    private LocalDateTime updatedAt;
+    private long updatedAt;
     private long reputation;
     private int loginCount;
     private int age;

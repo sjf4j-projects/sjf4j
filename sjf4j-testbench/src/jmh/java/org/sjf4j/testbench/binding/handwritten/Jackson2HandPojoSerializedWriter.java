@@ -99,7 +99,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeFieldName(CREATED_AT);
         g.writeNumber(v.getCreatedAt());
         g.writeFieldName(UPDATED_AT);
-        g.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
+        g.writeNumber(v.getUpdatedAt());
         g.writeFieldName(LOGIN_COUNT);
         g.writeNumber(v.getLoginCount());
         g.writeFieldName(REPUTATION);

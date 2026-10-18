@@ -105,7 +105,7 @@ public final class Fastjson2HandPojoSerializedWriter {
         w.writeNameRaw(CREATED_AT8);
         w.writeInt64(v.getCreatedAt());
         w.writeNameRaw(UPDATED_AT8);
-        w.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
+        w.writeInt64(v.getUpdatedAt());
         w.writeNameRaw(LOGIN_COUNT8);
         w.writeInt32(v.getLoginCount());
         w.writeNameRaw(REPUTATION8);
@@ -153,7 +153,7 @@ public final class Fastjson2HandPojoSerializedWriter {
         w.writeNameRaw(CREATED_AT16);
         w.writeInt64(v.getCreatedAt());
         w.writeNameRaw(UPDATED_AT16);
-        w.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
+        w.writeInt64(v.getUpdatedAt());
         w.writeNameRaw(LOGIN_COUNT16);
         w.writeInt32(v.getLoginCount());
         w.writeNameRaw(REPUTATION16);

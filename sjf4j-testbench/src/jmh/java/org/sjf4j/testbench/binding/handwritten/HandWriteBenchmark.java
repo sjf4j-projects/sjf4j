@@ -92,7 +92,7 @@ public class HandWriteBenchmark {
         user.setWebsite(ValueCodec.URI_CODEC.rawToValue("https://example.test/a?b=1"));
         user.setDepartment("Platform Engineering");
         user.setCreatedAt(1700000000123L);
-        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue("2024-01-02T03:04:05"));
+        user.setUpdatedAt(1701234567890L);
         user.setLoginCount(421);
         user.setReputation(9876543210L);
         user.setActive(true);
