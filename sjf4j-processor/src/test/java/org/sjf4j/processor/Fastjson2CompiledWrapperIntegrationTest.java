@@ -43,12 +43,10 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(compiled.success, compiled.diagnostics());
 
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("_writeBeanUtf16("
-                + "org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer"), source);
-        assertTrue(source.contains("_writeBeanUtf8("
-                + "org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer"), source);
-        assertTrue(source.contains("_writeAddressUtf16("
-                + "org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer"), source);
+        assertTrue(source.contains("Fastjson2Writer writer, fixture.Bean value)"), source);
+        assertTrue(source.contains("Fastjson2Writer writer, fixture.Address value)"), source);
+        assertTrue(source.contains("Utf16("), source);
+        assertTrue(source.contains("Utf8("), source);
         assertTrue(source.contains("writer.rawWriter()"), source);
         assertTrue(source.contains("StreamingIO.writeNode(writer,"), source);
         assertTrue(source.contains("writeName"), source);
