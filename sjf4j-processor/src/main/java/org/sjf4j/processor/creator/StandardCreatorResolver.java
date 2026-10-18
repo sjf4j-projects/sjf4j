@@ -1,5 +1,6 @@
 package org.sjf4j.processor.creator;
 
+import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -13,6 +14,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeKind;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -91,6 +93,52 @@ public final class StandardCreatorResolver {
                         ? " has no public constructor"
                         : " has multiple public constructors and no public no-args constructor"));
         return null;
+    }
+
+    /**
+     * Binding-specific creator selection. Explicit @NodeCreator wins over the
+     * no-args path; otherwise the established standard rules apply. Mapper's
+     * @MappingCreator selection and precedence are deliberately unchanged.
+     */
+    public CreatorPlan resolveBinding(TypeMirror targetType, Element origin,
+                                      Consumer<String> error) {
+        TypeMirror target = types.concrete(targetType);
+        TypeElement type = types.typeElement(target);
+        if (type == null || !isTypeAccessible(type, context.elements.getPackageOf(origin))) {
+            error.accept("Creator target is not accessible from generated code: " + target);
+            return null;
+        }
+        ExecutableElement selected = null;
+        for (Element enclosed : type.getEnclosedElements()) {
+            if (enclosed.getKind() != ElementKind.CONSTRUCTOR
+                    && enclosed.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement candidate = (ExecutableElement) enclosed;
+            if (candidate.getAnnotation(NodeCreator.class) == null) continue;
+            if (selected != null) {
+                error.accept("multiple @NodeCreator definitions for " + target);
+                return null;
+            }
+            selected = candidate;
+        }
+        if (selected == null) {
+            return resolve(target, target, origin, "@NodeCreator", error);
+        }
+
+        if (!selected.getModifiers().contains(Modifier.PUBLIC)) {
+            error.accept("@NodeCreator must be accessible from generated code: " + selected);
+            return null;
+        }
+        if (selected.getKind() == ElementKind.CONSTRUCTOR) {
+            return constructorPlan(target, target, selected);
+        }
+        if (!selected.getModifiers().contains(Modifier.STATIC)
+                || selected.getReturnType().getKind() == TypeKind.VOID
+                || !context.typeUtils.isAssignable(selected.getReturnType(), target)) {
+            error.accept("@NodeCreator factory must be static and return " + target + ": " + selected);
+            return null;
+        }
+        return CreatorPlan.staticFactory(target, target, selected,
+                resolvedParameterTypes(target, selected));
     }
 
     private CreatorPlan constructorPlan(TypeMirror declaredType, TypeMirror workingType,
