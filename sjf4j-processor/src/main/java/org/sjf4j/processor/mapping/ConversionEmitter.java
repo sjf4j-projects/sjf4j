@@ -204,6 +204,7 @@ public final class ConversionEmitter
                 return;
 
             case SCALAR:
+            case VALUE_CODEC:
             case ONE_OF:
                 return;
 
@@ -553,6 +554,14 @@ public final class ConversionEmitter
                         names,
                         conversion,
                         source);
+
+            case VALUE_CODEC:
+                return emitNodesTo(
+                        out,
+                        names,
+                        conversion.targetType(),
+                        source,
+                        "codec");
 
             case ONE_OF:
                 return emitNodesTo(
