@@ -13,11 +13,8 @@ import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
@@ -875,55 +872,6 @@ final class BindingCompiler {
                         implementation),
                 context.typeUtils.erasure(
                         target));
-    }
-
-    private boolean hasPublicNoArgsConstructor(
-            TypeMirror type) {
-
-        TypeElement element =
-                context.types.typeElement(type);
-
-        if (element == null ||
-                element.getKind() == ElementKind.INTERFACE ||
-                "RECORD".equals(
-                        element.getKind().name()) ||
-                element.getModifiers().contains(
-                        Modifier.ABSTRACT) ||
-                !element.getModifiers().contains(
-                        Modifier.PUBLIC)) {
-            return false;
-        }
-
-        if (element.getNestingKind() ==
-                NestingKind.MEMBER &&
-                !element.getModifiers().contains(
-                        Modifier.STATIC)) {
-            return false;
-        }
-
-        boolean declaredConstructor = false;
-
-        for (Element enclosed :
-                element.getEnclosedElements()) {
-
-            if (enclosed.getKind() !=
-                    ElementKind.CONSTRUCTOR) {
-                continue;
-            }
-
-            declaredConstructor = true;
-
-            ExecutableElement constructor =
-                    (ExecutableElement) enclosed;
-
-            if (constructor.getParameters().isEmpty() &&
-                    constructor.getModifiers().contains(
-                            Modifier.PUBLIC)) {
-                return true;
-            }
-        }
-
-        return !declaredConstructor;
     }
 
     private BindingValue.Kind unsupported(
