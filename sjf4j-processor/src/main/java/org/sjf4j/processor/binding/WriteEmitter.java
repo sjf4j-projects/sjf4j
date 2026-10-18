@@ -637,7 +637,7 @@ final class WriteEmitter {
                 out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(STREAMING_IO + ".writeRawNode(" + writer + ", "
+                out.line(writer + ".writeRaw("
                         + value.helperName() + ".valueToRaw(codecValue), this.context);");
                 out.endBlock();
                 out.endBlock();
