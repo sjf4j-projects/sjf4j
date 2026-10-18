@@ -1,15 +1,21 @@
 package org.sjf4j.binding;
 
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.Types;
 
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+import java.util.RandomAccess;
 
 /**
  * Unified streaming writer for structured data.
@@ -239,5 +245,73 @@ public abstract class StreamingWriter implements Closeable, Flushable {
             writeBigDecimalValue(value);
         }
     }
+
+    /**
+     * Writes a raw JSON value without POJO, external-node, or ValueCodec binding.
+     * Accepts JSON scalars, maps with String keys, and lists of raw values.
+     * Raw denotes a data value, not unescaped JSON text.
+     * Object null omission follows the supplied context; array nulls remain.
+     */
+    public void writeRaw(Object raw, RuntimeContext context) throws IOException {
+        Asserts.notNull(context, "context");
+        writeRawValue(raw, context);
+    }
+
+    private void writeRawValue(Object raw, RuntimeContext context) throws IOException {
+        if (raw == null) {
+            writeNull();
+        } else if (raw instanceof String) {
+            writeStringValue((String) raw);
+        } else if (raw instanceof Boolean) {
+            writeBooleanValue((Boolean) raw);
+        } else if (raw instanceof Integer) {
+            writeIntValue((Integer) raw);
+        } else if (raw instanceof Long) {
+            writeLongValue((Long) raw);
+        } else if (raw instanceof Double) {
+            writeDoubleValue((Double) raw);
+        } else if (raw instanceof Float) {
+            writeFloatValue((Float) raw);
+        } else if (raw instanceof Short) {
+            writeShortValue((Short) raw);
+        } else if (raw instanceof Byte) {
+            writeByteValue((Byte) raw);
+        } else if (raw instanceof BigInteger) {
+            writeBigIntegerValue((BigInteger) raw);
+        } else if (raw instanceof BigDecimal) {
+            writeBigDecimalValue((BigDecimal) raw);
+        } else if (raw instanceof Number) {
+            writeNumberValue((Number) raw);
+        } else if (raw instanceof Map) {
+            startObject();
+            int count = 0;
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) raw).entrySet()) {
+                Object child = entry.getValue();
+                if (child == null && !context.includeNulls) continue;
+                writeName((String) entry.getKey(), count++ > 0);
+                writeRawValue(child, context);
+            }
+            endObject();
+        } else if (raw instanceof List) {
+            List<?> list = (List<?>) raw;
+            startArray();
+            if (list instanceof RandomAccess) {
+                for (int i = 0, size = list.size(); i < size; i++) {
+                    if (i > 0) separateElement();
+                    writeRawValue(list.get(i), context);
+                }
+            } else {
+                int count = 0;
+                for (Object child : list) {
+                    if (count++ > 0) separateElement();
+                    writeRawValue(child, context);
+                }
+            }
+            endArray();
+        } else {
+            throw new BindingException("unsupported raw JSON node type '" + Types.name(raw) + "'");
+        }
+    }
+
 
 }

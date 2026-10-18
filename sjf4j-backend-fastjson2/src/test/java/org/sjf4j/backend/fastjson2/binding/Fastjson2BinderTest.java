@@ -36,7 +36,7 @@ class Fastjson2BinderTest {
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"))) {
 
             assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
-            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+            Map<?, ?> value = (Map<?, ?>) reader.readRaw();
 
             assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -56,7 +56,7 @@ class Fastjson2BinderTest {
     @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() {
         try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of(""))) {
-            BindingException error = assertThrows(BindingException.class, reader::readRawNode);
+            BindingException error = assertThrows(BindingException.class, reader::readRaw);
             assertEquals("unexpected token 'EOF'", error.getMessage());
         }
     }
@@ -66,7 +66,7 @@ class Fastjson2BinderTest {
         try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of("[{\"id\":7},\"next\"]"))) {
             reader.startArray();
             assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
-            assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
+            assertEquals(7, ((Map<?, ?>) reader.readRaw()).get("id"));
             assertEquals(StreamingReader.Token.STRING, reader.peekToken());
             assertEquals("next", reader.readString());
             reader.endArray();

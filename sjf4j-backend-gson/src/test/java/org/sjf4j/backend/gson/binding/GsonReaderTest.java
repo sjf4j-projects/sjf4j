@@ -110,7 +110,7 @@ class GsonReaderTest {
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
 
             assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
-            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+            Map<?, ?> value = (Map<?, ?>) reader.readRaw();
 
             assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "large", "decimal", "enabled", "empty", "nested", "items"),
@@ -130,7 +130,7 @@ class GsonReaderTest {
     @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() throws Exception {
         try (GsonReader reader = reader("")) {
-            assertThrows(IOException.class, reader::readRawNode);
+            assertThrows(IOException.class, reader::readRaw);
         }
     }
 
@@ -138,7 +138,7 @@ class GsonReaderTest {
     void rawNodeConsumesOneValue() throws Exception {
         try (GsonReader reader = reader("[{\"id\":7},\"next\"]")) {
             reader.startArray();
-            assertEquals(7, ((Map<?, ?>) reader.readRawNode()).get("id"));
+            assertEquals(7, ((Map<?, ?>) reader.readRaw()).get("id"));
             assertEquals(StreamingReader.Token.STRING, reader.peekToken());
             assertEquals("next", reader.readString());
             reader.endArray();

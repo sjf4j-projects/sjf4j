@@ -154,7 +154,7 @@ class Jackson3ReaderTest {
         try (Jackson3Reader reader = reader(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
-            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+            Map<?, ?> value = (Map<?, ?>) reader.readRaw();
 
             assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),

@@ -279,7 +279,7 @@ public interface ExternalNode<N> {
      * using the supplied runtime context.
      *
      * <p>This is a mapping capability, not a streaming binding constructor.
-     * StreamingIO does not route native targets through readRawNode() and this
+     * StreamingIO does not route native targets through readRaw() and this
      * method to create immutable trees.</p>
      */
     default Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {

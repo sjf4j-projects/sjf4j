@@ -58,9 +58,10 @@ public final class Fastjson2Reader extends StreamingReader {
      * <p>Objects are represented by {@link LinkedHashMap} and arrays by
      * {@link ArrayList}.</p>
      */
-    public Object readRawNode() throws IOException {
+    @Override
+    public Object readRaw() throws IOException {
         try {
-            return _readRawNode();
+            return _readRaw();
         } finally {
             peeked = null;
         }
@@ -294,7 +295,7 @@ public final class Fastjson2Reader extends StreamingReader {
         reader.close();
     }
 
-    private Object _readRawNode() throws IOException {
+    private Object _readRaw() throws IOException {
         char current = reader.current();
         switch (current) {
             case '{':
@@ -325,7 +326,7 @@ public final class Fastjson2Reader extends StreamingReader {
 
         Map<String, Object> value = new LinkedHashMap<>();
         while (!reader.nextIfObjectEnd()) {
-            value.put(reader.readFieldName(), _readRawNode());
+            value.put(reader.readFieldName(), _readRaw());
         }
         return value;
     }
@@ -337,7 +338,7 @@ public final class Fastjson2Reader extends StreamingReader {
 
         List<Object> value = new ArrayList<>();
         while (!reader.nextIfArrayEnd()) {
-            value.add(_readRawNode());
+            value.add(_readRaw());
         }
         return value;
     }

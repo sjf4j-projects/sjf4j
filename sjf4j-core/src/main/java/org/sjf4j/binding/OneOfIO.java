@@ -72,7 +72,7 @@ public final class OneOfIO {
 
     private static Object _readByDtorPath(StreamingReader reader, OneOfInfo oneOfInfo,
                                           RuntimeContext context) throws IOException {
-        Map<String, Object> rawMap = StreamingIO.castMap(reader.readRawNode());
+        Map<String, Object> rawMap = StreamingIO.castMap(reader.readRaw());
         Object discriminatorValue = oneOfInfo.compiledPath.getNode(rawMap);
         if (discriminatorValue == null) {
             if (oneOfInfo.fallbackNull) return null;
@@ -100,7 +100,7 @@ public final class OneOfIO {
         while (!reader.nextIfObjectEnd()) {
             String name = reader.nextName();
             if (discriminatorKey.equals(name)) {
-                Object discriminatorValue = reader.readRawNode();
+                Object discriminatorValue = reader.readRaw();
                 if (discriminatorValue == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(reader);
@@ -122,7 +122,7 @@ public final class OneOfIO {
                         discriminatorKey, discriminatorValue, context);
             }
 
-            Object value = reader.readRawNode();
+            Object value = reader.readRaw();
             if (pendingNames == null) {
                 pendingNames = new String[INITIAL_PENDING_CAPACITY];
                 pendingValues = new Object[INITIAL_PENDING_CAPACITY];
@@ -209,7 +209,7 @@ public final class OneOfIO {
             }
 
             if (pi.isJojo && pi.readDynamic) {
-                Object value = reader.readRawNode();
+                Object value = reader.readRaw();
                 state.acceptDynamic(key, value);
                 continue;
             }

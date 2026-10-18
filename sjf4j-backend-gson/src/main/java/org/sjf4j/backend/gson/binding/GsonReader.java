@@ -182,7 +182,7 @@ public final class GsonReader extends StreamingReader {
     }
 
     @Override
-    public Object readRawNode() throws IOException {
+    public Object readRaw() throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
             case BEGIN_OBJECT:
@@ -212,7 +212,7 @@ public final class GsonReader extends StreamingReader {
         Map<String, Object> value = new LinkedHashMap<>();
         reader.beginObject();
         while (reader.hasNext()) {
-            value.put(reader.nextName(), readRawNode());
+            value.put(reader.nextName(), readRaw());
         }
         reader.endObject();
         return value;
@@ -222,7 +222,7 @@ public final class GsonReader extends StreamingReader {
         List<Object> value = new ArrayList<>();
         reader.beginArray();
         while (reader.hasNext()) {
-            value.add(readRawNode());
+            value.add(readRaw());
         }
         reader.endArray();
         return value;

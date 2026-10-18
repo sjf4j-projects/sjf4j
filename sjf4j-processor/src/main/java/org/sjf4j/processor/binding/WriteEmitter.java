@@ -132,7 +132,7 @@ final class WriteEmitter {
                 methodNames(plan);
 
         if (backend.backend() == Backend.FASTJSON2
-                && nativeEligible(compiled.value(), new HashSet<BindingValue>())) {
+                && fastjson2.nativeEligible(compiled.value(), new HashSet<BindingValue>())) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
@@ -319,7 +319,7 @@ final class WriteEmitter {
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
             out.line(value.helperName() + "(" + writer
-                    + "." + nativeJsonAccessor() + "(), " + source + ");");
+                    + "." + "nativeWriter" + "(), " + source + ");");
         } else {
             writeValue(out, value, writer, source);
         }
@@ -329,6 +329,13 @@ final class WriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
+        // Fastjson2 helpers retain the streaming adapter for localized codec writes
+        // while using raw JSONWriter on concrete fields.
+        if (backend.backend() == Backend.FASTJSON2
+                && fastjson2.nativeEligible(value, new HashSet<BindingValue>())) {
+            fastjson2.emitHelper(out, value);
+            return;
+        }
         // Generate a single native helper when the full type graph is concrete.
         // Unresolved graphs retain the StreamingWriter fallback.
         if (hasNativeJsonWriter() && nativeEligible(value,
@@ -389,12 +396,6 @@ final class WriteEmitter {
         }
     }
 
-    private String nativeJsonAccessor() {
-        return backend.backend() == Backend.GSON
-                || backend.backend() == Backend.FASTJSON2
-                ? "nativeWriter" : "nativeGenerator";
-    }
-
     private boolean isJackson() {
         return backend.backend() == Backend.JACKSON2
                 || backend.backend() == Backend.JACKSON3;
@@ -406,8 +407,8 @@ final class WriteEmitter {
             return false;
         }
         if (backend.backend() == Backend.FASTJSON2
-                && value.kind() == BindingValue.Kind.STRING) {
-            return true;
+                && fastjson2.nativeEligible(value, new HashSet<BindingValue>())) {
+            return containsString(value, new HashSet<BindingValue>());
         }
         return containsNativeString(value, new HashSet<BindingValue>());
     }
@@ -620,7 +621,7 @@ final class WriteEmitter {
                             + expression + ", this.context);");
                 } else {
                     out.line(value.helperName() + "(" + writer + "."
-                            + nativeJsonAccessor() + "(), " + expression + ");");
+                            + "nativeWriter" + "(), " + expression + ");");
                 }
             } else {
                 out.line(value.helperName() + "(" + writer + ", " + expression + ");");
@@ -630,13 +631,15 @@ final class WriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                out.beginBlock("if (" + expression + " == null)");
+                out.beginBlock("");
+                out.line(value.type() + " codecValue = " + expression + ";");
+                out.beginBlock("if (codecValue == null)");
                 out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + value.helperName() + ".valueToRaw(" + expression + "), "
-                        + "this.context);");
+                out.line(writer + ".writeRaw("
+                        + value.helperName() + ".valueToRaw(codecValue), this.context);");
+                out.endBlock();
                 out.endBlock();
                 return;
             case STRING:

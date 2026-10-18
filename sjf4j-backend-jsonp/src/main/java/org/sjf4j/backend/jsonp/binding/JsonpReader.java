@@ -235,7 +235,7 @@ public final class JsonpReader extends StreamingReader {
     }
 
     @Override
-    public Object readRawNode() throws IOException {
+    public Object readRaw() throws IOException {
         if (current == null) {
             throw new BindingException("unexpected token 'EOF'");
         }
@@ -269,7 +269,7 @@ public final class JsonpReader extends StreamingReader {
         startObject();
         String name;
         while ((name = nextName()) != null) {
-            value.put(name, readRawNode());
+            value.put(name, readRaw());
         }
         return value;
     }
@@ -278,7 +278,7 @@ public final class JsonpReader extends StreamingReader {
         List<Object> value = new ArrayList<>();
         startArray();
         while (!nextIfArrayEnd()) {
-            value.add(readRawNode());
+            value.add(readRaw());
         }
         return value;
     }
