@@ -3,6 +3,7 @@ package org.sjf4j.processor.mapping;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -37,6 +38,7 @@ public final class ConverterResolver {
 
     private final ProcessorContext context;
     private final TypeSystem types;
+    private final CompiledMetadata metadata;
 
     private final TypeElement mapper;
     private final List<MappingPlan> plans;
@@ -48,10 +50,12 @@ public final class ConverterResolver {
     public ConverterResolver(
             ProcessorContext context,
             TypeElement mapper,
-            List<MappingPlan> plans) {
+            List<MappingPlan> plans,
+            CompiledMetadata metadata) {
 
         this.context = context;
         this.types = context.types;
+        this.metadata = metadata;
         this.mapper = mapper;
         this.plans =
                 Collections.unmodifiableList(
@@ -415,6 +419,15 @@ public final class ConverterResolver {
                     targetType,
                     importedMethod.method,
                     importedMethod.owner);
+        }
+
+        /*
+         * Logical values are codec leaves, even when their raw representation
+         * is a Map or List. Explicit/local/imported mapper methods above retain
+         * their precedence over automatic codec conversion.
+         */
+        if (isCodecConversion(sourceType, targetType)) {
+            return Conversion.valueCodec(sourceType, targetType);
         }
 
         /*
@@ -1259,6 +1272,31 @@ public final class ConverterResolver {
      * --------------------------------------------------------------
      */
 
+    /** Codec declarations are visible only through this mapper's metadata. */
+    boolean isCodecConversion(TypeMirror source, TypeMirror target) {
+        boolean sourceCodec = isCodecType(source);
+        boolean targetCodec = isCodecType(target);
+        if (sourceCodec && targetCodec) return true;
+        if (!sourceCodec && !targetCodec) return false;
+
+        // A codec is a logical leaf. Only raw JSON representations and an
+        // Object-typed dynamic source/target may cross its conversion boundary.
+        NodeKind other = types.nodeKind(sourceCodec ? target : source);
+        return other == NodeKind.COMPILE_TIME_UNKNOWN
+                || other.isValue()
+                || other == NodeKind.OBJECT_MAP
+                || other == NodeKind.ARRAY_LIST;
+    }
+
+    private boolean isCodecType(TypeMirror type) {
+        NodeKind kind = types.nodeKind(type);
+        // Match BindingCompiler's native-container/external-tree precedence.
+        if (kind != NodeKind.OBJECT_POJO && kind != NodeKind.UNKNOWN
+                && !kind.isValue()) return false;
+        return types.isNodeValue(type) || metadata.hasValueCodec(type);
+    }
+
+
     private boolean isScalarConversion(
             TypeMirror source,
             TypeMirror target) {
@@ -1477,6 +1515,9 @@ public final class ConverterResolver {
             TypeMirror source,
             TypeMirror target) {
 
+        // Do not silently expose a logical ValueCodec as a POJO.
+        if (isCodecType(source) || isCodecType(target)) return false;
+
         NodeKind sourceKind =
                 types.nodeKind(source);
 
@@ -1674,6 +1715,7 @@ public final class ConverterResolver {
             METHOD,
             ONE_OF,
             SCALAR,
+            VALUE_CODEC,
             CONTAINER,
             STRUCTURAL
         }
@@ -1760,6 +1802,19 @@ public final class ConverterResolver {
 
             return new Conversion(
                     Kind.SCALAR,
+                    sourceType,
+                    targetType,
+                    null,
+                    null);
+        }
+
+
+        static Conversion valueCodec(
+                TypeMirror sourceType,
+                TypeMirror targetType) {
+
+            return new Conversion(
+                    Kind.VALUE_CODEC,
                     sourceType,
                     targetType,
                     null,
