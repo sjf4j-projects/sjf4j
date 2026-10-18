@@ -10,11 +10,14 @@ final class BindingEmitter {
     private final ReadEmitter reads;
     private final WriteEmitter writes;
     private boolean stringHelperEmitted;
+    private final boolean fastjson2;
+    private boolean byteOrderFieldEmitted;
 
     BindingEmitter(
             ProcessorContext context,
             BackendSpec backend) {
 
+        this.fastjson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2;
         this.reads =
                 new ReadEmitter(
                         context,
@@ -28,6 +31,11 @@ final class BindingEmitter {
     void emitMethod(
             BindingCompiler.CompiledMethod method,
             GeneratedClass generated) {
+        if (fastjson2 && !byteOrderFieldEmitted && method.plan().direction() == BindingPlan.Direction.READ_FROM) {
+            generated.addField(out -> out.line("private static final boolean FASTJSON2_LITTLE_ENDIAN = "
+                    + "java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN;"));
+            byteOrderFieldEmitted = true;
+        }
 
         if (method.plan().direction() == BindingPlan.Direction.WRITE_TO) {
             writes.registerWriteOutput(method.plan().writeOutput());
