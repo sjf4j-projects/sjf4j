@@ -550,11 +550,14 @@ final class BindingCompiler {
      */
     private boolean compileRecord(BindingValue value, ExecutableElement method,
                                   GeneratedClass generated) {
-        CreatorPlan creator = creators.resolve(value.type(), value.type(), method,
-                "@NodeCreator", message -> error(method, generated, message));
+        CreatorPlan creator = creators.resolveBinding(value.type(), method,
+                message -> error(method, generated, message));
         if (creator == null) return false;
+        if (creator.kind() == CreatorPlan.Kind.STATIC_FACTORY) {
+            return compileCreatorPojo(value, creator, method, generated);
+        }
         if (creator.kind() != CreatorPlan.Kind.CONSTRUCTOR) {
-            error(method, generated, "Record requires a canonical constructor: " + value.type());
+            error(method, generated, "Record requires a constructor or @NodeCreator factory: " + value.type());
             return false;
         }
 
