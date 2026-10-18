@@ -51,9 +51,6 @@ public class CreatorReadBenchmark {
     // Exact same JSON content as the mutable-User CompiledReadBenchmark.
     private static final String JSON_DATA = CompiledReadBenchmark.JSON_DATA;
     private static final byte[] JSON_UTF8 = JSON_DATA.getBytes(StandardCharsets.UTF_8);
-    private static final String JSON_REVERSED = reverseFields(JSON_DATA);
-    private static final byte[] JSON_REVERSED_UTF8 = JSON_REVERSED.getBytes(StandardCharsets.UTF_8);
-
     private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final ObjectMapper JACKSON2_BLACKBIRD = new ObjectMapper()
@@ -66,6 +63,9 @@ public class CreatorReadBenchmark {
     private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT =
             JSONFactory.createReadContext(new ObjectReaderProvider(),
                     JSONReader.Feature.UseDoubleForDecimals);
+
+    private static final String JSON_REVERSED = reverseFields(JSON_DATA);
+    private static final byte[] JSON_REVERSED_UTF8 = JSON_REVERSED.getBytes(StandardCharsets.UTF_8);
 
     private static final Jackson2Binder JACKSON2_RUNTIME = new Jackson2Binder();
     private static final Jackson3Binder JACKSON3_RUNTIME = new Jackson3Binder();
