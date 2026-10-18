@@ -689,6 +689,10 @@ public final class MappingCompiler {
             TypeMirror source,
             TypeMirror target) {
 
+        if (converters.isCodecConversion(source, target)) {
+            return ConverterResolver.Conversion.valueCodec(source, target);
+        }
+
         NodeKind sourceKind =
                 types.nodeKind(source);
 
@@ -733,6 +737,12 @@ public final class MappingCompiler {
 
         if (!plan.rules().isEmpty()) {
             return false;
+        }
+
+        // Root logical values do not have ordinary writable POJO members.
+        if (plan.sources().size() == 1 && converters.isCodecConversion(
+                plan.primarySourceType(), plan.targetType())) {
+            return true;
         }
 
         NodeKind kind =
