@@ -14,6 +14,7 @@ final class BindingProperty {
     private final PropertyAccess access;
     private final BindingValue value;
     private final int creatorIndex;
+    private final int creatorCount;
 
     BindingProperty(
             String name,
@@ -26,14 +27,17 @@ final class BindingProperty {
         this.access = Asserts.notNull(access, "access");
         this.value = Asserts.notNull(value, "value");
         this.creatorIndex = -1;
+        this.creatorCount = 0;
     }
 
-    BindingProperty(String name, String[] aliases, BindingValue value, int creatorIndex) {
+    BindingProperty(String name, String[] aliases, BindingValue value,
+                    int creatorIndex, int creatorCount) {
         this.name = Asserts.notNull(name, "name");
         this.aliases = Asserts.notNull(aliases, "aliases");
         this.access = null;
         this.value = Asserts.notNull(value, "value");
         this.creatorIndex = creatorIndex;
+        this.creatorCount = creatorCount;
     }
 
     String name() {
@@ -46,6 +50,10 @@ final class BindingProperty {
 
     int creatorIndex() {
         return creatorIndex;
+    }
+
+    int creatorCount() {
+        return creatorCount;
     }
 
     PropertyAccess access() {
