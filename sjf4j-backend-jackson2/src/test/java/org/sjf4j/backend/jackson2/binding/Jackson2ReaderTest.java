@@ -185,7 +185,7 @@ class Jackson2ReaderTest {
         try (Jackson2Reader reader = reader(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
-            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+            Map<?, ?> value = (Map<?, ?>) reader.readRaw();
 
             assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -205,7 +205,7 @@ class Jackson2ReaderTest {
     @Test
     void rejectsEmptyRawNodeInput() throws Exception {
         try (Jackson2Reader reader = reader("")) {
-            assertThrows(IOException.class, reader::readRawNode);
+            assertThrows(IOException.class, reader::readRaw);
         }
     }
 
