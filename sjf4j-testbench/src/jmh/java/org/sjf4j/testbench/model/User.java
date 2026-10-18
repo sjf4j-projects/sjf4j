@@ -2,6 +2,9 @@ package org.sjf4j.testbench.model;
 
 import lombok.Data;
 
+import java.net.URI;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -24,7 +27,8 @@ public class User {
     private String displayName;
     private String passwordHash;
     private String bio;
-    private String website;
+    private LocalDate birthday;
+    private URI website;
     private String department;
     private Address address;
     private List<String> tags;

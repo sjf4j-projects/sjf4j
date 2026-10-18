@@ -60,6 +60,7 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         this.factory = factory.rebuild()
                 .disable(TokenStreamFactory.Feature.CHARSET_DETECTION)
                 .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+                .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
                 .build();
     }
 

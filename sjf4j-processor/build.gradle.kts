@@ -32,7 +32,7 @@ dependencies {
     testImplementation(project(":sjf4j-backend-jsonp"))
     testImplementation(project(":sjf4j-backend-snake"))
     testImplementation("com.google.code.gson:gson:2.13.1")
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
     testImplementation("tools.jackson.core:jackson-databind:3.2.2")
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     testImplementation("jakarta.json:jakarta.json-api:2.1.3")
@@ -47,7 +47,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // JMH
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }

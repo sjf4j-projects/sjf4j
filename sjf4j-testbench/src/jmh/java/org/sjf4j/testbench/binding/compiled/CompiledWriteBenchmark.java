@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 400, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
 @State(Scope.Thread)
