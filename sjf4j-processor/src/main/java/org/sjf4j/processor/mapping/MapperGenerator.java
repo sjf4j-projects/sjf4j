@@ -52,6 +52,8 @@ public final class MapperGenerator {
                         context,
                         type);
 
+        generated.enableRuntimeContext();
+
         /*
          * --------------------------------------------------------------
          * 1. Analyze methods
