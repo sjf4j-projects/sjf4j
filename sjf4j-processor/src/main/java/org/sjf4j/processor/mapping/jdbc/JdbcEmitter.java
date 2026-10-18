@@ -1758,7 +1758,7 @@ public final class JdbcEmitter {
                         ", " +
                         classLiteral(
                                 read.targetType()) +
-                        ", org.sjf4j.RuntimeContext.EMPTY);");
+                        ", this.context);");
 
         return value;
     }

@@ -14,9 +14,6 @@ final class WriteEmitter {
     private static final String STREAMING_IO =
             "org.sjf4j.binding.StreamingIO";
 
-    private static final String RUNTIME_CONTEXT =
-            "org.sjf4j.RuntimeContext";
-
     private final BackendSpec backend;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
@@ -85,6 +82,27 @@ final class WriteEmitter {
                 BindingSource.parameterName(
                         plan,
                         0);
+
+        // Omission of null object properties is delegated once at the call
+        // boundary; the default compiled native hot path remains unchanged.
+        out.beginBlock("if (!this.context.includeNulls)");
+        switch (plan.writeOutput()) {
+            case STRING:
+                out.line("return this.binder.writeNodeAsString(" + source + ");");
+                break;
+            case BYTES:
+                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                break;
+            case WRITER:
+            case OUTPUT_STREAM:
+                out.line("this.binder.writeNode(" +
+                        BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                out.line("return;");
+                break;
+            default:
+                throw new AssertionError(plan.writeOutput());
+        }
+        out.endBlock();
 
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
@@ -332,7 +350,7 @@ final class WriteEmitter {
             }
         }
 
-        out.beginBlock("private static void " + value.helperName()
+        out.beginBlock("private void " + value.helperName()
                 + "(" + backend.writerType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
@@ -343,7 +361,7 @@ final class WriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line(STREAMING_IO + ".writeNode(writer, value, "
-                        + RUNTIME_CONTEXT + ".EMPTY);");
+                        + "this.context);");
                 break;
             case LIST:
             case SET:
@@ -384,14 +402,37 @@ final class WriteEmitter {
 
     boolean needsStringHelper(BindingValue value) {
         if (!hasNativeJsonWriter()
-                || (!value.helperRequired()
-                    && !(backend.backend() == Backend.FASTJSON2
-                         && value.kind() == BindingValue.Kind.STRING))
-                || value.direction() != BindingPlan.Direction.WRITE_TO
-                || !nativeEligible(value, new HashSet<BindingValue>())) {
+                || value.direction() != BindingPlan.Direction.WRITE_TO) {
             return false;
         }
-        return containsString(value, new HashSet<BindingValue>());
+        if (backend.backend() == Backend.FASTJSON2
+                && value.kind() == BindingValue.Kind.STRING) {
+            return true;
+        }
+        return containsNativeString(value, new HashSet<BindingValue>());
+    }
+
+    private boolean containsNativeString(BindingValue value, Set<BindingValue> visited) {
+        if (!visited.add(value)) return false;
+        if (value.helperRequired()
+                && nativeEligible(value, new HashSet<BindingValue>())) {
+            return containsString(value, new HashSet<BindingValue>());
+        }
+        switch (value.kind()) {
+            case POJO:
+            case JOJO:
+                for (BindingProperty property : value.properties()) {
+                    if (containsNativeString(property.value(), visited)) return true;
+                }
+                return false;
+            case LIST:
+            case SET:
+                return containsNativeString(value.elementValue(), visited);
+            case MAP:
+                return containsNativeString(value.mapValue(), visited);
+            default:
+                return false;
+        }
     }
 
     private boolean containsString(BindingValue value, Set<BindingValue> visited) {
@@ -497,7 +538,7 @@ final class WriteEmitter {
                     + "value.dynamicProperties().entrySet())");
             out.line("writer.writeName(entry.getKey(), count++ > 0);");
             out.line(STREAMING_IO + ".writeNode(writer, entry.getValue(), "
-                    + RUNTIME_CONTEXT + ".EMPTY);");
+                    + "this.context);");
             out.endBlock();
         }
 
@@ -568,11 +609,22 @@ final class WriteEmitter {
             String expression) {
 
         if (value.helperRequired()) {
-            out.line(
-                    value.helperName() +
-                            "(" + writer +
-                            ", " + expression +
-                            ");");
+            // A mixed POJO graph uses StreamingWriter for its parent, but a
+            // fully concrete child may have a native-only helper signature.
+            if (hasNativeJsonWriter()
+                    && nativeEligible(value, new HashSet<BindingValue>())) {
+                if (backend.backend() == Backend.FASTJSON2) {
+                    // Fastjson2 native helpers are separately generated for UTF-8
+                    // and UTF-16. A streaming parent has no native-mode helper.
+                    out.line(STREAMING_IO + ".writeNode(" + writer + ", "
+                            + expression + ", this.context);");
+                } else {
+                    out.line(value.helperName() + "(" + writer + "."
+                            + nativeJsonAccessor() + "(), " + expression + ");");
+                }
+            } else {
+                out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            }
             return;
         }
 
@@ -584,7 +636,7 @@ final class WriteEmitter {
                 out.indent();
                 out.line(STREAMING_IO + ".writeNode(" + writer + ", "
                         + value.helperName() + ".valueToRaw(" + expression + "), "
-                        + RUNTIME_CONTEXT + ".EMPTY);");
+                        + "this.context);");
                 out.endBlock();
                 return;
             case STRING:
@@ -709,7 +761,7 @@ final class WriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + expression + ", " + RUNTIME_CONTEXT + ".EMPTY);");
+                        + expression + ", " + "this.context);");
                 return;
 
             case RUNTIME:
@@ -718,8 +770,7 @@ final class WriteEmitter {
                                 ".writeNode(" +
                                 writer + ", " +
                                 expression + ", " +
-                                RUNTIME_CONTEXT +
-                                ".EMPTY);");
+                                "this.context);");
                 return;
 
             default:

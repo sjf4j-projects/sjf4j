@@ -24,7 +24,9 @@ import java.lang.annotation.Target;
  * }</pre>
  *
  * <p>Generated implementations have the {@code _Impl} suffix and can be
- * obtained through {@link org.sjf4j.CompiledInstances#of(Class)}.</p>
+ * obtained through {@link org.sjf4j.CompiledInstances#global(Class)}
+ * or created with custom settings using
+ * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.RuntimeContext)}.</p>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)

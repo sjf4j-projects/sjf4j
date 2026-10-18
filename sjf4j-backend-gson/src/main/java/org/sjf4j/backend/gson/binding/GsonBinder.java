@@ -32,6 +32,11 @@ public final class GsonBinder extends Binder<GsonReader, GsonWriter> {
         this(new Gson(), RuntimeContext.EMPTY);
     }
 
+    /** Creates a binder with default backend settings and a supplied runtime context. */
+    public GsonBinder(RuntimeContext context) {
+        this(new Gson(), context);
+    }
+
     /**
      * Creates a binder using the supplied Gson instance.
      * @param gson the Gson instance used for reader and writer creation

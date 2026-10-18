@@ -50,6 +50,10 @@ public final class NavigatorGenerator {
         GeneratedClass generated =
                 GeneratedClass.forInterface(context, type);
 
+        // Keep the factory constructor contract uniform across compiled interfaces.
+        // Navigation currently has no RuntimeContext-dependent operations.
+        generated.enableRuntimeContext();
+
         for (ResolvedMethod method : methods) {
             methodGenerator.generate(
                     method.declaration(),

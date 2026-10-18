@@ -54,6 +54,8 @@ public final class JdbcMapperGenerator {
                         context,
                         mapper);
 
+        generated.enableRuntimeContext();
+
         List<ResolvedMethod> abstractMethods =
                 context.methods.abstractMethods(
                         mapper);

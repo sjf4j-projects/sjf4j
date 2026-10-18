@@ -11,11 +11,14 @@ import java.lang.reflect.InvocationTargetException;
  * <p>For an interface annotated with {@code @CompiledNavigator}, {@code @CompiledMapper},
  * {@code @CompiledJdbcMapper}, or {@code @CompiledBinder}, the processor
  * generates an implementation named by appending {@code _Impl} to the interface's
- * binary name. {@link #of(Class)} loads that implementation with
+ * binary name. {@link #global(Class)} loads that implementation with
  * the interface's class loader and invokes its public no-argument constructor.
  *
- * <p>One instance is cached per interface class. The generated implementation must therefore be
- * stateless or safe to share between callers.
+ * <p>{@link #global(Class)} caches one immutable-default-context instance per interface.
+ * {@link #create(Class, RuntimeContext)} creates independent instances for all four
+ * compiled interface families. The context configures Mapper, Binder, and JDBC
+ * conversions; Navigator currently has no context-dependent operations.
+ * Generated implementations must be safe to share across callers once constructed.
  */
 public final class CompiledInstances {
 
@@ -31,21 +34,62 @@ public final class CompiledInstances {
     private CompiledInstances() {}
 
     /**
-     * Returns the cached generated instance for an annotated interface.
-     * The class must be compiled with the SJF4J annotation processor enabled.
-     *
-     * @param type the annotated interface class
-     * @return its shared generated implementation
+     * Returns the cached instance configured with {@link RuntimeContext#EMPTY}.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T of(Class<T> type) {
+    public static <T> T global(Class<T> type) {
         Asserts.notNull(type, "type");
         return (T) INSTANCES_CACHE.get(type);
     }
 
+    /**
+     * Creates an independent compiled implementation with the supplied runtime settings.
+     * Supported interfaces: CompiledNavigator, CompiledMapper, CompiledJdbcMapper,
+     * and CompiledBinder. Navigator currently does not use the supplied context.
+     */
+    public static <T> T create(Class<T> type, RuntimeContext context) {
+        Asserts.notNull(type, "type");
+        Asserts.notNull(context, "context");
+        Class<?> implClass = _implementationClass(type);
+        try {
+            return type.cast(implClass.getConstructor(RuntimeContext.class).newInstance(context));
+        } catch (NoSuchMethodException e) {
+            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
+                    + " must expose a public RuntimeContext constructor; recompile using the current processor", e);
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new NodeException("Cannot instantiate generated SJF4J implementation " + implClass.getName()
+                    + " for interface " + type.getName(), e);
+        } catch (InvocationTargetException e) {
+            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
+                    + " constructor failed for interface " + type.getName(), e.getCause());
+        }
+    }
+
+    /** Compatibility alias for {@link #global(Class)}. */
+    @Deprecated
+    public static <T> T of(Class<T> type) {
+        return global(type);
+    }
+
     private static Object _create(Class<?> type) {
+        Class<?> implClass = _implementationClass(type);
+        try {
+            return type.cast(implClass.getConstructor().newInstance());
+        } catch (NoSuchMethodException e) {
+            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
+                    + " must expose a public no-arg constructor", e);
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new NodeException("Cannot instantiate generated SJF4J implementation " + implClass.getName()
+                    + " for interface " + type.getName(), e);
+        } catch (InvocationTargetException e) {
+            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
+                    + " constructor failed for interface " + type.getName(), e.getCause());
+        }
+    }
+
+    private static Class<?> _implementationClass(Class<?> type) {
         if (!type.isInterface()) {
-            throw new IllegalArgumentException("CompiledInstances.of requires an interface type, but got " +
+            throw new IllegalArgumentException("CompiledInstances requires an interface type, but got " +
                     type.getName());
         }
 
@@ -69,18 +113,7 @@ public final class CompiledInstances {
                     + " does not implement " + type.getName());
         }
 
-        try {
-            return type.cast(implClass.getConstructor().newInstance());
-        } catch (NoSuchMethodException e) {
-            throw new NodeException("Generated SJF4J implementation " + implName
-                    + " must expose a public no-arg constructor", e);
-        } catch (InstantiationException | IllegalAccessException e) {
-            throw new NodeException("Cannot instantiate generated SJF4J implementation " + implName
-                    + " for interface " + type.getName(), e);
-        } catch (InvocationTargetException e) {
-            throw new NodeException("Generated SJF4J implementation " + implName
-                    + " constructor failed for interface " + type.getName(), e.getCause());
-        }
+        return implClass;
     }
 
 }

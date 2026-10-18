@@ -14,9 +14,6 @@ final class ReadEmitter {
     private static final String STREAMING_IO =
             "org.sjf4j.binding.StreamingIO";
 
-    private static final String RUNTIME_CONTEXT =
-            "org.sjf4j.RuntimeContext";
-
     private static final String NAME_MATCHER =
             "org.sjf4j.binding.NameMatcher";
 
@@ -167,7 +164,7 @@ final class ReadEmitter {
             BindingValue value) {
 
         out.beginBlock(
-                "private static " +
+                "private " +
                         value.type() +
                         " " +
                         value.helperName() +
@@ -550,7 +547,7 @@ final class ReadEmitter {
                 return "(" + value.type() + ") " + STREAMING_IO
                         + ".readValueCodec(" + reader + ", "
                         + value.helperName() + ", "
-                        + RUNTIME_CONTEXT + ".EMPTY)";
+                        + "this.context)";
 
             case ENUM:
                 // Keep string, ordinal and null semantics aligned with StreamingIO.
@@ -558,7 +555,7 @@ final class ReadEmitter {
                         STREAMING_IO +
                         ".readEnum(" + reader + ", " +
                         value.type() + ".class, " +
-                        RUNTIME_CONTEXT + ".EMPTY)";
+                        "this.context)";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
@@ -572,8 +569,7 @@ final class ReadEmitter {
                         context.typeUtils
                                 .erasure(value.type()) +
                         ".class, " +
-                        RUNTIME_CONTEXT +
-                        ".EMPTY)";
+                        "this.context)";
 
             default:
                 throw new AssertionError(
