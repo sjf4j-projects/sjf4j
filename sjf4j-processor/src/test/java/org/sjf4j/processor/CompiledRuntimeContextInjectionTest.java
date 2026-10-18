@@ -161,9 +161,9 @@ class CompiledRuntimeContextInjectionTest {
                 String standard = (String) type.getMethod("write", beanType).invoke(defaults, bean);
                 String custom = (String) type.getMethod("write", beanType).invoke(configured, bean);
                 assertTrue(standard.contains("2024-01-01T10:00:00Z"), backend + ": " + standard);
-                assertTrue(standard.contains("\\\"empty\\\":null"), backend + ": " + standard);
+                assertTrue(standard.contains("\"empty\":null"), backend + ": " + standard);
                 assertTrue(custom.contains("1704103200000"), backend + ": " + custom);
-                assertFalse(custom.contains("\\\"empty\\\""), backend + ": " + custom);
+                assertFalse(custom.contains("\"empty\""), backend + ": " + custom);
 
                 Object decoded = type.getMethod("read", String.class).invoke(configured, custom);
                 assertEquals(java.time.Instant.parse("2024-01-01T10:00:00Z"),
