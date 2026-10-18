@@ -26,7 +26,9 @@ import java.lang.annotation.Target;
  *
  * <p>{@code CompiledMapper} is a MapStruct-like compiled structural mapper. It
  * is not a compile-time replacement for {@code NodeMapper.convert}; runtime
- * binding, private properties, and runtime settings are outside its scope.
+ * binding and private properties are outside its scope. Configured leaf
+ * conversions use the immutable RuntimeContext supplied through
+ * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.RuntimeContext)}.
  * Limited type-level {@code @OneOf} dispatch is supported for create mappings:
  * discriminator-key dispatch when the target type declares {@code key}, and
  * shape-based dispatch when it does not. Both modes require
@@ -36,7 +38,7 @@ import java.lang.annotation.Target;
  * numeric narrowing/widening through SJF4J number checks, string/character/enum
  * conversion, boolean node checks, and {@code @NodeValue} codecs. Dynamic
  * {@code Object} leaves read from maps, JsonObject, or paths use strict
- * {@code Nodes.toXxx(...)} conversion. Lenient coercions such as arbitrary
+ * {@code NodeMapper.to(...)} conversion. Lenient coercions such as arbitrary
  * string-to-number or boolean-to-string are intentionally not generated unless
  * supplied by an explicit mapper or compute expression.</p>
  *
