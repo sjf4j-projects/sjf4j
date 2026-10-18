@@ -631,13 +631,15 @@ final class WriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                out.beginBlock("if (" + expression + " == null)");
+                out.beginBlock("");
+                out.line(value.type() + " codecValue = " + expression + ";");
+                out.beginBlock("if (codecValue == null)");
                 out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + value.helperName() + ".valueToRaw(" + expression + "), "
-                        + "this.context);");
+                out.line(STREAMING_IO + ".writeRawNode(" + writer + ", "
+                        + value.helperName() + ".valueToRaw(codecValue), this.context);");
+                out.endBlock();
                 out.endBlock();
                 return;
             case STRING:
