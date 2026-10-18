@@ -83,6 +83,27 @@ final class WriteEmitter {
                         plan,
                         0);
 
+        // Omission of null object properties is delegated once at the call
+        // boundary; the default compiled native hot path remains unchanged.
+        out.beginBlock("if (!this.context.includeNulls)");
+        switch (plan.writeOutput()) {
+            case STRING:
+                out.line("return this.binder.writeNodeAsString(" + source + ");");
+                break;
+            case BYTES:
+                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                break;
+            case WRITER:
+            case OUTPUT_STREAM:
+                out.line("this.binder.writeNode(" +
+                        BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                out.line("return;");
+                break;
+            default:
+                throw new AssertionError(plan.writeOutput());
+        }
+        out.endBlock();
+
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
         if (!nativeEligible(compiled.value(), new HashSet<BindingValue>())
