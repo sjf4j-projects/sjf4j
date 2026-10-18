@@ -15,7 +15,7 @@ public class MapperComplexTest {
 
     @Test
     public void mapsMixedRecordBeanFieldAndConstructorModels() {
-        ComplexMapper mapper = CompiledInstances.of(ComplexMapper.class);
+        ComplexMapper mapper = CompiledInstances.global(ComplexMapper.class);
         Account account = new Account(
                 new AccountId("A-001"),
                 new Profile("Ada", "Lovelace", true),
@@ -46,7 +46,7 @@ public class MapperComplexTest {
 
     @Test
     public void mapsToRecordSummaryWithConstructorArguments() {
-        ComplexMapper mapper = CompiledInstances.of(ComplexMapper.class);
+        ComplexMapper mapper = CompiledInstances.global(ComplexMapper.class);
         Account account = new Account(
                 new AccountId("A-002"),
                 new Profile("Grace", "Hopper", false),
@@ -67,7 +67,7 @@ public class MapperComplexTest {
 
     @Test
     public void mapsToUniqueConstructorTarget() {
-        ComplexMapper mapper = CompiledInstances.of(ComplexMapper.class);
+        ComplexMapper mapper = CompiledInstances.global(ComplexMapper.class);
         Account account = new Account(
                 new AccountId("A-003"),
                 new Profile("Katherine", "Johnson", true),

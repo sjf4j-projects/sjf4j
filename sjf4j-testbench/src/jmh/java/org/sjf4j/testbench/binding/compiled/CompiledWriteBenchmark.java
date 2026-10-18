@@ -1,12 +1,15 @@
 package org.sjf4j.testbench.binding.compiled;
 
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 import jakarta.json.Json;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
@@ -26,6 +29,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -51,15 +55,22 @@ public class CompiledWriteBenchmark {
     }
 
 
-    private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper();
+    private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private static final ObjectMapper JACKSON2_BLACKBIRD =
-            new ObjectMapper().registerModule(new BlackbirdModule());
+            new ObjectMapper().registerModule(new JavaTimeModule())
+                    .registerModule(new BlackbirdModule())
+                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private static final JsonMapper JACKSON3_NATIVE = new JsonMapper();
     private static final JsonMapper JACKSON3_BLACKBIRD = JsonMapper.builder()
             .addModule(new tools.jackson.module.blackbird.BlackbirdModule()).build();
-    private static final Gson GSON_NATIVE = new GsonBuilder().serializeNulls().create();
+    private static final Gson GSON_NATIVE = new GsonBuilder().serializeNulls()
+            .registerTypeAdapter(LocalDateTime.class,
+                    (JsonSerializer<LocalDateTime>) (value, type, context) -> new JsonPrimitive(value.toString()))
+            .create();
     private static final JSONWriter.Context FASTJSON2_NATIVE_CONTEXT =
-            JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
+            new JSONWriter.Context("yyyy-MM-dd'T'HH:mm:ss", JSONWriter.Feature.WriteNulls);
 
     private static final Jackson2Binder JACKSON2_RUNTIME = new Jackson2Binder();
     private static final Jackson3Binder JACKSON3_RUNTIME = new Jackson3Binder();
@@ -89,17 +100,17 @@ public class CompiledWriteBenchmark {
     }
 
     private static final Jackson2CompiledBinder JACKSON2_COMPILED =
-            CompiledInstances.of(Jackson2CompiledBinder.class);
+            CompiledInstances.global(Jackson2CompiledBinder.class);
     private static final Jackson3CompiledBinder JACKSON3_COMPILED =
-            CompiledInstances.of(Jackson3CompiledBinder.class);
+            CompiledInstances.global(Jackson3CompiledBinder.class);
     private static final GsonCompiledBinder GSON_COMPILED =
-            CompiledInstances.of(GsonCompiledBinder.class);
+            CompiledInstances.global(GsonCompiledBinder.class);
     private static final Fastjson2CompiledBinder FASTJSON2_COMPILED =
-            CompiledInstances.of(Fastjson2CompiledBinder.class);
+            CompiledInstances.global(Fastjson2CompiledBinder.class);
     private static final JsonpCompiledBinder JSONP_COMPILED =
-            CompiledInstances.of(JsonpCompiledBinder.class);
+            CompiledInstances.global(JsonpCompiledBinder.class);
     private static final SimpleCompiledBinder SIMPLE_COMPILED =
-            CompiledInstances.of(SimpleCompiledBinder.class);
+            CompiledInstances.global(SimpleCompiledBinder.class);
 
     // Trial-only correctness verification, outside the timed path. Object
     // property order and insignificant JSON formatting may differ.

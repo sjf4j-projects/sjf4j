@@ -15,7 +15,7 @@ public class CompiledValidatorRefFastPathTest {
 
     @Test
     public void validatesLocalRefsInOneOfFastPath() {
-        Validator validator = CompiledInstances.of(Validator.class);
+        Validator validator = CompiledInstances.global(Validator.class);
 
         assertTrue(validator.isValid(new Envelope(List.of(new Entry("A", "ok"), new Entry("B", 2)))));
         assertFalse(validator.isValid(new Envelope(List.of(new Entry("C", "ok")))));

@@ -18,7 +18,7 @@ class JdbcGenericTest {
 
     @Test
     void specializesInheritedGenericSingleAndListResults() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         User one = mapper.row(result(
                 new String[]{"full_name", "age"},
@@ -39,7 +39,7 @@ class JdbcGenericTest {
 
     @Test
     void inheritedGenericResultsKeepSingleAndMultiRowEmptySemantics() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         assertNull(mapper.row(result(new String[]{"full_name", "age"})));
         assertTrue(mapper.rows(result(new String[]{"full_name", "age"})).isEmpty());
@@ -47,7 +47,7 @@ class JdbcGenericTest {
 
     @Test
     void inheritedGenericRecordTargetIsResolvedAfterSpecialization() {
-        UserRecordMapper mapper = CompiledInstances.of(UserRecordMapper.class);
+        UserRecordMapper mapper = CompiledInstances.global(UserRecordMapper.class);
 
         UserRecord user = mapper.row(result(
                 new String[]{"full_name", "age"},

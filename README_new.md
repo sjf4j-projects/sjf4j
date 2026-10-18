@@ -70,7 +70,7 @@ interface UserBinder {
     String write(User user) throws IOException;
 }
 
-UserBinder binder = CompiledInstances.of(UserBinder.class);
+UserBinder binder = CompiledInstances.global(UserBinder.class);
 User user = binder.read(json);
 ```
 Compile-time code generation also supports: `@CompiledNavigator` ( JSONPath navigation ), 
@@ -406,7 +406,7 @@ interface StudentPath {
 ```
 
 ```java
-StudentPath path = CompiledInstances.of(StudentPath.class);
+StudentPath path = CompiledInstances.global(StudentPath.class);
 path.getScoresMath(student);
 ```
 
@@ -508,7 +508,7 @@ public interface StudentMapper {
 
 Use the generated mapper:
 ```java
-StudentMapper mapper = CompiledInstances.of(StudentMapper.class);
+StudentMapper mapper = CompiledInstances.global(StudentMapper.class);
 StudentDto studentDto = mapper.toDto(student);
 ```
 

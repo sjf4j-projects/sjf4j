@@ -155,7 +155,7 @@ public class CompiledBinderTest {
 
     @Test
     public void fastjson2CompiledUsesFixedRawNamesAndEscapedFallback() throws IOException {
-        FastjsonPackedNameBinder compiled = CompiledInstances.of(FastjsonPackedNameBinder.class);
+        FastjsonPackedNameBinder compiled = CompiledInstances.global(FastjsonPackedNameBinder.class);
         PackedNames source = new PackedNames();
         String stringJson = compiled.writeString(source);
         String utf8Json = new String(compiled.writeUtf8(source), StandardCharsets.UTF_8);
@@ -192,7 +192,7 @@ public class CompiledBinderTest {
 
     @Test
     public void fastjson2CompiledListsSupportRandomAccessAndLinkedList() throws IOException {
-        BinderContract compiled = CompiledInstances.of(Fastjson2Binder.class);
+        BinderContract compiled = CompiledInstances.global(Fastjson2Binder.class);
         List<String> randomAccess = new ArrayList<String>(Arrays.asList(
                 "héllo", null, "a\\\"b", "汉字"));
         List<String> sequential = new LinkedList<String>(randomAccess);
@@ -320,7 +320,7 @@ public class CompiledBinderTest {
 
     @Test
     public void jackson2ReadsExactObjectMapAsRawGraph() throws IOException {
-        BinderContract binder = CompiledInstances.of(Jackson2Binder.class);
+        BinderContract binder = CompiledInstances.global(Jackson2Binder.class);
 
         assertNull(binder.readObjectMap("null"));
         assertThrows(BindingException.class, () -> binder.readObjectMap("[]"));
@@ -368,13 +368,13 @@ public class CompiledBinderTest {
 
     private static Stream<Arguments> jsonBackends() {
         return Stream.of(
-                Arguments.of("simple", CompiledInstances.of(SimpleBinder.class)),
-                Arguments.of("jackson3", CompiledInstances.of(Jackson3Binder.class)),
-                Arguments.of("jackson2", CompiledInstances.of(Jackson2Binder.class)),
-                Arguments.of("gson", CompiledInstances.of(GsonBinder.class)),
-                Arguments.of("fastjson2", CompiledInstances.of(Fastjson2Binder.class)),
-                Arguments.of("jsonp", CompiledInstances.of(JsonpBinder.class)),
-                Arguments.of("auto", CompiledInstances.of(AutoBinder.class))
+                Arguments.of("simple", CompiledInstances.global(SimpleBinder.class)),
+                Arguments.of("jackson3", CompiledInstances.global(Jackson3Binder.class)),
+                Arguments.of("jackson2", CompiledInstances.global(Jackson2Binder.class)),
+                Arguments.of("gson", CompiledInstances.global(GsonBinder.class)),
+                Arguments.of("fastjson2", CompiledInstances.global(Fastjson2Binder.class)),
+                Arguments.of("jsonp", CompiledInstances.global(JsonpBinder.class)),
+                Arguments.of("auto", CompiledInstances.global(AutoBinder.class))
         );
     }
 

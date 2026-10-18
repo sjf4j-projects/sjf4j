@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
  *
  * <p>The generated class is named after the interface with the {@code _Impl}
  * suffix. Runtime lookup is normally done through
- * {@code org.sjf4j.CompiledInstances.of(...)}.</p>
+ * {@code org.sjf4j.CompiledInstances.global(...)}.</p>
  *
  * <pre>{@code
  * @CompiledNavigator

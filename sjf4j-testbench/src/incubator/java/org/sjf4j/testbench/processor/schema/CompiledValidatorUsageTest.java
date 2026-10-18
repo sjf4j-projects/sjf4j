@@ -19,7 +19,7 @@ public class CompiledValidatorUsageTest {
 
     @Test
     public void validatesRecordFastPathAndFallbackResult() {
-        ProductValidator validator = CompiledInstances.of(ProductValidator.class);
+        ProductValidator validator = CompiledInstances.global(ProductValidator.class);
 
         Product ok = new Product("book", List.of("new", "hot"));
         Product badName = new Product("x", List.of("new"));
@@ -38,7 +38,7 @@ public class CompiledValidatorUsageTest {
 
     @Test
     public void supportsCombinatorsInFastPath() {
-        MetricValidator validator = CompiledInstances.of(MetricValidator.class);
+        MetricValidator validator = CompiledInstances.global(MetricValidator.class);
 
         assertTrue(validator.isValid(new Metric(10)));
         assertTrue(validator.isValid(new Metric(null)));
@@ -89,7 +89,7 @@ public class CompiledValidatorUsageTest {
 
     @Test
     public void supportsNodePropertyRenameOnRecord() {
-        RenamedPersonValidator validator = CompiledInstances.of(RenamedPersonValidator.class);
+        RenamedPersonValidator validator = CompiledInstances.global(RenamedPersonValidator.class);
 
         // Schema uses JSON-facing name "first_name";
         // record component uses @NodeProperty("first_name") on Java name "firstName"
@@ -100,7 +100,7 @@ public class CompiledValidatorUsageTest {
 
     @Test
     public void supportsNodePropertyWithAdditionalPropertiesFalse() {
-        StrictPersonValidator validator = CompiledInstances.of(StrictPersonValidator.class);
+        StrictPersonValidator validator = CompiledInstances.global(StrictPersonValidator.class);
 
         assertTrue(validator.isValid(new StrictPerson("Alice", 30)));
         // additionalProperties: false ensures no extra properties beyond those in schema
@@ -108,7 +108,7 @@ public class CompiledValidatorUsageTest {
 
     @Test
     public void supportsNodePropertyRenameOnPojoClass() {
-        AnnotatedPojoValidator validator = CompiledInstances.of(AnnotatedPojoValidator.class);
+        AnnotatedPojoValidator validator = CompiledInstances.global(AnnotatedPojoValidator.class);
 
         assertTrue(validator.isValid(new AnnotatedPojo()));
         AnnotatedPojo bad = new AnnotatedPojo();
@@ -118,7 +118,7 @@ public class CompiledValidatorUsageTest {
 
     @Test
     public void supportsThirdPartyPropertyRenameOnRecord() {
-        ThirdPartyPersonValidator validator = CompiledInstances.of(ThirdPartyPersonValidator.class);
+        ThirdPartyPersonValidator validator = CompiledInstances.global(ThirdPartyPersonValidator.class);
 
         assertTrue(validator.isValid(new ThirdPartyPerson("Ada", "Lovelace")));
         assertFalse(validator.isValid(new ThirdPartyPerson("A", "Lovelace")));
