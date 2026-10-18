@@ -6,27 +6,34 @@ import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import lombok.Data;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.testbench.binding.handwritten.Fastjson2RawHandReader;
-import org.sjf4j.testbench.binding.handwritten.Fastjson2RawNativeDateReader;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Reader;
+import org.sjf4j.binding.StreamingIO;
+import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
-import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
+import org.sjf4j.value.ValueInfo;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A/B: identical JSON bytes and property graph with/without ValueCodec decoding.
- * RawUser differs from User ONLY in updatedAt (String vs LocalDateTime)
- * and website (String vs URI). All benchmarks include parser construction.
+ * Isolate URI ValueCodec overhead with an identical JSON payload.
  *
- * A handwritten raw-name reader provides the upper bound for a compiled
- * implementation that directly invokes the built-in codecs.
+ * Both 23-property POJOs use String updatedAt: no LocalDateTime decoding,
+ * no backend-specific native date parser. The only type difference is
+ * website: URI (compiled codec) versus String (raw).
+ *
+ * Scalar variants separate StreamingIO, cached ValueInfo and direct built-in
+ * ValueCodec calls. All measured methods create and close a parser.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -39,13 +46,24 @@ public class Fastjson2CodecReadProbeBenchmark {
 
     private static final String JSON = CompiledReadBenchmark.JSON_DATA;
     private static final byte[] UTF8 = JSON.getBytes(StandardCharsets.UTF_8);
+    private static final String URI_JSON = "\"https://example.test/users/42\"";
+    private static final URI EXPECTED_URI = URI.create("https://example.test/users/42");
+
     private static final JSONReader.Context NATIVE_CONTEXT =
             JSONFactory.createReadContext(new ObjectReaderProvider(),
                     JSONReader.Feature.UseDoubleForDecimals);
-
-    private static final CompiledReadBenchmark.Fastjson2CompiledBinder CODEC_COMPILED =
-            CompiledInstances.global(CompiledReadBenchmark.Fastjson2CompiledBinder.class);
+    private static final Fastjson2Binder BINDER =
+            new Fastjson2Binder(NATIVE_CONTEXT, JSONFactory.createWriteContext());
+    private static final ValueInfo URI_INFO =
+            TypeRegistry.registerTypeInfo(URI.class).requireValueInfo(null);
+    private static final UriBinder URI_COMPILED = CompiledInstances.global(UriBinder.class);
     private static final RawBinder RAW_COMPILED = CompiledInstances.global(RawBinder.class);
+
+    @CompiledBinder(backend = Backend.FASTJSON2)
+    public interface UriBinder {
+        @ReadFrom UriUser readString(String json) throws IOException;
+        @ReadFrom UriUser readUtf8(byte[] json) throws IOException;
+    }
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface RawBinder {
@@ -53,7 +71,33 @@ public class Fastjson2CodecReadProbeBenchmark {
         @ReadFrom RawUser readUtf8(byte[] json) throws IOException;
     }
 
-    /** Exact same property graph as User, but retain the two codec raw strings. */
+    @Data
+    public static class UriUser {
+        private long id;
+        private long createdAt;
+        private String updatedAt;
+        private long reputation;
+        private int loginCount;
+        private int age;
+        private boolean active;
+        private boolean verified;
+        private boolean admin;
+        private boolean suspended;
+        private double score;
+        private double latitude;
+        private double longitude;
+        private String username;
+        private String email;
+        private String displayName;
+        private String passwordHash;
+        private String bio;
+        private URI website;
+        private String department;
+        private Address address;
+        private List<String> tags;
+        private List<Friend> friends;
+    }
+
     @Data
     public static class RawUser {
         private long id;
@@ -83,54 +127,40 @@ public class Fastjson2CodecReadProbeBenchmark {
 
     @Setup(Level.Trial)
     public void checkResults() throws IOException {
-        User nativeCodec = (User) native_codec_string();
-        if (!nativeCodec.equals(compiled_codec_string())
-                || !nativeCodec.equals(handwritten_codec_string())
-                || !nativeCodec.equals(handwritten_native_date_string())
-                || !nativeCodec.equals(handwritten_native_date_utf8())
-                || !nativeCodec.equals(native_codec_utf8())
-                || !nativeCodec.equals(compiled_codec_utf8())) {
-            throw new AssertionError("Fastjson2 ValueCodec POJO result mismatch");
+        UriUser nativeUri = (UriUser) native_uri_string();
+        if (!nativeUri.equals(compiled_uri_string())
+                || !nativeUri.equals(native_uri_utf8())
+                || !nativeUri.equals(compiled_uri_utf8())) {
+            throw new AssertionError("URI POJO read mismatch");
         }
         RawUser nativeRaw = (RawUser) native_raw_string();
         if (!nativeRaw.equals(compiled_raw_string())
                 || !nativeRaw.equals(native_raw_utf8())
                 || !nativeRaw.equals(compiled_raw_utf8())) {
-            throw new AssertionError("Fastjson2 RawUser POJO result mismatch");
+            throw new AssertionError("Raw POJO read mismatch");
+        }
+        if (!nativeUri.getUpdatedAt().equals(nativeRaw.getUpdatedAt())
+                || !nativeUri.getWebsite().toString().equals(nativeRaw.getWebsite())) {
+            throw new AssertionError("URI and raw input mismatch");
+        }
+        if (!EXPECTED_URI.equals(native_scalar())
+                || !EXPECTED_URI.equals(direct_codec_scalar())
+                || !EXPECTED_URI.equals(value_info_scalar())
+                || !EXPECTED_URI.equals(streaming_io_scalar())) {
+            throw new AssertionError("Scalar URI read mismatch");
         }
     }
 
     @Benchmark
-    public Object native_codec_string() {
+    public Object native_uri_string() {
         try (JSONReader reader = JSONReader.of(JSON, NATIVE_CONTEXT)) {
-            return reader.read(User.class);
+            return reader.read(UriUser.class);
         }
     }
 
     @Benchmark
-    public Object compiled_codec_string() throws IOException {
-        return CODEC_COMPILED.readPojo(JSON);
-    }
-
-    @Benchmark
-    public Object handwritten_codec_string() {
-        try (JSONReader reader = JSONReader.of(JSON, NATIVE_CONTEXT)) {
-            return Fastjson2RawHandReader.readUser(reader);
-        }
-    }
-
-    @Benchmark
-    public Object handwritten_native_date_string() {
-        try (JSONReader reader = JSONReader.of(JSON, NATIVE_CONTEXT)) {
-            return Fastjson2RawNativeDateReader.readUser(reader);
-        }
-    }
-
-    @Benchmark
-    public Object handwritten_native_date_utf8() {
-        try (JSONReader reader = JSONReader.of(UTF8, NATIVE_CONTEXT)) {
-            return Fastjson2RawNativeDateReader.readUser(reader);
-        }
+    public Object compiled_uri_string() throws IOException {
+        return URI_COMPILED.readString(JSON);
     }
 
     @Benchmark
@@ -146,15 +176,15 @@ public class Fastjson2CodecReadProbeBenchmark {
     }
 
     @Benchmark
-    public Object native_codec_utf8() {
+    public Object native_uri_utf8() {
         try (JSONReader reader = JSONReader.of(UTF8, NATIVE_CONTEXT)) {
-            return reader.read(User.class);
+            return reader.read(UriUser.class);
         }
     }
 
     @Benchmark
-    public Object compiled_codec_utf8() throws IOException {
-        return CODEC_COMPILED.readPojoUtf8(UTF8);
+    public Object compiled_uri_utf8() throws IOException {
+        return URI_COMPILED.readUtf8(UTF8);
     }
 
     @Benchmark
@@ -167,5 +197,33 @@ public class Fastjson2CodecReadProbeBenchmark {
     @Benchmark
     public Object compiled_raw_utf8() throws IOException {
         return RAW_COMPILED.readUtf8(UTF8);
+    }
+
+    @Benchmark
+    public Object native_scalar() {
+        try (JSONReader reader = JSONReader.of(URI_JSON, NATIVE_CONTEXT)) {
+            return reader.read(URI.class);
+        }
+    }
+
+    @Benchmark
+    public Object direct_codec_scalar() throws IOException {
+        try (Fastjson2Reader reader = BINDER.createReader(URI_JSON)) {
+            return ValueCodec.URI_CODEC.rawToValue(reader.readString());
+        }
+    }
+
+    @Benchmark
+    public Object value_info_scalar() throws IOException {
+        try (Fastjson2Reader reader = BINDER.createReader(URI_JSON)) {
+            return URI_INFO.rawToValue(reader.readString());
+        }
+    }
+
+    @Benchmark
+    public Object streaming_io_scalar() throws IOException {
+        try (Fastjson2Reader reader = BINDER.createReader(URI_JSON)) {
+            return StreamingIO.readValueCodec(reader, URI_INFO, RuntimeContext.EMPTY);
+        }
     }
 }
