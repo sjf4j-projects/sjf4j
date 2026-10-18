@@ -1,0 +1,65 @@
+name: Fastjson2 Compiled Read Codec Probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/Fastjson2CodecReadProbeBenchmark.java'
+      - '.github/workflows/fastjson2-compiled-read-probe.yml'
+      - 'sjf4j-processor/**'
+      - 'sjf4j-core/**'
+      - 'sjf4j-backend-fastjson2/**'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build JMH benchmark
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+
+      - name: A/B codec-vs-raw, compiled-vs-native
+        run: |
+          java -version
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*Fastjson2CodecReadProbeBenchmark.*' \
+            -f 1 -wi 5 -i 7 -w 300ms -r 300ms -prof gc \
+            -rf json -rff sjf4j-testbench/build/fastjson2-read-probe.json
+
+      - name: Print ratios
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = 'sjf4j-testbench/build/fastjson2-read-probe.json'
+          if not os.path.isfile(p):
+              print('Benchmark result not created')
+              raise SystemExit(0)
+          rows = json.load(open(p))
+          d = {x['benchmark'].split('.')[-1]: x['primaryMetric']['score'] for x in rows}
+          for name, score in sorted(d.items()):
+              print(f'{name}: {score:.4f} us/op')
+          for variant in ('codec', 'raw'):
+              for encoding in ('string', 'utf8'):
+                  c = d.get(f'compiled_{variant}_{encoding}')
+                  n = d.get(f'native_{variant}_{encoding}')
+                  if c is not None and n is not None:
+                      print(f'{variant} {encoding}: compiled/native={c/n:.3f} '
+                            f'({"PASS" if c<n else "FAIL"})')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fastjson2-read-probe
+          path: sjf4j-testbench/build/fastjson2-read-probe.json
+          if-no-files-found: ignore
