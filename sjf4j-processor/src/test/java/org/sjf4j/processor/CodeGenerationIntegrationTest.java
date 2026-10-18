@@ -28,7 +28,7 @@ class CodeGenerationIntegrationTest {
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
         assertTrue(source.contains(
-                "(Object) reader.readRawNode()"), source);
+                "(Object) reader.readRaw()"), source);
         assertFalse(source.contains(
                 "StreamingIO.readNode(reader, Object.class"), source);
     }
@@ -48,8 +48,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("(Object) reader.readRawNode()"), source);
-        assertFalse(source.contains("StreamingIO.readRawNode(reader)"), source);
+        assertTrue(source.contains("(Object) reader.readRaw()"), source);
+        assertFalse(source.contains("StreamingIO.readRaw(reader)"), source);
     }
 
     @Test
@@ -67,8 +67,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("(Object) reader.readRawNode()"), source);
-        assertFalse(source.contains("StreamingIO.readRawNode(reader)"), source);
+        assertTrue(source.contains("(Object) reader.readRaw()"), source);
+        assertFalse(source.contains("StreamingIO.readRaw(reader)"), source);
     }
 
     @Test
@@ -86,8 +86,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("(Object) reader.readRawNode()"), source);
-        assertFalse(source.contains("StreamingIO.readRawNode(reader)"), source);
+        assertTrue(source.contains("(Object) reader.readRaw()"), source);
+        assertFalse(source.contains("StreamingIO.readRaw(reader)"), source);
     }
 
 
