@@ -277,7 +277,7 @@ final class Fastjson2WriteEmitter {
                 out.line(raw + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line("org.sjf4j.binding.StreamingIO.writeRawNode(" + writer + ", "
+                out.line(writer + ".writeRaw("
                         + value.helperName() + ".valueToRaw(" + item + "), this.context);");
                 out.endBlock();
                 out.endBlock();
