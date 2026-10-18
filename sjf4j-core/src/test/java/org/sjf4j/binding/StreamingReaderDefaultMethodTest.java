@@ -93,7 +93,7 @@ class StreamingReaderDefaultMethodTest {
         public void skipNode() {}
 
         @Override
-        public Object readRawNode() throws IOException { return null; }
+        public Object readRaw() throws IOException { return null; }
         public void close() {}
     }
 }
