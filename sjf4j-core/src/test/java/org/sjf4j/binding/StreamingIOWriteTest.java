@@ -146,7 +146,7 @@ class StreamingIOWriteTest {
         raw.put("nested", List.of(3, true, Map.of("value", 2.5)));
         StringWriter output = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, output)) {
-            StreamingIO.writeRawNode(writer, raw, new RuntimeContext(false));
+            writer.writeRaw(raw, new RuntimeContext(false));
             writer.flush();
         }
         assertEquals("{\"name\":\"Ada\",\"nested\":[3,true,{\"value\":2.5}]}",
@@ -157,7 +157,7 @@ class StreamingIOWriteTest {
         withNull.put("list", java.util.Arrays.asList(null, 1));
         StringWriter outputWithNull = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, outputWithNull)) {
-            StreamingIO.writeRawNode(writer, withNull, RuntimeContext.EMPTY);
+            writer.writeRaw(withNull, RuntimeContext.EMPTY);
             writer.flush();
         }
         assertEquals("{\"value\":null,\"list\":[null,1]}", outputWithNull.toString());
@@ -165,7 +165,7 @@ class StreamingIOWriteTest {
         StringWriter rejected = new StringWriter();
         try (SimpleJsonWriter writer = new SimpleJsonWriter(null, rejected)) {
             assertThrows(BindingException.class,
-                    () -> StreamingIO.writeRawNode(writer, new UnsupportedNode(), RuntimeContext.EMPTY));
+                    () -> writer.writeRaw(new UnsupportedNode(), RuntimeContext.EMPTY));
         }
     }
 
