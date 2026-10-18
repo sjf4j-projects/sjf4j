@@ -69,6 +69,33 @@ class JdbcMappingIntegrationTest {
     }
 
     @Test
+    void annotatedColumnValuesUseNodeMapperWithoutNodesFacade() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Token.java",
+                "package fixture; import org.sjf4j.annotation.node.*; "
+                + "@NodeValue public final class Token { "
+                + "private final String raw; "
+                + "@RawToValue public Token(String raw) { this.raw = raw; } "
+                + "@ValueToRaw public String raw() { return raw; } }",
+                "fixture/Row.java",
+                "package fixture; public class Row { public Token token; }",
+                "fixture/Mapper.java",
+                "package fixture; "
+                + "import java.sql.ResultSet; "
+                + "import org.sjf4j.annotation.mapping.Mapping; "
+                + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper; "
+                + "@CompiledJdbcMapper public interface Mapper { "
+                + "@Mapping(target=\"token\", source=\"token\") "
+                + "Row read(ResultSet rs); }"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(generated.contains("NodeMapper.to("), generated);
+        assertFalse(generated.contains("org.sjf4j.Nodes."), generated);
+    }
+
+    @Test
     void rejectsSourcePaths() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Mapper.java",
