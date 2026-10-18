@@ -17,7 +17,7 @@ import java.util.Map;
  */
 final class Fastjson2PojoReadEmitter {
 
-    void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads) {
+    void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads, boolean creator) {
         out.line("com.alibaba.fastjson2.JSONReader raw = reader.rawReader();");
         out.beginBlock("while (!raw.nextIfObjectEnd())");
 
@@ -38,7 +38,7 @@ final class Fastjson2PojoReadEmitter {
         if (!rawNames.isEmpty()) {
             // Fastjson2's getRawInt is native-endian. On a big-endian JVM,
             // canonical and aliased property names use the normal hash path.
-            out.beginBlock("if (java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN)");
+            out.beginBlock("if (FASTJSON2_LITTLE_ENDIAN)");
             out.beginBlock("switch (raw.getRawInt())");
             for (Map.Entry<Integer, List<BindingProperty>> entry : rawNames.entrySet()) {
                 out.line("case 0x" + Integer.toHexString(entry.getKey()) + ":");
@@ -65,7 +65,12 @@ final class Fastjson2PojoReadEmitter {
             out.endBlock();
         }
 
-        out.line(fallbackMethod(value) + "(reader, value);");
+        if (creator) {
+            out.line("int nameIndex = reader.nextNameMatch(" + reads.matcherFieldName(value) + ");");
+            reads.emitMatchedPojoProperty(out, value, false);
+        } else {
+            out.line(fallbackMethod(value) + "(reader, value);");
+        }
         out.endBlock();
     }
 
