@@ -15,7 +15,9 @@ import java.lang.reflect.InvocationTargetException;
  * the interface's class loader and invokes its public no-argument constructor.
  *
  * <p>{@link #global(Class)} caches one immutable-default-context instance per interface.
- * {@link #create(Class, RuntimeContext)} creates independent, configured Mapper/Binder instances.
+ * {@link #create(Class, RuntimeContext)} creates independent instances for all four
+ * compiled interface families. The context configures Mapper, Binder, and JDBC
+ * conversions; Navigator currently has no context-dependent operations.
  * Generated implementations must be safe to share across callers once constructed.
  */
 public final class CompiledInstances {
@@ -42,7 +44,8 @@ public final class CompiledInstances {
 
     /**
      * Creates an independent compiled implementation with the supplied runtime settings.
-     * The generated implementation must expose a public RuntimeContext constructor.
+     * Supported interfaces: CompiledNavigator, CompiledMapper, CompiledJdbcMapper,
+     * and CompiledBinder. Navigator currently does not use the supplied context.
      */
     public static <T> T create(Class<T> type, RuntimeContext context) {
         Asserts.notNull(type, "type");
@@ -86,7 +89,7 @@ public final class CompiledInstances {
 
     private static Class<?> _implementationClass(Class<?> type) {
         if (!type.isInterface()) {
-            throw new IllegalArgumentException("CompiledInstances.of requires an interface type, but got " +
+            throw new IllegalArgumentException("CompiledInstances requires an interface type, but got " +
                     type.getName());
         }
 
