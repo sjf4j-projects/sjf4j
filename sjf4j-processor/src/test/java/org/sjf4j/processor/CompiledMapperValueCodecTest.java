@@ -217,6 +217,31 @@ class CompiledMapperValueCodecTest {
     }
 
     @Test
+    void inheritedCodecDoesNotOverrideNativeScalarSemantics() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Codecs.java",
+                "package fixture; import java.io.Serializable; "
+                + "import org.sjf4j.annotation.node.NodeValue; "
+                + "import org.sjf4j.value.ValueCodec; "
+                + "public class Codecs { @NodeValue "
+                + "public static final ValueCodec<Serializable,String> CODEC = "
+                + "new ValueCodec.SimpleValueCodec<>(Serializable.class, String.class, "
+                + "Object::toString, raw -> raw); }");
+        sources.put("fixture/Source.java",
+                "package fixture; public class Source { public String id; }");
+        sources.put("fixture/Target.java",
+                "package fixture; public class Target { public Integer id; }");
+        sources.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "@CompiledMapper public interface Mapper { Target map(Source source); }");
+
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(result.success,
+                "String -> Integer must stay strict even if Serializable has a codec");
+    }
+
+    @Test
     void userMapperMethodsTakePrecedenceOverDiscoveredCodecs() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Source.java",
