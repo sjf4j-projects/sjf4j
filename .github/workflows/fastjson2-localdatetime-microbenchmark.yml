@@ -1,0 +1,63 @@
+name: Fastjson2 LocalDateTime Parsing Microbenchmark
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/fastjson2-localdatetime-microbenchmark.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/Fastjson2LocalDateTimeParsingBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build standalone JMH benchmark
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+
+      - name: Measure equal-input date decoding, 3 forks with allocations
+        run: |
+          java -version
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*Fastjson2LocalDateTimeParsingBenchmark.*' \
+            -f 3 -wi 5 -i 7 -w 250ms -r 250ms -prof gc \
+            -rf json -rff sjf4j-testbench/build/localdatetime-parser-ab.json
+
+      - name: Report direct Fastjson2 versus JDK parsing
+        run: |
+          python3 - <<'PY'
+          import json
+          results = json.load(open('sjf4j-testbench/build/localdatetime-parser-ab.json'))
+          for precision in ('seconds', 'nanos'):
+              d = {r['benchmark'].split('.')[-1]: r for r in results
+                   if r.get('params', {}).get('precision') == precision}
+              print(f'\nPRECISION={precision}')
+              for name, r in sorted(d.items()):
+                  s = r['primaryMetric']['score']
+                  e = r['primaryMetric']['scoreError']
+                  a = r.get('secondaryMetrics', {}).get('gc.alloc.rate.norm', {}).get('score', -1)
+                  print(f' {name}: {s:.2f} +/- {e:.2f} ns/op, {a:.1f} B/op')
+              a = d['fastjson_readLocalDateTime_json']['primaryMetric']['score']
+              b = d['jdk_parse_after_readString_json']['primaryMetric']['score']
+              c = d['sjf4j_codec_after_readString_json']['primaryMetric']['score']
+              pure = d['jdk_parse_plain_string']['primaryMetric']['score']
+              print(f' Fastjson2 native versus readString()+JDK parse: {b/a:.2f}x speedup')
+              print(f' Fastjson2 native versus readString()+SJF4J codec: {c/a:.2f}x speedup')
+              print(f' JDK parse only (no JSON): {pure:.2f} ns/op')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: localdatetime-parser-ab
+          path: sjf4j-testbench/build/localdatetime-parser-ab.json
+          if-no-files-found: ignore
