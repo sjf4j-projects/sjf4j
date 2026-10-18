@@ -392,7 +392,7 @@ public final class MappingEmitter {
                 break;
 
             case DYNAMIC:
-                present = "org.sjf4j.Nodes.containsInObject(" +
+                present = "org.sjf4j.node.NodeWalker.containsInObject(" +
                         source + ", " + key + ")";
                 break;
 
@@ -746,7 +746,7 @@ public final class MappingEmitter {
         out.line(
                 "for (java.util.Map.Entry<String, Object> " +
                         entry +
-                        " : org.sjf4j.Nodes.entrySetInObject(" +
+                        " : org.sjf4j.node.NodeWalker.entrySetInObject(" +
                         source +
                         ")) {");
 
@@ -1508,7 +1508,7 @@ public final class MappingEmitter {
                 case DYNAMIC:
                     return cast(
                             valueType,
-                            "org.sjf4j.Nodes.getInObject(" +
+                            "org.sjf4j.node.NodeWalker.getInObject(" +
                                     owner +
                                     ", " +
                                     key +
@@ -1569,7 +1569,7 @@ public final class MappingEmitter {
             case DYNAMIC:
                 return cast(
                         valueType,
-                        "org.sjf4j.Nodes.getInArray(" +
+                        "org.sjf4j.node.NodeWalker.getInArray(" +
                                 owner +
                                 ", " +
                                 index +
@@ -2684,7 +2684,7 @@ public final class MappingEmitter {
 
                 case DYNAMIC:
                     out.line(
-                            "org.sjf4j.Nodes.putInObject(" +
+                            "org.sjf4j.node.NodeWalker.putInObject(" +
                                     owner +
                                     ", " +
                                     key +
@@ -2715,7 +2715,7 @@ public final class MappingEmitter {
 
                 case DYNAMIC:
                     out.line(
-                            "org.sjf4j.Nodes.addInArray(" +
+                            "org.sjf4j.node.NodeWalker.addInArray(" +
                                     owner +
                                     ", " +
                                     value +
@@ -2808,7 +2808,7 @@ public final class MappingEmitter {
 
                 case DYNAMIC:
                     out.line(
-                            "org.sjf4j.Nodes.putInArray(" +
+                            "org.sjf4j.node.NodeWalker.putInArray(" +
                                     owner +
                                     ", " +
                                     actualIndex +
@@ -2901,7 +2901,7 @@ public final class MappingEmitter {
                 case DYNAMIC:
                     return cast(
                             access.readType(),
-                            "org.sjf4j.Nodes.getInObject(" +
+                            "org.sjf4j.node.NodeWalker.getInObject(" +
                                     owner +
                                     ", " +
                                     key +
