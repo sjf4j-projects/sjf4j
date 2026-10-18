@@ -239,6 +239,9 @@ class CompiledMapperValueCodecTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(result.success,
                 "String -> Integer must stay strict even if Serializable has a codec");
+        assertTrue(result.diagnostics().contains(
+                "cannot map value from java.lang.String to java.lang.Integer"),
+                result.diagnostics());
     }
 
     @Test
