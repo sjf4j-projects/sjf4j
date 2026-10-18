@@ -30,6 +30,11 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "fixture/Address.java",
                 "package fixture; public class Address { "
                 + "public String street = \"Main\"; public int zip = 12345; }",
+                "fixture/GetterBean.java",
+                "package fixture; import java.time.Instant; "
+                + "public class GetterBean { private Instant when; public int calls; "
+                + "public Instant getWhen() { calls++; return when; } "
+                + "public void setWhen(Instant v) { when = v; } }",
                 "fixture/Binder.java",
                 "package fixture; import java.io.*; "
                 + "import org.sjf4j.annotation.binding.*; "
@@ -38,7 +43,8 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 + "@WriteTo String write(Bean bean) throws IOException; "
                 + "@WriteTo byte[] writeBytes(Bean bean) throws IOException; "
                 + "@WriteTo void toWriter(Bean bean, Writer output) throws IOException; "
-                + "@WriteTo void toStream(Bean bean, OutputStream output) throws IOException; }"
+                + "@WriteTo void toStream(Bean bean, OutputStream output) throws IOException; "
+                + "@WriteTo String writeGetter(GetterBean bean) throws IOException; }"
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
 
@@ -47,7 +53,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
         assertTrue(source.contains("writer.nativeWriter()"), source);
-        assertTrue(source.contains("StreamingIO.writeNode(writer,"), source);
+        assertTrue(source.contains("StreamingIO.writeRawNode(writer,"), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);
 
@@ -81,6 +87,14 @@ class Fastjson2CompiledWrapperIntegrationTest {
 
             Object decoded = type.getMethod("read", String.class).invoke(defaults, json);
             assertEquals(instant, beanType.getField("when").get(decoded));
+
+            Class<?> getterType = loader.loadClass("fixture.GetterBean");
+            Object getterBean = getterType.getConstructor().newInstance();
+            getterType.getMethod("setWhen", Instant.class).invoke(getterBean, instant);
+            String getterJson = (String) type.getMethod("writeGetter", getterType)
+                    .invoke(defaults, getterBean);
+            assertTrue(getterJson.contains("2024-01-01T10:00:00Z"), getterJson);
+            assertEquals(1, getterType.getField("calls").getInt(getterBean));
 
             RuntimeContext context = new RuntimeContext(Map.of(Instant.class, "epochMillis"), false);
             Object configured = CompiledInstances.create(type, context);
