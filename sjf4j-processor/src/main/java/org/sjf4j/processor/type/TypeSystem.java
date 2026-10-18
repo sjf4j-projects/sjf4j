@@ -1211,7 +1211,8 @@ public final class TypeSystem {
     }
 
 
-    private TypeMirror nodeValueRawType(
+    /** Declared raw type of an @NodeValue conversion, if statically available. */
+    public TypeMirror nodeValueRawType(
             TypeMirror owner) {
 
         TypeElement element =
