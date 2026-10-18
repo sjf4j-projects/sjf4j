@@ -112,6 +112,11 @@ public final class ConversionCompiler {
                         conversion.sourceType(),
                         conversion.targetType());
 
+            case CODEC_ENCODE:
+                return CompiledConversion.codecEncode(
+                        conversion.sourceType(),
+                        conversion.targetType());
+
             case ONE_OF:
                 /*
                  * OneOf dispatch stays a leaf strategy. Its runtime-shape /
@@ -1097,6 +1102,7 @@ public final class ConversionCompiler {
             METHOD,
             SCALAR,
             VALUE_CODEC,
+            CODEC_ENCODE,
             ONE_OF,
             CONTAINER,
             MAP,
@@ -1227,6 +1233,14 @@ public final class ConversionCompiler {
                 TypeMirror target) {
 
             return simple(Kind.VALUE_CODEC, source, target);
+        }
+
+
+        static CompiledConversion codecEncode(
+                TypeMirror source,
+                TypeMirror target) {
+
+            return simple(Kind.CODEC_ENCODE, source, target);
         }
 
 
