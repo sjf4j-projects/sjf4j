@@ -1101,7 +1101,7 @@ final class PathEmitter {
                             out,
                             type,
                             target,
-                            "org.sjf4j.Nodes.getInArray(" +
+                            "org.sjf4j.node.NodeWalker.getInArray(" +
                                     owner +
                                     ", " +
                                     rawIndexExpression(step) +
@@ -1111,7 +1111,7 @@ final class PathEmitter {
                             out,
                             type,
                             target,
-                            "org.sjf4j.Nodes.getInObject(" +
+                            "org.sjf4j.node.NodeWalker.getInObject(" +
                                     owner +
                                     ", " +
                                     nameExpression(step) +
@@ -1390,7 +1390,7 @@ final class PathEmitter {
 
                 if (isIndexStep(step)) {
                     expression =
-                            "org.sjf4j.Nodes.putInArray(" +
+                            "org.sjf4j.node.NodeWalker.putInArray(" +
                                     owner +
                                     ", " +
                                     rawIndexExpression(step) +
@@ -1400,7 +1400,7 @@ final class PathEmitter {
 
                 } else {
                     expression =
-                            "org.sjf4j.Nodes.putInObject(" +
+                            "org.sjf4j.node.NodeWalker.putInObject(" +
                                     owner +
                                     ", " +
                                     nameExpression(step) +
@@ -1718,7 +1718,7 @@ final class PathEmitter {
 
             case DYNAMIC:
                 out.line(
-                        "org.sjf4j.Nodes.addInArray(" +
+                        "org.sjf4j.node.NodeWalker.addInArray(" +
                                 owner +
                                 ", " +
                                 value +
