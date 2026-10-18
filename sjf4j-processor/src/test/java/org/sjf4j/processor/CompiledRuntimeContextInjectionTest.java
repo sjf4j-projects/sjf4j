@@ -150,6 +150,7 @@ class CompiledRuntimeContextInjectionTest {
                     + "@ReadFrom Bean read(String json) throws IOException; "
                     + "@WriteTo String write(Bean bean) throws IOException; }"
             ), CodegenProcessor.class);
+            if (!compiled.success) System.err.println(backend + ": " + compiled.diagnostics());
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -177,6 +178,58 @@ class CompiledRuntimeContextInjectionTest {
                 assertEquals(java.time.Instant.parse("2024-01-01T10:00:00Z"),
                         beanType.getField("when").get(decoded), backend);
             }
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void navigatorAndJdbcMapperSupportConfiguredInstances() throws Exception {
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Paths.java",
+                "package fixture; import java.util.Map; "
+                + "import org.sjf4j.annotation.path.*; "
+                + "@CompiledNavigator public interface Paths { "
+                + "@GetByPath(\"$.name\") String getName(Map<String, String> source); }",
+                "fixture/Row.java",
+                "package fixture; public class Row { public String name; }",
+                "fixture/Rows.java",
+                "package fixture; import java.sql.ResultSet; "
+                + "import org.sjf4j.annotation.mapping.Mapping; "
+                + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper; "
+                + "@CompiledJdbcMapper public interface Rows { "
+                + "@Mapping(target=\"name\", source=\"name\") "
+                + "Row read(ResultSet rs); }"
+        ), CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        assertTrue(compiled.generatedSource("fixture/Paths_Impl.java")
+                .contains("RuntimeContext context)"));
+        assertTrue(compiled.generatedSource("fixture/Rows_Impl.java")
+                .contains("RuntimeContext context)"));
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class pathsType = loader.loadClass("fixture.Paths");
+            Class rowsType = loader.loadClass("fixture.Rows");
+            RuntimeContext context = new RuntimeContext(Map.of(), false);
+
+            Object navigator = CompiledInstances.create(pathsType, context);
+            assertNotSame(navigator, CompiledInstances.global(pathsType));
+            assertEquals("Alice", pathsType.getMethod("getName", Map.class)
+                    .invoke(navigator, Map.of("name", "Alice")));
+
+            Object jdbcMapper = CompiledInstances.create(rowsType, context);
+            assertNotSame(jdbcMapper, CompiledInstances.global(rowsType));
+            java.sql.ResultSet resultSet = (java.sql.ResultSet)
+                    java.lang.reflect.Proxy.newProxyInstance(
+                            getClass().getClassLoader(),
+                            new Class<?>[]{java.sql.ResultSet.class},
+                            (proxy, method, args) -> {
+                                if ("getString".equals(method.getName())) return "Alice";
+                                if ("wasNull".equals(method.getName())) return false;
+                                throw new UnsupportedOperationException(method.getName());
+                            });
+            Object row = rowsType.getMethod("read", java.sql.ResultSet.class)
+                    .invoke(jdbcMapper, resultSet);
+            assertEquals("Alice", loader.loadClass("fixture.Row").getField("name").get(row));
         }
     }
 
