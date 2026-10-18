@@ -544,6 +544,20 @@ final class ReadEmitter {
                 return reader + ".readBigDecimal()";
 
             case VALUE_CODEC:
+                // PERFORMANCE EXPERIMENT ONLY: Fastjson2's native ISO date decoder
+                // avoids the intermediate String + DateTimeFormatter allocations.
+                // Identity guard preserves configured/custom/patterned codecs.
+                // Do not merge until the accepted-date syntax is reconciled with
+                // LocalDateTime.parse() and cross-backend conformance.
+                if (backend.backend() == Backend.FASTJSON2
+                        && "java.time.LocalDateTime".equals(value.type().toString())) {
+                    String fallback = "(" + value.type() + ") " + STREAMING_IO
+                            + ".readValueCodec(" + reader + ", "
+                            + value.helperName() + ", this.context)";
+                    return "(" + value.helperName() + ".codec == (Object) "
+                            + "org.sjf4j.value.ValueCodec.LOCAL_DATE_TIME ? "
+                            + reader + ".rawReader().readLocalDateTime() : " + fallback + ")";
+                }
                 return "(" + value.type() + ") " + STREAMING_IO
                         + ".readValueCodec(" + reader + ", "
                         + value.helperName() + ", "
