@@ -220,7 +220,7 @@ final class ReadEmitter {
             BindingValue value) {
 
         if (value.creator() != null) {
-            emitRecord(out, value);
+            emitCreator(out, value);
             return;
         }
 
@@ -263,19 +263,31 @@ final class ReadEmitter {
         out.line("return value;");
     }
 
-    private void emitRecord(JavaWriter out, BindingValue value) {
+    /** Compiled creator binding: typed arguments and deferred writable fields. */
+    private void emitCreator(JavaWriter out, BindingValue value) {
         emitObjectStart(out);
 
+        int argCount = value.creator().parameterTypes().size();
+        int pendingCount = 0;
         for (BindingProperty property : value.properties()) {
-            out.line(property.value().type() + " arg" + property.creatorIndex() + " = "
-                    + (property.value().primitive() ? primitiveDefault(property.value()) : "null") + ";");
+            if (property.creatorIndex() >= 0) {
+                out.line(property.value().type() + " arg" + property.creatorIndex() + " = "
+                        + (property.value().primitive() ? primitiveDefault(property.value()) : "null") + ";");
+            } else if (property.pendingIndex() >= 0) {
+                int index = property.pendingIndex();
+                pendingCount++;
+                out.line(property.value().type() + " pending" + index + " = "
+                        + (property.value().primitive() ? primitiveDefault(property.value()) : "null") + ";");
+                out.line("boolean pending" + index + "Present = false;");
+            }
         }
-        int count = value.properties().size();
-        if (count != 0) {
-            out.line(count <= 64 ? "long seen = 0L;" : "boolean[] seen = new boolean[" + count + "];");
+        if (argCount != 0) {
+            out.line(argCount <= 64 ? "long seen = 0L;"
+                    : "boolean[] seen = new boolean[" + argCount + "];");
         }
 
-        if (backend.usesNameMatcher() && count != 0) {
+        int size = value.properties().size();
+        if (backend.usesNameMatcher() && size != 0) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
             out.beginBlock("while ((nameIndex = reader.nextNameMatch(" + matcherFieldName(value)
@@ -289,12 +301,37 @@ final class ReadEmitter {
         }
         out.endBlock();
 
-        StringBuilder ctor = new StringBuilder("return new ").append(value.type()).append('(');
-        for (int i = 0; i < count; i++) {
-            if (i != 0) ctor.append(", ");
-            ctor.append("arg").append(i);
+        StringBuilder creation;
+        switch (value.creator().kind()) {
+            case CONSTRUCTOR:
+                creation = new StringBuilder("new ").append(value.type()).append('(');
+                break;
+            case STATIC_FACTORY:
+                creation = new StringBuilder(value.creator().executable().getEnclosingElement().toString())
+                        .append('.').append(value.creator().executable().getSimpleName()).append('(');
+                break;
+            default:
+                throw new AssertionError(value.creator().kind());
         }
-        out.line(ctor.append(");").toString());
+        for (int i = 0; i < argCount; i++) {
+            if (i != 0) creation.append(", ");
+            creation.append("arg").append(i);
+        }
+        creation.append(')');
+        if (pendingCount == 0) {
+            out.line("return " + creation + ";");
+            return;
+        }
+
+        out.line(value.type() + " value = " + creation + ";");
+        for (BindingProperty property : value.properties()) {
+            if (property.pendingIndex() < 0) continue;
+            int index = property.pendingIndex();
+            out.beginBlock("if (pending" + index + "Present)");
+            out.line(assignment(property.access(), "value", "pending" + index));
+            out.endBlock();
+        }
+        out.line("return value;");
     }
 
     private static String primitiveDefault(BindingValue value) {
@@ -415,7 +452,13 @@ final class ReadEmitter {
                                     String owner, String expression) {
         int index = property.creatorIndex();
         if (index < 0) {
-            out.line(assignment(property.access(), owner, expression));
+            int pending = property.pendingIndex();
+            if (pending >= 0) {
+                out.line("pending" + pending + " = " + expression + ";");
+                out.line("pending" + pending + "Present = true;");
+            } else {
+                out.line(assignment(property.access(), owner, expression));
+            }
             return;
         }
         boolean wide = property.creatorCount() > 64;
