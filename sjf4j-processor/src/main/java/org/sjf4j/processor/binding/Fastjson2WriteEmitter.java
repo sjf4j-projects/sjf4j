@@ -62,11 +62,9 @@ final class Fastjson2WriteEmitter {
         FastjsonMode mode = utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16;
         String writer = names.newName("writer");
         String raw = names.newName("raw");
-        String create = output == BindingPlan.WriteOutput.STRING
-                ? "createWriter()"
-                : output == BindingPlan.WriteOutput.BYTES
-                        ? "createWriterUtf8()"
-                        : "createWriter(" + target + ")";
+        // Never attach the caller-owned destination before serialization succeeds.
+        // close() flushes attached writers even if a compiled helper throws.
+        String create = utf8 ? "createWriterUtf8()" : "createWriter()";
 
         out.beginBlock("try (org.sjf4j.backend.fastjson2.binding.Fastjson2Writer "
                 + writer + " = this.binder." + create + ")");
@@ -84,8 +82,11 @@ final class Fastjson2WriteEmitter {
                 out.line("return this.binder.writeNodeAsBytes(" + source + ");");
                 break;
             case WRITER:
+                out.line(target + ".write(this.binder.writeNodeAsString(" + source + "));");
+                out.line("return;");
+                break;
             case OUTPUT_STREAM:
-                out.line("this.binder.writeNode(" + target + ", " + source + ");");
+                out.line(target + ".write(this.binder.writeNodeAsBytes(" + source + "));");
                 out.line("return;");
                 break;
             default:
@@ -109,7 +110,8 @@ final class Fastjson2WriteEmitter {
                 break;
             case WRITER:
             case OUTPUT_STREAM:
-                // Fastjson2Writer.close() flushes the caller-owned destination.
+                // Commit only after the entire JSON value was written successfully.
+                out.line(raw + ".flushTo(" + target + ");");
                 break;
             default:
                 throw new AssertionError(output);
