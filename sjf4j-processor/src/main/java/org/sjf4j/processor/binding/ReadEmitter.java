@@ -178,12 +178,12 @@ final class ReadEmitter {
                 emitPojo(out, value);
                 break;
             case JSON_OBJECT:
-                out.line("Object raw = reader.readRawNode();");
+                out.line("Object raw = reader.readRaw();");
                 out.line("return raw == null ? null : new org.sjf4j.JsonObject("
                         + STREAMING_IO + ".castMap(raw));");
                 break;
             case JSON_ARRAY:
-                out.line("Object raw = reader.readRawNode();");
+                out.line("Object raw = reader.readRaw();");
                 out.line("return raw == null ? null : new org.sjf4j.JsonArray("
                         + STREAMING_IO + ".castList(raw));");
                 break;
@@ -353,7 +353,7 @@ final class ReadEmitter {
         out.line("dynamic = new java.util.LinkedHashMap<>();");
         out.line("org.sjf4j.InternalAccess.dynamicProperties(value, dynamic);");
         out.endBlock();
-        out.line("dynamic.put(unknownName, reader.readRawNode());");
+        out.line("dynamic.put(unknownName, reader.readRaw());");
         if (!value.ignoredNames().isEmpty()) out.endBlock();
     }
 
@@ -380,7 +380,7 @@ final class ReadEmitter {
         // Raw List<Object> is already handled by each backend's raw reader.
         if (context.typeUtils.erasure(value.type()).toString().equals("java.util.List")
                 && context.types.isObject(value.elementValue().type())) {
-            out.line("Object raw = reader.readRawNode();");
+            out.line("Object raw = reader.readRaw();");
             out.line("return raw == null ? null : " + STREAMING_IO + ".castList(raw);");
             return;
         }
@@ -437,7 +437,7 @@ final class ReadEmitter {
         // as List<Object>; typed containers keep their compiled element plan.
         if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
                 && context.types.isObject(value.mapValue().type())) {
-            out.line("Object raw = reader.readRawNode();");
+            out.line("Object raw = reader.readRaw();");
             out.line("return raw == null ? null : " + STREAMING_IO + ".castMap(raw);");
             return;
         }
@@ -560,7 +560,7 @@ final class ReadEmitter {
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
                     return "(" + value.type() + ") " +
-                            reader + ".readRawNode()";
+                            reader + ".readRaw()";
                 }
                 return "(" + value.type() + ") " +
                         STREAMING_IO +
