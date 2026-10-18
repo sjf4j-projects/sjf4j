@@ -218,12 +218,18 @@ class CompiledRuntimeContextInjectionTest {
 
             Object jdbcMapper = CompiledInstances.create(rowsType, context);
             assertNotSame(jdbcMapper, CompiledInstances.global(rowsType));
+            java.util.concurrent.atomic.AtomicBoolean advanced =
+                    new java.util.concurrent.atomic.AtomicBoolean();
             java.sql.ResultSet resultSet = (java.sql.ResultSet)
                     java.lang.reflect.Proxy.newProxyInstance(
                             getClass().getClassLoader(),
                             new Class<?>[]{java.sql.ResultSet.class},
                             (proxy, method, args) -> {
-                                if ("getString".equals(method.getName())) return "Alice";
+                                if ("next".equals(method.getName())) {
+                                    return advanced.compareAndSet(false, true);
+                                }
+                                if ("getString".equals(method.getName())
+                                        || "getObject".equals(method.getName())) return "Alice";
                                 if ("wasNull".equals(method.getName())) return false;
                                 throw new UnsupportedOperationException(method.getName());
                             });
