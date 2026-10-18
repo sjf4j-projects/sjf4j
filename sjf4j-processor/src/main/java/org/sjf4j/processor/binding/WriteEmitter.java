@@ -132,7 +132,7 @@ final class WriteEmitter {
                 methodNames(plan);
 
         if (backend.backend() == Backend.FASTJSON2
-                && nativeEligible(compiled.value(), new HashSet<BindingValue>())) {
+                && fastjson2.nativeEligible(compiled.value(), new HashSet<BindingValue>())) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
@@ -329,6 +329,13 @@ final class WriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
+        // Fastjson2 helpers retain the streaming adapter for localized codec writes
+        // while using raw JSONWriter on concrete fields.
+        if (backend.backend() == Backend.FASTJSON2
+                && fastjson2.nativeEligible(value, new HashSet<BindingValue>())) {
+            fastjson2.emitHelper(out, value);
+            return;
+        }
         // Generate a single native helper when the full type graph is concrete.
         // Unresolved graphs retain the StreamingWriter fallback.
         if (hasNativeJsonWriter() && nativeEligible(value,
