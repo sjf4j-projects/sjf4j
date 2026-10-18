@@ -40,6 +40,11 @@ public final class GeneratedClass {
     private final List<Member> helpers =
             new ArrayList<Member>();
 
+    private final List<Member> contextInitializers =
+            new ArrayList<Member>();
+
+    private boolean runtimeContextConstructor;
+
     private boolean valid = true;
 
 
@@ -196,6 +201,19 @@ public final class GeneratedClass {
                         "member"));
     }
 
+    /**
+     * Gives the generated implementation immutable per-instance runtime settings.
+     * The no-arg constructor preserves the default/global instance contract.
+     */
+    public void enableRuntimeContext() {
+        runtimeContextConstructor = true;
+    }
+
+    /** Adds an assignment after the generated constructor's context field is set. */
+    public void addContextInitializer(Member member) {
+        contextInitializers.add(Asserts.notNull(member, "member"));
+    }
+
     public boolean isEmpty() {
         return fields.isEmpty()
                 && methods.isEmpty()
@@ -291,8 +309,29 @@ public final class GeneratedClass {
     private void writeMembers(JavaWriter out) {
         boolean written = false;
 
+        if (runtimeContextConstructor) {
+            out.line("private final org.sjf4j.RuntimeContext context;");
+            written = true;
+        }
+
         if (!fields.isEmpty()) {
+            if (written) out.blank();
             writeGroup(out, fields);
+            written = true;
+        }
+
+        if (runtimeContextConstructor) {
+            if (written) out.blank();
+            out.beginBlock("public " + simpleName + "()");
+            out.line("this(org.sjf4j.RuntimeContext.EMPTY);");
+            out.endBlock();
+            out.blank();
+            out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
+            out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
+            for (Member initializer : contextInitializers) {
+                initializer.write(out);
+            }
+            out.endBlock();
             written = true;
         }
 
