@@ -97,7 +97,7 @@ public class CreatorSemanticsTest {
         String after = "{\"legacy_name\":\"Ada\",\"age\":25}";
         for (String input : List.of(before, after)) {
             CreatorBean actual = compiled.readBean(input);
-            CreatorBean expected = runtime.readNode(input, CreatorBean.class);
+            CreatorBean expected = (CreatorBean) runtime.readNode(input, CreatorBean.class);
             assertEquals(expected.getName(), actual.getName(), name);
             assertEquals(expected.getAge(), actual.getAge(), name);
             assertEquals(1, actual.setterCalls, name + " present property");
