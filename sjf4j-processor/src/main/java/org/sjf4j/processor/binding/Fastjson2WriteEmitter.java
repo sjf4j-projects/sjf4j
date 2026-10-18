@@ -70,7 +70,7 @@ final class Fastjson2WriteEmitter {
 
         out.beginBlock("try (org.sjf4j.backend.fastjson2.binding.Fastjson2Writer "
                 + writer + " = this.binder." + create + ")");
-        out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + writer + ".rawWriter();");
+        out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + writer + ".nativeWriter();");
 
         // Raw field-name optimizations require compatible Fastjson2 features.
         out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
@@ -140,7 +140,7 @@ final class Fastjson2WriteEmitter {
                 + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter w = writer.rawWriter();");
+        out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
         out.beginBlock("if (value == null)");
         out.line("w.writeNull();");
         out.line("return;");
