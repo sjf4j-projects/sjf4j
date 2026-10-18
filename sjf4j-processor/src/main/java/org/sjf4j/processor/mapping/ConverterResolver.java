@@ -4,6 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.CompiledMetadata;
+import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -427,7 +428,8 @@ public final class ConverterResolver {
          * their precedence over automatic codec conversion.
          */
         if (isCodecConversion(sourceType, targetType)) {
-            return Conversion.valueCodec(sourceType, targetType);
+            return resolveCodecConversion(
+                    plan, sourceType, targetType, generated);
         }
 
         /*
@@ -1272,20 +1274,80 @@ public final class ConverterResolver {
      * --------------------------------------------------------------
      */
 
-    /** Codec declarations are visible only through this mapper's metadata. */
+    /** A logical value must not be compiled as an ordinary structural POJO. */
     boolean isCodecConversion(TypeMirror source, TypeMirror target) {
+        return isCodecType(source) || isCodecType(target);
+    }
+
+    /**
+     * Raw-to-value decoding requires an assignable raw class. Value-to-raw
+     * encoding permits SJF4J's strict scalar adapters, or a directly
+     * assignable object/array raw representation. Unknown Object values still
+     * require runtime validation.
+     */
+    Conversion resolveCodecConversion(
+            MappingPlan plan,
+            TypeMirror source,
+            TypeMirror target,
+            GeneratedClass generated) {
+
         boolean sourceCodec = isCodecType(source);
         boolean targetCodec = isCodecType(target);
-        if (sourceCodec && targetCodec) return true;
-        if (!sourceCodec && !targetCodec) return false;
+        TypeMirror sourceRaw = sourceCodec ? codecRawType(source) : source;
+        TypeMirror targetRaw = targetCodec ? codecRawType(target) : target;
 
-        // A codec is a logical leaf. Only raw JSON representations and an
-        // Object-typed dynamic source/target may cross its conversion boundary.
-        NodeKind other = types.nodeKind(sourceCodec ? target : source);
-        return other == NodeKind.COMPILE_TIME_UNKNOWN
-                || other.isValue()
-                || other == NodeKind.OBJECT_MAP
-                || other == NodeKind.ARRAY_LIST;
+        if (sourceRaw != null && targetRaw != null
+                && types.nodeKind(sourceRaw) != NodeKind.COMPILE_TIME_UNKNOWN
+                && types.nodeKind(targetRaw) != NodeKind.COMPILE_TIME_UNKNOWN) {
+
+            boolean compatible;
+            if (targetCodec) {
+                // ValueInfo.rawToValue checks the actual raw Class; no implicit
+                // String/Number or Number/Number coercion is performed here.
+                compatible = types.isAssignableErasure(
+                        types.boxed(sourceRaw), types.boxed(targetRaw));
+            } else {
+                NodeKind sourceKind = types.nodeKind(sourceRaw);
+                NodeKind targetKind = types.nodeKind(targetRaw);
+                if (isNumberKind(sourceKind) && isNumberKind(targetKind)) {
+                    compatible = true;
+                } else if (isStringKind(sourceKind) && isStringKind(targetKind)) {
+                    compatible = true;
+                } else {
+                    compatible = types.isAssignableErasure(
+                            types.boxed(sourceRaw), types.boxed(targetRaw));
+                }
+            }
+
+            if (!compatible) {
+                error(plan.method(), generated,
+                        "incompatible ValueCodec raw types for " + source
+                                + " -> " + target + ": " + sourceRaw
+                                + " cannot be converted to " + targetRaw);
+                return null;
+            }
+        }
+
+        // Nodes.to(Map/List.class) projects ordinary containers; it does not
+        // encode a source ValueCodec. Use the value-to-raw path explicitly.
+        NodeKind targetKind = types.nodeKind(target);
+        if (sourceCodec && !targetCodec
+                && (targetKind == NodeKind.OBJECT_MAP
+                || targetKind == NodeKind.ARRAY_LIST)) {
+            return Conversion.codecEncode(source, target);
+        }
+        return Conversion.valueCodec(source, target);
+    }
+
+    private TypeMirror codecRawType(TypeMirror type) {
+        if (types.isNodeValue(type)) {
+            return types.nodeValueRawType(type);
+        }
+        // Only a declared default format fixes the raw representation
+        // independently of runtime registration order. Named-only formats
+        // retain runtime validation rather than assuming the first declaration.
+        ValueCodecMetadata codec = metadata.valueCodec(type, "");
+        return codec == null ? null : codec.rawType;
     }
 
     private boolean isCodecType(TypeMirror type) {
@@ -1723,6 +1785,7 @@ public final class ConverterResolver {
             ONE_OF,
             SCALAR,
             VALUE_CODEC,
+            CODEC_ENCODE,
             CONTAINER,
             STRUCTURAL
         }
@@ -1822,6 +1885,19 @@ public final class ConverterResolver {
 
             return new Conversion(
                     Kind.VALUE_CODEC,
+                    sourceType,
+                    targetType,
+                    null,
+                    null);
+        }
+
+
+        static Conversion codecEncode(
+                TypeMirror sourceType,
+                TypeMirror targetType) {
+
+            return new Conversion(
+                    Kind.CODEC_ENCODE,
                     sourceType,
                     targetType,
                     null,
