@@ -1040,6 +1040,77 @@ public final class StreamingIO {
     }
 
 
+    /**
+     * Writes a ValueCodec raw value without applying POJO, external-node, or
+     * ValueCodec binding a second time. Raw values are JSON scalars, maps with
+     * String keys, or lists of raw values. Object null omission follows the
+     * supplied context; array null elements are always preserved.
+     */
+    public static void writeRawNode(StreamingWriter writer, Object raw,
+                                    RuntimeContext context) throws IOException {
+        Asserts.notNull(writer, "writer");
+        Asserts.notNull(context, "context");
+        _writeRawNode(writer, raw, context);
+    }
+
+    private static void _writeRawNode(StreamingWriter writer, Object raw,
+                                      RuntimeContext context) throws IOException {
+        if (raw == null) {
+            writer.writeNull();
+        } else if (raw instanceof String) {
+            writer.writeStringValue((String) raw);
+        } else if (raw instanceof Boolean) {
+            writer.writeBooleanValue((Boolean) raw);
+        } else if (raw instanceof Integer) {
+            writer.writeIntValue((Integer) raw);
+        } else if (raw instanceof Long) {
+            writer.writeLongValue((Long) raw);
+        } else if (raw instanceof Double) {
+            writer.writeDoubleValue((Double) raw);
+        } else if (raw instanceof Float) {
+            writer.writeFloatValue((Float) raw);
+        } else if (raw instanceof Short) {
+            writer.writeShortValue((Short) raw);
+        } else if (raw instanceof Byte) {
+            writer.writeByteValue((Byte) raw);
+        } else if (raw instanceof BigInteger) {
+            writer.writeBigIntegerValue((BigInteger) raw);
+        } else if (raw instanceof BigDecimal) {
+            writer.writeBigDecimalValue((BigDecimal) raw);
+        } else if (raw instanceof Number) {
+            writer.writeNumberValue((Number) raw);
+        } else if (raw instanceof Map) {
+            writer.startObject();
+            int count = 0;
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) raw).entrySet()) {
+                Object child = entry.getValue();
+                if (child == null && !context.includeNulls) continue;
+                writer.writeName((String) entry.getKey(), count++ > 0);
+                _writeRawNode(writer, child, context);
+            }
+            writer.endObject();
+        } else if (raw instanceof List) {
+            List<?> list = (List<?>) raw;
+            writer.startArray();
+            if (list instanceof RandomAccess) {
+                for (int i = 0, size = list.size(); i < size; i++) {
+                    if (i > 0) writer.separateElement();
+                    _writeRawNode(writer, list.get(i), context);
+                }
+            } else {
+                int count = 0;
+                for (Object child : list) {
+                    if (count++ > 0) writer.separateElement();
+                    _writeRawNode(writer, child, context);
+                }
+            }
+            writer.endArray();
+        } else {
+            throw new BindingException("unsupported raw JSON node type '" + Types.name(raw) + "'");
+        }
+    }
+
+
     private static void _writeNode(StreamingWriter writer, Object node, TypeInfo typeInfo,
                                    RuntimeContext context) throws IOException {
         if (node == null) {
