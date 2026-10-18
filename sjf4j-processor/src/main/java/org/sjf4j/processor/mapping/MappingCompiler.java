@@ -7,6 +7,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -48,7 +49,8 @@ public final class MappingCompiler {
     public MappingCompiler(
             ProcessorContext context,
             TypeElement mapper,
-            List<MappingPlan> plans) {
+            List<MappingPlan> plans,
+            CompiledMetadata metadata) {
 
         this.context = context;
         this.types = context.types;
@@ -61,7 +63,8 @@ public final class MappingCompiler {
                 new ConverterResolver(
                         context,
                         mapper,
-                        plans);
+                        plans,
+                        metadata);
     }
 
     /**
