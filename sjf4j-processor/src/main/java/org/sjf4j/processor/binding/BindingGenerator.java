@@ -54,18 +54,11 @@ public final class BindingGenerator {
             return;
         }
 
-        /*
-         * Instance field rather than static state: CompiledInstances already
-         * caches the generated implementation, while this shape leaves room
-         * for future binder injection without changing generated helpers.
-         */
-        generated.addField(
-                out -> out.line(
-                        "private final " +
-                                backend.binderType() +
-                                " binder = new " +
-                                backend.binderType() +
-                                "();"));
+        generated.enableRuntimeContext();
+        generated.addField(out ->
+                out.line("private final " + backend.binderType() + " binder;"));
+        generated.addContextInitializer(out ->
+                out.line("this.binder = new " + backend.binderType() + "(context);"));
 
         List<ResolvedMethod> resolvedMethods =
                 context.methods.abstractMethods(type);
