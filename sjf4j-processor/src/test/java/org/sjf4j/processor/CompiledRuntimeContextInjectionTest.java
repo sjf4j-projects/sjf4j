@@ -130,6 +130,49 @@ class CompiledRuntimeContextInjectionTest {
     }
 
     @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void allJsonBackendsUseInjectedDefaultCodecFormatAndNullPolicy() throws Exception {
+        String[] backends = {"SIMPLE", "JACKSON2", "JACKSON3", "GSON", "FASTJSON2", "JSONP"};
+        for (String backend : backends) {
+            NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Bean.java",
+                    "package fixture; import java.time.Instant; "
+                    + "public class Bean { public Instant when; public String empty; }",
+                    "fixture/Binder.java",
+                    "package fixture; import java.io.IOException; "
+                    + "import org.sjf4j.annotation.binding.*; "
+                    + "@CompiledBinder(backend=Backend." + backend + ") "
+                    + "public interface Binder { "
+                    + "@ReadFrom Bean read(String json) throws IOException; "
+                    + "@WriteTo String write(Bean bean) throws IOException; }"
+            ), CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class type = loader.loadClass("fixture.Binder");
+                Class<?> beanType = loader.loadClass("fixture.Bean");
+                Object bean = beanType.getConstructor().newInstance();
+                beanType.getField("when").set(bean, java.time.Instant.parse("2024-01-01T10:00:00Z"));
+
+                RuntimeContext context = new RuntimeContext(
+                        Map.of(java.time.Instant.class, "epochMillis"), false);
+                Object defaults = CompiledInstances.global(type);
+                Object configured = CompiledInstances.create(type, context);
+                String standard = (String) type.getMethod("write", beanType).invoke(defaults, bean);
+                String custom = (String) type.getMethod("write", beanType).invoke(configured, bean);
+                assertTrue(standard.contains("2024-01-01T10:00:00Z"), backend + ": " + standard);
+                assertTrue(standard.contains("\\\"empty\\\":null"), backend + ": " + standard);
+                assertTrue(custom.contains("1704103200000"), backend + ": " + custom);
+                assertFalse(custom.contains("\\\"empty\\\""), backend + ": " + custom);
+
+                Object decoded = type.getMethod("read", String.class).invoke(configured, custom);
+                assertEquals(java.time.Instant.parse("2024-01-01T10:00:00Z"),
+                        beanType.getField("when").get(decoded), backend);
+            }
+        }
+    }
+
+    @Test
     void createRejectsNullConfiguration() {
         assertThrows(NullPointerException.class,
                 () -> CompiledInstances.create(Runnable.class, null));
