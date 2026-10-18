@@ -598,7 +598,7 @@ final class BindingCompiler {
                     annotation == null || annotation.codecPattern().isEmpty()
                             ? null : annotation.codecPattern());
             if (child == null) return false;
-            compiled.add(new BindingProperty(name, aliases, child, i));
+            compiled.add(new BindingProperty(name, aliases, child, i, args.size()));
         }
 
         value.creator(creator);
