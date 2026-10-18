@@ -319,7 +319,7 @@ final class WriteEmitter {
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
             out.line(value.helperName() + "(" + writer
-                    + "." + nativeJsonAccessor() + "(), " + source + ");");
+                    + "." + "nativeWriter" + "(), " + source + ");");
         } else {
             writeValue(out, value, writer, source);
         }
@@ -394,12 +394,6 @@ final class WriteEmitter {
             default:
                 return false;
         }
-    }
-
-    private String nativeJsonAccessor() {
-        return backend.backend() == Backend.GSON
-                || backend.backend() == Backend.FASTJSON2
-                ? "nativeWriter" : "nativeGenerator";
     }
 
     private boolean isJackson() {
@@ -627,7 +621,7 @@ final class WriteEmitter {
                             + expression + ", this.context);");
                 } else {
                     out.line(value.helperName() + "(" + writer + "."
-                            + nativeJsonAccessor() + "(), " + expression + ");");
+                            + "nativeWriter" + "(), " + expression + ");");
                 }
             } else {
                 out.line(value.helperName() + "(" + writer + ", " + expression + ");");
