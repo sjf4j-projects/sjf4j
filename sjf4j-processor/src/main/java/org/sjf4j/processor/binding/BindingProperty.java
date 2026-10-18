@@ -13,6 +13,7 @@ final class BindingProperty {
     private final String[] aliases;
     private final PropertyAccess access;
     private final BindingValue value;
+    private final int creatorIndex;
 
     BindingProperty(
             String name,
@@ -24,6 +25,15 @@ final class BindingProperty {
         this.aliases = Asserts.notNull(aliases, "aliases");
         this.access = Asserts.notNull(access, "access");
         this.value = Asserts.notNull(value, "value");
+        this.creatorIndex = -1;
+    }
+
+    BindingProperty(String name, String[] aliases, BindingValue value, int creatorIndex) {
+        this.name = Asserts.notNull(name, "name");
+        this.aliases = Asserts.notNull(aliases, "aliases");
+        this.access = null;
+        this.value = Asserts.notNull(value, "value");
+        this.creatorIndex = creatorIndex;
     }
 
     String name() {
@@ -32,6 +42,10 @@ final class BindingProperty {
 
     String[] aliases() {
         return aliases;
+    }
+
+    int creatorIndex() {
+        return creatorIndex;
     }
 
     PropertyAccess access() {
