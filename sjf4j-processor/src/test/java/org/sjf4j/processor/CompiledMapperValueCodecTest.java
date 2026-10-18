@@ -38,7 +38,9 @@ class CompiledMapperValueCodecTest {
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
-        assertTrue(result.generatedSource("fixture/Mapper_Impl.java").contains("Nodes.to("));
+        String generated = result.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(generated.contains("NodeMapper.to("), generated);
+        assertFalse(generated.contains("org.sjf4j.Nodes."), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> sourceClass = loader.loadClass("fixture.Source");
@@ -96,7 +98,9 @@ class CompiledMapperValueCodecTest {
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(fixture, CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
-        assertTrue(compiled.generatedSource("fixture/Mapper_Impl.java").contains("Nodes.to("));
+        String generated = compiled.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(generated.contains("NodeMapper.to("), generated);
+        assertFalse(generated.contains("org.sjf4j.Nodes."), generated);
 
         // Registry visibility is a compile-time contract. Do not register the
         // shared ClasspathRegistries.Third globally here: other test fixtures
