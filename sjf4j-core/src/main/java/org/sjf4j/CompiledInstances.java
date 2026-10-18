@@ -11,11 +11,11 @@ import java.lang.reflect.InvocationTargetException;
  * <p>For an interface annotated with {@code @CompiledNavigator}, {@code @CompiledMapper},
  * {@code @CompiledJdbcMapper}, or {@code @CompiledBinder}, the processor
  * generates an implementation named by appending {@code _Impl} to the interface's
- * binary name. {@link #of(Class)} loads that implementation with
+ * binary name. {@link #global(Class)} loads that implementation with
  * the interface's class loader and invokes its public no-argument constructor.
  *
  * <p>{@link #global(Class)} caches one immutable-default-context instance per interface.
- * {@link #create(Class, RuntimeContext)} creates independent, configured instances.
+ * {@link #create(Class, RuntimeContext)} creates independent, configured Mapper/Binder instances.
  * Generated implementations must be safe to share across callers once constructed.
  */
 public final class CompiledInstances {
