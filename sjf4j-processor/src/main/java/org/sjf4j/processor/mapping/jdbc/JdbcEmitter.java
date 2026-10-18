@@ -1753,12 +1753,12 @@ public final class JdbcEmitter {
                         value +
                         " = (" +
                         read.targetType() +
-                        ") org.sjf4j.Nodes.to(" +
+                        ") org.sjf4j.node.NodeMapper.to(" +
                         raw +
                         ", " +
                         classLiteral(
                                 read.targetType()) +
-                        ");");
+                        ", org.sjf4j.RuntimeContext.EMPTY);");
 
         return value;
     }
