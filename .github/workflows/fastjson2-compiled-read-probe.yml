@@ -32,7 +32,86 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           roots = Path('sjf4j-testbench/build')
-          found = sorted(roots.rglob('*Fastjson2CompiledBinder_Impl.java'))
+          found = sorted(p for p in roots.rglob('*Fastjson2CompiledBinder_Impl.java')
+                         if 'CompiledReadBenchmark
+          print('GENERATED FILES:', [str(p) for p in found])
+          if not found:
+              raise SystemExit('No generated Fastjson2CompiledBinder_Impl.java found')
+          for p in found:
+              lines = p.read_text().splitlines()
+              print('ACTUAL GENERATED SOURCE:', p, 'TOTAL LINES:', len(lines))
+              for i, line in enumerate(lines):
+                  if 'readLocalDateTime()' in line:
+                      print('\n=== Native date expression ===')
+                      for j in range(max(0, i-13), min(len(lines), i+12)):
+                          print(f'{j+1}: {lines[j]}')
+              for i, line in enumerate(lines):
+                  if 'readPojo(' in line or 'readPojoUtf8(' in line:
+                      print('\n=== Public entry ===')
+                      for j in range(max(0, i-3), min(len(lines), i+12)):
+                          print(f'{j+1}: {lines[j]}')
+              if not any('readLocalDateTime()' in line for line in lines):
+                  raise SystemExit('Native date generated expression missing')
+          PY
+
+      - name: A/B codec-vs-raw, compiled-vs-native
+        run: |
+          java -version
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*Fastjson2CodecReadProbeBenchmark.*' \
+            -f 1 -wi 5 -i 7 -w 300ms -r 300ms -prof gc \
+            -rf json -rff sjf4j-testbench/build/fastjson2-read-probe.json
+
+      - name: Confirm codec winner across three JMH forks
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*Fastjson2CodecReadProbeBenchmark\.(compiled_codec_string|compiled_codec_utf8|native_codec_string|native_codec_utf8)$' \
+            -f 3 -wi 5 -i 7 -w 300ms -r 300ms -prof gc \
+            -rf json -rff sjf4j-testbench/build/fastjson2-read-probe-3fork.json
+          python3 - <<'PY'
+          import json
+          rows = json.load(open('sjf4j-testbench/build/fastjson2-read-probe-3fork.json'))
+          d = {x['benchmark'].split('.')[-1]: (x['primaryMetric']['score'],
+                   x['primaryMetric']['scoreError']) for x in rows}
+          for name, (score, err) in sorted(d.items()):
+              print(f'{name}: {score:.4f} +/- {err:.4f} us/op')
+          for suffix in ('string', 'utf8'):
+              c = d['compiled_codec_' + suffix][0]
+              n = d['native_codec_' + suffix][0]
+              print(f'codec {suffix} 3 forks: compiled/native={c/n:.3f}')
+          PY
+
+      - name: Print ratios
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = 'sjf4j-testbench/build/fastjson2-read-probe.json'
+          if not os.path.isfile(p):
+              print('Benchmark result not created')
+              raise SystemExit(0)
+          rows = json.load(open(p))
+          d = {x['benchmark'].split('.')[-1]: x['primaryMetric']['score'] for x in rows}
+          for name, score in sorted(d.items()):
+              print(f'{name}: {score:.4f} us/op')
+          for variant in ('codec', 'raw'):
+              for encoding in ('string', 'utf8'):
+                  c = d.get(f'compiled_{variant}_{encoding}')
+                  n = d.get(f'native_{variant}_{encoding}')
+                  if c is not None and n is not None:
+                      print(f'{variant} {encoding}: compiled/native={c/n:.3f} '
+                            f'({"PASS" if c<n else "FAIL"})')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fastjson2-read-probe
+          path: |
+            sjf4j-testbench/build/fastjson2-read-probe.json
+            sjf4j-testbench/build/fastjson2-read-probe-3fork.json
+          if-no-files-found: ignore
+ in p.name)
           print('GENERATED FILES:', [str(p) for p in found])
           if not found:
               raise SystemExit('No generated Fastjson2CompiledBinder_Impl.java found')
