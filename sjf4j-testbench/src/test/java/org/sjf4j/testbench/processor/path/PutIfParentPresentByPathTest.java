@@ -21,7 +21,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void existingParentMutatesContainersAndPojo() {
-        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.global(PutIfNodes.class);
 
         Map<String, String> map = new HashMap<>();
         map.put("name", "old-map");
@@ -45,7 +45,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void missingIntermediateParentReturnsNullAndDoesNotCreate() {
-        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.global(PutIfNodes.class);
         Account missingProfile = new Account(null);
         assertNull(nodes.putMemberEmail(missingProfile, "x"));
         assertNull(missingProfile.profile);
@@ -59,7 +59,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void voidReturnMissingParentIsNoop() {
-        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.global(PutIfNodes.class);
         Account account = new Account(null);
         nodes.putMemberEmailVoid(account, "x");
         assertNull(account.profile);
@@ -67,7 +67,7 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void dynamicNestedParamsMutateWhenParentExists() {
-        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.global(PutIfNodes.class);
         Account account = account();
 
         assertEquals("old-east", nodes.putRegionDistrict(account, "east", 0, "new-east"));
@@ -79,13 +79,13 @@ public class PutIfParentPresentByPathTest {
 
     @Test
     public void finalInvalidIndexWithExistingParentStillThrows() {
-        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.global(PutIfNodes.class);
         assertThrows(NodeException.class, () -> nodes.putListValue(new ArrayList<>(), "x"));
     }
 
     @Test
     public void testPutMissing() {
-        PutIfNodes nodes = CompiledInstances.of(PutIfNodes.class);
+        PutIfNodes nodes = CompiledInstances.global(PutIfNodes.class);
         Account account = new Account(null);
         nodes.putIfParentMissing(account, "x");
         assertThrows(NodeException.class, () -> nodes.putMissing(account, "x"));

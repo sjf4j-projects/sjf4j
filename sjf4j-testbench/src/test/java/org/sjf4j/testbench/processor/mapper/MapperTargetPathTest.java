@@ -15,7 +15,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void strictTargetPathWritesWhenParentExists() {
-        TargetPathMapper mapper = CompiledInstances.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledInstances.global(TargetPathMapper.class);
 
         InitializedTarget jsonPath = mapper.strictCreate(new Source("Ada", "X"));
         InitializedTarget pointer = mapper.pointerCreate(new Source("Grace", "Y"));
@@ -26,7 +26,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void strictTargetPathFailsWhenParentMissing() {
-        TargetPathMapper mapper = CompiledInstances.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledInstances.global(TargetPathMapper.class);
         MissingTarget target = new MissingTarget();
 
         assertThrows(Exception.class, () -> mapper.strictUpdate(target, new Source("Ada", "X")));
@@ -39,7 +39,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void ensureTargetPathCreatesParentsForCreateAndUpdate() {
-        TargetPathMapper mapper = CompiledInstances.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledInstances.global(TargetPathMapper.class);
 
         MissingTarget created = mapper.ensureCreate(new Source("Ada", "X"));
         assertEquals("Ada", created.profile.name);
@@ -51,7 +51,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void ifParentPresentSkipsOrWrites() {
-        TargetPathMapper mapper = CompiledInstances.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledInstances.global(TargetPathMapper.class);
         MissingTarget target = new MissingTarget();
 
         mapper.ifParentPresent(target, new Source("Ada", "X"));
@@ -64,7 +64,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void ensureTargetPathCreatesDeepBeanPath() {
-        TargetPathMapper mapper = CompiledInstances.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledInstances.global(TargetPathMapper.class);
 
         DeepTarget target = mapper.ensureDeep(new Source("Ada", "X"));
 
@@ -73,7 +73,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void targetPathSupportsComputeValues() {
-        TargetPathMapper mapper = CompiledInstances.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledInstances.global(TargetPathMapper.class);
 
         InitializedTarget target = mapper.compute(new Source("Ada", "X"));
 

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class MapperJojoPathTest {
     @Test
     public void readsJojoStaticPropertiesBeforeDynamicKeys() {
-        JojoPathMapper mapper = CompiledInstances.of(JojoPathMapper.class);
+        JojoPathMapper mapper = CompiledInstances.global(JojoPathMapper.class);
         Source source = new Source();
         source.jojo = new SourceJojo();
         source.jojo.setTypedName("typed-name");
@@ -32,7 +32,7 @@ public class MapperJojoPathTest {
 
     @Test
     public void autoMappingFallsBackToJojoDynamicKeys() {
-        JojoPathMapper mapper = CompiledInstances.of(JojoPathMapper.class);
+        JojoPathMapper mapper = CompiledInstances.global(JojoPathMapper.class);
         SourceJojo source = new SourceJojo();
         source.setTypedName("typed-auto");
         source.put("dynamicAuto", "dynamic-auto");
@@ -45,7 +45,7 @@ public class MapperJojoPathTest {
 
     @Test
     public void writesJojoStaticPropertiesBeforeDynamicKeys() {
-        JojoPathMapper mapper = CompiledInstances.of(JojoPathMapper.class);
+        JojoPathMapper mapper = CompiledInstances.global(JojoPathMapper.class);
 
         WriteTarget target = mapper.write(new WriteSource("Ada", "alias", "other"));
 

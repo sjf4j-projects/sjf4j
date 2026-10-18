@@ -14,7 +14,7 @@ public class MapperUpdateTest {
 
     @Test
     public void updatesSameNamePropertiesInPlace() {
-        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.global(UpdateMapper.class);
         Target target = new Target();
 
         mapper.update(target, new Source("Ada", "Lovelace", 36));
@@ -26,7 +26,7 @@ public class MapperUpdateTest {
 
     @Test
     public void supportsRenameAndIgnore() {
-        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.global(UpdateMapper.class);
         Target target = new Target();
         target.age = 99;
 
@@ -38,7 +38,7 @@ public class MapperUpdateTest {
 
     @Test
     public void nullPolicyIgnoreSkipsNullValues() {
-        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.global(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
         target.age = 7;
@@ -51,7 +51,7 @@ public class MapperUpdateTest {
 
     @Test
     public void defaultNullPolicySetsNullValues() {
-        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.global(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
 
@@ -63,7 +63,7 @@ public class MapperUpdateTest {
 
     @Test
     public void updatesFromMultipleSourcesAndReturnsWhenAllSourcesNull() {
-        UpdateMapper mapper = CompiledInstances.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledInstances.global(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
         target.city = "old-city";

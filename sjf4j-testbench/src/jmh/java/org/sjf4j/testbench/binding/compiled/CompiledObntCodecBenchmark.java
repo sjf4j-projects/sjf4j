@@ -94,7 +94,7 @@ public class CompiledObntCodecBenchmark {
     public void setUp() throws Exception {
         switch (backend) {
             case "fastjson2": {
-                Fastjson2Compiled compiled = CompiledInstances.of(Fastjson2Compiled.class);
+                Fastjson2Compiled compiled = CompiledInstances.global(Fastjson2Compiled.class);
                 runtime = new org.sjf4j.backend.fastjson2.binding.Fastjson2Binder();
                 readCodec = compiled::readCodec;
                 writeCodec = compiled::writeCodec;
@@ -107,7 +107,7 @@ public class CompiledObntCodecBenchmark {
                 break;
             }
             case "jackson2": {
-                Jackson2Compiled compiled = CompiledInstances.of(Jackson2Compiled.class);
+                Jackson2Compiled compiled = CompiledInstances.global(Jackson2Compiled.class);
                 runtime = new org.sjf4j.backend.jackson2.binding.Jackson2Binder();
                 readCodec = compiled::readCodec;
                 writeCodec = compiled::writeCodec;
@@ -120,7 +120,7 @@ public class CompiledObntCodecBenchmark {
                 break;
             }
             case "jackson3": {
-                Jackson3Compiled compiled = CompiledInstances.of(Jackson3Compiled.class);
+                Jackson3Compiled compiled = CompiledInstances.global(Jackson3Compiled.class);
                 runtime = new org.sjf4j.backend.jackson3.binding.Jackson3Binder();
                 readCodec = compiled::readCodec;
                 writeCodec = compiled::writeCodec;
@@ -133,7 +133,7 @@ public class CompiledObntCodecBenchmark {
                 break;
             }
             case "gson": {
-                GsonCompiled compiled = CompiledInstances.of(GsonCompiled.class);
+                GsonCompiled compiled = CompiledInstances.global(GsonCompiled.class);
                 runtime = new org.sjf4j.backend.gson.binding.GsonBinder();
                 readCodec = compiled::readCodec;
                 writeCodec = compiled::writeCodec;
@@ -146,7 +146,7 @@ public class CompiledObntCodecBenchmark {
                 break;
             }
             case "jsonp": {
-                JsonpCompiled compiled = CompiledInstances.of(JsonpCompiled.class);
+                JsonpCompiled compiled = CompiledInstances.global(JsonpCompiled.class);
                 runtime = new org.sjf4j.backend.jsonp.binding.JsonpBinder();
                 readCodec = compiled::readCodec;
                 writeCodec = compiled::writeCodec;
@@ -159,7 +159,7 @@ public class CompiledObntCodecBenchmark {
                 break;
             }
             case "simple": {
-                SimpleCompiled compiled = CompiledInstances.of(SimpleCompiled.class);
+                SimpleCompiled compiled = CompiledInstances.global(SimpleCompiled.class);
                 runtime = new org.sjf4j.binding.simple.SimpleJsonBinder();
                 readCodec = compiled::readCodec;
                 writeCodec = compiled::writeCodec;

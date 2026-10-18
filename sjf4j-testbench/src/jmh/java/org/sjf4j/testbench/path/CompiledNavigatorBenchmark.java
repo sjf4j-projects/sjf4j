@@ -150,7 +150,7 @@ public class CompiledNavigatorBenchmark {
             colorBytecode = BytecodePath.compile("$.store.bicycle.color", Root.class, String.class);
             priceBytecode = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
             bookPriceBytecode = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
-            compiled = CompiledInstances.of(CompiledNavigators.class);
+            compiled = CompiledInstances.global(CompiledNavigators.class);
 
             if (!"red".equals(compiled.getColor(pojo)) || !compiled.getColor(pojo).equals(colorBytecode.get(pojo)) ||
                     Math.abs(compiled.getPrice(pojo) - 19.95d) > 0.001d ||
@@ -178,7 +178,7 @@ public class CompiledNavigatorBenchmark {
             bookPriceJsonPath = JsonPath.parse("$.store.book[1].price");
             priceBytecode = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
             bookPriceBytecode = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
-            compiled = CompiledInstances.of(CompiledNavigators.class);
+            compiled = CompiledInstances.global(CompiledNavigators.class);
         }
 
         @Setup(Level.Invocation)

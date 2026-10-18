@@ -93,7 +93,7 @@ public class CompiledJdbcMapperBenchmark {
                 insert.executeBatch();
             }
             select = connection.prepareStatement("select id, name, balance from users order by id");
-            mapper = CompiledInstances.of(JdbcMapper.class);
+            mapper = CompiledInstances.global(JdbcMapper.class);
             springMapper = BeanPropertyRowMapper.newInstance(User.class);
             mybatisConfiguration = new Configuration();
             mybatisConfiguration.setMapUnderscoreToCamelCase(true);

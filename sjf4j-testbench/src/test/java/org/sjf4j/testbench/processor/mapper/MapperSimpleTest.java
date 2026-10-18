@@ -23,7 +23,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToNoArgsBeanWithRenameIgnoreAndInlineCompute() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         UserDto dto = mapper.toDto(person);
@@ -37,7 +37,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToRecordAndConstructorTargets() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         NameRecord record = mapper.toRecord(person);
@@ -51,7 +51,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsWithLocalHelperCompute() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         UserDto dto = mapper.withHelper(new Person("Ada", "Lovelace", 36));
 
@@ -60,7 +60,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsSameNamePropertiesWithoutMappingAnnotations() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         SameDto dto = mapper.sameNames(new Person("Ada", "Lovelace", 36));
 
@@ -71,7 +71,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJsonPathAndJsonPointerSources() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         JsonObject object = new JsonObject();
         object.put("name", "JsonObjectName");
 
@@ -100,7 +100,7 @@ public class MapperSimpleTest {
 
     @Test
     public void treatsDottedMapKeyAsPlainPropertyName() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         NameOnly dto = mapper.dottedKey(Map.of("profile.name", "literal-key"));
 
@@ -109,7 +109,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsNullablePathSourceToReferenceTarget() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         AgeDto dto = mapper.age(new AgeSource(new AgeBox(42)));
 
@@ -118,7 +118,7 @@ public class MapperSimpleTest {
 
     @Test
     public void createMapperSetsNullPathValuesByDefault() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         ReferenceDefaultsDto dto = mapper.setNulls(new DefaultsSource(null, null, null));
 
@@ -129,7 +129,7 @@ public class MapperSimpleTest {
 
     @Test
     public void groupedSetPathSourcesAssignNullsForMissingParents() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         GroupedDefaultsDto dto = mapper.groupedSet(new GroupedSource(null));
         assertNull(dto.first);
@@ -142,7 +142,7 @@ public class MapperSimpleTest {
 
     @Test
     public void groupedIgnorePathSourcesSkipMissingParentsAndNullLeaves() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         GroupedDefaultsDto missingParent = mapper.groupedIgnore(new GroupedSource(null));
         assertEquals("default-first", missingParent.first);
@@ -155,7 +155,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParameters() {
-        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.global(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -180,7 +180,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToRecordTarget() {
-        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.global(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -199,7 +199,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToConstructorTarget() {
-        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.global(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         MultiCtor ctor = mapper.toCtor(null, address);
@@ -212,7 +212,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsPrimitiveConstructorValueOnlyThroughExplicitCompute() {
-        MultiMapper mapper = CompiledInstances.of(MultiMapper.class);
+        MultiMapper mapper = CompiledInstances.global(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         assertEquals(7, mapper.toAgeRecord(new Score(7), address).age());
@@ -222,7 +222,7 @@ public class MapperSimpleTest {
 
     @Test
     public void thirdPartyPropertyNamesDriveRecordTargetAutoMapping() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         ThirdPartyRecord record = mapper.thirdPartyNames(Map.of(
                 "first_name", "Ada",
@@ -235,7 +235,7 @@ public class MapperSimpleTest {
     @Test
     @Disabled("TODO: backend-native node binding in compiled mappers is deferred.")
     public void mapsJacksonJsonNodeToRecordIncludingNestedRecord() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         ObjectNode address = JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1");
         JsonNode source = JsonNodeFactory.instance.objectNode()
                 .put("name", "Ada").put("age", 36).put("active", true).set("address", address);
@@ -252,7 +252,7 @@ public class MapperSimpleTest {
     @Test
     @Disabled("TODO: backend-native node binding in compiled mappers is deferred.")
     public void mapsJacksonArrayNodesToJavaArraysAndCollections() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         JsonNode numbers = JsonNodeFactory.instance.arrayNode().add(1).add(2);
 
         assertEquals(List.of(1, 2), List.of(mapper.jacksonArray(numbers)));
@@ -267,7 +267,7 @@ public class MapperSimpleTest {
     @Test
     @Disabled("TODO: backend-native node binding in compiled mappers is deferred.")
     public void mapsFacadeIndexedPathAndCachedPojoChildReads() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         JsonNode item = JsonNodeFactory.instance.objectNode().put("name", "Ada");
         assertEquals("Ada", mapper.jacksonFirst(JsonNodeFactory.instance.arrayNode().add(item)).name());
         assertEquals("Ada", mapper.jacksonLast(JsonNodeFactory.instance.arrayNode().add(item)).name());
@@ -282,7 +282,7 @@ public class MapperSimpleTest {
     @Test
     @Disabled("TODO: backend-native node binding in compiled mappers is deferred.")
     public void mapsFacadeNullNodesAsJavaNull() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         ObjectNode source = JsonNodeFactory.instance.objectNode();
 //        source.putNull("name");
 //        source.putNull("age");
@@ -308,7 +308,7 @@ public class MapperSimpleTest {
     @Test
     @Disabled("TODO: backend-native node binding in compiled mappers is deferred.")
     public void mapsJacksonObjectNodeToTypedMap() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
 
         assertEquals(Map.of("one", 1, "two", 2), mapper.jacksonMap(
                 JsonNodeFactory.instance.objectNode().put("one", 1).put("two", 2)));
@@ -319,7 +319,7 @@ public class MapperSimpleTest {
     @Test
     @Disabled("TODO: backend-native node binding in compiled mappers is deferred.")
     public void mapsJacksonNestedObjectNodeToTypedMapProperty() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         JsonNode source = JsonNodeFactory.instance.objectNode().set("addresses",
                 JsonNodeFactory.instance.objectNode().set("home",
                         JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1")));
@@ -330,7 +330,7 @@ public class MapperSimpleTest {
     @Test
     @Disabled("TODO: backend-native node binding in compiled mappers is deferred.")
     public void mapsFacadeChildWithExplicitJacksonNodeConverter() {
-        UserMapper mapper = CompiledInstances.of(UserMapper.class);
+        UserMapper mapper = CompiledInstances.global(UserMapper.class);
         JsonNode source = JsonNodeFactory.instance.objectNode().set("address",
                 JsonNodeFactory.instance.objectNode().put("city", "London").put("zip", "NW1"));
 

@@ -13,7 +13,7 @@ public class CompiledValidatorCombinatorTest {
 
     @Test
     public void validatesAnyOfNotAndConditionalInFastPath() {
-        Validator validator = CompiledInstances.of(Validator.class);
+        Validator validator = CompiledInstances.global(Validator.class);
 
         assertTrue(validator.isValid(new Rule(5, "A", "adult")));
         assertTrue(validator.isValid(new Rule(15, "B", "teen")));

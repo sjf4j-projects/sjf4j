@@ -15,7 +15,7 @@ public class CompiledValidatorFallbackOptionsTest {
 
     @Test
     public void fallbackTrueUsesRuntimeValidationForUnsupportedSchema() {
-        ContainsValidator validator = CompiledInstances.of(ContainsValidator.class);
+        ContainsValidator validator = CompiledInstances.global(ContainsValidator.class);
 
         assertTrue(validator.isValid(new TagBox(List.of("required"))));
         assertFalse(validator.isValid(new TagBox(List.of("other"))));
@@ -23,7 +23,7 @@ public class CompiledValidatorFallbackOptionsTest {
 
     @Test
     public void strictFormatControlsRuntimeFallbackFormatAssertions() {
-        FormatValidator validator = CompiledInstances.of(FormatValidator.class);
+        FormatValidator validator = CompiledInstances.global(FormatValidator.class);
         Contact invalid = new Contact("not-an-email");
 
         assertFalse(validator.strict(invalid));

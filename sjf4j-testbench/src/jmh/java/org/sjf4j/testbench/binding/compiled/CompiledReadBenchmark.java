@@ -101,17 +101,17 @@ public class CompiledReadBenchmark {
     private static final SimpleJsonBinder SIMPLE_RUNTIME = new SimpleJsonBinder();
 
     private static final Jackson2CompiledBinder JACKSON2_COMPILED =
-            CompiledInstances.of(Jackson2CompiledBinder.class);
+            CompiledInstances.global(Jackson2CompiledBinder.class);
     private static final Jackson3CompiledBinder JACKSON3_COMPILED =
-            CompiledInstances.of(Jackson3CompiledBinder.class);
+            CompiledInstances.global(Jackson3CompiledBinder.class);
     private static final GsonCompiledBinder GSON_COMPILED =
-            CompiledInstances.of(GsonCompiledBinder.class);
+            CompiledInstances.global(GsonCompiledBinder.class);
     private static final Fastjson2CompiledBinder FASTJSON2_COMPILED =
-            CompiledInstances.of(Fastjson2CompiledBinder.class);
+            CompiledInstances.global(Fastjson2CompiledBinder.class);
     private static final JsonpCompiledBinder JSONP_COMPILED =
-            CompiledInstances.of(JsonpCompiledBinder.class);
+            CompiledInstances.global(JsonpCompiledBinder.class);
     private static final SimpleCompiledBinder SIMPLE_COMPILED =
-            CompiledInstances.of(SimpleCompiledBinder.class);
+            CompiledInstances.global(SimpleCompiledBinder.class);
 
     // Precomputed once, outside the measured operation. Reverse nested object
     // properties too, so expected-next-name matching rarely succeeds.

@@ -22,7 +22,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcTypedGetterTest {
     @Test
     void usesTypedGetterForPrimitivePropertiesAndRejectsNull() {
-        Mapper mapper = CompiledInstances.of(Mapper.class);
+        Mapper mapper = CompiledInstances.global(Mapper.class);
         int[] getInts = {0};
 
         assertEquals(36, mapper.user(typedUserResult(getInts, false)).age);
@@ -36,7 +36,7 @@ class JdbcTypedGetterTest {
 
     @Test
     void usesAllTypedGettersAndChecksWasNullForPrimitiveColumns() {
-        Mapper mapper = CompiledInstances.of(Mapper.class);
+        Mapper mapper = CompiledInstances.global(Mapper.class);
         List<String> getters = new ArrayList<>();
 
         PrimitiveValues values = mapper.primitives(typedPrimitiveResult(getters, null, false));
@@ -62,7 +62,7 @@ class JdbcTypedGetterTest {
 
     @Test
     void readsNodeValueColumnsThroughNodes() {
-        Mapper mapper = CompiledInstances.of(Mapper.class);
+        Mapper mapper = CompiledInstances.global(Mapper.class);
 
         NodeValueRow row = mapper.nodeValue(
                 result(new String[]{"code"}, new Object[]{"A-1"}));

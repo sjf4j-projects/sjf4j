@@ -61,7 +61,7 @@ class CompiledRuntimeContextInjectionTest {
         assertTrue(mapperSource.contains("RuntimeContext context)"), mapperSource);
         String outerSource = compiled.generatedSource("fixture/Outer_Impl.java");
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
-        assertFalse(outerSource.contains("CompiledInstances.of("), outerSource);
+        assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
         assertTrue(binderSource.contains("RuntimeContext context)"), binderSource);
         assertTrue(binderSource.contains("context.defaultValueFormat("), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
@@ -76,7 +76,7 @@ class CompiledRuntimeContextInjectionTest {
             Object defaultMapper = CompiledInstances.global(mapperInterface);
             Object defaultBinder = CompiledInstances.global(binderInterface);
             assertSame(defaultMapper, CompiledInstances.global(mapperInterface));
-            assertSame(defaultBinder, CompiledInstances.of(binderInterface));
+            assertSame(defaultBinder, CompiledInstances.global(binderInterface));
 
             RuntimeContext context = new RuntimeContext(Map.of(tokenClass, "alternate"), false);
             Object configuredMapper = CompiledInstances.create(mapperInterface, context);

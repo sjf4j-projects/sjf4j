@@ -54,8 +54,8 @@ class NodeApiValidationTest {
         assertThrowsExactly(IllegalArgumentException.class, () -> JsonObject.of("key"));
         assertThrowsExactly(IllegalArgumentException.class, () -> JsonObject.of(1, "value"));
         assertEquals(0, JsonObject.of((Object[]) null).size());
-        assertThrowsExactly(NullPointerException.class, () -> CompiledInstances.of(null));
-        assertThrowsExactly(IllegalArgumentException.class, () -> CompiledInstances.of(String.class));
+        assertThrowsExactly(NullPointerException.class, () -> CompiledInstances.global(null));
+        assertThrowsExactly(IllegalArgumentException.class, () -> CompiledInstances.global(String.class));
     }
 
 }

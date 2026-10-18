@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class MapperJsonObjectDynamicTest {
     @Test
     public void mapsDynamicJsonObjectChildrenToCompleteTypedGraph() {
-        DynamicMapper mapper = CompiledInstances.of(DynamicMapper.class);
+        DynamicMapper mapper = CompiledInstances.global(DynamicMapper.class);
         JsonObject source = JsonObject.of(
                 "title", "production", "byteValue", 8L, "shortValue", 9L, "count", 7L, "total", 10L,
                 "ratio", 1.25D, "score", 2.5D, "initial", "Z", "active", true,
