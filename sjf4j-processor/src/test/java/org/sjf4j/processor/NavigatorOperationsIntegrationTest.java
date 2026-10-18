@@ -56,6 +56,34 @@ class NavigatorOperationsIntegrationTest {
     }
 
     @Test
+    void generatedDynamicNavigationUsesNodeWalkerRatherThanNodesFacade() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "testcase/Paths.java",
+                "package testcase; "
+                + "import org.sjf4j.annotation.path.*; "
+                + "@CompiledNavigator public interface Paths { "
+                + "@GetByPath(\"$.name\") Object read(Object source); "
+                + "@PutByPath(\"$.name\") Object write(Object source, Object value); }"
+        ));
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("testcase/Paths_Impl.java");
+        assertTrue(generated.contains("NodeWalker.getInObject("), generated);
+        assertTrue(generated.contains("NodeWalker.putInObject("), generated);
+        assertFalse(generated.contains("org.sjf4j.Nodes."), generated);
+
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> impl = Class.forName("testcase.Paths_Impl", true, loader);
+            Object navigator = impl.getConstructor().newInstance();
+            Map<String, Object> source = new HashMap<>();
+            source.put("name", "before");
+            assertEquals("before", impl.getMethod("read", Object.class).invoke(navigator, source));
+            assertEquals("before", impl.getMethod("write", Object.class, Object.class)
+                    .invoke(navigator, source, "after"));
+            assertEquals("after", source.get("name"));
+        }
+    }
+
+    @Test
     void putIfParentPresentWritesOnlyExistingParents() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "testcase/Root.java",
