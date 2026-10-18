@@ -98,6 +98,51 @@ class CompiledBinderNodeCreatorTest {
     }
 
     @Test
+    void readsPackageAccessibleCreatorsAndExplicitRecordFactories() throws Exception {
+        for (String backend : new String[]{"SIMPLE", "FASTJSON2"}) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/PackageBean.java",
+                    "package fixture; import org.sjf4j.annotation.node.*; "
+                            + "public class PackageBean { "
+                            + "private final String value; "
+                            + "@NodeCreator PackageBean(String value) { this.value=value; } "
+                            + "public String getValue() { return value; } }");
+            sources.put("fixture/Normalized.java",
+                    "package fixture; import org.sjf4j.annotation.node.*; "
+                            + "public record Normalized(String name) { "
+                            + "@NodeCreator static Normalized of(String name) "
+                            + "{ return new Normalized(name.trim().toUpperCase()); } }");
+            sources.put("fixture/Alternate.java",
+                    "package fixture; import org.sjf4j.annotation.node.*; "
+                            + "public record Alternate(String name, int count) { "
+                            + "@NodeCreator public Alternate(String name) { this(name, 42); } }");
+            sources.put("fixture/Binder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*; "
+                            + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
+                            + "@ReadFrom PackageBean bean(String json) throws java.io.IOException; "
+                            + "@ReadFrom Normalized normalized(String json) throws java.io.IOException; "
+                            + "@ReadFrom Alternate alternate(String json) throws java.io.IOException; }");
+            NavigatorTestCompiler.Result compiled =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class<?> iface = loader.loadClass("fixture.Binder");
+                Object binder = CompiledInstances.global(iface);
+                Object bean = iface.getMethod("bean", String.class)
+                        .invoke(binder, "{\\"value\\":\\"ok\\"}");
+                assertEquals("ok", bean.getClass().getMethod("getValue").invoke(bean), backend);
+                Object normalized = iface.getMethod("normalized", String.class)
+                        .invoke(binder, "{\\"name\\":\\" alice \\"}");
+                assertEquals("ALICE", normalized.getClass().getMethod("name").invoke(normalized), backend);
+                Object alternate = iface.getMethod("alternate", String.class)
+                        .invoke(binder, "{\\"name\\":\\"Bob\\"}");
+                assertEquals(42, alternate.getClass().getMethod("count").invoke(alternate), backend);
+            }
+        }
+    }
+
+    @Test
     void reportsDuplicateExplicitCreators() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Duplicate.java",
