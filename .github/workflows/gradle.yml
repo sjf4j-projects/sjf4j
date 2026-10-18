@@ -36,7 +36,7 @@ jobs:
       uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
     - name: Run tests with coverage
-      run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification :sjf4j-testbench:jmhJar
+      run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
     - name: Print JaCoCo summary
       if: ${{ always() }}
