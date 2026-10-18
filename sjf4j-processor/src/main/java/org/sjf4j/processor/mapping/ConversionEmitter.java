@@ -6,6 +6,7 @@ import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.property.PropertyAccess;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -48,7 +49,8 @@ public final class ConversionEmitter
     public ConversionEmitter(
             ProcessorContext context,
             TypeElement mapper,
-            List<MappingPlan> plans) {
+            List<MappingPlan> plans,
+            CompiledMetadata metadata) {
 
         this.context = context;
         this.types = context.types;
@@ -57,7 +59,8 @@ public final class ConversionEmitter
                 new ConversionCompiler(
                         context,
                         mapper,
-                        plans);
+                        plans,
+                        metadata);
     }
 
 
