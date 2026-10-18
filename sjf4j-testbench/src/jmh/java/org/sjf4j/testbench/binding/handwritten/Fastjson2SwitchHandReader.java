@@ -136,7 +136,7 @@ public final class Fastjson2SwitchHandReader {
 
                 case UPDATED_AT:
                     if (hash == HASH_UPDATED_AT) {
-                        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
+                        user.setUpdatedAt(reader.readInt64Value());
                     } else {
                         reader.skipValue();
                     }

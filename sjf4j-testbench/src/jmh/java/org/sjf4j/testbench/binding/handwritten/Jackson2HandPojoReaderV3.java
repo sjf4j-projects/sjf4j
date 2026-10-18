@@ -36,7 +36,7 @@ public final class Jackson2HandPojoReaderV3 {
                     break;
 
                 case "updatedAt":
-                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(parser.nextTextValue()));
+                    user.setUpdatedAt(parser.nextLongValue(0L));
                     break;
 
                 case "reputation":

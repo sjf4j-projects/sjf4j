@@ -48,7 +48,7 @@ public final class Jackson2HandPojoReaderV1 {
                     user.setCreatedAt(reader.readLongValue());
                     break;
                 case 2:
-                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(readString(reader)));
+                    user.setUpdatedAt(reader.readLongValue());
                     break;
                 case 3:
                     user.setReputation(reader.readLongValue());

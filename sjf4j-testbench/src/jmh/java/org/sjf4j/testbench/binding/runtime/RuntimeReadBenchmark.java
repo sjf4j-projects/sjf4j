@@ -62,7 +62,7 @@ public class RuntimeReadBenchmark {
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"no_way\":99,\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
 
     private static final String JSON_DATA2 = "{\n" +
-            "  \"id\": 839201, \"createdAt\": 1700000000123, \"updatedAt\": \"2024-01-02T03:04:05\",\n" +
+            "  \"id\": 839201, \"createdAt\": 1700000000123, \"updatedAt\": 1701234567890,\n" +
             "  \"reputation\": 9876543210, \"loginCount\": 421, \"age\": 34,\n" +
             "  \"active\": true, \"verified\": true, \"admin\": false, \"suspended\": false,\n" +
             "  \"score\": 98.75, \"latitude\": 37.7749, \"longitude\": -122.4194,\n" +

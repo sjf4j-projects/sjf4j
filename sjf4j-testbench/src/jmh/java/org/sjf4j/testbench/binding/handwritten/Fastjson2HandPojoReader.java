@@ -22,7 +22,7 @@ public final class Fastjson2HandPojoReader {
             String name = reader.readFieldName();
             if ("id".equals(name)) user.setId(reader.readInt64Value());
             else if ("createdAt".equals(name)) user.setCreatedAt(reader.readInt64Value());
-            else if ("updatedAt".equals(name)) user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
+            else if ("updatedAt".equals(name)) user.setUpdatedAt(reader.readInt64Value());
             else if ("reputation".equals(name)) user.setReputation(reader.readInt64Value());
             else if ("loginCount".equals(name)) user.setLoginCount(reader.readInt32Value());
             else if ("age".equals(name)) user.setAge(reader.readInt32Value());

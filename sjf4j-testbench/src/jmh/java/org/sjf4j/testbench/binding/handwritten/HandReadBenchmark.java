@@ -57,7 +57,7 @@ public class HandReadBenchmark {
 
     // Same User fixture as HandWriteBenchmark, including its Address and Friend values.
     private static final String JSON_DATA2 = "{\n" +
-            "  \"id\": 839201, \"createdAt\": 1700000000123, \"updatedAt\": \"2024-01-02T03:04:05\",\n" +
+            "  \"id\": 839201, \"createdAt\": 1700000000123, \"updatedAt\": 1701234567890,\n" +
             "  \"reputation\": 9876543210, \"loginCount\": 421, \"age\": 34,\n" +
             "  \"active\": true, \"verified\": true, \"admin\": false, \"suspended\": false,\n" +
             "  \"score\": 98.75, \"latitude\": 37.7749, \"longitude\": -122.4194,\n" +

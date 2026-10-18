@@ -34,7 +34,7 @@ public final class GsonHandPojoReaderV2 {
                     user.setCreatedAt(reader.nextLong());
                     break;
                 case "updatedAt":
-                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(readString(reader)));
+                    user.setUpdatedAt(reader.nextLong());
                     break;
                 case "reputation":
                     user.setReputation(reader.nextLong());

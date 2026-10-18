@@ -32,7 +32,6 @@ import org.sjf4j.testbench.model.Users;
 import org.sjf4j.value.ValueCodec;
 
 import java.lang.reflect.Type;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -201,7 +200,7 @@ public class NodeMapperBenchmark {
 
     private static void assertUser(User actual, User expected) {
         require(actual.getId() == expected.getId() && actual.getCreatedAt() == expected.getCreatedAt()
-                && actual.getUpdatedAt().equals(expected.getUpdatedAt()) && actual.getReputation() == expected.getReputation()
+                && actual.getUpdatedAt() == expected.getUpdatedAt() && actual.getReputation() == expected.getReputation()
                 && actual.getLoginCount() == expected.getLoginCount() && actual.getAge() == expected.getAge()
                 && actual.isActive() == expected.isActive() && actual.isVerified() == expected.isVerified()
                 && actual.isAdmin() == expected.isAdmin() && actual.isSuspended() == expected.isSuspended()
@@ -269,7 +268,7 @@ public class NodeMapperBenchmark {
     private static JsonObject createUserNode(int index) {
         return JsonObject.of(
                 "id", 1000L + index, "createdAt", 1_700_000_000_000L + index,
-                "updatedAt", ValueCodec.LOCAL_DATE_TIME.valueToRaw(updatedAt(index)), "reputation", 50_000L + index * 11L,
+                "updatedAt", updatedAt(index), "reputation", 50_000L + index * 11L,
                 "loginCount", 40L + index, "age", 25L + index % 20, "active", index % 3 != 0,
                 "verified", index % 2 == 0, "admin", index == 0, "suspended", false,
                 "score", 84.5 + index, "latitude", 37.70 + index / 100.0, "longitude", -122.40 - index / 100.0,
@@ -287,8 +286,8 @@ public class NodeMapperBenchmark {
                                 "name", "Colleague " + index, "close", false, RuntimeContext.EMPTY)));
     }
 
-    private static LocalDateTime updatedAt(int index) {
-        return LocalDateTime.of(2024, 4, 5, 6, 7).plusSeconds(index);
+    private static long updatedAt(int index) {
+        return 1_701_234_567_890L + index;
     }
 
     private static UserGraph readUserGraph(JsonObject node) {
@@ -319,7 +318,7 @@ public class NodeMapperBenchmark {
         User user = new User();
         user.setId(node.getLong("id"));
         user.setCreatedAt(node.getLong("createdAt"));
-        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(node.getString("updatedAt")));
+        user.setUpdatedAt(node.getLong("updatedAt"));
         user.setReputation(node.getLong("reputation"));
         user.setLoginCount(node.getInt("loginCount"));
         user.setAge(node.getInt("age"));
@@ -432,7 +431,7 @@ public class NodeMapperBenchmark {
         JsonObject node = new JsonObject();
         node.put("id", user.getId());
         node.put("createdAt", user.getCreatedAt());
-        node.put("updatedAt", ValueCodec.LOCAL_DATE_TIME.valueToRaw(user.getUpdatedAt()));
+        node.put("updatedAt", user.getUpdatedAt());
         node.put("reputation", user.getReputation());
         node.put("loginCount", user.getLoginCount());
         node.put("age", user.getAge());

@@ -33,7 +33,7 @@ public final class Jackson2HandPojoStringedWriter {
         str(g, "website", ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
         str(g, "department", v.getDepartment());
         g.writeNumberField("createdAt", v.getCreatedAt());
-        g.writeStringField("updatedAt", ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
+        g.writeNumberField("updatedAt", v.getUpdatedAt());
         g.writeNumberField("loginCount", v.getLoginCount());
         g.writeNumberField("reputation", v.getReputation());
         g.writeBooleanField("active", v.isActive());

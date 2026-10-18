@@ -53,7 +53,7 @@ public final class GsonHandPojoWriter {
         str(w, "website", ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
         str(w, "department", v.getDepartment());
         w.name("createdAt").value(v.getCreatedAt());
-        w.name("updatedAt").value(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
+        w.name("updatedAt").value(v.getUpdatedAt());
         w.name("loginCount").value(v.getLoginCount());
         w.name("reputation").value(v.getReputation());
         w.name("active").value(v.isActive());

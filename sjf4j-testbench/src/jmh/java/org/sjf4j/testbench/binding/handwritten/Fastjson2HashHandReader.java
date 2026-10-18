@@ -54,7 +54,7 @@ public final class Fastjson2HashHandReader {
     private static void readUserField(JSONReader reader, User user, long hash) {
         if (hash == ID) user.setId(reader.readInt64Value());
         else if (hash == CREATED_AT) user.setCreatedAt(reader.readInt64Value());
-        else if (hash == UPDATED_AT) user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
+        else if (hash == UPDATED_AT) user.setUpdatedAt(reader.readInt64Value());
         else if (hash == REPUTATION) user.setReputation(reader.readInt64Value());
         else if (hash == LOGIN_COUNT) user.setLoginCount(reader.readInt32Value());
         else if (hash == AGE) user.setAge(reader.readInt32Value());

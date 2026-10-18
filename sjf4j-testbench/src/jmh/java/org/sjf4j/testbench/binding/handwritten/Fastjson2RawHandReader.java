@@ -178,7 +178,7 @@ public final class Fastjson2RawHandReader {
                 case RAW_UPDATED_AT:
                     if (reader.nextIfName4Match9(
                             0x3A22744164657461L)) {
-                        user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
+                        user.setUpdatedAt(reader.readInt64Value());
                         continue;
                     }
                     break;
@@ -380,7 +380,7 @@ public final class Fastjson2RawHandReader {
 
             case KEY_UPDATED_AT:
                 if (hash == HASH_UPDATED_AT) {
-                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
+                    user.setUpdatedAt(reader.readInt64Value());
                 } else {
                     reader.skipValue();
                 }

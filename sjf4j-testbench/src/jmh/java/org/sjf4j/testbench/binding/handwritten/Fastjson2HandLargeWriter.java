@@ -99,7 +99,7 @@ public final class Fastjson2HandLargeWriter {
     w.writeNameRaw(CREATED_AT);
     w.writeInt64(v.getCreatedAt());
     w.writeNameRaw(UPDATED_AT);
-    w.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
+    w.writeInt64(v.getUpdatedAt());
     w.writeNameRaw(LOGIN_COUNT);
     w.writeInt32(v.getLoginCount());
     w.writeNameRaw(REPUTATION);
