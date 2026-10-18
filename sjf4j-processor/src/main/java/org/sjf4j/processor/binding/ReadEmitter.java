@@ -418,14 +418,15 @@ final class ReadEmitter {
             out.line(assignment(property.access(), owner, expression));
             return;
         }
-        String flag = "seen" + (index >= 64 ? "[" + index + "]" : "");
-        String condition = index >= 64 ? flag : "(seen & (1L << " + index + ")) != 0L";
+        boolean wide = property.creatorCount() > 64;
+        String flag = wide ? "seen[" + index + "]" : "seen";
+        String condition = wide ? flag : "(seen & (1L << " + index + ")) != 0L";
         out.beginBlock("if (" + condition + ")");
         out.line("throw new org.sjf4j.exception.BindingException("
                 + JavaWriter.stringLiteral("duplicate creator argument assignment for '" + property.name() + "'")
                 + ");");
         out.endBlock();
-        out.line(index >= 64 ? flag + " = true;" : "seen |= (1L << " + index + ");");
+        out.line(wide ? flag + " = true;" : "seen |= (1L << " + index + ");");
         out.line("arg" + index + " = " + expression + ";");
     }
 
