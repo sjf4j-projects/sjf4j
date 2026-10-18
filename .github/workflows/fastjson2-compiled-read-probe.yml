@@ -27,6 +27,32 @@ jobs:
       - name: Build JMH benchmark
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
 
+      - name: Show actual generated Compiled Binder source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          roots = Path('sjf4j-testbench/build')
+          found = sorted(roots.rglob('*Fastjson2CompiledBinder_Impl.java'))
+          print('GENERATED FILES:', [str(p) for p in found])
+          if not found:
+              raise SystemExit('No generated Fastjson2CompiledBinder_Impl.java found')
+          for p in found:
+              lines = p.read_text().splitlines()
+              print('ACTUAL GENERATED SOURCE:', p, 'TOTAL LINES:', len(lines))
+              for i, line in enumerate(lines):
+                  if 'readLocalDateTime()' in line:
+                      print('\n=== Native date expression ===')
+                      for j in range(max(0, i-13), min(len(lines), i+12)):
+                          print(f'{j+1}: {lines[j]}')
+              for i, line in enumerate(lines):
+                  if 'readPojo(' in line or 'readPojoUtf8(' in line:
+                      print('\n=== Public entry ===')
+                      for j in range(max(0, i-3), min(len(lines), i+12)):
+                          print(f'{j+1}: {lines[j]}')
+              if not any('readLocalDateTime()' in line for line in lines):
+                  raise SystemExit('Native date generated expression missing')
+          PY
+
       - name: A/B codec-vs-raw, compiled-vs-native
         run: |
           java -version
