@@ -86,7 +86,7 @@ public final class StreamingIO {
             }
 
             if (boxed == Object.class) {
-                return reader.readRawNode();
+                return reader.readRaw();
             }
 
             /*
@@ -157,7 +157,7 @@ public final class StreamingIO {
             }
 
             if (boxed == JsonObject.class) {
-                Object raw = reader.readRawNode();
+                Object raw = reader.readRaw();
                 if (raw == null) return null;
                 return new JsonObject(castMap(raw));
             }
@@ -171,7 +171,7 @@ public final class StreamingIO {
             }
 
             if (boxed == JsonArray.class) {
-                Object raw = reader.readRawNode();
+                Object raw = reader.readRaw();
                 if (raw == null) return null;
                 return new JsonArray(castList(raw));
             }
@@ -265,10 +265,10 @@ public final class StreamingIO {
     private static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
                                     RuntimeContext context) throws IOException {
         /*
-         * readRawNode() is already nullable, so probing null beforehand
+         * readRaw() is already nullable, so probing null beforehand
          * would only create unnecessary lookahead state.
          */
-        Object raw = reader.readRawNode();
+        Object raw = reader.readRaw();
         if (raw == null) {
             return null;
         }
@@ -398,7 +398,7 @@ public final class StreamingIO {
         }
 
         if (raw == Map.class) {
-            Object value = reader.readRawNode();
+            Object value = reader.readRaw();
             if (value == null) {
                 return valueInfo.rawToValue(null);
             }
@@ -406,7 +406,7 @@ public final class StreamingIO {
         }
 
         if (raw == List.class) {
-            Object value = reader.readRawNode();
+            Object value = reader.readRaw();
             if (value == null) {
                 return valueInfo.rawToValue(null);
             }
@@ -481,7 +481,7 @@ public final class StreamingIO {
                         InternalAccess.dynamicProperties(jojo, dynamic);
                     }
                 }
-                dynamic.put(name, reader.readRawNode());
+                dynamic.put(name, reader.readRaw());
             } else {
                 reader.skipNode();
             }
@@ -516,7 +516,7 @@ public final class StreamingIO {
             if (index == NameMatcher.UNKNOWN) {
                 if (pojoInfo.isJojo && pojoInfo.readDynamic) {
                     String name = reader.currentName();
-                    Object value = reader.readRawNode();
+                    Object value = reader.readRaw();
                     state.acceptDynamic(name, value);
                     if (parentKey != null && parentKey.equals(name)) {
                         parentValue = value;
@@ -580,7 +580,7 @@ public final class StreamingIO {
                     }
                 } else if (deferred == null) {
                     deferred = property;
-                    deferredRaw = reader.readRawNode();
+                    deferredRaw = reader.readRaw();
                 } else {
                     throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
                 }
