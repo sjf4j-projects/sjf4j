@@ -205,6 +205,7 @@ public final class ConversionEmitter
 
             case SCALAR:
             case VALUE_CODEC:
+            case CODEC_ENCODE:
             case ONE_OF:
                 return;
 
@@ -562,6 +563,13 @@ public final class ConversionEmitter
                         conversion.targetType(),
                         source,
                         "codec");
+
+            case CODEC_ENCODE:
+                return emitCodecRaw(
+                        out,
+                        names,
+                        conversion.targetType(),
+                        source);
 
             case ONE_OF:
                 return emitNodesTo(
@@ -1809,6 +1817,21 @@ public final class ConversionEmitter
      * Runtime Convert
      * --------------------------------------------------------------
      */
+
+    /** Encode a logical value before projecting its Map/List raw container. */
+    private String emitCodecRaw(
+            JavaWriter out,
+            NameAllocator names,
+            TypeMirror targetType,
+            String source) {
+
+        String result = names.newName("raw");
+        out.line(localType(targetType) + " " + result + " = ("
+                + localType(targetType) + ") org.sjf4j.node.NodeMapper.convertToRaw("
+                + source + ", org.sjf4j.RuntimeContext.EMPTY);");
+        return result;
+    }
+
 
     private String emitNodesTo(
             JavaWriter out,
