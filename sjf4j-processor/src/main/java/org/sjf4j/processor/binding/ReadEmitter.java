@@ -233,7 +233,7 @@ final class ReadEmitter {
                         "();");
 
         if (fastjson2Pojo != null && !value.properties().isEmpty()) {
-            fastjson2Pojo.emitProperties(out, value, this);
+            fastjson2Pojo.emitProperties(out, value, this, false);
         } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) {
@@ -287,7 +287,9 @@ final class ReadEmitter {
         }
 
         int size = value.properties().size();
-        if (backend.usesNameMatcher() && size != 0) {
+        if (fastjson2Pojo != null && size != 0) {
+            fastjson2Pojo.emitProperties(out, value, this, true);
+        } else if (backend.usesNameMatcher() && size != 0) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
             out.beginBlock("while ((nameIndex = reader.nextNameMatch(" + matcherFieldName(value)
@@ -299,7 +301,7 @@ final class ReadEmitter {
             out.beginBlock("while ((name = reader.nextName()) != null)");
             emitStringPojoProperty(out, value);
         }
-        out.endBlock();
+        if (fastjson2Pojo == null || size == 0) out.endBlock();
 
         StringBuilder creation;
         switch (value.creator().kind()) {
@@ -347,7 +349,10 @@ final class ReadEmitter {
     private void emitMatchedPojoProperty(
             JavaWriter out,
             BindingValue value) {
+        emitMatchedPojoProperty(out, value, true);
+    }
 
+    void emitMatchedPojoProperty(JavaWriter out, BindingValue value, boolean updateExpected) {
         out.beginBlock("switch (nameIndex)");
 
         int index = 0;
@@ -355,7 +360,7 @@ final class ReadEmitter {
             int propertyIndex = index++;
             out.line("case " + propertyIndex + ":");
             out.indent();
-            if (backend.usesExpectedNameMatch()) {
+            if (updateExpected && backend.usesExpectedNameMatch()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
             emitPropertyRead(out, property, "value", "reader");
