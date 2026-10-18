@@ -76,7 +76,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 assertThrows(java.lang.reflect.InvocationTargetException.class,
                         () -> binderType.getMethod(writerMethod, valueType, java.io.Writer.class)
                                 .invoke(binder, value, chars));
-        assertTrue(String.valueOf(writerFailure.getCause()).contains(message), writerFailure.toString());
+        assertCauseContains(writerFailure, message);
         assertEquals("prefix", chars.toString(), writerMethod);
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -85,8 +85,15 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 assertThrows(java.lang.reflect.InvocationTargetException.class,
                         () -> binderType.getMethod(streamMethod, valueType, java.io.OutputStream.class)
                                 .invoke(binder, value, bytes));
-        assertTrue(String.valueOf(streamFailure.getCause()).contains(message), streamFailure.toString());
+        assertCauseContains(writerFailure, message);
         assertEquals("prefix", bytes.toString(StandardCharsets.UTF_8), streamMethod);
+    }
+
+    private static void assertCauseContains(Throwable failure, String message) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (String.valueOf(cause.getMessage()).contains(message)) return;
+        }
+        fail("Expected exception chain to contain '" + message + "'", failure);
     }
 
     @Test
