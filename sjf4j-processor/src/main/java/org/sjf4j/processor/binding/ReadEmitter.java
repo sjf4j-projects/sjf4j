@@ -167,7 +167,7 @@ final class ReadEmitter {
             BindingValue value) {
 
         out.beginBlock(
-                "private static " +
+                "private " +
                         value.type() +
                         " " +
                         value.helperName() +
