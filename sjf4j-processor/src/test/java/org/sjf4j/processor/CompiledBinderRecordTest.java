@@ -80,6 +80,13 @@ class CompiledBinderRecordTest {
                                 .invoke(binder, "{\"name\":\"first\",\"name\":\"second\"}"),
                         backend);
                 assertTrue(duplicate.getCause().toString().contains("duplicate creator argument"), backend);
+
+                InvocationTargetException duplicateAlias = assertThrows(
+                        InvocationTargetException.class,
+                        () -> iface.getMethod("read", String.class)
+                                .invoke(binder, "{\\"legacy_name\\":\\"first\\",\\"name\\":\\"second\\"}"),
+                        backend);
+                assertTrue(duplicateAlias.getCause().toString().contains("duplicate creator argument"), backend);
             }
         }
     }
