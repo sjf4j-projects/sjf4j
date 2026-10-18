@@ -53,7 +53,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
         assertTrue(source.contains("writer.nativeWriter()"), source);
-        assertTrue(source.contains("StreamingIO.writeRawNode(writer,"), source);
+        assertTrue(source.contains("writer.writeRaw("), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);
 
