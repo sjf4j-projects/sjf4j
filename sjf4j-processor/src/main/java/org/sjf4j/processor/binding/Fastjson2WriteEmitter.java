@@ -109,7 +109,7 @@ final class Fastjson2WriteEmitter {
                 break;
             case WRITER:
             case OUTPUT_STREAM:
-                out.line(writer + ".flush();");
+                // Fastjson2Writer.close() flushes the caller-owned destination.
                 break;
             default:
                 throw new AssertionError(output);
