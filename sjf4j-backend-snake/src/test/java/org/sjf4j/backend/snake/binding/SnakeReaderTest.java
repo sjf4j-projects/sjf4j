@@ -115,7 +115,7 @@ class SnakeReaderTest {
     @Test
     void readsRawNodesInInsertionOrder() throws Exception {
         try (SnakeReader reader = reader("text: Ada\nnumber: 7\nenabled: true\nempty: null\nnested: {first: one}\nitems: [false, {second: 2}]\n")) {
-            Map<?, ?> value = (Map<?, ?>) reader.readRawNode();
+            Map<?, ?> value = (Map<?, ?>) reader.readRaw();
             assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                     new ArrayList<>(value.keySet()));
@@ -143,7 +143,7 @@ class SnakeReaderTest {
         }
 
         try (SnakeReader reader = reader(nested)) {
-            Object value = reader.readRawNode();
+            Object value = reader.readRaw();
             for (int i = 0; i < 2_000; i++) {
                 if ((i & 1) == 0) {
                     assertEquals(ArrayList.class, value.getClass());
