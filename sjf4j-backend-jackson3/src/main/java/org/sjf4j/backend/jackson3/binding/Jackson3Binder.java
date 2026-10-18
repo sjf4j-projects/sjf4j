@@ -41,6 +41,11 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         this(new JsonFactory(), RuntimeContext.EMPTY);
     }
 
+    /** Creates a binder with default backend settings and a supplied runtime context. */
+    public Jackson3Binder(RuntimeContext context) {
+        this(new JsonFactory(), context);
+    }
+
     /**
      * Creates a binder from a supplied factory without mutating that factory.
      * @param factory the Jackson 3 factory to rebuild
