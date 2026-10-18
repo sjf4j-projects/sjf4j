@@ -164,7 +164,7 @@ public interface PropertyReader {
         if (fieldType == JsonObject.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 Object value = null;
-                Object raw = reader.readRawNode();
+                Object raw = reader.readRaw();
                 if (raw != null) value = new JsonObject(StreamingIO.castMap(raw));
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -188,7 +188,7 @@ public interface PropertyReader {
         if (fieldType == JsonArray.class) {
             return (reader, owner, ownerType, ownerBoxed, context) -> {
                 Object value = null;
-                Object raw = reader.readRawNode();
+                Object raw = reader.readRaw();
                 if (raw != null) value = new JsonArray(StreamingIO.castList(raw));
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
