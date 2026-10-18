@@ -2,6 +2,7 @@ package org.sjf4j.processor.mapping;
 
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.method.ResolvedMethod;
 
 import javax.lang.model.element.ExecutableElement;
@@ -65,6 +66,8 @@ public final class MapperGenerator {
             return;
         }
 
+        CompiledMetadata metadata = context.metadata(type);
+
         /*
          * --------------------------------------------------------------
          * 2. Compile mapping semantics
@@ -74,7 +77,8 @@ public final class MapperGenerator {
                 new MappingCompiler(
                         context,
                         type,
-                        plans);
+                        plans,
+                        metadata);
 
         if (!compiler.validate(
                 generated)) {
@@ -112,7 +116,8 @@ public final class MapperGenerator {
                 new ConversionEmitter(
                         context,
                         type,
-                        plans);
+                        plans,
+                        metadata);
 
         if (!conversionEmitter.prepare(
                 methods,

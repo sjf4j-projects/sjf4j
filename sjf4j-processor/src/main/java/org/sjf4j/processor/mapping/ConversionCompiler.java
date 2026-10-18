@@ -4,6 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -43,7 +44,8 @@ public final class ConversionCompiler {
     public ConversionCompiler(
             ProcessorContext context,
             TypeElement mapper,
-            List<MappingPlan> plans) {
+            List<MappingPlan> plans,
+            CompiledMetadata metadata) {
 
         this.context = context;
         this.types = context.types;
@@ -56,7 +58,8 @@ public final class ConversionCompiler {
                 new ConverterResolver(
                         context,
                         mapper,
-                        plans);
+                        plans,
+                        metadata);
     }
 
 
@@ -101,6 +104,16 @@ public final class ConversionCompiler {
 
             case SCALAR:
                 return CompiledConversion.scalar(
+                        conversion.sourceType(),
+                        conversion.targetType());
+
+            case VALUE_CODEC:
+                return CompiledConversion.valueCodec(
+                        conversion.sourceType(),
+                        conversion.targetType());
+
+            case CODEC_ENCODE:
+                return CompiledConversion.codecEncode(
                         conversion.sourceType(),
                         conversion.targetType());
 
@@ -1088,6 +1101,8 @@ public final class ConversionCompiler {
             DIRECT,
             METHOD,
             SCALAR,
+            VALUE_CODEC,
+            CODEC_ENCODE,
             ONE_OF,
             CONTAINER,
             MAP,
@@ -1210,6 +1225,22 @@ public final class ConversionCompiler {
                     Kind.SCALAR,
                     source,
                     target);
+        }
+
+
+        static CompiledConversion valueCodec(
+                TypeMirror source,
+                TypeMirror target) {
+
+            return simple(Kind.VALUE_CODEC, source, target);
+        }
+
+
+        static CompiledConversion codecEncode(
+                TypeMirror source,
+                TypeMirror target) {
+
+            return simple(Kind.CODEC_ENCODE, source, target);
         }
 
 

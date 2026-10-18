@@ -3,6 +3,8 @@ package org.sjf4j.processor.mapping;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.discovery.CompiledMetadata;
+import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -37,6 +39,7 @@ public final class ConverterResolver {
 
     private final ProcessorContext context;
     private final TypeSystem types;
+    private final CompiledMetadata metadata;
 
     private final TypeElement mapper;
     private final List<MappingPlan> plans;
@@ -48,10 +51,12 @@ public final class ConverterResolver {
     public ConverterResolver(
             ProcessorContext context,
             TypeElement mapper,
-            List<MappingPlan> plans) {
+            List<MappingPlan> plans,
+            CompiledMetadata metadata) {
 
         this.context = context;
         this.types = context.types;
+        this.metadata = metadata;
         this.mapper = mapper;
         this.plans =
                 Collections.unmodifiableList(
@@ -415,6 +420,16 @@ public final class ConverterResolver {
                     targetType,
                     importedMethod.method,
                     importedMethod.owner);
+        }
+
+        /*
+         * Logical values are codec leaves, even when their raw representation
+         * is a Map or List. Explicit/local/imported mapper methods above retain
+         * their precedence over automatic codec conversion.
+         */
+        if (isCodecConversion(sourceType, targetType)) {
+            return resolveCodecConversion(
+                    plan, sourceType, targetType, generated);
         }
 
         /*
@@ -1259,6 +1274,98 @@ public final class ConverterResolver {
      * --------------------------------------------------------------
      */
 
+    /** A logical value must not be compiled as an ordinary structural POJO. */
+    boolean isCodecConversion(TypeMirror source, TypeMirror target) {
+        return isCodecType(source) || isCodecType(target);
+    }
+
+    /**
+     * Raw-to-value decoding requires an assignable raw class. Value-to-raw
+     * encoding permits SJF4J's strict scalar adapters, or a directly
+     * assignable object/array raw representation. Unknown Object values still
+     * require runtime validation.
+     */
+    Conversion resolveCodecConversion(
+            MappingPlan plan,
+            TypeMirror source,
+            TypeMirror target,
+            GeneratedClass generated) {
+
+        boolean sourceCodec = isCodecType(source);
+        boolean targetCodec = isCodecType(target);
+        TypeMirror sourceRaw = sourceCodec ? codecRawType(source) : source;
+        TypeMirror targetRaw = targetCodec ? codecRawType(target) : target;
+
+        if (sourceRaw != null && targetRaw != null
+                && types.nodeKind(sourceRaw) != NodeKind.COMPILE_TIME_UNKNOWN
+                && types.nodeKind(targetRaw) != NodeKind.COMPILE_TIME_UNKNOWN) {
+
+            boolean compatible;
+            if (targetCodec) {
+                // ValueInfo.rawToValue checks the actual raw Class; no implicit
+                // String/Number or Number/Number coercion is performed here.
+                compatible = types.isAssignableErasure(
+                        types.boxed(sourceRaw), types.boxed(targetRaw));
+            } else {
+                NodeKind sourceKind = types.nodeKind(sourceRaw);
+                NodeKind targetKind = types.nodeKind(targetRaw);
+                if (isNumberKind(sourceKind) && isNumberKind(targetKind)) {
+                    compatible = true;
+                } else if (isStringKind(sourceKind) && isStringKind(targetKind)) {
+                    compatible = true;
+                } else {
+                    compatible = types.isAssignableErasure(
+                            types.boxed(sourceRaw), types.boxed(targetRaw));
+                }
+            }
+
+            if (!compatible) {
+                error(plan.method(), generated,
+                        "incompatible ValueCodec raw types for " + source
+                                + " -> " + target + ": " + sourceRaw
+                                + " cannot be converted to " + targetRaw);
+                return null;
+            }
+        }
+
+        // Nodes.to(Map/List.class) projects ordinary containers; it does not
+        // encode a source ValueCodec. Use the value-to-raw path explicitly.
+        NodeKind targetKind = types.nodeKind(target);
+        if (sourceCodec && !targetCodec
+                && (targetKind == NodeKind.OBJECT_MAP
+                || targetKind == NodeKind.ARRAY_LIST)) {
+            return Conversion.codecEncode(source, target);
+        }
+        return Conversion.valueCodec(source, target);
+    }
+
+    private TypeMirror codecRawType(TypeMirror type) {
+        if (types.isNodeValue(type)) {
+            return types.nodeValueRawType(type);
+        }
+        // Only a declared default format fixes the raw representation
+        // independently of runtime registration order. Named-only formats
+        // retain runtime validation rather than assuming the first declaration.
+        ValueCodecMetadata codec = metadata.valueCodec(type, "");
+        return codec == null ? null : codec.rawType;
+    }
+
+    private boolean isCodecType(TypeMirror type) {
+        NodeKind kind = types.nodeKind(type);
+        // Built-in scalars and native containers win over inherited registrations.
+        // @NodeValue-declared classes can expose a scalar raw shape without
+        // becoming String/Number/Boolean Java representations themselves.
+        if (kind == NodeKind.OBJECT_POJO) {
+            return types.isNodeValue(type) || metadata.hasValueCodec(type);
+        }
+        if (!types.isNodeValue(type)) return false;
+        return kind == NodeKind.UNKNOWN
+                || kind == NodeKind.VALUE_STRING
+                || kind == NodeKind.VALUE_NUMBER
+                || kind == NodeKind.VALUE_BOOLEAN;
+    }
+
+
     private boolean isScalarConversion(
             TypeMirror source,
             TypeMirror target) {
@@ -1477,6 +1584,9 @@ public final class ConverterResolver {
             TypeMirror source,
             TypeMirror target) {
 
+        // Do not silently expose a logical ValueCodec as a POJO.
+        if (isCodecType(source) || isCodecType(target)) return false;
+
         NodeKind sourceKind =
                 types.nodeKind(source);
 
@@ -1674,6 +1784,8 @@ public final class ConverterResolver {
             METHOD,
             ONE_OF,
             SCALAR,
+            VALUE_CODEC,
+            CODEC_ENCODE,
             CONTAINER,
             STRUCTURAL
         }
@@ -1760,6 +1872,32 @@ public final class ConverterResolver {
 
             return new Conversion(
                     Kind.SCALAR,
+                    sourceType,
+                    targetType,
+                    null,
+                    null);
+        }
+
+
+        static Conversion valueCodec(
+                TypeMirror sourceType,
+                TypeMirror targetType) {
+
+            return new Conversion(
+                    Kind.VALUE_CODEC,
+                    sourceType,
+                    targetType,
+                    null,
+                    null);
+        }
+
+
+        static Conversion codecEncode(
+                TypeMirror sourceType,
+                TypeMirror targetType) {
+
+            return new Conversion(
+                    Kind.CODEC_ENCODE,
                     sourceType,
                     targetType,
                     null,

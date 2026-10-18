@@ -6,6 +6,7 @@ import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.property.PropertyAccess;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -48,7 +49,8 @@ public final class ConversionEmitter
     public ConversionEmitter(
             ProcessorContext context,
             TypeElement mapper,
-            List<MappingPlan> plans) {
+            List<MappingPlan> plans,
+            CompiledMetadata metadata) {
 
         this.context = context;
         this.types = context.types;
@@ -57,7 +59,8 @@ public final class ConversionEmitter
                 new ConversionCompiler(
                         context,
                         mapper,
-                        plans);
+                        plans,
+                        metadata);
     }
 
 
@@ -201,6 +204,8 @@ public final class ConversionEmitter
                 return;
 
             case SCALAR:
+            case VALUE_CODEC:
+            case CODEC_ENCODE:
             case ONE_OF:
                 return;
 
@@ -551,8 +556,23 @@ public final class ConversionEmitter
                         conversion,
                         source);
 
+            case VALUE_CODEC:
+                return emitNodeMapperTo(
+                        out,
+                        names,
+                        conversion.targetType(),
+                        source,
+                        "codec");
+
+            case CODEC_ENCODE:
+                return emitCodecRaw(
+                        out,
+                        names,
+                        conversion.targetType(),
+                        source);
+
             case ONE_OF:
-                return emitNodesTo(
+                return emitNodeMapperTo(
                         out,
                         names,
                         conversion.targetType(),
@@ -656,7 +676,7 @@ public final class ConversionEmitter
         /*
          * A value declared as Object has no compile-time NodeKind. Keep the
          * generated fallback inside the OBNT layer instead of routing through
-         * a binder: Nodes performs the runtime value-kind check/conversion.
+         * a binder: NodeMapper performs strict runtime value-kind conversion.
          */
         if (types.nodeKind(
                 conversion.sourceType()) ==
@@ -671,12 +691,12 @@ public final class ConversionEmitter
                             " " +
                             value +
                             " = " +
-                            nodesToCast(targetType) +
-                            "org.sjf4j.Nodes.to(" +
+                            mapperToCast(targetType) +
+                            "org.sjf4j.node.NodeMapper.to(" +
                             source +
                             ", " +
                             classLiteral(targetType) +
-                            ");");
+                            ", org.sjf4j.RuntimeContext.EMPTY);");
 
             return value;
         }
@@ -819,7 +839,7 @@ public final class ConversionEmitter
         /*
          * @NodeValue / registered scalar codecs.
          */
-        return emitNodesTo(
+        return emitNodeMapperTo(
                 out,
                 names,
                 conversion.targetType(),
@@ -1710,7 +1730,7 @@ public final class ConversionEmitter
         out.line(
                 "for (java.util.Map.Entry<String, Object> " +
                         entry +
-                        " : org.sjf4j.Nodes.entrySetInObject(" +
+                        " : org.sjf4j.node.NodeWalker.entrySetInObject(" +
                         source +
                         ")) {");
 
@@ -1798,7 +1818,22 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitNodesTo(
+    /** Encode a logical value before projecting its Map/List raw container. */
+    private String emitCodecRaw(
+            JavaWriter out,
+            NameAllocator names,
+            TypeMirror targetType,
+            String source) {
+
+        String result = names.newName("raw");
+        out.line(localType(targetType) + " " + result + " = ("
+                + localType(targetType) + ") org.sjf4j.node.NodeMapper.convertToRaw("
+                + source + ", org.sjf4j.RuntimeContext.EMPTY);");
+        return result;
+    }
+
+
+    private String emitNodeMapperTo(
             JavaWriter out,
             NameAllocator names,
             TypeMirror targetType,
@@ -1815,19 +1850,19 @@ public final class ConversionEmitter
                         " " +
                         result +
                         " = " +
-                        nodesToCast(targetType) +
-                        "org.sjf4j.Nodes.to(" +
+                        mapperToCast(targetType) +
+                        "org.sjf4j.node.NodeMapper.to(" +
                         source +
                         ", " +
                         classLiteral(
                                 targetType) +
-                        ");");
+                        ", org.sjf4j.RuntimeContext.EMPTY);");
 
         return result;
     }
 
 
-    private String nodesToCast(
+    private String mapperToCast(
             TypeMirror targetType) {
 
         if (!(targetType instanceof DeclaredType) ||
@@ -1921,7 +1956,7 @@ public final class ConversionEmitter
             case DYNAMIC:
                 return cast(
                         access.readType(),
-                        "org.sjf4j.Nodes.getInObject(" +
+                        "org.sjf4j.node.NodeWalker.getInObject(" +
                                 owner +
                                 ", " +
                                 key +
@@ -1987,7 +2022,7 @@ public final class ConversionEmitter
 
             case DYNAMIC:
                 out.line(
-                        "org.sjf4j.Nodes.putInObject(" +
+                        "org.sjf4j.node.NodeWalker.putInObject(" +
                                 owner +
                                 ", " +
                                 key +
@@ -2041,7 +2076,7 @@ public final class ConversionEmitter
             case COMPILE_TIME_UNKNOWN:
                 return cast(
                         elementType,
-                        "org.sjf4j.Nodes.getInArray(" +
+                        "org.sjf4j.node.NodeWalker.getInArray(" +
                                 source +
                                 ", " +
                                 index +
@@ -2072,7 +2107,7 @@ public final class ConversionEmitter
                         ".size()";
 
             case COMPILE_TIME_UNKNOWN:
-                return "org.sjf4j.Nodes.sizeInArray(" +
+                return "org.sjf4j.node.NodeWalker.sizeInArray(" +
                         source +
                         ")";
 

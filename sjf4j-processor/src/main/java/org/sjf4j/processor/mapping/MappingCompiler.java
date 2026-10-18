@@ -7,6 +7,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -48,7 +49,8 @@ public final class MappingCompiler {
     public MappingCompiler(
             ProcessorContext context,
             TypeElement mapper,
-            List<MappingPlan> plans) {
+            List<MappingPlan> plans,
+            CompiledMetadata metadata) {
 
         this.context = context;
         this.types = context.types;
@@ -61,7 +63,8 @@ public final class MappingCompiler {
                 new ConverterResolver(
                         context,
                         mapper,
-                        plans);
+                        plans,
+                        metadata);
     }
 
     /**
@@ -598,6 +601,15 @@ public final class MappingCompiler {
         TypeMirror sourceType =
                 plan.primarySourceType();
 
+        if (plan.update() && converters.isCodecConversion(
+                sourceType, plan.targetType())) {
+            error(plan.method(), generated,
+                    "root ValueCodec update is not supported: "
+                            + sourceType + " -> " + plan.targetType()
+                            + "; use a create mapper returning the converted value");
+            return null;
+        }
+
         if (plan.update() &&
                 types.nodeKind(
                         plan.targetType()) ==
@@ -655,8 +667,10 @@ public final class MappingCompiler {
 
             conversion =
                     rootFallbackConversion(
+                            plan,
                             sourceType,
-                            plan.targetType());
+                            plan.targetType(),
+                            generated);
 
             if (conversion == null) {
                 error(
@@ -683,8 +697,15 @@ public final class MappingCompiler {
 
 
     private ConverterResolver.Conversion rootFallbackConversion(
+            MappingPlan plan,
             TypeMirror source,
-            TypeMirror target) {
+            TypeMirror target,
+            GeneratedClass generated) {
+
+        if (converters.isCodecConversion(source, target)) {
+            return converters.resolveCodecConversion(
+                    plan, source, target, generated);
+        }
 
         NodeKind sourceKind =
                 types.nodeKind(source);
@@ -730,6 +751,12 @@ public final class MappingCompiler {
 
         if (!plan.rules().isEmpty()) {
             return false;
+        }
+
+        // Root logical values do not have ordinary writable POJO members.
+        if (plan.sources().size() == 1 && converters.isCodecConversion(
+                plan.primarySourceType(), plan.targetType())) {
+            return true;
         }
 
         NodeKind kind =
