@@ -1290,10 +1290,17 @@ public final class ConverterResolver {
 
     private boolean isCodecType(TypeMirror type) {
         NodeKind kind = types.nodeKind(type);
-        // Match BindingCompiler's native-container/external-tree precedence.
-        if (kind != NodeKind.OBJECT_POJO && kind != NodeKind.UNKNOWN
-                && !kind.isValue()) return false;
-        return types.isNodeValue(type) || metadata.hasValueCodec(type);
+        // Built-in scalars and native containers win over inherited registrations.
+        // @NodeValue-declared classes can expose a scalar raw shape without
+        // becoming String/Number/Boolean Java representations themselves.
+        if (kind == NodeKind.OBJECT_POJO) {
+            return types.isNodeValue(type) || metadata.hasValueCodec(type);
+        }
+        if (!types.isNodeValue(type)) return false;
+        return kind == NodeKind.UNKNOWN
+                || kind == NodeKind.VALUE_STRING
+                || kind == NodeKind.VALUE_NUMBER
+                || kind == NodeKind.VALUE_BOOLEAN;
     }
 
 
