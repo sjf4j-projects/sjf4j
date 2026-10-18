@@ -186,11 +186,17 @@ class CompiledMapperValueCodecTest {
         sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
                 + "@CompiledMapper public interface Mapper { "
-                + "Target map(Source source); Source reverse(Target source); }");
+                + "Target map(Source source); Source reverse(Target source); "
+                + "java.util.Map<String,Object> encodeMap(MapValue value); "
+                + "java.util.List<Object> encodeList(ListValue value); "
+                + "MapValue decodeMap(java.util.Map<String,Object> raw); "
+                + "ListValue decodeList(java.util.List<Object> raw); }");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
+        assertTrue(compiled.generatedSource("fixture/Mapper_Impl.java")
+                .contains("NodeMapper.convertToRaw("));
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> sourceType = loader.loadClass("fixture.Source");
             Class<?> targetType = loader.loadClass("fixture.Target");
@@ -213,7 +219,79 @@ class CompiledMapperValueCodecTest {
             Object reverse = mapperType.getMethod("reverse", targetType).invoke(instance, target);
             assertEquals(rawMap, sourceType.getField("object").get(reverse));
             assertEquals(rawList, sourceType.getField("array").get(reverse));
+
+            assertEquals(rawMap, mapperType.getMethod("encodeMap", mapValueType)
+                    .invoke(instance, targetType.getField("object").get(target)));
+            assertEquals(rawList, mapperType.getMethod("encodeList", listValueType)
+                    .invoke(instance, targetType.getField("array").get(target)));
+            Object decodedMap = mapperType.getMethod("decodeMap", Map.class)
+                    .invoke(instance, rawMap);
+            Object decodedList = mapperType.getMethod("decodeList", List.class)
+                    .invoke(instance, rawList);
+            assertEquals(rawMap, mapValueType.getField("raw").get(decodedMap));
+            assertEquals(rawList, listValueType.getField("raw").get(decodedList));
         }
+    }
+
+    @Test
+    void codecRootUpdateIsRejectedInsteadOfBeingSilent() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Mapper.java",
+                "package fixture; import java.util.UUID; "
+                + "import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "@CompiledMapper public interface Mapper { "
+                + "void update(UUID target, String raw); }"
+        ), CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("root ValueCodec update is not supported"),
+                result.diagnostics());
+    }
+
+    @Test
+    void rejectsIncompatibleCodecRawTypesAtCompilation() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/LongValue.java",
+                "package fixture; import org.sjf4j.annotation.node.*; "
+                + "@NodeValue public final class LongValue { "
+                + "private final Long raw; "
+                + "@RawToValue public LongValue(Long raw) { this.raw = raw; } "
+                + "@ValueToRaw public Long raw() { return raw; } }");
+        sources.put("fixture/Source.java",
+                "package fixture; import java.util.UUID; "
+                + "public class Source { public UUID id; }");
+        sources.put("fixture/Target.java",
+                "package fixture; public class Target { public LongValue id; }");
+        sources.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "@CompiledMapper public interface Mapper { "
+                + "Target map(Source source); }");
+
+        NavigatorTestCompiler.Result mismatch =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(mismatch.success, mismatch.diagnostics());
+        assertTrue(mismatch.diagnostics().contains("incompatible ValueCodec raw types"),
+                mismatch.diagnostics());
+        assertTrue(mismatch.diagnostics().contains("java.lang.String cannot be converted to java.lang.Long"),
+                mismatch.diagnostics());
+
+        sources.put("fixture/Source.java",
+                "package fixture; public class Source { public String id; }");
+        NavigatorTestCompiler.Result stringToLong =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(stringToLong.success, stringToLong.diagnostics());
+        assertTrue(stringToLong.diagnostics().contains("incompatible ValueCodec raw types"),
+                stringToLong.diagnostics());
+
+        sources.put("fixture/Target.java",
+                "package fixture; public class Target { public Integer id; }");
+        sources.put("fixture/Source.java",
+                "package fixture; import java.util.UUID; "
+                + "public class Source { public UUID id; }");
+        NavigatorTestCompiler.Result codecToInteger =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(codecToInteger.success, codecToInteger.diagnostics());
+        assertTrue(codecToInteger.diagnostics().contains("incompatible ValueCodec raw types"),
+                codecToInteger.diagnostics());
     }
 
     @Test
