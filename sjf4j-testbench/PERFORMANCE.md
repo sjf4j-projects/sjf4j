@@ -24,3 +24,29 @@ list every group's measured scores, PASS/FAIL/INCOMPLETE, and compiled's lead
 over its fastest competitor: `(fastest competitor / compiled - 1) × 100%`.
 Include the commit, JDK, and failed groups. If JMH cannot run, report the
 error instead of inventing results.
+
+## CreatorReadBenchmark
+
+The target is `CreatorUserRecord` (23 fields, including nested records).
+It reuses exactly `CompiledReadBenchmark.JSON_DATA` and its UTF-8 form.
+The reversed variants change field order only, not values.
+
+```bash
+./gradlew :sjf4j-testbench:jmhJar
+java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+  '.*CreatorReadBenchmark[.].*record_.*' \
+  -f 2 -prof gc -rf json -rff sjf4j-testbench/build/creator-read.json
+```
+
+For a targeted Fastjson2 run, replace the filter with
+`'.*CreatorReadBenchmark[.]fastjson2_record_(string|utf8)_(compiled|runtime|native)$'`.
+Compare only identical record shape, backend, and input (String or UTF-8).
+Gson's UTF-8 native baseline uses an `InputStreamReader`; JSON-P and Simple
+do not have an equivalent native record binder. The reversed variants have
+compiled/runtime pairs; the native baselines apply only to ordered input.
+
+Trial setup verifies all 60 method results against Jackson2's native record
+read before measuring anything. The lightweight CI smoke verifies correctness
+only; it is **not** a performance measurement. Use the normal JMH warmup and
+forks for conclusions.
+
