@@ -85,7 +85,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 assertThrows(java.lang.reflect.InvocationTargetException.class,
                         () -> binderType.getMethod(streamMethod, valueType, java.io.OutputStream.class)
                                 .invoke(binder, value, bytes));
-        assertCauseContains(writerFailure, message);
+        assertCauseContains(streamFailure, message);
         assertEquals("prefix", bytes.toString(StandardCharsets.UTF_8), streamMethod);
     }
 
