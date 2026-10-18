@@ -32,6 +32,11 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), RuntimeContext.EMPTY);
     }
 
+    /** Creates a binder with default backend settings and a supplied runtime context. */
+    public Fastjson2Binder(RuntimeContext context) {
+        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
+    }
+
     /**
      * Creates a binder with caller-supplied reader and writer contexts.
      * @param readerContext the read context, configured in place
