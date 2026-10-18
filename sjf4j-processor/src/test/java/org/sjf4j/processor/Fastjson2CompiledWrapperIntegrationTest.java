@@ -18,6 +18,78 @@ import static org.junit.jupiter.api.Assertions.*;
 class Fastjson2CompiledWrapperIntegrationTest {
 
     @Test
+    void failingAccessorOrCodecDoesNotWritePartialJsonToExternalOutputs() throws Exception {
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
+                "fixture/FailingGetter.java",
+                "package fixture; public class FailingGetter { "
+                + "public int first = 42; "
+                + "public String getLast() { throw new IllegalStateException(\"getter failed\"); } }",
+                "fixture/BadValue.java",
+                "package fixture; public class BadValue { "
+                + "public final String text; "
+                + "public BadValue(String text) { this.text = text; } }",
+                "fixture/Codecs.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeValue; "
+                + "import org.sjf4j.value.ValueCodec; "
+                + "public class Codecs { "
+                + "@NodeValue public static final ValueCodec<BadValue,String> BAD = "
+                + "new ValueCodec.SimpleValueCodec<>(BadValue.class, String.class, "
+                + "value -> { throw new IllegalStateException(\"codec failed\"); }, "
+                + "BadValue::new); }",
+                "fixture/FailingCodec.java",
+                "package fixture; public class FailingCodec { "
+                + "public int first = 42; "
+                + "public BadValue bad = new BadValue(\"value\"); }",
+                "fixture/Binder.java",
+                "package fixture; import java.io.*; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
+                + "@WriteTo void getterToWriter(FailingGetter value, Writer output) throws IOException; "
+                + "@WriteTo void getterToStream(FailingGetter value, OutputStream output) throws IOException; "
+                + "@WriteTo void codecToWriter(FailingCodec value, Writer output) throws IOException; "
+                + "@WriteTo void codecToStream(FailingCodec value, OutputStream output) throws IOException; }"
+        ), CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            org.sjf4j.value.ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
+            Class<?> binderType = loader.loadClass("fixture.Binder");
+            Object binder = CompiledInstances.global(binderType);
+            Class<?> getterType = loader.loadClass("fixture.FailingGetter");
+            Class<?> codecType = loader.loadClass("fixture.FailingCodec");
+
+            assertFailedWriteKeepsOutput(binderType, binder,
+                    "getterToWriter", "getterToStream",
+                    getterType, getterType.getConstructor().newInstance(), "getter failed");
+            assertFailedWriteKeepsOutput(binderType, binder,
+                    "codecToWriter", "codecToStream",
+                    codecType, codecType.getConstructor().newInstance(), "codec failed");
+        }
+    }
+
+    private static void assertFailedWriteKeepsOutput(
+            Class<?> binderType, Object binder, String writerMethod, String streamMethod,
+            Class<?> valueType, Object value, String message) throws Exception {
+        StringWriter chars = new StringWriter();
+        chars.write("prefix");
+        java.lang.reflect.InvocationTargetException writerFailure =
+                assertThrows(java.lang.reflect.InvocationTargetException.class,
+                        () -> binderType.getMethod(writerMethod, valueType, java.io.Writer.class)
+                                .invoke(binder, value, chars));
+        assertTrue(String.valueOf(writerFailure.getCause()).contains(message), writerFailure.toString());
+        assertEquals("prefix", chars.toString(), writerMethod);
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        bytes.write("prefix".getBytes(StandardCharsets.UTF_8));
+        java.lang.reflect.InvocationTargetException streamFailure =
+                assertThrows(java.lang.reflect.InvocationTargetException.class,
+                        () -> binderType.getMethod(streamMethod, valueType, java.io.OutputStream.class)
+                                .invoke(binder, value, bytes));
+        assertTrue(String.valueOf(streamFailure.getCause()).contains(message), streamFailure.toString());
+        assertEquals("prefix", bytes.toString(StandardCharsets.UTF_8), streamMethod);
+    }
+
+    @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
     void nativePojoAndNestedCodecsShareTheSameWriter() throws Exception {
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
