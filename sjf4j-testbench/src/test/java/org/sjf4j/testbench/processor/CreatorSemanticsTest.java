@@ -68,7 +68,7 @@ public class CreatorSemanticsTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("backends")
     void readsImmutableGraphAndPreservesNulls(String name, CreatorBinder compiled,
-                                               org.sjf4j.binding.Binder runtime) throws Exception {
+                                               org.sjf4j.binding.Binder<?, ?> runtime) throws Exception {
         CreatorUserRecord expected = fixture();
         String json = JACKSON.writeValueAsString(expected);
         byte[] utf8 = json.getBytes(StandardCharsets.UTF_8);
@@ -92,7 +92,7 @@ public class CreatorSemanticsTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("backends")
     void creatorArgumentsAndMutableFieldsHaveSeparatePresenceSemantics(
-            String name, CreatorBinder compiled, org.sjf4j.binding.Binder runtime) throws Exception {
+            String name, CreatorBinder compiled, org.sjf4j.binding.Binder<?, ?> runtime) throws Exception {
         String before = "{\"age\":25,\"legacy_name\":\"Ada\"}";
         String after = "{\"legacy_name\":\"Ada\",\"age\":25}";
         for (String input : List.of(before, after)) {
@@ -162,10 +162,10 @@ public class CreatorSemanticsTest {
     }
 
     public interface CreatorBinder {
-        CreatorUserRecord readRecord(String json) throws IOException;
-        CreatorUserRecord readRecord(byte[] json) throws IOException;
-        String writeRecord(CreatorUserRecord value) throws IOException;
-        CreatorBean readBean(String json) throws IOException;
+        @ReadFrom CreatorUserRecord readRecord(String json) throws IOException;
+        @ReadFrom CreatorUserRecord readRecord(byte[] json) throws IOException;
+        @WriteTo String writeRecord(CreatorUserRecord value) throws IOException;
+        @ReadFrom CreatorBean readBean(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
