@@ -97,7 +97,8 @@ public final class StandardCreatorResolver {
 
     /**
      * Binding-specific creator selection. Explicit @NodeCreator wins over the
-     * no-args path; otherwise the established standard rules apply. Mapper's
+     * no-args path; unannotated argument constructors remain unsupported to
+     * preserve the prior binder contract. Mapper's
      * @MappingCreator selection and precedence are deliberately unchanged.
      */
     public CreatorPlan resolveBinding(TypeMirror targetType, Element origin,
@@ -121,7 +122,13 @@ public final class StandardCreatorResolver {
             selected = candidate;
         }
         if (selected == null) {
-            return resolve(target, target, origin, "@NodeCreator", error);
+            CreatorPlan standard = resolve(target, target, origin, "@NodeCreator", error);
+            if (standard == null) return null;
+            if (standard.kind() != CreatorPlan.Kind.NO_ARGS) {
+                error.accept("read binding requires a public no-args constructor or explicit @NodeCreator: " + target);
+                return null;
+            }
+            return standard;
         }
 
         if (!selected.getModifiers().contains(Modifier.PUBLIC)) {
