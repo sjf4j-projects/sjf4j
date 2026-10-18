@@ -62,7 +62,7 @@ class CompiledBinderNodeCreatorTest {
                 Class<?> person = loader.loadClass("fixture.Person");
                 String input = "{\"note\":\"before\",\"age\":25,"
                         + "\"address\":{\"town\":\"Paris\"},\"old_name\":\"Ada\"}";
-                        .invoke(binder, "{\"value\":\"ok\"}");
+                Object value = iface.getMethod("person", String.class).invoke(binder, input);
                 assertEquals("Ada", person.getMethod("getName").invoke(value), backend);
                 Object address = person.getMethod("getAddress").invoke(value);
                 assertEquals("Paris", address.getClass().getMethod("getCity").invoke(address), backend);
@@ -130,13 +130,13 @@ class CompiledBinderNodeCreatorTest {
                 Class<?> iface = loader.loadClass("fixture.Binder");
                 Object binder = CompiledInstances.global(iface);
                 Object bean = iface.getMethod("bean", String.class)
-                        .invoke(binder, "{\\"value\\":\\"ok\\"}");
+                        .invoke(binder, "{\"value\":\"ok\"}");
                 assertEquals("ok", bean.getClass().getMethod("getValue").invoke(bean), backend);
                 Object normalized = iface.getMethod("normalized", String.class)
                         .invoke(binder, "{\"name\":\" alice \"}");
                 assertEquals("ALICE", normalized.getClass().getMethod("name").invoke(normalized), backend);
                 Object alternate = iface.getMethod("alternate", String.class)
-                        .invoke(binder, "{\\"name\\":\\"Bob\\"}");
+                        .invoke(binder, "{\"name\":\"Bob\"}");
                 assertEquals(42, alternate.getClass().getMethod("count").invoke(alternate), backend);
             }
         }
