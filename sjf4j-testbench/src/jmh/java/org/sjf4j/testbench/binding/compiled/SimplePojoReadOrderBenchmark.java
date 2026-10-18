@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 public class SimplePojoReadOrderBenchmark {
 
     private static final String DECLARATION_ORDER = """
-            {"id":839201,"createdAt":1700000000123,"updatedAt":1701234567890,
+             {"id":839201,"createdAt":1700000000123,"updatedAt":"2024-01-02T03:04:05",
             "reputation":9876543210,"loginCount":421,"age":34,
             "active":true,"verified":true,"admin":false,"suspended":false,
             "score":98.75,"latitude":37.7749,"longitude":-122.4194,
@@ -57,7 +57,7 @@ public class SimplePojoReadOrderBenchmark {
             "longitude":-122.4194,"latitude":37.7749,"score":98.75,
             "suspended":false,"admin":false,"verified":true,"active":true,
             "age":34,"loginCount":421,"reputation":9876543210,
-            "updatedAt":1701234567890,"createdAt":1700000000123,"id":839201}
+             "updatedAt":"2024-01-02T03:04:05","createdAt":1700000000123,"id":839201}
             """;
 
     private static final String SHUFFLED_ORDER = """
@@ -69,13 +69,13 @@ public class SimplePojoReadOrderBenchmark {
             "email":null,"reputation":9876543210,"suspended":false,
             "createdAt":1700000000123,"department":"Platform Engineering",
             "latitude":37.7749,"loginCount":421,"passwordHash":"$2a$12$abcdef",
-            "verified":true,"updatedAt":1701234567890,"tags":["tag-0-value",null],
+             "verified":true,"updatedAt":"2024-01-02T03:04:05","tags":["tag-0-value",null],
             "age":34,"website":"https://example.test/a?b=1","admin":false,
             "longitude":-122.4194,"displayName":"Alice Builder","bio":"Builds fast JSON"}
             """;
 
     private static final String UNKNOWN_FIELD = """
-            {"id":839201,"createdAt":1700000000123,"updatedAt":1701234567890,
+             {"id":839201,"createdAt":1700000000123,"updatedAt":"2024-01-02T03:04:05",
             "reputation":9876543210,"loginCount":421,"age":34,
             "active":true,"verified":true,"admin":false,"suspended":false,
             "score":98.75,"latitude":37.7749,"longitude":-122.4194,

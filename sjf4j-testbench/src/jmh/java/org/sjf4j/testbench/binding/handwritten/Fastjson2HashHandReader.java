@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.util.Fnv;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +54,7 @@ public final class Fastjson2HashHandReader {
     private static void readUserField(JSONReader reader, User user, long hash) {
         if (hash == ID) user.setId(reader.readInt64Value());
         else if (hash == CREATED_AT) user.setCreatedAt(reader.readInt64Value());
-        else if (hash == UPDATED_AT) user.setUpdatedAt(reader.readInt64Value());
+        else if (hash == UPDATED_AT) user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(reader.readString()));
         else if (hash == REPUTATION) user.setReputation(reader.readInt64Value());
         else if (hash == LOGIN_COUNT) user.setLoginCount(reader.readInt32Value());
         else if (hash == AGE) user.setAge(reader.readInt32Value());
@@ -69,7 +70,7 @@ public final class Fastjson2HashHandReader {
         else if (hash == DISPLAY_NAME) user.setDisplayName(reader.readString());
         else if (hash == PASSWORD_HASH) user.setPasswordHash(reader.readString());
         else if (hash == BIO) user.setBio(reader.readString());
-        else if (hash == WEBSITE) user.setWebsite(reader.readString());
+        else if (hash == WEBSITE) user.setWebsite(ValueCodec.URI_CODEC.rawToValue(reader.readString()));
         else if (hash == DEPARTMENT) user.setDepartment(reader.readString());
         else if (hash == ADDRESS) user.setAddress(readAddress(reader));
         else if (hash == TAGS) user.setTags(readStrings(reader));

@@ -5,6 +5,7 @@ import com.google.gson.stream.JsonToken;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,7 +27,7 @@ public final class GsonHandPojoReader {
             String name = reader.nextName();
             if ("id".equals(name)) user.setId(reader.nextLong());
             else if ("createdAt".equals(name)) user.setCreatedAt(reader.nextLong());
-            else if ("updatedAt".equals(name)) user.setUpdatedAt(reader.nextLong());
+            else if ("updatedAt".equals(name)) user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(readString(reader)));
             else if ("reputation".equals(name)) user.setReputation(reader.nextLong());
             else if ("loginCount".equals(name)) user.setLoginCount(reader.nextInt());
             else if ("age".equals(name)) user.setAge(reader.nextInt());
@@ -42,7 +43,7 @@ public final class GsonHandPojoReader {
             else if ("displayName".equals(name)) user.setDisplayName(readString(reader));
             else if ("passwordHash".equals(name)) user.setPasswordHash(readString(reader));
             else if ("bio".equals(name)) user.setBio(readString(reader));
-            else if ("website".equals(name)) user.setWebsite(readString(reader));
+            else if ("website".equals(name)) user.setWebsite(ValueCodec.URI_CODEC.rawToValue(readString(reader)));
             else if ("department".equals(name)) user.setDepartment(readString(reader));
             else if ("address".equals(name)) user.setAddress(readAddress(reader));
             else if ("tags".equals(name)) user.setTags(readStrings(reader));

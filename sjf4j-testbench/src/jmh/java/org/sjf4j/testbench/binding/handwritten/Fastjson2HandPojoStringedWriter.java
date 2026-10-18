@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.util.List;
 
@@ -29,12 +30,12 @@ public final class Fastjson2HandPojoStringedWriter {
         string(writer, "displayName", value.getDisplayName());
         string(writer, "passwordHash", value.getPasswordHash());
         string(writer, "bio", value.getBio());
-        string(writer, "website", value.getWebsite());
+        string(writer, "website", ValueCodec.URI_CODEC.valueToRaw(value.getWebsite()));
         string(writer, "department", value.getDepartment());
         name(writer, "createdAt");
         writer.writeInt64(value.getCreatedAt());
         name(writer, "updatedAt");
-        writer.writeInt64(value.getUpdatedAt());
+        writer.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(value.getUpdatedAt()));
         name(writer, "loginCount");
         writer.writeInt32(value.getLoginCount());
         name(writer, "reputation");

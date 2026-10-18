@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ public final class Jackson2HandPojoReader {
                     user.setCreatedAt(parser.getLongValue());
                     break;
                 case "updatedAt":
-                    user.setUpdatedAt(parser.getLongValue());
+                    user.setUpdatedAt(ValueCodec.LOCAL_DATE_TIME.rawToValue(string(parser, token)));
                     break;
                 case "reputation":
                     user.setReputation(parser.getLongValue());
@@ -89,7 +90,7 @@ public final class Jackson2HandPojoReader {
                     user.setBio(string(parser, token));
                     break;
                 case "website":
-                    user.setWebsite(string(parser, token));
+                    user.setWebsite(ValueCodec.URI_CODEC.rawToValue(string(parser, token)));
                     break;
                 case "department":
                     user.setDepartment(string(parser, token));

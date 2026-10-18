@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -137,13 +138,13 @@ public final class Fastjson2HandPojoRawWriter {
         w.writeName3Raw(BIO);
         value(w, v.getBio());
         w.writeName7Raw(WEBSITE);
-        value(w, v.getWebsite());
+        value(w, ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
         w.writeNameRaw(DEPARTMENT8);
         value(w, v.getDepartment());
         w.writeNameRaw(CREATED_AT8);
         w.writeInt64(v.getCreatedAt());
         w.writeNameRaw(UPDATED_AT8);
-        w.writeInt64(v.getUpdatedAt());
+        w.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
         w.writeNameRaw(LOGIN_COUNT8);
         w.writeInt32(v.getLoginCount());
         w.writeNameRaw(REPUTATION8);
@@ -186,12 +187,12 @@ public final class Fastjson2HandPojoRawWriter {
         string16(w, DISPLAY_NAME16, v.getDisplayName());
         string16(w, PASSWORD_HASH16, v.getPasswordHash());
         string16(w, BIO16, v.getBio());
-        string16(w, WEBSITE16, v.getWebsite());
+        string16(w, WEBSITE16, ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
         string16(w, DEPARTMENT16, v.getDepartment());
         w.writeNameRaw(CREATED_AT16);
         w.writeInt64(v.getCreatedAt());
         w.writeNameRaw(UPDATED_AT16);
-        w.writeInt64(v.getUpdatedAt());
+        w.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
         w.writeNameRaw(LOGIN_COUNT16);
         w.writeInt32(v.getLoginCount());
         w.writeNameRaw(REPUTATION16);

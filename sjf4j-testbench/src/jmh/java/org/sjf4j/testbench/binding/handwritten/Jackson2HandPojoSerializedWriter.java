@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.io.SerializedString;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.testbench.model.Users;
 
 import java.io.IOException;
@@ -93,12 +94,12 @@ public final class Jackson2HandPojoSerializedWriter {
         str(g, DISPLAY_NAME, v.getDisplayName());
         str(g, PASSWORD_HASH, v.getPasswordHash());
         str(g, BIO, v.getBio());
-        str(g, WEBSITE, v.getWebsite());
+        str(g, WEBSITE, ValueCodec.URI_CODEC.valueToRaw(v.getWebsite()));
         str(g, DEPARTMENT, v.getDepartment());
         g.writeFieldName(CREATED_AT);
         g.writeNumber(v.getCreatedAt());
         g.writeFieldName(UPDATED_AT);
-        g.writeNumber(v.getUpdatedAt());
+        g.writeString(ValueCodec.LOCAL_DATE_TIME.valueToRaw(v.getUpdatedAt()));
         g.writeFieldName(LOGIN_COUNT);
         g.writeNumber(v.getLoginCount());
         g.writeFieldName(REPUTATION);
