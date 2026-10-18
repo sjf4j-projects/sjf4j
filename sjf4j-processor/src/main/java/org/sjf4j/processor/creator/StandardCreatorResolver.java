@@ -124,7 +124,8 @@ public final class StandardCreatorResolver {
         if (selected == null) {
             CreatorPlan standard = resolve(target, target, origin, "@NodeCreator", error);
             if (standard == null) return null;
-            if (standard.kind() != CreatorPlan.Kind.NO_ARGS) {
+            if (standard.kind() != CreatorPlan.Kind.NO_ARGS
+                    && !"RECORD".equals(type.getKind().name())) {
                 error.accept("read binding requires a public no-args constructor or explicit @NodeCreator: " + target);
                 return null;
             }
