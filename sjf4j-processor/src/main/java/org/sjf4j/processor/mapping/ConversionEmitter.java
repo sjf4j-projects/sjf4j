@@ -316,13 +316,14 @@ public final class ConversionEmitter
 
             generated.addField(out ->
                     out.line(
-                            "private static final " +
+                            "private final " +
                                     type +
                                     " " +
                                     field +
-                                    " = org.sjf4j.CompiledInstances.of(" +
-                                    type +
-                                    ".class);"));
+                                    ";"));
+            generated.addContextInitializer(out ->
+                    out.line("this." + field + " = org.sjf4j.CompiledInstances.create(" +
+                            type + ".class, context);"));
         }
 
     }
@@ -696,7 +697,7 @@ public final class ConversionEmitter
                             source +
                             ", " +
                             classLiteral(targetType) +
-                            ", org.sjf4j.RuntimeContext.EMPTY);");
+                            ", this.context);");
 
             return value;
         }
@@ -1828,7 +1829,7 @@ public final class ConversionEmitter
         String result = names.newName("raw");
         out.line(localType(targetType) + " " + result + " = ("
                 + localType(targetType) + ") org.sjf4j.node.NodeMapper.convertToRaw("
-                + source + ", org.sjf4j.RuntimeContext.EMPTY);");
+                + source + ", this.context);");
         return result;
     }
 
@@ -1856,7 +1857,7 @@ public final class ConversionEmitter
                         ", " +
                         classLiteral(
                                 targetType) +
-                        ", org.sjf4j.RuntimeContext.EMPTY);");
+                        ", this.context);");
 
         return result;
     }
