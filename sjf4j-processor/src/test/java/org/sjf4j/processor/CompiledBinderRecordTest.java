@@ -92,6 +92,37 @@ class CompiledBinderRecordTest {
     }
 
     @Test
+    void wideRecordUsesConsistentDuplicateTracking() throws Exception {
+        StringBuilder record = new StringBuilder("package fixture; public record Wide(");
+        for (int i = 0; i < 65; i++) {
+            if (i != 0) record.append(", ");
+            record.append("int p").append(i);
+        }
+        record.append(") {}");
+
+        for (String backend : new String[]{"SIMPLE", "FASTJSON2"}) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Wide.java", record.toString());
+            sources.put("fixture/Binder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*; "
+                            + "@CompiledBinder(backend=Backend." + backend + ") "
+                            + "public interface Binder { "
+                            + "@ReadFrom Wide read(String source) throws java.io.IOException; }");
+            NavigatorTestCompiler.Result compiled =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class<?> iface = loader.loadClass("fixture.Binder");
+                Object binder = CompiledInstances.global(iface);
+                Object result = iface.getMethod("read", String.class)
+                        .invoke(binder, "{\\"p0\\":1,\\"p64\\":65}");
+                assertEquals(1, result.getClass().getMethod("p0").invoke(result), backend);
+                assertEquals(65, result.getClass().getMethod("p64").invoke(result), backend);
+            }
+        }
+    }
+
+    @Test
     void appliesParameterLevelValueCodecOnRecordRead() throws Exception {
         for (String backend : BACKENDS) {
             Map<String, String> sources = new LinkedHashMap<>();
