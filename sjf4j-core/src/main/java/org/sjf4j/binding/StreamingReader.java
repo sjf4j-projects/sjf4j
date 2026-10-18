@@ -507,6 +507,6 @@ public abstract class StreamingReader implements Closeable {
      * binding code should prefer the specialized typed methods whenever
      * possible.</p>
      */
-    public abstract Object readRawNode() throws IOException;
+    public abstract Object readRaw() throws IOException;
 
 }
