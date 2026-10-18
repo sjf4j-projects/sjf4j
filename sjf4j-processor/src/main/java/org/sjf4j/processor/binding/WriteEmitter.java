@@ -413,8 +413,8 @@ final class WriteEmitter {
             return false;
         }
         if (backend.backend() == Backend.FASTJSON2
-                && value.kind() == BindingValue.Kind.STRING) {
-            return true;
+                && fastjson2.nativeEligible(value, new HashSet<BindingValue>())) {
+            return containsString(value, new HashSet<BindingValue>());
         }
         return containsNativeString(value, new HashSet<BindingValue>());
     }
