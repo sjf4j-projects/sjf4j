@@ -10,6 +10,7 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.testbench.binding.handwritten.Fastjson2RawHandReader;
+import org.sjf4j.testbench.binding.handwritten.Fastjson2RawNativeDateReader;
 import org.sjf4j.testbench.model.Address;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
@@ -85,6 +86,8 @@ public class Fastjson2CodecReadProbeBenchmark {
         User nativeCodec = (User) native_codec_string();
         if (!nativeCodec.equals(compiled_codec_string())
                 || !nativeCodec.equals(handwritten_codec_string())
+                || !nativeCodec.equals(handwritten_native_date_string())
+                || !nativeCodec.equals(handwritten_native_date_utf8())
                 || !nativeCodec.equals(native_codec_utf8())
                 || !nativeCodec.equals(compiled_codec_utf8())) {
             throw new AssertionError("Fastjson2 ValueCodec POJO result mismatch");
@@ -113,6 +116,20 @@ public class Fastjson2CodecReadProbeBenchmark {
     public Object handwritten_codec_string() {
         try (JSONReader reader = JSONReader.of(JSON, NATIVE_CONTEXT)) {
             return Fastjson2RawHandReader.readUser(reader);
+        }
+    }
+
+    @Benchmark
+    public Object handwritten_native_date_string() {
+        try (JSONReader reader = JSONReader.of(JSON, NATIVE_CONTEXT)) {
+            return Fastjson2RawNativeDateReader.readUser(reader);
+        }
+    }
+
+    @Benchmark
+    public Object handwritten_native_date_utf8() {
+        try (JSONReader reader = JSONReader.of(UTF8, NATIVE_CONTEXT)) {
+            return Fastjson2RawNativeDateReader.readUser(reader);
         }
     }
 
