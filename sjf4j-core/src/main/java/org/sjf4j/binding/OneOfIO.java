@@ -23,8 +23,16 @@ public final class OneOfIO {
 
     private static final int INITIAL_PENDING_CAPACITY = 4;
 
-    static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
-                            RuntimeContext context) throws IOException {
+    /**
+     * Reads one polymorphic node from the current stream position.
+     * The caller owns document boundaries and reader lifecycle.
+     */
+    public static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
+                                   RuntimeContext context) throws IOException {
+        if (reader.peekToken() == StreamingReader.Token.NULL) {
+            reader.nextIfNull();
+            return null;
+        }
         return oneOfInfo.hasDiscriminator
                 ? readOneOfByDtor(reader, oneOfInfo, context)
                 : readOneOfByJsonType(reader, oneOfInfo, context);
