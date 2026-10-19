@@ -32,6 +32,8 @@ import java.util.concurrent.TimeUnit;
  * The root workload isolates the OneOf subtree. The envelope workload measures
  * the benefit of keeping surrounding fields on the CompiledBinder read path.
  * "last" moves the discriminator behind the subtype's other properties.
+ * The raw_baseline methods recreate the pre-refactor readRaw + NodeMapper path
+ * for same-JVM comparisons with the streaming OneOf dispatcher.
  * Input bytes are prepared outside the measurement; every read parses anew.
  */
 @BenchmarkMode(Mode.AverageTime)
