@@ -662,6 +662,10 @@ final class ReadEmitter {
                         value.type() + ".class, " +
                         "this.context)";
 
+            case ONE_OF:
+                return "(" + value.type() + ") " + STREAMING_IO
+                        + ".readOneOf(" + reader + ", " + value.helperName() + ", this.context)";
+
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
                     return "(" + value.type() + ") " +

@@ -25,6 +25,8 @@ final class BindingValue {
         BIG_DECIMAL,
         ENUM,
         VALUE_CODEC,
+        /** Entire OneOf subtree is read through StreamingIO. */
+        ONE_OF,
         POJO,
         JOJO,
         JSON_OBJECT,
@@ -33,7 +35,7 @@ final class BindingValue {
         SET,
         MAP,
 
-        /** Runtime dispatch is reserved for NodeKind.COMPILE_TIME_UNKNOWN. */
+        /** Runtime dispatch for unknown nodes and whole-POJO OneOf fallbacks. */
         RUNTIME
     }
 
@@ -43,6 +45,8 @@ final class BindingValue {
     private final boolean primitive;
 
     private String helperName;
+    private String oneOfOwner;
+    private String oneOfProperty;
     private CreatorPlan creator;
     private List<BindingProperty> properties = Collections.emptyList();
     private BindingValue elementValue;
@@ -105,6 +109,19 @@ final class BindingValue {
 
     void helperName(String helperName) {
         this.helperName = helperName;
+    }
+
+    void oneOfMember(String owner, String property) {
+        this.oneOfOwner = owner;
+        this.oneOfProperty = property;
+    }
+
+    String oneOfOwner() {
+        return oneOfOwner;
+    }
+
+    String oneOfProperty() {
+        return oneOfProperty;
     }
 
     List<BindingProperty> properties() {
