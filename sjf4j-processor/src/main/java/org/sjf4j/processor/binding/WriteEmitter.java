@@ -613,6 +613,13 @@ final class WriteEmitter {
             String expression) {
 
         if (value.helperRequired()) {
+            // Dynamic containers without adapted descendants have no generated
+            // helper. A mixed compiled parent can still reach them.
+            if (!requiresWriteHelper(value)) {
+                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
+                        + expression + ", this.context);");
+                return;
+            }
             // A mixed POJO graph uses StreamingWriter for its parent, but a
             // fully concrete child may have a native-only helper signature.
             if (hasNativeJsonWriter()
