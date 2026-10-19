@@ -607,7 +607,7 @@ final class BindingCompiler {
             VariableElement arg = args.get(i);
             NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
             String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
-            String[] aliases = annotation == null ? new String[0] : annotation.aliases();
+            String[] aliases = context.annotations.propertyAliases(arg);
             if (name.isEmpty()) {
                 error(method, generated, "Empty record creator property name in " + value.type());
                 return false;
@@ -688,10 +688,11 @@ final class BindingCompiler {
             VariableElement arg = args.get(i);
             NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
             String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
-            String[] aliases = annotation == null ? new String[0] : annotation.aliases();
-            if (name.isEmpty() || name.matches("arg[0-9]+") && annotation == null) {
+            String[] aliases = context.annotations.propertyAliases(arg);
+            if (name.isEmpty() || name.matches("arg[0-9]+")
+                    && context.annotations.explicitPropertyName(arg) == null) {
                 error(method, generated, "Missing creator parameter name for " + value.type()
-                        + " argument " + i + "; use @NodeProperty");
+                        + " argument " + i + "; use @NodeProperty or @JsonProperty");
                 return false;
             }
             if (!claimCreatorNames(value, method, generated, claimed, name, aliases)) return false;
