@@ -25,7 +25,7 @@ import java.util.function.Consumer;
  *
  * <p>Selection preserves the existing mapper contract: record canonical
  * constructor, public no-args constructor, or exactly one public constructor.
- * Annotation-specific overrides belong to the calling compiler.</p>
+ * Binding-specific creator annotation selection is handled by resolveBinding.</p>
  */
 public final class StandardCreatorResolver {
 
@@ -96,10 +96,9 @@ public final class StandardCreatorResolver {
     }
 
     /**
-     * Binding-specific creator selection. Explicit @NodeCreator wins over the
-     * no-args path; unannotated argument constructors remain unsupported to
-     * preserve the prior binder contract. Mapper's
-     * @MappingCreator selection and precedence are deliberately unchanged.
+     * Binding-specific creator selection. Explicit @NodeCreator or Jackson 2/3
+     * @JsonCreator wins over the no-args path. Unannotated argument constructors
+     * remain unsupported; mapper creator selection is unchanged.
      */
     public CreatorPlan resolveBinding(TypeMirror targetType, Element origin,
                                       Consumer<String> error) {
@@ -114,19 +113,20 @@ public final class StandardCreatorResolver {
             if (enclosed.getKind() != ElementKind.CONSTRUCTOR
                     && enclosed.getKind() != ElementKind.METHOD) continue;
             ExecutableElement candidate = (ExecutableElement) enclosed;
-            if (candidate.getAnnotation(NodeCreator.class) == null) continue;
+            if (candidate.getAnnotation(NodeCreator.class) == null
+                    && !context.annotations.hasJacksonCreator(candidate)) continue;
             if (selected != null) {
-                error.accept("multiple @NodeCreator definitions for " + target);
+                error.accept("multiple creator definitions for " + target);
                 return null;
             }
             selected = candidate;
         }
         if (selected == null) {
-            CreatorPlan standard = resolve(target, target, origin, "@NodeCreator", error);
+            CreatorPlan standard = resolve(target, target, origin, "@NodeCreator or @JsonCreator", error);
             if (standard == null) return null;
             if (standard.kind() != CreatorPlan.Kind.NO_ARGS
                     && !"RECORD".equals(type.getKind().name())) {
-                error.accept("read binding requires a public no-args constructor or explicit @NodeCreator: " + target);
+                error.accept("read binding requires a public no-args constructor or explicit @NodeCreator or @JsonCreator: " + target);
                 return null;
             }
             return standard;
@@ -136,7 +136,7 @@ public final class StandardCreatorResolver {
         if (modifiers.contains(Modifier.PRIVATE)
                 || !modifiers.contains(Modifier.PUBLIC)
                 && !context.elements.getPackageOf(type).equals(context.elements.getPackageOf(origin))) {
-            error.accept("@NodeCreator is not accessible from generated code: " + selected);
+            error.accept("Creator is not accessible from generated code: " + selected);
             return null;
         }
         if (selected.getKind() == ElementKind.CONSTRUCTOR) {
@@ -145,7 +145,7 @@ public final class StandardCreatorResolver {
         if (!selected.getModifiers().contains(Modifier.STATIC)
                 || selected.getReturnType().getKind() == TypeKind.VOID
                 || !context.typeUtils.isAssignable(selected.getReturnType(), target)) {
-            error.accept("@NodeCreator factory must be static and return " + target + ": " + selected);
+            error.accept("Creator factory must be static and return " + target + ": " + selected);
             return null;
         }
         return CreatorPlan.staticFactory(target, target, selected,
