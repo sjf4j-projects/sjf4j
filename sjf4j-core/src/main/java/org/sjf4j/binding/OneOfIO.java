@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
@@ -23,8 +24,16 @@ public final class OneOfIO {
 
     private static final int INITIAL_PENDING_CAPACITY = 4;
 
-    static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
-                            RuntimeContext context) throws IOException {
+    /**
+     * Reads one polymorphic node from the current stream position.
+     * The caller owns document boundaries and reader lifecycle.
+     */
+    public static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
+                                   RuntimeContext context) throws IOException {
+        if (reader.peekToken() == StreamingReader.Token.NULL) {
+            reader.nextIfNull();
+            return null;
+        }
         return oneOfInfo.hasDiscriminator
                 ? readOneOfByDtor(reader, oneOfInfo, context)
                 : readOneOfByJsonType(reader, oneOfInfo, context);
@@ -72,19 +81,7 @@ public final class OneOfIO {
 
     private static Object _readByDtorPath(StreamingReader reader, OneOfInfo oneOfInfo,
                                           RuntimeContext context) throws IOException {
-        Map<String, Object> rawMap = StreamingIO.castMap(reader.readRaw());
-        Object discriminatorValue = oneOfInfo.compiledPath.getNode(rawMap);
-        if (discriminatorValue == null) {
-            if (oneOfInfo.fallbackNull) return null;
-            throw new BindingException("not found value for discriminator path '" + oneOfInfo.path + "'");
-        }
-
-        Class<?> targetClazz = oneOfInfo.matchByWhen(discriminatorValue);
-        if (targetClazz == null) {
-            if (oneOfInfo.fallbackNull) return null;
-            throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
-        }
-        return NodeMapper.convert(rawMap, targetClazz, false, context);
+        return _convertRawOneOf(reader.readRaw(), oneOfInfo, context);
     }
 
 
@@ -152,7 +149,17 @@ public final class OneOfIO {
         TypeInfo ti = TypeRegistry.registerTypeInfo(targetClazz);
         PojoInfo pi = ti.pojoInfo;
         if (pi == null) {
-            throw new BindingException("oneOf target type '" + targetClazz + "' is not a POJO");
+            // Containers and other object-shaped targets cannot be incrementally
+            // populated as a POJO. Materialize only this uncommon subtype.
+            Map<String, Object> raw = new java.util.LinkedHashMap<>();
+            for (int i = 0; i < pendingSize; i++) {
+                raw.put(pendingNames[i], pendingValues[i]);
+            }
+            raw.put(discriminatorKey, discriminatorValue);
+            while (!reader.nextIfObjectEnd()) {
+                raw.put(reader.nextName(), reader.readRaw());
+            }
+            return NodeMapper.convert(raw, targetClazz, false, context);
         }
 
         CreatorInfo ci = pi.creatorInfo;
@@ -247,9 +254,11 @@ public final class OneOfIO {
         PropertyInfo fi = pi.propertyLookup.get(key);
         if (fi != null && fi.writable) {
             Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
-            Object value = fi.valueInfo != null
-                    ? fi.valueInfo.rawToValue(rawValue)
-                    : NodeMapper.convert(rawValue, argType, false, context);
+            Object value = fi.oneOfInfo != null
+                    ? _convertRawOneOf(rawValue, fi.oneOfInfo, context)
+                    : fi.valueInfo != null
+                            ? fi.valueInfo.rawToValue(rawValue)
+                            : NodeMapper.convert(rawValue, argType, false, context);
             if (state.isCreated()) {
                 fi.invokeSetter(state.pojo(), value);
             } else {
@@ -263,5 +272,37 @@ public final class OneOfIO {
         }
     }
 
+
+    /** Converts an already-buffered OneOf node using its explicit member metadata. */
+    private static Object _convertRawOneOf(Object raw, OneOfInfo info, RuntimeContext context) {
+        if (raw == null) return null;
+
+        Class<?> target;
+        JsonType shape = JsonType.of(raw);
+        if (!info.hasDiscriminator) {
+            target = info.matchByJsonType(shape);
+        } else {
+            if (info.scope != OneOf.Scope.CURRENT) {
+                throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + info.scope);
+            }
+            if (shape != JsonType.OBJECT) {
+                if (info.fallbackNull) return null;
+                throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
+            }
+            Object discriminator = info.keyDiscriminator
+                    ? Nodes.getInObject(raw, info.key)
+                    : info.compiledPath.getNode(raw);
+            if (discriminator == null) {
+                if (info.fallbackNull) return null;
+                throw new BindingException("not found value for discriminator "
+                        + (info.keyDiscriminator ? "key '" + info.key + "'" : "path '" + info.path + "'"));
+            }
+            target = info.matchByWhen(discriminator);
+        }
+
+        if (target != null) return NodeMapper.convert(raw, target, false, context);
+        if (info.fallbackNull) return null;
+        throw new BindingException("oneOf mapping has no matching target for type '" + info.clazz.getName() + "'");
+    }
 
 }

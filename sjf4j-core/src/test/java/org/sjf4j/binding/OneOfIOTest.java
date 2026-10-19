@@ -164,6 +164,61 @@ class OneOfIOTest {
         assertInstanceOf(Cat.class, list.pets.get(0));
     }
 
+    @Test
+    void treatsNullAsNullRegardlessOfNoMatchPolicy() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        assertNull(binder.readNode("null", Animal.class));
+        Container container = (Container) binder.readNode("{\"pet\":null}", Container.class);
+        assertNull(container.pet);
+        JsonTypeContainer shape = (JsonTypeContainer) binder.readNode("{\"value\":null}", JsonTypeContainer.class);
+        assertNull(shape.value);
+        PathContainer path = (PathContainer) binder.readNode("{\"pet\":null,\"after\":4}", PathContainer.class);
+        assertNull(path.pet);
+        assertEquals(4, path.after);
+    }
+
+    @Test
+    void bufferedFieldUsesMemberLevelOneOfInsteadOfDeclaredTypeAnnotation() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        for (String input : new String[]{
+                "{\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9},\"kind\":\"nested\"}",
+                "{\"kind\":\"nested\",\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9}}"
+        }) {
+            NestedDog dog = assertInstanceOf(NestedDog.class, binder.readNode(input, NestedBase.class));
+            assertEquals(9, assertInstanceOf(Cat.class, dog.pet).lives);
+        }
+    }
+
+    @Test
+    void currentKeySupportsObjectContainerSubtype() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        for (String input : new String[]{
+                "{\"payload\":{\"kind\":\"map\",\"value\":7},\"after\":5}",
+                "{\"payload\":{\"value\":7,\"kind\":\"map\"},\"after\":5}"
+        }) {
+            MapHolder holder = (MapHolder) binder.readNode(input, MapHolder.class);
+            assertInstanceOf(java.util.LinkedHashMap.class, holder.payload);
+            assertEquals(7, ((Number) holder.payload.get("value")).intValue());
+            assertEquals(5, holder.after);
+        }
+    }
+
+    @OneOf(key = "kind", value = {@OneOf.Mapping(value = NestedDog.class, when = "nested")})
+    static class NestedBase {
+        @OneOf(key = "species", value = {
+                @OneOf.Mapping(value = Dog.class, when = "dog"),
+                @OneOf.Mapping(value = Cat.class, when = "cat")
+        })
+        public Animal pet;
+    }
+    static class NestedDog extends NestedBase { }
+
+    static class MapHolder {
+        @OneOf(key = "kind", value = {@OneOf.Mapping(value = java.util.LinkedHashMap.class, when = "map")})
+        public java.util.Map<String, Object> payload;
+        public int after;
+    }
+
     static class JsonTypeContainer {
         @OneOf({@OneOf.Mapping(String.class), @OneOf.Mapping(Integer.class)}) public Object value;
     }

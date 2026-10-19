@@ -663,7 +663,7 @@ final class ReadEmitter {
                         "this.context)";
 
             case ONE_OF:
-                return "(" + value.type() + ") " + STREAMING_IO
+                return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
                         + ".readOneOf(" + reader + ", " + value.helperName() + ", this.context)";
 
             case RUNTIME:
