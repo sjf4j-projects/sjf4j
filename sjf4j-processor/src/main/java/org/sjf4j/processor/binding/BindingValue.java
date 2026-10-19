@@ -31,6 +31,7 @@ final class BindingValue {
         JOJO,
         JSON_OBJECT,
         JSON_ARRAY,
+        ARRAY,
         LIST,
         SET,
         MAP,
@@ -90,6 +91,7 @@ final class BindingValue {
                 || kind == Kind.JOJO
                 || kind == Kind.JSON_OBJECT
                 || kind == Kind.JSON_ARRAY
+                || kind == Kind.ARRAY
                 || kind == Kind.LIST
                 || kind == Kind.SET
                 || kind == Kind.MAP;

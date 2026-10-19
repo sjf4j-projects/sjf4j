@@ -188,6 +188,10 @@ final class ReadEmitter {
                         + STREAMING_IO + ".castList(raw));");
                 break;
 
+            case ARRAY:
+                emitArray(out, value);
+                break;
+
             case LIST:
                 emitList(out, value);
                 break;
@@ -476,6 +480,23 @@ final class ReadEmitter {
         out.endBlock();
         out.line(wide ? flag + " = true;" : "seen |= (1L << " + index + ");");
         out.line("arg" + index + " = " + expression + ";");
+    }
+
+    private void emitArray(JavaWriter out, BindingValue value) {
+        emitArrayStart(out);
+
+        String allocation = value.type().toString().replaceFirst("\\[\\]", "[8]");
+        out.line(value.type() + " value = new " + allocation + ";");
+        out.line("int size = 0;");
+
+        out.beginBlock("while (!reader.nextIfArrayEnd())");
+        out.beginBlock("if (size == value.length)");
+        out.line("value = java.util.Arrays.copyOf(value, size << 1);");
+        out.endBlock();
+        out.line("value[size++] = " + readExpression(value.elementValue(), "reader") + ";");
+        out.endBlock();
+
+        out.line("return size == value.length ? value : java.util.Arrays.copyOf(value, size);");
     }
 
     private void emitList(
