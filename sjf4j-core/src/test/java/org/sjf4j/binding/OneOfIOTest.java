@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
@@ -179,15 +180,27 @@ class OneOfIOTest {
     }
 
     @Test
-    void bufferedFieldUsesMemberLevelOneOfInsteadOfDeclaredTypeAnnotation() {
+    void rejectsNestedOneOfBeforeReadingTheSubtype() {
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
-        for (String input : new String[]{
-                "{\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9},\"kind\":\"nested\"}",
-                "{\"kind\":\"nested\",\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9}}"
-        }) {
-            NestedDog dog = assertInstanceOf(NestedDog.class, binder.readNode(input, NestedBase.class));
-            assertEquals(9, assertInstanceOf(Cat.class, dog.pet).lives);
-        }
+        BindingException nested = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"kind\":\"nested\"}", NestedBase.class));
+        assertEquals(true, nested.getMessage().contains("nested @OneOf is not supported"));
+
+        BindingException parent = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"kind\":\"nested\"}", ParentNestedBase.class));
+        assertEquals(true, parent.getMessage().contains("nested @OneOf is not supported"));
+    }
+
+    @Test
+    void rejectsOneOfOnCreatorParametersOrCreatorBoundFields() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        BindingException field = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorMemberOneOf.class));
+        assertEquals(true, field.getMessage().contains("creator-bound property"));
+
+        BindingException parameter = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorParameterOneOf.class));
+        assertEquals(true, parameter.getMessage().contains("creator parameter"));
     }
 
     @Test
@@ -213,6 +226,37 @@ class OneOfIOTest {
         public Animal pet;
     }
     static class NestedDog extends NestedBase { }
+    @OneOf(key = "kind", mappings = {@OneOfMapping(type = ParentNestedDog.class, when = "nested")})
+    static class ParentNestedBase { }
+    static class ParentNestedDog extends ParentNestedBase {
+        public String species;
+        @OneOf(scope = OneOf.Scope.PARENT, key = "species",
+                mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
+                            @OneOfMapping(type = Cat.class, when = "cat")})
+        public Animal pet;
+    }
+
+    static class CreatorMemberOneOf {
+        @OneOf(key = "species", mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")})
+        private final Animal pet;
+
+        @NodeCreator
+        CreatorMemberOneOf(@NodeProperty("pet") Animal pet) {
+            this.pet = pet;
+        }
+    }
+
+    static class CreatorParameterOneOf {
+        private final Animal pet;
+
+        @NodeCreator
+        CreatorParameterOneOf(@NodeProperty("pet") @OneOf(key = "species",
+                mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
+                            @OneOfMapping(type = Cat.class, when = "cat")}) Animal pet) {
+            this.pet = pet;
+        }
+    }
 
     static class MapHolder {
         @OneOf(key = "kind", mappings = {@OneOfMapping(type = java.util.LinkedHashMap.class, when = "map")})
