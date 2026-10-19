@@ -104,6 +104,22 @@ public class CompiledOneOfFallbackTest {
 
     public record RecordHolder(long id, Animal pet) {}
 
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = TreeLeaf.class, when = "leaf"),
+            @OneOfMapping(type = TreeBranch.class, when = "branch")
+    })
+    public interface TreeNode {}
+
+    public static class TreeLeaf implements TreeNode {
+        public String value;
+    }
+
+    public static class TreeBranch implements TreeNode {
+        public List<TreeNode> children;
+        public TreeNode single;
+    }
+
+
     public interface OneOfBinder {
         @ReadFrom Animal readAnimal(String json) throws IOException;
         @ReadFrom Holder readHolder(String json) throws IOException;
@@ -113,6 +129,7 @@ public class CompiledOneOfFallbackTest {
         @ReadFrom PathHolder readPath(String json) throws IOException;
         @ReadFrom NullableHolder readNullable(String json) throws IOException;
         @ReadFrom RecordHolder readRecord(String json) throws IOException;
+        @ReadFrom TreeNode readTree(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
@@ -177,6 +194,25 @@ public class CompiledOneOfFallbackTest {
             assertEquals(expected.after, actual.after, backend);
             assertEquals(expected.parent.kind, actual.parent.kind, backend);
             assertEquals(9, assertInstanceOf(Cat.class, actual.parent.pet, backend).lives, backend);
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void reusesSameOneOfTypeRecursively(String backend,
+            OneOfBinder compiled, Binder<?, ?> runtime) throws Exception {
+        String json = "{\"kind\":\"branch\",\"children\":["
+                + "{\"kind\":\"leaf\",\"value\":\"a\"},"
+                + "{\"kind\":\"branch\",\"children\":[{\"kind\":\"leaf\",\"value\":\"b\"}]}"
+                + "],\"single\":{\"kind\":\"leaf\",\"value\":\"c\"}}";
+
+        for (TreeNode node : List.of(compiled.readTree(json),
+                (TreeNode) runtime.readNode(json, TreeNode.class))) {
+            TreeBranch root = assertInstanceOf(TreeBranch.class, node, backend);
+            assertEquals("a", assertInstanceOf(TreeLeaf.class, root.children.get(0), backend).value, backend);
+            TreeBranch child = assertInstanceOf(TreeBranch.class, root.children.get(1), backend);
+            assertEquals("b", assertInstanceOf(TreeLeaf.class, child.children.get(0), backend).value, backend);
+            assertEquals("c", assertInstanceOf(TreeLeaf.class, root.single, backend).value, backend);
         }
     }
 
