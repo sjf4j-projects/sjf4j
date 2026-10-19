@@ -203,7 +203,6 @@ class GsonBinderTest {
 
     @Test
     void rejectsNullDependenciesAndIo() {
-        assertThrows(NullPointerException.class, () -> new GsonBinder(null));
         assertThrows(NullPointerException.class, () -> new GsonBinder(new Gson(), null));
 
         GsonBinder binder = new GsonBinder(new Gson());

@@ -15,6 +15,10 @@ import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.testbench.model.oneof.Cat;
+import org.sjf4j.testbench.model.oneof.Dog;
+import org.sjf4j.testbench.model.oneof.Envelope;
+import org.sjf4j.testbench.model.oneof.Pet;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -256,54 +260,21 @@ public class OneOfReadBenchmark {
         return JACKSON_BLACKBIRD.readValue(envelopeUtf8, Envelope.class);
     }
 
-    @OneOf(key = "kind", value = {
-            @OneOf.Mapping(value = Dog.class, when = "dog"),
-            @OneOf.Mapping(value = Cat.class, when = "cat")
-    })
-    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY,
-            property = "kind", visible = true)
-    @JsonSubTypes({
-            @JsonSubTypes.Type(value = Dog.class, name = "dog"),
-            @JsonSubTypes.Type(value = Cat.class, name = "cat")
-    })
-    public static class Pet {
-        public String kind;
-        public String name;
-    }
 
-    public static class Dog extends Pet {
-        public int age;
-        public boolean trained;
-        public Detail detail;
-    }
 
-    public static class Cat extends Pet {
-        public int lives;
-    }
 
-    public static class Detail {
-        public String city;
-        public String zip;
-        public int score;
-    }
 
-    public static class Envelope {
-        public long id;
-        public long createdAt;
-        public String username;
-        public boolean verified;
-        public Detail home;
-        public List<String> roles;
-        public Pet pet;
-        public long lastLogin;
-        public boolean active;
-    }
+
+
+
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
-        @ReadFrom Pet readPet(String json) throws IOException;
+        @ReadFrom
+        Pet readPet(String json) throws IOException;
         @ReadFrom Pet readPet(byte[] json) throws IOException;
         @ReadFrom Envelope readEnvelope(String json) throws IOException;
-        @ReadFrom Envelope readEnvelope(byte[] json) throws IOException;
+        @ReadFrom
+        Envelope readEnvelope(byte[] json) throws IOException;
     }
 }

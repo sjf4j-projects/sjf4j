@@ -18,6 +18,8 @@ import org.sjf4j.util.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class OneOfIO {
@@ -125,8 +127,8 @@ public final class OneOfIO {
                 pendingValues = new Object[INITIAL_PENDING_CAPACITY];
             } else if (pendingSize == pendingNames.length) {
                 int newSize = pendingSize << 1;
-                pendingNames = java.util.Arrays.copyOf(pendingNames, newSize);
-                pendingValues = java.util.Arrays.copyOf(pendingValues, newSize);
+                pendingNames = Arrays.copyOf(pendingNames, newSize);
+                pendingValues = Arrays.copyOf(pendingValues, newSize);
             }
 
             pendingNames[pendingSize] = name;
@@ -151,7 +153,7 @@ public final class OneOfIO {
         if (pi == null) {
             // Containers and other object-shaped targets cannot be incrementally
             // populated as a POJO. Materialize only this uncommon subtype.
-            Map<String, Object> raw = new java.util.LinkedHashMap<>();
+            Map<String, Object> raw = new LinkedHashMap<>();
             for (int i = 0; i < pendingSize; i++) {
                 raw.put(pendingNames[i], pendingValues[i]);
             }
