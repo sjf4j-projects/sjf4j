@@ -172,7 +172,7 @@ mavenPublishing {
 
     pom {
         name.set("SJF4J Schema")
-        description.set("JSON Schema validation for SJF4")
+        description.set("JSON Schema validation for SJF4J")
         inceptionYear.set("2026")
         url.set("https://sjf4j.org")
         licenses {
