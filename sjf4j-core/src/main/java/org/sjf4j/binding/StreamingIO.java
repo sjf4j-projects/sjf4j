@@ -222,7 +222,7 @@ public final class StreamingIO {
                                               Class<?> boxed, TypeInfo ti,
                                               RuntimeContext context) throws IOException {
         if (ti.oneOfInfo != null) {
-            return readOneOf(reader, ti.oneOfInfo, context);
+            return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
         }
         if (ti.valueInfos != null) {
             return readValueCodec(reader, ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
@@ -259,47 +259,6 @@ public final class StreamingIO {
             return null;
         }
         throw new BindingException("cannot read value into type '" + boxed.getName() + "'");
-    }
-
-
-    public static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
-                                    RuntimeContext context) throws IOException {
-        /*
-         * readRaw() is already nullable, so probing null beforehand
-         * would only create unnecessary lookahead state.
-         */
-        Object raw = reader.readRaw();
-        if (raw == null) {
-            return null;
-        }
-
-        Class<?> target;
-        if (!oneOfInfo.hasDiscriminator) {
-            target = oneOfInfo.matchByJsonType(JsonType.of(raw));
-        } else {
-            if (oneOfInfo.scope != OneOf.Scope.CURRENT) {
-                throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + oneOfInfo.scope);
-            }
-            if (!JsonType.of(raw).isObject()) {
-                if (oneOfInfo.fallbackNull) {
-                    return null;
-                }
-                throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
-            }
-            Object discriminator = oneOfInfo.keyDiscriminator ? Nodes.getInObject(raw, oneOfInfo.key)
-                    : oneOfInfo.compiledPath.getNode(raw);
-            target = oneOfInfo.matchByWhen(discriminator);
-        }
-
-        if (target != null) {
-            return NodeMapper.convert(raw, target, false, context);
-        }
-
-        if (oneOfInfo.fallbackNull) {
-            return null;
-        }
-
-        throw new BindingException("oneOf mapping has no matching target for type '" + oneOfInfo.clazz.getName() + "'");
     }
 
 
@@ -676,7 +635,7 @@ public final class StreamingIO {
                 : property.boxed;
 
         if (property.oneOfInfo != null) {
-            return readOneOf(reader, property.oneOfInfo, context);
+            return OneOfIO.readOneOf(reader, property.oneOfInfo, context);
         }
 
         if (property.valueInfo != null) {
