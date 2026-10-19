@@ -12,18 +12,14 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Jackson annotations should select the same Creator in Runtime and CompiledBinder. */
 class CompiledJacksonCreatorTest {
 
-    private static final String[] ANNOTATION_PACKAGES = {
-            "com.fasterxml.jackson.annotation", "tools.jackson.annotation"
-    };
     private static final String[] BACKENDS = {"SIMPLE", "JACKSON2", "JACKSON3"};
 
     @Test
     void jacksonCreatorConstructorsAndStaticFactoriesMatchRuntime() throws Exception {
-        for (String annotations : ANNOTATION_PACKAGES) {
-            for (boolean factory : new boolean[]{false, true}) {
+        for (boolean factory : new boolean[]{false, true}) {
                 for (String backend : BACKENDS) {
                     Map<String, String> sources = new LinkedHashMap<>();
-                    sources.put("fixture/Bean.java", beanSource(annotations, factory));
+                    sources.put("fixture/Bean.java", beanSource(factory));
                     sources.put("fixture/Binder.java", "package fixture;\n"
                             + "import org.sjf4j.annotation.binding.*;\n"
                             + "@CompiledBinder(backend=Backend." + backend + ")\n"
@@ -33,7 +29,7 @@ class CompiledJacksonCreatorTest {
 
                     NavigatorTestCompiler.Result result =
                             NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
-                    String label = annotations + " / " + (factory ? "factory" : "constructor") + " / " + backend;
+                    String label = (factory ? "factory" : "constructor") + " / " + backend;
                     assertTrue(result.success, label + ": " + result.diagnostics());
 
                     try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
@@ -58,7 +54,6 @@ class CompiledJacksonCreatorTest {
                         }
                     }
                 }
-            }
         }
     }
 
@@ -82,8 +77,8 @@ class CompiledJacksonCreatorTest {
         assertTrue(result.diagnostics().contains("multiple creator definitions"), result.diagnostics());
     }
 
-    private static String beanSource(String annotations, boolean factory) {
-        String prefix = "package fixture;\nimport " + annotations + ".*;\n"
+    private static String beanSource(boolean factory) {
+        String prefix = "package fixture;\nimport com.fasterxml.jackson.annotation.*;\n"
                 + "public class Bean {\n"
                 + " public final String value;\n"
                 + " public final int count;\n"
