@@ -140,6 +140,18 @@ public final class ReflectUtil {
             else return null;
         }
 
+        // Enforce unsupported Creator-member annotations after candidate
+        // detection; analyzeCreator failures may be intentionally ignored while
+        // testing whether a class can be bound as a POJO.
+        if (creatorInfo.argsCreator != null) {
+            for (Parameter parameter : creatorInfo.argsCreator.getParameters()) {
+                if (parameter.isAnnotationPresent(OneOf.class)) {
+                    throw new BindingException("@OneOf is not supported on creator parameter '"
+                            + parameter.getName() + "' in " + clazz.getName());
+                }
+            }
+        }
+
         NodeObject nodeObject = clazz.getAnnotation(NodeObject.class);
         NamingStrategy namingStrategy = null;
         PropertyStrategy propertyStrategy = PropertyStrategy.BEAN_FIELD;
@@ -776,10 +788,6 @@ public final class ReflectUtil {
             argValueFormats = new String[params.length];
             argValueCodecs = new ValueInfo[params.length];
             for (int i = 0; i < params.length; i++) {
-                if (params[i].isAnnotationPresent(OneOf.class)) {
-                    throw new BindingException("@OneOf is not supported on creator parameter '"
-                            + params[i].getName() + "' in " + clazz.getName());
-                }
                 String name = getExplicitName(params[i]);
                 if (name == null) {
                     if (params[i].isNamePresent()) {
