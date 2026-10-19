@@ -1122,7 +1122,7 @@ public final class ReflectUtil {
                 if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())
                         || Modifier.isTransient(field.getModifiers())
                         || field.isAnnotationPresent(NodeIgnore.class)) continue;
-                if (field.isAnnotationPresent(OneOf.class) || _hasOneOfType(field.getGenericType())) {
+                if (field.isAnnotationPresent(OneOf.class) || _hasNestedOneOfType(field.getGenericType(), base)) {
                     throw new BindingException("nested @OneOf is not supported: subtype '"
                             + subtype.getName() + "' of " + base.getName()
                             + " has polymorphic property '" + field.getName() + "'");
@@ -1135,7 +1135,7 @@ public final class ReflectUtil {
                         || _getBeanImplicitName(method) == null) continue;
                 Type memberType = method.getParameterCount() == 0
                         ? method.getGenericReturnType() : method.getGenericParameterTypes()[0];
-                if (_hasOneOfType(memberType)) {
+                if (_hasNestedOneOfType(memberType, base)) {
                     throw new BindingException("nested @OneOf is not supported: subtype '"
                             + subtype.getName() + "' of " + base.getName()
                             + " has polymorphic accessor '" + method.getName() + "'");
@@ -1144,18 +1144,22 @@ public final class ReflectUtil {
         }
     }
 
-    private static boolean _hasOneOfType(Type type) {
+    /**
+     * Reusing the enclosing OneOf base is recursive composition, not a new
+     * nested OneOf declaration (e.g. Branch.children: List<Node>).
+     */
+    private static boolean _hasNestedOneOfType(Type type, Class<?> base) {
         if (type instanceof Class<?>) {
             Class<?> clazz = (Class<?>) type;
-            return clazz.isAnnotationPresent(OneOf.class)
-                    || clazz.isArray() && _hasOneOfType(clazz.getComponentType());
+            return clazz != base && clazz.isAnnotationPresent(OneOf.class)
+                    || clazz.isArray() && _hasNestedOneOfType(clazz.getComponentType(), base);
         }
         if (type instanceof ParameterizedType) {
             for (Type arg : ((ParameterizedType) type).getActualTypeArguments()) {
-                if (_hasOneOfType(arg)) return true;
+                if (_hasNestedOneOfType(arg, base)) return true;
             }
         } else if (type instanceof GenericArrayType) {
-            return _hasOneOfType(((GenericArrayType) type).getGenericComponentType());
+            return _hasNestedOneOfType(((GenericArrayType) type).getGenericComponentType(), base);
         }
         return false;
     }
