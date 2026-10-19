@@ -117,6 +117,19 @@ public class CompiledOneOfFallbackTest {
     public static class TreeBranch implements TreeNode {
         public List<TreeNode> children;
         public TreeNode single;
+        public Animal typed;
+        @OneOf(key = "species", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
+        })
+        public Animal member;
+        @OneOf(path = "$.meta.kind", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
+        })
+        public Animal byPath;
+        public List<Animal> otherTypes;
+        public Map<String, Animal> byType;
     }
 
 
@@ -199,20 +212,34 @@ public class CompiledOneOfFallbackTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("backends")
-    void reusesSameOneOfTypeRecursively(String backend,
+    void supportsRecursiveAndDistinctNestedCurrentOneOf(String backend,
             OneOfBinder compiled, Binder<?, ?> runtime) throws Exception {
-        String json = "{\"kind\":\"branch\",\"children\":["
+        String children = "\"children\":["
                 + "{\"kind\":\"leaf\",\"value\":\"a\"},"
                 + "{\"kind\":\"branch\",\"children\":[{\"kind\":\"leaf\",\"value\":\"b\"}]}"
-                + "],\"single\":{\"kind\":\"leaf\",\"value\":\"c\"}}";
+                + "],\"single\":{\"kind\":\"leaf\",\"value\":\"c\"},";
+        String nested = "\"typed\":{\"name\":\"Rex\",\"barks\":true,\"kind\":\"dog\"},"
+                + "\"member\":{\"species\":\"cat\",\"lives\":9},"
+                + "\"byPath\":{\"meta\":{\"kind\":\"cat\"},\"lives\":4},"
+                + "\"otherTypes\":[{\"kind\":\"dog\",\"barks\":true}],"
+                + "\"byType\":{\"one\":{\"lives\":7,\"kind\":\"cat\"}}";
 
-        for (TreeNode node : List.of(compiled.readTree(json),
-                (TreeNode) runtime.readNode(json, TreeNode.class))) {
-            TreeBranch root = assertInstanceOf(TreeBranch.class, node, backend);
-            assertEquals("a", assertInstanceOf(TreeLeaf.class, root.children.get(0), backend).value, backend);
-            TreeBranch child = assertInstanceOf(TreeBranch.class, root.children.get(1), backend);
-            assertEquals("b", assertInstanceOf(TreeLeaf.class, child.children.get(0), backend).value, backend);
-            assertEquals("c", assertInstanceOf(TreeLeaf.class, root.single, backend).value, backend);
+        for (String json : List.of(
+                "{\"kind\":\"branch\"," + children + nested + "}",
+                "{" + children + nested + ",\"kind\":\"branch\"}")) {
+            for (TreeNode node : List.of(compiled.readTree(json),
+                    (TreeNode) runtime.readNode(json, TreeNode.class))) {
+                TreeBranch root = assertInstanceOf(TreeBranch.class, node, backend);
+                assertEquals("a", assertInstanceOf(TreeLeaf.class, root.children.get(0), backend).value, backend);
+                TreeBranch child = assertInstanceOf(TreeBranch.class, root.children.get(1), backend);
+                assertEquals("b", assertInstanceOf(TreeLeaf.class, child.children.get(0), backend).value, backend);
+                assertEquals("c", assertInstanceOf(TreeLeaf.class, root.single, backend).value, backend);
+                assertTrue(assertInstanceOf(Dog.class, root.typed, backend).barks, backend);
+                assertEquals(9, assertInstanceOf(Cat.class, root.member, backend).lives, backend);
+                assertEquals(4, assertInstanceOf(Cat.class, root.byPath, backend).lives, backend);
+                assertTrue(assertInstanceOf(Dog.class, root.otherTypes.get(0), backend).barks, backend);
+                assertEquals(7, assertInstanceOf(Cat.class, root.byType.get("one"), backend).lives, backend);
+            }
         }
     }
 
