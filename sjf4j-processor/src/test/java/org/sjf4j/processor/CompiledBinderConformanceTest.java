@@ -438,13 +438,15 @@ class CompiledBinderConformanceTest {
                 result.diagnostics());
     }
     @Test
-    void unsupportedOneOfTypesAreCompilationErrors() throws Exception {
+    void classLevelOneOfFallsBackToRuntime() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Bean.java",
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.node.OneOf;\n"
-                        + "@OneOf({@OneOf.Mapping(value=Bean.class)})\n"
-                        + "public class Bean { public String name; }\n");
+                        + "@OneOf(key=\"kind\", value={@OneOf.Mapping(value=Sub.class, when=\"sub\")})\n"
+                        + "public class Bean { public String kind; public String name; }\n");
+        sources.put("fixture/Sub.java",
+                "package fixture; public class Sub extends Bean { public int age; }\n");
         sources.put("fixture/Binder.java",
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
@@ -453,9 +455,15 @@ class CompiledBinderConformanceTest {
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
-        assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("@OneOf is not supported"),
-                result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binder = loader.loadClass("fixture.Binder_Impl");
+            Object instance = binder.getConstructor().newInstance();
+            Object value = binder.getMethod("read", String.class).invoke(instance,
+                    "{\"kind\":\"sub\",\"name\":\"Ada\",\"age\":19}");
+            assertEquals("fixture.Sub", value.getClass().getName());
+            assertEquals(19, value.getClass().getField("age").getInt(value));
+        }
     }
 
 
