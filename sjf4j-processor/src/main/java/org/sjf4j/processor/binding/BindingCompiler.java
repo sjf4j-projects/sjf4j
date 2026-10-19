@@ -30,10 +30,8 @@ import java.util.Map;
  * Compiles Java types into recursive direct-binding semantics before source
  * emission.
  *
- * <p>V2 deliberately permits runtime dispatch only for
- * {@link NodeKind#COMPILE_TIME_UNKNOWN}. A statically known shape that is not
- * supported by the direct compiler is rejected instead of silently falling
- * back to runtime binding.</p>
+ * <p>Runtime dispatch is explicit for unknown node kinds and OneOf boundaries.
+ * Other unsupported statically known shapes remain compile-time errors.</p>
  */
 final class BindingCompiler {
 
@@ -320,8 +318,16 @@ final class BindingCompiler {
         }
 
         if (context.annotations.hasOneOf(type)) {
-            return unsupported(method, generated, type,
-                    "@OneOf is not supported by direct compiled binding");
+            return direction == BindingPlan.Direction.READ_FROM
+                    ? BindingValue.Kind.ONE_OF : BindingValue.Kind.RUNTIME;
+        }
+
+        // PARENT discriminators require the containing POJO's field order and
+        // deferred state. Delegate only this POJO subtree, not its ancestors.
+        if (direction == BindingPlan.Direction.READ_FROM
+                && (nodeKind == NodeKind.OBJECT_POJO || nodeKind == NodeKind.OBJECT_JOJO)
+                && hasParentOneOf(type)) {
+            return BindingValue.Kind.RUNTIME;
         }
 
         switch (nodeKind) {
@@ -414,6 +420,40 @@ final class BindingCompiler {
         }
     }
 
+    private boolean hasParentOneOf(TypeMirror type) {
+        for (Property property : context.properties.resolve(type).values()) {
+            OneOf read = memberOneOf(property.read());
+            OneOf write = memberOneOf(property.write());
+            if ((read != null && read.scope() == OneOf.Scope.PARENT)
+                    || (write != null && write.scope() == OneOf.Scope.PARENT)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static OneOf memberOneOf(PropertyAccess access) {
+        return access == null ? null : access.member().getAnnotation(OneOf.class);
+    }
+
+    /**
+     * Member annotations override type-level OneOf. They need their owner's
+     * cached PropertyInfo rather than metadata resolved from the child class.
+     */
+    private BindingValue compileMemberOneOf(BindingValue owner, String property,
+                                            TypeMirror propertyType) {
+        TypeMirror type = context.types.concrete(propertyType);
+        BindingValue.Kind kind = owner.direction() == BindingPlan.Direction.READ_FROM
+                ? BindingValue.Kind.ONE_OF : BindingValue.Kind.RUNTIME;
+        BindingValue result = new BindingValue(owner.direction(), type, kind, false);
+        if (kind == BindingValue.Kind.ONE_OF) {
+            result.oneOfMember(context.typeUtils.erasure(owner.type()).toString(), property);
+            result.helperName(names.newName(helperSuggestion(owner.direction(), type)));
+            helpers.add(result);
+        }
+        return result;
+    }
+
     private boolean compilePojo(
             BindingValue value,
             ExecutableElement method,
@@ -476,12 +516,7 @@ final class BindingCompiler {
             NodeProperty writeAnnotation = property.write() == null ? null
                     : property.write().member().getAnnotation(NodeProperty.class);
 
-            if (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write())) {
-                error(method, generated, "Cannot generate direct binding for "
-                        + value.type() + "." + property.name()
-                        + ": @OneOf is not supported");
-                return false;
-            }
+            boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
 
             String[] aliases = new String[0];
             if (value.direction() == BindingPlan.Direction.READ_FROM) {
@@ -517,8 +552,9 @@ final class BindingCompiler {
                         + value.type() + "." + property.name());
                 return false;
             }
-            BindingValue propertyValue =
-                    compileValue(
+            BindingValue propertyValue = memberOneOf
+                    ? compileMemberOneOf(value, property.name(), access.type())
+                    : compileValue(
                             value.direction(),
                             access.type(),
                             method,
@@ -647,10 +683,7 @@ final class BindingCompiler {
             NodeProperty getter = property.read() == null ? null
                     : property.read().member().getAnnotation(NodeProperty.class);
             NodeProperty setter = property.write().member().getAnnotation(NodeProperty.class);
-            if (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write())) {
-                error(method, generated, "@OneOf is not supported for property " + property.name());
-                return false;
-            }
+            boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
             String[] aliases = setter != null && setter.aliases().length != 0 ? setter.aliases()
                     : getter == null ? new String[0] : getter.aliases();
             if (!claimCreatorNames(value, method, generated, claimed, property.name(), aliases)) return false;
@@ -659,9 +692,11 @@ final class BindingCompiler {
                         + value.type() + "." + property.name());
                 return false;
             }
-            BindingValue child = compileValue(value.direction(), property.write().type(),
-                    method, generated, selectedCodecName(getter, setter),
-                    selectedCodecPattern(getter, setter));
+            BindingValue child = memberOneOf
+                    ? compileMemberOneOf(value, property.name(), property.write().type())
+                    : compileValue(value.direction(), property.write().type(),
+                            method, generated, selectedCodecName(getter, setter),
+                            selectedCodecPattern(getter, setter));
             if (child == null) return false;
             compiled.add(new BindingProperty(property.name(), aliases,
                     property.write(), child, pending++));
@@ -726,8 +761,7 @@ final class BindingCompiler {
     }
 
     private boolean hasMemberOneOf(PropertyAccess access) {
-        return access != null &&
-                access.member().getAnnotation(OneOf.class) != null;
+        return memberOneOf(access) != null;
     }
 
     private boolean compileElement(
