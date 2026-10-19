@@ -180,15 +180,32 @@ class OneOfIOTest {
     }
 
     @Test
-    void rejectsNestedOneOfBeforeReadingTheSubtype() {
+    void readsNestedCurrentOneOfRegardlessOfFieldOrder() {
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
-        BindingException nested = assertThrows(BindingException.class,
-                () -> binder.readNode("{\"kind\":\"nested\"}", NestedBase.class));
-        assertEquals(true, nested.getMessage().contains("nested @OneOf is not supported"));
+        String members = "\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9},"
+                + "\"byKind\":{\"name\":\"Rex\",\"barks\":true,\"kind\":\"dog\"},"
+                + "\"pets\":[{\"kind\":\"cat\",\"lives\":4}],"
+                + "\"byName\":{\"one\":{\"lives\":5,\"kind\":\"cat\"}},"
+                + "\"byPath\":{\"meta\":{\"kind\":\"dog\"},\"barks\":true}";
+        for (String input : new String[]{
+                "{\"kind\":\"nested\"," + members + "}",
+                "{" + members + ",\"kind\":\"nested\"}"
+        }) {
+            NestedDog dog = assertInstanceOf(NestedDog.class, binder.readNode(input, NestedBase.class));
+            assertEquals(9, assertInstanceOf(Cat.class, dog.pet).lives);
+            assertEquals(true, assertInstanceOf(Dog.class, dog.byKind).barks);
+            assertEquals(4, assertInstanceOf(Cat.class, dog.pets.get(0)).lives);
+            assertEquals(5, assertInstanceOf(Cat.class, dog.byName.get("one")).lives);
+            assertEquals(true, assertInstanceOf(Dog.class, dog.byPath).barks);
+        }
+    }
 
+    @Test
+    void rejectsNestedParentOneOfBeforeReadingTheSubtype() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
         BindingException parent = assertThrows(BindingException.class,
                 () -> binder.readNode("{\"kind\":\"nested\"}", ParentNestedBase.class));
-        assertEquals(true, parent.getMessage().contains("nested @OneOf is not supported"));
+        assertEquals(true, parent.getMessage().contains("nested PARENT @OneOf is not supported"));
     }
 
     @Test
@@ -239,7 +256,16 @@ class OneOfIOTest {
         })
         public Animal pet;
     }
-    static class NestedDog extends NestedBase { }
+    static class NestedDog extends NestedBase {
+        public Animal byKind;
+        public java.util.List<Animal> pets;
+        public java.util.Map<String, Animal> byName;
+        @OneOf(path = "$.meta.kind", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
+        })
+        public Animal byPath;
+    }
     @OneOf(key = "kind", mappings = {@OneOfMapping(type = ParentNestedDog.class, when = "nested")})
     static class ParentNestedBase { }
     static class ParentNestedDog extends ParentNestedBase {
