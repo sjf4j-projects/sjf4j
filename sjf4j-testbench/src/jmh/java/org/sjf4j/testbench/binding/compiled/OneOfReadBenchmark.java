@@ -7,6 +7,9 @@ import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.RuntimeContext;
+import org.sjf4j.node.NodeMapper;
+import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
@@ -16,6 +19,7 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -81,6 +85,8 @@ public class OneOfReadBenchmark {
         checkPet("root compiled/utf8", expectedPet, SJF4J_COMPILED.readPet(petUtf8));
         checkPet("root runtime/string", expectedPet, (Pet) SJF4J_RUNTIME.readNode(petJson, Pet.class));
         checkPet("root runtime/utf8", expectedPet, (Pet) SJF4J_RUNTIME.readNode(petUtf8, Pet.class));
+        checkPet("root raw baseline/string", expectedPet, root_string_raw_baseline());
+        checkPet("root raw baseline/utf8", expectedPet, root_utf8_raw_baseline());
         checkPet("root blackbird/string", expectedPet, JACKSON_BLACKBIRD.readValue(petJson, Pet.class));
         checkPet("root native/utf8", expectedPet, JACKSON_NATIVE.readValue(petUtf8, Pet.class));
         checkPet("root blackbird/utf8", expectedPet, JACKSON_BLACKBIRD.readValue(petUtf8, Pet.class));
@@ -143,6 +149,29 @@ public class OneOfReadBenchmark {
             throw new IllegalStateException(caseName + ": mismatched outer POJO contents");
         }
         checkPet(caseName, expected.pet, actual.pet);
+    }
+
+    // Reproduces the removed StreamingIO implementation: read the full raw
+    // tree, resolve CURRENT key, then convert the selected subtype.
+    private Pet rawBaseline(Jackson2Reader reader) throws IOException {
+        try (reader) {
+            reader.startDocument();
+            Object raw = reader.readRaw();
+            reader.endDocument();
+            Object kind = ((Map<?, ?>) raw).get("kind");
+            Class<?> subtype = "dog".equals(kind) ? Dog.class : Cat.class;
+            return (Pet) NodeMapper.convert(raw, subtype, false, RuntimeContext.EMPTY);
+        }
+    }
+
+    @Benchmark
+    public Pet root_string_raw_baseline() throws IOException {
+        return rawBaseline(SJF4J_RUNTIME.createReader(petJson));
+    }
+
+    @Benchmark
+    public Pet root_utf8_raw_baseline() throws IOException {
+        return rawBaseline(SJF4J_RUNTIME.createReader(petUtf8));
     }
 
     @Benchmark
