@@ -55,7 +55,10 @@ public final class Jackson3Writer extends StreamingWriter {
         this.recycler = recycler;
     }
 
-    /** Access for backend-specific compiled POJO property writers. */
+    /**
+     * Access for backend-specific compiled POJO property writers.
+     * @return the native Jackson generator
+     */
     public JsonGenerator nativeWriter() { return generator; }
 
     /*
@@ -226,7 +229,10 @@ public final class Jackson3Writer extends StreamingWriter {
         return stringOutput != null ? stringOutput.getAndClear() : super.toString();
     }
 
-    /** Returns buffered UTF-8 after the generator has been flushed. */
+    /**
+     * Returns buffered UTF-8 after the generator has been flushed.
+     * @return the buffered UTF-8 bytes
+     */
     public byte[] toBytes() {
         if (byteOutput == null) throw new IllegalStateException("not an in-memory UTF-8 writer");
         return byteOutput.toByteArray();

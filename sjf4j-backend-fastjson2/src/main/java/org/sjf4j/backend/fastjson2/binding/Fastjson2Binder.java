@@ -32,7 +32,10 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), RuntimeContext.EMPTY);
     }
 
-    /** Creates a binder with default backend settings and a supplied runtime context. */
+    /**
+     * Creates a binder with default backend settings and a supplied runtime context.
+     * @param context the SJF4J runtime settings
+     */
     public Fastjson2Binder(RuntimeContext context) {
         this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
     }
@@ -140,22 +143,36 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
         return new Fastjson2Writer(JSONWriter.of(writerContext));
     }
 
-    /** Creates a configured native UTF-16 writer for compiled String output. */
+    /**
+     * Creates a configured native UTF-16 writer for compiled String output.
+     * @return the native writer
+     */
     public JSONWriter createNativeWriter() {
         return JSONWriter.of(writerContext);
     }
 
-    /** Creates a configured native UTF-8 writer for compiled byte[] output. */
+    /**
+     * Creates a configured native UTF-8 writer for compiled byte[] output.
+     * @return the native writer
+     */
     public JSONWriter createNativeWriterUtf8() {
         return JSONWriter.ofUTF8(writerContext);
     }
 
-    /** Whether a native UTF-8 writer can emit pre-escaped field names. */
+    /**
+     * Checks whether a native UTF-8 writer can emit pre-escaped field names.
+     * @param writer the native writer to check
+     * @return whether raw UTF-8 names are supported
+     */
     public static boolean supportsRawUtf8Names(JSONWriter writer) {
         return writer.isUTF8() && rawNamesCompatible(writer);
     }
 
-    /** Whether a native UTF-16 writer can emit pre-escaped field names. */
+    /**
+     * Checks whether a native UTF-16 writer can emit pre-escaped field names.
+     * @param writer the native writer to check
+     * @return whether raw UTF-16 names are supported
+     */
     public static boolean supportsRawUtf16Names(JSONWriter writer) {
         return writer.isUTF16() && rawNamesCompatible(writer);
     }
@@ -168,7 +185,10 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
                 && !writer.isEnabled(JSONWriter.Feature.EscapeNoneAscii);
     }
 
-    /** Creates an in-memory UTF-8 writer for compiled byte[] output. */
+    /**
+     * Creates an in-memory UTF-8 writer for compiled byte[] output.
+     * @return the UTF-8 streaming writer
+     */
     public Fastjson2Writer createWriterUtf8() {
         return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext));
     }

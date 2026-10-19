@@ -5,6 +5,7 @@ import org.sjf4j.binding.CompiledName;
 
 /** Prepared property name with Jackson 2's serialized string representation. */
 public final class Jackson2CompiledName extends CompiledName {
+    /** The Jackson 2 serialized representation of this property name. */
     public final SerializedString serializedName;
 
 

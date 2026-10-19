@@ -29,7 +29,10 @@ public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
         this(JsonProvider.provider());
     }
 
-    /** Creates a binder with default backend settings and a supplied runtime context. */
+    /**
+     * Creates a binder with default backend settings and a supplied runtime context.
+     * @param context the SJF4J runtime settings
+     */
     public JsonpBinder(RuntimeContext context) {
         this(JsonProvider.provider(), context);
     }

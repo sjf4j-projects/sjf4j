@@ -35,8 +35,10 @@ public record CreatorUserRecord(
         List<String> tags,
         List<FriendRecord> friends) {
 
+    /** Address fixture used by the creator benchmark. */
     public record AddressRecord(String street, String city, String state,
                                 String zip, String country) {}
 
+    /** Friend fixture used by the creator benchmark. */
     public record FriendRecord(long id, String name, long since, boolean close) {}
 }

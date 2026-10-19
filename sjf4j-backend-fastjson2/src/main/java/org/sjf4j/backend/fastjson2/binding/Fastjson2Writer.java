@@ -58,7 +58,10 @@ public final class Fastjson2Writer extends StreamingWriter {
         this.useRawName = (utf8 || writer.isUTF16()) && Fastjson2Binder.rawNamesCompatible(writer);
     }
 
-    /** Exposes the native Fastjson2 writer for generated scalar and raw-name fast paths. */
+    /**
+     * Exposes the native Fastjson2 writer for generated scalar and raw-name fast paths.
+     * @return the native writer
+     */
     public JSONWriter nativeWriter() {
         return writer;
     }
@@ -217,7 +220,10 @@ public final class Fastjson2Writer extends StreamingWriter {
         }
     }
 
-    /** Returns UTF-8 bytes from the native in-memory writer buffer. */
+    /**
+     * Returns UTF-8 bytes from the native in-memory writer buffer.
+     * @return the buffered UTF-8 bytes
+     */
     public byte[] toBytes() {
         return writer.getBytes();
     }

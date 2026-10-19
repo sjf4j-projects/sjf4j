@@ -26,7 +26,10 @@ public final class SnakeBinder extends Binder<SnakeReader, SnakeWriter> {
         this(new LoaderOptions(), new DumperOptions(), RuntimeContext.EMPTY);
     }
 
-    /** Creates a binder with default backend settings and a supplied runtime context. */
+    /**
+     * Creates a binder with default backend settings and a supplied runtime context.
+     * @param context the SJF4J runtime settings
+     */
     public SnakeBinder(RuntimeContext context) {
         this(new LoaderOptions(), new DumperOptions(), context);
     }

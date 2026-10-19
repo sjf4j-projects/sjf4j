@@ -23,7 +23,10 @@ public final class JsonpWriter extends StreamingWriter {
         this.generator = Asserts.notNull(generator, "generator");
     }
 
-    /** Native JSON-P writer for compiled binding hot paths. */
+    /**
+     * Native JSON-P writer for compiled binding hot paths.
+     * @return the native generator
+     */
     public JsonGenerator nativeWriter() { return generator; }
 
     @Override

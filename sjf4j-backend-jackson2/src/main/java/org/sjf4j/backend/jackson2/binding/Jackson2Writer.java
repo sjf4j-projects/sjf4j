@@ -23,7 +23,10 @@ public final class Jackson2Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    /** Access for backend-specific compiled POJO property writers. */
+    /**
+     * Access for backend-specific compiled POJO property writers.
+     * @return the native Jackson generator
+     */
     public JsonGenerator nativeWriter() { return generator; }
     private final SegmentedStringWriter stringOutput;
     private final ByteArrayBuilder byteOutput;
@@ -233,7 +236,10 @@ public final class Jackson2Writer extends StreamingWriter {
         }
     }
 
-    /** Returns buffered UTF-8 after the generator has been flushed. */
+    /**
+     * Returns buffered UTF-8 after the generator has been flushed.
+     * @return the buffered UTF-8 bytes
+     */
     public byte[] toBytes() {
         if (byteOutput == null) throw new IllegalStateException("not an in-memory UTF-8 writer");
         return byteOutput.toByteArray();

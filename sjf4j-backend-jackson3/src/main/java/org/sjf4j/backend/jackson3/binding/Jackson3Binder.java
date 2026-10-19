@@ -41,7 +41,10 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         this(new JsonFactory(), RuntimeContext.EMPTY);
     }
 
-    /** Creates a binder with default backend settings and a supplied runtime context. */
+    /**
+     * Creates a binder with default backend settings and a supplied runtime context.
+     * @param context the SJF4J runtime settings
+     */
     public Jackson3Binder(RuntimeContext context) {
         this(new JsonFactory(), context);
     }
@@ -144,7 +147,11 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         }
     }
 
-    /** Creates an owned UTF-8 writer using Jackson's pooled output buffer. */
+    /**
+     * Creates an owned UTF-8 writer using Jackson's pooled output buffer.
+     * @return a writer that owns the pooled buffer
+     * @throws IOException if the generator cannot be created
+     */
     public Jackson3Writer createWriterUtf8() throws IOException {
         BufferRecycler recycler = factory._getBufferRecycler();
         ByteArrayBuilder output = new ByteArrayBuilder(recycler);
