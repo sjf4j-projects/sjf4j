@@ -60,6 +60,17 @@ final class BindingEmitter {
             BindingValue value,
             GeneratedClass generated) {
 
+        if (value.kind() == BindingValue.Kind.ONE_OF) {
+            String source = value.oneOfOwner() == null
+                    ? "org.sjf4j.meta.TypeRegistry.registerTypeInfo(" + value.type() + ".class).oneOfInfo"
+                    : "org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
+                            + value.oneOfOwner() + ".class).propertyLookup.get("
+                            + JavaWriter.stringLiteral(value.oneOfProperty()) + ").oneOfInfo";
+            generated.addField(out -> out.line(
+                    "private static final org.sjf4j.meta.OneOfInfo " + value.helperName()
+                            + " = " + source + ";"));
+            return;
+        }
         if (value.isCodec()) {
             // Resolve once per configured instance, never inside the read/write loops.
             // Explicit property formats override RuntimeContext defaults.
