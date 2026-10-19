@@ -85,6 +85,18 @@ public class OneOfReadBenchmark {
         checkPet("root native/utf8", expectedPet, JACKSON_NATIVE.readValue(petUtf8, Pet.class));
         checkPet("root blackbird/utf8", expectedPet, JACKSON_BLACKBIRD.readValue(petUtf8, Pet.class));
 
+        // Validate the second discriminator branch as well; the timed input is Dog.
+        String catJson = "{\"kind\":\"cat\",\"name\":\"Mog\",\"lives\":9}";
+        Pet nativeCat = JACKSON_NATIVE.readValue(catJson, Pet.class);
+        Pet compiledCat = SJF4J_COMPILED.readPet(catJson);
+        Pet runtimeCat = (Pet) SJF4J_RUNTIME.readNode(catJson, Pet.class);
+        if (!(nativeCat instanceof Cat) || !(compiledCat instanceof Cat)
+                || !(runtimeCat instanceof Cat)
+                || ((Cat) compiledCat).lives != ((Cat) nativeCat).lives
+                || ((Cat) runtimeCat).lives != ((Cat) nativeCat).lives) {
+            throw new IllegalStateException("Cat discriminator differs across implementations");
+        }
+
         Envelope expected = JACKSON_NATIVE.readValue(envelopeJson, Envelope.class);
         checkEnvelope("envelope compiled/string", expected, SJF4J_COMPILED.readEnvelope(envelopeJson));
         checkEnvelope("envelope compiled/utf8", expected, SJF4J_COMPILED.readEnvelope(envelopeUtf8));
