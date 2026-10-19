@@ -13,6 +13,7 @@ import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
@@ -623,8 +624,10 @@ final class BindingCompiler {
                     return false;
                 }
             }
-            if (arg.getAnnotation(OneOf.class) != null) {
-                error(method, generated, "Record constructor @OneOf is not supported yet: " + name);
+            if (arg.getAnnotation(OneOf.class) != null
+                    || creatorBoundMemberOneOf(value.type(), name)) {
+                error(method, generated, "@OneOf is not supported on creator-bound property "
+                        + value.type() + "." + name);
                 return false;
             }
 
@@ -641,6 +644,35 @@ final class BindingCompiler {
         value.creator(creator);
         value.properties(compiled);
         return true;
+    }
+
+    /**
+     * Reject member-specific OneOf on a Creator argument, including private
+     * final fields that PropertyResolver intentionally does not expose.
+     * A class-level OneOf on the argument's declared type remains supported.
+     */
+    private boolean creatorBoundMemberOneOf(TypeMirror ownerType, String name) {
+        Property property = context.properties.resolve(ownerType).get(name);
+        if (property != null &&
+                (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write()))) {
+            return true;
+        }
+        TypeElement owner = context.types.typeElement(ownerType);
+        if (owner == null) return false;
+        for (Element member : context.elements.getAllMembers(owner)) {
+            if (member.getKind() != ElementKind.FIELD
+                    || member.getAnnotation(OneOf.class) == null) continue;
+            String fieldName = context.annotations.propertyName(
+                    member, member.getSimpleName().toString());
+            if (name.equals(fieldName)) return true;
+            NodeProperty propertyAnnotation = member.getAnnotation(NodeProperty.class);
+            if (propertyAnnotation != null) {
+                for (String alias : propertyAnnotation.aliases()) {
+                    if (name.equals(alias)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Constructor parameters first, then writable properties buffered until creation. */
@@ -663,8 +695,10 @@ final class BindingCompiler {
                 return false;
             }
             if (!claimCreatorNames(value, method, generated, claimed, name, aliases)) return false;
-            if (arg.getAnnotation(OneOf.class) != null) {
-                error(method, generated, "@OneOf is not supported for creator argument " + name);
+            if (arg.getAnnotation(OneOf.class) != null
+                    || creatorBoundMemberOneOf(value.type(), name)) {
+                error(method, generated, "@OneOf is not supported on creator-bound property "
+                        + value.type() + "." + name);
                 return false;
             }
             BindingValue child = compileValue(value.direction(), creator.parameterTypes().get(i),

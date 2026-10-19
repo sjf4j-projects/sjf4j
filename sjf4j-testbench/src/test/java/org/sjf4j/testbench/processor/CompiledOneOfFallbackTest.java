@@ -104,6 +104,35 @@ public class CompiledOneOfFallbackTest {
 
     public record RecordHolder(long id, Animal pet) {}
 
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = TreeLeaf.class, when = "leaf"),
+            @OneOfMapping(type = TreeBranch.class, when = "branch")
+    })
+    public interface TreeNode {}
+
+    public static class TreeLeaf implements TreeNode {
+        public String value;
+    }
+
+    public static class TreeBranch implements TreeNode {
+        public List<TreeNode> children;
+        public TreeNode single;
+        public Animal typed;
+        @OneOf(key = "species", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
+        })
+        public Animal member;
+        @OneOf(path = "$.meta.kind", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
+        })
+        public Animal byPath;
+        public List<Animal> otherTypes;
+        public Map<String, Animal> byType;
+    }
+
+
     public interface OneOfBinder {
         @ReadFrom Animal readAnimal(String json) throws IOException;
         @ReadFrom Holder readHolder(String json) throws IOException;
@@ -113,6 +142,7 @@ public class CompiledOneOfFallbackTest {
         @ReadFrom PathHolder readPath(String json) throws IOException;
         @ReadFrom NullableHolder readNullable(String json) throws IOException;
         @ReadFrom RecordHolder readRecord(String json) throws IOException;
+        @ReadFrom TreeNode readTree(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
@@ -177,6 +207,39 @@ public class CompiledOneOfFallbackTest {
             assertEquals(expected.after, actual.after, backend);
             assertEquals(expected.parent.kind, actual.parent.kind, backend);
             assertEquals(9, assertInstanceOf(Cat.class, actual.parent.pet, backend).lives, backend);
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void supportsRecursiveAndDistinctNestedCurrentOneOf(String backend,
+            OneOfBinder compiled, Binder<?, ?> runtime) throws Exception {
+        String children = "\"children\":["
+                + "{\"kind\":\"leaf\",\"value\":\"a\"},"
+                + "{\"kind\":\"branch\",\"children\":[{\"kind\":\"leaf\",\"value\":\"b\"}]}"
+                + "],\"single\":{\"kind\":\"leaf\",\"value\":\"c\"},";
+        String nested = "\"typed\":{\"name\":\"Rex\",\"barks\":true,\"kind\":\"dog\"},"
+                + "\"member\":{\"species\":\"cat\",\"lives\":9},"
+                + "\"byPath\":{\"meta\":{\"kind\":\"cat\"},\"lives\":4},"
+                + "\"otherTypes\":[{\"kind\":\"dog\",\"barks\":true}],"
+                + "\"byType\":{\"one\":{\"lives\":7,\"kind\":\"cat\"}}";
+
+        for (String json : List.of(
+                "{\"kind\":\"branch\"," + children + nested + "}",
+                "{" + children + nested + ",\"kind\":\"branch\"}")) {
+            for (TreeNode node : List.of(compiled.readTree(json),
+                    (TreeNode) runtime.readNode(json, TreeNode.class))) {
+                TreeBranch root = assertInstanceOf(TreeBranch.class, node, backend);
+                assertEquals("a", assertInstanceOf(TreeLeaf.class, root.children.get(0), backend).value, backend);
+                TreeBranch child = assertInstanceOf(TreeBranch.class, root.children.get(1), backend);
+                assertEquals("b", assertInstanceOf(TreeLeaf.class, child.children.get(0), backend).value, backend);
+                assertEquals("c", assertInstanceOf(TreeLeaf.class, root.single, backend).value, backend);
+                assertTrue(assertInstanceOf(Dog.class, root.typed, backend).barks, backend);
+                assertEquals(9, assertInstanceOf(Cat.class, root.member, backend).lives, backend);
+                assertEquals(4, assertInstanceOf(Cat.class, root.byPath, backend).lives, backend);
+                assertTrue(assertInstanceOf(Dog.class, root.otherTypes.get(0), backend).barks, backend);
+                assertEquals(7, assertInstanceOf(Cat.class, root.byType.get("one"), backend).lives, backend);
+            }
         }
     }
 

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
@@ -179,15 +180,58 @@ class OneOfIOTest {
     }
 
     @Test
-    void bufferedFieldUsesMemberLevelOneOfInsteadOfDeclaredTypeAnnotation() {
+    void readsNestedCurrentOneOfRegardlessOfFieldOrder() {
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        String members = "\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9},"
+                + "\"byKind\":{\"name\":\"Rex\",\"barks\":true,\"kind\":\"dog\"},"
+                + "\"pets\":[{\"kind\":\"cat\",\"lives\":4}],"
+                + "\"byName\":{\"one\":{\"lives\":5,\"kind\":\"cat\"}},"
+                + "\"byPath\":{\"meta\":{\"kind\":\"dog\"},\"barks\":true}";
         for (String input : new String[]{
-                "{\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9},\"kind\":\"nested\"}",
-                "{\"kind\":\"nested\",\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9}}"
+                "{\"kind\":\"nested\"," + members + "}",
+                "{" + members + ",\"kind\":\"nested\"}"
         }) {
             NestedDog dog = assertInstanceOf(NestedDog.class, binder.readNode(input, NestedBase.class));
             assertEquals(9, assertInstanceOf(Cat.class, dog.pet).lives);
+            assertEquals(true, assertInstanceOf(Dog.class, dog.byKind).barks);
+            assertEquals(4, assertInstanceOf(Cat.class, dog.pets.get(0)).lives);
+            assertEquals(5, assertInstanceOf(Cat.class, dog.byName.get("one")).lives);
+            assertEquals(true, assertInstanceOf(Dog.class, dog.byPath).barks);
         }
+    }
+
+    @Test
+    void rejectsNestedParentOneOfBeforeReadingTheSubtype() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        BindingException parent = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"kind\":\"nested\"}", ParentNestedBase.class));
+        assertEquals(true, parent.getMessage().contains("nested PARENT @OneOf is not supported"));
+    }
+
+    @Test
+    void rejectsOneOfOnCreatorParametersOrCreatorBoundFields() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        BindingException field = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorMemberOneOf.class));
+        assertEquals(true, field.getMessage().contains("creator-bound property"));
+
+        BindingException parameter = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorParameterOneOf.class));
+        assertEquals(true, parameter.getMessage().contains("creator parameter"));
+    }
+
+    @Test
+    void allowsSelfRecursiveOneOfTypesWithoutIntroducingNestedMappings() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        String json = "{\"kind\":\"branch\",\"children\":["
+                + "{\"kind\":\"leaf\",\"value\":\"a\"},"
+                + "{\"kind\":\"branch\",\"children\":[{\"kind\":\"leaf\",\"value\":\"b\"}]}"
+                + "],\"single\":{\"kind\":\"leaf\",\"value\":\"c\"}}";
+        TreeBranch root = assertInstanceOf(TreeBranch.class, binder.readNode(json, TreeNode.class));
+        assertEquals("a", assertInstanceOf(TreeLeaf.class, root.children.get(0)).value);
+        TreeBranch child = assertInstanceOf(TreeBranch.class, root.children.get(1));
+        assertEquals("b", assertInstanceOf(TreeLeaf.class, child.children.get(0)).value);
+        assertEquals("c", assertInstanceOf(TreeLeaf.class, root.single).value);
     }
 
     @Test
@@ -212,7 +256,62 @@ class OneOfIOTest {
         })
         public Animal pet;
     }
-    static class NestedDog extends NestedBase { }
+    static class NestedDog extends NestedBase {
+        public Animal byKind;
+        public java.util.List<Animal> pets;
+        public java.util.Map<String, Animal> byName;
+        @OneOf(path = "$.meta.kind", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
+        })
+        public Animal byPath;
+    }
+    @OneOf(key = "kind", mappings = {@OneOfMapping(type = ParentNestedDog.class, when = "nested")})
+    static class ParentNestedBase { }
+    static class ParentNestedDog extends ParentNestedBase {
+        public String species;
+        @OneOf(scope = OneOf.Scope.PARENT, key = "species",
+                mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
+                            @OneOfMapping(type = Cat.class, when = "cat")})
+        public Animal pet;
+    }
+
+    static class CreatorMemberOneOf {
+        @OneOf(key = "species", mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")})
+        private final Animal pet;
+
+        @NodeCreator
+        CreatorMemberOneOf(@NodeProperty("pet") Animal pet) {
+            this.pet = pet;
+        }
+    }
+
+    static class CreatorParameterOneOf {
+        private final Animal pet;
+
+        @NodeCreator
+        CreatorParameterOneOf(@NodeProperty("pet") @OneOf(key = "species",
+                mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
+                            @OneOfMapping(type = Cat.class, when = "cat")}) Animal pet) {
+            this.pet = pet;
+        }
+    }
+
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = TreeLeaf.class, when = "leaf"),
+            @OneOfMapping(type = TreeBranch.class, when = "branch")
+    })
+    interface TreeNode {}
+
+    static class TreeLeaf implements TreeNode {
+        public String value;
+    }
+
+    static class TreeBranch implements TreeNode {
+        public java.util.List<TreeNode> children;
+        public TreeNode single;
+    }
 
     static class MapHolder {
         @OneOf(key = "kind", mappings = {@OneOfMapping(type = java.util.LinkedHashMap.class, when = "map")})

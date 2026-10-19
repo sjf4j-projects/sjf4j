@@ -33,6 +33,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -138,6 +140,18 @@ public final class ReflectUtil {
             else return null;
         }
 
+        // Enforce unsupported Creator-member annotations after candidate
+        // detection; analyzeCreator failures may be intentionally ignored while
+        // testing whether a class can be bound as a POJO.
+        if (creatorInfo.argsCreator != null) {
+            for (Parameter parameter : creatorInfo.argsCreator.getParameters()) {
+                if (parameter.isAnnotationPresent(OneOf.class)) {
+                    throw new BindingException("@OneOf is not supported on creator parameter '"
+                            + parameter.getName() + "' in " + clazz.getName());
+                }
+            }
+        }
+
         NodeObject nodeObject = clazz.getAnnotation(NodeObject.class);
         NamingStrategy namingStrategy = null;
         PropertyStrategy propertyStrategy = PropertyStrategy.BEAN_FIELD;
@@ -214,6 +228,12 @@ public final class ReflectUtil {
             _assertCompatiblePropertyTypes(family, clazz);
 
             String finalName = family.resolveFinalName(clazz, namingStrategy);
+            // A creator-bound field cannot override the creator parameter's
+            // declared type with a member-level OneOf discriminator.
+            if (family.oneOfInfo != null && creatorInfo.getArgIndexOrAlias(finalName) >= 0) {
+                throw new BindingException("@OneOf is not supported on creator-bound property '"
+                        + finalName + "' in " + clazz.getName());
+            }
             if (creatorInfo.argIndexes != null) {
                 Integer implicitIdx = creatorInfo.argIndexes.get(family.implicitName);
                 if (implicitIdx != null && !finalName.equals(family.implicitName)) {
@@ -1068,6 +1088,7 @@ public final class ReflectUtil {
                 throw new BindingException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
                         " is not assignable from " + clazz.getName());
             }
+            _rejectNestedOneOf(clazz, subClazz);
             if (hasDiscriminator) {
                 if (mapping.when().length == 0) {
                     throw new BindingException("given a discriminator but has empty 'when' in mapping " +
@@ -1086,5 +1107,32 @@ public final class ReflectUtil {
         return new OneOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
     }
 
+    /**
+     * An already selected subtype cannot restart polymorphic dispatch at the
+     * same object level. Child fields with CURRENT-scope OneOf are independent
+     * JSON values and can recurse through OneOfIO normally.
+     *
+     * PARENT-scope fields need the selected subtype's containing object state,
+     * which OneOfIO's incremental subtype reader does not maintain.
+     */
+    private static void _rejectNestedOneOf(Class<?> base, Class<?> subtype) {
+        if (subtype.isAnnotationPresent(OneOf.class)) {
+            throw new BindingException("nested @OneOf is not supported: subtype '"
+                    + subtype.getName() + "' of " + base.getName() + " declares @OneOf");
+        }
+        for (Class<?> type = subtype; isPojoCandidate(type); type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())
+                        || Modifier.isTransient(field.getModifiers())
+                        || field.isAnnotationPresent(NodeIgnore.class)) continue;
+                OneOf nested = field.getAnnotation(OneOf.class);
+                if (nested != null && nested.scope() == OneOf.Scope.PARENT) {
+                    throw new BindingException("nested PARENT @OneOf is not supported: subtype '"
+                            + subtype.getName() + "' of " + base.getName()
+                            + " has property '" + field.getName() + "'");
+                }
+            }
+        }
+    }
 
 }

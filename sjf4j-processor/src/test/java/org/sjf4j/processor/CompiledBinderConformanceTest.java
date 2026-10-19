@@ -469,6 +469,46 @@ class CompiledBinderConformanceTest {
 
 
     @Test
+    void rejectsOneOfOnCreatorBoundMembersAtCompileTime() throws Exception {
+        for (String bean : new String[]{
+                "public class Bean {\n"
+                        + " @OneOf(key=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " private final Animal pet;\n"
+                        + " @NodeCreator public Bean(@NodeProperty(\"pet\") Animal pet) { this.pet=pet; }\n"
+                        + " public Animal getPet() { return pet; }\n"
+                        + "}\n",
+                "public class Bean {\n"
+                        + " private final Animal pet;\n"
+                        + " @NodeCreator public Bean(@NodeProperty(\"pet\")\n"
+                        + " @OneOf(key=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " Animal pet) { this.pet=pet; }\n"
+                        + "}\n",
+                "public record Bean(\n"
+                        + " @OneOf(key=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " Animal pet) {}\n"
+        }) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Bean.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.node.*;\n"
+                            + bean);
+            sources.put("fixture/Animal.java", "package fixture; public interface Animal {}\n");
+            sources.put("fixture/Dog.java", "package fixture; public class Dog implements Animal {}\n");
+            sources.put("fixture/Binder.java",
+                    "package fixture;\n"
+                            + "import org.sjf4j.annotation.binding.*;\n"
+                            + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
+                            + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                            + "}\n");
+            NavigatorTestCompiler.Result result =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertFalse(result.success, result.diagnostics());
+            assertTrue(result.diagnostics().contains("@OneOf is not supported on creator-bound property"),
+                    result.diagnostics());
+        }
+    }
+
+    @Test
     void compiledEnumsAcceptNamesOrdinalsAndNulls() throws Exception {
         for (String backend : JSON_BACKENDS) {
             Map<String, String> sources = new LinkedHashMap<>();
