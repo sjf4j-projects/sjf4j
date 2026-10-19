@@ -262,7 +262,7 @@ public final class StreamingIO {
     }
 
 
-    private static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
+    public static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
                                     RuntimeContext context) throws IOException {
         /*
          * readRaw() is already nullable, so probing null beforehand
