@@ -17,12 +17,8 @@ import java.util.Map;
  */
 public final class NodeAnnotations {
 
-    private static final String JACKSON3_CREATOR =
-            "tools.jackson.annotation.JsonCreator";
     private static final String JACKSON2_CREATOR =
             "com.fasterxml.jackson.annotation.JsonCreator";
-    private static final String JACKSON3_ALIAS =
-            "tools.jackson.annotation.JsonAlias";
     private static final String JACKSON2_ALIAS =
             "com.fasterxml.jackson.annotation.JsonAlias";
     private static final String JACKSON3_PROPERTY =
@@ -68,13 +64,13 @@ public final class NodeAnnotations {
     }
 
 
-    /** Recognizes Jackson creator annotations without requiring Jackson at processor runtime. */
+    /** Jackson 2 and 3 share com.fasterxml.jackson.annotation; no Jackson dependency is needed here. */
     public boolean hasJacksonCreator(Element element) {
         for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
             Element type = annotation.getAnnotationType().asElement();
             if (!(type instanceof TypeElement)) continue;
             String name = ((TypeElement) type).getQualifiedName().toString();
-            if (JACKSON3_CREATOR.equals(name) || JACKSON2_CREATOR.equals(name)) return true;
+            if (JACKSON2_CREATOR.equals(name)) return true;
         }
         return false;
     }
@@ -83,8 +79,6 @@ public final class NodeAnnotations {
     public String[] propertyAliases(Element element) {
         NodeProperty property = element.getAnnotation(NodeProperty.class);
         if (property != null && property.aliases().length > 0) return property.aliases();
-        String[] aliases = stringArrayValue(element, JACKSON3_ALIAS, "value");
-        if (aliases.length > 0) return aliases;
         return stringArrayValue(element, JACKSON2_ALIAS, "value");
     }
 
