@@ -52,8 +52,8 @@ class CompiledJacksonCreatorTest {
                         assertEquals(7, beanType.getField("count").getInt(actual), label);
                         assertEquals("tail", beanType.getField("extra").get(actual), label);
                     }
-                    }
                 }
+            }
         }
     }
 
