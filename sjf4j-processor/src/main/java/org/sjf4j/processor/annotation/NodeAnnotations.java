@@ -9,6 +9,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,6 +17,14 @@ import java.util.Map;
  */
 public final class NodeAnnotations {
 
+    private static final String JACKSON3_CREATOR =
+            "tools.jackson.annotation.JsonCreator";
+    private static final String JACKSON2_CREATOR =
+            "com.fasterxml.jackson.annotation.JsonCreator";
+    private static final String JACKSON3_ALIAS =
+            "tools.jackson.annotation.JsonAlias";
+    private static final String JACKSON2_ALIAS =
+            "com.fasterxml.jackson.annotation.JsonAlias";
     private static final String JACKSON3_PROPERTY =
             "tools.jackson.annotation.JsonProperty";
     private static final String JACKSON2_PROPERTY =
@@ -58,6 +67,26 @@ public final class NodeAnnotations {
         return name == null ? fallback : name;
     }
 
+
+    /** Recognizes Jackson creator annotations without requiring Jackson at processor runtime. */
+    public boolean hasJacksonCreator(Element element) {
+        for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
+            Element type = annotation.getAnnotationType().asElement();
+            if (!(type instanceof TypeElement)) continue;
+            String name = ((TypeElement) type).getQualifiedName().toString();
+            if (JACKSON3_CREATOR.equals(name) || JACKSON2_CREATOR.equals(name)) return true;
+        }
+        return false;
+    }
+
+    /** Returns creator parameter aliases, following Runtime's annotation precedence. */
+    public String[] propertyAliases(Element element) {
+        NodeProperty property = element.getAnnotation(NodeProperty.class);
+        if (property != null && property.aliases().length > 0) return property.aliases();
+        String[] aliases = stringArrayValue(element, JACKSON3_ALIAS, "value");
+        if (aliases.length > 0) return aliases;
+        return stringArrayValue(element, JACKSON2_ALIAS, "value");
+    }
 
     /**
      * Returns whether the declared type uses SJF4J's OneOf node semantics.
@@ -102,6 +131,31 @@ public final class NodeAnnotations {
         }
 
         return false;
+    }
+
+    private String[] stringArrayValue(Element element, String annotationName, String memberName) {
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            Element annotationType = mirror.getAnnotationType().asElement();
+            if (!(annotationType instanceof TypeElement)
+                    || !((TypeElement) annotationType).getQualifiedName().contentEquals(annotationName)) {
+                continue;
+            }
+            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
+                    : mirror.getElementValues().entrySet()) {
+                if (!entry.getKey().getSimpleName().contentEquals(memberName)) continue;
+                Object value = entry.getValue().getValue();
+                if (!(value instanceof List)) return new String[0];
+                List<?> values = (List<?>) value;
+                String[] aliases = new String[values.size()];
+                for (int i = 0; i < values.size(); i++) {
+                    Object alias = ((AnnotationValue) values.get(i)).getValue();
+                    aliases[i] = (String) alias;
+                }
+                return aliases;
+            }
+            return new String[0];
+        }
+        return new String[0];
     }
 
     private String stringValue(
