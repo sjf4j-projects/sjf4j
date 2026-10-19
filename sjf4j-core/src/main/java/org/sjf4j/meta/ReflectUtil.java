@@ -1108,9 +1108,12 @@ public final class ReflectUtil {
     }
 
     /**
-     * A selected OneOf subtype must not declare another polymorphic member.
-     * Reject this once when building metadata, rather than failing midway
-     * through JSON streaming (notably for nested PARENT discriminators).
+     * An already selected subtype cannot restart polymorphic dispatch at the
+     * same object level. Child fields with CURRENT-scope OneOf are independent
+     * JSON values and can recurse through OneOfIO normally.
+     *
+     * PARENT-scope fields need the selected subtype's containing object state,
+     * which OneOfIO's incremental subtype reader does not maintain.
      */
     private static void _rejectNestedOneOf(Class<?> base, Class<?> subtype) {
         if (subtype.isAnnotationPresent(OneOf.class)) {
@@ -1122,47 +1125,14 @@ public final class ReflectUtil {
                 if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())
                         || Modifier.isTransient(field.getModifiers())
                         || field.isAnnotationPresent(NodeIgnore.class)) continue;
-                if (field.isAnnotationPresent(OneOf.class) || _hasNestedOneOfType(field.getGenericType(), base)) {
-                    throw new BindingException("nested @OneOf is not supported: subtype '"
+                OneOf nested = field.getAnnotation(OneOf.class);
+                if (nested != null && nested.scope() == OneOf.Scope.PARENT) {
+                    throw new BindingException("nested PARENT @OneOf is not supported: subtype '"
                             + subtype.getName() + "' of " + base.getName()
-                            + " has polymorphic property '" + field.getName() + "'");
-                }
-            }
-            for (Method method : type.getDeclaredMethods()) {
-                if (method.isSynthetic() || method.isBridge()
-                        || Modifier.isStatic(method.getModifiers())
-                        || method.isAnnotationPresent(NodeIgnore.class)
-                        || _getBeanImplicitName(method) == null) continue;
-                Type memberType = method.getParameterCount() == 0
-                        ? method.getGenericReturnType() : method.getGenericParameterTypes()[0];
-                if (_hasNestedOneOfType(memberType, base)) {
-                    throw new BindingException("nested @OneOf is not supported: subtype '"
-                            + subtype.getName() + "' of " + base.getName()
-                            + " has polymorphic accessor '" + method.getName() + "'");
+                            + " has property '" + field.getName() + "'");
                 }
             }
         }
     }
-
-    /**
-     * Reusing the enclosing OneOf base is recursive composition, not a new
-     * nested OneOf declaration (e.g. Branch.children: List<Node>).
-     */
-    private static boolean _hasNestedOneOfType(Type type, Class<?> base) {
-        if (type instanceof Class<?>) {
-            Class<?> clazz = (Class<?>) type;
-            return clazz != base && clazz.isAnnotationPresent(OneOf.class)
-                    || clazz.isArray() && _hasNestedOneOfType(clazz.getComponentType(), base);
-        }
-        if (type instanceof ParameterizedType) {
-            for (Type arg : ((ParameterizedType) type).getActualTypeArguments()) {
-                if (_hasNestedOneOfType(arg, base)) return true;
-            }
-        } else if (type instanceof GenericArrayType) {
-            return _hasNestedOneOfType(((GenericArrayType) type).getGenericComponentType(), base);
-        }
-        return false;
-    }
-
 
 }
