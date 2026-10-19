@@ -47,15 +47,15 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 400, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
 @State(Scope.Thread)
 public class CompiledReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-//        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
-        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*map"});
+        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
+//        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*map"});
     }
 
 

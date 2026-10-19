@@ -253,11 +253,6 @@ public abstract class StreamingWriter implements Closeable, Flushable {
      * Object null omission follows the supplied context; array nulls remain.
      */
     public void writeRaw(Object raw, RuntimeContext context) throws IOException {
-        Asserts.notNull(context, "context");
-        writeRawValue(raw, context);
-    }
-
-    private void writeRawValue(Object raw, RuntimeContext context) throws IOException {
         if (raw == null) {
             writeNull();
         } else if (raw instanceof String) {
@@ -289,7 +284,7 @@ public abstract class StreamingWriter implements Closeable, Flushable {
                 Object child = entry.getValue();
                 if (child == null && !context.includeNulls) continue;
                 writeName((String) entry.getKey(), count++ > 0);
-                writeRawValue(child, context);
+                writeRaw(child, context);
             }
             endObject();
         } else if (raw instanceof List) {
@@ -298,13 +293,13 @@ public abstract class StreamingWriter implements Closeable, Flushable {
             if (list instanceof RandomAccess) {
                 for (int i = 0, size = list.size(); i < size; i++) {
                     if (i > 0) separateElement();
-                    writeRawValue(list.get(i), context);
+                    writeRaw(list.get(i), context);
                 }
             } else {
                 int count = 0;
                 for (Object child : list) {
                     if (count++ > 0) separateElement();
-                    writeRawValue(child, context);
+                    writeRaw(child, context);
                 }
             }
             endArray();
