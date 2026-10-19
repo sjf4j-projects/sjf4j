@@ -1,6 +1,8 @@
 package org.sjf4j.processor.mapping;
 
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.creator.CreatorPlan;
+import org.sjf4j.processor.creator.StandardCreatorResolver;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -12,7 +14,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
@@ -43,11 +44,13 @@ public final class CreatorResolver {
 
     private final ProcessorContext context;
     private final TypeSystem types;
+    private final StandardCreatorResolver standardCreators;
 
 
     public CreatorResolver(ProcessorContext context) {
         this.context = context;
         this.types = context.types;
+        this.standardCreators = new StandardCreatorResolver(context);
     }
 
 
@@ -396,7 +399,7 @@ public final class CreatorResolver {
             return null;
         }
 
-        if (!isTypeAccessible(
+        if (!standardCreators.isTypeAccessible(
                 workingElement,
                 generatedPackage(method))) {
 
@@ -552,304 +555,23 @@ public final class CreatorResolver {
             ExecutableElement method,
             GeneratedClass generated) {
 
-        workingType =
-                types.concrete(
-                        workingType);
-
-        TypeElement type =
-                types.typeElement(
-                        workingType);
-
-        if (type == null) {
-            error(
-                    method,
-                    generated,
-                    "cannot create target type " +
-                            workingType);
-
-            return null;
-        }
-
-        if (type.getKind() ==
-                ElementKind.INTERFACE) {
-
-            error(
-                    method,
-                    generated,
-                    "target type " +
-                            workingType +
-                            " is an interface and requires @MappingCreator");
-
-            return null;
-        }
-
-        if (type.getModifiers()
-                .contains(Modifier.ABSTRACT)) {
-
-            error(
-                    method,
-                    generated,
-                    "target type " +
-                            workingType +
-                            " is abstract and requires @MappingCreator");
-
-            return null;
-        }
-
-        PackageElement generatedPackage =
-                generatedPackage(method);
-
-        if (!isTypeAccessible(
-                type,
-                generatedPackage)) {
-
-            error(
-                    method,
-                    generated,
-                    "target type " +
-                            workingType +
-                            " is not accessible from generated code");
-
-            return null;
-        }
-
-        if (isRecord(type)) {
-            ExecutableElement constructor =
-                    recordConstructor(type);
-
-            if (constructor == null) {
-                error(
-                        method,
-                        generated,
-                        "cannot resolve canonical constructor for record " +
-                                workingType);
-
-                return null;
-            }
-
-            return constructorCreation(
-                    declaredTarget,
-                    workingType,
-                    constructor);
-        }
-
-        List<ExecutableElement> publicConstructors =
-                publicConstructors(type);
-
-        /*
-         * No declared constructor means an implicit no-args constructor.
-         */
-        if (constructors(type).isEmpty()) {
-            return Creation.noArgs(
-                    declaredTarget,
-                    workingType);
-        }
-
-        for (ExecutableElement constructor :
-                publicConstructors) {
-
-            if (constructor.getParameters()
-                    .isEmpty()) {
-
-                return Creation.noArgs(
-                        declaredTarget,
-                        workingType);
-            }
-        }
-
-        if (publicConstructors.size() == 1) {
-            return constructorCreation(
-                    declaredTarget,
-                    workingType,
-                    publicConstructors.get(0));
-        }
-
-        if (publicConstructors.isEmpty()) {
-            error(
-                    method,
-                    generated,
-                    "target type " +
-                            workingType +
-                            " has no public constructor");
-
-        } else {
-            error(
-                    method,
-                    generated,
-                    "target type " +
-                            workingType +
-                            " has multiple public constructors and no public no-args constructor");
-        }
-
-        return null;
-    }
-
-
-    private Creation constructorCreation(
-            TypeMirror declaredTarget,
-            TypeMirror workingType,
-            ExecutableElement constructor) {
-
-        List<? extends TypeMirror> parameterTypes =
-                resolvedConstructorParameterTypes(
-                        workingType,
-                        constructor);
-
-        return Creation.constructor(
+        CreatorPlan plan = standardCreators.resolve(
                 declaredTarget,
                 workingType,
-                constructor,
-                parameterTypes);
-    }
+                method,
+                "@MappingCreator",
+                message -> error(method, generated, message));
 
-
-    private List<? extends TypeMirror> resolvedConstructorParameterTypes(
-            TypeMirror owner,
-            ExecutableElement constructor) {
-
-        if (!(owner instanceof
-                DeclaredType)) {
-
-            List<TypeMirror> result =
-                    new ArrayList<TypeMirror>();
-
-            for (VariableElement parameter :
-                    constructor.getParameters()) {
-
-                result.add(
-                        parameter.asType());
-            }
-
-            return result;
+        if (plan == null) return null;
+        switch (plan.kind()) {
+            case NO_ARGS:
+                return Creation.noArgs(plan.declaredType(), plan.targetType());
+            case CONSTRUCTOR:
+                return Creation.constructor(plan.declaredType(), plan.targetType(),
+                        plan.executable(), plan.parameterTypes());
+            default:
+                throw new AssertionError(plan.kind());
         }
-
-        try {
-            ExecutableType type =
-                    (ExecutableType)
-                            context.typeUtils
-                                    .asMemberOf(
-                                            (DeclaredType) owner,
-                                            constructor);
-
-            return new ArrayList<TypeMirror>(
-                    type.getParameterTypes());
-
-        } catch (IllegalArgumentException e) {
-            List<TypeMirror> result =
-                    new ArrayList<TypeMirror>();
-
-            for (VariableElement parameter :
-                    constructor.getParameters()) {
-
-                result.add(
-                        parameter.asType());
-            }
-
-            return result;
-        }
-    }
-
-
-    private List<ExecutableElement> constructors(
-            TypeElement type) {
-
-        List<ExecutableElement> result =
-                new ArrayList<ExecutableElement>();
-
-        for (Element element :
-                type.getEnclosedElements()) {
-
-            if (element.getKind() ==
-                    ElementKind.CONSTRUCTOR) {
-
-                result.add(
-                        (ExecutableElement) element);
-            }
-        }
-
-        return result;
-    }
-
-
-    private List<ExecutableElement> publicConstructors(
-            TypeElement type) {
-
-        List<ExecutableElement> result =
-                new ArrayList<ExecutableElement>();
-
-        for (ExecutableElement constructor :
-                constructors(type)) {
-
-            if (constructor.getModifiers()
-                    .contains(Modifier.PUBLIC)) {
-
-                result.add(constructor);
-            }
-        }
-
-        return result;
-    }
-
-
-    private ExecutableElement recordConstructor(
-            TypeElement type) {
-
-        List<Element> components =
-                new ArrayList<Element>();
-
-        for (Element element :
-                type.getEnclosedElements()) {
-
-            if ("RECORD_COMPONENT".equals(
-                    element.getKind().name())) {
-
-                components.add(element);
-            }
-        }
-
-        for (ExecutableElement constructor :
-                constructors(type)) {
-
-            List<? extends VariableElement> parameters =
-                    constructor.getParameters();
-
-            if (parameters.size() !=
-                    components.size()) {
-
-                continue;
-            }
-
-            boolean match = true;
-
-            for (int i = 0;
-                 i < parameters.size();
-                 i++) {
-
-                if (!parameters.get(i)
-                        .getSimpleName()
-                        .contentEquals(
-                                components.get(i)
-                                        .getSimpleName())) {
-
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match) {
-                return constructor;
-            }
-        }
-
-        return null;
-    }
-
-
-    private boolean isRecord(
-            TypeElement type) {
-
-        return "RECORD".equals(
-                type.getKind().name());
     }
 
 
@@ -1280,52 +1002,6 @@ public final class CreatorResolver {
 
         return context.elements
                 .getPackageOf(method);
-    }
-
-
-    private boolean isTypeAccessible(
-            TypeElement type,
-            PackageElement generatedPackage) {
-
-        Element current =
-                type;
-
-        while (current instanceof
-                TypeElement) {
-
-            TypeElement currentType =
-                    (TypeElement) current;
-
-            Set<Modifier> modifiers =
-                    currentType.getModifiers();
-
-            if (modifiers.contains(
-                    Modifier.PRIVATE)) {
-
-                return false;
-            }
-
-            if (!modifiers.contains(
-                    Modifier.PUBLIC)) {
-
-                PackageElement ownerPackage =
-                        context.elements
-                                .getPackageOf(
-                                        currentType);
-
-                if (!ownerPackage.equals(
-                        generatedPackage)) {
-
-                    return false;
-                }
-            }
-
-            current =
-                    currentType
-                            .getEnclosingElement();
-        }
-
-        return true;
     }
 
 

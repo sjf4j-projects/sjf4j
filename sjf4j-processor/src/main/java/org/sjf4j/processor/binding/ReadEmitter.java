@@ -207,7 +207,8 @@ final class ReadEmitter {
         }
 
         out.endBlock();
-        if (fastjson2Pojo != null && (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO)
+        if (fastjson2Pojo != null && value.creator() == null
+                && (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO)
                 && !value.properties().isEmpty()) {
             out.blank();
             fastjson2Pojo.emitFallback(out, value, this);
@@ -218,6 +219,11 @@ final class ReadEmitter {
             JavaWriter out,
             BindingValue value) {
 
+        if (value.creator() != null) {
+            emitCreator(out, value);
+            return;
+        }
+
         emitObjectStart(out);
 
         out.line(
@@ -227,7 +233,7 @@ final class ReadEmitter {
                         "();");
 
         if (fastjson2Pojo != null && !value.properties().isEmpty()) {
-            fastjson2Pojo.emitProperties(out, value, this);
+            fastjson2Pojo.emitProperties(out, value, this, false);
         } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) {
@@ -257,10 +263,96 @@ final class ReadEmitter {
         out.line("return value;");
     }
 
+    /** Compiled creator binding: typed arguments and deferred writable fields. */
+    private void emitCreator(JavaWriter out, BindingValue value) {
+        emitObjectStart(out);
+
+        int argCount = value.creator().parameterTypes().size();
+        int pendingCount = 0;
+        for (BindingProperty property : value.properties()) {
+            if (property.creatorIndex() >= 0) {
+                out.line(property.value().type() + " arg" + property.creatorIndex() + " = "
+                        + (property.value().primitive() ? primitiveDefault(property.value()) : "null") + ";");
+            } else if (property.pendingIndex() >= 0) {
+                int index = property.pendingIndex();
+                pendingCount++;
+                out.line(property.value().type() + " pending" + index + " = "
+                        + (property.value().primitive() ? primitiveDefault(property.value()) : "null") + ";");
+                out.line("boolean pending" + index + "Present = false;");
+            }
+        }
+        if (argCount != 0) {
+            out.line(argCount <= 64 ? "long seen = 0L;"
+                    : "boolean[] seen = new boolean[" + argCount + "];");
+        }
+
+        int size = value.properties().size();
+        if (fastjson2Pojo != null && size != 0) {
+            fastjson2Pojo.emitProperties(out, value, this, true);
+        } else if (backend.usesNameMatcher() && size != 0) {
+            out.line("int nameIndex;");
+            if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
+            out.beginBlock("while ((nameIndex = reader.nextNameMatch(" + matcherFieldName(value)
+                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
+                    + ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            emitMatchedPojoProperty(out, value);
+        } else {
+            out.line("String name;");
+            out.beginBlock("while ((name = reader.nextName()) != null)");
+            emitStringPojoProperty(out, value);
+        }
+        if (fastjson2Pojo == null || size == 0) out.endBlock();
+
+        StringBuilder creation;
+        switch (value.creator().kind()) {
+            case CONSTRUCTOR:
+                creation = new StringBuilder("new ").append(value.type()).append('(');
+                break;
+            case STATIC_FACTORY:
+                creation = new StringBuilder(value.creator().executable().getEnclosingElement().toString())
+                        .append('.').append(value.creator().executable().getSimpleName()).append('(');
+                break;
+            default:
+                throw new AssertionError(value.creator().kind());
+        }
+        for (int i = 0; i < argCount; i++) {
+            if (i != 0) creation.append(", ");
+            creation.append("arg").append(i);
+        }
+        creation.append(')');
+        if (pendingCount == 0) {
+            out.line("return " + creation + ";");
+            return;
+        }
+
+        out.line(value.type() + " value = " + creation + ";");
+        for (BindingProperty property : value.properties()) {
+            if (property.pendingIndex() < 0) continue;
+            int index = property.pendingIndex();
+            out.beginBlock("if (pending" + index + "Present)");
+            out.line(assignment(property.access(), "value", "pending" + index));
+            out.endBlock();
+        }
+        out.line("return value;");
+    }
+
+    private static String primitiveDefault(BindingValue value) {
+        switch (value.kind()) {
+            case BOOLEAN: return "false";
+            case LONG: return "0L";
+            case FLOAT: return "0f";
+            case DOUBLE: return "0d";
+            default: return "0";
+        }
+    }
+
     private void emitMatchedPojoProperty(
             JavaWriter out,
             BindingValue value) {
+        emitMatchedPojoProperty(out, value, true);
+    }
 
+    void emitMatchedPojoProperty(JavaWriter out, BindingValue value, boolean updateExpected) {
         out.beginBlock("switch (nameIndex)");
 
         int index = 0;
@@ -268,7 +360,7 @@ final class ReadEmitter {
             int propertyIndex = index++;
             out.line("case " + propertyIndex + ":");
             out.indent();
-            if (backend.usesExpectedNameMatch()) {
+            if (updateExpected && backend.usesExpectedNameMatch()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
             emitPropertyRead(out, property, "value", "reader");
@@ -300,13 +392,7 @@ final class ReadEmitter {
 
             out.indent();
 
-            out.line(
-                    assignment(
-                            property.access(),
-                            "value",
-                            readExpression(
-                                    property.value(),
-                                    "reader")));
+            emitPropertyRead(out, property, "value", "reader");
 
             out.line("break;");
             out.dedent();
@@ -314,8 +400,7 @@ final class ReadEmitter {
             for (String alias : property.aliases()) {
                 out.line("case " + JavaWriter.stringLiteral(alias) + ":");
                 out.indent();
-                out.line(assignment(property.access(), "value",
-                        readExpression(property.value(), "reader")));
+                emitPropertyRead(out, property, "value", "reader");
                 out.line("break;");
                 out.dedent();
             }
@@ -370,7 +455,27 @@ final class ReadEmitter {
     /** Reuses the normal POJO assignment semantics for backend-native reads. */
     void emitPropertyReadExpression(JavaWriter out, BindingProperty property,
                                     String owner, String expression) {
-        out.line(assignment(property.access(), owner, expression));
+        int index = property.creatorIndex();
+        if (index < 0) {
+            int pending = property.pendingIndex();
+            if (pending >= 0) {
+                out.line("pending" + pending + " = " + expression + ";");
+                out.line("pending" + pending + "Present = true;");
+            } else {
+                out.line(assignment(property.access(), owner, expression));
+            }
+            return;
+        }
+        boolean wide = property.creatorCount() > 64;
+        String flag = wide ? "seen[" + index + "]" : "seen";
+        String condition = wide ? flag : "(seen & (1L << " + index + ")) != 0L";
+        out.beginBlock("if (" + condition + ")");
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + JavaWriter.stringLiteral("duplicate creator argument assignment for '" + property.name() + "'")
+                + ");");
+        out.endBlock();
+        out.line(wide ? flag + " = true;" : "seen |= (1L << " + index + ");");
+        out.line("arg" + index + " = " + expression + ";");
     }
 
     private void emitList(

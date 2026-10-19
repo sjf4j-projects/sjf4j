@@ -5,18 +5,18 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.creator.CreatorPlan;
+import org.sjf4j.processor.creator.StandardCreatorResolver;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -40,6 +40,7 @@ final class BindingCompiler {
     private final ProcessorContext context;
     private final NameAllocator names;
     private final CompiledMetadata metadata;
+    private final StandardCreatorResolver creators;
 
     private final TypeMirror stringType;
     private final TypeMirror arrayListType;
@@ -60,6 +61,7 @@ final class BindingCompiler {
         this.context = context;
         this.names = names;
         this.metadata = metadata;
+        this.creators = new StandardCreatorResolver(context);
 
         this.stringType = requiredType("java.lang.String");
         this.arrayListType = requiredType("java.util.ArrayList");
@@ -340,16 +342,9 @@ final class BindingCompiler {
                             ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
                 }
 
-                if (hasPublicNoArgsConstructor(type)) {
-                    return nodeKind == NodeKind.OBJECT_JOJO
-                            ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
-                }
-
-                return unsupported(
-                        method,
-                        generated,
-                        type,
-                        "read binding currently requires a public no-args constructor; creator support is deferred");
+                // Creator selection is resolved once for the POJO, at compile time.
+                return nodeKind == NodeKind.OBJECT_JOJO
+                        ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
 
             case ARRAY_LIST:
                 if (directList(direction, type)) {
@@ -423,6 +418,25 @@ final class BindingCompiler {
             BindingValue value,
             ExecutableElement method,
             GeneratedClass generated) {
+
+        TypeElement element = context.types.typeElement(value.type());
+        if (value.direction() == BindingPlan.Direction.READ_FROM
+                && element != null && "RECORD".equals(element.getKind().name())) {
+            return compileRecord(value, method, generated);
+        }
+
+        if (value.direction() == BindingPlan.Direction.READ_FROM) {
+            CreatorPlan creator = creators.resolveBinding(value.type(), method,
+                    message -> error(method, generated, message));
+            if (creator == null) return false;
+            if (creator.kind() != CreatorPlan.Kind.NO_ARGS) {
+                if (value.kind() == BindingValue.Kind.JOJO) {
+                    error(method, generated, "Compiled JOJO creators are not supported yet: " + value.type());
+                    return false;
+                }
+                return compileCreatorPojo(value, creator, method, generated);
+            }
+        }
 
         Map<String, Property> properties =
                 context.properties.resolve(
@@ -527,6 +541,160 @@ final class BindingCompiler {
         value.properties(compiled);
         value.ignoredNames(ignored);
         return true;
+    }
+
+    /**
+     * Record parameters are read directly into typed locals. They are not
+     * writable properties, so PropertyResolver's setter-based path cannot
+     * describe them.
+     */
+    private boolean compileRecord(BindingValue value, ExecutableElement method,
+                                  GeneratedClass generated) {
+        CreatorPlan creator = creators.resolveBinding(value.type(), method,
+                message -> error(method, generated, message));
+        if (creator == null) return false;
+        if (creator.kind() == CreatorPlan.Kind.STATIC_FACTORY) {
+            return compileCreatorPojo(value, creator, method, generated);
+        }
+        if (creator.kind() != CreatorPlan.Kind.CONSTRUCTOR) {
+            error(method, generated, "Record requires a constructor or @NodeCreator factory: " + value.type());
+            return false;
+        }
+
+        List<? extends VariableElement> args = creator.executable().getParameters();
+        List<BindingProperty> compiled = new ArrayList<>(args.size());
+        Map<String, String> claimed = new LinkedHashMap<>();
+
+        for (int i = 0; i < args.size(); i++) {
+            VariableElement arg = args.get(i);
+            NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
+            String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
+            String[] aliases = annotation == null ? new String[0] : annotation.aliases();
+            if (name.isEmpty()) {
+                error(method, generated, "Empty record creator property name in " + value.type());
+                return false;
+            }
+            for (String key : recordNames(name, aliases)) {
+                if (key.isEmpty()) {
+                    error(method, generated, "Empty @NodeProperty alias on " + value.type() + "." + name);
+                    return false;
+                }
+                String previous = claimed.putIfAbsent(key, name);
+                if (previous != null) {
+                    error(method, generated, "Duplicate compiled property name '" + key
+                            + "' for " + previous + " and " + name);
+                    return false;
+                }
+            }
+            if (arg.getAnnotation(OneOf.class) != null) {
+                error(method, generated, "Record constructor @OneOf is not supported yet: " + name);
+                return false;
+            }
+
+            BindingValue child = compileValue(value.direction(), creator.parameterTypes().get(i),
+                    method, generated,
+                    annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                            ? null : annotation.codecName(),
+                    annotation == null || annotation.codecPattern().isEmpty()
+                            ? null : annotation.codecPattern());
+            if (child == null) return false;
+            compiled.add(new BindingProperty(name, aliases, child, i, args.size()));
+        }
+
+        value.creator(creator);
+        value.properties(compiled);
+        return true;
+    }
+
+    /** Constructor parameters first, then writable properties buffered until creation. */
+    private boolean compileCreatorPojo(BindingValue value, CreatorPlan creator,
+                                       ExecutableElement method, GeneratedClass generated) {
+        List<? extends VariableElement> args = creator.executable().getParameters();
+        Map<String, Property> properties = context.properties.resolve(value.type());
+        List<BindingProperty> compiled = new ArrayList<>();
+        Map<String, String> claimed = new LinkedHashMap<>();
+        Map<String, Boolean> consumed = new LinkedHashMap<>();
+
+        for (int i = 0; i < args.size(); i++) {
+            VariableElement arg = args.get(i);
+            NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
+            String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
+            String[] aliases = annotation == null ? new String[0] : annotation.aliases();
+            if (name.isEmpty() || name.matches("arg[0-9]+") && annotation == null) {
+                error(method, generated, "Missing creator parameter name for " + value.type()
+                        + " argument " + i + "; use @NodeProperty");
+                return false;
+            }
+            if (!claimCreatorNames(value, method, generated, claimed, name, aliases)) return false;
+            if (arg.getAnnotation(OneOf.class) != null) {
+                error(method, generated, "@OneOf is not supported for creator argument " + name);
+                return false;
+            }
+            BindingValue child = compileValue(value.direction(), creator.parameterTypes().get(i),
+                    method, generated,
+                    annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                            ? null : annotation.codecName(),
+                    annotation == null || annotation.codecPattern().isEmpty()
+                            ? null : annotation.codecPattern());
+            if (child == null) return false;
+            compiled.add(new BindingProperty(name, aliases, child, i, args.size()));
+            consumed.put(name, true);
+        }
+
+        int pending = 0;
+        for (Property property : properties.values()) {
+            if (consumed.containsKey(property.name()) || property.write() == null) continue;
+            NodeProperty getter = property.read() == null ? null
+                    : property.read().member().getAnnotation(NodeProperty.class);
+            NodeProperty setter = property.write().member().getAnnotation(NodeProperty.class);
+            if (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write())) {
+                error(method, generated, "@OneOf is not supported for property " + property.name());
+                return false;
+            }
+            String[] aliases = setter != null && setter.aliases().length != 0 ? setter.aliases()
+                    : getter == null ? new String[0] : getter.aliases();
+            if (!claimCreatorNames(value, method, generated, claimed, property.name(), aliases)) return false;
+            if (conflictingCodecOptions(getter, setter)) {
+                error(method, generated, "Conflicting @NodeProperty codecName/codecPattern on "
+                        + value.type() + "." + property.name());
+                return false;
+            }
+            BindingValue child = compileValue(value.direction(), property.write().type(),
+                    method, generated, selectedCodecName(getter, setter),
+                    selectedCodecPattern(getter, setter));
+            if (child == null) return false;
+            compiled.add(new BindingProperty(property.name(), aliases,
+                    property.write(), child, pending++));
+        }
+
+        value.creator(creator);
+        value.properties(compiled);
+        return true;
+    }
+
+    private boolean claimCreatorNames(BindingValue value, ExecutableElement method,
+                                      GeneratedClass generated, Map<String, String> claimed,
+                                      String name, String[] aliases) {
+        for (String key : recordNames(name, aliases)) {
+            if (key.isEmpty()) {
+                error(method, generated, "Empty creator property name/alias on " + value.type());
+                return false;
+            }
+            String previous = claimed.putIfAbsent(key, name);
+            if (previous != null) {
+                error(method, generated, "Duplicate compiled property name '" + key
+                        + "' for " + previous + " and " + name);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String[] recordNames(String name, String[] aliases) {
+        String[] names = new String[aliases.length + 1];
+        names[0] = name;
+        System.arraycopy(aliases, 0, names, 1, aliases.length);
+        return names;
     }
 
     private static boolean conflictingCodecOptions(NodeProperty getter, NodeProperty setter) {
@@ -707,55 +875,6 @@ final class BindingCompiler {
                         implementation),
                 context.typeUtils.erasure(
                         target));
-    }
-
-    private boolean hasPublicNoArgsConstructor(
-            TypeMirror type) {
-
-        TypeElement element =
-                context.types.typeElement(type);
-
-        if (element == null ||
-                element.getKind() == ElementKind.INTERFACE ||
-                "RECORD".equals(
-                        element.getKind().name()) ||
-                element.getModifiers().contains(
-                        Modifier.ABSTRACT) ||
-                !element.getModifiers().contains(
-                        Modifier.PUBLIC)) {
-            return false;
-        }
-
-        if (element.getNestingKind() ==
-                NestingKind.MEMBER &&
-                !element.getModifiers().contains(
-                        Modifier.STATIC)) {
-            return false;
-        }
-
-        boolean declaredConstructor = false;
-
-        for (Element enclosed :
-                element.getEnclosedElements()) {
-
-            if (enclosed.getKind() !=
-                    ElementKind.CONSTRUCTOR) {
-                continue;
-            }
-
-            declaredConstructor = true;
-
-            ExecutableElement constructor =
-                    (ExecutableElement) enclosed;
-
-            if (constructor.getParameters().isEmpty() &&
-                    constructor.getModifiers().contains(
-                            Modifier.PUBLIC)) {
-                return true;
-            }
-        }
-
-        return !declaredConstructor;
     }
 
     private BindingValue.Kind unsupported(
