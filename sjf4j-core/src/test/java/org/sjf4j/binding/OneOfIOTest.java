@@ -204,6 +204,20 @@ class OneOfIOTest {
     }
 
     @Test
+    void allowsSelfRecursiveOneOfTypesWithoutIntroducingNestedMappings() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        String json = "{\"kind\":\"branch\",\"children\":["
+                + "{\"kind\":\"leaf\",\"value\":\"a\"},"
+                + "{\"kind\":\"branch\",\"children\":[{\"kind\":\"leaf\",\"value\":\"b\"}]}"
+                + "],\"single\":{\"kind\":\"leaf\",\"value\":\"c\"}}";
+        TreeBranch root = assertInstanceOf(TreeBranch.class, binder.readNode(json, TreeNode.class));
+        assertEquals("a", assertInstanceOf(TreeLeaf.class, root.children.get(0)).value);
+        TreeBranch child = assertInstanceOf(TreeBranch.class, root.children.get(1));
+        assertEquals("b", assertInstanceOf(TreeLeaf.class, child.children.get(0)).value);
+        assertEquals("c", assertInstanceOf(TreeLeaf.class, root.single).value);
+    }
+
+    @Test
     void currentKeySupportsObjectContainerSubtype() {
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
         for (String input : new String[]{
@@ -256,6 +270,21 @@ class OneOfIOTest {
                             @OneOfMapping(type = Cat.class, when = "cat")}) Animal pet) {
             this.pet = pet;
         }
+    }
+
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = TreeLeaf.class, when = "leaf"),
+            @OneOfMapping(type = TreeBranch.class, when = "branch")
+    })
+    interface TreeNode {}
+
+    static class TreeLeaf implements TreeNode {
+        public String value;
+    }
+
+    static class TreeBranch implements TreeNode {
+        public java.util.List<TreeNode> children;
+        public TreeNode single;
     }
 
     static class MapHolder {
