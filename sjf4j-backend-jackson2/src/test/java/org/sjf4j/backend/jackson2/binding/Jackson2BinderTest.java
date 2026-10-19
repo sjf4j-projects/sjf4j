@@ -12,6 +12,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayInputStream;
@@ -354,14 +355,14 @@ class Jackson2BinderTest {
     }
 
     static class CurrentJojo extends JsonObject {
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")}, key = "kind")
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, key = "kind")
         public Animal pet;
     }
 
     static class ParentJojo extends JsonObject {
         public String kind;
 
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")},
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
                 key = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
     }
@@ -382,7 +383,7 @@ class Jackson2BinderTest {
         private final String name;
         public String kind;
 
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")},
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
                 key = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
 
@@ -450,14 +451,14 @@ class Jackson2BinderTest {
     }
 
     static class CurrentOneOf {
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")}, key = "kind")
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, key = "kind")
         public Animal pet;
     }
 
     static class ParentOneOf {
         public String kind;
 
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog")},
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
                 key = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
     }

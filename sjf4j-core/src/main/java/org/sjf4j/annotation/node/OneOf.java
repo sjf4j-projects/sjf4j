@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * <ul>
  *     <li>Annotate a base type to make reads of that type polymorphic</li>
  *     <li>Annotate a field or creator parameter to make only that location polymorphic</li>
- *     <li>Use {@link #key()} or {@link #path()} with {@link Mapping#when()} for discriminator-based selection</li>
+ *     <li>Use {@link #key()} or {@link #path()} with {@link OneOfMapping#when()} for discriminator-based selection</li>
  *     <li>Omit discriminators to resolve by raw JSON kind when candidate shapes are distinct</li>
  * </ul>
  */
@@ -27,23 +27,7 @@ public @interface OneOf {
     /**
      * Candidate subtype mappings.
      */
-    Mapping[] value();
-
-    /**
-     * Single subtype mapping inside {@link OneOf}.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @interface Mapping {
-        /**
-         * Concrete target subtype, distinct from the declared target type.
-         */
-        Class<?> value();
-
-        /**
-         * Accepted discriminator values for this subtype.
-         */
-        String[] when() default {}; // "c" or {"a","b"}
-    }
+    OneOfMapping[] mappings();
 
     /**
      * Discriminator key read from the current object.

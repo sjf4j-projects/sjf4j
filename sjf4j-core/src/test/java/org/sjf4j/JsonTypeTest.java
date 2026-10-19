@@ -2,6 +2,7 @@ package org.sjf4j;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -14,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JsonTypeTest {
     static class PlainPojo { public String name; }
 
-    @OneOf({@OneOf.Mapping(value = PolyObj.class), @OneOf.Mapping(value = PolyArr.class)})
+    @OneOf(mappings = {@OneOfMapping(type = PolyObj.class), @OneOfMapping(type = PolyArr.class)})
     interface PolymorphicType {}
 
     static class PolyObj extends JsonObject implements PolymorphicType {}

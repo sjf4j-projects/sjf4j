@@ -6,6 +6,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.PropertyReader;
 import org.sjf4j.binding.PropertyWriter;
@@ -1050,15 +1051,15 @@ public final class ReflectUtil {
      */
 
     public static OneOfInfo analyzeOneOf(Class<?> clazz, OneOf ann) {
-        OneOf.Mapping[] mappings = ann.value();
+        OneOfMapping[] mappings = ann.mappings();
         if (mappings == null || mappings.length == 0) {
             throw new BindingException("empty mappings in @" + OneOf.class.getName() + " of class " + clazz.getName());
         }
 
         boolean hasDiscriminator = !ann.key().isEmpty() || !ann.path().isEmpty();
         EnumSet<JsonType> enumSet = hasDiscriminator ? null : EnumSet.noneOf(JsonType.class);
-        for (OneOf.Mapping mapping : mappings) {
-            Class<?> subClazz = mapping.value();
+        for (OneOfMapping mapping : mappings) {
+            Class<?> subClazz = mapping.type();
             if (subClazz == clazz) {
                 throw new BindingException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
                         " must differ from declared type " + clazz.getName());
@@ -1073,7 +1074,7 @@ public final class ReflectUtil {
                             subClazz.getName() + " in @" + OneOf.class.getName() + " of class " + clazz.getName());
                 }
             } else {
-                JsonType jt = JsonType.rawOf(mapping.value());
+                JsonType jt = JsonType.rawOf(mapping.type());
                 if (jt.isUnknown()) {
                     throw new BindingException("mapping raw JsonType must not be UNKNOWN in class " + clazz.getName());
                 }

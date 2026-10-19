@@ -9,6 +9,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
@@ -153,44 +154,44 @@ class ReflectUtilMetadataTest {
         }
     }
 
-    @OneOf(value = {
-            @OneOf.Mapping(value = DiscA.class, when = {"a"}),
-            @OneOf.Mapping(value = DiscB.class, when = {"b"})
+    @OneOf(mappings = {
+            @OneOfMapping(type = DiscA.class, when = {"a"}),
+            @OneOfMapping(type = DiscB.class, when = {"b"})
     }, key = "type")
     interface DiscOneOf {}
 
     static class DiscA extends JsonObject implements DiscOneOf {}
     static class DiscB extends JsonObject implements DiscOneOf {}
 
-    @OneOf(value = {
-            @OneOf.Mapping(value = DuplicateA.class),
-            @OneOf.Mapping(value = DuplicateB.class)
+    @OneOf(mappings = {
+            @OneOfMapping(type = DuplicateA.class),
+            @OneOfMapping(type = DuplicateB.class)
     })
     interface DuplicateRawOneOf {}
 
     static class DuplicateA extends JsonObject implements DuplicateRawOneOf {}
     static class DuplicateB extends JsonObject implements DuplicateRawOneOf {}
 
-    @OneOf(value = {@OneOf.Mapping(value = NotAssignable.class)})
+    @OneOf(mappings = {@OneOfMapping(type = NotAssignable.class)})
     interface WrongOneOf {}
 
     static class NotAssignable {}
 
-    @OneOf(value = {@OneOf.Mapping(value = MissingWhenSubtype.class)}, key = "type")
+    @OneOf(mappings = {@OneOfMapping(type = MissingWhenSubtype.class)}, key = "type")
     interface MissingWhenOneOf {}
 
     static class MissingWhenSubtype extends JsonObject implements MissingWhenOneOf {}
 
-    @OneOf(value = @OneOf.Mapping(value = SelfDiscriminatorOneOf.class, when = "self"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = SelfDiscriminatorOneOf.class, when = "self"), key = "kind")
     static class SelfDiscriminatorOneOf {}
 
-    @OneOf(@OneOf.Mapping(SelfShapeOneOf.class))
+    @OneOf(mappings = @OneOfMapping(type = SelfShapeOneOf.class))
     static class SelfShapeOneOf {}
 
     static class SelfFieldChoice {}
 
     static class SelfFieldOneOf {
-        @OneOf(value = @OneOf.Mapping(value = SelfFieldChoice.class, when = "self"), key = "kind")
+        @OneOf(mappings = @OneOfMapping(type = SelfFieldChoice.class, when = "self"), key = "kind")
         public SelfFieldChoice value;
     }
 

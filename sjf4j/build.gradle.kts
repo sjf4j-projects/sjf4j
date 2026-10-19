@@ -11,6 +11,12 @@ java {
 
 dependencies {
     api(project(":sjf4j-core"))
+    api(project(":sjf4j-backend-jackson2"))
+    api(project(":sjf4j-backend-jackson3"))
+    api(project(":sjf4j-backend-gson"))
+    api(project(":sjf4j-backend-fastjson2"))
+    api(project(":sjf4j-backend-snake"))
+    api(project(":sjf4j-backend-jsonp"))
     api(project(":sjf4j-schema"))
 }
 
@@ -21,7 +27,7 @@ mavenPublishing {
 
     pom {
         name.set("SJF4J")
-        description.set("Data binding and structural processing for Java")
+        description.set("Aggregate dependency for SJF4J core, all supported backends, and JSON Schema")
         inceptionYear.set("2025")
         url.set("https://sjf4j.org")
         licenses {

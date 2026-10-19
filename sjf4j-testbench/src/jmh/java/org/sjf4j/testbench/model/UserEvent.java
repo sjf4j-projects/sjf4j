@@ -1,10 +1,11 @@
 package org.sjf4j.testbench.model;
 
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 
-@OneOf(key = "type", value = {
-        @OneOf.Mapping(value = LoginEvent.class, when = "login"),
-        @OneOf.Mapping(value = CommentEvent.class, when = "comment")
+@OneOf(key = "type", mappings = {
+        @OneOfMapping(type = LoginEvent.class, when = "login"),
+        @OneOfMapping(type = CommentEvent.class, when = "comment")
 })
 public interface UserEvent {
 }

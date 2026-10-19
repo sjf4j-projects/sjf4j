@@ -6,6 +6,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
@@ -21,14 +22,14 @@ import java.time.Instant;
 class OneOfIOTest {
 
     static class Container {
-        @OneOf(value = {
-                @OneOf.Mapping(value = Dog.class, when = "dog"),
-                @OneOf.Mapping(value = Cat.class, when = "cat")
+        @OneOf(mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
         }, key = "kind")
         public Animal pet;
     }
 
-    @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")}, key = "kind")
+    @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")}, key = "kind")
     static class Animal extends JsonObject { public String name; }
     static class Dog extends Animal { public boolean barks; }
     static class Cat extends Animal { public int lives; }
@@ -203,51 +204,51 @@ class OneOfIOTest {
         }
     }
 
-    @OneOf(key = "kind", value = {@OneOf.Mapping(value = NestedDog.class, when = "nested")})
+    @OneOf(key = "kind", mappings = {@OneOfMapping(type = NestedDog.class, when = "nested")})
     static class NestedBase {
-        @OneOf(key = "species", value = {
-                @OneOf.Mapping(value = Dog.class, when = "dog"),
-                @OneOf.Mapping(value = Cat.class, when = "cat")
+        @OneOf(key = "species", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
         })
         public Animal pet;
     }
     static class NestedDog extends NestedBase { }
 
     static class MapHolder {
-        @OneOf(key = "kind", value = {@OneOf.Mapping(value = java.util.LinkedHashMap.class, when = "map")})
+        @OneOf(key = "kind", mappings = {@OneOfMapping(type = java.util.LinkedHashMap.class, when = "map")})
         public java.util.Map<String, Object> payload;
         public int after;
     }
 
     static class JsonTypeContainer {
-        @OneOf({@OneOf.Mapping(String.class), @OneOf.Mapping(Integer.class)}) public Object value;
+        @OneOf(mappings = {@OneOfMapping(type = String.class), @OneOfMapping(type = Integer.class)}) public Object value;
     }
     static class Parent {
         public String kind;
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")},
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
                 key = "kind", scope = OneOf.Scope.PARENT) public Animal pet;
     }
     static class FallbackContainer {
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")},
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
                 key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
         public int after;
     }
     static class PathContainer {
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")},
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
                 path = "$.meta.kind") public Animal pet;
         public int after;
     }
     static class PathFallbackContainer {
-        @OneOf(value = {@OneOf.Mapping(value = Dog.class, when = "dog"), @OneOf.Mapping(value = Cat.class, when = "cat")},
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
                 path = "$.meta.kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
         public int after;
     }
     static class AnimalList { public java.util.List<Animal> pets; }
     static class CodecContainer {
-        @OneOf(value = {@OneOf.Mapping(value = CodecDog.class, when = "dog")}, key = "kind")
+        @OneOf(mappings = {@OneOfMapping(type = CodecDog.class, when = "dog")}, key = "kind")
         public CodecAnimal pet;
     }
-    @OneOf(value = {@OneOf.Mapping(value = CodecDog.class, when = "dog")}, key = "kind")
+    @OneOf(mappings = {@OneOfMapping(type = CodecDog.class, when = "dog")}, key = "kind")
     static class CodecAnimal extends JsonObject {
         @NodeProperty(codecName = "epochMillis") public Instant createdAt;
         @NodeProperty(codecName = "") public NullCode marker;

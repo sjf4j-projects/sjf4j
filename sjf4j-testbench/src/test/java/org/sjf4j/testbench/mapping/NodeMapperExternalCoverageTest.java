@@ -13,6 +13,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.BindingException;
@@ -459,8 +460,8 @@ class NodeMapperExternalCoverageTest {
         }
     }
 
-    @OneOf(key = "kind", value = {
-            @OneOf.Mapping(value = Dog.class, when = "dog")
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = Dog.class, when = "dog")
     })
     interface Pet {}
     static class Dog implements Pet {

@@ -7,6 +7,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -841,17 +842,17 @@ class NodeMapperConversionTest {
         public NullValue value;
     }
 
-    @OneOf(value = @OneOf.Mapping(value = SelectedObject.class, when = "child"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = SelectedObject.class, when = "child"), key = "kind")
     static class ObjectChoice extends JsonObject {}
 
     static class SelectedObject extends ObjectChoice {}
 
-    @OneOf(@OneOf.Mapping(SelectedArray.class))
+    @OneOf(mappings = @OneOfMapping(type = SelectedArray.class))
     static class ArrayChoice extends JsonArray {}
 
     static class SelectedArray extends ArrayChoice {}
 
-    @OneOf(value = @OneOf.Mapping(value = SelectedChoice.class, when = "child"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = SelectedChoice.class, when = "child"), key = "kind")
     static class Choice extends JsonObject {}
 
     static class SelectedChoice extends Choice {}
@@ -859,12 +860,12 @@ class NodeMapperConversionTest {
     static class OtherChoice extends Choice {}
 
     static class ChoiceHolder {
-        @OneOf(value = @OneOf.Mapping(value = OtherChoice.class, when = "child"), key = "kind")
+        @OneOf(mappings = @OneOfMapping(type = OtherChoice.class, when = "child"), key = "kind")
         public Choice value;
     }
 
     static class NullOverrideHolder {
-        @OneOf(value = @OneOf.Mapping(value = NullValueSubtype.class, when = "child"), key = "kind")
+        @OneOf(mappings = @OneOfMapping(type = NullValueSubtype.class, when = "child"), key = "kind")
         public NullValue value;
     }
 
@@ -872,7 +873,7 @@ class NodeMapperConversionTest {
         NullValueSubtype(String value) { super(value); }
     }
 
-    @OneOf(value = @OneOf.Mapping(value = EncodedChoice.class, when = "child"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = EncodedChoice.class, when = "child"), key = "kind")
     static abstract class ValueChoice {}
 
     @NodeValue
@@ -895,13 +896,13 @@ class NodeMapperConversionTest {
         @RawToValue static RawChoice decode(Map<String, Object> raw) { return new RawChoice(raw); }
     }
 
-    @OneOf(value = @OneOf.Mapping(value = NullableValueSubtype.class, when = "child"),
+    @OneOf(mappings = @OneOfMapping(type = NullableValueSubtype.class, when = "child"),
             key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
     static abstract class NullableValueChoice extends ValueChoice {}
 
     static class NullableValueSubtype extends NullableValueChoice {}
 
-    @OneOf(@OneOf.Mapping(StringChoice.class))
+    @OneOf(mappings = @OneOfMapping(type = StringChoice.class))
     static abstract class ShapeChoice {}
 
     @NodeValue

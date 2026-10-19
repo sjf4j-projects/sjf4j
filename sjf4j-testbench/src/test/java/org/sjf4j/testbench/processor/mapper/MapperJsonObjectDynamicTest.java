@@ -7,6 +7,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 
@@ -178,9 +179,9 @@ public class MapperJsonObjectDynamicTest {
             }
     }
 
-    @OneOf(key = "type", value = {
-            @OneOf.Mapping(value = Login.class, when = "login"),
-            @OneOf.Mapping(value = Comment.class, when = "comment")
+    @OneOf(key = "type", mappings = {
+            @OneOfMapping(type = Login.class, when = "login"),
+            @OneOfMapping(type = Comment.class, when = "comment")
     })
     interface Event {}
 

@@ -2,6 +2,7 @@ package org.sjf4j.meta;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.path.JsonPath;
 
 import java.util.EnumMap;
@@ -16,7 +17,7 @@ import java.util.Map;
  */
 public class OneOfInfo {
     public final Class<?> clazz;
-    public final OneOf.Mapping[] mappings;
+    public final OneOfMapping[] mappings;
     public final String key;
     public final String path;
     public final OneOf.Scope scope;
@@ -31,7 +32,7 @@ public class OneOfInfo {
     /**
      * Creates metadata from a {@link OneOf} declaration.
      */
-    public OneOfInfo(Class<?> clazz, OneOf.Mapping[] mappings, String key,
+    public OneOfInfo(Class<?> clazz, OneOfMapping[] mappings, String key,
                      String path, OneOf.Scope scope, OneOf.OnNoMatch onNoMatch) {
         this.clazz = clazz;
         this.mappings = mappings;
@@ -46,16 +47,16 @@ public class OneOfInfo {
         if (hasDiscriminator) {
             this.byJsonType = null;
             this.byWhen = new HashMap<>();
-            for (OneOf.Mapping mapping : mappings) {
+            for (OneOfMapping mapping : mappings) {
                 for (String when : mapping.when()) {
-                    byWhen.put(when, mapping.value());
+                    byWhen.put(when, mapping.type());
                 }
             }
         } else {
             this.byWhen = null;
             this.byJsonType = new EnumMap<>(JsonType.class);
-            for (OneOf.Mapping mapping : mappings) {
-                byJsonType.put(JsonType.rawOf(mapping.value()), mapping.value());
+            for (OneOfMapping mapping : mappings) {
+                byJsonType.put(JsonType.rawOf(mapping.type()), mapping.type());
             }
         }
     }

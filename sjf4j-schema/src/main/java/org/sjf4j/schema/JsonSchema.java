@@ -4,6 +4,7 @@ package org.sjf4j.schema;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.node.NodeMapper;
 
 
@@ -16,9 +17,9 @@ import org.sjf4j.node.NodeMapper;
  * ({@link ObjectSchema}); invalid schema content fails during parsing or
  * compilation rather than yielding a validation result for an instance.
  */
-@OneOf({
-        @OneOf.Mapping(BooleanSchema.class),
-        @OneOf.Mapping(ObjectSchema.class),
+@OneOf(mappings = {
+        @OneOfMapping(type = BooleanSchema.class),
+        @OneOfMapping(type = ObjectSchema.class),
 })
 public interface JsonSchema {
 

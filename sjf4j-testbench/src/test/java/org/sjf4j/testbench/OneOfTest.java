@@ -10,14 +10,15 @@ import org.sjf4j.annotation.node.NodeProperty;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.node.OneOfMapping;
 
 @Slf4j
 public class OneOfTest {
 
-    @OneOf(key = "cmd", value = {
-            @OneOf.Mapping(value = StartRequest.class, when = "start"),
-            @OneOf.Mapping(value = DialectRequest.class, when = "dialect"),
-            @OneOf.Mapping(value = RunRequest.class, when = "run"),
+    @OneOf(key = "cmd", mappings = {
+            @OneOfMapping(type = StartRequest.class, when = "start"),
+            @OneOfMapping(type = DialectRequest.class, when = "dialect"),
+            @OneOfMapping(type = RunRequest.class, when = "run"),
     })
     @Data
     public static class BaseRequest {

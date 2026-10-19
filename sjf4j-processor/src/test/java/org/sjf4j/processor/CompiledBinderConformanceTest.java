@@ -443,7 +443,8 @@ class CompiledBinderConformanceTest {
         sources.put("fixture/Bean.java",
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.node.OneOf;\n"
-                        + "@OneOf(key=\"kind\", value={@OneOf.Mapping(value=Sub.class, when=\"sub\")})\n"
+                        + "import org.sjf4j.annotation.node.OneOfMapping;\n"
+                        + "@OneOf(key=\"kind\", mappings={@OneOfMapping(type=Sub.class, when=\"sub\")})\n"
                         + "public class Bean { public String kind; public String name; }\n");
         sources.put("fixture/Sub.java",
                 "package fixture; public class Sub extends Bean { public int age; }\n");

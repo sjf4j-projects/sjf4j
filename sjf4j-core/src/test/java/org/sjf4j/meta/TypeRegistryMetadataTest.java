@@ -10,6 +10,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
@@ -518,18 +519,18 @@ class TypeRegistryMetadataTest {
         transient String userName;
     }
 
-    @OneOf(value = {
-            @OneOf.Mapping(value = JsonSubtype.class, when = {"json"}),
-            @OneOf.Mapping(value = OtherSubtype.class, when = {"other"})
+    @OneOf(mappings = {
+            @OneOfMapping(type = JsonSubtype.class, when = {"json"}),
+            @OneOfMapping(type = OtherSubtype.class, when = {"other"})
     }, key = "type")
     interface DiscriminatedOneOf {}
 
     static class JsonSubtype extends JsonObject implements DiscriminatedOneOf {}
     static class OtherSubtype extends JsonObject implements DiscriminatedOneOf {}
 
-    @OneOf({
-            @OneOf.Mapping(value = TypedObjectSubtype.class),
-            @OneOf.Mapping(value = ArraySubtype.class)
+    @OneOf(mappings = {
+            @OneOfMapping(type = TypedObjectSubtype.class),
+            @OneOfMapping(type = ArraySubtype.class)
     })
     interface TypedOneOf {}
 
