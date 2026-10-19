@@ -116,7 +116,10 @@ public final class StandardCreatorResolver {
             if (candidate.getAnnotation(NodeCreator.class) == null
                     && !context.annotations.hasJacksonCreator(candidate)) continue;
             if (selected != null) {
-                error.accept("multiple creator definitions for " + target);
+                boolean bothNodeCreators = selected.getAnnotation(NodeCreator.class) != null
+                        && candidate.getAnnotation(NodeCreator.class) != null;
+                error.accept((bothNodeCreators ? "multiple @NodeCreator definitions for "
+                        : "multiple creator definitions for ") + target);
                 return null;
             }
             selected = candidate;
