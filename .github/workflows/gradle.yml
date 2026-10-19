@@ -38,20 +38,6 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
-    - name: Print failing processor test details (temporary)
-      if: ${{ failure() }}
-      run: |
-        python3 - <<'PY'
-        import glob, xml.etree.ElementTree as ET
-        for path in glob.glob('sjf4j-processor/build/test-results/test/*.xml'):
-            root = ET.parse(path).getroot()
-            for case in root.findall('.//testcase'):
-                for fail in case.findall('failure'):
-                    print(case.attrib.get('classname'), case.attrib.get('name'))
-                    print(fail.attrib.get('message', ''))
-                    print((fail.text or '')[:8000])
-        PY
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
