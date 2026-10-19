@@ -329,16 +329,19 @@ final class WriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
-        // Fastjson2 helpers retain the streaming adapter for localized codec writes
-        // while using raw JSONWriter on concrete fields.
-        if (backend.backend() == Backend.FASTJSON2
-                && fastjson2.nativeEligible(value, new HashSet<BindingValue>())) {
+        // Fastjson2 accepts ValueCodec in native helpers while the generic
+        // streaming writer considers those subtrees non-native. A mixed POJO
+        // can therefore call this helper with Fastjson2Writer even when the
+        // same helper has native UTF-8/UTF-16 variants.
+        boolean fastjsonNative = backend.backend() == Backend.FASTJSON2
+                && fastjson2.nativeEligible(value, new HashSet<BindingValue>());
+        if (fastjsonNative) {
             fastjson2.emitHelper(out, value);
-            return;
+            if (!containsAdaptedValue(value, new HashSet<BindingValue>())) return;
         }
         // Generate a single native helper when the full type graph is concrete.
         // Unresolved graphs retain the StreamingWriter fallback.
-        if (hasNativeJsonWriter() && nativeEligible(value,
+        if (!fastjsonNative && hasNativeJsonWriter() && nativeEligible(value,
                 new HashSet<BindingValue>())) {
             switch (backend.backend()) {
                 case JACKSON2:
