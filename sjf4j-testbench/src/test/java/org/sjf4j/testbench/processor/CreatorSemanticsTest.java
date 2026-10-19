@@ -20,6 +20,7 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.testbench.model.CreatorUserRecord;
 import org.sjf4j.testbench.model.CreatorUserRecord.AddressRecord;
 import org.sjf4j.testbench.model.CreatorUserRecord.FriendRecord;
@@ -106,6 +107,59 @@ public class CreatorSemanticsTest {
         assertEquals(17, absent.getAge(), name + " keep constructor default");
         assertEquals(0, absent.setterCalls, name + " absent property");
         assertNull(compiled.readBean("null"), name);
+    }
+
+    @Test
+    void fastjson2CreatorRejectsDuplicateArgumentsAcrossRawAndFallback() throws Exception {
+        Fastjson2CreatorBinder binder = CompiledInstances.global(Fastjson2CreatorBinder.class);
+        for (String json : List.of(
+                "{\"name\":\"Ada\",\"name\":\"Bob\"}",
+                "{\"name\":\"Ada\",\"legacy_name\":\"Bob\"}",
+                "{\"legacy_name\":\"Ada\",\"name\":\"Bob\"}",
+                "{\"legacy_name\":\"Ada\",\"legacy_name\":\"Bob\"}")) {
+            BindingException error = assertThrows(BindingException.class,
+                    () -> binder.readBean(json), json);
+            assertTrue(error.getMessage().contains("duplicate creator argument"), json);
+        }
+        assertThrows(BindingException.class,
+                () -> binder.readRecord("{\"id\":1,\"id\":2}"));
+    }
+
+    @Test
+    void fastjson2CreatorFallbackHandlesUnknownUnicodeAndEscapedNames() throws Exception {
+        Fastjson2CreatorBinder binder = CompiledInstances.global(Fastjson2CreatorBinder.class);
+        String escapedName = "na" + (char) 92 + "u006de";
+        String json = "{\"未知字段\":{\"ignored\":[1,true,null]},"
+                + "\"" + escapedName + "\":\"Ada\",\"age\":25,\"other\":7}";
+        CreatorBean bean = binder.readBean(json);
+        assertEquals("Ada", bean.getName());
+        assertEquals(25, bean.getAge());
+        assertEquals(1, bean.setterCalls);
+
+        String escapedAlias = "legacy_" + (char) 92 + "u006eame";
+        CreatorBean aliased = binder.readBean("{\"" + escapedAlias + "\":\"Bob\",\"age\":26}");
+        assertEquals("Bob", aliased.getName());
+        assertEquals(26, aliased.getAge());
+        assertEquals(1, aliased.setterCalls);
+        assertThrows(BindingException.class,
+                () -> binder.readBean("{\"name\":\"Ada\",\"" + escapedName + "\":\"Bob\"}"));
+    }
+
+    @Test
+    void fastjson2CreatorPendingPropertiesPreserveConstructorDefaultsAndPresence() throws Exception {
+        Fastjson2CreatorBinder binder = CompiledInstances.global(Fastjson2CreatorBinder.class);
+        for (String json : List.of(
+                "{\"name\":\"Ada\",\"age\":25}",
+                "{\"age\":25,\"legacy_name\":\"Ada\"}",
+                "{\"unused\":0,\"name\":\"Ada\",\"age\":25}")) {
+            CreatorBean bean = binder.readBean(json);
+            assertEquals("Ada", bean.getName());
+            assertEquals(25, bean.getAge());
+            assertEquals(1, bean.setterCalls);
+        }
+        CreatorBean absent = binder.readBean("{\"unused\":0,\"name\":\"Ada\"}");
+        assertEquals(17, absent.getAge());
+        assertEquals(0, absent.setterCalls);
     }
 
     @Test
