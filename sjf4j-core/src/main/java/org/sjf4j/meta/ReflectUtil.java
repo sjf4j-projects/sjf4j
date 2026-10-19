@@ -33,6 +33,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -1078,6 +1080,7 @@ public final class ReflectUtil {
                 throw new BindingException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
                         " is not assignable from " + clazz.getName());
             }
+            _rejectNestedOneOf(clazz, subClazz);
             if (hasDiscriminator) {
                 if (mapping.when().length == 0) {
                     throw new BindingException("given a discriminator but has empty 'when' in mapping " +
@@ -1094,6 +1097,59 @@ public final class ReflectUtil {
             }
         }
         return new OneOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
+    }
+
+    /**
+     * A selected OneOf subtype must not declare another polymorphic member.
+     * Reject this once when building metadata, rather than failing midway
+     * through JSON streaming (notably for nested PARENT discriminators).
+     */
+    private static void _rejectNestedOneOf(Class<?> base, Class<?> subtype) {
+        if (subtype.isAnnotationPresent(OneOf.class)) {
+            throw new BindingException("nested @OneOf is not supported: subtype '"
+                    + subtype.getName() + "' of " + base.getName() + " declares @OneOf");
+        }
+        for (Class<?> type = subtype; isPojoCandidate(type); type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())
+                        || Modifier.isTransient(field.getModifiers())
+                        || field.isAnnotationPresent(NodeIgnore.class)) continue;
+                if (field.isAnnotationPresent(OneOf.class) || _hasOneOfType(field.getGenericType())) {
+                    throw new BindingException("nested @OneOf is not supported: subtype '"
+                            + subtype.getName() + "' of " + base.getName()
+                            + " has polymorphic property '" + field.getName() + "'");
+                }
+            }
+            for (Method method : type.getDeclaredMethods()) {
+                if (method.isSynthetic() || method.isBridge()
+                        || Modifier.isStatic(method.getModifiers())
+                        || method.isAnnotationPresent(NodeIgnore.class)
+                        || _getBeanImplicitName(method) == null) continue;
+                Type memberType = method.getParameterCount() == 0
+                        ? method.getGenericReturnType() : method.getGenericParameterTypes()[0];
+                if (_hasOneOfType(memberType)) {
+                    throw new BindingException("nested @OneOf is not supported: subtype '"
+                            + subtype.getName() + "' of " + base.getName()
+                            + " has polymorphic accessor '" + method.getName() + "'");
+                }
+            }
+        }
+    }
+
+    private static boolean _hasOneOfType(Type type) {
+        if (type instanceof Class<?>) {
+            Class<?> clazz = (Class<?>) type;
+            return clazz.isAnnotationPresent(OneOf.class)
+                    || clazz.isArray() && _hasOneOfType(clazz.getComponentType());
+        }
+        if (type instanceof ParameterizedType) {
+            for (Type arg : ((ParameterizedType) type).getActualTypeArguments()) {
+                if (_hasOneOfType(arg)) return true;
+            }
+        } else if (type instanceof GenericArrayType) {
+            return _hasOneOfType(((GenericArrayType) type).getGenericComponentType());
+        }
+        return false;
     }
 
 
