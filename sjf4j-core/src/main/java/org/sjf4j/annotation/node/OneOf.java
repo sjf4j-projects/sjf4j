@@ -17,8 +17,9 @@ import java.lang.annotation.Target;
  * <ul>
  *     <li>Annotate a base type to make reads of that type polymorphic</li>
  *     <li>Annotate a regular field to make only that location polymorphic</li>
- *     <li>Creator-bound member overrides, creator-parameter annotations, and distinct nested OneOf declarations are unsupported</li>
- *     <li>Subtype fields may refer recursively to the same OneOf base type, including through lists or maps</li>
+ *     <li>Creator-bound member overrides and creator-parameter annotations are unsupported</li>
+ *     <li>CURRENT-scope OneOf may be nested in subtype properties, including through lists and maps or self-recursively</li>
+ *     <li>Selected subtypes must not declare another class-level OneOf or direct PARENT-scope OneOf fields</li>
  *     <li>Use {@link #key()} or {@link #path()} with {@link OneOfMapping#when()} for discriminator-based selection</li>
  *     <li>Omit discriminators to resolve by raw JSON kind when candidate shapes are distinct</li>
  * </ul>
