@@ -170,7 +170,8 @@ final class BindingCompiler {
             value.codecSelection(codecName, codecPattern);
         }
 
-        if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC) {
+        if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC
+                || kind == BindingValue.Kind.ONE_OF) {
             value.helperName(
                     names.newName(
                             helperSuggestion(
