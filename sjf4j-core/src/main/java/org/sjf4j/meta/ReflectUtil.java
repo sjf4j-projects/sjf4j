@@ -214,6 +214,12 @@ public final class ReflectUtil {
             _assertCompatiblePropertyTypes(family, clazz);
 
             String finalName = family.resolveFinalName(clazz, namingStrategy);
+            // A creator-bound field cannot override the creator parameter's
+            // declared type with a member-level OneOf discriminator.
+            if (family.oneOfInfo != null && creatorInfo.getArgIndexOrAlias(finalName) >= 0) {
+                throw new BindingException("@OneOf is not supported on creator-bound property '"
+                        + finalName + "' in " + clazz.getName());
+            }
             if (creatorInfo.argIndexes != null) {
                 Integer implicitIdx = creatorInfo.argIndexes.get(family.implicitName);
                 if (implicitIdx != null && !finalName.equals(family.implicitName)) {
@@ -768,6 +774,10 @@ public final class ReflectUtil {
             argValueFormats = new String[params.length];
             argValueCodecs = new ValueInfo[params.length];
             for (int i = 0; i < params.length; i++) {
+                if (params[i].isAnnotationPresent(OneOf.class)) {
+                    throw new BindingException("@OneOf is not supported on creator parameter '"
+                            + params[i].getName() + "' in " + clazz.getName());
+                }
                 String name = getExplicitName(params[i]);
                 if (name == null) {
                     if (params[i].isNamePresent()) {
