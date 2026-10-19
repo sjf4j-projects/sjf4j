@@ -16,7 +16,8 @@ import java.lang.annotation.Target;
  * <p>Common usage styles:
  * <ul>
  *     <li>Annotate a base type to make reads of that type polymorphic</li>
- *     <li>Annotate a field or creator parameter to make only that location polymorphic</li>
+ *     <li>Annotate a regular field to make only that location polymorphic</li>
+ *     <li>Creator-bound member overrides, creator-parameter annotations, and nested OneOf declarations are unsupported</li>
  *     <li>Use {@link #key()} or {@link #path()} with {@link OneOfMapping#when()} for discriminator-based selection</li>
  *     <li>Omit discriminators to resolve by raw JSON kind when candidate shapes are distinct</li>
  * </ul>
