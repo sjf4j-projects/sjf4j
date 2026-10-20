@@ -6,6 +6,8 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.node.NodeMapper;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
 
 import java.util.Map;
 import java.util.List;
@@ -15,6 +17,29 @@ import java.time.Instant;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ValueSetTest {
+
+    public static final class InstantCreator {
+        public final Instant time;
+
+        @NodeCreator
+        public InstantCreator(@NodeProperty("time") Instant time) {
+            this.time = time;
+        }
+    }
+
+    @Test
+    void creatorArgumentWithoutExplicitCodecUsesIncomingShape() {
+        Instant expected = Instant.parse("2024-01-01T10:00:00Z");
+        RuntimeContext preferredEpoch = new RuntimeContext(Map.of(Instant.class, "epochMillis"));
+
+        InstantCreator fromString = NodeMapper.convert(
+                Map.of("time", expected.toString()), InstantCreator.class, false, preferredEpoch);
+        InstantCreator fromNumber = NodeMapper.convert(
+                Map.of("time", expected.toEpochMilli()), InstantCreator.class, false, RuntimeContext.EMPTY);
+
+        assertEquals(expected, fromString.time);
+        assertEquals(expected, fromNumber.time);
+    }
 
     private static ValueInfo info(String format, Class<?> rawClass) {
         return new ValueInfo(format, Instant.class, rawClass, null, null, null, null);
