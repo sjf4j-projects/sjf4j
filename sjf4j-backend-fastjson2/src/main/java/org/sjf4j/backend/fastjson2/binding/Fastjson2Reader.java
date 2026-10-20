@@ -13,6 +13,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -181,6 +184,24 @@ public final class Fastjson2Reader extends StreamingReader {
     public UUID readUUID() {
         peeked = null;
         return reader.readUUID();
+    }
+
+    @Override
+    public LocalDate readLocalDate() {
+        peeked = null;
+        return reader.readLocalDate();
+    }
+
+    @Override
+    public LocalTime readLocalTime() {
+        peeked = null;
+        return reader.readLocalTime();
+    }
+
+    @Override
+    public LocalDateTime readLocalDateTime() {
+        peeked = null;
+        return reader.readLocalDateTime();
     }
 
     @Override
