@@ -1359,11 +1359,15 @@ public final class ConverterResolver {
         if (types.isNodeValue(type)) {
             return types.nodeValueRawType(type);
         }
-        // Only a declared default format fixes the raw representation
-        // independently of runtime registration order. Named-only formats
-        // retain runtime validation rather than assuming the first declaration.
-        ValueCodecMetadata codec = metadata.valueCodec(type, "");
-        return codec == null ? null : codec.rawType;
+        // An empty format or @NodeValue(defaultCodec = true) establishes the
+        // raw representation. Named-only formats retain runtime validation.
+        ValueCodecMetadata codec = metadata.valueCodec(type, null);
+        if (codec == null) return null;
+        NodeValue declaration = codec.declaration.getAnnotation(NodeValue.class);
+        if (!codec.format.isEmpty() && (declaration == null || !declaration.defaultCodec())) {
+            return null;
+        }
+        return codec.rawType;
     }
 
     private boolean isCodecType(TypeMirror type) {
