@@ -816,8 +816,7 @@ public final class NodeMapper {
                 if (ti == null) ti = TypeRegistry.registerTypeInfo(toBoxed);
                 if (ti.valueSet != null) {
                     String valueFormat = context.defaultValueFormat(toBoxed);
-                    ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
-                    return valueInfo.rawToValue(null);
+                    return ti.valueSet.selectForRead(JsonType.NULL, valueFormat).rawToValue(null);
                 }
                 // External targets, like other reference targets, retain Java null.
                 return null;
@@ -938,11 +937,6 @@ public final class NodeMapper {
     }
 
 
-    /**
-     * Converts into a NodeValue through its declared raw representation.
-     * A source NodeValue is encoded once, then decoded using the target codec.
-     * Raw types must remain compatible; no coercion is performed at this boundary.
-     */
     /**
      * Auto-selects a value codec by the raw JSON shape during mapping.
      * Explicit property codecs still call the ValueInfo overload below.
@@ -1519,10 +1513,8 @@ public final class NodeMapper {
         Class<?> argRaw = Types.rawBox(argType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
         ValueInfo codec = creator.argValueCodecs[argIdx];
-        if (codec == null && ti.valueSet != null) {
-            codec = ti.requireValueInfo(context.defaultValueFormat(argRaw));
-        }
-
+        // Only a codec explicitly selected on the creator parameter is strict.
+        // Unannotated value parameters must select by the incoming JSON shape.
         Object value = ti.oneOfInfo == null && codec != null
                 ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, context)
                 : _convertSourceChild(rawValue, argType, argRaw, ti,
