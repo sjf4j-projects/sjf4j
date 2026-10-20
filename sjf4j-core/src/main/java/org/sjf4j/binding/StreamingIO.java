@@ -224,7 +224,7 @@ public final class StreamingIO {
         if (ti.oneOfInfo != null) {
             return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
         }
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             return readValueCodec(reader, ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
         }
         if (ti.containerInfo != null) {
@@ -1013,7 +1013,7 @@ public final class StreamingIO {
                 return;
             }
 
-            if (typeInfo.valueInfos != null) {
+            if (typeInfo.valueSet != null) {
                 ValueInfo vi = typeInfo.requireValueInfo(context.defaultValueFormat(clazz));
                 _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
                 return;
@@ -1131,7 +1131,7 @@ public final class StreamingIO {
         /*
          * NodeValue / ValueCodec.
          */
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(clazz));
             _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
             return;
