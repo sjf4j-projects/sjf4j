@@ -57,6 +57,14 @@ public final class ValueSet {
             throw new BindingException("valueCodec already registered for type '"
                     + info.valueClazz.getName() + "' and valueFormat '" + info.valueFormat + "'");
         }
+        if (info.codec != null) {
+            for (ValueInfo previous : orderedInfos()) {
+                if (previous.codec == info.codec) {
+                    throw new BindingException("same ValueCodec instance registered under multiple formats for type '"
+                            + info.valueClazz.getName() + "'");
+                }
+            }
+        }
         ValueInfo[] strings = stringInfos, numbers = numberInfos, booleans = booleanInfos;
         ValueInfo[] objects = objectInfos, arrays = arrayInfos;
         switch (info.rawJsonType) {
@@ -140,7 +148,10 @@ public final class ValueSet {
      * preferred/default codec.
      */
     public ValueInfo selectForRead(JsonType jsonType, String preferredFormat) {
-        if (jsonType == JsonType.NULL) return requireFormat(preferredFormat);
+        if (jsonType == JsonType.NULL) {
+            ValueInfo preferred = findFormat(preferredFormat);
+            return preferred == null ? defaultInfo : preferred;
+        }
         ValueInfo[] group;
         switch (jsonType) {
             case STRING: group = stringInfos; break;
