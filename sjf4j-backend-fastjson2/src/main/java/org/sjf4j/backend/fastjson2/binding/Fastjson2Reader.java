@@ -12,6 +12,7 @@ import org.sjf4j.util.Asserts;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -174,6 +175,12 @@ public final class Fastjson2Reader extends StreamingReader {
     public String readString() {
         peeked = null;
         return reader.readString();
+    }
+
+    @Override
+    public UUID readUUID() {
+        peeked = null;
+        return reader.readUUID();
     }
 
     @Override
