@@ -51,6 +51,33 @@ class RegistryDiscoveryTest {
     }
 
     @Test
+    void namedDefaultCodecWinsOverEarlierNondefaultField() throws Exception {
+        Map<String, String> sources = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder;"
+                + "@CompiledBinder public interface Binder {}");
+        sources.put("fixture/Amount.java",
+                "package fixture; public final class Amount { public long value; }");
+        sources.put("fixture/AmountCodecs.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeValue;"
+                + "import org.sjf4j.value.ValueCodec;"
+                + "public class AmountCodecs {"
+                + " @NodeValue(format=\"epoch\")"
+                + " public static final ValueCodec<Amount, Long> A_EPOCH = "
+                + " new ValueCodec.SimpleValueCodec<>(Amount.class, Long.class,"
+                + " x -> x.value, raw -> new Amount());"
+                + " @NodeValue(format=\"iso\", defaultCodec=true)"
+                + " public static final ValueCodec<Amount, String> Z_ISO = "
+                + " new ValueCodec.SimpleValueCodec<>(Amount.class, String.class,"
+                + " x -> Long.toString(x.value), raw -> new Amount());"
+                + "}");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                sources, RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("DEFAULT fixture.Amount -> java.lang.String"),
+                result.diagnostics());
+    }
+
+    @Test
     void importsMultipleExplicitClasspathRegistries() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources(
                 "package fixture; "
