@@ -484,25 +484,36 @@ final class BindingCompiler {
             } catch (MirroredTypeException e) {
                 subtype = e.getTypeMirror();
             }
+            boolean visible = isVisibleOneOfSubtype(subtype);
             BindingValue compiled = null;
-            if (canCompileOneOfSubtype(subtype)) {
+            if (visible && canCompileOneOfSubtype(subtype)) {
                 compiled = compileValue(BindingPlan.Direction.WRITE_TO, subtype, method, generated);
                 if (compiled == null) return false;
             }
-            subtypes.add(new BindingValue.OneOfSubtype(subtype, compiled));
+            boolean cachedPojo = visible && compiled == null
+                    && context.types.nodeKind(subtype) == NodeKind.OBJECT_POJO;
+            subtypes.add(new BindingValue.OneOfSubtype(subtype, compiled, cachedPojo));
         }
         value.oneOfSubtypes(subtypes);
+        return true;
+    }
+
+    private boolean isVisibleOneOfSubtype(TypeMirror subtype) {
+        TypeElement type = context.types.typeElement(subtype);
+        if (type == null) return false;
+        for (Element owner = type; owner instanceof TypeElement; owner = owner.getEnclosingElement()) {
+            if (!owner.getModifiers().contains(Modifier.PUBLIC)) return false;
+        }
         return true;
     }
 
     private boolean canCompileOneOfSubtype(TypeMirror subtype) {
         TypeElement type = context.types.typeElement(subtype);
         if (type == null) return false;
-        for (Element owner = type; owner instanceof TypeElement; owner = owner.getEnclosingElement()) {
-            if (!owner.getModifiers().contains(Modifier.PUBLIC)) return false;
-        }
         NodeObject options = type.getAnnotation(NodeObject.class);
-        if (options != null && options.propertyStrategy() != org.sjf4j.annotation.node.PropertyStrategy.BEAN_FIELD) {
+        if (options != null
+                && (options.propertyStrategy() != org.sjf4j.annotation.node.PropertyStrategy.BEAN_FIELD
+                || options.naming() != org.sjf4j.annotation.node.NamingStrategy.IDENTITY)) {
             return false;
         }
         for (Element member : context.elements.getAllMembers(type)) {
