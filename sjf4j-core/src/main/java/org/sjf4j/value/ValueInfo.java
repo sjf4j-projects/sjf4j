@@ -18,6 +18,8 @@ public class ValueInfo {
     public final Class<?> rawClazz;
     public final JsonType rawJsonType;
     public final ValueCodec<Object, Object> codec;
+    public final ValueCodec.StreamingValueCodec.Reader<Object> streamReader;
+    public final ValueCodec.StreamingValueCodec.Writer<Object> streamWriter;
     public final MethodHandle valueToRawHandle;
     public final MethodHandle rawToValueHandle;
     public final MethodHandle valueCopyHandle;
@@ -34,6 +36,15 @@ public class ValueInfo {
         this.rawClazz = rawClazz;
         this.rawJsonType = JsonType.of(NodeKind.plainOf(rawClazz));
         this.codec = (ValueCodec<Object, Object>) codec;
+        if (codec instanceof ValueCodec.StreamingValueCodec) {
+            ValueCodec.StreamingValueCodec<Object, Object> streaming =
+                    (ValueCodec.StreamingValueCodec<Object, Object>) codec;
+            this.streamReader = streaming.streamReader();
+            this.streamWriter = streaming.streamWriter();
+        } else {
+            this.streamReader = null;
+            this.streamWriter = null;
+        }
         this.valueToRawHandle = valueToRawHandle;
         this.rawToValueHandle = rawToValueHandle;
         this.valueCopyHandle = valueCopyHandle;
@@ -49,6 +60,8 @@ public class ValueInfo {
         this.rawClazz = info.rawClazz;
         this.rawJsonType = info.rawJsonType;
         this.codec = info.codec;
+        this.streamReader = info.streamReader;
+        this.streamWriter = info.streamWriter;
         this.valueToRawHandle = info.valueToRawHandle;
         this.rawToValueHandle = info.rawToValueHandle;
         this.valueCopyHandle = info.valueCopyHandle;
