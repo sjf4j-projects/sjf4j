@@ -122,18 +122,32 @@ class ValueSetTest {
         }
     }
 
+    private static ValueCodec<NullTagged, Long> nullTaggedCodec(String name) {
+        return new ValueCodec<NullTagged, Long>() {
+            @Override
+            public Long valueToRaw(NullTagged value) { return 1L; }
+
+            @Override
+            public NullTagged rawToValue(Long raw) {
+                return new NullTagged(name + (raw == null ? "-null" : "-number"));
+            }
+
+            @Override
+            public Class<NullTagged> valueClazz() { return NullTagged.class; }
+
+            @Override
+            public Class<Long> rawClazz() { return Long.class; }
+        };
+    }
+
     public static final class FirstNullCodec {
         @NodeValue(format = "first")
-        public static final ValueCodec<NullTagged, Long> FIRST =
-                new ValueCodec.SimpleValueCodec<>(NullTagged.class, Long.class,
-                        value -> 1L, raw -> new NullTagged(raw == null ? "first-null" : "first-number"));
+        public static final ValueCodec<NullTagged, Long> FIRST = nullTaggedCodec("first");
     }
 
     public static final class DefaultNullCodec {
         @NodeValue(format = "second", defaultCodec = true)
-        public static final ValueCodec<NullTagged, Long> SECOND =
-                new ValueCodec.SimpleValueCodec<>(NullTagged.class, Long.class,
-                        value -> 2L, raw -> new NullTagged(raw == null ? "default-null" : "default-number"));
+        public static final ValueCodec<NullTagged, Long> SECOND = nullTaggedCodec("default");
     }
 
     @Test
