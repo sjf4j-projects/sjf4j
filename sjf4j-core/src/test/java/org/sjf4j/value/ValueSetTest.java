@@ -5,9 +5,11 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.value.ValueRegistry;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeValue;
 
 import java.util.Map;
 import java.util.List;
@@ -110,5 +112,42 @@ class ValueSetTest {
         assertEquals(expected, NodeMapper.convert(millis, Instant.class, false, RuntimeContext.EMPTY));
         assertEquals(expected, NodeMapper.convert(expected.toString(), Instant.class,
                 false, new RuntimeContext(Map.of(Instant.class, "epochMillis"))));
+    }
+
+    public static final class NullTagged {
+        public final String origin;
+
+        public NullTagged(String origin) {
+            this.origin = origin;
+        }
+    }
+
+    public static final class FirstNullCodec {
+        @NodeValue(format = "first")
+        public static final ValueCodec<NullTagged, Long> FIRST =
+                new ValueCodec.SimpleValueCodec<>(NullTagged.class, Long.class,
+                        value -> 1L, raw -> new NullTagged(raw == null ? "first-null" : "first-number"));
+    }
+
+    public static final class DefaultNullCodec {
+        @NodeValue(format = "second", defaultCodec = true)
+        public static final ValueCodec<NullTagged, Long> SECOND =
+                new ValueCodec.SimpleValueCodec<>(NullTagged.class, Long.class,
+                        value -> 2L, raw -> new NullTagged(raw == null ? "default-null" : "default-number"));
+    }
+
+    @Test
+    void singleShapeNullUsesLaterForcedDefaultWithoutChangingNumberFallback() {
+        // Register in separate holders: defaultCodec wins only on the second registration.
+        ValueRegistry.registerAnnotated(FirstNullCodec.class);
+        ValueRegistry.registerAnnotated(DefaultNullCodec.class);
+
+        Sjf4j defaults = Sjf4j.builder().build();
+        assertEquals("default-null", defaults.fromJson("null", NullTagged.class).origin);
+        assertEquals("first-number", defaults.fromJson("7", NullTagged.class).origin);
+
+        Sjf4j preferred = Sjf4j.builder().defaultValueFormat(NullTagged.class, "second").build();
+        assertEquals("default-number", preferred.fromJson("7", NullTagged.class).origin);
+        assertEquals("default-null", preferred.fromJson("null", NullTagged.class).origin);
     }
 }
