@@ -23,7 +23,7 @@ class RegistryDiscoveryTest {
                 + " public static final ValueCodec<Money, String> MONEY = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " m -> m.value, raw -> new Money()); "
-                + " @NodeValue(format=\\\"compact\\\") "
+                + " @NodeValue(format=\"compact\") "
                 + " public static final ValueCodec<Money, String> COMPACT = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " m -> m.value, raw -> new Money()); "
