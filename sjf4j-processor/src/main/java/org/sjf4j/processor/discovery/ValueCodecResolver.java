@@ -39,6 +39,32 @@ public final class ValueCodecResolver {
         return registrations(valueType) != null;
     }
 
+    /**
+     * A statically known raw type is usable for specialization only if all
+     * selectable declared formats agree (or an explicit format selects one).
+     * Generated writers still check ValueInfo.rawClazz: runtime registrations
+     * and RuntimeContext defaults are not controlled by the processor.
+     */
+    public TypeMirror stableRawType(TypeMirror valueType, String format) {
+        ensureScanned();
+        Map<String, ValueCodecMetadata> codecs = registrations(valueType);
+        if (codecs == null) return null;
+        if (format != null) {
+            ValueCodecMetadata selected = codecs.get(format);
+            return selected == null ? null : selected.rawType;
+        }
+        TypeMirror raw = null;
+        for (ValueCodecMetadata codec : codecs.values()) {
+            if (raw == null) {
+                raw = codec.rawType;
+            } else if (!context.typeUtils.isSameType(
+                    context.typeUtils.erasure(raw), context.typeUtils.erasure(codec.rawType))) {
+                return null;
+            }
+        }
+        return raw;
+    }
+
     private void ensureScanned() {
         if (!scanned) {
             scanned = true;
