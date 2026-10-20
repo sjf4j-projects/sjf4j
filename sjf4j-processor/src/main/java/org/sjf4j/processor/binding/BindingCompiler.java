@@ -178,6 +178,14 @@ final class BindingCompiler {
         cache.put(key, value);
         if (kind == BindingValue.Kind.VALUE_CODEC) {
             value.codecSelection(codecName, codecPattern);
+            // A format pattern can resolve a different runtime codec; use its
+            // declared raw type only when the declared formats are uniform.
+            TypeMirror rawType = metadata.stableCodecRawType(type,
+                    codecPattern == null ? codecName : null);
+            if (rawType == null && context.types.isNodeValue(type)) {
+                rawType = context.types.nodeValueRawType(type);
+            }
+            value.codecRawType(rawType);
         }
 
         if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC
