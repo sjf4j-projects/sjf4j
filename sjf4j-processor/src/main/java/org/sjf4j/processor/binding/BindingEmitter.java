@@ -109,15 +109,6 @@ final class BindingEmitter {
                                 + value.helperName() + "Set.selectForRead(this."
                                 + value.helperName() + "Set.defaultInfo.rawJsonType, "
                                 + "context.valueFormat(" + value.type() + ".class));"));
-                // Null has no JSON shape: it selects the preferred/default codec,
-                // even when a different codec is first in the shape group.
-                generated.addField(out -> out.line(
-                        "private final org.sjf4j.value.ValueInfo "
-                                + value.helperName() + "Null;"));
-                generated.addContextInitializer(out -> out.line(
-                        "this." + value.helperName() + "Null = this."
-                                + value.helperName() + "Set.selectForRead(org.sjf4j.JsonType.NULL, "
-                                + "context.valueFormat(" + value.type() + ".class));"));
             } else {
                 generated.addContextInitializer(out -> out.line(
                         "this." + value.helperName() + " = "
