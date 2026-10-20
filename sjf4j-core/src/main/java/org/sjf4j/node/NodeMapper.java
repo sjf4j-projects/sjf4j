@@ -841,8 +841,7 @@ public final class NodeMapper {
             }
 
             if (ti.valueSet != null) {
-                ValueInfo target = ti.requireValueInfo(context.defaultValueFormat(toBoxed));
-                return _convertValue(node, toBoxed, target, deepCopy, ps, context);
+                return _convertValue(node, toBoxed, ti.valueSet, deepCopy, ps, context);
             }
             // Map/List classification wins over an external adapter. Only
             // nonconstructible containers use its mapping-only native builder.
@@ -943,6 +942,38 @@ public final class NodeMapper {
      * A source NodeValue is encoded once, then decoded using the target codec.
      * Raw types must remain compatible; no coercion is performed at this boundary.
      */
+    /**
+     * Auto-selects a value codec by the raw JSON shape during mapping.
+     * Explicit property codecs still call the ValueInfo overload below.
+     */
+    private static Object _convertValue(Object node, Class<?> toBoxed,
+                                        org.sjf4j.value.ValueSet set,
+                                        boolean deepCopy, PathSegment ps, RuntimeContext context) {
+        String preferred = context.defaultValueFormat(toBoxed);
+        if (node == null) return set.selectForRead(JsonType.NULL, preferred).rawToValue(null);
+        if (toBoxed.isInstance(node)) {
+            return deepCopy ? set.forWrite(preferred).valueCopy(node) : node;
+        }
+
+        Object raw = node;
+        if (!(node instanceof String || node instanceof Number || node instanceof Boolean
+                || node instanceof Map || node instanceof List)) {
+            TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
+            if (sourceInfo.valueSet != null) {
+                ValueInfo source = sourceInfo.requireValueInfo(
+                        context.defaultValueFormat(node.getClass()));
+                raw = source.valueToRaw(node);
+            } else if (sourceInfo.externalNode != null) {
+                raw = _convertToRaw(node, ps, context);
+            }
+        }
+
+        JsonType shape = raw == null ? JsonType.NULL
+                : JsonType.of(NodeKind.plainOf(raw.getClass()));
+        ValueInfo selected = set.selectForRead(shape, preferred);
+        return selected.rawToValue(raw);
+    }
+
     private static Object _convertValue(Object node, Class<?> toBoxed, ValueInfo target,
                                         boolean deepCopy, PathSegment ps, RuntimeContext context) {
         if (node == null) return target.rawToValue(null);
