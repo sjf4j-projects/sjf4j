@@ -4,6 +4,11 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.RuntimeContext;
+import org.sjf4j.node.NodeMapper;
+
+import java.util.Map;
+import java.util.List;
 
 import java.time.Instant;
 
@@ -51,6 +56,17 @@ class ValueSetTest {
     }
 
     @Test
+    void structuralRawRepresentationsAreIndexedByJsonType() {
+        ValueInfo object = info("object", Map.class);
+        ValueInfo array = info("array", List.class);
+        ValueInfo bool = info("boolean", Boolean.class);
+        ValueSet set = new ValueSet(object).append(array, false).append(bool, false);
+        assertSame(object, set.selectForRead(JsonType.OBJECT, null));
+        assertSame(array, set.selectForRead(JsonType.ARRAY, "object"));
+        assertSame(bool, set.selectForRead(JsonType.BOOLEAN, null));
+    }
+
+    @Test
     void instantReadsEitherShapeAndConfigurationOnlyPrefersMatchingInput() {
         Instant expected = Instant.parse("2024-01-01T10:00:00Z");
         String iso = "\"" + expected + "\"";
@@ -65,5 +81,9 @@ class ValueSetTest {
 
         assertEquals(iso, defaults.toJsonString(expected));
         assertEquals(String.valueOf(millis), epoch.toJsonString(expected));
+
+        assertEquals(expected, NodeMapper.convert(millis, Instant.class, false, RuntimeContext.EMPTY));
+        assertEquals(expected, NodeMapper.convert(expected.toString(), Instant.class,
+                false, new RuntimeContext(Map.of(Instant.class, "epochMillis"))));
     }
 }
