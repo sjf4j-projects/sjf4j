@@ -63,7 +63,8 @@ final class BindingEmitter {
             BindingValue value,
             GeneratedClass generated) {
 
-        if (value.kind() == BindingValue.Kind.ONE_OF) {
+        if (value.kind() == BindingValue.Kind.ONE_OF
+                && value.direction() == BindingPlan.Direction.READ_FROM) {
             String source = value.oneOfOwner() == null
                     ? "org.sjf4j.meta.TypeRegistry.registerTypeInfo(" + context.typeUtils.erasure(value.type()) + ".class).oneOfInfo"
                     : "org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
