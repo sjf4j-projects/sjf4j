@@ -313,14 +313,6 @@ public final class StreamingIO {
                 ? reader.peekToken().jsonType()
                 : valueSet.defaultInfo.rawJsonType;
         ValueInfo codec = valueSet.selectForRead(jsonType, preferredFormat);
-        if (!valueSet.multiples) {
-            // Null selects the preferred/default codec, which need not be
-            // first in the single JSON-shape group.
-            ValueInfo nullCodec = valueSet.selectForRead(org.sjf4j.JsonType.NULL, preferredFormat);
-            if (codec != nullCodec && reader.nextIfNull()) {
-                return nullCodec.rawToValue(null);
-            }
-        }
         return readValueCodec(reader, codec, context);
     }
 

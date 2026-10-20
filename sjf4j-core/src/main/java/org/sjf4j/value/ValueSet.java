@@ -7,7 +7,8 @@ import java.util.Arrays;
 
 /**
  * Immutable per-value-type codec selection, grouped by the JSON shape of the
- * declared raw type. The first entry in each group is the read fallback.
+ * declared raw type. Reads prefer the configured format, then the registered
+ * default when it matches the input shape, then the first codec in that shape.
  * Formats are unique; no additional format index or duplicate codec array
  * is retained.
  */
@@ -124,9 +125,9 @@ public final class ValueSet {
     }
 
     /**
-     * Selects the preferred matching input format; otherwise uses the first
-     * codec in the input JSON-type group. Null has no shape and uses the
-     * preferred/default codec.
+     * Selects the preferred format, then the registered default if it
+     * matches the input JSON shape, and finally the first codec in that
+     * shape. Null has no shape and uses the preferred/default codec.
      */
     public ValueInfo selectForRead(JsonType jsonType, String preferredFormat) {
         if (jsonType == JsonType.NULL) {
@@ -151,6 +152,10 @@ public final class ValueSet {
         if (preferredFormat != null) {
             ValueInfo preferred = matching(group, preferredFormat);
             if (preferred != null) return preferred;
+        }
+        if (defaultInfo.rawJsonType == jsonType
+                || (jsonType == JsonType.INTEGER && defaultInfo.rawJsonType == JsonType.NUMBER)) {
+            return defaultInfo;
         }
         return group[0];
     }

@@ -131,7 +131,8 @@ class CompiledValueCodecReviewTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("Null.rawToValue(null)"), generated);
+        assertFalse(generated.contains("Null.rawToValue(null)"), generated);
+        assertTrue(generated.contains(".multiples"), generated);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             ValueRegistry.registerAnnotated(loader.loadClass("fixture.FirstCodecs"));
@@ -141,7 +142,7 @@ class CompiledValueCodecReviewTest {
             Object nullValue = binderType.getMethod("read", String.class).invoke(binder, "null");
             Object numberValue = binderType.getMethod("read", String.class).invoke(binder, "7");
             assertEquals("default-null", nullValue.getClass().getField("origin").get(nullValue));
-            assertEquals("first-number", numberValue.getClass().getField("origin").get(numberValue));
+            assertEquals("default-number", numberValue.getClass().getField("origin").get(numberValue));
         }
     }
 }

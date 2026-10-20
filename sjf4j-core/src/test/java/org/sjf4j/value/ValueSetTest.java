@@ -69,16 +69,36 @@ class ValueSetTest {
     }
 
     @Test
-    void defaultChoiceIsIndependentOfOrderWithinRawShape() {
+    void registeredDefaultPrecedesFirstWithinSameRawShape() {
         ValueInfo seconds = info("seconds", Long.class);
         ValueInfo millis = info("millis", Long.class);
         ValueSet set = new ValueSet(seconds).append(millis, true);
         assertFalse(set.multiples);
         assertSame(millis, set.defaultInfo);
-        assertSame(seconds, set.selectForRead(JsonType.NUMBER, null));
+        assertSame(millis, set.selectForRead(JsonType.NUMBER, null));
+        assertSame(millis, set.selectForRead(JsonType.INTEGER, "unknown"));
+        assertSame(millis, set.selectForRead(JsonType.NUMBER, "unknown"));
+        assertSame(seconds, set.selectForRead(JsonType.NUMBER, "seconds"));
         assertSame(millis, set.selectForRead(JsonType.NUMBER, "millis"));
+        assertSame(millis, set.selectForRead(JsonType.NULL, null));
+        assertSame(seconds, set.selectForRead(JsonType.NULL, "seconds"));
         assertThrows(BindingException.class,
                 () -> set.append(info("millis", String.class), false));
+    }
+
+    @Test
+    void registeredDefaultIsUsedOnlyForMatchingInputShape() {
+        ValueInfo text = info("text", String.class);
+        ValueInfo firstNumber = info("firstNumber", Long.class);
+        ValueInfo defaultNumber = info("defaultNumber", Long.class);
+        ValueSet set = new ValueSet(text).append(firstNumber, false).append(defaultNumber, true);
+
+        assertTrue(set.multiples);
+        assertSame(defaultNumber, set.selectForRead(JsonType.NUMBER, null));
+        assertSame(defaultNumber, set.selectForRead(JsonType.NUMBER, "missing"));
+        assertSame(firstNumber, set.selectForRead(JsonType.INTEGER, "firstNumber"));
+        assertSame(text, set.selectForRead(JsonType.STRING, "defaultNumber"));
+        assertSame(defaultNumber, set.selectForRead(JsonType.NULL, null));
     }
 
     @Test
@@ -150,17 +170,17 @@ class ValueSetTest {
     }
 
     @Test
-    void singleShapeNullUsesLaterForcedDefaultWithoutChangingNumberFallback() {
+    void singleShapeNullAndNumberUseLaterForcedDefault() {
         // Register in separate holders: defaultCodec wins only on the second registration.
         ValueRegistry.registerAnnotated(FirstNullCodec.class);
         ValueRegistry.registerAnnotated(DefaultNullCodec.class);
 
         Sjf4j defaults = Sjf4j.builder().build();
         assertEquals("default-null", defaults.fromJson("null", NullTagged.class).origin);
-        assertEquals("first-number", defaults.fromJson("7", NullTagged.class).origin);
+        assertEquals("default-number", defaults.fromJson("7", NullTagged.class).origin);
 
-        Sjf4j preferred = Sjf4j.builder().valueFormat(NullTagged.class, "second").build();
-        assertEquals("default-number", preferred.fromJson("7", NullTagged.class).origin);
-        assertEquals("default-null", preferred.fromJson("null", NullTagged.class).origin);
+        Sjf4j preferred = Sjf4j.builder().valueFormat(NullTagged.class, "first").build();
+        assertEquals("first-number", preferred.fromJson("7", NullTagged.class).origin);
+        assertEquals("first-null", preferred.fromJson("null", NullTagged.class).origin);
     }
 }

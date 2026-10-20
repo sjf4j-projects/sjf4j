@@ -89,7 +89,7 @@ class CompiledCodecRawIOTest {
                 assertEquals(instant.toEpochMilli(), configuredJson.path("epoch").asLong(), backend);
                 assertEquals("tail", configuredJson.path("suffix").asText(), backend);
 
-                assertTrue(generated.contains("multipleJsonTypes"),
+                assertTrue(generated.contains(".multiples"),
                         backend + ": generated multi-shape read dispatch missing");
                 // Input shape wins; the configured format only selects within
                 // the matching shape, never forces a different raw type.
