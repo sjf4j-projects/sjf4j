@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NodeObject;
@@ -28,10 +29,12 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Compiles Java types into recursive direct-binding semantics before source
@@ -509,27 +512,119 @@ final class BindingCompiler {
         return true;
     }
 
+    /**
+     * Check the entire write graph before calling compileValue. An unsuccessful
+     * compileValue has already reported an error and populated its helper cache;
+     * it cannot safely be converted into an optional OneOf branch fallback.
+     */
     private boolean canCompileOneOfSubtype(TypeMirror subtype) {
-        TypeElement type = context.types.typeElement(subtype);
+        return canCompileOneOfWriteGraph(subtype, new HashSet<String>());
+    }
+
+    private boolean canCompileOneOfWriteGraph(TypeMirror type, Set<String> visited) {
         if (type == null) return false;
+        type = context.types.concrete(type);
+        if (!visited.add(type.toString())) return true;
+
+        if (type.getKind().isPrimitive() || type.getKind() == TypeKind.ARRAY) return true;
+
+        String erased = context.typeUtils.erasure(type).toString();
+        switch (erased) {
+            case "java.lang.String":
+            case "java.lang.Character":
+            case "java.lang.Boolean":
+            case "java.lang.Byte":
+            case "java.lang.Short":
+            case "java.lang.Integer":
+            case "java.lang.Long":
+            case "java.lang.Float":
+            case "java.lang.Double":
+            case "java.lang.Number":
+            case "java.math.BigInteger":
+            case "java.math.BigDecimal":
+                return true;
+            default:
+                break;
+        }
+
+        TypeElement element = context.types.typeElement(type);
+        if (element != null && element.getKind() == ElementKind.ENUM) return true;
+        NodeKind kind = context.types.nodeKind(type);
+        if (context.types.isNodeValue(type) || metadata.hasValueCodec(type)) return true;
+        // The nested OneOf writer performs its own branch eligibility checks.
+        if (context.annotations.hasOneOf(type)) return true;
+
+        switch (kind) {
+            case COMPILE_TIME_UNKNOWN:
+            case OBJECT_JSON_OBJECT:
+            case ARRAY_JSON_ARRAY:
+                return true;
+            case ARRAY_LIST:
+            case ARRAY_SET:
+                if (kind == NodeKind.ARRAY_LIST ? !directList(BindingPlan.Direction.WRITE_TO, type)
+                        : !directSet(BindingPlan.Direction.WRITE_TO, type)) return false;
+                return canCompileOneOfWriteGraph(kind == NodeKind.ARRAY_LIST
+                                ? context.types.listReadElementType(type)
+                                : context.types.setReadElementType(type), visited);
+            case OBJECT_MAP:
+                return directMap(BindingPlan.Direction.WRITE_TO, type)
+                        && canCompileOneOfWriteGraph(context.types.mapReadValueType(type), visited);
+            case OBJECT_POJO:
+            case OBJECT_JOJO:
+                if (element == null || !hasCompatibleOneOfWriteMembers(element)) return false;
+                for (Property property : context.properties.resolve(type).values()) {
+                    PropertyAccess access = property.read();
+                    if (access == null) continue;
+                    if (memberOneOf(property.read()) != null || memberOneOf(property.write()) != null) {
+                        continue; // Member OneOf has its own mapped subtype fallbacks.
+                    }
+                    if (!canCompileOneOfWriteGraph(access.type(), visited)) return false;
+                }
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Runtime discovers annotated non-public members in each superclass,
+     * whereas PropertyResolver uses public members only. Ignore annotations
+     * also belong to Runtime discovery, so do not emit a direct subtype writer
+     * when either rule could change its serialized JSON.
+     */
+    private boolean hasCompatibleOneOfWriteMembers(TypeElement type) {
         NodeObject options = type.getAnnotation(NodeObject.class);
         if (options != null
                 && (options.propertyStrategy() != PropertyStrategy.BEAN_FIELD
-                || options.naming() != NamingStrategy.IDENTITY)) {
-            return false;
-        }
-        for (Element member : context.elements.getAllMembers(type)) {
-            if (member.getKind() != ElementKind.FIELD
-                    || member.getModifiers().contains(Modifier.STATIC)
-                    || member.getModifiers().contains(Modifier.PUBLIC)) continue;
-            if (member.getAnnotation(NodeProperty.class) != null
-                    || member.getAnnotation(OneOf.class) != null
-                    || context.annotations.explicitPropertyName(member) != null
-                    || context.annotations.propertyAliases(member).length != 0) {
-                return false;
+                || options.naming() != NamingStrategy.IDENTITY)) return false;
+
+        for (TypeElement current = type; current != null; ) {
+            for (Element member : current.getEnclosedElements()) {
+                if (member.getKind() != ElementKind.FIELD && member.getKind() != ElementKind.METHOD) {
+                    continue;
+                }
+                if (member.getModifiers().contains(Modifier.STATIC)) continue;
+                if (member.getAnnotation(NodeIgnore.class) != null) return false;
+                if (member.getKind() == ElementKind.FIELD
+                        && isIgnoredOneOfFieldType((VariableElement) member)) return false;
+                if (member.getModifiers().contains(Modifier.PUBLIC)) continue;
+                if (member.getAnnotation(NodeProperty.class) != null
+                        || member.getAnnotation(OneOf.class) != null
+                        || context.annotations.explicitPropertyName(member) != null
+                        || context.annotations.propertyAliases(member).length != 0) {
+                    return false;
+                }
             }
+            TypeMirror parent = current.getSuperclass();
+            current = parent.getKind() == TypeKind.NONE
+                    ? null : context.types.typeElement(parent);
         }
         return true;
+    }
+
+    private boolean isIgnoredOneOfFieldType(VariableElement field) {
+        TypeElement fieldType = context.types.typeElement(field.asType());
+        return fieldType != null && fieldType.getAnnotation(NodeIgnore.class) != null;
     }
 
     /** Member annotations override their declared type's OneOf mapping. */
