@@ -12,6 +12,8 @@ import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 /** StreamingWriter backed directly by a Fastjson2 {@link JSONWriter}. */
 public final class Fastjson2Writer extends StreamingWriter {
@@ -142,6 +144,24 @@ public final class Fastjson2Writer extends StreamingWriter {
     @Override
     public void writeUUID(UUID value) {
         writer.writeUUID(value);
+    }
+
+    @Override
+    public void writeLocalDate(LocalDate value) {
+        writer.writeLocalDate(value);
+    }
+
+    @Override
+    public void writeLocalTime(LocalTime value) {
+        // LocalTime.toString() omits seconds for whole-minute times,
+        // whereas Fastjson2 always writes HH:mm:ss.
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getSecond() == 0 && value.getNano() == 0) {
+            writer.writeString(value.toString());
+        } else {
+            writer.writeLocalTime(value);
+        }
     }
 
     @Override
