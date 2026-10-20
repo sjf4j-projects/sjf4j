@@ -31,6 +31,15 @@ jobs:
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
             '.*CreekModelBenchmark[.]write_compiled$' \
             -f 0 -wi 0 -i 1 -r 100ms -t 1
+      - name: Creek UUID serializer diagnostic comparison (CI runner, indicative only)
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CreekModelBenchmark[.]write_(compiled|native|native_uuid_tostring)        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*OneOfReadBenchmark[.](root|envelope)_(string|utf8)_(compiled|runtime|jackson_native|jackson_blackbird)$' \
+            -f 1 -wi 3 -w 200ms -i 4 -r 200ms -t 1
+ \
+            -f 2 -wi 8 -w 400ms -i 8 -r 400ms -t 1 -prof gc
       - name: OneOf vs Jackson2 quick JMH comparison (CI runner, indicative only)
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
