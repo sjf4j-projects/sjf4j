@@ -55,6 +55,7 @@ final class BindingValue {
     private BindingValue mapValue;
     private String codecName;
     private String codecPattern;
+    private TypeMirror codecRawType;
     private List<String> ignoredNames = Collections.emptyList();
     private boolean readDynamic;
     private boolean writeDynamic;
@@ -171,6 +172,14 @@ final class BindingValue {
 
     String codecPattern() {
         return codecPattern;
+    }
+
+    void codecRawType(TypeMirror type) {
+        this.codecRawType = type;
+    }
+
+    TypeMirror codecRawType() {
+        return codecRawType;
     }
 
     List<String> ignoredNames() {
