@@ -348,7 +348,7 @@ public class TypeRegistryTest {
             }
         }, null, false);
 
-        ValueInfo vci = Asserts.notNull(ValueRegistry.resolve(CodecDay.class), "test")[0];
+        ValueInfo vci = Asserts.notNull(ValueRegistry.resolve(CodecDay.class), "test").defaultInfo;
         log.info("vci={}", vci);
         assertNotNull(vci);
 
