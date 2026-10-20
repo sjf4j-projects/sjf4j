@@ -94,7 +94,7 @@ public enum NodeKind {
         if (kind != NodeKind.UNKNOWN) return kind;
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             return NodeKind.VALUE_BINDING;
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
