@@ -42,12 +42,12 @@ class ValueRegistryTest {
 
     @Test
     void resolvesRawToValueConstructor() {
-        ValueInfo[] infos = ValueRegistry.resolve(ConstructorValue.class);
+        ValueSet infos = ValueRegistry.resolve(ConstructorValue.class);
 
         assertNotNull(infos);
-        assertEquals(1, infos.length);
-        assertEquals("value", infos[0].valueToRaw(new ConstructorValue("value")));
-        assertEquals("value", ((ConstructorValue) infos[0].rawToValue("value")).value);
+        assertEquals(1, infos.stringInfos.length);
+        assertEquals("value", infos.defaultInfo.valueToRaw(new ConstructorValue("value")));
+        assertEquals("value", ((ConstructorValue) infos.defaultInfo.rawToValue("value")).value);
     }
 
     @Test
@@ -62,7 +62,7 @@ class ValueRegistryTest {
     void registersOptionalCodecAsANodeValue() {
         ValueRegistry.registerByCodec(new OptionalStringCodec(), null, false);
 
-        ValueInfo codec = ValueRegistry.resolve(Optional.class)[0];
+        ValueInfo codec = ValueRegistry.resolve(Optional.class).defaultInfo;
         assertEquals(Optional.of("value"), codec.rawToValue("value"));
         assertEquals(Optional.empty(), codec.rawToValue(null));
     }
