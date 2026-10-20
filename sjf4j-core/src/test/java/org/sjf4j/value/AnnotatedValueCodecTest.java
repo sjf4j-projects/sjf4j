@@ -87,11 +87,20 @@ class AnnotatedValueCodecTest {
                         x -> x.value, NamedOnly::new);
     }
 
+    public static final class NamedOnlyPreferred {
+        @NodeValue(format = "preferred", defaultCodec = true)
+        public static final ValueCodec<NamedOnly, String> PREFERRED =
+                new ValueCodec.SimpleValueCodec<>(NamedOnly.class, String.class,
+                        x -> x.value, NamedOnly::new);
+    }
+
     @Test
     void namedOnlyFormatsHaveStableOrder() {
         ValueRegistry.registerAnnotated(NamedOnlyCodecs.class);
         assertEquals("aaa", ValueRegistry.resolve(NamedOnly.class).stringInfos[0].valueFormat);
         assertEquals("zzz", ValueRegistry.resolve(NamedOnly.class).stringInfos[1].valueFormat);
+        ValueRegistry.registerAnnotated(NamedOnlyPreferred.class);
+        assertEquals("preferred", ValueRegistry.resolve(NamedOnly.class).defaultInfo.valueFormat);
     }
 
     public static class NotStatic {
