@@ -2,6 +2,7 @@ package org.sjf4j.value;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.util.FastUuid;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -164,7 +165,7 @@ public interface ValueCodec<V, R> {
 
     @NodeValue
     ValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,
-            UUID::toString, UUID::fromString);
+            FastUuid::toString, FastUuid::parseUUID);
 
     @NodeValue
     ValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,

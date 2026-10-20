@@ -12,7 +12,7 @@
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
 
-SJF4J is first and foremost **a simple JSON facade for Java**, 
+SJF4J is foremost **a simple JSON facade for Java**, 
 evolving into **a unified structural processing layer built on JSON semantics**.
 
 It brings JSON semantics directly to Java objects, combining unified structural processing, 
@@ -66,8 +66,9 @@ String output = sjf4j.toJsonString(another);
 ```java
 @CompiledBinder
 interface UserBinder {
-    User read(String json) throws IOException;
-    String write(User user) throws IOException;
+    @ReadFrom User read(String json) throws IOException;
+    
+    @WriteTo String write(User user) throws IOException;
 }
 
 UserBinder binder = CompiledInstances.global(UserBinder.class);
@@ -81,7 +82,7 @@ Compile-time code generation also supports: `@CompiledNavigator` ( JSONPath navi
 
 - **JSON Semantics, Native Java Objects**   
   Apply [JSON Path](https://www.rfc-editor.org/info/rfc9535/), [JSON Pointer](https://www.rfc-editor.org/info/rfc6901/), 
-  [JSON Patch](https://www.rfc-editor.org/info/rfc6901/), and [JSON Schema](https://json-schema.org/) directly to POJOs, 
+  [JSON Patch](https://www.rfc-editor.org/info/rfc6902/), and [JSON Schema](https://json-schema.org/) directly to POJOs, 
   Maps, Lists, and domain models — no intermediate JSON trees required.
 
 
@@ -100,8 +101,9 @@ Use SJF4J when you need more than serialization!
 
 SJF4J unifies essential structured-data capabilities under a consistent programming model:
 
-Modeling · Binding · Navigation · Patching · Validation · Mapping
-
+```text
+Modeling · Binding · Navigating · Patching · Validating · Mapping
+```
 
 
 ## Install

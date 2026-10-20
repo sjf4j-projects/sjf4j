@@ -187,21 +187,21 @@ public class HandWriteBenchmark {
                 json_fastjson2_string_handwritten_utf8());
         validate("Fastjson2 serialized names", fastjson2Native,
                 json_fastjson2_string_handwritten_utf8_serialized());
-        validate("Fastjson2 UTF-8 packed raw names", fastjson2Native,
-                json_fastjson2_string_handwritten_utf8_raw());
+//        validate("Fastjson2 UTF-8 packed raw names", fastjson2Native,
+//                json_fastjson2_string_handwritten_utf8_raw());
         validate("Fastjson2 UTF-16 string names", fastjson2Native,
                 json_fastjson2_string_handwritten_utf16());
         validate("Fastjson2 UTF-16 serialized names", fastjson2Native,
                 json_fastjson2_string_handwritten_utf16_serialized());
-        validate("Fastjson2 UTF-16 raw names", fastjson2Native,
-                json_fastjson2_string_handwritten_utf16_raw());
+//        validate("Fastjson2 UTF-16 raw names", fastjson2Native,
+//                json_fastjson2_string_handwritten_utf16_raw());
         byte[] fastjson2NativeBytes = json_fastjson2_bytes_native();
         validate("Fastjson2 UTF-8 bytes String names", fastjson2NativeBytes,
                 json_fastjson2_bytes_handwritten());
         validate("Fastjson2 UTF-8 bytes serialized names", fastjson2NativeBytes,
                 json_fastjson2_bytes_handwritten_serialized());
-        validate("Fastjson2 UTF-8 bytes packed raw names", fastjson2NativeBytes,
-                json_fastjson2_bytes_handwritten_raw());
+//        validate("Fastjson2 UTF-8 bytes packed raw names", fastjson2NativeBytes,
+//                json_fastjson2_bytes_handwritten_raw());
         validate("Fastjson2 UTF-16 string to UTF-8 bytes String names", fastjson2NativeBytes,
                 json_fastjson2_bytes_handwritten_fromUtf16String());
 
@@ -675,13 +675,13 @@ public class HandWriteBenchmark {
         }
     }
 
-    @Benchmark
-    public String json_fastjson2_string_handwritten_utf16_raw() {
-        try (JSONWriter writer = JSONWriter.ofUTF16()) {
-            Fastjson2HandPojoRawWriter.writeUser(writer, USER);
-            return writer.toString();
-        }
-    }
+//    @Benchmark
+//    public String json_fastjson2_string_handwritten_utf16_raw() {
+//        try (JSONWriter writer = JSONWriter.ofUTF16()) {
+//            Fastjson2HandPojoRawWriter.writeUser(writer, USER);
+//            return writer.toString();
+//        }
+//    }
 
     @Benchmark
     public String json_fastjson2_string_handwritten_utf8() {
@@ -699,13 +699,13 @@ public class HandWriteBenchmark {
         }
     }
 
-    @Benchmark
-    public String json_fastjson2_string_handwritten_utf8_raw() {
-        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
-            Fastjson2HandPojoRawWriter.writeUser(writer, USER);
-            return writer.toString();
-        }
-    }
+//    @Benchmark
+//    public String json_fastjson2_string_handwritten_utf8_raw() {
+//        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
+//            Fastjson2HandPojoRawWriter.writeUser(writer, USER);
+//            return writer.toString();
+//        }
+//    }
 
     @Benchmark
     public byte[] json_fastjson2_bytes_native() {
@@ -736,12 +736,12 @@ public class HandWriteBenchmark {
         }
     }
 
-    @Benchmark
-    public byte[] json_fastjson2_bytes_handwritten_raw() {
-        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
-            Fastjson2HandPojoRawWriter.writeUser(writer, USER);
-            return writer.getBytes();
-        }
-    }
+//    @Benchmark
+//    public byte[] json_fastjson2_bytes_handwritten_raw() {
+//        try (JSONWriter writer = JSONWriter.ofUTF8(FASTJSON2_NATIVE_CONTEXT)) {
+//            Fastjson2HandPojoRawWriter.writeUser(writer, USER);
+//            return writer.getBytes();
+//        }
+//    }
 
 }
