@@ -706,15 +706,10 @@ final class ReadEmitter {
                 if (autoRead) {
                     String set = value.helperName() + "Set";
                     String selected = STREAMING_IO + ".readValueSet(" + reader + ", "
-                            + set + ", this.context.valueFormat("
-                            + value.type() + ".class), this.context)";
-                    // Only differing null/default codecs require an extra probe.
-                    // Normal scalar reads retain their typed fast paths.
-                    String scalarWithNull = "(" + value.helperName() + " != "
-                            + value.helperName() + "Null && " + reader + ".nextIfNull() ? "
-                            + value.helperName() + "Null.rawToValue(null) : " + scalarRead + ")";
-                    return "(" + value.type() + ") (" + set + ".multipleJsonTypes ? "
-                            + selected + " : " + scalarWithNull + ")";
+                            + value.type() + ".class, " + value.type() + ".class, "
+                            + set + ", this.context)";
+                    return "(" + value.type() + ") (" + set + ".multiples ? "
+                            + selected + " : " + scalarRead + ")";
                 }
                 return "(" + value.type() + ") " + scalarRead;
 
