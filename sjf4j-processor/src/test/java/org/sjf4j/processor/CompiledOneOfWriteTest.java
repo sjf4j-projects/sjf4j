@@ -65,7 +65,8 @@ class CompiledOneOfWriteTest {
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(result.success, backend + ": " + result.diagnostics());
             String generated = result.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("value.getClass() == fixture.Cat.class"),
+            assertTrue(generated.contains("value.getClass() == Cat.class")
+                            || generated.contains("value.getClass() == fixture.Cat.class"),
                     backend + ": missing Class dispatch");
             assertTrue(generated.contains("_writeEnvelope("), backend);
             assertTrue(generated.contains("_writeCat"), backend);
