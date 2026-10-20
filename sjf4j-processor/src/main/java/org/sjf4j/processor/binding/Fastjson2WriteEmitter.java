@@ -120,6 +120,36 @@ final class Fastjson2WriteEmitter {
     }
 
 
+    /** Writes a mapped OneOf subtype using its generated encoding-specific helper. */
+    void emitMappedSubtype(JavaWriter out, BindingValue subtype, String writer, String expression) {
+        boolean utf8 = fastjsonModes.contains(FastjsonMode.UTF8);
+        boolean utf16 = fastjsonModes.contains(FastjsonMode.UTF16);
+        if (utf8 && utf16) {
+            out.beginBlock("if (" + writer + ".nativeWriter().isUTF8())");
+            emitMappedSubtypeMode(out, subtype, writer, expression, FastjsonMode.UTF8);
+            out.endBlock(" else {");
+            out.indent();
+            emitMappedSubtypeMode(out, subtype, writer, expression, FastjsonMode.UTF16);
+            out.endBlock();
+        } else {
+            emitMappedSubtypeMode(out, subtype, writer, expression,
+                    utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16);
+        }
+    }
+
+    private void emitMappedSubtypeMode(JavaWriter out, BindingValue subtype,
+                                       String writer, String expression, FastjsonMode mode) {
+        out.beginBlock("if (org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
+                + (mode == FastjsonMode.UTF8 ? "supportsRawUtf8Names(" : "supportsRawUtf16Names(")
+                + writer + ".nativeWriter()))");
+        out.line(fastjsonHelperName(subtype, mode) + "(" + writer + ", " + expression + ");");
+        out.endBlock(" else {");
+        out.indent();
+        out.line("org.sjf4j.binding.StreamingIO.writeNode(" + writer + ", "
+                + expression + ", this.context);");
+        out.endBlock();
+    }
+
     private String fastjsonHelperName(BindingValue value, FastjsonMode mode) {
         return value.helperName() + mode.suffix;
     }
@@ -340,6 +370,7 @@ final class Fastjson2WriteEmitter {
         if (!visited.add(value)) return true;
         switch (value.kind()) {
             case RUNTIME:
+            case ONE_OF:
             case NUMBER:
             case JOJO:
             case JSON_OBJECT:

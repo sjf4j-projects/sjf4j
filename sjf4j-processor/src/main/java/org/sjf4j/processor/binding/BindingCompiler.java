@@ -2,8 +2,12 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeIgnore;
+import org.sjf4j.annotation.node.NamingStrategy;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.creator.CreatorPlan;
 import org.sjf4j.processor.creator.StandardCreatorResolver;
@@ -17,16 +21,20 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Compiles Java types into recursive direct-binding semantics before source
@@ -199,6 +207,14 @@ final class BindingCompiler {
                 }
                 break;
 
+            case ONE_OF:
+                if (direction == BindingPlan.Direction.WRITE_TO) {
+                    TypeElement element = context.types.typeElement(type);
+                    if (!compileOneOfWrite(value, element == null ? null
+                            : element.getAnnotation(OneOf.class), method, generated)) return null;
+                }
+                break;
+
             case ARRAY:
                 value.elementValue(compileValue(value.direction(),
                         ((ArrayType) value.type()).getComponentType(), method, generated));
@@ -334,8 +350,7 @@ final class BindingCompiler {
         }
 
         if (context.annotations.hasOneOf(type)) {
-            return direction == BindingPlan.Direction.READ_FROM
-                    ? BindingValue.Kind.ONE_OF : BindingValue.Kind.RUNTIME;
+            return BindingValue.Kind.ONE_OF;
         }
 
         // PARENT discriminators require the containing POJO's field order and
@@ -456,17 +471,175 @@ final class BindingCompiler {
      * Member annotations override type-level OneOf. They need their owner's
      * cached PropertyInfo rather than metadata resolved from the child class.
      */
-    private BindingValue compileMemberOneOf(BindingValue owner, String property,
-                                            TypeMirror propertyType) {
-        TypeMirror type = context.types.concrete(propertyType);
-        BindingValue.Kind kind = owner.direction() == BindingPlan.Direction.READ_FROM
-                ? BindingValue.Kind.ONE_OF : BindingValue.Kind.RUNTIME;
-        BindingValue result = new BindingValue(owner.direction(), type, kind, false);
-        if (kind == BindingValue.Kind.ONE_OF) {
-            result.oneOfMember(context.typeUtils.erasure(owner.type()).toString(), property);
-            result.helperName(names.newName(helperSuggestion(owner.direction(), type)));
-            helpers.add(result);
+    /**
+     * Compile mapped types once, retaining Runtime for subtypes whose serialized
+     * fields are inaccessible to generated Java code.
+     */
+    private boolean compileOneOfWrite(BindingValue value, OneOf annotation,
+                                      ExecutableElement method, GeneratedClass generated) {
+        if (annotation == null) return true;
+        List<BindingValue.OneOfSubtype> subtypes = new ArrayList<>();
+        for (OneOfMapping mapping : annotation.mappings()) {
+            TypeMirror subtype;
+            try {
+                Class<?> target = mapping.type();
+                TypeElement element = context.elements.getTypeElement(target.getCanonicalName());
+                if (element == null) continue;
+                subtype = element.asType();
+            } catch (MirroredTypeException e) {
+                subtype = e.getTypeMirror();
+            }
+            boolean visible = isVisibleOneOfSubtype(subtype);
+            BindingValue compiled = null;
+            if (visible && canCompileOneOfSubtype(subtype)) {
+                compiled = compileValue(BindingPlan.Direction.WRITE_TO, subtype, method, generated);
+                if (compiled == null) return false;
+            }
+            boolean cachedPojo = visible && compiled == null
+                    && context.types.nodeKind(subtype) == NodeKind.OBJECT_POJO;
+            subtypes.add(new BindingValue.OneOfSubtype(subtype, compiled, cachedPojo));
         }
+        value.oneOfSubtypes(subtypes);
+        return true;
+    }
+
+    private boolean isVisibleOneOfSubtype(TypeMirror subtype) {
+        TypeElement type = context.types.typeElement(subtype);
+        if (type == null) return false;
+        for (Element owner = type; owner instanceof TypeElement; owner = owner.getEnclosingElement()) {
+            if (!owner.getModifiers().contains(Modifier.PUBLIC)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Check the entire write graph before calling compileValue. An unsuccessful
+     * compileValue has already reported an error and populated its helper cache;
+     * it cannot safely be converted into an optional OneOf branch fallback.
+     */
+    private boolean canCompileOneOfSubtype(TypeMirror subtype) {
+        return canCompileOneOfWriteGraph(subtype, new HashSet<String>());
+    }
+
+    private boolean canCompileOneOfWriteGraph(TypeMirror type, Set<String> visited) {
+        if (type == null) return false;
+        type = context.types.concrete(type);
+        if (!visited.add(type.toString())) return true;
+
+        if (type.getKind().isPrimitive() || type.getKind() == TypeKind.ARRAY) return true;
+
+        String erased = context.typeUtils.erasure(type).toString();
+        switch (erased) {
+            case "java.lang.String":
+            case "java.lang.Character":
+            case "java.lang.Boolean":
+            case "java.lang.Byte":
+            case "java.lang.Short":
+            case "java.lang.Integer":
+            case "java.lang.Long":
+            case "java.lang.Float":
+            case "java.lang.Double":
+            case "java.lang.Number":
+            case "java.math.BigInteger":
+            case "java.math.BigDecimal":
+                return true;
+            default:
+                break;
+        }
+
+        TypeElement element = context.types.typeElement(type);
+        if (element != null && element.getKind() == ElementKind.ENUM) return true;
+        NodeKind kind = context.types.nodeKind(type);
+        if (context.types.isNodeValue(type) || metadata.hasValueCodec(type)) return true;
+        // The nested OneOf writer performs its own branch eligibility checks.
+        if (context.annotations.hasOneOf(type)) return true;
+
+        switch (kind) {
+            case COMPILE_TIME_UNKNOWN:
+            case OBJECT_JSON_OBJECT:
+            case ARRAY_JSON_ARRAY:
+                return true;
+            case ARRAY_LIST:
+            case ARRAY_SET:
+                if (kind == NodeKind.ARRAY_LIST ? !directList(BindingPlan.Direction.WRITE_TO, type)
+                        : !directSet(BindingPlan.Direction.WRITE_TO, type)) return false;
+                return canCompileOneOfWriteGraph(kind == NodeKind.ARRAY_LIST
+                                ? context.types.listReadElementType(type)
+                                : context.types.setReadElementType(type), visited);
+            case OBJECT_MAP:
+                return directMap(BindingPlan.Direction.WRITE_TO, type)
+                        && canCompileOneOfWriteGraph(context.types.mapReadValueType(type), visited);
+            case OBJECT_POJO:
+            case OBJECT_JOJO:
+                if (element == null || !hasCompatibleOneOfWriteMembers(element)) return false;
+                for (Property property : context.properties.resolve(type).values()) {
+                    PropertyAccess access = property.read();
+                    if (access == null) continue;
+                    if (memberOneOf(property.read()) != null || memberOneOf(property.write()) != null) {
+                        continue; // Member OneOf has its own mapped subtype fallbacks.
+                    }
+                    if (!canCompileOneOfWriteGraph(access.type(), visited)) return false;
+                }
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Runtime discovers annotated non-public members in each superclass,
+     * whereas PropertyResolver uses public members only. Ignore annotations
+     * also belong to Runtime discovery, so do not emit a direct subtype writer
+     * when either rule could change its serialized JSON.
+     */
+    private boolean hasCompatibleOneOfWriteMembers(TypeElement type) {
+        NodeObject options = type.getAnnotation(NodeObject.class);
+        if (options != null
+                && (options.propertyStrategy() != PropertyStrategy.BEAN_FIELD
+                || options.naming() != NamingStrategy.IDENTITY)) return false;
+
+        for (TypeElement current = type; current != null; ) {
+            for (Element member : current.getEnclosedElements()) {
+                if (member.getKind() != ElementKind.FIELD && member.getKind() != ElementKind.METHOD) {
+                    continue;
+                }
+                if (member.getModifiers().contains(Modifier.STATIC)) continue;
+                if (member.getAnnotation(NodeIgnore.class) != null) return false;
+                if (member.getKind() == ElementKind.FIELD
+                        && isIgnoredOneOfFieldType((VariableElement) member)) return false;
+                if (member.getModifiers().contains(Modifier.PUBLIC)) continue;
+                if (member.getAnnotation(NodeProperty.class) != null
+                        || member.getAnnotation(OneOf.class) != null
+                        || context.annotations.explicitPropertyName(member) != null
+                        || context.annotations.propertyAliases(member).length != 0) {
+                    return false;
+                }
+            }
+            TypeMirror parent = current.getSuperclass();
+            current = parent.getKind() == TypeKind.NONE
+                    ? null : context.types.typeElement(parent);
+        }
+        return true;
+    }
+
+    private boolean isIgnoredOneOfFieldType(VariableElement field) {
+        TypeElement fieldType = context.types.typeElement(field.asType());
+        return fieldType != null && fieldType.getAnnotation(NodeIgnore.class) != null;
+    }
+
+    /** Member annotations override their declared type's OneOf mapping. */
+    private BindingValue compileMemberOneOf(BindingValue owner, String property,
+                                            TypeMirror propertyType, OneOf annotation,
+                                            ExecutableElement method, GeneratedClass generated) {
+        TypeMirror type = context.types.concrete(propertyType);
+        BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF, false);
+        result.helperName(names.newName(helperSuggestion(owner.direction(), type)));
+        if (owner.direction() == BindingPlan.Direction.READ_FROM) {
+            result.oneOfMember(context.typeUtils.erasure(owner.type()).toString(), property);
+        } else if (!compileOneOfWrite(result, annotation, method, generated)) {
+            return null;
+        }
+        helpers.add(result);
         return result;
     }
 
@@ -569,7 +742,9 @@ final class BindingCompiler {
                 return false;
             }
             BindingValue propertyValue = memberOneOf
-                    ? compileMemberOneOf(value, property.name(), access.type())
+                    ? compileMemberOneOf(value, property.name(), access.type(),
+                            memberOneOf(property.read()) != null ? memberOneOf(property.read())
+                                    : memberOneOf(property.write()), method, generated)
                     : compileValue(
                             value.direction(),
                             access.type(),
@@ -743,7 +918,9 @@ final class BindingCompiler {
                 return false;
             }
             BindingValue child = memberOneOf
-                    ? compileMemberOneOf(value, property.name(), property.write().type())
+                    ? compileMemberOneOf(value, property.name(), property.write().type(),
+                            memberOneOf(property.read()) != null ? memberOneOf(property.read())
+                                    : memberOneOf(property.write()), method, generated)
                     : compileValue(value.direction(), property.write().type(),
                             method, generated, selectedCodecName(getter, setter),
                             selectedCodecPattern(getter, setter));

@@ -63,7 +63,8 @@ final class BindingEmitter {
             BindingValue value,
             GeneratedClass generated) {
 
-        if (value.kind() == BindingValue.Kind.ONE_OF) {
+        if (value.kind() == BindingValue.Kind.ONE_OF
+                && value.direction() == BindingPlan.Direction.READ_FROM) {
             String source = value.oneOfOwner() == null
                     ? "org.sjf4j.meta.TypeRegistry.registerTypeInfo(" + context.typeUtils.erasure(value.type()) + ".class).oneOfInfo"
                     : "org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
@@ -73,6 +74,17 @@ final class BindingEmitter {
                     "private static final org.sjf4j.meta.OneOfInfo " + value.helperName()
                             + " = " + source + ";"));
             return;
+        }
+        if (value.kind() == BindingValue.Kind.ONE_OF
+                && value.direction() == BindingPlan.Direction.WRITE_TO) {
+            for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
+                BindingValue.OneOfSubtype subtype = value.oneOfSubtypes().get(i);
+                if (!subtype.cachedPojo) continue;
+                String name = value.helperName() + "_subtype" + i + "_pojoInfo";
+                generated.addField(out -> out.line("private static final org.sjf4j.meta.PojoInfo "
+                        + name + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
+                        + subtype.type + ".class);"));
+            }
         }
         if (value.isCodec()) {
             // Resolve once per configured instance, never inside the read/write loops.

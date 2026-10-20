@@ -26,6 +26,11 @@ jobs:
       - name: Verify record benchmark correctness (non-performance smoke test)
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar             '.*CreatorReadBenchmark[.]fastjson2_record_string_compiled$'             -f 0 -wi 0 -i 1 -r 100ms
+      - name: Creek compiled OneOf writer correctness smoke
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CreekModelBenchmark[.]write_compiled$' \
+            -f 0 -wi 0 -i 1 -r 100ms -t 1
       - name: OneOf vs Jackson2 quick JMH comparison (CI runner, indicative only)
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \

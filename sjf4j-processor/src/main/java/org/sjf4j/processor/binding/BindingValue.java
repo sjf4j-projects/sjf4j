@@ -25,7 +25,7 @@ final class BindingValue {
         BIG_DECIMAL,
         ENUM,
         VALUE_CODEC,
-        /** Entire OneOf subtree is read through StreamingIO. */
+        /** Read uses OneOfIO; write dispatches by the actual Java class. */
         ONE_OF,
         POJO,
         JOJO,
@@ -48,6 +48,7 @@ final class BindingValue {
     private String helperName;
     private String oneOfOwner;
     private String oneOfProperty;
+    private List<OneOfSubtype> oneOfSubtypes = Collections.emptyList();
     private CreatorPlan creator;
     private List<BindingProperty> properties = Collections.emptyList();
     private BindingValue elementValue;
@@ -87,7 +88,8 @@ final class BindingValue {
     }
 
     boolean helperRequired() {
-        return kind == Kind.POJO
+        return (kind == Kind.ONE_OF && direction == BindingPlan.Direction.WRITE_TO)
+                || kind == Kind.POJO
                 || kind == Kind.JOJO
                 || kind == Kind.JSON_OBJECT
                 || kind == Kind.JSON_ARRAY
@@ -124,6 +126,26 @@ final class BindingValue {
 
     String oneOfProperty() {
         return oneOfProperty;
+    }
+
+    static final class OneOfSubtype {
+        final TypeMirror type;
+        final BindingValue compiled;
+        final boolean cachedPojo;
+
+        OneOfSubtype(TypeMirror type, BindingValue compiled, boolean cachedPojo) {
+            this.type = type;
+            this.compiled = compiled;
+            this.cachedPojo = cachedPojo;
+        }
+    }
+
+    void oneOfSubtypes(List<OneOfSubtype> subtypes) {
+        this.oneOfSubtypes = Collections.unmodifiableList(subtypes);
+    }
+
+    List<OneOfSubtype> oneOfSubtypes() {
+        return oneOfSubtypes;
     }
 
     List<BindingProperty> properties() {

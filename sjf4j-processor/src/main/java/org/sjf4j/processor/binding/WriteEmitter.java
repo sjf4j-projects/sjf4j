@@ -364,6 +364,9 @@ final class WriteEmitter {
                 + "(" + backend.writerType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
+            case ONE_OF:
+                emitOneOf(out, value);
+                break;
             case POJO:
             case JOJO:
                 emitPojo(out, value);
@@ -423,6 +426,12 @@ final class WriteEmitter {
             return containsString(value, new HashSet<BindingValue>());
         }
         switch (value.kind()) {
+            case ONE_OF:
+                for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+                    if (subtype.compiled != null
+                            && containsNativeString(subtype.compiled, visited)) return true;
+                }
+                return false;
             case POJO:
             case JOJO:
                 for (BindingProperty property : value.properties()) {
@@ -444,6 +453,11 @@ final class WriteEmitter {
         switch (value.kind()) {
             case STRING:
                 return true;
+            case ONE_OF:
+                for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+                    if (subtype.compiled != null && containsString(subtype.compiled, visited)) return true;
+                }
+                return false;
             case POJO:
             case JOJO:
                 for (BindingProperty property : value.properties()) {
@@ -502,6 +516,32 @@ final class WriteEmitter {
         out.line("g." + writeString + "(value);");
         out.endBlock();
         out.endBlock();
+    }
+
+    private void emitOneOf(JavaWriter out, BindingValue value) {
+        emitNullReturn(out);
+        int index = 0;
+        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+            String metadata = value.helperName() + "_subtype" + index++ + "_pojoInfo";
+            if (subtype.compiled == null && !subtype.cachedPojo) continue;
+            String type = subtype.type.toString();
+            out.beginBlock("if (value.getClass() == " + type + ".class)");
+            String expression = "(" + type + ") value";
+            if (subtype.cachedPojo) {
+                out.line(STREAMING_IO + ".writePojo(writer, value, " + metadata
+                        + ", this.context);");
+            } else if (backend.backend() == Backend.FASTJSON2
+                    && subtype.compiled.helperRequired()
+                    && fastjson2.nativeEligible(subtype.compiled, new HashSet<BindingValue>())) {
+                fastjson2.emitMappedSubtype(out, subtype.compiled, "writer", expression);
+            } else {
+                writeValue(out, subtype.compiled, "writer", expression);
+            }
+            out.line("return;");
+            out.endBlock();
+        }
+        // Unknown classes and subtypes with inaccessible fields retain Runtime semantics.
+        out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
     }
 
     private void emitPojo(
@@ -829,6 +869,7 @@ final class WriteEmitter {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
             case VALUE_CODEC:
+            case ONE_OF:
             case JOJO:
             case JSON_OBJECT:
             case JSON_ARRAY:
@@ -853,6 +894,7 @@ final class WriteEmitter {
         if (!visited.add(value)) return true;
         switch (value.kind()) {
             case RUNTIME:
+            case ONE_OF:
             case NUMBER:
             case VALUE_CODEC:
             case JOJO:
