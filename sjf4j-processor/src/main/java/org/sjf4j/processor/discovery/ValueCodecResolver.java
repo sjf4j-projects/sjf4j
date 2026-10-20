@@ -131,13 +131,11 @@ public final class ValueCodecResolver {
                 String typeName = context.typeUtils.erasure(metadata.valueType).toString();
                 Map<String, ValueCodecMetadata> formats =
                         byType.computeIfAbsent(typeName, k -> new LinkedHashMap<>());
-                for (String format : metadata.formats) {
-                    ValueCodecMetadata previous = formats.putIfAbsent(format, metadata);
-                    if (previous != null) {
-                        context.error(metadata.declaration, "duplicate @NodeValue codec format '"
-                                + format + "' for type '" + typeName + "'; previously declared by "
-                                + previous.declaration);
-                    }
+                ValueCodecMetadata previous = formats.putIfAbsent(metadata.format, metadata);
+                if (previous != null) {
+                    context.error(metadata.declaration, "duplicate @NodeValue codec format '"
+                            + metadata.format + "' for type '" + typeName + "'; previously declared by "
+                            + previous.declaration);
                 }
             }
         }
@@ -165,12 +163,8 @@ public final class ValueCodecResolver {
             return null;
         }
 
-        List<String> formats = Arrays.asList(field.getAnnotation(NodeValue.class).formats());
-        if (formats.isEmpty()) {
-            context.error(field, "@NodeValue codec field must declare at least one format");
-            return null;
-        }
-        return new ValueCodecMetadata(arguments.get(0), arguments.get(1), formats, field);
+        String format = field.getAnnotation(NodeValue.class).format();
+        return new ValueCodecMetadata(arguments.get(0), arguments.get(1), format, field);
     }
 
     private boolean concreteClass(TypeMirror type) {
