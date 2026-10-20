@@ -36,6 +36,11 @@ jobs:
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
             '.*CreekModelBenchmark[.]write_(compiled|native|native_uuid_tostring)$' \
             -f 2 -wi 8 -w 400ms -i 8 -r 400ms -t 1 -prof gc
+      - name: Creek compiled vs native - local warmup settings, no profiler
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CreekModelBenchmark[.]write_(compiled|native)$' \
+            -f 2 -wi 15 -w 400ms -i 5 -r 400ms -t 1
       - name: OneOf vs Jackson2 quick JMH comparison (CI runner, indicative only)
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
