@@ -72,6 +72,18 @@ public class CreekModelBenchmark {
             }
         }
 
+        // The mapped private @type fields are compile-time constants, so both
+        // Creek subtypes must now have dedicated generated writers.
+        boolean compiledA = false;
+        boolean compiledB = false;
+        for (java.lang.reflect.Method method : SJF4J_COMPILED.getClass().getDeclaredMethods()) {
+            compiledA |= method.getName().startsWith("_writePolyTypeA");
+            compiledB |= method.getName().startsWith("_writePolyTypeB");
+        }
+        if (!compiledA || !compiledB) {
+            throw new IllegalStateException("Creek mapped subtypes did not receive compiled writers");
+        }
+
         checkRead("native", expected, read_native());
         checkRead("runtime", expected, read_runtime());
         checkRead("compiled", expected, read_compiled());
