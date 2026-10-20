@@ -213,7 +213,11 @@ public final class ValueRegistry {
             (isDefault ? defaults : named).add(info);
         }
 
-        for (ValueInfo info : defaults) register(info, false);
+        for (ValueInfo info : defaults) {
+            // A named default must also take precedence over codecs previously
+            // registered by another holder; the empty format is already unique.
+            register(info, !info.valueFormat.isEmpty());
+        }
         for (ValueInfo info : named) register(info, false);
     }
 
