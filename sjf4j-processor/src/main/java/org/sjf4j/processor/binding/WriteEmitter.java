@@ -554,6 +554,12 @@ final class WriteEmitter {
         out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
     }
 
+    static String propertyExpression(BindingProperty property, String owner) {
+        return property.constantString() == null
+                ? access(property.access(), owner)
+                : JavaWriter.stringLiteral(property.constantString());
+    }
+
     private void emitPojo(
             JavaWriter out,
             BindingValue value) {
@@ -581,9 +587,7 @@ final class WriteEmitter {
                     out,
                     property.value(),
                     "writer",
-                    access(
-                            property.access(),
-                            "value"));
+                    propertyExpression(property, "value"));
         }
 
         if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
