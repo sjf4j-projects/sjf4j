@@ -340,6 +340,7 @@ final class Fastjson2WriteEmitter {
         if (!visited.add(value)) return true;
         switch (value.kind()) {
             case RUNTIME:
+            case ONE_OF:
             case NUMBER:
             case JOJO:
             case JSON_OBJECT:
