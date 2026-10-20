@@ -67,6 +67,14 @@ public final class ValueCodecResolver {
         return raw;
     }
 
+    /** All registered formats for a value type, including named alternatives. */
+    public List<ValueCodecMetadata> all(TypeMirror valueType) {
+        ensureScanned();
+        Map<String, ValueCodecMetadata> codecs = registrations(valueType);
+        return codecs == null ? java.util.Collections.emptyList()
+                : new ArrayList<>(codecs.values());
+    }
+
     private void ensureScanned() {
         if (!scanned) {
             scanned = true;
