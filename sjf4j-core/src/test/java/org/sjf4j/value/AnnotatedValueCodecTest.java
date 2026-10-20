@@ -141,6 +141,16 @@ class AnnotatedValueCodecTest {
                         x -> x.value, Mismatched::new);
     }
 
+    public static class DuplicateCodecInstance {
+        private static final ValueCodec<Mismatched, String> SHARED =
+                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
+                        x -> x.value, Mismatched::new);
+        @NodeValue(format = "primary")
+        public static final ValueCodec<Mismatched, String> FIRST = SHARED;
+        @NodeValue(format = "alternative")
+        public static final ValueCodec<Mismatched, String> SECOND = SHARED;
+    }
+
     public static class DuplicateAcrossFields {
         @NodeValue(format = "same")
         public static final ValueCodec<Mismatched, String> FIRST =
@@ -163,6 +173,7 @@ class AnnotatedValueCodecTest {
         assertInvalid(NullCodec.class, "is null");
         assertInvalid(DuplicateDefault.class, "multiple default");
         assertInvalid(DuplicateAcrossFields.class, "duplicate");
+        assertInvalid(DuplicateCodecInstance.class, "same ValueCodec instance");
     }
 
     private static void assertInvalid(Class<?> owner, String part) {
