@@ -70,6 +70,8 @@ class CompiledOneOfWriteTest {
                     backend + ": missing Class dispatch");
             assertTrue(generated.contains("_writeEnvelope("), backend);
             assertTrue(generated.contains("_writeCat"), backend);
+            assertTrue(generated.contains("requireRegisteredPojoInfo("),
+                    backend + ": inaccessible subtype should use cached POJO metadata");
 
             try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
                 Class<?> envelope = loader.loadClass("fixture.Envelope");
