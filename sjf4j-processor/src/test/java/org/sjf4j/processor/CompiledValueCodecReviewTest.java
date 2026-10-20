@@ -104,17 +104,17 @@ class CompiledValueCodecReviewTest {
                 "package fixture; import org.sjf4j.value.ValueCodec; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "public final class FirstCodecs { "
-                + "@NodeValue(format=\\\"first\\\") public static final ValueCodec<Tag,Long> FIRST = "
+                + "@NodeValue(format=\"first\") public static final ValueCodec<Tag,Long> FIRST = "
                 + "new ValueCodec.SimpleValueCodec<>(Tag.class, Long.class, "
-                + "v -> 1L, raw -> new Tag(raw == null ? \\\"first-null\\\" : \\\"first-number\\\")); }");
+                + "v -> 1L, raw -> new Tag(raw == null ? \"first-null\" : \"first-number\")); }");
         sources.put("fixture/DefaultCodecs.java",
                 "package fixture; import org.sjf4j.value.ValueCodec; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "public final class DefaultCodecs { "
-                + "@NodeValue(format=\\\"second\\\",defaultCodec=true) "
+                + "@NodeValue(format=\"second\",defaultCodec=true) "
                 + "public static final ValueCodec<Tag,Long> SECOND = "
                 + "new ValueCodec.SimpleValueCodec<>(Tag.class, Long.class, "
-                + "v -> 2L, raw -> new Tag(raw == null ? \\\"default-null\\\" : \\\"default-number\\\")); }");
+                + "v -> 2L, raw -> new Tag(raw == null ? \"default-null\" : \"default-number\")); }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "@BindingOptions(registries={FirstCodecs.class,DefaultCodecs.class}) "
