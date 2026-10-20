@@ -10,6 +10,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 /**
  * Streaming reader for JSON-semantic structured data.
@@ -311,6 +314,24 @@ public abstract class StreamingReader implements Closeable {
     public UUID readUUID() throws IOException {
         String value = readString();
         return value == null ? null : FastUuid.parseUUID(value);
+    }
+
+    /** Reads an ISO date; backends may override with direct decoding. */
+    public LocalDate readLocalDate() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalDate.parse(value);
+    }
+
+    /** Reads an ISO time; backends may override with direct decoding. */
+    public LocalTime readLocalTime() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalTime.parse(value);
+    }
+
+    /** Reads an ISO date-time; backends may override with direct decoding. */
+    public LocalDateTime readLocalDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalDateTime.parse(value);
     }
 
 
