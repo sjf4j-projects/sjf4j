@@ -245,7 +245,7 @@ final class Fastjson2WriteEmitter {
         for (BindingProperty property : value.properties()) {
             BindingValue child = property.value();
             String field = WriteEmitter.compiledNameField(value, index++);
-            String expr = WriteEmitter.access(property.access(), "value");
+            String expr = WriteEmitter.propertyExpression(property, "value");
             if (fixedRawName(property.name())) {
                 int length = property.name().length();
                 String args = field + ".rawName0";
