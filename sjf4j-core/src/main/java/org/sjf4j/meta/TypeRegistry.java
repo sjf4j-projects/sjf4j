@@ -13,6 +13,7 @@ import org.sjf4j.util.Types;
 import org.sjf4j.value.PatternedValueCodec;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueSet;
 import org.sjf4j.value.ValueRegistry;
 
 import java.util.ArrayList;
@@ -113,12 +114,12 @@ public final class TypeRegistry {
             return ti;
         }
 
-        ValueInfo[] valueInfos = ValueRegistry.resolve(clazz);
-        if (valueInfos != null) {
+        ValueSet valueSet = ValueRegistry.resolve(clazz);
+        if (valueSet != null) {
             if (requirePojo) {
                 throw new BindingException("class '" + clazz.getName() + "' is a value node, not a POJO");
             }
-            ti = new TypeInfo(clazz, valueInfos, null, null, null, null);
+            ti = new TypeInfo(clazz, valueSet, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
