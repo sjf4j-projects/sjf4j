@@ -12,6 +12,8 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -123,10 +125,23 @@ public final class ValueCodecResolver {
 
     private void scan() {
         for (TypeElement holder : registries) {
+            // Match ValueRegistry.registerAnnotated(): designated defaults
+            // precede named variants and declaration order is not significant.
+            List<VariableElement> fields = new ArrayList<>();
             for (Element element : holder.getEnclosedElements()) {
-                if (element.getKind() != ElementKind.FIELD
-                        || element.getAnnotation(NodeValue.class) == null) continue;
-                ValueCodecMetadata metadata = parse((VariableElement) element);
+                if (element.getKind() == ElementKind.FIELD
+                        && element.getAnnotation(NodeValue.class) != null) {
+                    fields.add((VariableElement) element);
+                }
+            }
+            fields.sort(Comparator
+                    .comparing((VariableElement field) -> {
+                        NodeValue annotation = field.getAnnotation(NodeValue.class);
+                        return !(annotation.defaultCodec() || annotation.format().isEmpty());
+                    })
+                    .thenComparing(field -> field.getSimpleName().toString()));
+            for (VariableElement field : fields) {
+                ValueCodecMetadata metadata = parse(field);
                 if (metadata == null) continue;
                 String typeName = context.typeUtils.erasure(metadata.valueType).toString();
                 Map<String, ValueCodecMetadata> formats =
