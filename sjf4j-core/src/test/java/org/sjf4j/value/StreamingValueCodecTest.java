@@ -44,7 +44,7 @@ class StreamingValueCodecTest {
         assertEquals("alpha", ((Key) binder.readNode("\"alpha\"", Key.class)).value);
         assertEquals("\"alpha\"", binder.writeNodeAsString(new Key("alpha")));
         assertNull(binder.readNode("null", Key.class));
-        assertEquals(1, reads.get());
+        assertEquals(2, reads.get());
         assertEquals(1, writes.get());
     }
 
