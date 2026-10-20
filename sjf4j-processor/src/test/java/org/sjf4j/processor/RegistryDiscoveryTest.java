@@ -19,8 +19,12 @@ class RegistryDiscoveryTest {
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
                 + "public final class Codecs { "
-                + " @NodeValue(formats={\"\",\"compact\"}) "
+                + " @NodeValue "
                 + " public static final ValueCodec<Money, String> MONEY = "
+                + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
+                + " m -> m.value, raw -> new Money()); "
+                + " @NodeValue(format=\\\"compact\\\") "
+                + " public static final ValueCodec<Money, String> COMPACT = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " m -> m.value, raw -> new Money()); "
                 + "}");
