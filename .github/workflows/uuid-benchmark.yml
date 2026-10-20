@@ -1,0 +1,49 @@
+name: UUID Streaming JMH
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'sjf4j-testbench/src/jmh/**/CompiledUuidBenchmark.java'
+      - 'sjf4j-testbench/src/jmh/**/StreamingUuidBenchmark.java'
+      - '.github/workflows/uuid-benchmark.yml'
+  workflow_dispatch:
+
+jobs:
+  uuid-jmh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile benchmark jar
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: UUID compiled/runtime end-to-end (all backends; CI indicative)
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CompiledUuidBenchmark[.].*(Compiled|Runtime)$' \
+            -p backend=fastjson2,jackson2,jackson3,gson,jsonp,simple \
+            -f 1 -wi 3 -w 200ms -i 4 -r 200ms -t 1 \
+            -prof gc -rf json -rff uuid-compiled.json | tee uuid-compiled.txt
+      - name: UUID Fastjson2 original / native / runtime (same input and output)
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*StreamingUuidBenchmark[.].*' \
+            -f 1 -wi 3 -w 200ms -i 4 -r 200ms -t 1 \
+            -prof gc -rf json -rff uuid-native.json | tee uuid-native.txt
+      - name: Upload UUID JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uuid-jmh-results
+          path: |
+            uuid-compiled.json
+            uuid-compiled.txt
+            uuid-native.json
+            uuid-native.txt
+          if-no-files-found: warn
