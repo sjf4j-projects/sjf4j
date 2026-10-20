@@ -360,6 +360,11 @@ final class WriteEmitter {
             }
         }
 
+        if (mixedJacksonPojo(value)) {
+            emitMixedJacksonPojo(out, value);
+            return;
+        }
+
         out.beginBlock("private void " + value.helperName()
                 + "(" + backend.writerType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
@@ -515,6 +520,54 @@ final class WriteEmitter {
         out.indent();
         out.line("g." + writeString + "(value);");
         out.endBlock();
+        out.endBlock();
+    }
+
+    /**
+     * Keep the POJO structure and all non-codec fields on JsonGenerator.
+     * Only conversion through the selected ValueInfo stays adapter-based.
+     */
+    private boolean mixedJacksonPojo(BindingValue value) {
+        if (!isJackson() || value.kind() != BindingValue.Kind.POJO) return false;
+        boolean hasCodec = false;
+        for (BindingProperty property : value.properties()) {
+            BindingValue child = property.value();
+            if (child.kind() == BindingValue.Kind.VALUE_CODEC) {
+                hasCodec = true;
+            } else if (!nativeEligible(child, new HashSet<BindingValue>())) {
+                return false;
+            }
+        }
+        return hasCodec;
+    }
+
+    private void emitMixedJacksonPojo(JavaWriter out, BindingValue value) {
+        String generator = backend.backend() == Backend.JACKSON2
+                ? "com.fasterxml.jackson.core.JsonGenerator"
+                : "tools.jackson.core.JsonGenerator";
+        out.beginBlock("private void " + value.helperName()
+                + "(" + backend.writerType() + " writer, "
+                + value.type() + " value) throws java.io.IOException");
+        emitNullReturn(out);
+        out.line(generator + " g = writer.nativeWriter();");
+        out.line("g.writeStartObject();");
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            BindingValue child = property.value();
+            out.line("g." + (backend.backend() == Backend.JACKSON2
+                    ? "writeFieldName" : "writeName")
+                    + "(" + compiledNameField(value, index++)
+                    + ".serializedName);");
+            String expression = propertyExpression(property, "value");
+            if (child.kind() == BindingValue.Kind.VALUE_CODEC) {
+                CodecWriteEmitter.emit(out, child, expression, "writer", "g", backend.backend());
+            } else if (child.kind() == BindingValue.Kind.STRING) {
+                out.line("g.writeString(" + expression + ");");
+            } else {
+                jackson.emitValue(out, child, expression);
+            }
+        }
+        out.line("g.writeEndObject();");
         out.endBlock();
     }
 
@@ -695,16 +748,7 @@ final class WriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                out.beginBlock("");
-                out.line(value.type() + " codecValue = " + expression + ";");
-                out.beginBlock("if (codecValue == null)");
-                out.line(writer + ".writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line(writer + ".writeRaw("
-                        + value.helperName() + ".valueToRaw(codecValue), this.context);");
-                out.endBlock();
-                out.endBlock();
+                CodecWriteEmitter.emit(out, value, expression, writer, null, backend.backend());
                 return;
             case STRING:
                 out.line(

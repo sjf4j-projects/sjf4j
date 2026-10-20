@@ -20,4 +20,8 @@ public final class CompiledMetadata {
     public ValueCodecMetadata valueCodec(TypeMirror type, String format) {
         return valueCodecs.resolve(type, format);
     }
+
+    public TypeMirror stableCodecRawType(TypeMirror type, String format) {
+        return valueCodecs.stableRawType(type, format);
+    }
 }

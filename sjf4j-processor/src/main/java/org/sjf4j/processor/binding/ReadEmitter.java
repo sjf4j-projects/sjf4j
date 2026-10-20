@@ -607,6 +607,25 @@ final class ReadEmitter {
         out.endBlock();
     }
 
+    /** Nullable raw readers preserve JSON null and existing ValueInfo decoding. */
+    private String codecRawReader(BindingValue value) {
+        if (value.codecRawType() == null) return null;
+        switch (value.codecRawType().toString()) {
+            case "java.lang.String": return "readString";
+            case "java.lang.Boolean": return "readBoolean";
+            case "java.lang.Integer": return "readInt";
+            case "java.lang.Long": return "readLong";
+            case "java.lang.Double": return "readDouble";
+            case "java.lang.Float": return "readFloat";
+            case "java.lang.Short": return "readShort";
+            case "java.lang.Byte": return "readByte";
+            case "java.math.BigInteger": return "readBigInteger";
+            case "java.math.BigDecimal": return "readBigDecimal";
+            case "java.lang.Number": return "readNumber";
+            default: return null;
+        }
+    }
+
     private String readExpression(
             BindingValue value,
             String reader) {
@@ -670,10 +689,15 @@ final class ReadEmitter {
                 return reader + ".readBigDecimal()";
 
             case VALUE_CODEC:
-                return "(" + value.type() + ") " + STREAMING_IO
-                        + ".readValueCodec(" + reader + ", "
-                        + value.helperName() + ", "
-                        + "this.context)";
+                String rawReader = codecRawReader(value);
+                String runtimeRead = STREAMING_IO + ".readValueCodec(" + reader + ", "
+                        + value.helperName() + ", this.context)";
+                if (rawReader == null) return "(" + value.type() + ") " + runtimeRead;
+                String rawClass = value.codecRawType().toString();
+                return "(" + value.type() + ") (" + value.helperName() + ".rawClazz == "
+                        + rawClass + ".class ? " + value.helperName()
+                        + ".rawToValue(" + reader + "." + rawReader + "()) : "
+                        + runtimeRead + ")";
 
             case ENUM:
                 // Keep string, ordinal and null semantics aligned with StreamingIO.

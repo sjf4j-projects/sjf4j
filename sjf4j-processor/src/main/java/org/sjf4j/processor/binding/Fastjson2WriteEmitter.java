@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 
@@ -303,16 +304,7 @@ final class Fastjson2WriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                out.beginBlock("");
-                out.line(value.type() + " " + item + " = " + expression + ";");
-                out.beginBlock("if (" + item + " == null)");
-                out.line(raw + ".writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line(writer + ".writeRaw("
-                        + value.helperName() + ".valueToRaw(" + item + "), this.context);");
-                out.endBlock();
-                out.endBlock();
+                CodecWriteEmitter.emit(out, value, expression, writer, raw, Backend.FASTJSON2);
                 return;
             case STRING:
                 out.line("_writeString(" + raw + ", " + expression + ");");
