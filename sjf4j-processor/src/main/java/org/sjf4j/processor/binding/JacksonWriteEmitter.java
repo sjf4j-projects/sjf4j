@@ -34,7 +34,7 @@ final class JacksonWriteEmitter {
                 for (BindingProperty property : value.properties()) {
                     String field = WriteEmitter.compiledNameField(value, index++) + ".serializedName";
                     BindingValue child = property.value();
-                    String expr = WriteEmitter.access(property.access(), "value");
+                    String expr = WriteEmitter.propertyExpression(property, "value");
                     out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
                             + "(" + field + ");");
                     emitValue(out, child, expr);

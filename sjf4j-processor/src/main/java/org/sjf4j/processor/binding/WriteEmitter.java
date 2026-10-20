@@ -520,12 +520,22 @@ final class WriteEmitter {
 
     private void emitOneOf(JavaWriter out, BindingValue value) {
         emitNullReturn(out);
+        boolean hasMappedBranch = false;
+        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+            if (subtype.compiled != null || subtype.cachedPojo) {
+                hasMappedBranch = true;
+                break;
+            }
+        }
+        if (hasMappedBranch) {
+            out.line("Class<?> actualClass = value.getClass();");
+        }
         int index = 0;
         for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
             String metadata = value.helperName() + "_subtype" + index++ + "_pojoInfo";
             if (subtype.compiled == null && !subtype.cachedPojo) continue;
             String type = subtype.type.toString();
-            out.beginBlock("if (value.getClass() == " + type + ".class)");
+            out.beginBlock("if (actualClass == " + type + ".class)");
             String expression = "(" + type + ") value";
             if (subtype.cachedPojo) {
                 out.line(STREAMING_IO + ".writePojo(writer, value, " + metadata
@@ -542,6 +552,12 @@ final class WriteEmitter {
         }
         // Unknown classes and subtypes with inaccessible fields retain Runtime semantics.
         out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
+    }
+
+    static String propertyExpression(BindingProperty property, String owner) {
+        return property.constantString() == null
+                ? access(property.access(), owner)
+                : JavaWriter.stringLiteral(property.constantString());
     }
 
     private void emitPojo(
@@ -571,9 +587,7 @@ final class WriteEmitter {
                     out,
                     property.value(),
                     "writer",
-                    access(
-                            property.access(),
-                            "value"));
+                    propertyExpression(property, "value"));
         }
 
         if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
