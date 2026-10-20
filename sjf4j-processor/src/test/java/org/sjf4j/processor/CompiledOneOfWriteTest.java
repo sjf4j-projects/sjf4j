@@ -26,7 +26,8 @@ class CompiledOneOfWriteTest {
                     + "@OneOf(key=\"kind\", mappings={"
                     + "@OneOfMapping(type=Cat.class,when=\"cat\"),"
                     + "@OneOfMapping(type=Dog.class,when=\"dog\"),"
-                    + "@OneOfMapping(type=Hidden.class,when=\"hidden\")})\n"
+                    + "@OneOfMapping(type=Hidden.class,when=\"hidden\"),"
+                    + "@OneOfMapping(type=Dynamic.class,when=\"dynamic\")})\n"
                     + "public interface Animal {}\n");
             sources.put("fixture/Cat.java", "package fixture;\n"
                     + "public class Cat implements Animal { public String kind=\"cat\"; public int lives=9; }\n");
@@ -37,6 +38,12 @@ class CompiledOneOfWriteTest {
                     + "public class Hidden implements Animal {\n"
                     + " @NodeProperty(\"kind\") private final String discriminator=\"hidden\";\n"
                     + " public String name=\"secret\";\n"
+                    + "}\n");
+            sources.put("fixture/Dynamic.java", "package fixture;\n"
+                    + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                    + "public class Dynamic implements Animal {\n"
+                    + " @NodeProperty(\"kind\") private final String discriminator = new String(\"dynamic\");\n"
+                    + " public String name = \"runtime\";\n"
                     + "}\n");
             sources.put("fixture/Envelope.java", "package fixture;\n"
                     + "import java.util.*;\n"
@@ -72,8 +79,9 @@ class CompiledOneOfWriteTest {
                     backend + ": missing Class dispatch");
             assertTrue(generated.contains("_writeEnvelope("), backend);
             assertTrue(generated.contains("_writeCat"), backend);
+            assertTrue(generated.contains("_writeHidden"), backend + ": constant subtype not compiled");
             assertTrue(generated.contains("requireRegisteredPojoInfo("),
-                    backend + ": inaccessible subtype should use cached POJO metadata");
+                    backend + ": nonconstant subtype should use cached POJO metadata");
 
             try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
                 Class<?> envelope = loader.loadClass("fixture.Envelope");
@@ -82,10 +90,12 @@ class CompiledOneOfWriteTest {
                 Object cat = loader.loadClass("fixture.Cat").getConstructor().newInstance();
                 Object dog = loader.loadClass("fixture.Dog").getConstructor().newInstance();
                 Object hidden = loader.loadClass("fixture.Hidden").getConstructor().newInstance();
-                envelope.getField("animals").set(root, List.of(cat, dog, hidden));
+                Object dynamic = loader.loadClass("fixture.Dynamic").getConstructor().newInstance();
+                envelope.getField("animals").set(root, List.of(cat, dog, hidden, dynamic));
                 Map<String, Object> named = new LinkedHashMap<>();
                 named.put("cat", cat);
                 named.put("hidden", hidden);
+                named.put("dynamic", dynamic);
                 envelope.getField("named").set(root, named);
                 envelope.getField("direct").set(root, dog);
                 envelope.getField("shape").set(root, "hello");
@@ -109,6 +119,10 @@ class CompiledOneOfWriteTest {
                 Map<?, ?> hiddenNode = (Map<?, ?>) runtime.readNode(animalJson, Object.class);
                 assertEquals("hidden", hiddenNode.get("kind"), backend + " hidden field");
                 assertEquals("secret", hiddenNode.get("name"), backend + " hidden subtype");
+                String dynamicJson = (String) impl.getMethod("writeAnimal", animal).invoke(compiled, dynamic);
+                Map<?, ?> dynamicNode = (Map<?, ?>) runtime.readNode(dynamicJson, Object.class);
+                assertEquals("dynamic", dynamicNode.get("kind"), backend + " nonconstant private field");
+                assertEquals("runtime", dynamicNode.get("name"), backend + " fallback subtype");
             }
         }
     }
