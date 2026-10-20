@@ -21,6 +21,10 @@ public final class CompiledMetadata {
         return valueCodecs.resolve(type, format);
     }
 
+    public java.util.List<ValueCodecMetadata> valueCodecs(TypeMirror type) {
+        return valueCodecs.all(type);
+    }
+
     public TypeMirror stableCodecRawType(TypeMirror type, String format) {
         return valueCodecs.stableRawType(type, format);
     }
