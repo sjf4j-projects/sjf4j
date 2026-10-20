@@ -78,7 +78,17 @@ public final class ValueCodecResolver {
         ensureScanned();
         Map<String, ValueCodecMetadata> codecs = registrations(valueType);
         if (codecs == null) return null;
-        if (format == null) return codecs.values().iterator().next();
+        if (format == null) {
+            // A named default may come from a later explicit registry. Match
+            // ValueRegistry's forceDefault behavior, not the first format seen.
+            ValueCodecMetadata selected = codecs.values().iterator().next();
+            for (ValueCodecMetadata candidate : codecs.values()) {
+                if (candidate.declaration.getAnnotation(NodeValue.class).defaultCodec()) {
+                    selected = candidate;
+                }
+            }
+            return selected;
+        }
         return codecs.get(format);
     }
 
