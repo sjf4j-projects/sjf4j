@@ -3,11 +3,13 @@ import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.util.FastUuid;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 
 /**
  * Streaming reader for JSON-semantic structured data.
@@ -304,6 +306,12 @@ public abstract class StreamingReader implements Closeable {
      * @return string value, or {@code null}
      */
     public abstract String readString() throws IOException;
+
+    /** Reads a canonical UUID, with a backend override when direct decoding is available. */
+    public UUID readUUID() throws IOException {
+        String value = readString();
+        return value == null ? null : FastUuid.parseUUID(value);
+    }
 
 
     /**
