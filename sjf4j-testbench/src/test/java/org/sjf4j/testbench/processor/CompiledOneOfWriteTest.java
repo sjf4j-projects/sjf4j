@@ -11,6 +11,7 @@ import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
@@ -105,6 +106,70 @@ public class CompiledOneOfWriteTest {
         public Tree next;
     }
 
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = RawListValue.class, when = "raw"),
+            @OneOfMapping(type = NumericMapValue.class, when = "numberMap"),
+            @OneOfMapping(type = IgnoredFieldValue.class, when = "ignoredField"),
+            @OneOfMapping(type = IgnoredGetterValue.class, when = "ignoredGetter"),
+            @OneOfMapping(type = PrivateGetterValue.class, when = "privateGetter"),
+            @OneOfMapping(type = InheritedPrivateValue.class, when = "inherited"),
+            @OneOfMapping(type = PlainValue.class, when = "plain")
+    })
+    public interface ComplexValue {}
+
+    public static class PlainValue implements ComplexValue {
+        public String kind = "plain";
+        public String visible = "compiled";
+    }
+
+    public static class RawListValue implements ComplexValue {
+        public String kind = "raw";
+        @SuppressWarnings("rawtypes")
+        public List values = List.of("text", 7);
+    }
+
+    public static class NumericMapValue implements ComplexValue {
+        public String kind = "numberMap";
+        public Map<Integer, String> attributes = Map.of(17, "seventeen");
+    }
+
+    public static class IgnoredFieldValue implements ComplexValue {
+        public String kind = "ignoredField";
+        public String visible = "public";
+        @NodeIgnore
+        public String secret = "must-not-appear";
+    }
+
+    public static class IgnoredGetterValue implements ComplexValue {
+        public String kind = "ignoredGetter";
+        public String visible = "public";
+        @NodeIgnore
+        public String getPassword() { return "must-not-appear"; }
+    }
+
+    public static class PrivateGetterValue implements ComplexValue {
+        public String kind = "privateGetter";
+        @NodeProperty("privateValue")
+        private String getPrivateValue() { return "getter-retained"; }
+    }
+
+    public static class AnnotatedParent {
+        @NodeProperty("inheritedPrivate")
+        private final String discriminator = "inherited-retained";
+    }
+
+    public static class InheritedPrivateValue extends AnnotatedParent implements ComplexValue {
+        public String kind = "inherited";
+        public int number = 5;
+    }
+
+    public static class ComplexEnvelope {
+        public String header = "before";
+        public List<ComplexValue> values;
+        public Map<String, ComplexValue> byName;
+        public String trailer = "after";
+    }
+
     public interface OneOfWriter {
         @WriteTo String writeEnvelope(Envelope value) throws IOException;
         @WriteTo byte[] writeEnvelopeBytes(Envelope value) throws IOException;
@@ -113,6 +178,7 @@ public class CompiledOneOfWriteTest {
         @ReadFrom Envelope readEnvelope(String json) throws IOException;
         @WriteTo String writePet(Pet value) throws IOException;
         @ReadFrom Pet readPet(String json) throws IOException;
+        @WriteTo String writeComplex(ComplexEnvelope value) throws IOException;
         @WriteTo String writeTree(Tree value) throws IOException;
         @ReadFrom Tree readTree(String json) throws IOException;
     }
@@ -230,6 +296,41 @@ public class CompiledOneOfWriteTest {
         assertEquals(tree(runtime.writeNodeAsString(unmapped)),
                 tree(compiled.writePet(unmapped)), backend + " unmapped");
         assertTrue(tree(compiled.writePet(null)).isNull(), backend + " null");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void fallsBackForUnsupportedAndSemanticallyDifferentSubtypeGraphs(String backend,
+            OneOfWriter compiled, Binder<?, ?> runtime) throws Exception {
+        ComplexEnvelope model = new ComplexEnvelope();
+        model.values = List.of(
+                new PlainValue(),
+                new RawListValue(),
+                new NumericMapValue(),
+                new IgnoredFieldValue(),
+                new IgnoredGetterValue(),
+                new PrivateGetterValue(),
+                new InheritedPrivateValue());
+        model.byName = new LinkedHashMap<>();
+        model.byName.put("numeric", model.values.get(2));
+        model.byName.put("inherited", model.values.get(6));
+
+        JsonNode actual = tree(compiled.writeComplex(model));
+        assertEquals(tree(runtime.writeNodeAsString(model)), actual, backend);
+        assertEquals("before", actual.path("header").asText(), backend);
+        assertEquals("after", actual.path("trailer").asText(), backend);
+        assertEquals("compiled", actual.path("values").get(0).path("visible").asText(), backend);
+        assertEquals("text", actual.path("values").get(1).path("values").get(0).asText(), backend);
+        assertEquals("seventeen", actual.path("values").get(2)
+                .path("attributes").path("17").asText(), backend);
+        assertFalse(actual.path("values").get(3).has("secret"), backend);
+        assertFalse(actual.path("values").get(4).has("password"), backend);
+        assertEquals("getter-retained", actual.path("values").get(5)
+                .path("privateValue").asText(), backend);
+        assertEquals("inherited-retained", actual.path("values").get(6)
+                .path("inheritedPrivate").asText(), backend);
+        assertEquals("seventeen", actual.path("byName").path("numeric")
+                .path("attributes").path("17").asText(), backend);
     }
 
     @ParameterizedTest(name = "{0}")
