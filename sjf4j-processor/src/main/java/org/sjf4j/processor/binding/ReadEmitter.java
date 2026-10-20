@@ -705,11 +705,16 @@ final class ReadEmitter {
                 boolean autoRead = value.codecName() == null && value.codecPattern() == null;
                 if (autoRead) {
                     String set = value.helperName() + "Set";
-                    String selected = STREAMING_IO + ".readValueCodec(" + reader + ", "
+                    String selected = STREAMING_IO + ".readValueSet(" + reader + ", "
                             + set + ", this.context.defaultValueFormat("
                             + value.type() + ".class), this.context)";
+                    // Only differing null/default codecs require an extra probe.
+                    // Normal scalar reads retain their typed fast paths.
+                    String scalarWithNull = "(" + value.helperName() + " != "
+                            + value.helperName() + "Null && " + reader + ".nextIfNull() ? "
+                            + value.helperName() + "Null.rawToValue(null) : " + scalarRead + ")";
                     return "(" + value.type() + ") (" + set + ".multipleJsonTypes ? "
-                            + selected + " : " + scalarRead + ")";
+                            + selected + " : " + scalarWithNull + ")";
                 }
                 return "(" + value.type() + ") " + scalarRead;
 
