@@ -22,12 +22,12 @@ public final class ClasspathRegistries {
     }
 
     public static final class First {
-        @NodeValue(formats = {"alpha"})
+        @NodeValue(format = "alpha")
         public static final ValueCodec<Instant, String> ALPHA = ValueCodec.INSTANT_STR;
     }
 
     public static final class Second {
-        @NodeValue(formats = {"beta"})
+        @NodeValue(format = "beta")
         public static final ValueCodec<Instant, String> BETA = ValueCodec.INSTANT_STR;
     }
 }
