@@ -1295,17 +1295,32 @@ public final class ConverterResolver {
         boolean targetCodec = isCodecType(target);
         TypeMirror sourceRaw = sourceCodec ? codecRawType(source) : source;
         TypeMirror targetRaw = targetCodec ? codecRawType(target) : target;
+        List<ValueCodecMetadata> targetFormats = targetCodec && !types.isNodeValue(target)
+                ? metadata.valueCodecs(target) : Collections.emptyList();
 
-        if (sourceRaw != null && targetRaw != null
+        if (sourceRaw != null && (targetRaw != null || !targetFormats.isEmpty())
                 && types.nodeKind(sourceRaw) != NodeKind.COMPILE_TIME_UNKNOWN
-                && types.nodeKind(targetRaw) != NodeKind.COMPILE_TIME_UNKNOWN) {
+                && (targetRaw == null
+                || types.nodeKind(targetRaw) != NodeKind.COMPILE_TIME_UNKNOWN)) {
 
             boolean compatible;
             if (targetCodec) {
-                // ValueInfo.rawToValue checks the actual raw Class; no implicit
-                // String/Number or Number/Number coercion is performed here.
-                compatible = types.isAssignableErasure(
-                        types.boxed(sourceRaw), types.boxed(targetRaw));
+                // Automatic decoding considers every JSON shape, not just the
+                // default output format. The selected codec enforces its own
+                // raw Class at runtime (including same-shape format choices).
+                if (!targetFormats.isEmpty()) {
+                    compatible = false;
+                    for (ValueCodecMetadata format : targetFormats) {
+                        if (types.isAssignableErasure(
+                                types.boxed(sourceRaw), types.boxed(format.rawType))) {
+                            compatible = true;
+                            break;
+                        }
+                    }
+                } else {
+                    compatible = types.isAssignableErasure(
+                            types.boxed(sourceRaw), types.boxed(targetRaw));
+                }
             } else {
                 NodeKind sourceKind = types.nodeKind(sourceRaw);
                 NodeKind targetKind = types.nodeKind(targetRaw);
@@ -1323,7 +1338,8 @@ public final class ConverterResolver {
                 error(plan.method(), generated,
                         "incompatible ValueCodec raw types for " + source
                                 + " -> " + target + ": " + sourceRaw
-                                + " cannot be converted to " + targetRaw);
+                                + " cannot be converted to "
+                                + (targetRaw == null ? "registered codec raw types" : targetRaw));
                 return null;
             }
         }
