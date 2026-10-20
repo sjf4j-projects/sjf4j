@@ -1,7 +1,6 @@
 package org.sjf4j.value;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.NodeKind;
 import org.sjf4j.exception.BindingException;
 
 import java.util.Arrays;
