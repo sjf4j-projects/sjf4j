@@ -2,6 +2,8 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NamingStrategy;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
@@ -512,8 +514,8 @@ final class BindingCompiler {
         if (type == null) return false;
         NodeObject options = type.getAnnotation(NodeObject.class);
         if (options != null
-                && (options.propertyStrategy() != org.sjf4j.annotation.node.PropertyStrategy.BEAN_FIELD
-                || options.naming() != org.sjf4j.annotation.node.NamingStrategy.IDENTITY)) {
+                && (options.propertyStrategy() != PropertyStrategy.BEAN_FIELD
+                || options.naming() != NamingStrategy.IDENTITY)) {
             return false;
         }
         for (Element member : context.elements.getAllMembers(type)) {
@@ -521,7 +523,9 @@ final class BindingCompiler {
                     || member.getModifiers().contains(Modifier.STATIC)
                     || member.getModifiers().contains(Modifier.PUBLIC)) continue;
             if (member.getAnnotation(NodeProperty.class) != null
-                    || context.annotations.explicitPropertyName(member) != null) {
+                    || member.getAnnotation(OneOf.class) != null
+                    || context.annotations.explicitPropertyName(member) != null
+                    || context.annotations.propertyAliases(member).length != 0) {
                 return false;
             }
         }
