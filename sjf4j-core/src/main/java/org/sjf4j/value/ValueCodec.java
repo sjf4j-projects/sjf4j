@@ -154,7 +154,7 @@ public interface ValueCodec<V, R> {
      * A streaming function consumes or writes exactly one JSON value,
      * including JSON null.
      */
-    final class StreamingValueCodec<V, R> implements ValueCodec<V, R> {
+    class StreamingValueCodec<V, R> implements ValueCodec<V, R> {
         @FunctionalInterface
         public interface Reader<V> {
             V read(StreamingReader reader) throws IOException;
@@ -295,13 +295,13 @@ public interface ValueCodec<V, R> {
 
     // Retain the historical PatternedValueCodec fields as aliases; register
     // all built-in value types from this single declaration surface.
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<LocalDate, String> LOCAL_DATE = PatternedValueCodec.LOCAL_DATE;
 
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<LocalTime, String> LOCAL_TIME = PatternedValueCodec.LOCAL_TIME;
 
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = PatternedValueCodec.LOCAL_DATE_TIME;
 
     @NodeValue
