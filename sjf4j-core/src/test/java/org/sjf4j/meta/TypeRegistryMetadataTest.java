@@ -386,7 +386,7 @@ class TypeRegistryMetadataTest {
     void testLocalTimeCodecRoundTrip() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(LocalTime.class);
         assertNotNull(ti.valueSet);
-        ValueInfo vci = ti.getValueInfo("");
+        ValueInfo vci = ti.getValueInfo("iso");
         assertNotNull(vci);
         Object raw = vci.valueToRaw(LocalTime.of(10, 30, 15));
         assertEquals("10:30:15", raw);
@@ -397,7 +397,7 @@ class TypeRegistryMetadataTest {
     @Test
     @SuppressWarnings("unchecked")
     void testLocalTimeCodecPattern() {
-        ValueInfo base = TypeRegistry.requireRegisteredValueInfo(LocalTime.class, "");
+        ValueInfo base = TypeRegistry.requireRegisteredValueInfo(LocalTime.class, "iso");
         assertTrue(base.codec instanceof PatternedValueCodec);
         // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
         PatternedValueCodec pc = (PatternedValueCodec) base.codec;
