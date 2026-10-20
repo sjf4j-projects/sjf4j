@@ -89,6 +89,16 @@ class CompiledCodecRawIOTest {
                 assertEquals(instant.toEpochMilli(), configuredJson.path("epoch").asLong(), backend);
                 assertEquals("tail", configuredJson.path("suffix").asText(), backend);
 
+                assertTrue(generated.contains("multipleJsonTypes"),
+                        backend + ": generated multi-shape read dispatch missing");
+                // Input shape wins; the configured format only selects within
+                // the matching shape, never forces a different raw type.
+                Object defaultReadsEpoch = binderType.getMethod("read", String.class)
+                        .invoke(defaults, differentFormat);
+                Object epochReadsIso = binderType.getMethod("read", String.class)
+                        .invoke(configured, normal);
+                assertEquals(instant, beanType.getField("when").get(defaultReadsEpoch), backend);
+                assertEquals(instant, beanType.getField("when").get(epochReadsIso), backend);
                 Object restored = binderType.getMethod("read", String.class)
                         .invoke(configured, differentFormat);
                 assertEquals(uuid, beanType.getField("id").get(restored), backend);
