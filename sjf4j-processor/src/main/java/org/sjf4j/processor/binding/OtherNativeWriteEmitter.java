@@ -32,7 +32,7 @@ final class OtherNativeWriteEmitter {
             case POJO:
                 out.line("g." + beginObject + "();");
                 for (BindingProperty property : value.properties()) {
-                    String expr = WriteEmitter.access(property.access(), "value");
+                    String expr = WriteEmitter.propertyExpression(property, "value");
                     out.line("g." + nameMethod + "("
                             + JavaWriter.stringLiteral(property.name()) + ");");
                     emitValue(out, property.value(), expr);
