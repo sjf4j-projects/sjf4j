@@ -87,21 +87,41 @@ final class BindingEmitter {
             }
         }
         if (value.isCodec()) {
-            // Resolve once per configured instance, never inside the read/write loops.
-            // Explicit property formats override RuntimeContext defaults.
+            // Only unconstrained reads use JSON-type-driven codec selection.
+            // An explicitly named or patterned property remains strict.
+            boolean autoRead = value.direction() == BindingPlan.Direction.READ_FROM
+                    && value.codecName() == null && value.codecPattern() == null;
+            if (autoRead) {
+                String set = value.helperName() + "Set";
+                generated.addField(out -> out.line(
+                        "private final org.sjf4j.value.ValueSet " + set + ";"));
+                generated.addContextInitializer(out -> out.line(
+                        "this." + set + " = org.sjf4j.meta.TypeRegistry.registerTypeInfo("
+                                + value.type() + ".class).valueSet;"));
+            }
             generated.addField(out -> out.line(
                     "private final org.sjf4j.value.ValueInfo " + value.helperName() + ";"));
-            generated.addContextInitializer(out -> out.line(
-                    "this." + value.helperName() + " = "
-                            + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
-                            + value.type() + ".class, "
-                            + (value.codecName() == null
-                                    ? "context.defaultValueFormat(" + value.type() + ".class)"
-                                    : JavaWriter.stringLiteral(value.codecName()))
-                            + ", "
-                            + (value.codecPattern() == null ? "null"
-                                    : JavaWriter.stringLiteral(value.codecPattern()))
-                            + ");"));
+            if (autoRead) {
+                // When every codec has the same JSON shape, read directly
+                // without peeking a token or invoking generic dispatch.
+                generated.addContextInitializer(out -> out.line(
+                        "this." + value.helperName() + " = this."
+                                + value.helperName() + "Set.selectForRead(this."
+                                + value.helperName() + "Set.defaultInfo.rawJsonType, "
+                                + "context.defaultValueFormat(" + value.type() + ".class));"));
+            } else {
+                generated.addContextInitializer(out -> out.line(
+                        "this." + value.helperName() + " = "
+                                + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
+                                + value.type() + ".class, "
+                                + (value.codecName() == null
+                                        ? "context.defaultValueFormat(" + value.type() + ".class)"
+                                        : JavaWriter.stringLiteral(value.codecName()))
+                                + ", "
+                                + (value.codecPattern() == null ? "null"
+                                        : JavaWriter.stringLiteral(value.codecPattern()))
+                                + ");"));
+            }
             return;
         }
         if (!value.helperRequired()) {
