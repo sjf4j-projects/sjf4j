@@ -14,6 +14,7 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -71,7 +72,7 @@ public final class ValueCodecResolver {
     public List<ValueCodecMetadata> all(TypeMirror valueType) {
         ensureScanned();
         Map<String, ValueCodecMetadata> codecs = registrations(valueType);
-        return codecs == null ? java.util.Collections.emptyList()
+        return codecs == null ? Collections.emptyList()
                 : new ArrayList<>(codecs.values());
     }
 
