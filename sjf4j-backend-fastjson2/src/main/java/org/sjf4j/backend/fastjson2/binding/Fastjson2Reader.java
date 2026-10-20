@@ -201,7 +201,8 @@ public final class Fastjson2Reader extends StreamingReader {
     @Override
     public LocalDateTime readLocalDateTime() {
         peeked = null;
-        return reader.readLocalDateTime();
+        // Fastjson2 readLocalDateTime() does not consume JSON null itself.
+        return reader.nextIfNull() ? null : reader.readLocalDateTime();
     }
 
     @Override
