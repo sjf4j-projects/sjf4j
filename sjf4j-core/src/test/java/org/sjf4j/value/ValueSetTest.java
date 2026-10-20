@@ -2,12 +2,10 @@ package org.sjf4j.value;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
-import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.Sjf4j;
 
 import java.time.Instant;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -57,16 +55,15 @@ class ValueSetTest {
         Instant expected = Instant.parse("2024-01-01T10:00:00Z");
         String iso = "\"" + expected + "\"";
         long millis = expected.toEpochMilli();
-        Jackson2Binder defaults = new Jackson2Binder();
-        Jackson2Binder epoch = new Jackson2Binder(
-                new RuntimeContext(Map.of(Instant.class, "epochMillis")));
+        Sjf4j defaults = Sjf4j.builder().build();
+        Sjf4j epoch = Sjf4j.builder().defaultValueFormat(Instant.class, "epochMillis").build();
 
-        assertEquals(expected, defaults.readNode(iso, Instant.class));
-        assertEquals(expected, defaults.readNode(String.valueOf(millis), Instant.class));
-        assertEquals(expected, epoch.readNode(iso, Instant.class));
-        assertEquals(expected, epoch.readNode(String.valueOf(millis), Instant.class));
+        assertEquals(expected, defaults.fromJson(iso, Instant.class));
+        assertEquals(expected, defaults.fromJson(String.valueOf(millis), Instant.class));
+        assertEquals(expected, epoch.fromJson(iso, Instant.class));
+        assertEquals(expected, epoch.fromJson(String.valueOf(millis), Instant.class));
 
-        assertEquals(iso, defaults.writeNodeAsString(expected));
-        assertEquals(String.valueOf(millis), epoch.writeNodeAsString(expected));
+        assertEquals(iso, defaults.toJsonString(expected));
+        assertEquals(String.valueOf(millis), epoch.toJsonString(expected));
     }
 }
