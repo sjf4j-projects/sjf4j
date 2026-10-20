@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 
