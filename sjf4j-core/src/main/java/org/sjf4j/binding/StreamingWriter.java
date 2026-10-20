@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * Unified streaming writer for structured data.
@@ -138,6 +140,16 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     /** Writes a canonical UUID, with a backend override when direct encoding is available. */
     public void writeUUID(UUID value) throws IOException {
         writeString(value == null ? null : FastUuid.toString(value));
+    }
+
+    /** Writes the ISO representation, with backend fast paths when equivalent. */
+    public void writeLocalDate(LocalDate value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    /** Writes the ISO representation, with backend fast paths when equivalent. */
+    public void writeLocalTime(LocalTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
     }
 
     public void writeString(String value) throws IOException {
