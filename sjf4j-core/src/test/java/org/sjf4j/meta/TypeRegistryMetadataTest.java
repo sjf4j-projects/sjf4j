@@ -293,7 +293,7 @@ class TypeRegistryMetadataTest {
         ValueInfo isoCodec = TypeRegistry.requireRegisteredValueInfo(Instant.class, "iso");
         ValueInfo epochCodec = TypeRegistry.requireRegisteredValueInfo(Instant.class, "epochMillis");
 
-        assertEquals("", defaultCodec.valueFormat);
+        assertEquals("iso", defaultCodec.valueFormat);
         assertEquals("iso", isoCodec.valueFormat);
         assertEquals("epochMillis", epochCodec.valueFormat);
         assertEquals(String.class, isoCodec.rawClazz);
