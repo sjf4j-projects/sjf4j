@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 
 /** StreamingWriter backed directly by a Fastjson2 {@link JSONWriter}. */
 public final class Fastjson2Writer extends StreamingWriter {
@@ -136,6 +137,11 @@ public final class Fastjson2Writer extends StreamingWriter {
     @Override
     public void writeStringValue(String value) {
         writer.writeString(value);
+    }
+
+    @Override
+    public void writeUUID(UUID value) {
+        writer.writeUUID(value);
     }
 
     @Override
