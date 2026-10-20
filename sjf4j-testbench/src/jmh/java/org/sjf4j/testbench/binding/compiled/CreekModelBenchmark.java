@@ -2,6 +2,10 @@ package org.sjf4j.testbench.binding.compiled;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.core.JsonGenerator;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -29,6 +33,7 @@ import org.sjf4j.testbench.model.creek.TestModel;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /** Same Creek POJO, String input/output, with parsing and serialization inside each operation. */
@@ -46,6 +51,17 @@ public class CreekModelBenchmark {
     }
 
     private static final ObjectMapper JACKSON_NATIVE = new ObjectMapper();
+    // Diagnostic control: keep Jackson's object/type serializers unchanged but
+    // route its UUID serialization through the same UUID.toString() as SJF4J.
+    private static final ObjectMapper JACKSON_UUID_TO_STRING = new ObjectMapper()
+            .registerModule(new SimpleModule().addSerializer(UUID.class,
+                    new JsonSerializer<UUID>() {
+                        @Override
+                        public void serialize(UUID value, JsonGenerator generator,
+                                              SerializerProvider serializers) throws IOException {
+                            generator.writeString(value.toString());
+                        }
+                    }));
     private static final Jackson2Binder SJF4J_RUNTIME = new Jackson2Binder();
     private static final CreekCompiledBinder SJF4J_COMPILED =
             CompiledInstances.global(CreekCompiledBinder.class);
@@ -88,6 +104,7 @@ public class CreekModelBenchmark {
         checkRead("runtime", expected, read_runtime());
         checkRead("compiled", expected, read_compiled());
         checkWrite("native", expectedTree, write_native(state), expected);
+        checkWrite("native UUID toString", expectedTree, write_native_uuid_tostring(state), expected);
         checkWrite("runtime", expectedTree, write_runtime(state), expected);
         checkWrite("compiled", expectedTree, write_compiled(state), expected);
     }
@@ -126,6 +143,16 @@ public class CreekModelBenchmark {
     @Benchmark
     public String write_native(ModelState state) throws IOException {
         return JACKSON_NATIVE.writeValueAsString(state.model);
+    }
+
+    /**
+     * A controlled Native comparison: same Jackson databind stack and object
+     * graph, but UUID goes through UUID.toString() rather than UUIDSerializer's
+     * specialized char[36] formatting path.
+     */
+    @Benchmark
+    public String write_native_uuid_tostring(ModelState state) throws IOException {
+        return JACKSON_UUID_TO_STRING.writeValueAsString(state.model);
     }
 
     @Benchmark
