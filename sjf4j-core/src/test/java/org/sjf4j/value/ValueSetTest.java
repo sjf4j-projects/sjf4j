@@ -32,9 +32,9 @@ class ValueSetTest {
         Instant expected = Instant.parse("2024-01-01T10:00:00Z");
         RuntimeContext preferredEpoch = new RuntimeContext(Map.of(Instant.class, "epochMillis"));
 
-        InstantCreator fromString = NodeMapper.convert(
+        InstantCreator fromString = (InstantCreator) NodeMapper.convert(
                 Map.of("time", expected.toString()), InstantCreator.class, false, preferredEpoch);
-        InstantCreator fromNumber = NodeMapper.convert(
+        InstantCreator fromNumber = (InstantCreator) NodeMapper.convert(
                 Map.of("time", expected.toEpochMilli()), InstantCreator.class, false, RuntimeContext.EMPTY);
 
         assertEquals(expected, fromString.time);
