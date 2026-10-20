@@ -41,40 +41,39 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ValueRegistry {
     private ValueRegistry() {}
 
-    /* Index zero is always the default codec. */
-    private static final ConcurrentHashMap<Class<?>, ValueInfo[]> VALUE_INFOS = new ConcurrentHashMap<>();
+    /* Immutable snapshots, with default selection resolved at registration. */
+    private static final ConcurrentHashMap<Class<?>, ValueSet> VALUE_SETS = new ConcurrentHashMap<>();
 
     /**
      * Resolves codecs registered directly for a class or declared through {@code @NodeValue}.
-     * Index zero is the default codec. Returns {@code null} when no codec set matches.
-     * The returned array is registry-owned and must not be modified.
+     * Returns {@code null} when no codec set matches.
      */
-    public static ValueInfo[] resolve(Class<?> runtimeClazz) {
+    public static ValueSet resolve(Class<?> runtimeClazz) {
         Asserts.notNull(runtimeClazz, "runtimeClazz");
 
-        ValueInfo[] infos = VALUE_INFOS.get(runtimeClazz);
-        if (infos != null) return infos;
+        ValueSet set = VALUE_SETS.get(runtimeClazz);
+        if (set != null) return set;
 
         ValueInfo info = analyzeByAnnotation(runtimeClazz);
-        if (info != null) return new ValueInfo[]{info};
+        if (info != null) return new ValueSet(info);
 
         ArrayDeque<Class<?>> types = new ArrayDeque<>();
         Set<Class<?>> visited = new HashSet<>();
         types.add(runtimeClazz);
         visited.add(runtimeClazz);
         for (int distance = 0; !types.isEmpty(); distance++) {
-            ValueInfo[] matched = null;
+            ValueSet matched = null;
             Class<?> matchType = null;
             for (int count = types.size(); count > 0; count--) {
                 Class<?> type = types.remove();
-                infos = VALUE_INFOS.get(type);
-                if (infos != null) {
+                set = VALUE_SETS.get(type);
+                if (set != null) {
                     if (matched != null) {
                         throw new BindingException("ambiguous NodeValue for runtime type '" +
                                 runtimeClazz.getName() + "': registered for '" + matchType.getName() +
                                 "' and '" + type.getName() + "' at type distance " + distance + "'");
                     }
-                    matched = infos;
+                    matched = set;
                     matchType = type;
                 }
 
@@ -85,11 +84,7 @@ public final class ValueRegistry {
                 }
             }
             if (matched != null) {
-                ValueInfo[] resolved = new ValueInfo[matched.length];
-                for (int i = 0; i < matched.length; i++) {
-                    resolved[i] = new ValueInfo(runtimeClazz, matched[i]);
-                }
-                return resolved;
+                return matched.forRuntimeClass(runtimeClazz);
             }
         }
         return null;
@@ -97,7 +92,7 @@ public final class ValueRegistry {
 
 
     /**
-     * Registers value codec metadata. Published arrays are immutable snapshots.
+     * Registers value codec metadata. Published sets are immutable snapshots.
      * Custom registrations must be completed during application initialization
      * before relevant metadata is analyzed.
      * The raw class must be a fixed supported type: String, Number, Boolean,
@@ -110,28 +105,8 @@ public final class ValueRegistry {
         Asserts.notNull(valueInfo, "nodeValueInfo");
         validateRegistration(valueInfo);
 
-        VALUE_INFOS.compute(valueInfo.valueClazz, (valueClazz, oldInfos) -> {
-            if (oldInfos == null) {
-                return new ValueInfo[]{valueInfo};
-            }
-
-            for (ValueInfo oldInfo : oldInfos) {
-                if (oldInfo != null && valueInfo.valueFormat.equals(oldInfo.valueFormat)) {
-                    throw new BindingException("valueCodec already registered for type '" + valueClazz.getName() +
-                            "' and valueFormat '" + valueInfo.valueFormat + "'");
-                }
-            }
-
-            ValueInfo[] infos = new ValueInfo[oldInfos.length + 1];
-            if (forceDefault) {
-                infos[0] = valueInfo;
-                System.arraycopy(oldInfos, 0, infos, 1, oldInfos.length);
-            } else {
-                System.arraycopy(oldInfos, 0, infos, 0, oldInfos.length);
-                infos[oldInfos.length] = valueInfo;
-            }
-            return infos;
-        });
+        VALUE_SETS.compute(valueInfo.valueClazz, (valueClazz, previous) ->
+                previous == null ? new ValueSet(valueInfo) : previous.append(valueInfo, forceDefault));
     }
 
     /**
@@ -159,23 +134,23 @@ public final class ValueRegistry {
      * {@link NodeValue} on the specified declaring class. Registration must
      * precede metadata analysis; this does not rescan inherited fields.
      *
-     * <p>All declarations are checked before publishing any registrations.
-     * Default formats are registered first; named-only fields are ordered by
-     * field name to avoid dependence on reflection's field enumeration order.
+     * <p>Format names are unique for each domain type. An optional defaultCodec
+     * selects the default output representation without a format alias.
+     * Field names establish stable order within each shape.
      */
     public static void registerAnnotated(Class<?> registryClass) {
         Asserts.notNull(registryClass, "registryClass");
 
         Field[] fields = registryClass.getDeclaredFields();
-        // Default-bearing fields come first, including their named aliases.
-        // This preserves Instant's historical default/iso/epochMillis order.
+        // Explicit defaults first, then stable field order within each type.
         Arrays.sort(fields, Comparator
-                .comparing((Field f) -> !hasDefaultFormat(f))
+                .comparing((Field f) -> !isDefaultCodec(f))
                 .thenComparing(Field::getName));
 
         List<ValueInfo> defaults = new ArrayList<>();
         List<ValueInfo> named = new ArrayList<>();
         Map<Class<?>, Set<String>> declaredFormats = new HashMap<>();
+        Set<Class<?>> explicitDefaults = new HashSet<>();
 
         for (Field field : fields) {
             NodeValue annotation = field.getAnnotation(NodeValue.class);
@@ -212,34 +187,30 @@ public final class ValueRegistry {
                 throw new BindingException("@NodeValue codec field V/R types do not match codec: " + field);
             }
 
-            String[] formats = annotation.formats();
-            if (formats.length == 0) {
-                throw new BindingException("@NodeValue codec field has no formats: " + field);
-            }
+            String format = annotation.format();
             Set<String> seen = declaredFormats.computeIfAbsent(codec.valueClazz(), k -> new HashSet<>());
-            for (String format : formats) {
-                if (!seen.add(format)) {
-                    throw new BindingException("duplicate @NodeValue codec format '" + format
-                            + "' for type '" + codec.valueClazz().getName() + "'");
-                }
-                ValueInfo info = new ValueInfo(format, codec.valueClazz(), codec.rawClazz(),
-                        codec, null, null, null);
-                validateRegistration(info);
-                (format.isEmpty() ? defaults : named).add(info);
+            if (!seen.add(format)) {
+                throw new BindingException("duplicate @NodeValue codec format '" + format
+                        + "' for type '" + codec.valueClazz().getName() + "'");
             }
+            boolean isDefault = annotation.defaultCodec() || format.isEmpty();
+            if (isDefault && !explicitDefaults.add(codec.valueClazz())) {
+                throw new BindingException("multiple default @NodeValue codecs for type '"
+                        + codec.valueClazz().getName() + "'");
+            }
+            ValueInfo info = new ValueInfo(format, codec.valueClazz(), codec.rawClazz(),
+                    codec, null, null, null);
+            validateRegistration(info);
+            (isDefault ? defaults : named).add(info);
         }
 
         for (ValueInfo info : defaults) register(info, false);
         for (ValueInfo info : named) register(info, false);
     }
 
-    private static boolean hasDefaultFormat(Field field) {
+    private static boolean isDefaultCodec(Field field) {
         NodeValue annotation = field.getAnnotation(NodeValue.class);
-        if (annotation == null) return false;
-        for (String format : annotation.formats()) {
-            if (format.isEmpty()) return true;
-        }
-        return false;
+        return annotation != null && (annotation.defaultCodec() || annotation.format().isEmpty());
     }
 
     private static void validateRegistration(ValueInfo valueInfo) {
