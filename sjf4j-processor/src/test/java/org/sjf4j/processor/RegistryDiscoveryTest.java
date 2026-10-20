@@ -44,7 +44,7 @@ class RegistryDiscoveryTest {
                 result.diagnostics());
         assertTrue(result.diagnostics().contains("DISCOVER fixture.Money/compact -> java.lang.String"),
                 result.diagnostics());
-        assertTrue(result.diagnostics().contains("DISCOVER java.util.UUID/ -> java.lang.String"),
+        assertTrue(result.diagnostics().contains("DISCOVER java.util.UUID/canonical -> java.lang.String"),
                 result.diagnostics());
         assertTrue(result.diagnostics().contains("DISCOVER java.time.Instant/epochMillis -> java.lang.Long"),
                 result.diagnostics());
