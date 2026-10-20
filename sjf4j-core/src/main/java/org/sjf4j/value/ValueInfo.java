@@ -1,6 +1,8 @@
 package org.sjf4j.value;
 
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.JsonType;
+import org.sjf4j.NodeKind;
 import org.sjf4j.exception.BindingException;
 
 import java.lang.invoke.MethodHandle;
@@ -14,6 +16,7 @@ public class ValueInfo {
     public final String valueFormat;
     public final Class<?> valueClazz;
     public final Class<?> rawClazz;
+    public final JsonType rawJsonType;
     public final ValueCodec<Object, Object> codec;
     public final MethodHandle valueToRawHandle;
     public final MethodHandle rawToValueHandle;
@@ -29,6 +32,7 @@ public class ValueInfo {
         this.valueFormat = valueFormat == null ? "" : valueFormat;
         this.valueClazz = valueClazz;
         this.rawClazz = rawClazz;
+        this.rawJsonType = JsonType.of(NodeKind.plainOf(rawClazz));
         this.codec = (ValueCodec<Object, Object>) codec;
         this.valueToRawHandle = valueToRawHandle;
         this.rawToValueHandle = rawToValueHandle;
@@ -43,6 +47,7 @@ public class ValueInfo {
         this.valueFormat = info.valueFormat;
         this.valueClazz = info.valueClazz;
         this.rawClazz = info.rawClazz;
+        this.rawJsonType = info.rawJsonType;
         this.codec = info.codec;
         this.valueToRawHandle = info.valueToRawHandle;
         this.rawToValueHandle = info.rawToValueHandle;
