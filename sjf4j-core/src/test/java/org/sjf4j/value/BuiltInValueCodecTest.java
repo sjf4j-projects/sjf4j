@@ -91,9 +91,9 @@ class BuiltInValueCodecTest {
     }
 
     @Test
-    void testDefaultValueFormatAppliesInsideContainers() {
+    void testValueFormatAppliesInsideContainers() {
         Sjf4j epochMillisRuntime = Sjf4j.builder()
-                .defaultValueFormat(Instant.class, "epochMillis")
+                .valueFormat(Instant.class, "epochMillis")
                 .build();
 
         Instant first = Instant.parse("2024-01-01T10:00:00Z");

@@ -143,9 +143,8 @@ public final class ValueRegistry {
 
         Field[] fields = registryClass.getDeclaredFields();
         // Explicit defaults first, then stable field order within each type.
-        Arrays.sort(fields, Comparator
-                .comparing((Field f) -> !isDefaultCodec(f))
-                .thenComparing(Field::getName));
+        Arrays.sort(fields, Comparator.comparing((Field f) ->
+                !isDefaultCodec(f)).thenComparing(Field::getName));
 
         List<ValueInfo> defaults = new ArrayList<>();
         List<ValueInfo> named = new ArrayList<>();

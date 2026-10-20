@@ -1,7 +1,6 @@
 package org.sjf4j;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -18,11 +17,11 @@ class RuntimeContextTest {
     void storesFormatsAndForwardsThemToCopies() {
         RuntimeContext context = new RuntimeContext(Map.of(LocalDate.class, "ISO"), false);
         Map<Class<?>, String> formats = new LinkedHashMap<>();
-        context.copyDefaultValueFormatsTo(formats);
+        context.copyValueFormatsTo(formats);
 
         assertFalse(context.includeNulls);
-        assertEquals("ISO", context.defaultValueFormat(LocalDate.class));
-        assertNull(context.defaultValueFormat(String.class));
+        assertEquals("ISO", context.valueFormat(LocalDate.class));
+        assertNull(context.valueFormat(String.class));
         assertEquals(Map.of(LocalDate.class, "ISO"), formats);
     }
 

@@ -4,7 +4,6 @@ import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.Nodes;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
@@ -226,7 +225,7 @@ public final class StreamingIO {
             return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
         }
         if (ti.valueSet != null) {
-            return readValueSet(reader, ti.valueSet, context.defaultValueFormat(boxed), context);
+            return readValueSet(reader, type, boxed, ti.valueSet, context);
         }
         if (ti.containerInfo != null) {
             // Streaming binding only constructs Java containers that can be
@@ -307,17 +306,17 @@ public final class StreamingIO {
      * an input preference within that shape. Single-shape types avoid peeking,
      * preserving each backend's fused scalar reader.
      */
-    public static Object readValueSet(StreamingReader reader, ValueSet set,
-                                      String preferredFormat,
+    public static Object readValueSet(StreamingReader reader, Type type, Class<?> boxed, ValueSet valueSet,
                                       RuntimeContext context) throws IOException {
-        org.sjf4j.JsonType jsonType = set.multipleJsonTypes
+        String preferredFormat = context.valueFormat(boxed);
+        org.sjf4j.JsonType jsonType = valueSet.multiples
                 ? reader.peekToken().jsonType()
-                : set.defaultInfo.rawJsonType;
-        ValueInfo codec = set.selectForRead(jsonType, preferredFormat);
-        if (!set.multipleJsonTypes) {
+                : valueSet.defaultInfo.rawJsonType;
+        ValueInfo codec = valueSet.selectForRead(jsonType, preferredFormat);
+        if (!valueSet.multiples) {
             // Null selects the preferred/default codec, which need not be
             // first in the single JSON-shape group.
-            ValueInfo nullCodec = set.selectForRead(org.sjf4j.JsonType.NULL, preferredFormat);
+            ValueInfo nullCodec = valueSet.selectForRead(org.sjf4j.JsonType.NULL, preferredFormat);
             if (codec != nullCodec && reader.nextIfNull()) {
                 return nullCodec.rawToValue(null);
             }
@@ -1038,7 +1037,7 @@ public final class StreamingIO {
             }
 
             if (typeInfo.valueSet != null) {
-                ValueInfo vi = typeInfo.requireValueInfo(context.defaultValueFormat(clazz));
+                ValueInfo vi = typeInfo.requireValueInfo(context.valueFormat(clazz));
                 _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
                 return;
             }
@@ -1156,7 +1155,7 @@ public final class StreamingIO {
          * NodeValue / ValueCodec.
          */
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(clazz));
+            ValueInfo vi = ti.requireValueInfo(context.valueFormat(clazz));
             _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
             return;
         }

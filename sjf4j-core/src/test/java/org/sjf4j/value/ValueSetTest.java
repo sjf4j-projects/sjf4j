@@ -5,7 +5,6 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.value.ValueRegistry;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -55,7 +54,7 @@ class ValueSetTest {
         ValueSet set = new ValueSet(iso).append(millis, false).append(seconds, false);
 
         assertSame(iso, set.defaultInfo);
-        assertTrue(set.multipleJsonTypes);
+        assertTrue(set.multiples);
         assertArrayEquals(new ValueInfo[]{iso}, set.stringInfos);
         assertArrayEquals(new ValueInfo[]{millis, seconds}, set.numberInfos);
         assertSame(iso, set.selectForRead(JsonType.STRING, "epochMillis"));
@@ -74,7 +73,7 @@ class ValueSetTest {
         ValueInfo seconds = info("seconds", Long.class);
         ValueInfo millis = info("millis", Long.class);
         ValueSet set = new ValueSet(seconds).append(millis, true);
-        assertFalse(set.multipleJsonTypes);
+        assertFalse(set.multiples);
         assertSame(millis, set.defaultInfo);
         assertSame(seconds, set.selectForRead(JsonType.NUMBER, null));
         assertSame(millis, set.selectForRead(JsonType.NUMBER, "millis"));
@@ -99,7 +98,7 @@ class ValueSetTest {
         String iso = "\"" + expected + "\"";
         long millis = expected.toEpochMilli();
         Sjf4j defaults = Sjf4j.builder().build();
-        Sjf4j epoch = Sjf4j.builder().defaultValueFormat(Instant.class, "epochMillis").build();
+        Sjf4j epoch = Sjf4j.builder().valueFormat(Instant.class, "epochMillis").build();
 
         assertEquals(expected, defaults.fromJson(iso, Instant.class));
         assertEquals(expected, defaults.fromJson(String.valueOf(millis), Instant.class));
@@ -160,7 +159,7 @@ class ValueSetTest {
         assertEquals("default-null", defaults.fromJson("null", NullTagged.class).origin);
         assertEquals("first-number", defaults.fromJson("7", NullTagged.class).origin);
 
-        Sjf4j preferred = Sjf4j.builder().defaultValueFormat(NullTagged.class, "second").build();
+        Sjf4j preferred = Sjf4j.builder().valueFormat(NullTagged.class, "second").build();
         assertEquals("default-number", preferred.fromJson("7", NullTagged.class).origin);
         assertEquals("default-null", preferred.fromJson("null", NullTagged.class).origin);
     }

@@ -56,7 +56,7 @@ public final class Sjf4j {
     }
 
     private Sjf4j(Builder builder) {
-        this.runtimeContext = new RuntimeContext(builder.defaultValueFormats, builder.includeNulls);
+        this.runtimeContext = new RuntimeContext(builder.valueFormats, builder.includeNulls);
 
         this.jsonBinderProvider = builder.jsonBinderProvider == null
                 ? BinderFactory.jsonBinderProvider() : builder.jsonBinderProvider;
@@ -464,7 +464,7 @@ public final class Sjf4j {
         private BinderProvider yamlBinderProvider;
         private PropertiesBinder propertiesBinder;
 
-        private final Map<Class<?>, String> defaultValueFormats = new LinkedHashMap<>();
+        private final Map<Class<?>, String> valueFormats = new LinkedHashMap<>();
         private boolean includeNulls = true;
 
         /**
@@ -483,7 +483,7 @@ public final class Sjf4j {
             this.jsonBinderProvider = sjf4j.jsonBinderProvider;
             this.yamlBinderProvider = sjf4j.yamlBinderProvider;
             this.propertiesBinder = sjf4j.propertiesBinder;
-            sjf4j.runtimeContext.copyDefaultValueFormatsTo(this.defaultValueFormats);
+            sjf4j.runtimeContext.copyValueFormatsTo(this.valueFormats);
             this.includeNulls = sjf4j.runtimeContext.includeNulls;
         }
 
@@ -532,14 +532,14 @@ public final class Sjf4j {
          * This runtime-level default is used when a field or creator parameter does not
          * explicitly declare its own {@code valueFormat}.
          */
-        public Builder defaultValueFormat(Class<?> valueType, String valueFormat) {
+        public Builder valueFormat(Class<?> valueType, String valueFormat) {
             Class<?> checkedValueType = Asserts.notNull(valueType, "valueType");
             if (checkedValueType.isPrimitive()) {
-                throw new IllegalArgumentException("defaultValueFormat does not support primitive type '"
+                throw new IllegalArgumentException("valueFormat does not support primitive type '"
                         + checkedValueType.getName() + "'; use boxed type '"
                         + Types.box(checkedValueType).getName() + "'");
             }
-            defaultValueFormats.put(checkedValueType, Asserts.notNull(valueFormat, "valueFormat"));
+            valueFormats.put(checkedValueType, Asserts.notNull(valueFormat, "valueFormat"));
             return this;
         }
 

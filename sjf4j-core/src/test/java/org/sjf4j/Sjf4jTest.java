@@ -255,13 +255,13 @@ public class Sjf4jTest {
 //    }
 
     @Test
-    void testBuilderDefaultValueFormatAppliesAcrossJsonAndNodeMapping() {
+    void testBuilderValueFormatAppliesAcrossJsonAndNodeMapping() {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         long epochMillis = instant.toEpochMilli();
 
         Sjf4j runtime = Sjf4j.builder()
                 .jsonBinderProvider(SIMPLE_JSON)
-                .defaultValueFormat(Instant.class, "epochMillis")
+                .valueFormat(Instant.class, "epochMillis")
                 .build();
 
         assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
@@ -276,7 +276,7 @@ public class Sjf4jTest {
         long epochMillis = instant.toEpochMilli();
 
         Sjf4j runtime = Sjf4j.builder()
-                .defaultValueFormat(Instant.class, "epochMillis")
+                .valueFormat(Instant.class, "epochMillis")
                 .jsonBinderProvider(SIMPLE_JSON)
                 .build();
 
@@ -291,7 +291,7 @@ public class Sjf4jTest {
 
         Sjf4j runtime = Sjf4j.builder()
                 .jsonBinderProvider(SIMPLE_JSON)
-                .defaultValueFormat(Instant.class, "epochMillis")
+                .valueFormat(Instant.class, "epochMillis")
                 .build();
 
         assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
@@ -330,9 +330,9 @@ public class Sjf4jTest {
     }
 
     @Test
-    void testBuilderDefaultValueFormatRejectsPrimitiveValueType() {
+    void testBuilderValueFormatRejectsPrimitiveValueType() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> Sjf4j.builder().defaultValueFormat(int.class, "number"));
+                () -> Sjf4j.builder().valueFormat(int.class, "number"));
 
         assertTrue(ex.getMessage().contains("primitive type 'int'"));
         assertTrue(ex.getMessage().contains("boxed type 'java.lang.Integer'"));

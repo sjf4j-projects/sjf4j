@@ -18,7 +18,7 @@ public final class ValueSet {
     public final ValueInfo[] booleanInfos;
     public final ValueInfo[] objectInfos;
     public final ValueInfo[] arrayInfos;
-    public final boolean multipleJsonTypes;
+    public final boolean multiples;
 
     public ValueSet(ValueInfo info) {
         this(info,
@@ -40,14 +40,7 @@ public final class ValueSet {
         int shapes = (stringInfos == null ? 0 : 1) + (numberInfos == null ? 0 : 1)
                 + (booleanInfos == null ? 0 : 1) + (objectInfos == null ? 0 : 1)
                 + (arrayInfos == null ? 0 : 1);
-        this.multipleJsonTypes = shapes > 1;
-    }
-
-    private static ValueInfo[] appended(ValueInfo[] previous, ValueInfo info) {
-        if (previous == null) return new ValueInfo[]{info};
-        ValueInfo[] result = Arrays.copyOf(previous, previous.length + 1);
-        result[previous.length] = info;
-        return result;
+        this.multiples = shapes > 1;
     }
 
     /** Returns a new snapshot with one registered format. */
@@ -84,7 +77,8 @@ public final class ValueSet {
         ValueSet resolved = null;
         for (ValueInfo info : orderedInfos()) {
             ValueInfo adapted = new ValueInfo(runtimeClass, info);
-            resolved = resolved == null ? new ValueSet(adapted)
+            resolved = resolved == null
+                    ? new ValueSet(adapted)
                     : resolved.append(adapted, info == defaultInfo);
         }
         return resolved;
@@ -103,18 +97,6 @@ public final class ValueSet {
             }
         }
         return result;
-    }
-
-    private static int length(ValueInfo[] values) {
-        return values == null ? 0 : values.length;
-    }
-
-    private static ValueInfo matching(ValueInfo[] group, String format) {
-        if (group == null) return null;
-        for (ValueInfo info : group) {
-            if (info.valueFormat.equals(format)) return info;
-        }
-        return null;
     }
 
     /** Finds a named format without a secondary index. */
@@ -172,4 +154,27 @@ public final class ValueSet {
         }
         return group[0];
     }
+
+
+
+    private static int length(ValueInfo[] values) {
+        return values == null ? 0 : values.length;
+    }
+
+    private static ValueInfo matching(ValueInfo[] group, String format) {
+        if (group == null) return null;
+        for (ValueInfo info : group) {
+            if (info.valueFormat.equals(format)) return info;
+        }
+        return null;
+    }
+
+    private static ValueInfo[] appended(ValueInfo[] previous, ValueInfo info) {
+        if (previous == null) return new ValueInfo[]{info};
+        ValueInfo[] result = Arrays.copyOf(previous, previous.length + 1);
+        result[previous.length] = info;
+        return result;
+    }
+
+
 }

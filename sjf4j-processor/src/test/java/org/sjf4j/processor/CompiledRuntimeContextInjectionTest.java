@@ -63,7 +63,7 @@ class CompiledRuntimeContextInjectionTest {
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
         assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
         assertTrue(binderSource.contains("RuntimeContext context)"), binderSource);
-        assertTrue(binderSource.contains("context.defaultValueFormat("), binderSource);
+        assertTrue(binderSource.contains("context.valueFormat("), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
         assertFalse(binderSource.contains("org.sjf4j.Nodes."), binderSource);
 

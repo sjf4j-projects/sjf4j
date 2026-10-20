@@ -38,8 +38,8 @@ public final class RuntimeContext {
      * Creates settings with default formats and null-valued properties included.
      * The supplied map is copied, not retained.
      */
-    public RuntimeContext(Map<Class<?>, String> defaultValueFormats) {
-        this(defaultValueFormats, true);
+    public RuntimeContext(Map<Class<?>, String> valueFormats) {
+        this(valueFormats, true);
     }
 
     /**
@@ -48,23 +48,23 @@ public final class RuntimeContext {
      *
      * @throws IllegalArgumentException if a default format uses a primitive type
      */
-    public RuntimeContext(Map<Class<?>, String> defaultValueFormats, boolean includeNulls) {
-        Asserts.notNull(defaultValueFormats, "defaultValueFormats");
-        if (defaultValueFormats.isEmpty()) {
+    public RuntimeContext(Map<Class<?>, String> valueFormats, boolean includeNulls) {
+        Asserts.notNull(valueFormats, "valueFormats");
+        if (valueFormats.isEmpty()) {
             this.valueFormatTypes = EMPTY_VALUE_TYPES;
             this.valueFormats = EMPTY_VALUE_FORMATS;
         } else {
-            this.valueFormatTypes = new Class<?>[defaultValueFormats.size()];
-            this.valueFormats = new String[defaultValueFormats.size()];
+            this.valueFormatTypes = new Class<?>[valueFormats.size()];
+            this.valueFormats = new String[valueFormats.size()];
             int i = 0;
-            for (Map.Entry<Class<?>, String> entry : defaultValueFormats.entrySet()) {
+            for (Map.Entry<Class<?>, String> entry : valueFormats.entrySet()) {
                 Class<?> valueType = Asserts.notNull(entry.getKey(), "valueType");
                 if (valueType.isPrimitive()) {
-                    throw new IllegalArgumentException("defaultValueFormat does not support primitive type '"
+                    throw new IllegalArgumentException("valueFormat does not support primitive type '"
                             + valueType.getName() + "'; use boxed type '" + Types.box(valueType).getName() + "'");
                 }
                 valueFormatTypes[i] = valueType;
-                valueFormats[i] = Asserts.notNull(entry.getValue(), "valueFormat");
+                this.valueFormats[i] = Asserts.notNull(entry.getValue(), "valueFormat");
                 i++;
             }
         }
@@ -75,7 +75,7 @@ public final class RuntimeContext {
      * Returns the named format for the exact value class, or {@code null} if
      * none is configured (including when {@code valueType} is null).
      */
-    public String defaultValueFormat(Class<?> valueType) {
+    public String valueFormat(Class<?> valueType) {
         if (valueType == null) return null;
         for (int i = 0; i < valueFormatTypes.length; i++) {
             if (valueFormatTypes[i] == valueType) {
@@ -88,7 +88,7 @@ public final class RuntimeContext {
     /**
      * Copies default value formats into the target map, overwriting matching keys.
      */
-    public void copyDefaultValueFormatsTo(Map<Class<?>, String> target) {
+    public void copyValueFormatsTo(Map<Class<?>, String> target) {
         Asserts.notNull(target, "target");
         for (int i = 0; i < valueFormatTypes.length; i++) {
             target.put(valueFormatTypes[i], valueFormats[i]);
