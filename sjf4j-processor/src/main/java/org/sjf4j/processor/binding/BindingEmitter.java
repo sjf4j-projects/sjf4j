@@ -75,6 +75,17 @@ final class BindingEmitter {
                             + " = " + source + ";"));
             return;
         }
+        if (value.kind() == BindingValue.Kind.ONE_OF
+                && value.direction() == BindingPlan.Direction.WRITE_TO) {
+            for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
+                BindingValue.OneOfSubtype subtype = value.oneOfSubtypes().get(i);
+                if (!subtype.cachedPojo) continue;
+                String name = value.helperName() + "_subtype" + i + "_pojoInfo";
+                generated.addField(out -> out.line("private static final org.sjf4j.meta.PojoInfo "
+                        + name + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
+                        + subtype.type + ".class);"));
+            }
+        }
         if (value.isCodec()) {
             // Resolve once per configured instance, never inside the read/write loops.
             // Explicit property formats override RuntimeContext defaults.
