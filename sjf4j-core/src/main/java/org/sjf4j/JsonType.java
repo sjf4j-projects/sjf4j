@@ -85,8 +85,8 @@ public enum JsonType {
         if (kind != NodeKind.UNKNOWN) return of(kind);
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-        if (ti.valueInfos != null) {
-            return of(NodeKind.plainOf(ti.valueInfos[0].rawClazz));
+        if (ti.valueSet != null) {
+            return of(NodeKind.plainOf(ti.valueSet.defaultInfo.rawClazz));
         } else if (ti.oneOfInfo != null) {
             return JsonType.UNKNOWN;
         } else if (ti.externalNode != null) {
