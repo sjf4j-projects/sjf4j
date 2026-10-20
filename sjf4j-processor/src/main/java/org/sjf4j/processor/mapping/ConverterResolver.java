@@ -1,6 +1,7 @@
 package org.sjf4j.processor.mapping;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.CompiledMetadata;
