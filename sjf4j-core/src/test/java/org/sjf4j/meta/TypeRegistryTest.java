@@ -384,7 +384,7 @@ public class TypeRegistryTest {
             public Class<String> rawClazz() {
                 return String.class;
             }
-        }, null, false));
+        }, "iso", false));
     }
 
     /// Creator
