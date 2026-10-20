@@ -52,6 +52,7 @@ final class BindingProperty {
         this.name = Asserts.notNull(name, "name");
         this.aliases = Asserts.notNull(aliases, "aliases");
         this.access = Asserts.notNull(access, "access");
+        this.constantString = null;
         this.value = Asserts.notNull(value, "value");
         this.creatorIndex = -1;
         this.creatorCount = 0;
