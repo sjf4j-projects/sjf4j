@@ -762,6 +762,17 @@ public interface PropertyWriter {
     static PropertyWriter _createForValueCodec(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda,
                                                ValueInfo valueCodec) {
+        if (valueCodec.streamWriter != null) {
+            return (writer, preparedName, owner, context, count) -> {
+                Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
+                if (value == null) {
+                    return _writeNullValueField(writer, preparedName, context, count);
+                }
+                count = _writeName(writer, preparedName, count);
+                valueCodec.streamWriter.write(writer, value);
+                return count;
+            };
+        }
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
