@@ -4,6 +4,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueSet;
 
 /**
  * Cached classification and metadata for a Java type.
@@ -13,7 +14,7 @@ import org.sjf4j.value.ValueInfo;
  */
 public class TypeInfo {
     public final Class<?> clazz;
-    public final ValueInfo[] valueInfos;
+    public final ValueSet valueSet;
     public final OneOfInfo oneOfInfo;
     public final ContainerInfo containerInfo;
     public final PojoInfo pojoInfo;
@@ -27,11 +28,11 @@ public class TypeInfo {
      * external node classifier when applicable.
      */
     @SuppressWarnings("unchecked")
-    public TypeInfo(Class<?> clazz, ValueInfo[] valueInfos,
+    public TypeInfo(Class<?> clazz, ValueSet valueSet,
                     OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo,
                     ExternalNode<?> externalNode) {
         this.clazz = clazz;
-        this.valueInfos = valueInfos;
+        this.valueSet = valueSet;
         this.oneOfInfo = oneOfInfo;
         this.containerInfo = containerInfo;
         this.pojoInfo = pojoInfo;
@@ -43,33 +44,17 @@ public class TypeInfo {
         return this == NONE;
     }
 
-    /**
-     * Returns the default or named value codec metadata, or {@code null} when
-     * no codec is registered for the requested format.
-     */
+    /** Returns the default or named codec for this value type. */
     public ValueInfo getValueInfo(String valueFormat) {
-        if (valueInfos == null) return null;
-        if (valueFormat == null) return valueInfos[0];
-        for (ValueInfo info : valueInfos) {
-            if (info.valueFormat.equals(valueFormat)) {
-                return info;
-            }
-        }
-        return null;
+        return valueSet == null ? null : valueSet.findFormat(valueFormat);
     }
 
-    /**
-     * Returns the requested value binding or fails with the type and format
-     * when no matching binding exists.
-     */
+    /** Returns the requested codec or fails with the type and format. */
     public ValueInfo requireValueInfo(String valueFormat) {
-        ValueInfo info = getValueInfo(valueFormat);
-        if (info == null) {
-            throw new BindingException("no ValueCodec registered for type '" +
-                    clazz.getName() + "' with format '" + valueFormat + "'");
+        if (valueSet == null) {
+            throw new BindingException("no ValueCodec registered for type '" + clazz.getName() + "'");
         }
-        return info;
+        return valueSet.requireFormat(valueFormat);
     }
-
 
 }

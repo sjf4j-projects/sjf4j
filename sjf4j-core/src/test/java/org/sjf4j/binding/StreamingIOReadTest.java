@@ -91,7 +91,7 @@ class StreamingIOReadTest {
     void parentCodecDoesNotClassifyConcreteReadTarget() throws Exception {
         ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(CodecParent.class, String.class,
                 value -> value.value, CodecParent::new),  null, false);
-        assertNotNull(TypeRegistry.registerTypeInfo(CodecChild.class).valueInfos);
+        assertNotNull(TypeRegistry.registerTypeInfo(CodecChild.class).valueSet);
 
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"parent\""))) {
             assertThrows(BindingException.class, () -> StreamingIO.readNode(reader, CodecChild.class, RuntimeContext.EMPTY));

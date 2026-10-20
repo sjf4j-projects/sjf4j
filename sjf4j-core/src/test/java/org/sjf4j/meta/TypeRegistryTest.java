@@ -304,7 +304,7 @@ public class TypeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        ValueInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).valueInfos[0];
+        ValueInfo vci = TypeRegistry.registerTypeInfo(BigDay.class).valueSet.defaultInfo;
         log.info("vci={}", vci);
         assertNotNull(vci);
 
@@ -348,7 +348,7 @@ public class TypeRegistryTest {
             }
         }, null, false);
 
-        ValueInfo vci = Asserts.notNull(ValueRegistry.resolve(CodecDay.class), "test")[0];
+        ValueInfo vci = Asserts.notNull(ValueRegistry.resolve(CodecDay.class), "test").defaultInfo;
         log.info("vci={}", vci);
         assertNotNull(vci);
 

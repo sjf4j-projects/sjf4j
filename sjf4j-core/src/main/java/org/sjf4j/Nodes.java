@@ -568,8 +568,8 @@ public final class Nodes {
         }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-        if (ti.valueInfos != null) {
-            return (T) ti.valueInfos[0].valueCopy(node);
+        if (ti.valueSet != null) {
+            return (T) ti.valueSet.defaultInfo.valueCopy(node);
         }
         if (ti.externalNode != null) {
             return (T) ti.externalNode.copy(node);
@@ -750,8 +750,8 @@ public final class Nodes {
         }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(rawClazz);
-        if (ti.valueInfos != null) {
-            Object raw = ti.valueInfos[0].valueToRaw(node);
+        if (ti.valueSet != null) {
+            Object raw = ti.valueSet.defaultInfo.valueToRaw(node);
             sb.append("@").append(rawClazz.getSimpleName()).append("#");
             _inspect(raw, sb, shapeOnly);
             return;

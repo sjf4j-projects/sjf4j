@@ -32,7 +32,7 @@ import java.lang.annotation.Target;
  * POJO with declared properties.
  *
  * <p>On a {@code public static final ValueCodec<V, R>} field, this annotation
- * declares one or more registered formats for {@code V}; call
+ * declares one registered format for {@code V}; call
  * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} during
  * application initialization. The empty format name denotes the default.
  * The existing type-level annotation uses conversion methods and does not
@@ -42,6 +42,9 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface NodeValue {
-    /** Format names for an annotated ValueCodec field; empty denotes the default. */
-    String[] formats() default {""};
+    /** Unique format name for an annotated ValueCodec field. */
+    String format() default "";
+
+    /** Designates this codec as the default output representation. */
+    boolean defaultCodec() default false;
 }

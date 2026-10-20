@@ -93,4 +93,55 @@ class CompiledValueCodecReviewTest {
         String source = result.generatedSource("fixture/Binder_Impl.java");
         assertFalse(source.contains("requireRegisteredValueInfo"), source);
     }
+
+    @Test
+    void singleShapeNullRespectsDefaultInCompiledBinder() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Tag.java",
+                "package fixture; public final class Tag { "
+                + "public final String origin; public Tag(String origin) { this.origin = origin; } }");
+        sources.put("fixture/TagCodec.java",
+                "package fixture; import org.sjf4j.value.ValueCodec; "
+                + "public final class TagCodec implements ValueCodec<Tag,Long> { "
+                + "private final String label; public TagCodec(String label) { this.label = label; } "
+                + "public Long valueToRaw(Tag value) { return 1L; } "
+                + "public Tag rawToValue(Long raw) { "
+                + "return new Tag(label + (raw == null ? \"-null\" : \"-number\")); } "
+                + "public Class<Tag> valueClazz() { return Tag.class; } "
+                + "public Class<Long> rawClazz() { return Long.class; } }");
+        sources.put("fixture/FirstCodecs.java",
+                "package fixture; import org.sjf4j.value.ValueCodec; "
+                + "import org.sjf4j.annotation.node.NodeValue; "
+                + "public final class FirstCodecs { "
+                + "@NodeValue(format=\"first\") public static final ValueCodec<Tag,Long> FIRST = "
+                + "new TagCodec(\"first\"); }");
+        sources.put("fixture/DefaultCodecs.java",
+                "package fixture; import org.sjf4j.value.ValueCodec; "
+                + "import org.sjf4j.annotation.node.NodeValue; "
+                + "public final class DefaultCodecs { "
+                + "@NodeValue(format=\"second\",defaultCodec=true) "
+                + "public static final ValueCodec<Tag,Long> SECOND = new TagCodec(\"default\"); }");
+        sources.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "@BindingOptions(registries={FirstCodecs.class,DefaultCodecs.class}) "
+                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+                + "@ReadFrom Tag read(String json) throws java.io.IOException; }");
+
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        String generated = compiled.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("Null.rawToValue(null)"), generated);
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            ValueRegistry.registerAnnotated(loader.loadClass("fixture.FirstCodecs"));
+            ValueRegistry.registerAnnotated(loader.loadClass("fixture.DefaultCodecs"));
+            Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
+            Object binder = binderType.getConstructor().newInstance();
+            Object nullValue = binderType.getMethod("read", String.class).invoke(binder, "null");
+            Object numberValue = binderType.getMethod("read", String.class).invoke(binder, "7");
+            assertEquals("default-null", nullValue.getClass().getField("origin").get(nullValue));
+            assertEquals("first-number", numberValue.getClass().getField("origin").get(numberValue));
+        }
+    }
 }

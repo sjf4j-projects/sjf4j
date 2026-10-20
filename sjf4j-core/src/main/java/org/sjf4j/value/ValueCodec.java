@@ -183,11 +183,11 @@ public interface ValueCodec<V, R> {
     ValueCodec<ZoneId, String> ZONE_ID = new SimpleValueCodec<>(ZoneId.class, String.class,
             ZoneId::getId, ZoneId::of);
 
-    @NodeValue(formats = {"", "iso"})
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Instant, String> INSTANT_STR = new SimpleValueCodec<>(Instant.class, String.class,
             Instant::toString, Instant::parse);
 
-    @NodeValue(formats = {"epochMillis"})
+    @NodeValue(format = "epochMillis")
     ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
             Instant::toEpochMilli, Instant::ofEpochMilli);
 

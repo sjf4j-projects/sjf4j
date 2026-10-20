@@ -289,11 +289,11 @@ class TypeRegistryMetadataTest {
 
     @Test
     void testNamedValueCodecsAndValueFormatMetadata() {
-        ValueInfo defaultCodec = TypeRegistry.registerTypeInfo(Instant.class).valueInfos[0];
+        ValueInfo defaultCodec = TypeRegistry.registerTypeInfo(Instant.class).valueSet.defaultInfo;
         ValueInfo isoCodec = TypeRegistry.requireRegisteredValueInfo(Instant.class, "iso");
         ValueInfo epochCodec = TypeRegistry.requireRegisteredValueInfo(Instant.class, "epochMillis");
 
-        assertEquals("", defaultCodec.valueFormat);
+        assertEquals("iso", defaultCodec.valueFormat);
         assertEquals("iso", isoCodec.valueFormat);
         assertEquals("epochMillis", epochCodec.valueFormat);
         assertEquals(String.class, isoCodec.rawClazz);
@@ -385,7 +385,7 @@ class TypeRegistryMetadataTest {
     @Test
     void testLocalTimeCodecRoundTrip() {
         TypeInfo ti = TypeRegistry.registerTypeInfo(LocalTime.class);
-        assertNotNull(ti.valueInfos);
+        assertNotNull(ti.valueSet);
         ValueInfo vci = ti.getValueInfo("");
         assertNotNull(vci);
         Object raw = vci.valueToRaw(LocalTime.of(10, 30, 15));

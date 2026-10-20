@@ -12,6 +12,9 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Collections;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -65,6 +68,14 @@ public final class ValueCodecResolver {
         return raw;
     }
 
+    /** All registered formats for a value type, including named alternatives. */
+    public List<ValueCodecMetadata> all(TypeMirror valueType) {
+        ensureScanned();
+        Map<String, ValueCodecMetadata> codecs = registrations(valueType);
+        return codecs == null ? Collections.emptyList()
+                : new ArrayList<>(codecs.values());
+    }
+
     private void ensureScanned() {
         if (!scanned) {
             scanned = true;
@@ -76,7 +87,17 @@ public final class ValueCodecResolver {
         ensureScanned();
         Map<String, ValueCodecMetadata> codecs = registrations(valueType);
         if (codecs == null) return null;
-        if (format == null) return codecs.values().iterator().next();
+        if (format == null) {
+            // A named default may come from a later explicit registry. Match
+            // ValueRegistry's forceDefault behavior, not the first format seen.
+            ValueCodecMetadata selected = codecs.values().iterator().next();
+            for (ValueCodecMetadata candidate : codecs.values()) {
+                if (candidate.declaration.getAnnotation(NodeValue.class).defaultCodec()) {
+                    selected = candidate;
+                }
+            }
+            return selected;
+        }
         return codecs.get(format);
     }
 
@@ -123,21 +144,32 @@ public final class ValueCodecResolver {
 
     private void scan() {
         for (TypeElement holder : registries) {
+            // Match ValueRegistry.registerAnnotated(): designated defaults
+            // precede named variants and declaration order is not significant.
+            List<VariableElement> fields = new ArrayList<>();
             for (Element element : holder.getEnclosedElements()) {
-                if (element.getKind() != ElementKind.FIELD
-                        || element.getAnnotation(NodeValue.class) == null) continue;
-                ValueCodecMetadata metadata = parse((VariableElement) element);
+                if (element.getKind() == ElementKind.FIELD
+                        && element.getAnnotation(NodeValue.class) != null) {
+                    fields.add((VariableElement) element);
+                }
+            }
+            fields.sort(Comparator
+                    .comparing((VariableElement field) -> {
+                        NodeValue annotation = field.getAnnotation(NodeValue.class);
+                        return !(annotation.defaultCodec() || annotation.format().isEmpty());
+                    })
+                    .thenComparing(field -> field.getSimpleName().toString()));
+            for (VariableElement field : fields) {
+                ValueCodecMetadata metadata = parse(field);
                 if (metadata == null) continue;
                 String typeName = context.typeUtils.erasure(metadata.valueType).toString();
                 Map<String, ValueCodecMetadata> formats =
                         byType.computeIfAbsent(typeName, k -> new LinkedHashMap<>());
-                for (String format : metadata.formats) {
-                    ValueCodecMetadata previous = formats.putIfAbsent(format, metadata);
-                    if (previous != null) {
-                        context.error(metadata.declaration, "duplicate @NodeValue codec format '"
-                                + format + "' for type '" + typeName + "'; previously declared by "
-                                + previous.declaration);
-                    }
+                ValueCodecMetadata previous = formats.putIfAbsent(metadata.format, metadata);
+                if (previous != null) {
+                    context.error(metadata.declaration, "duplicate @NodeValue codec format '"
+                            + metadata.format + "' for type '" + typeName + "'; previously declared by "
+                            + previous.declaration);
                 }
             }
         }
@@ -165,12 +197,8 @@ public final class ValueCodecResolver {
             return null;
         }
 
-        List<String> formats = Arrays.asList(field.getAnnotation(NodeValue.class).formats());
-        if (formats.isEmpty()) {
-            context.error(field, "@NodeValue codec field must declare at least one format");
-            return null;
-        }
-        return new ValueCodecMetadata(arguments.get(0), arguments.get(1), formats, field);
+        String format = field.getAnnotation(NodeValue.class).format();
+        return new ValueCodecMetadata(arguments.get(0), arguments.get(1), format, field);
     }
 
     private boolean concreteClass(TypeMirror type) {

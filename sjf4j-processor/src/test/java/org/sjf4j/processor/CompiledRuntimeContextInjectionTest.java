@@ -28,7 +28,7 @@ class CompiledRuntimeContextInjectionTest {
                 + "@NodeValue public static final ValueCodec<Token,String> DEFAULT = "
                 + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
                 + "v -> \"d:\" + v.value, s -> new Token(s.substring(2))); "
-                + "@NodeValue(formats=\"alternate\") public static final ValueCodec<Token,String> ALTERNATE = "
+                + "@NodeValue(format=\"alternate\") public static final ValueCodec<Token,String> ALTERNATE = "
                 + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
                 + "v -> \"a:\" + v.value, s -> new Token(s.substring(2))); }");
         sources.put("fixture/Mapper.java",

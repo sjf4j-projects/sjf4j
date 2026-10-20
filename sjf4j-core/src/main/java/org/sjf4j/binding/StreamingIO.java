@@ -20,6 +20,7 @@ import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueSet;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -224,8 +225,8 @@ public final class StreamingIO {
         if (ti.oneOfInfo != null) {
             return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
         }
-        if (ti.valueInfos != null) {
-            return readValueCodec(reader, ti.requireValueInfo(context.defaultValueFormat(boxed)), context);
+        if (ti.valueSet != null) {
+            return readValueSet(reader, ti.valueSet, context.defaultValueFormat(boxed), context);
         }
         if (ti.containerInfo != null) {
             // Streaming binding only constructs Java containers that can be
@@ -300,6 +301,29 @@ public final class StreamingIO {
      * ValueCodec
      * --------------------------------------------------------------
      */
+
+    /**
+     * Selects by input JSON shape, with the configured output format serving as
+     * an input preference within that shape. Single-shape types avoid peeking,
+     * preserving each backend's fused scalar reader.
+     */
+    public static Object readValueSet(StreamingReader reader, ValueSet set,
+                                      String preferredFormat,
+                                      RuntimeContext context) throws IOException {
+        org.sjf4j.JsonType jsonType = set.multipleJsonTypes
+                ? reader.peekToken().jsonType()
+                : set.defaultInfo.rawJsonType;
+        ValueInfo codec = set.selectForRead(jsonType, preferredFormat);
+        if (!set.multipleJsonTypes) {
+            // Null selects the preferred/default codec, which need not be
+            // first in the single JSON-shape group.
+            ValueInfo nullCodec = set.selectForRead(org.sjf4j.JsonType.NULL, preferredFormat);
+            if (codec != nullCodec && reader.nextIfNull()) {
+                return nullCodec.rawToValue(null);
+            }
+        }
+        return readValueCodec(reader, codec, context);
+    }
 
     public static Object readValueCodec(StreamingReader reader, ValueInfo valueInfo,
                                         RuntimeContext context) throws IOException {
@@ -1013,7 +1037,7 @@ public final class StreamingIO {
                 return;
             }
 
-            if (typeInfo.valueInfos != null) {
+            if (typeInfo.valueSet != null) {
                 ValueInfo vi = typeInfo.requireValueInfo(context.defaultValueFormat(clazz));
                 _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
                 return;
@@ -1131,7 +1155,7 @@ public final class StreamingIO {
         /*
          * NodeValue / ValueCodec.
          */
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(clazz));
             _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
             return;

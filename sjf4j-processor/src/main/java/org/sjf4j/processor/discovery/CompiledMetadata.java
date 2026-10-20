@@ -4,6 +4,7 @@ import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import java.util.List;
 
 /** Metadata visible to one generated interface, independent of runtime registries. */
 public final class CompiledMetadata {
@@ -19,6 +20,10 @@ public final class CompiledMetadata {
 
     public ValueCodecMetadata valueCodec(TypeMirror type, String format) {
         return valueCodecs.resolve(type, format);
+    }
+
+    public List<ValueCodecMetadata> valueCodecs(TypeMirror type) {
+        return valueCodecs.all(type);
     }
 
     public TypeMirror stableCodecRawType(TypeMirror type, String format) {

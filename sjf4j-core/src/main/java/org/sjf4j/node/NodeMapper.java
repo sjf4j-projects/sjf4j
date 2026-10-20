@@ -5,6 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
+import org.sjf4j.NodeKind;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
@@ -66,7 +67,7 @@ public final class NodeMapper {
         if (node instanceof Enum) return ((Enum<?>) node).name();
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
             if (vi.rawClazz != String.class) {
                 throw new NodeException("expected String raw type for '" + Types.name(node)
@@ -98,7 +99,7 @@ public final class NodeMapper {
         }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
             return asString(vi.valueToRaw(node), context);
         }
@@ -175,7 +176,7 @@ public final class NodeMapper {
         if (!(value instanceof Number) && !(value instanceof String)
                 && !(value instanceof Character) && !(value instanceof Enum)) {
             TypeInfo ti = TypeRegistry.registerTypeInfo(value.getClass());
-            if (ti.valueInfos != null) {
+            if (ti.valueSet != null) {
                 ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(value.getClass()));
                 value = vi.valueToRaw(value);
             } else if (ti.externalNode != null && ti.externalNode.jsonType(value) == JsonType.NUMBER) {
@@ -213,7 +214,7 @@ public final class NodeMapper {
         if (node instanceof Number) return (Number) node;
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
             if (!Number.class.isAssignableFrom(Types.box(vi.rawClazz))) {
                 throw new NodeException("expected Number raw type for '" + Types.name(node)
@@ -238,7 +239,7 @@ public final class NodeMapper {
         if (node instanceof Enum) return ((Enum<?>) node).ordinal();
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
             return asNumber(vi.valueToRaw(node), context);
         }
@@ -264,7 +265,7 @@ public final class NodeMapper {
         if (node instanceof Boolean) return (Boolean) node;
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
             if (Types.box(vi.rawClazz) != Boolean.class) {
                 throw new NodeException("expected Boolean raw type for '" + Types.name(node)
@@ -300,7 +301,7 @@ public final class NodeMapper {
         }
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
-        if (ti.valueInfos != null) {
+        if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.defaultValueFormat(node.getClass()));
             return asBoolean(vi.valueToRaw(node), context);
         }
@@ -813,10 +814,9 @@ public final class NodeMapper {
         try {
             if (node == null) {
                 if (ti == null) ti = TypeRegistry.registerTypeInfo(toBoxed);
-                if (ti.valueInfos != null) {
+                if (ti.valueSet != null) {
                     String valueFormat = context.defaultValueFormat(toBoxed);
-                    ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
-                    return valueInfo.rawToValue(null);
+                    return ti.valueSet.selectForRead(JsonType.NULL, valueFormat).rawToValue(null);
                 }
                 // External targets, like other reference targets, retain Java null.
                 return null;
@@ -840,9 +840,8 @@ public final class NodeMapper {
                 return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
             }
 
-            if (ti.valueInfos != null) {
-                ValueInfo target = ti.requireValueInfo(context.defaultValueFormat(toBoxed));
-                return _convertValue(node, toBoxed, target, deepCopy, ps, context);
+            if (ti.valueSet != null) {
+                return _convertValue(node, toBoxed, ti.valueSet, deepCopy, ps, context);
             }
             // Map/List classification wins over an external adapter. Only
             // nonconstructible containers use its mapping-only native builder.
@@ -939,10 +938,37 @@ public final class NodeMapper {
 
 
     /**
-     * Converts into a NodeValue through its declared raw representation.
-     * A source NodeValue is encoded once, then decoded using the target codec.
-     * Raw types must remain compatible; no coercion is performed at this boundary.
+     * Auto-selects a value codec by the raw JSON shape during mapping.
+     * Explicit property codecs still call the ValueInfo overload below.
      */
+    private static Object _convertValue(Object node, Class<?> toBoxed,
+                                        org.sjf4j.value.ValueSet set,
+                                        boolean deepCopy, PathSegment ps, RuntimeContext context) {
+        String preferred = context.defaultValueFormat(toBoxed);
+        if (node == null) return set.selectForRead(JsonType.NULL, preferred).rawToValue(null);
+        if (toBoxed.isInstance(node)) {
+            return deepCopy ? set.forWrite(preferred).valueCopy(node) : node;
+        }
+
+        Object raw = node;
+        if (!(node instanceof String || node instanceof Number || node instanceof Boolean
+                || node instanceof Map || node instanceof List)) {
+            TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
+            if (sourceInfo.valueSet != null) {
+                ValueInfo source = sourceInfo.requireValueInfo(
+                        context.defaultValueFormat(node.getClass()));
+                raw = source.valueToRaw(node);
+            } else if (sourceInfo.externalNode != null) {
+                raw = _convertToRaw(node, ps, context);
+            }
+        }
+
+        JsonType shape = raw == null ? JsonType.NULL
+                : JsonType.of(NodeKind.plainOf(raw.getClass()));
+        ValueInfo selected = set.selectForRead(shape, preferred);
+        return selected.rawToValue(raw);
+    }
+
     private static Object _convertValue(Object node, Class<?> toBoxed, ValueInfo target,
                                         boolean deepCopy, PathSegment ps, RuntimeContext context) {
         if (node == null) return target.rawToValue(null);
@@ -957,7 +983,7 @@ public final class NodeMapper {
 
         TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
         Object raw = node;
-        if (sourceInfo.valueInfos != null) {
+        if (sourceInfo.valueSet != null) {
             ValueInfo source = sourceInfo.requireValueInfo(
                     context.defaultValueFormat(node.getClass()));
             raw = source.valueToRaw(node);
@@ -1018,7 +1044,7 @@ public final class NodeMapper {
                 if (deepCopy) result = target.deepCopy(result);
             } else {
                 TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
-                if (sourceInfo.valueInfos != null) {
+                if (sourceInfo.valueSet != null) {
                     ValueInfo info = sourceInfo.requireValueInfo(context.defaultValueFormat(node.getClass()));
                     return _requireExternalTarget(_convertExternal(
                             info.valueToRaw(node), target.nodeType(), target, deepCopy, ps, context), toBoxed, ps);
@@ -1168,7 +1194,7 @@ public final class NodeMapper {
 
             TypeInfo ti = TypeRegistry.registerTypeInfo(nodeClazz);
 
-            if (ti.valueInfos != null) {
+            if (ti.valueSet != null) {
                 String valueFormat = context.defaultValueFormat(nodeClazz);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueCopy(node);
@@ -1487,10 +1513,8 @@ public final class NodeMapper {
         Class<?> argRaw = Types.rawBox(argType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
         ValueInfo codec = creator.argValueCodecs[argIdx];
-        if (codec == null && ti.valueInfos != null) {
-            codec = ti.requireValueInfo(context.defaultValueFormat(argRaw));
-        }
-
+        // Only a codec explicitly selected on the creator parameter is strict.
+        // Unannotated value parameters must select by the incoming JSON shape.
         Object value = ti.oneOfInfo == null && codec != null
                 ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, context)
                 : _convertSourceChild(rawValue, argType, argRaw, ti,
@@ -1986,7 +2010,7 @@ public final class NodeMapper {
                         throw new BindingException("unsupported external node type '" + Types.name(node) + "'", ps);
                 }
             }
-            if (ti.valueInfos != null) {
+            if (ti.valueSet != null) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueToRaw(node);

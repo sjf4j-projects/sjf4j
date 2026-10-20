@@ -692,12 +692,31 @@ final class ReadEmitter {
                 String rawReader = codecRawReader(value);
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + reader + ", "
                         + value.helperName() + ", this.context)";
-                if (rawReader == null) return "(" + value.type() + ") " + runtimeRead;
-                String rawClass = value.codecRawType().toString();
-                return "(" + value.type() + ") (" + value.helperName() + ".rawClazz == "
-                        + rawClass + ".class ? " + value.helperName()
-                        + ".rawToValue(" + reader + "." + rawReader + "()) : "
-                        + runtimeRead + ")";
+                String scalarRead;
+                if (rawReader == null) {
+                    scalarRead = runtimeRead;
+                } else {
+                    String rawClass = value.codecRawType().toString();
+                    scalarRead = "(" + value.helperName() + ".rawClazz == "
+                            + rawClass + ".class ? " + value.helperName()
+                            + ".rawToValue(" + reader + "." + rawReader + "()) : "
+                            + runtimeRead + ")";
+                }
+                boolean autoRead = value.codecName() == null && value.codecPattern() == null;
+                if (autoRead) {
+                    String set = value.helperName() + "Set";
+                    String selected = STREAMING_IO + ".readValueSet(" + reader + ", "
+                            + set + ", this.context.defaultValueFormat("
+                            + value.type() + ".class), this.context)";
+                    // Only differing null/default codecs require an extra probe.
+                    // Normal scalar reads retain their typed fast paths.
+                    String scalarWithNull = "(" + value.helperName() + " != "
+                            + value.helperName() + "Null && " + reader + ".nextIfNull() ? "
+                            + value.helperName() + "Null.rawToValue(null) : " + scalarRead + ")";
+                    return "(" + value.type() + ") (" + set + ".multipleJsonTypes ? "
+                            + selected + " : " + scalarWithNull + ")";
+                }
+                return "(" + value.type() + ") " + scalarRead;
 
             case ENUM:
                 // Keep string, ordinal and null semantics aligned with StreamingIO.

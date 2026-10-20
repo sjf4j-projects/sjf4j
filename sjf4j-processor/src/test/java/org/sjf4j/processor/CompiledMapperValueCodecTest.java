@@ -340,4 +340,53 @@ class CompiledMapperValueCodecTest {
                     targetType.getField("id").get(target));
         }
     }
+
+    @Test
+    void namedNumericCodecIsAcceptedAlongsideStringDefault() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Token.java",
+                "package fixture; public final class Token { "
+                + "public final String text; public Token(String text) { this.text = text; } }");
+        sources.put("fixture/Codecs.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeValue; "
+                + "import org.sjf4j.value.ValueCodec; "
+                + "public final class Codecs { "
+                + "@NodeValue public static final ValueCodec<Token,String> TEXT = "
+                + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
+                + "v -> v.text, raw -> new Token(\"text:\" + raw)); "
+                + "@NodeValue(format=\"number\") public static final ValueCodec<Token,Long> NUMBER = "
+                + "new ValueCodec.SimpleValueCodec<>(Token.class, Long.class, "
+                + "v -> 7L, raw -> new Token(\"number:\" + raw)); }");
+        sources.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "import org.sjf4j.annotation.binding.BindingOptions; "
+                + "@BindingOptions(registries={Codecs.class}) "
+                + "@CompiledMapper public interface Mapper { "
+                + "Token fromNumber(Long value); Token fromText(String value); }");
+
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
+            Class<?> mapperType = loader.loadClass("fixture.Mapper_Impl");
+            Object mapper = mapperType.getConstructor().newInstance();
+            Object fromNumber = mapperType.getMethod("fromNumber", Long.class).invoke(mapper, 7L);
+            Object fromText = mapperType.getMethod("fromText", String.class).invoke(mapper, "abc");
+            assertEquals("number:7", fromNumber.getClass().getField("text").get(fromNumber));
+            assertEquals("text:abc", fromText.getClass().getField("text").get(fromText));
+        }
+
+        sources.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "import org.sjf4j.annotation.binding.BindingOptions; "
+                + "@BindingOptions(registries={Codecs.class}) "
+                + "@CompiledMapper public interface Mapper { Token fromBoolean(Boolean value); }");
+        NavigatorTestCompiler.Result incompatible =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(incompatible.success, incompatible.diagnostics());
+        assertTrue(incompatible.diagnostics().contains("incompatible ValueCodec raw types"),
+                incompatible.diagnostics());
+    }
 }

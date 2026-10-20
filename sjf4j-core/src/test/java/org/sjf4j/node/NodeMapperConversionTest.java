@@ -241,7 +241,7 @@ class NodeMapperConversionTest {
                 null, NullValue.class, true, RuntimeContext.EMPTY)).value);
         BindingException incompatible = assertThrows(BindingException.class, () ->
                 NodeMapper.convert(new EncodedA("7"), NumericValue.class, false, RuntimeContext.EMPTY));
-        assertTrue(incompatible.getMessage().contains("raw type"));
+        assertTrue(incompatible.getMessage().contains("no ValueCodec"));
     }
 
     @Test
@@ -453,7 +453,7 @@ class NodeMapperConversionTest {
         // No implicit String -> Number coercion at a ValueCodec boundary.
         BindingException error = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(source, NumericValue.class, false, RuntimeContext.EMPTY));
-        assertTrue(error.getMessage().contains("raw type"));
+        assertTrue(error.getMessage().contains("no ValueCodec"));
 
         assertSame(source, NodeMapper.convert(source, EncodedA.class, false, RuntimeContext.EMPTY));
     }

@@ -42,9 +42,14 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
         context.discovery.collect(round);
         TypeElement owner = context.elements.getTypeElement("fixture.Binder");
         CompiledMetadata metadata = context.metadata(owner);
-        for (String name : new String[]{"fixture.Money", UUID.class.getName(), Instant.class.getName()}) {
+        for (String name : new String[]{"fixture.Money", "fixture.Amount", UUID.class.getName(), Instant.class.getName()}) {
             TypeElement value = context.elements.getTypeElement(name);
             if (value == null) continue;
+            ValueCodecMetadata defaultInfo = metadata.valueCodec(value.asType(), null);
+            if (defaultInfo != null) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                        "DEFAULT " + name + " -> " + defaultInfo.rawType);
+            }
             for (String format : new String[]{"", "iso", "epochMillis", "compact", "alpha", "beta"}) {
                 ValueCodecMetadata info = metadata.valueCodec(value.asType(), format);
                 if (info != null) {

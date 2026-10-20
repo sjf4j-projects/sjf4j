@@ -29,10 +29,10 @@ class AnnotatedValueCodecTest {
 
     public static final class KeyCodecs {
         // Deliberately named before the default to prove reflection order is irrelevant.
-        @NodeValue(formats = {"expanded"})
+        @NodeValue(format = "expanded")
         public static final ValueCodec<Key, String> A_EXPANDED = codec("!");
 
-        @NodeValue(formats = {"", "short"})
+        @NodeValue(format = "short", defaultCodec = true)
         public static final ValueCodec<Key, String> Z_DEFAULT = codec("");
     }
 
@@ -44,10 +44,10 @@ class AnnotatedValueCodecTest {
 
         assertEquals(String.class, TypeRegistry.requireRegisteredValueInfo(UUID.class, null).rawClazz);
         assertEquals(String.class, TypeRegistry.requireRegisteredValueInfo(Instant.class, null).rawClazz);
-        assertEquals("", TypeRegistry.requireRegisteredValueInfo(Instant.class, null).valueFormat);
+        assertEquals("iso", TypeRegistry.requireRegisteredValueInfo(Instant.class, null).valueFormat);
         assertEquals("iso", TypeRegistry.requireRegisteredValueInfo(Instant.class, "iso").valueFormat);
-        assertEquals("iso", ValueRegistry.resolve(Instant.class)[1].valueFormat);
-        assertEquals("epochMillis", ValueRegistry.resolve(Instant.class)[2].valueFormat);
+        assertEquals("iso", ValueRegistry.resolve(Instant.class).stringInfos[0].valueFormat);
+        assertEquals("epochMillis", ValueRegistry.resolve(Instant.class).numberInfos[0].valueFormat);
         assertEquals(Long.class, TypeRegistry.requireRegisteredValueInfo(Instant.class, "epochMillis").rawClazz);
         assertSame(PatternedValueCodec.LOCAL_DATE,
                 TypeRegistry.requireRegisteredValueInfo(LocalDate.class, null).codec);
@@ -57,15 +57,15 @@ class AnnotatedValueCodecTest {
     void registersDefaultFirstEvenWhenNamedFieldSortsEarlier() {
         ValueRegistry.registerAnnotated(KeyCodecs.class);
 
-        ValueInfo[] resolved = ValueRegistry.resolve(Key.class);
-        assertEquals(3, resolved.length);
-        assertEquals("", resolved[0].valueFormat);
+        ValueSet resolved = ValueRegistry.resolve(Key.class);
+        assertEquals(2, resolved.stringInfos.length);
+        assertEquals("short", resolved.defaultInfo.valueFormat);
         assertEquals("expanded", TypeRegistry.requireRegisteredValueInfo(Key.class, "expanded").valueFormat);
         assertEquals("short", TypeRegistry.requireRegisteredValueInfo(Key.class, "short").valueFormat);
         Sjf4j json = Sjf4j.builder().build();
         assertEquals("abc", json.fromJson("\"abc\"", Key.class).text);
         assertEquals("\"abc\"", json.toJsonString(new Key("abc")));
-        assertEquals("a", ((Key) resolved[0].rawToValue("a")).text);
+        assertEquals("a", ((Key) resolved.defaultInfo.rawToValue("a")).text);
         assertEquals("a!", ((Key) TypeRegistry.requireRegisteredValueInfo(Key.class, "expanded")
                 .rawToValue("a")).text);
     }
@@ -76,13 +76,20 @@ class AnnotatedValueCodecTest {
     }
 
     public static final class NamedOnlyCodecs {
-        @NodeValue(formats = {"zzz"})
+        @NodeValue(format = "zzz")
         public static final ValueCodec<NamedOnly, String> B_ZZZ =
                 new ValueCodec.SimpleValueCodec<>(NamedOnly.class, String.class,
                         x -> x.value, NamedOnly::new);
 
-        @NodeValue(formats = {"aaa"})
+        @NodeValue(format = "aaa")
         public static final ValueCodec<NamedOnly, String> A_AAA =
+                new ValueCodec.SimpleValueCodec<>(NamedOnly.class, String.class,
+                        x -> x.value, NamedOnly::new);
+    }
+
+    public static final class NamedOnlyPreferred {
+        @NodeValue(format = "preferred", defaultCodec = true)
+        public static final ValueCodec<NamedOnly, String> PREFERRED =
                 new ValueCodec.SimpleValueCodec<>(NamedOnly.class, String.class,
                         x -> x.value, NamedOnly::new);
     }
@@ -90,8 +97,10 @@ class AnnotatedValueCodecTest {
     @Test
     void namedOnlyFormatsHaveStableOrder() {
         ValueRegistry.registerAnnotated(NamedOnlyCodecs.class);
-        assertEquals("aaa", ValueRegistry.resolve(NamedOnly.class)[0].valueFormat);
-        assertEquals("zzz", ValueRegistry.resolve(NamedOnly.class)[1].valueFormat);
+        assertEquals("aaa", ValueRegistry.resolve(NamedOnly.class).stringInfos[0].valueFormat);
+        assertEquals("zzz", ValueRegistry.resolve(NamedOnly.class).stringInfos[1].valueFormat);
+        ValueRegistry.registerAnnotated(NamedOnlyPreferred.class);
+        assertEquals("preferred", ValueRegistry.resolve(NamedOnly.class).defaultInfo.valueFormat);
     }
 
     public static class NotStatic {
@@ -130,27 +139,33 @@ class AnnotatedValueCodecTest {
         @NodeValue public static final ValueCodec<Mismatched, String> BAD = null;
     }
 
-    public static class EmptyFormats {
-        @NodeValue(formats = {})
-        public static final ValueCodec<Mismatched, String> BAD =
-                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
-                        x -> x.value, Mismatched::new);
-    }
-
-    public static class DuplicateFormat {
-        @NodeValue(formats = {"iso", "iso"})
-        public static final ValueCodec<Mismatched, String> BAD =
-                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
-                        x -> x.value, Mismatched::new);
-    }
-
-
-    public static class DuplicateAcrossFields {
-        @NodeValue(formats = {"same"})
+    public static class DuplicateDefault {
+        @NodeValue(format = "first", defaultCodec = true)
         public static final ValueCodec<Mismatched, String> FIRST =
                 new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
                         x -> x.value, Mismatched::new);
-        @NodeValue(formats = {"same"})
+        @NodeValue(format = "second", defaultCodec = true)
+        public static final ValueCodec<Mismatched, String> SECOND =
+                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
+                        x -> x.value, Mismatched::new);
+    }
+
+    public static class DuplicateCodecInstance {
+        private static final ValueCodec<Mismatched, String> SHARED =
+                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
+                        x -> x.value, Mismatched::new);
+        @NodeValue(format = "primary")
+        public static final ValueCodec<Mismatched, String> FIRST = SHARED;
+        @NodeValue(format = "alternative")
+        public static final ValueCodec<Mismatched, String> SECOND = SHARED;
+    }
+
+    public static class DuplicateAcrossFields {
+        @NodeValue(format = "same")
+        public static final ValueCodec<Mismatched, String> FIRST =
+                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
+                        x -> x.value, Mismatched::new);
+        @NodeValue(format = "same")
         public static final ValueCodec<Mismatched, String> SECOND =
                 new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
                         x -> x.value, Mismatched::new);
@@ -165,9 +180,9 @@ class AnnotatedValueCodecTest {
         assertInvalid(RawType.class, "concrete V/R");
         assertInvalid(WrongDeclaredValueType.class, "do not match");
         assertInvalid(NullCodec.class, "is null");
-        assertInvalid(EmptyFormats.class, "no formats");
-        assertInvalid(DuplicateFormat.class, "duplicate");
+        assertInvalid(DuplicateDefault.class, "multiple default");
         assertInvalid(DuplicateAcrossFields.class, "duplicate");
+        assertInvalid(DuplicateCodecInstance.class, "same ValueCodec instance");
     }
 
     private static void assertInvalid(Class<?> owner, String part) {
