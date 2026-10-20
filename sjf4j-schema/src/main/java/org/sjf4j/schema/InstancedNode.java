@@ -125,8 +125,8 @@ public final class InstancedNode {
         NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
         if (kind == NodeKind.UNKNOWN) {
             TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
-            if (ti.valueInfos != null) {
-                ValueInfo vi = ti.valueInfos[0];
+            if (ti.valueSet != null) {
+                ValueInfo vi = ti.valueSet.defaultInfo;
                 if (vi != null) {
                     node = vi.valueToRaw(node);
                     JsonType jsonType = node == null
