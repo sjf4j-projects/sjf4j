@@ -151,6 +151,7 @@ public final class ValueRegistry {
         List<ValueInfo> named = new ArrayList<>();
         Map<Class<?>, Set<String>> declaredFormats = new HashMap<>();
         Set<Class<?>> explicitDefaults = new HashSet<>();
+        Map<Class<?>, java.util.IdentityHashMap<ValueCodec<?, ?>, String>> declaredCodecs = new HashMap<>();
 
         for (Field field : fields) {
             NodeValue annotation = field.getAnnotation(NodeValue.class);
@@ -192,6 +193,14 @@ public final class ValueRegistry {
             if (!seen.add(format)) {
                 throw new BindingException("duplicate @NodeValue codec format '" + format
                         + "' for type '" + codec.valueClazz().getName() + "'");
+            }
+            java.util.IdentityHashMap<ValueCodec<?, ?>, String> codecNames =
+                    declaredCodecs.computeIfAbsent(codec.valueClazz(),
+                            k -> new java.util.IdentityHashMap<>());
+            String prior = codecNames.putIfAbsent(codec, format);
+            if (prior != null) {
+                throw new BindingException("same ValueCodec instance registered under multiple formats for type '"
+                        + codec.valueClazz().getName() + "'");
             }
             boolean isDefault = annotation.defaultCodec() || format.isEmpty();
             if (isDefault && !explicitDefaults.add(codec.valueClazz())) {
