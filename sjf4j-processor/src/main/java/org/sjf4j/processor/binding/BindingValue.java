@@ -131,10 +131,12 @@ final class BindingValue {
     static final class OneOfSubtype {
         final TypeMirror type;
         final BindingValue compiled;
+        final boolean cachedPojo;
 
-        OneOfSubtype(TypeMirror type, BindingValue compiled) {
+        OneOfSubtype(TypeMirror type, BindingValue compiled, boolean cachedPojo) {
             this.type = type;
             this.compiled = compiled;
+            this.cachedPojo = cachedPojo;
         }
     }
 
