@@ -100,21 +100,27 @@ class CompiledValueCodecReviewTest {
         sources.put("fixture/Tag.java",
                 "package fixture; public final class Tag { "
                 + "public final String origin; public Tag(String origin) { this.origin = origin; } }");
+        sources.put("fixture/TagCodec.java",
+                "package fixture; import org.sjf4j.value.ValueCodec; "
+                + "public final class TagCodec implements ValueCodec<Tag,Long> { "
+                + "private final String label; public TagCodec(String label) { this.label = label; } "
+                + "public Long valueToRaw(Tag value) { return 1L; } "
+                + "public Tag rawToValue(Long raw) { "
+                + "return new Tag(label + (raw == null ? \"-null\" : \"-number\")); } "
+                + "public Class<Tag> valueClazz() { return Tag.class; } "
+                + "public Class<Long> rawClazz() { return Long.class; } }");
         sources.put("fixture/FirstCodecs.java",
                 "package fixture; import org.sjf4j.value.ValueCodec; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "public final class FirstCodecs { "
                 + "@NodeValue(format=\"first\") public static final ValueCodec<Tag,Long> FIRST = "
-                + "new ValueCodec.SimpleValueCodec<>(Tag.class, Long.class, "
-                + "v -> 1L, raw -> new Tag(raw == null ? \"first-null\" : \"first-number\")); }");
+                + "new TagCodec(\"first\"); }");
         sources.put("fixture/DefaultCodecs.java",
                 "package fixture; import org.sjf4j.value.ValueCodec; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "public final class DefaultCodecs { "
                 + "@NodeValue(format=\"second\",defaultCodec=true) "
-                + "public static final ValueCodec<Tag,Long> SECOND = "
-                + "new ValueCodec.SimpleValueCodec<>(Tag.class, Long.class, "
-                + "v -> 2L, raw -> new Tag(raw == null ? \"default-null\" : \"default-number\")); }");
+                + "public static final ValueCodec<Tag,Long> SECOND = new TagCodec(\"default\"); }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "@BindingOptions(registries={FirstCodecs.class,DefaultCodecs.class}) "
