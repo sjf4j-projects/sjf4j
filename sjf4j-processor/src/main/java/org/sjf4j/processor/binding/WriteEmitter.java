@@ -524,7 +524,14 @@ final class WriteEmitter {
             if (subtype.compiled == null) continue;
             String type = subtype.type.toString();
             out.beginBlock("if (value.getClass() == " + type + ".class)");
-            writeValue(out, subtype.compiled, "writer", "(" + type + ") value");
+            String expression = "(" + type + ") value";
+            if (backend.backend() == Backend.FASTJSON2
+                    && subtype.compiled.helperRequired()
+                    && fastjson2.nativeEligible(subtype.compiled, new HashSet<BindingValue>())) {
+                fastjson2.emitMappedSubtype(out, subtype.compiled, "writer", expression);
+            } else {
+                writeValue(out, subtype.compiled, "writer", expression);
+            }
             out.line("return;");
             out.endBlock();
         }
