@@ -72,7 +72,7 @@ final class JacksonWriteEmitter {
     }
 
 
-    private void emitValue(JavaWriter out, BindingValue child, String expr) {
+    void emitValue(JavaWriter out, BindingValue child, String expr) {
         if (child.helperRequired()) {
             out.line(child.helperName() + "(g, " + expr + ");");
             return;
