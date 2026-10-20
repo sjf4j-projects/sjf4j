@@ -65,8 +65,10 @@ class CompiledOneOfWriteTest {
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(result.success, backend + ": " + result.diagnostics());
             String generated = result.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("value.getClass() == Cat.class")
-                            || generated.contains("value.getClass() == fixture.Cat.class"),
+            assertTrue(generated.contains("Class<?> actualClass = value.getClass();"),
+                    backend + ": missing cached runtime class");
+            assertTrue(generated.contains("actualClass == Cat.class")
+                            || generated.contains("actualClass == fixture.Cat.class"),
                     backend + ": missing Class dispatch");
             assertTrue(generated.contains("_writeEnvelope("), backend);
             assertTrue(generated.contains("_writeCat"), backend);
