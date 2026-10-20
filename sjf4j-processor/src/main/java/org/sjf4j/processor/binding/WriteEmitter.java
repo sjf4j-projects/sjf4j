@@ -520,12 +520,17 @@ final class WriteEmitter {
 
     private void emitOneOf(JavaWriter out, BindingValue value) {
         emitNullReturn(out);
+        int index = 0;
         for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-            if (subtype.compiled == null) continue;
+            String metadata = value.helperName() + "_subtype" + index++ + "_pojoInfo";
+            if (subtype.compiled == null && !subtype.cachedPojo) continue;
             String type = subtype.type.toString();
             out.beginBlock("if (value.getClass() == " + type + ".class)");
             String expression = "(" + type + ") value";
-            if (backend.backend() == Backend.FASTJSON2
+            if (subtype.cachedPojo) {
+                out.line(STREAMING_IO + ".writePojo(writer, value, " + metadata
+                        + ", this.context);");
+            } else if (backend.backend() == Backend.FASTJSON2
                     && subtype.compiled.helperRequired()
                     && fastjson2.nativeEligible(subtype.compiled, new HashSet<BindingValue>())) {
                 fastjson2.emitMappedSubtype(out, subtype.compiled, "writer", expression);
