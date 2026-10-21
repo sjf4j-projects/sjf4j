@@ -88,6 +88,43 @@ For timing, absolute native numbers varied by roughly 40% across shared CI runne
 
 The allocation benefit is limited: `PolyTypeB` (primitive double) did not improve even though `PolyTypeA(UUID)` saved 24 B/op. The remaining bottleneck likely includes boxing and generic creator dispatch. Keep this optimization experimental pending local JMH; do not merge based on shared CI measurements alone.
 
+## Primitive double Creator specialization: verified
+
+The diagnosis pinpointed a deliberate guard in `ReflectUtil.analyzeCreator()`: any primitive creator argument disabled creation of the cached `Func1...Func5` lambdas. In particular, `PolyTypeB(double)` therefore called `MethodHandle.invokeWithArguments(Object[])` rather than a direct creator function, explaining why the earlier one-argument allocation optimization benefited `PolyTypeA(UUID)` but not `PolyTypeB(double)`.
+
+This follow-up creates **only** an optional direct `DoubleFunction<Object>` for a one-argument primitive double constructor/factory using `LambdaMetafactory`. It is cached with creator metadata and used by the one-argument `CreatorState` path. No proxy fallback is introduced; if factory construction fails, original method-handle behavior is preserved. The existing `CreatorInfo` constructor signature is retained.
+
+- [Before direct double lambda: run 39578950687](https://github.com/sjf4j-projects/sjf4j/actions/runs/39578950687)
+- [After direct double lambda: run 39581583182](https://github.com/sjf4j-projects/sjf4j/actions/runs/39581583182), [raw JMH artifacts](https://github.com/sjf4j-projects/sjf4j/actions/runs/39581583182/artifacts/12337126563)
+- Java CI, CodeQL and forked JMH completed successfully after the fix.
+
+### Standalone constructor invocation within one JMH run
+
+| Invocation | ns/op | B/op |
+| --- | ---: | ---: |
+| `new PolyTypeB(double)` | 2.376 | 24 |
+| Cached direct `DoubleFunction.apply(double)` | 2.452 | 24 |
+| `CreatorInfo.newPojoWithOneArg(Double)` | 2.283 | 24 |
+| Old `newPojoWithArgs(Object[])` using `invokeWithArguments` | 101.938 | 248 |
+
+This isolated benchmark proves a much cheaper *invocation*. Full JSON parsing is measured separately below.
+
+### End-to-end A/B across CI runs
+
+| Workload | Before us/op | After us/op | Before B/op | After B/op |
+| --- | ---: | ---: | ---: | ---: |
+| PolyTypeB direct | 0.486 | 0.373 | 1016 | 736 |
+| PolyTypeB OneOf first | 0.471 | 0.385 | 1008 | 784 |
+| List with 8 elements | 2.799 | 2.167 | 3384 | 2040 |
+| Full Creek with 8 elements | 5.060 | 4.513 | 6648 | 5328 |
+| Full Creek with no OneOf | 2.079 | 2.191 | 3760 | 3760 |
+
+Within the after run, full Creek 8: Runtime **4.513 µs/op** vs Jackson Native **4.042 µs/op** (11.7% higher). The earlier same-run gap was Runtime 5.060 vs Native 3.975 µs/op (27.3% higher). Shared-runner absolute timing is not a controlled identical-hardware A/B; **allocation reductions** are strong evidence, but the speedup must be confirmed locally with longer runs.
+
+### Remaining issue
+
+The 0-element Creek case still carries a fixed Runtime overhead; the outer five-argument `TestModel` creator and general field dispatch are separate from the primitive double optimization. Do not infer that UUID or all OneOf machinery is expensive from full-model scores.
+
 ## Run locally
 
 ```bash
