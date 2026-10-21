@@ -43,7 +43,7 @@ class AnnotatedValueCodecTest {
         assertEquals(22, annotated);
 
         assertEquals(String.class, TypeRegistry.requireRegisteredValueInfo(UUID.class, null).rawClazz);
-        assertEquals("canonical", TypeRegistry.requireRegisteredValueInfo(UUID.class, null).valueFormat);
+        assertEquals("standard", TypeRegistry.requireRegisteredValueInfo(UUID.class, null).valueFormat);
         assertSame(ValueCodec.UUID_CODEC, TypeRegistry.requireRegisteredValueInfo(UUID.class, "canonical").codec);
         assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamReader);
         assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamWriter);
