@@ -1,6 +1,9 @@
 package org.sjf4j.testbench.processor;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.BindingOptions;
@@ -11,12 +14,20 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.gson.binding.GsonBinder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
+import org.sjf4j.backend.jsonp.binding.JsonpBinder;
+import org.sjf4j.binding.Binder;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.ValueRegistry;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -58,7 +69,8 @@ public class CompiledOneOfBoundaryTest {
     @OneOf(key = "@type", mappings = {
             @OneOfMapping(type = WithLong.class, when = "long"),
             @OneOfMapping(type = WithDouble.class, when = "double"),
-            @OneOfMapping(type = WithDecimal.class, when = "decimal")
+            @OneOfMapping(type = WithDecimal.class, when = "decimal"),
+            @OneOfMapping(type = WithPropertyLong.class, when = "property")
     })
     public interface NumericChoice {}
 
@@ -81,6 +93,11 @@ public class CompiledOneOfBoundaryTest {
         @NodeCreator
         public WithDecimal(@NodeProperty("value") DecimalTag value) { this.value = value; }
         public DecimalTag getValue() { return value; }
+    }
+
+    public static final class WithPropertyLong implements NumericChoice {
+        public LongTag value;
+        public WithPropertyLong() {}
     }
 
     @OneOf(key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
@@ -182,6 +199,56 @@ public class CompiledOneOfBoundaryTest {
                     assertInstanceOf(WithDecimal.class, BINDER.readNumeric(input))
                             .getValue().value));
         }
+        for (String input : Arrays.asList(
+                "{\"@type\":\"property\",\"value\":123}",
+                "{\"value\":123,\"@type\":\"property\"}")) {
+            assertEquals(123L, assertInstanceOf(WithPropertyLong.class, BINDER.readNumeric(input))
+                    .value.value);
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("runtimeBackends")
+    void runtimeNumericCodecsDecodeWithEarlyAndLateDiscriminators(
+            String backend, Binder<?, ?> binder) {
+        for (String input : Arrays.asList(
+                "{\"@type\":\"long\",\"value\":123}",
+                "{\"value\":123,\"@type\":\"long\"}")) {
+            WithLong value = assertInstanceOf(WithLong.class,
+                    binder.readNode(input, NumericChoice.class), backend);
+            assertEquals(123L, value.getValue().value, backend);
+        }
+        for (String input : Arrays.asList(
+                "{\"@type\":\"double\",\"value\":5}",
+                "{\"value\":5,\"@type\":\"double\"}")) {
+            WithDouble value = assertInstanceOf(WithDouble.class,
+                    binder.readNode(input, NumericChoice.class), backend);
+            assertEquals(5d, value.getValue().value, backend);
+        }
+        for (String input : Arrays.asList(
+                "{\"@type\":\"decimal\",\"value\":1.25}",
+                "{\"value\":1.25,\"@type\":\"decimal\"}")) {
+            WithDecimal value = assertInstanceOf(WithDecimal.class,
+                    binder.readNode(input, NumericChoice.class), backend);
+            assertEquals(0, new BigDecimal("1.25").compareTo(value.getValue().value), backend);
+        }
+        for (String input : Arrays.asList(
+                "{\"@type\":\"property\",\"value\":123}",
+                "{\"value\":123,\"@type\":\"property\"}")) {
+            WithPropertyLong value = assertInstanceOf(WithPropertyLong.class,
+                    binder.readNode(input, NumericChoice.class), backend);
+            assertEquals(123L, value.value.value, backend);
+        }
+    }
+
+    static Stream<Arguments> runtimeBackends() {
+        return Stream.of(
+                Arguments.of("simple", new SimpleJsonBinder()),
+                Arguments.of("jackson2", new Jackson2Binder()),
+                Arguments.of("jackson3", new Jackson3Binder()),
+                Arguments.of("fastjson2", new Fastjson2Binder()),
+                Arguments.of("gson", new GsonBinder()),
+                Arguments.of("jsonp", new JsonpBinder()));
     }
 
     @Test
