@@ -1,6 +1,7 @@
 package org.sjf4j.util;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
@@ -73,6 +74,15 @@ public final class Invokers {
         Class<?>[] params = new Class<?>[arity];
         Arrays.fill(params, Object.class);
         MethodType erasedSamType = MethodType.methodType(Object.class, params);
+
+        // A generic SAM cannot directly implement primitive parameters through
+        // LambdaMetafactory. Adapt the MethodHandle once, then use fixed-arity
+        // invokeExact calls rather than invokeWithArguments on every object.
+        for (Class<?> param : creator.type().parameterArray()) {
+            if (param.isPrimitive()) {
+                return _createAdaptedCreator(creator, funcType, arity);
+            }
+        }
         try {
             MethodType instantiatedSamType = creator.type().changeReturnType(Object.class);
             return (T) LambdaMetafactory.metafactory(
@@ -91,6 +101,94 @@ public final class Invokers {
                 return null;
             }
         }
+    }
+
+    /**
+     * Prepares an array-based Creator call once for arities beyond Func5.
+     * The adapted handle has the exact signature (Object[]) -> Object.
+     * Returns null when a signature cannot be adapted; the caller may retain
+     * invokeWithArguments as a compatibility fallback.
+     */
+    public static MethodHandle createArgsCreatorSpreader(MethodHandle creator) {
+        if (creator == null || creator.type().parameterCount() <= 5) return null;
+        try {
+            int arity = creator.type().parameterCount();
+            return creator.asType(MethodType.genericMethodType(arity))
+                    .asSpreader(Object[].class, arity);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Fixed-arity creator bridge for mixed primitive/reference signatures.
+     * All Object-to-primitive conversions are prepared at metadata creation.
+     * Existing Func1...Func5 interfaces cover every parameter combination.
+     */
+    private static <T> T _createAdaptedCreator(MethodHandle creator, Class<T> funcType, int arity) {
+        try {
+            final MethodHandle adapted = creator.asType(MethodType.genericMethodType(arity));
+            final Class<?> owner = creator.type().returnType();
+            switch (arity) {
+                case 1:
+                    if (funcType != TypeRegistry.Func1.class) return null;
+                    return funcType.cast((TypeRegistry.Func1) a -> {
+                        try {
+                            return (Object) adapted.invokeExact(a);
+                        } catch (Throwable e) {
+                            throw _creatorFailure(owner, e);
+                        }
+                    });
+                case 2:
+                    if (funcType != TypeRegistry.Func2.class) return null;
+                    return funcType.cast((TypeRegistry.Func2) (a, b) -> {
+                        try {
+                            return (Object) adapted.invokeExact(a, b);
+                        } catch (Throwable e) {
+                            throw _creatorFailure(owner, e);
+                        }
+                    });
+                case 3:
+                    if (funcType != TypeRegistry.Func3.class) return null;
+                    return funcType.cast((TypeRegistry.Func3) (a, b, c) -> {
+                        try {
+                            return (Object) adapted.invokeExact(a, b, c);
+                        } catch (Throwable e) {
+                            throw _creatorFailure(owner, e);
+                        }
+                    });
+                case 4:
+                    if (funcType != TypeRegistry.Func4.class) return null;
+                    return funcType.cast((TypeRegistry.Func4) (a, b, c, d) -> {
+                        try {
+                            return (Object) adapted.invokeExact(a, b, c, d);
+                        } catch (Throwable e) {
+                            throw _creatorFailure(owner, e);
+                        }
+                    });
+                case 5:
+                    if (funcType != TypeRegistry.Func5.class) return null;
+                    return funcType.cast((TypeRegistry.Func5) (a, b, c, d, e) -> {
+                        try {
+                            return (Object) adapted.invokeExact(a, b, c, d, e);
+                        } catch (Throwable ex) {
+                            throw _creatorFailure(owner, ex);
+                        }
+                    });
+                default:
+                    return null;
+            }
+        } catch (RuntimeException e) {
+            // Unsupported adaptation: retain the existing generic handle path.
+            return null;
+        }
+    }
+
+    private static BindingException _creatorFailure(Class<?> owner, Throwable cause) {
+        if (cause instanceof BindingException) {
+            return (BindingException) cause;
+        }
+        return new BindingException("failed to invoke creator of '" + owner.getName() + "'", cause);
     }
 
     @SuppressWarnings("unchecked")
