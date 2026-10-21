@@ -15,7 +15,8 @@ public final class CreatorState {
 
     private Object pojo;
 
-    private Object[] args;
+    // Object[] for multi-argument creators, or the argument/sentinel for arity one.
+    private Object args;
     private int remainingArgs;
 
     private PropertyInfo[] pendingFields;
@@ -35,8 +36,13 @@ public final class CreatorState {
         }
 
         int argCount = creatorInfo.argNames == null ? 0 : creatorInfo.argNames.length;
-        this.args = new Object[argCount];
-        Arrays.fill(args, UNSET);
+        if (argCount == 1) {
+            this.args = UNSET;
+        } else {
+            Object[] array = new Object[argCount];
+            Arrays.fill(array, UNSET);
+            this.args = array;
+        }
         this.remainingArgs = argCount;
         if (argCount == 0) {
             createPojo();
@@ -53,10 +59,18 @@ public final class CreatorState {
     }
 
     public void acceptCtorArg(int index, Object value) {
-        if (args[index] != UNSET) {
-            throw new BindingException("duplicate creator argument assignment for '" + creatorInfo.argNames[index] + "'");
+        if (creatorInfo.argNames.length == 1) {
+            if (args != UNSET) {
+                throw new BindingException("duplicate creator argument assignment for '" + creatorInfo.argNames[index] + "'");
+            }
+            args = value;
+        } else {
+            Object[] array = (Object[]) args;
+            if (array[index] != UNSET) {
+                throw new BindingException("duplicate creator argument assignment for '" + creatorInfo.argNames[index] + "'");
+            }
+            array[index] = value;
         }
-        args[index] = value;
         if (--remainingArgs == 0) {
             createPojo();
         }
@@ -107,8 +121,13 @@ public final class CreatorState {
 
     public Object finish() {
         if (pojo == null) {
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] == UNSET) args[i] = null;
+            if (creatorInfo.argNames.length == 1) {
+                if (args == UNSET) args = null;
+            } else {
+                Object[] array = (Object[]) args;
+                for (int i = 0; i < array.length; i++) {
+                    if (array[i] == UNSET) array[i] = null;
+                }
             }
             createPojo();
         }
@@ -116,7 +135,9 @@ public final class CreatorState {
     }
 
     private void createPojo() {
-        pojo = creatorInfo.newPojoWithArgs(args);
+        pojo = creatorInfo.argNames.length == 1
+                ? creatorInfo.newPojoWithOneArg(args)
+                : creatorInfo.newPojoWithArgs((Object[]) args);
         replayPendingProperties();
         replayPendingDynamic();
     }
