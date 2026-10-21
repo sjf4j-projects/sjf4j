@@ -508,7 +508,7 @@ final class BindingCompiler {
             } catch (MirroredTypeException e) {
                 subtype = e.getTypeMirror();
             }
-            if (!canCompileOneOfReadSubtype(subtype, annotation.key())
+            if (!canCompileOneOfReadSubtype(subtype, annotation.key(), method)
                     || mapping.when().length == 0) return true;
             for (String when : mapping.when()) {
                 if (!keys.add(when)) return true;
@@ -530,7 +530,8 @@ final class BindingCompiler {
         return true;
     }
 
-    private boolean canCompileOneOfReadSubtype(TypeMirror subtype, String key) {
+    private boolean canCompileOneOfReadSubtype(TypeMirror subtype, String key,
+                                               ExecutableElement origin) {
         TypeElement type = context.types.typeElement(subtype);
         if (type == null || type.getKind() != ElementKind.CLASS
                 || !type.getModifiers().contains(Modifier.FINAL)
@@ -540,16 +541,27 @@ final class BindingCompiler {
 
         int publicConstructors = 0;
         for (Element enclosed : type.getEnclosedElements()) {
-            if (enclosed.getKind() != ElementKind.CONSTRUCTOR
-                    || !enclosed.getModifiers().contains(Modifier.PUBLIC)) continue;
-            publicConstructors++;
-            for (VariableElement arg : ((ExecutableElement) enclosed).getParameters()) {
-                if (key.equals(context.annotations.propertyName(arg, arg.getSimpleName().toString()))
-                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key)
-                        || !simpleOneOfReadValue(arg.asType())) return false;
-            }
+            if (enclosed.getKind() == ElementKind.CONSTRUCTOR
+                    && enclosed.getModifiers().contains(Modifier.PUBLIC)) publicConstructors++;
         }
         if (publicConstructors != 1) return false;
+
+        // Resolve exactly the constructor or annotated factory that compilePojo
+        // will use. Checking only constructors misses @NodeCreator factory aliases
+        // that consume the OneOf discriminator.
+        // Preflight is optional: invalid/unsupported plans fall back to runtime
+        // instead of emitting diagnostics or partially compiling subtype helpers.
+        CreatorPlan creator = creators.resolveBinding(subtype, origin, ignored -> {});
+        if (creator == null) return false;
+        if (creator.kind() != CreatorPlan.Kind.NO_ARGS) {
+            List<? extends VariableElement> parameters = creator.executable().getParameters();
+            for (int i = 0; i < parameters.size(); i++) {
+                VariableElement arg = parameters.get(i);
+                if (key.equals(context.annotations.propertyName(arg, arg.getSimpleName().toString()))
+                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key)
+                        || !simpleOneOfReadValue(creator.parameterTypes().get(i))) return false;
+            }
+        }
         for (Property property : context.properties.resolve(subtype).values()) {
             PropertyAccess writable = property.write();
             if (writable == null) continue;
