@@ -250,12 +250,13 @@ final class ReadEmitter {
         out.line("Object discriminator = reader.readRaw();");
         out.beginBlock("if (discriminator != null)");
         out.beginBlock("switch (String.valueOf(discriminator))");
-        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+        for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
+            BindingValue.OneOfSubtype subtype = value.oneOfSubtypes().get(i);
             for (String when : subtype.when) {
                 out.line("case " + JavaWriter.stringLiteral(when) + ":");
             }
             out.indent();
-            out.line("return " + subtype.compiled.helperName() + "_content(reader);");
+            out.line("return " + value.helperName() + "_subtype" + i + "_content(reader);");
             out.dedent();
         }
         out.endBlock();
@@ -280,10 +281,12 @@ final class ReadEmitter {
     }
 
     /** Subtype body starts after START_OBJECT and the already consumed discriminator. */
-    void emitOneOfSubtypeContent(JavaWriter out, BindingValue subtype, String discriminatorKey) {
-        out.beginBlock("private " + subtype.type() + " " + subtype.helperName()
-                + "_content(" + backend.readerType() + " reader) throws java.io.IOException");
-        emitPojo(out, subtype, true, discriminatorKey);
+    void emitOneOfSubtypeContent(JavaWriter out, BindingValue owner,
+                                 BindingValue subtype, int index) {
+        out.beginBlock("private " + subtype.type() + " " + owner.helperName()
+                + "_subtype" + index + "_content(" + backend.readerType()
+                + " reader) throws java.io.IOException");
+        emitPojo(out, subtype, true, owner.oneOfKey());
         out.endBlock();
     }
 
