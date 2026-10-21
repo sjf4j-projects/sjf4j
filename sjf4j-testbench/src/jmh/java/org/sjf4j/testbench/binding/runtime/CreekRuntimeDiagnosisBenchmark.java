@@ -34,6 +34,8 @@ public class CreekRuntimeDiagnosisBenchmark {
     public int polyCount;
 
     private static final Type POLY_LIST_TYPE = new TypeReference<List<PolyBase>>() {}.getType();
+    private static final com.fasterxml.jackson.core.type.TypeReference<List<PolyBase>> JACKSON_LIST_TYPE =
+            new com.fasterxml.jackson.core.type.TypeReference<List<PolyBase>>() {};
     private String listJson;
     private String creekJson;
     private byte[] creekUtf8;
@@ -63,7 +65,7 @@ public class CreekRuntimeDiagnosisBenchmark {
         verify(reduced.getPolymorphicTypes(), RUNTIME.readNode(listJson, POLY_LIST_TYPE),
                 "runtime polymorphic list");
         verify(reduced.getPolymorphicTypes(),
-                JACKSON.readValue(listJson, new com.fasterxml.jackson.core.type.TypeReference<List<PolyBase>>() {}),
+                JACKSON.readValue(listJson, JACKSON_LIST_TYPE),
                 "native polymorphic list");
         verify(new PolyTypeA(ID), RUNTIME.readNode(firstA, PolyBase.class),
                 "A first OneOf");
@@ -100,7 +102,7 @@ public class CreekRuntimeDiagnosisBenchmark {
     }
     @Benchmark public Object list_jackson_native() throws IOException {
         return JACKSON.readValue(listJson,
-                new com.fasterxml.jackson.core.type.TypeReference<List<PolyBase>>() {});
+                JACKSON_LIST_TYPE);
     }
     @Benchmark public Object subtype_a_jackson_native() throws IOException {
         return JACKSON.readValue(firstA, PolyBase.class);
