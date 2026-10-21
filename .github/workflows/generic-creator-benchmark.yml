@@ -1,0 +1,51 @@
+name: Generic Creator Runtime JMH
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-core/src/main/java/org/sjf4j/util/Invokers.java'
+      - 'sjf4j-core/src/main/java/org/sjf4j/meta/ReflectUtil.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/GenericCreatorInvokeBenchmark.java'
+      - '.github/workflows/generic-creator-benchmark.yml'
+
+jobs:
+  generic-runtime-creator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Compare generic fixed-arity Creator to invokeWithArguments
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*GenericCreatorInvokeBenchmark[.].*' \
+            -f 1 -wi 4 -w 350ms -i 8 -r 350ms -t 1 \
+            -prof gc -rf json -rff generic-creator-jmh.json | tee generic-creator-jmh.txt
+      - name: Creek Runtime vs native smoke
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CreekModelBenchmark[.]read_(runtime|native)' \
+            -f 1 -wi 4 -w 350ms -i 8 -r 350ms -t 1 \
+            -prof gc -rf json -rff creek-runtime-jmh.json | tee creek-runtime-jmh.txt
+      - name: Upload JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generic-creator-runtime-jmh
+          path: |
+            generic-creator-jmh.json
+            generic-creator-jmh.txt
+            creek-runtime-jmh.json
+            creek-runtime-jmh.txt
+          if-no-files-found: warn
