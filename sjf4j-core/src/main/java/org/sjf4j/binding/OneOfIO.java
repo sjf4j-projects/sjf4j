@@ -182,6 +182,60 @@ public final class OneOfIO {
         }
         _acceptRawField(discriminatorKey, discriminatorValue, targetClazz, pi, state, context);
 
+        // Creator-bound types already have an index-aligned matcher. Let the
+        // backend recognize field names directly, rather than allocating names
+        // and looking them up again in CreatorInfo and propertyLookup.
+        if (pi.creatorMatchNames != null) {
+            NameMatcher matcher = StreamingIO.cacheCreatorNameMatcher(reader, pi);
+            int expectedIndex = 0;
+            int index;
+            while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
+                String key = index >= 0 ? matcher.name(index) : reader.currentName();
+                if (discriminatorKey.equals(key)) {
+                    throw new BindingException("duplicate oneOf discriminator key '" + discriminatorKey + "'");
+                }
+
+                if (index >= 0) {
+                    expectedIndex = index + 1;
+                    int argIdx = pi.creatorMatchArgs[index];
+                    if (argIdx >= 0) {
+                        ValueInfo codec = ci.argValueCodecs[argIdx];
+                        Object value;
+                        if (codec != null) {
+                            value = StreamingIO.readValueCodec(reader, codec, context);
+                        } else {
+                            Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
+                            Class<?> argBoxed = Types.rawBox(argType);
+                            TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
+                            value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
+                        }
+                        state.acceptCtorArg(argIdx, value);
+                        continue;
+                    }
+
+                    PropertyInfo fi = pi.creatorMatchProperties[index];
+                    if (fi != null && fi.reader != null) {
+                        if (state.isCreated()) {
+                            fi.reader.read(reader, state.pojo(), targetClazz, targetClazz, context);
+                        } else {
+                            Object value = StreamingIO.readProperty(reader, fi, targetClazz, targetClazz, context);
+                            state.bufferProperty(fi, value);
+                        }
+                        continue;
+                    }
+                }
+
+                if (pi.isJojo && pi.readDynamic) {
+                    state.acceptDynamic(key, reader.readRaw());
+                } else {
+                    reader.skipNode();
+                }
+            }
+            return state.finish();
+        }
+
+        // No-argument POJOs do not require creatorMatchNames. Preserve their
+        // existing member lookup and dynamic-property behavior.
         while (!reader.nextIfObjectEnd()) {
 
             String key = reader.nextName();
