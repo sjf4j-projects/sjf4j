@@ -82,7 +82,7 @@ final class BindingEmitter {
                 for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
                     BindingValue compiled = subtype.compiled;
                     if (compiled != null && emittedOneOfReadBodies.add(compiled.helperName())) {
-                        generated.addHelper(out -> reads.emitOneOfSubtypeContent(out, compiled));
+                        generated.addHelper(out -> reads.emitOneOfSubtypeContent(out, compiled, value.oneOfKey()));
                     }
                 }
             }
