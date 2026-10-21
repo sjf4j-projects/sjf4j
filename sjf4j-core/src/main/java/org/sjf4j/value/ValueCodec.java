@@ -257,7 +257,7 @@ public interface ValueCodec<V, R> {
 
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Instant, String> INSTANT_STR = new StreamingValueCodec<>(Instant.class, String.class,
-            Instant::toString, Instant::parse, StreamingReader::readInstant, null);
+            Instant::toString, Instant::parse, StreamingReader::readInstant, StreamingWriter::writeInstant);
 
     @NodeValue(format = "epochMillis")
     ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
@@ -296,7 +296,7 @@ public interface ValueCodec<V, R> {
             reader -> {
                 Instant instant = reader.readInstant();
                 return instant == null ? null : Date.from(instant);
-            }, null);
+            }, (writer, date) -> writer.writeInstant(date == null ? null : date.toInstant()));
 
     // Retain the historical PatternedValueCodec fields as aliases; register
     // all built-in value types from this single declaration surface.
@@ -325,7 +325,9 @@ public interface ValueCodec<V, R> {
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Calendar, String> CALENDAR = new StreamingValueCodec<>(Calendar.class, String.class,
             ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw,
-            reader -> ValueCodec._calendarFromZonedDateTime(reader.readZonedDateTime()), null);
+            reader -> ValueCodec._calendarFromZonedDateTime(reader.readZonedDateTime()),
+            (writer, calendar) -> writer.writeZonedDateTime(calendar == null ? null
+                    : ZonedDateTime.ofInstant(calendar.toInstant(), calendar.getTimeZone().toZoneId())));
 
     // calendar → string
     static String _calendarToRaw(Calendar value) {
