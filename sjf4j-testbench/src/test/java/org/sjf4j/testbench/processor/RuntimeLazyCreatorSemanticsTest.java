@@ -80,6 +80,57 @@ class RuntimeLazyCreatorSemanticsTest {
     public record Branch(List<RecursiveNode> children, RecursiveNode direct)
             implements RecursiveNode {}
 
+
+    public interface ParentPet {}
+
+    public record ParentDog(String name) implements ParentPet {}
+
+    public record ParentCat(int lives) implements ParentPet {}
+
+    public static final class ParentEnvelope {
+        public String kind;
+        @OneOf(scope = OneOf.Scope.PARENT, key = "kind", mappings = {
+                @OneOfMapping(type = ParentDog.class, when = "dog"),
+                @OneOfMapping(type = ParentCat.class, when = "cat")
+        })
+        public ParentPet pet;
+    }
+
+    public static final class JsonShapeEnvelope {
+        @OneOf(mappings = {
+                @OneOfMapping(type = String.class),
+                @OneOfMapping(type = Integer.class)
+        })
+        public Object value;
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void parentScopeDispatchHandlesBeforeAndAfterDiscriminator(String backend, Binder<?, ?> binder) {
+        for (String json : new String[]{
+                "{\"kind\":\"dog\",\"pet\":{\"name\":\"Rex\"}}",
+                "{\"pet\":{\"name\":\"Rex\"},\"kind\":\"dog\"}"
+        }) {
+            ParentEnvelope root = (ParentEnvelope) binder.readNode(json, ParentEnvelope.class);
+            assertEquals("Rex", assertInstanceOf(ParentDog.class, root.pet, backend).name(), backend);
+            assertEquals("dog", root.kind, backend);
+        }
+        ParentEnvelope cat = (ParentEnvelope) binder.readNode(
+                "{\"pet\":{\"lives\":9},\"kind\":\"cat\"}", ParentEnvelope.class);
+        assertEquals(9, assertInstanceOf(ParentCat.class, cat.pet, backend).lives(), backend);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void discriminatorFreeOneOfReadsScalarTargets(String backend, Binder<?, ?> binder) {
+        JsonShapeEnvelope text = (JsonShapeEnvelope) binder.readNode(
+                "{\"value\":\"hello\"}", JsonShapeEnvelope.class);
+        assertEquals("hello", text.value, backend);
+        JsonShapeEnvelope number = (JsonShapeEnvelope) binder.readNode(
+                "{\"value\":42}", JsonShapeEnvelope.class);
+        assertEquals(42, number.value, backend);
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("backends")
     void resolvesParameterizedCreatorArgumentsPerCall(String backend, Binder<?, ?> binder) {
