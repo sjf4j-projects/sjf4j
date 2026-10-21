@@ -15,6 +15,8 @@ import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -55,6 +57,28 @@ class RuntimeLazyCreatorSemanticsTest {
             this.map = map;
         }
     }
+
+
+    public static final class MixedCreator<T> {
+        public final List<UUID> fixed;
+        public final Map<String, LocalDate> dates;
+        public final List<T> variable;
+
+        @NodeCreator
+        public MixedCreator(@NodeProperty("fixed") List<UUID> fixed,
+                            @NodeProperty("dates") Map<String, LocalDate> dates,
+                            @NodeProperty("variable") List<T> variable) {
+            this.fixed = fixed;
+            this.dates = dates;
+            this.variable = variable;
+        }
+    }
+
+    @OneOf(key = "kind", mappings = @OneOfMapping(type = FixedContainerVariant.class, when = "fixed"))
+    public interface FixedContainerOneOf {}
+
+    public record FixedContainerVariant(List<UUID> fixed, Map<String, LocalDate> dates)
+            implements FixedContainerOneOf {}
 
     public static class Base<T> {
         public T inherited;
@@ -129,6 +153,49 @@ class RuntimeLazyCreatorSemanticsTest {
         JsonShapeEnvelope number = (JsonShapeEnvelope) binder.readNode(
                 "{\"value\":42}", JsonShapeEnvelope.class);
         assertEquals(42, number.value, backend);
+    }
+
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void fixedContainerArgumentsDoNotDependOnGenericOwner(String backend, Binder<?, ?> binder) {
+        CreatorInfo creator = TypeRegistry.requireRegisteredPojoInfo(MixedCreator.class).creatorInfo;
+        assertFalse(creator.argGenericDependent[0], backend);
+        assertFalse(creator.argGenericDependent[1], backend);
+        assertTrue(creator.argGenericDependent[2], backend);
+
+        UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+        String prefix = "{\"fixed\":[\"" + id
+                + "\"],\"dates\":{\"first\":\"2024-01-15\"},\"variable\":";
+        MixedCreator<Integer> ints = (MixedCreator<Integer>) binder.readNode(
+                prefix + "[4,5]}", new TypeReference<MixedCreator<Integer>>() {}.getType());
+        assertEquals(id, ints.fixed.get(0), backend);
+        assertEquals(LocalDate.of(2024, 1, 15), ints.dates.get("first"), backend);
+        assertEquals(List.of(4, 5), ints.variable, backend);
+
+        MixedCreator<LocalDate> dates = (MixedCreator<LocalDate>) binder.readNode(
+                prefix + "[\"2024-02-16\"]}", new TypeReference<MixedCreator<LocalDate>>() {}.getType());
+        assertEquals(id, dates.fixed.get(0), backend);
+        assertEquals(LocalDate.of(2024, 1, 15), dates.dates.get("first"), backend);
+        assertEquals(List.of(LocalDate.of(2024, 2, 16)), dates.variable, backend);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void fixedContainersInOneOfCreatorWorkWithBothDiscriminatorOrders(
+            String backend, Binder<?, ?> binder) {
+        UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+        String fields = "\"fixed\":[\"" + id
+                + "\"],\"dates\":{\"first\":\"2024-01-15\"}";
+        for (String json : new String[]{
+                "{\"kind\":\"fixed\"," + fields + "}",
+                "{" + fields + ",\"kind\":\"fixed\"}"
+        }) {
+            FixedContainerVariant value = assertInstanceOf(FixedContainerVariant.class,
+                    binder.readNode(json, FixedContainerOneOf.class), backend);
+            assertEquals(id, value.fixed().get(0), backend);
+            assertEquals(LocalDate.of(2024, 1, 15), value.dates().get("first"), backend);
+        }
     }
 
     @ParameterizedTest(name = "{0}")
