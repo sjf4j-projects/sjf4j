@@ -43,9 +43,9 @@ public final class OneOfIO {
     static Object readOneOfByJsonType(StreamingReader reader, OneOfInfo oneOfInfo,
                                       RuntimeContext context) throws IOException {
         JsonType jsonType = reader.peekToken().jsonType();
-        Class<?> targetClazz = oneOfInfo.matchByJsonType(jsonType);
-        if (targetClazz != null) {
-            return StreamingIO.readNode(reader, targetClazz, context);
+        LazyTypeInfo target = oneOfInfo.lazyTypeInfoByJsonType(jsonType);
+        if (target != null) {
+            return StreamingIO.readNode(reader, target.clazz, target.clazz, target.get(), context);
         }
 
         if (oneOfInfo.fallbackNull) {
@@ -326,10 +326,10 @@ public final class OneOfIO {
     private static Object _convertRawOneOf(Object raw, OneOfInfo info, RuntimeContext context) {
         if (raw == null) return null;
 
-        Class<?> target;
+        LazyTypeInfo target;
         JsonType shape = JsonType.of(raw);
         if (!info.hasDiscriminator) {
-            target = info.matchByJsonType(shape);
+            target = info.lazyTypeInfoByJsonType(shape);
         } else {
             if (info.scope != OneOf.Scope.CURRENT) {
                 throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + info.scope);
@@ -346,10 +346,10 @@ public final class OneOfIO {
                 throw new BindingException("not found value for discriminator "
                         + (info.keyDiscriminator ? "key '" + info.key + "'" : "path '" + info.path + "'"));
             }
-            target = info.matchByWhen(discriminator);
+            target = info.lazyTypeInfoByWhen(discriminator);
         }
 
-        if (target != null) return NodeMapper.convert(raw, target, false, context);
+        if (target != null) return NodeMapper.convert(raw, target.clazz, false, context);
         if (info.fallbackNull) return null;
         throw new BindingException("oneOf mapping has no matching target for type '" + info.clazz.getName() + "'");
     }
