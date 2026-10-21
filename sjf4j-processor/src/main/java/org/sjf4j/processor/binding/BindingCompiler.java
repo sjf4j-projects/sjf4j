@@ -483,14 +483,6 @@ final class BindingCompiler {
     }
 
     /**
-     * Member annotations override type-level OneOf. They need their owner's
-     * cached PropertyInfo rather than metadata resolved from the child class.
-     */
-    /**
-     * Compile mapped types once, retaining Runtime for subtypes whose serialized
-     * fields are inaccessible to generated Java code.
-     */
-    /**
      * Compile only the inexpensive, statically safe CURRENT/key case. Other
      * mappings retain OneOfIO, including PARENT/path/shape discriminators,
      * recursive graphs, and subtypes with discriminator-bound fields.
@@ -531,8 +523,9 @@ final class BindingCompiler {
                     subtype, method, generated);
             if (child == null) return false;
             for (BindingProperty property : child.properties()) {
-                if (annotation.key().equals(property.name())) {
-                    // The preflight checks this too; keep the invariant local.
+                if (annotation.key().equals(property.name())
+                        || java.util.Arrays.asList(property.aliases()).contains(annotation.key())) {
+                    // A discriminator alias would bypass duplicate-key checks.
                     return false;
                 }
             }
@@ -573,12 +566,31 @@ final class BindingCompiler {
     }
 
     private boolean simpleOneOfReadValue(TypeMirror type) {
-        if (type.getKind().isPrimitive()) return true;
+        if (type.getKind().isPrimitive()) {
+            return type.getKind() != TypeKind.CHAR;
+        }
         TypeElement element = context.types.typeElement(type);
-        if (element != null && element.getKind() == ElementKind.ENUM) return true;
-        NodeKind kind = context.types.nodeKind(type);
-        return kind.isValue() || context.types.isNodeValue(type)
-                || metadata.hasValueCodec(type);
+        if (element != null && element.getKind() == ElementKind.ENUM) return false;
+        String name = context.typeUtils.erasure(type).toString();
+        switch (name) {
+            case "java.lang.String":
+            case "java.lang.Boolean":
+            case "java.lang.Byte":
+            case "java.lang.Short":
+            case "java.lang.Integer":
+            case "java.lang.Long":
+            case "java.lang.Float":
+            case "java.lang.Double":
+            case "java.lang.Number":
+            case "java.math.BigInteger":
+            case "java.math.BigDecimal":
+                return true;
+            default:
+                // Only codecs with a known raw shape may replay buffered
+                // fields without a generic NodeMapper conversion.
+                return (context.types.isNodeValue(type) || metadata.hasValueCodec(type))
+                        && metadata.stableCodecRawType(type, null) != null;
+        }
     }
 
     private boolean compileOneOfWrite(BindingValue value, OneOf annotation,

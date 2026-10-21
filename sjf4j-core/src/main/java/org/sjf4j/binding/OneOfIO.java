@@ -88,37 +88,14 @@ public final class OneOfIO {
 
     private static Object _readByDtorKey(StreamingReader reader, OneOfInfo oneOfInfo,
                                          RuntimeContext context) throws IOException {
-        reader.startObject();
-        return _readByDtorKeyContent(reader, oneOfInfo, context, null, null);
-    }
-
-    /**
-     * Continue a CURRENT/key OneOf object after a compiled reader has consumed
-     * its first non-discriminator field. The object has already been opened.
-     */
-    public static Object readOneOfAfterFirstField(StreamingReader reader, OneOfInfo oneOfInfo,
-                                                 RuntimeContext context, String name, Object value)
-            throws IOException {
-        return _readByDtorKeyContent(reader, oneOfInfo, context, name, value);
-    }
-
-    private static Object _readByDtorKeyContent(StreamingReader reader, OneOfInfo oneOfInfo,
-                                               RuntimeContext context, String firstName, Object firstValue)
-            throws IOException {
         final boolean fallbackNull = oneOfInfo.fallbackNull;
         final String discriminatorKey = oneOfInfo.key;
         String[] pendingNames = null;
         Object[] pendingValues = null;
         int pendingSize = 0;
-        if (firstName != null) {
-            pendingNames = new String[INITIAL_PENDING_CAPACITY];
-            pendingValues = new Object[INITIAL_PENDING_CAPACITY];
-            pendingNames[0] = firstName;
-            pendingValues[0] = firstValue;
-            pendingSize = 1;
-        }
 
         NameMatcher matcher = _cacheDiscriminatorMatcher(reader, oneOfInfo);
+        reader.startObject();
         int index;
         while ((index = reader.nextNameMatch(matcher, 0)) != NameMatcher.OBJECT_END) {
             if (index == 0) {

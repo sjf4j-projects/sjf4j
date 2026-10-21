@@ -219,7 +219,7 @@ final class ReadEmitter {
         }
     }
 
-    /** Fast path for a key discriminator in the first JSON member. */
+    /** Compile CURRENT/key OneOf without depending on discriminator position. */
     void emitOneOfReadHelper(JavaWriter out, BindingValue value) {
         String info = value.helperName() + "_info";
         out.beginBlock("private " + value.type() + " " + value.helperName()
@@ -231,25 +231,15 @@ final class ReadEmitter {
         out.line("reader.startObject();");
         out.endBlock();
 
-        // Match the common discriminator-first layout without asking Jackson
-        // to materialize the property name on the successful match.
-        out.line("int firstIndex = reader.nextNameMatch("
-                + value.helperName() + "_discriminator, 0);");
-        out.beginBlock("if (firstIndex == " + NAME_MATCHER + ".OBJECT_END)");
-        out.beginBlock("if (" + info + ".fallbackNull)");
-        out.line("return null;");
-        out.endBlock();
-        out.line("throw new org.sjf4j.exception.BindingException("
-                + JavaWriter.stringLiteral("not found value for discriminator key '" + value.oneOfKey() + "'")
-                + ");");
-        out.endBlock();
-
-        out.beginBlock("if (firstIndex != 0)");
-        out.line("return (" + value.type() + ") org.sjf4j.binding.OneOfIO"
-                + ".readOneOfAfterFirstField(reader, " + info
-                + ", this.context, reader.currentName(), reader.readRaw());");
-        out.endBlock();
-
+        // The usual discriminator-first layout allocates nothing for buffering.
+        // Earlier names retain their actual JSON order for duplicate detection.
+        out.line("String[] prefixNames = null;");
+        out.line("Object[] prefixValues = null;");
+        out.line("int prefixSize = 0;");
+        out.line("int nameIndex;");
+        out.beginBlock("while ((nameIndex = reader.nextNameMatch("
+                + value.helperName() + "_discriminator, 0)) != " + NAME_MATCHER + ".OBJECT_END)");
+        out.beginBlock("if (nameIndex == 0)");
         out.line("Object discriminator = reader.readRaw();");
         out.beginBlock("if (discriminator != null)");
         out.beginBlock("switch (String.valueOf(discriminator))");
@@ -259,12 +249,12 @@ final class ReadEmitter {
                 out.line("case " + JavaWriter.stringLiteral(when) + ":");
             }
             out.indent();
-            out.line("return " + value.helperName() + "_subtype" + i + "_content(reader);");
+            out.line("return " + value.helperName() + "_subtype" + i
+                    + "_content(reader, prefixNames, prefixValues, prefixSize);");
             out.dedent();
         }
-        out.endBlock();
-        out.endBlock();
-
+        out.endBlock(); // switch
+        out.endBlock(); // if non-null
         out.beginBlock("if (" + info + ".fallbackNull)");
         out.beginBlock("while (!reader.nextIfObjectEnd())");
         out.line("reader.nextName();");
@@ -280,17 +270,86 @@ final class ReadEmitter {
         out.line("throw new org.sjf4j.exception.BindingException("
                 + JavaWriter.stringLiteral("oneOf discriminator has no matching mapping: value='")
                 + " + discriminator + " + JavaWriter.stringLiteral("'") + ");");
+        out.endBlock(); // if discriminator
+
+        out.beginBlock("if (prefixNames == null)");
+        out.line("prefixNames = new String[4];");
+        out.line("prefixValues = new Object[4];");
+        out.endBlock(" else if (prefixSize == prefixNames.length) {");
+        out.indent();
+        out.line("prefixNames = java.util.Arrays.copyOf(prefixNames, prefixSize << 1);");
+        out.line("prefixValues = java.util.Arrays.copyOf(prefixValues, prefixSize << 1);");
+        out.endBlock();
+        out.line("prefixNames[prefixSize] = reader.currentName();");
+        out.line("prefixValues[prefixSize++] = reader.readRaw();");
+        out.endBlock(); // while
+
+        out.beginBlock("if (" + info + ".fallbackNull)");
+        out.line("return null;");
+        out.endBlock();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + JavaWriter.stringLiteral("not found value for discriminator key '" + value.oneOfKey() + "'")
+                + ");");
         out.endBlock();
     }
 
-    /** Subtype body starts after START_OBJECT and the already consumed discriminator. */
+    /** Continue parsing after the discriminator; replay only the raw prefix. */
     void emitOneOfSubtypeContent(JavaWriter out, BindingValue owner,
                                  BindingValue subtype, int index) {
         out.beginBlock("private " + subtype.type() + " " + owner.helperName()
                 + "_subtype" + index + "_content(" + backend.readerType()
-                + " reader) throws java.io.IOException");
+                + " reader, String[] prefixNames, Object[] prefixValues, int prefixSize)"
+                + " throws java.io.IOException");
         emitPojo(out, subtype, true, owner.oneOfKey());
         out.endBlock();
+    }
+
+    /** Reuse normal property assignment and Creator duplicate checks for buffered fields. */
+    private void emitOneOfPrefixReplay(JavaWriter out, BindingValue subtype) {
+        out.beginBlock("for (int prefixIndex = 0; prefixIndex < prefixSize; prefixIndex++)");
+        out.line("Object prefixRaw = prefixValues[prefixIndex];");
+        out.beginBlock("switch (prefixNames[prefixIndex])");
+        for (BindingProperty property : subtype.properties()) {
+            out.line("case " + JavaWriter.stringLiteral(property.name()) + ":");
+            for (String alias : property.aliases()) {
+                out.line("case " + JavaWriter.stringLiteral(alias) + ":");
+            }
+            out.indent();
+            emitPropertyReadExpression(out, property, "value",
+                    readOneOfPrefixValue(property.value(), "prefixRaw"));
+            out.line("break;");
+            out.dedent();
+        }
+        out.line("default:");
+        out.indent();
+        out.line("break;"); // unknown fields do not belong to compiled POJOs
+        out.dedent();
+        out.endBlock(); // switch
+        out.endBlock(); // for
+    }
+
+    /** Raw scalar conversion for the compile-time-safe OneOf subtype subset. */
+    private String readOneOfPrefixValue(BindingValue value, String raw) {
+        String numeric = "org.sjf4j.util.Numbers.";
+        String decoded;
+        switch (value.kind()) {
+            case STRING: return "(String) " + raw;
+            case BOOLEAN: return "(Boolean) " + raw;
+            case NUMBER: return "(Number) " + raw;
+            case BYTE: decoded = numeric + "toByte((Number) " + raw + ")"; break;
+            case SHORT: decoded = numeric + "toShort((Number) " + raw + ")"; break;
+            case INT: decoded = numeric + "toInt((Number) " + raw + ")"; break;
+            case LONG: decoded = numeric + "toLong((Number) " + raw + ")"; break;
+            case FLOAT: decoded = numeric + "toFloat((Number) " + raw + ")"; break;
+            case DOUBLE: decoded = numeric + "toDouble((Number) " + raw + ")"; break;
+            case BIG_INTEGER: decoded = numeric + "toBigInteger((Number) " + raw + ")"; break;
+            case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
+            case VALUE_CODEC:
+                return "(" + value.type() + ") " + value.helperName() + ".rawToValue(" + raw + ")";
+            default:
+                throw new AssertionError("Unsupported compiled OneOf prefix type " + value.kind());
+        }
+        return value.primitive() ? decoded : "(" + raw + " == null ? null : " + decoded + ")";
     }
 
     private void emitPojo(
@@ -313,6 +372,7 @@ final class ReadEmitter {
                         " value = new " +
                         value.type() +
                         "();");
+        if (consumedDiscriminator != null) emitOneOfPrefixReplay(out, value);
 
         if (fastjson2Pojo != null && !value.properties().isEmpty()) {
             fastjson2Pojo.emitProperties(out, value, this, false);
@@ -368,6 +428,7 @@ final class ReadEmitter {
             out.line(argCount <= 64 ? "long seen = 0L;"
                     : "boolean[] seen = new boolean[" + argCount + "];");
         }
+        if (consumedDiscriminator != null) emitOneOfPrefixReplay(out, value);
 
         int size = value.properties().size();
         if (fastjson2Pojo != null && size != 0) {

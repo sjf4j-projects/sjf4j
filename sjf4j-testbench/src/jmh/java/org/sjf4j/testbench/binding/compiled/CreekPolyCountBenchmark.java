@@ -55,8 +55,8 @@ public class CreekPolyCountBenchmark {
         check(expected, read_runtime());
         check(expected, read_compiled());
 
-        // Discriminator-first must use compiled subtype bodies; a late
-        // discriminator still works through the buffered runtime continuation.
+        // Both discriminator-first and discriminator-last use compiled subtype
+        // bodies. The latter restores the raw prefix before streaming onward.
         UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
         PolyBase first = SJF4J_COMPILED.readPoly("{\"@type\":\"poly-a\",\"id\":\"" + id + "\"}");
         PolyBase last = SJF4J_COMPILED.readPoly("{\"id\":\"" + id + "\",\"@type\":\"poly-a\"}");
