@@ -48,6 +48,21 @@ public class RuntimeOneOfMatcherTest {
         public int after;
     }
 
+    @OneOf(key = "kind", mappings = @OneOfMapping(type = PlainPet.class, when = "plain"))
+    public interface PlainVariant {}
+
+    public static final class PlainPet implements PlainVariant {
+        @NodeProperty(aliases = "oldName") public String name;
+        public int count;
+        // The discriminator may also be an alias of a declared property.
+        @NodeProperty(value = "label", aliases = "kind") public String label;
+    }
+
+    public static final class PlainEnvelope {
+        public PlainVariant pet;
+        public int after;
+    }
+
     static Stream<Arguments> backends() {
         return Stream.of(
                 Arguments.of("simple", new SimpleJsonBinder()),
@@ -95,4 +110,28 @@ public class RuntimeOneOfMatcherTest {
         assertThrows(BindingException.class,
                 () -> binder.readNode(duplicateAlias, Envelope.class), backend);
     }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void readsNoArgPojoViaPreparedNameMatcher(String backend, Binder<?, ?> binder) {
+        String[] objects = {
+                "{\"kind\":\"plain\",\"oldName\":\"ok\",\"count\":7}",
+                "{\"count\":7,\"kind\":\"plain\",\"name\":\"ok\"}",
+                "{\"oldName\":\"ok\",\"count\":7,\"kind\":\"plain\"}"
+        };
+        for (String object : objects) {
+            PlainEnvelope envelope = (PlainEnvelope) binder.readNode(
+                    "{\"pet\":" + object + ",\"after\":19}", PlainEnvelope.class);
+            PlainPet pet = assertInstanceOf(PlainPet.class, envelope.pet, backend);
+            assertEquals("ok", pet.name, backend);
+            assertEquals(7, pet.count, backend);
+            assertEquals("plain", pet.label, backend);
+            assertEquals(19, envelope.after, backend);
+        }
+
+        assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"kind\":\"plain\",\"kind\":\"plain\"}}",
+                        PlainEnvelope.class), backend);
+    }
+
 }

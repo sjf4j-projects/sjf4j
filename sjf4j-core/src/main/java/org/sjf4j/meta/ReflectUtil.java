@@ -1089,6 +1089,10 @@ public final class ReflectUtil {
                         " is not assignable from " + clazz.getName());
             }
             _rejectNestedOneOf(clazz, subClazz);
+            if (!ann.key().isEmpty() && !isPojoCandidate(subClazz)) {
+                throw new BindingException("key-discriminated @OneOf requires a POJO subtype, but '"
+                        + subClazz.getName() + "' is not a POJO");
+            }
             if (hasDiscriminator) {
                 if (mapping.when().length == 0) {
                     throw new BindingException("given a discriminator but has empty 'when' in mapping " +

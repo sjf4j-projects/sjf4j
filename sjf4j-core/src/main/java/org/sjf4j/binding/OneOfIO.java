@@ -7,6 +7,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.CreatorState;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.value.ValueInfo;
@@ -19,8 +20,6 @@ import org.sjf4j.util.Types;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 public final class OneOfIO {
 
@@ -44,9 +43,9 @@ public final class OneOfIO {
     static Object readOneOfByJsonType(StreamingReader reader, OneOfInfo oneOfInfo,
                                       RuntimeContext context) throws IOException {
         JsonType jsonType = reader.peekToken().jsonType();
-        Class<?> targetClazz = oneOfInfo.matchByJsonType(jsonType);
-        if (targetClazz != null) {
-            return StreamingIO.readNode(reader, targetClazz, context);
+        LazyTypeInfo target = oneOfInfo.lazyTypeInfoByJsonType(jsonType);
+        if (target != null) {
+            return StreamingIO.readNode(reader, target.clazz, target.clazz, target.get(), context);
         }
 
         if (oneOfInfo.fallbackNull) {
@@ -95,10 +94,11 @@ public final class OneOfIO {
         Object[] pendingValues = null;
         int pendingSize = 0;
 
+        NameMatcher matcher = _cacheDiscriminatorMatcher(reader, oneOfInfo);
         reader.startObject();
-        while (!reader.nextIfObjectEnd()) {
-            String name = reader.nextName();
-            if (discriminatorKey.equals(name)) {
+        int index;
+        while ((index = reader.nextNameMatch(matcher, 0)) != NameMatcher.OBJECT_END) {
+            if (index == 0) {
                 Object discriminatorValue = reader.readRaw();
                 if (discriminatorValue == null) {
                     if (fallbackNull) {
@@ -108,8 +108,8 @@ public final class OneOfIO {
                     throw new BindingException("not found value for discriminator key '" + discriminatorKey + "'");
                 }
 
-                Class<?> targetClazz = oneOfInfo.matchByWhen(discriminatorValue);
-                if (targetClazz == null) {
+                LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);
+                if (target == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(reader);
                         return null;
@@ -117,10 +117,11 @@ public final class OneOfIO {
                     throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
                 }
 
-                return _readRemainingObject(reader, targetClazz, pendingNames, pendingValues, pendingSize,
+                return _readRemainingObject(reader, target, pendingNames, pendingValues, pendingSize,
                         discriminatorKey, discriminatorValue, context);
             }
 
+            String name = reader.currentName();
             Object value = reader.readRaw();
             if (pendingNames == null) {
                 pendingNames = new String[INITIAL_PENDING_CAPACITY];
@@ -143,27 +144,13 @@ public final class OneOfIO {
     }
 
 
-    private static Object _readRemainingObject(StreamingReader reader, Class<?> targetClazz,
+    private static Object _readRemainingObject(StreamingReader reader, LazyTypeInfo target,
                                                String[] pendingNames, Object[] pendingValues, int pendingSize,
                                                String discriminatorKey, Object discriminatorValue,
                                                RuntimeContext context) throws IOException {
 
-        TypeInfo ti = TypeRegistry.registerTypeInfo(targetClazz);
-        PojoInfo pi = ti.pojoInfo;
-        if (pi == null) {
-            // Containers and other object-shaped targets cannot be incrementally
-            // populated as a POJO. Materialize only this uncommon subtype.
-            Map<String, Object> raw = new LinkedHashMap<>();
-            for (int i = 0; i < pendingSize; i++) {
-                raw.put(pendingNames[i], pendingValues[i]);
-            }
-            raw.put(discriminatorKey, discriminatorValue);
-            while (!reader.nextIfObjectEnd()) {
-                raw.put(reader.nextName(), reader.readRaw());
-            }
-            return NodeMapper.convert(raw, targetClazz, false, context);
-        }
-
+        Class<?> targetClazz = target.clazz;
+        PojoInfo pi = target.pojoInfo();
         CreatorInfo ci = pi.creatorInfo;
         CreatorState state = new CreatorState(ci);
 
@@ -187,11 +174,13 @@ public final class OneOfIO {
         // and looking them up again in CreatorInfo and propertyLookup.
         if (pi.creatorMatchNames != null) {
             NameMatcher matcher = StreamingIO.cacheCreatorNameMatcher(reader, pi);
+            int discriminatorIndex = matcher.fallback(discriminatorKey);
             int expectedIndex = 0;
             int index;
             while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
-                String key = index >= 0 ? matcher.name(index) : reader.currentName();
-                if (discriminatorKey.equals(key)) {
+                if (index == discriminatorIndex
+                        && ((index >= 0 && discriminatorKey.equals(matcher.name(index)))
+                        || discriminatorKey.equals(reader.currentName()))) {
                     throw new BindingException("duplicate oneOf discriminator key '" + discriminatorKey + "'");
                 }
 
@@ -204,10 +193,16 @@ public final class OneOfIO {
                         if (codec != null) {
                             value = StreamingIO.readValueCodec(reader, codec, context);
                         } else {
-                            Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
-                            Class<?> argBoxed = Types.rawBox(argType);
-                            TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
-                            value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
+                            LazyTypeInfo lazy = ci.argTypeInfos[argIdx];
+                            if (lazy != null) {
+                                value = StreamingIO.readNode(reader, lazy.clazz, Types.box(lazy.clazz),
+                                        lazy.get(), context);
+                            } else {
+                                Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
+                                Class<?> argBoxed = Types.rawBox(argType);
+                                TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
+                                value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
+                            }
                         }
                         state.acceptCtorArg(argIdx, value);
                         continue;
@@ -226,7 +221,7 @@ public final class OneOfIO {
                 }
 
                 if (pi.isJojo && pi.readDynamic) {
-                    state.acceptDynamic(key, reader.readRaw());
+                    state.acceptDynamic(reader.currentName(), reader.readRaw());
                 } else {
                     reader.skipNode();
                 }
@@ -234,54 +229,47 @@ public final class OneOfIO {
             return state.finish();
         }
 
-        // No-argument POJOs do not require creatorMatchNames. Preserve their
-        // existing member lookup and dynamic-property behavior.
-        while (!reader.nextIfObjectEnd()) {
-
-            String key = reader.nextName();
-            if (discriminatorKey.equals(key)) {
+        // No-argument POJOs can use the same prepared property matcher as
+        // ordinary streaming binding, without creator lookups per field.
+        NameMatcher matcher = StreamingIO.cacheNameMatcher(reader, pi);
+        int discriminatorIndex = matcher.fallback(discriminatorKey);
+        int expectedIndex = 0;
+        int index;
+        while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
+            if (index == discriminatorIndex
+                        && ((index >= 0 && discriminatorKey.equals(matcher.name(index)))
+                        || discriminatorKey.equals(reader.currentName()))) {
                 throw new BindingException("duplicate oneOf discriminator key '" + discriminatorKey + "'");
             }
 
-            int argIdx = ci.getArgIndexOrAlias(key);
-            if (argIdx >= 0) {
-                ValueInfo codec = ci.argValueCodecs[argIdx];
-                Object value;
-                if (codec != null) {
-                    value = StreamingIO.readValueCodec(reader, codec, context);
+            if (index >= 0) {
+                pi.propertyReaders[index].read(reader, state.pojo(), targetClazz, targetClazz, context);
+                expectedIndex = index + 1;
+            } else if (pi.isJojo && pi.readDynamic) {
+                String key = reader.currentName();
+                if (pi.propertyLookup.containsKey(key)) {
+                    reader.skipNode();
                 } else {
-                    Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
-                    Class<?> argBoxed = Types.rawBox(argType);
-                    TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
-                    value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
+                    state.acceptDynamic(key, reader.readRaw());
                 }
-                state.acceptCtorArg(argIdx, value);
-                continue;
+            } else {
+                reader.skipNode();
             }
-
-            PropertyInfo fi = pi.propertyLookup.get(key);
-            if (fi != null && fi.reader != null) {
-                if (state.isCreated()) {
-                    fi.reader.read(reader, state.pojo(), targetClazz, targetClazz, context);
-                } else {
-                    Object value = StreamingIO.readProperty(reader, fi, targetClazz, targetClazz, context);
-                    state.bufferProperty(fi, value);
-                }
-                continue;
-            }
-
-            if (pi.isJojo && pi.readDynamic) {
-                Object value = reader.readRaw();
-                state.acceptDynamic(key, value);
-                continue;
-            }
-
-            reader.skipNode();
         }
 
         return state.finish();
     }
 
+
+    private static NameMatcher _cacheDiscriminatorMatcher(StreamingReader reader, OneOfInfo info) {
+        BackendCache cache = info.backendCache(reader.backend);
+        NameMatcher matcher = cache.nameMatcher;
+        if (matcher == null) {
+            matcher = reader.createNameMatcher(new String[]{info.key});
+            cache.nameMatcher = matcher;
+        }
+        return matcher;
+    }
 
     private static void _skipRemainingObject(StreamingReader reader) throws IOException {
         while (!reader.nextIfObjectEnd()) {
@@ -338,10 +326,10 @@ public final class OneOfIO {
     private static Object _convertRawOneOf(Object raw, OneOfInfo info, RuntimeContext context) {
         if (raw == null) return null;
 
-        Class<?> target;
+        LazyTypeInfo target;
         JsonType shape = JsonType.of(raw);
         if (!info.hasDiscriminator) {
-            target = info.matchByJsonType(shape);
+            target = info.lazyTypeInfoByJsonType(shape);
         } else {
             if (info.scope != OneOf.Scope.CURRENT) {
                 throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + info.scope);
@@ -358,10 +346,10 @@ public final class OneOfIO {
                 throw new BindingException("not found value for discriminator "
                         + (info.keyDiscriminator ? "key '" + info.key + "'" : "path '" + info.path + "'"));
             }
-            target = info.matchByWhen(discriminator);
+            target = info.lazyTypeInfoByWhen(discriminator);
         }
 
-        if (target != null) return NodeMapper.convert(raw, target, false, context);
+        if (target != null) return NodeMapper.convert(raw, target.clazz, false, context);
         if (info.fallbackNull) return null;
         throw new BindingException("oneOf mapping has no matching target for type '" + info.clazz.getName() + "'");
     }
