@@ -13,6 +13,7 @@ import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.CreatorState;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
@@ -523,13 +524,20 @@ public final class StreamingIO {
              */
             int argIndex = pojoInfo.creatorMatchArgs[index];
             if (argIndex >= 0) {
-                Type argType = Types.resolveMemberType(type, boxed, creator.argTypes[argIndex]);
-                Class<?> argBoxed = Types.rawBox(argType);
                 ValueInfo codec = creator.argValueCodecs[argIndex];
-
-                Object value = codec == null
-                        ? readNode(reader, argType, argBoxed, null, context)
-                        : readValueCodec(reader, codec, context);
+                Object value;
+                if (codec != null) {
+                    value = readValueCodec(reader, codec, context);
+                } else {
+                    LazyTypeInfo lazy = creator.argTypeInfos[argIndex];
+                    if (lazy != null) {
+                        value = readNode(reader, lazy.clazz, Types.box(lazy.clazz), lazy.get(), context);
+                    } else {
+                        Type argType = Types.resolveMemberType(type, boxed, creator.argTypes[argIndex]);
+                        Class<?> argBoxed = Types.rawBox(argType);
+                        value = readNode(reader, argType, argBoxed, null, context);
+                    }
+                }
                 state.acceptCtorArg(argIndex, value);
                 if (parentKey != null && parentKey.equals(name)) {
                     parentValue = value;
