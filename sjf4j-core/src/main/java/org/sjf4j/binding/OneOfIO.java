@@ -193,10 +193,16 @@ public final class OneOfIO {
                         if (codec != null) {
                             value = StreamingIO.readValueCodec(reader, codec, context);
                         } else {
-                            Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
-                            Class<?> argBoxed = Types.rawBox(argType);
-                            TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
-                            value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
+                            LazyTypeInfo lazy = ci.argTypeInfos[argIdx];
+                            if (lazy != null) {
+                                value = StreamingIO.readNode(reader, lazy.clazz, Types.box(lazy.clazz),
+                                        lazy.get(), context);
+                            } else {
+                                Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
+                                Class<?> argBoxed = Types.rawBox(argType);
+                                TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
+                                value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
+                            }
                         }
                         state.acceptCtorArg(argIdx, value);
                         continue;
