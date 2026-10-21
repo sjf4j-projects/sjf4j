@@ -178,7 +178,9 @@ public final class OneOfIO {
             int expectedIndex = 0;
             int index;
             while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
-                if (index == discriminatorIndex && discriminatorKey.equals(reader.currentName())) {
+                if (index == discriminatorIndex
+                        && ((index >= 0 && discriminatorKey.equals(matcher.name(index)))
+                        || discriminatorKey.equals(reader.currentName()))) {
                     throw new BindingException("duplicate oneOf discriminator key '" + discriminatorKey + "'");
                 }
 
@@ -228,7 +230,9 @@ public final class OneOfIO {
         int expectedIndex = 0;
         int index;
         while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
-            if (index == discriminatorIndex && discriminatorKey.equals(reader.currentName())) {
+            if (index == discriminatorIndex
+                        && ((index >= 0 && discriminatorKey.equals(matcher.name(index)))
+                        || discriminatorKey.equals(reader.currentName()))) {
                 throw new BindingException("duplicate oneOf discriminator key '" + discriminatorKey + "'");
             }
 
