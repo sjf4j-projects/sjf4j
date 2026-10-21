@@ -7,6 +7,8 @@ on:
       - 'sjf4j-core/src/main/java/org/sjf4j/util/Invokers.java'
       - 'sjf4j-core/src/main/java/org/sjf4j/meta/ReflectUtil.java'
       - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/GenericCreatorInvokeBenchmark.java'
+      - 'sjf4j-core/src/test/java/org/sjf4j/meta/PrimitiveCreatorInvokeExactTest.java'
+      - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/processor/RuntimePrimitiveCreatorAdapterTest.java'
       - '.github/workflows/generic-creator-benchmark.yml'
 
 jobs:
@@ -24,6 +26,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile JMH
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Run focused Runtime creator tests
+        run: |
+          ./gradlew :sjf4j-core:test --tests org.sjf4j.meta.PrimitiveCreatorInvokeExactTest --no-daemon
+          ./gradlew :sjf4j-testbench:test --tests org.sjf4j.testbench.processor.RuntimePrimitiveCreatorAdapterTest --no-daemon
       - name: Compare generic fixed-arity Creator to invokeWithArguments
         run: |
           set -o pipefail
