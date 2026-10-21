@@ -186,6 +186,27 @@ public class CreatorInfo {
     }
 
     /**
+     * Single-argument constructor fast path: skips the temporary Object[] when
+     * the cached creator has a direct function. Null primitive arguments retain
+     * the same defaults as newPojoWithArgs.
+     */
+    public Object newPojoWithOneArg(Object arg) {
+        if (argsCreatorLambda1 == null) {
+            return newPojoWithArgs(new Object[]{arg});
+        }
+        try {
+            if (arg == null) {
+                arg = _missingValueOfClass(Types.rawClazz(argTypes[0]));
+            }
+            return argsCreatorLambda1.apply(arg);
+        } catch (BindingException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new BindingException("failed to invoke creator of '" + clazz.getName() + "'", e);
+        }
+    }
+
+    /**
      * Creates an object, preferring its no-argument constructor.
      */
     public Object forceNewPojo() {
