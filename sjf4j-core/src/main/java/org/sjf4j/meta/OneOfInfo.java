@@ -27,7 +27,7 @@ public class OneOfInfo {
     public final boolean fallbackNull;
     public final boolean hasDiscriminator;
     public final boolean keyDiscriminator;
-    public final EnumMap<JsonType, Class<?>> byJsonType;
+    public final EnumMap<JsonType, LazyTypeInfo> byJsonType;
     public final Map<String, LazyTypeInfo> byWhen;
     public final JsonPath compiledPath;
     public final BackendCache[] backendCache = new BackendCache[Backend.values().length];
@@ -61,7 +61,7 @@ public class OneOfInfo {
             this.byWhen = null;
             this.byJsonType = new EnumMap<>(JsonType.class);
             for (OneOfMapping mapping : mappings) {
-                byJsonType.put(JsonType.rawOf(mapping.type()), mapping.type());
+                byJsonType.put(JsonType.rawOf(mapping.type()), new LazyTypeInfo(mapping.type()));
             }
         }
     }
@@ -70,6 +70,12 @@ public class OneOfInfo {
      * Resolves a mapped subtype for a JSON type, or {@code null} when absent.
      */
     public Class<?> matchByJsonType(JsonType jsonType) {
+        LazyTypeInfo target = lazyTypeInfoByJsonType(jsonType);
+        return target == null ? null : target.clazz;
+    }
+
+    /** Returns the cached subtype holder for a JSON shape. */
+    public LazyTypeInfo lazyTypeInfoByJsonType(JsonType jsonType) {
         if (byJsonType == null || jsonType == null) return null;
         return byJsonType.get(jsonType);
     }
