@@ -238,6 +238,8 @@ public final class Jackson2Reader extends StreamingReader {
 
     @Override
     public UUID readUUID() throws IOException {
+//        String str = readString();
+//        return str == null ? null : FastUuid.parseUUID(str);
         JsonToken token = prefetched ? parser.currentToken() : parser.nextToken();
         prefetched = false;
         if (token == JsonToken.VALUE_NULL) {

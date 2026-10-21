@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * must remain contextual to each TypeReference. Recursive OneOf metadata must
  * also be resolved only after the referring creator has been analyzed.
  */
+@SuppressWarnings("unchecked")
 class RuntimeLazyCreatorSemanticsTest {
 
     static Stream<Arguments> backends() {
