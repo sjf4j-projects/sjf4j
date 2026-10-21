@@ -10,6 +10,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.function.DoubleFunction;
 
 /**
  * Cached construction metadata for an object type.
@@ -24,6 +25,7 @@ public class CreatorInfo {
     public final Executable argsCreator;
     public final MethodHandle argsCreatorHandle;
     public final TypeRegistry.Func1 argsCreatorLambda1;
+    public final DoubleFunction<Object> argsCreatorDouble1;
     public final TypeRegistry.Func2 argsCreatorLambda2;
     public final TypeRegistry.Func3 argsCreatorLambda3;
     public final TypeRegistry.Func4 argsCreatorLambda4;
@@ -45,7 +47,8 @@ public class CreatorInfo {
      */
     public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
                        Executable argsCreator, MethodHandle argsCreatorHandle,
-                       TypeRegistry.Func1 argsCreatorLambda1, TypeRegistry.Func2 argsCreatorLambda2,
+                       TypeRegistry.Func1 argsCreatorLambda1, DoubleFunction<Object> argsCreatorDouble1,
+                       TypeRegistry.Func2 argsCreatorLambda2,
                        TypeRegistry.Func3 argsCreatorLambda3, TypeRegistry.Func4 argsCreatorLambda4, TypeRegistry.Func5 argsCreatorLambda5,
                        String[] argNames, Type[] argTypes,
                        String[] argCodecNames, ValueInfo[] argValueCodecs,
@@ -57,6 +60,7 @@ public class CreatorInfo {
         this.argsCreator = argsCreator;
         this.argsCreatorHandle = argsCreatorHandle;
         this.argsCreatorLambda1 = argsCreatorLambda1;
+        this.argsCreatorDouble1 = argsCreatorDouble1;
         this.argsCreatorLambda2 = argsCreatorLambda2;
         this.argsCreatorLambda3 = argsCreatorLambda3;
         this.argsCreatorLambda4 = argsCreatorLambda4;
@@ -191,6 +195,15 @@ public class CreatorInfo {
      * the same defaults as newPojoWithArgs.
      */
     public Object newPojoWithOneArg(Object arg) {
+        if (argsCreatorDouble1 != null) {
+            try {
+                return argsCreatorDouble1.apply(arg == null ? 0d : ((Number) arg).doubleValue());
+            } catch (BindingException e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new BindingException("failed to invoke creator of '" + clazz.getName() + "'", e);
+            }
+        }
         if (argsCreatorLambda1 == null) {
             return newPojoWithArgs(new Object[]{arg});
         }
