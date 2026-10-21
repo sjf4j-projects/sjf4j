@@ -1,0 +1,47 @@
+name: Creek write profiling (experimental)
+
+on:
+  pull_request:
+    paths:
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CreekWritePolyCountBenchmark.java'
+      - '.github/workflows/creek-write-profile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build benchmark jar
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Run isolated Creek write JMH with GC profiler
+        shell: bash
+        run: |
+          set -o pipefail
+          jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
+          if [ -z "$jar" ]; then
+            echo "No JMH jar found"
+            ls -lah sjf4j-testbench/build/libs
+            exit 1
+          fi
+          java -jar "$jar" '.*CreekWritePolyCountBenchmark.*' \
+            -bm avgt -tu us -t 1 -f 3 -wi 5 -w 300ms -i 7 -r 300ms \
+            -prof gc -rf json -rff creek-write-jmh.json | tee creek-write-jmh.log
+      - name: Preserve JMH output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: creek-write-polycount-jmh
+          path: |
+            creek-write-jmh.json
+            creek-write-jmh.log
+          if-no-files-found: warn
