@@ -24,7 +24,8 @@ public class CompiledOneOfOrderedReadTest {
 
     @OneOf(key = "@type", mappings = {
             @OneOfMapping(type = Alpha.class, when = "alpha"),
-            @OneOfMapping(type = Beta.class, when = "beta")
+            @OneOfMapping(type = Beta.class, when = "beta"),
+            @OneOfMapping(type = Gamma.class, when = "gamma")
     })
     public interface Variant {}
 
@@ -59,6 +60,18 @@ public class CompiledOneOfOrderedReadTest {
         public double getNumber() { return number; }
     }
 
+    public static final class Gamma implements Variant {
+        private String name;
+        private int value;
+
+        public Gamma() {}
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public int getValue() { return value; }
+        public void setValue(int value) { this.value = value; }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Reader {
         @ReadFrom Variant read(String json) throws IOException;
@@ -68,12 +81,15 @@ public class CompiledOneOfOrderedReadTest {
     void generatedSubtypeReadersAreUsed() {
         boolean alpha = false;
         boolean beta = false;
+        boolean gamma = false;
         for (java.lang.reflect.Method method : READER.getClass().getDeclaredMethods()) {
             alpha |= method.getReturnType() == Alpha.class && method.getName().endsWith("_content");
             beta |= method.getReturnType() == Beta.class && method.getName().endsWith("_content");
+            gamma |= method.getReturnType() == Gamma.class && method.getName().endsWith("_content");
         }
         assertTrue(alpha, "Alpha must use a generated OneOf subtype reader");
         assertTrue(beta, "Beta must use a generated OneOf subtype reader");
+        assertTrue(gamma, "Gamma must use a generated OneOf subtype reader");
     }
 
     @Test
@@ -102,6 +118,18 @@ public class CompiledOneOfOrderedReadTest {
         Beta first = assertInstanceOf(Beta.class,
                 READER.read("{\"@type\":\"beta\",\"number\":12.5}"));
         assertEquals(12.5, first.getNumber());
+    }
+
+    @Test
+    void noArgsSubtypeRestoresPrefixProperty() throws Exception {
+        Gamma first = assertInstanceOf(Gamma.class,
+                READER.read("{\\"@type\\":\\"gamma\\",\\"value\\":19,\\"name\\":\\"Ada\\"}"));
+        Gamma last = assertInstanceOf(Gamma.class,
+                READER.read("{\\"value\\":19,\\"name\\":\\"Ada\\",\\"@type\\":\\"gamma\\"}"));
+        assertEquals(19, first.getValue());
+        assertEquals("Ada", first.getName());
+        assertEquals(19, last.getValue());
+        assertEquals("Ada", last.getName());
     }
 
     @Test
