@@ -14,6 +14,10 @@ import java.math.BigInteger;
 import java.util.UUID;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
 
 /** StreamingWriter backed directly by a Fastjson2 {@link JSONWriter}. */
 public final class Fastjson2Writer extends StreamingWriter {
@@ -161,6 +165,43 @@ public final class Fastjson2Writer extends StreamingWriter {
             writer.writeString(value.toString());
         } else {
             writer.writeLocalTime(value);
+        }
+    }
+
+    @Override
+    public void writeOffsetDateTime(OffsetDateTime value) {
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getSecond() == 0 && value.getNano() == 0) {
+            // The native writer always emits seconds; ISO toString() omits them here.
+            writer.writeString(value.toString());
+        } else {
+            writer.writeOffsetDateTime(value);
+        }
+    }
+
+    @Override
+    public void writeOffsetTime(OffsetTime value) {
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getSecond() == 0 && value.getNano() == 0) {
+            writer.writeString(value.toString());
+        } else {
+            writer.writeOffsetTime(value);
+        }
+    }
+
+    @Override
+    public void writeZonedDateTime(ZonedDateTime value) {
+        // Fastjson2's native writer omits the numeric offset of region zones
+        // (e.g. Europe/Paris); only fixed-offset zones can use it losslessly.
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getZone() instanceof ZoneOffset
+                && (value.getSecond() != 0 || value.getNano() != 0)) {
+            writer.writeZonedDateTime(value);
+        } else {
+            writer.writeString(value.toString());
         }
     }
 
