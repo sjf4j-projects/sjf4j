@@ -25,7 +25,7 @@ final class BindingValue {
         BIG_DECIMAL,
         ENUM,
         VALUE_CODEC,
-        /** Read uses OneOfIO; write dispatches by the actual Java class. */
+        /** Read uses an optional compiled discriminator fast path; write dispatches by class. */
         ONE_OF,
         POJO,
         JOJO,
@@ -48,6 +48,7 @@ final class BindingValue {
     private String helperName;
     private String oneOfOwner;
     private String oneOfProperty;
+    private String oneOfKey;
     private List<OneOfSubtype> oneOfSubtypes = Collections.emptyList();
     private CreatorPlan creator;
     private List<BindingProperty> properties = Collections.emptyList();
@@ -129,15 +130,29 @@ final class BindingValue {
         return oneOfProperty;
     }
 
+    void oneOfKey(String key) {
+        this.oneOfKey = key;
+    }
+
+    String oneOfKey() {
+        return oneOfKey;
+    }
+
     static final class OneOfSubtype {
         final TypeMirror type;
         final BindingValue compiled;
         final boolean cachedPojo;
+        final String[] when;
 
         OneOfSubtype(TypeMirror type, BindingValue compiled, boolean cachedPojo) {
+            this(type, compiled, cachedPojo, new String[0]);
+        }
+
+        OneOfSubtype(TypeMirror type, BindingValue compiled, boolean cachedPojo, String[] when) {
             this.type = type;
             this.compiled = compiled;
             this.cachedPojo = cachedPojo;
+            this.when = when.clone();
         }
     }
 
