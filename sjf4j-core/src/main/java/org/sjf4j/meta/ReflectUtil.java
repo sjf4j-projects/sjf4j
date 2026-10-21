@@ -683,6 +683,7 @@ public final class ReflectUtil {
         boolean explicitCreator = false;
         MethodHandle creatorHandle = null;
         TypeRegistry.Func1 creatorLambda1 = null;
+        java.util.function.DoubleFunction<Object> creatorDouble1 = null;
         TypeRegistry.Func2 creatorLambda2 = null;
         TypeRegistry.Func3 creatorLambda3 = null;
         TypeRegistry.Func4 creatorLambda4 = null;
@@ -752,6 +753,10 @@ public final class ReflectUtil {
             if (creatorHandle == null) creatorHandle = recordInfo.compCtorHandle;
         }
         if (creator != null && creator.getParameterCount() > 0) {
+            if (creator.getParameterCount() == 1
+                    && creator.getParameterTypes()[0] == double.class) {
+                creatorDouble1 = Invokers.createDoubleCreatorLambda(lookup, creatorHandle);
+            }
             boolean hasPrimitiveArg = false;
             for (Class<?> argType : creator.getParameterTypes()) {
                 if (argType.isPrimitive()) {
@@ -843,7 +848,7 @@ public final class ReflectUtil {
 
         return new CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,
                 creator, creatorHandle,
-                creatorLambda1, creatorLambda2, creatorLambda3, creatorLambda4, creatorLambda5,
+                creatorLambda1, creatorDouble1, creatorLambda2, creatorLambda3, creatorLambda4, creatorLambda5,
                 argNames, argTypes, argValueFormats, argValueCodecs, argIndexes, aliasMap);
     }
 
