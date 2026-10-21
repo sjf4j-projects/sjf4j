@@ -44,7 +44,7 @@ class StreamingTemporalCodecTest {
         assertNotNull(time.streamReader);
         assertNotNull(time.streamWriter);
         assertNotNull(dateTime.streamReader);
-        assertNull(dateTime.streamWriter); // Native Fastjson2 uses a space, not ISO 'T'.
+        assertNotNull(dateTime.streamWriter); // Backend chooses ISO fallback, not the native space format.
 
         ValueInfo custom = TypeRegistry.requireRegisteredValueInfo(
                 LocalDateTime.class, null, "yyyy/MM/dd HH:mm:ss");
