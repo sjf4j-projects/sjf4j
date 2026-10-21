@@ -2,6 +2,7 @@ package org.sjf4j.meta;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.Invokers;
 import org.sjf4j.util.Types;
 import org.sjf4j.value.ValueInfo;
 
@@ -23,6 +24,7 @@ public class CreatorInfo {
     public final Supplier<?> noArgsCtorLambda;
     public final Executable argsCreator;
     public final MethodHandle argsCreatorHandle;
+    private final MethodHandle argsCreatorSpreader;
     public final TypeRegistry.Func1 argsCreatorLambda1;
     public final TypeRegistry.Func2 argsCreatorLambda2;
     public final TypeRegistry.Func3 argsCreatorLambda3;
@@ -56,6 +58,7 @@ public class CreatorInfo {
         this.noArgsCtorLambda = noArgsCtorLambda;
         this.argsCreator = argsCreator;
         this.argsCreatorHandle = argsCreatorHandle;
+        this.argsCreatorSpreader = Invokers.createArgsCreatorSpreader(argsCreatorHandle);
         this.argsCreatorLambda1 = argsCreatorLambda1;
         this.argsCreatorLambda2 = argsCreatorLambda2;
         this.argsCreatorLambda3 = argsCreatorLambda3;
@@ -177,6 +180,9 @@ public class CreatorInfo {
                 return argsCreatorLambda5.apply(args[0], args[1], args[2], args[3], args[4]);
             }
 
+            if (args.length > 5 && argsCreatorSpreader != null) {
+                return (Object) argsCreatorSpreader.invokeExact(args);
+            }
             return argsCreatorHandle.invokeWithArguments(args);
         } catch (BindingException e) {
             throw e;
