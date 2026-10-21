@@ -56,6 +56,7 @@ class CreatorStateSingleArgTest {
     @Test
     void handlesNullAndMissingPrimitiveDefaults() {
         CreatorInfo info = creator(PrimitiveValue.class);
+        assertNotNull(info.argsCreatorDouble1, "primitive double should resolve direct constructor lambda");
 
         CreatorState present = new CreatorState(info);
         present.acceptCtorArg(0, 12.5);
