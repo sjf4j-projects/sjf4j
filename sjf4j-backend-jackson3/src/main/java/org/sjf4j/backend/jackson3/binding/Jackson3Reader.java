@@ -7,6 +7,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.FastUuid;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
 import tools.jackson.core.sym.PropertyNameMatcher;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Jackson 3 adapter for the consuming-value streaming protocol.
@@ -228,6 +230,19 @@ public final class Jackson3Reader extends StreamingReader {
     /* --------------------------------------------------------------
      * String / generic number
      * -------------------------------------------------------------- */
+
+    @Override
+    public UUID readUUID() throws IOException {
+        JsonToken token = prefetched ? parser.currentToken() : parser.nextToken();
+        prefetched = false;
+        if (token == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        if (token != JsonToken.VALUE_STRING) {
+            throw expected("string or null", token);
+        }
+        return FastUuid.parseUUID(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
+    }
 
     @Override
     public String readString() throws IOException {
