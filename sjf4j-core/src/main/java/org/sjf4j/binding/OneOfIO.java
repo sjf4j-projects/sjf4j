@@ -191,15 +191,14 @@ public final class OneOfIO {
 
             int argIdx = ci.getArgIndexOrAlias(key);
             if (argIdx >= 0) {
-                Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
-                Class<?> argBoxed = Types.rawBox(argType);
-                TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
-
-                Object value;
                 ValueInfo codec = ci.argValueCodecs[argIdx];
+                Object value;
                 if (codec != null) {
                     value = StreamingIO.readValueCodec(reader, codec, context);
                 } else {
+                    Type argType = Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx]);
+                    Class<?> argBoxed = Types.rawBox(argType);
+                    TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
                     value = StreamingIO.readNode(reader, argType, argBoxed, argTi, context);
                 }
                 state.acceptCtorArg(argIdx, value);
@@ -244,23 +243,29 @@ public final class OneOfIO {
         CreatorInfo ci = pi.creatorInfo;
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
-            Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, ci.argTypes[argIdx]);
             ValueInfo codec = ci.argValueCodecs[argIdx];
-            Object value = codec != null
-                    ? codec.rawToValue(rawValue)
-                    : NodeMapper.convert(rawValue, argType, false, context);
+            Object value;
+            if (codec != null) {
+                value = codec.rawToValue(rawValue);
+            } else {
+                Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, ci.argTypes[argIdx]);
+                value = NodeMapper.convert(rawValue, argType, false, context);
+            }
             state.acceptCtorArg(argIdx, value);
             return;
         }
 
         PropertyInfo fi = pi.propertyLookup.get(key);
         if (fi != null && fi.writable) {
-            Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
-            Object value = fi.oneOfInfo != null
-                    ? _convertRawOneOf(rawValue, fi.oneOfInfo, context)
-                    : fi.valueInfo != null
-                            ? fi.valueInfo.rawToValue(rawValue)
-                            : NodeMapper.convert(rawValue, argType, false, context);
+            Object value;
+            if (fi.oneOfInfo != null) {
+                value = _convertRawOneOf(rawValue, fi.oneOfInfo, context);
+            } else if (fi.valueInfo != null) {
+                value = fi.valueInfo.rawToValue(rawValue);
+            } else {
+                Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
+                value = NodeMapper.convert(rawValue, argType, false, context);
+            }
             if (state.isCreated()) {
                 fi.invokeSetter(state.pojo(), value);
             } else {
