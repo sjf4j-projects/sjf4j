@@ -93,6 +93,19 @@ class StreamingExtendedTemporalCodecTest {
     }
 
     @Test
+    void wholeMinuteIsoRoundTripsWithOrWithoutSeconds() {
+        OffsetTime wholeMinute = OffsetTime.parse("12:30+02:00");
+        OffsetDateTime dateMinute = OffsetDateTime.parse("2026-10-21T12:30+02:00");
+        ZonedDateTime zonedMinute = ZonedDateTime.parse("2026-10-21T12:30+02:00[Europe/Paris]");
+        assertEquals(wholeMinute, BINDER.readNode("\"" + wholeMinute + "\"", OffsetTime.class));
+        assertEquals(dateMinute, BINDER.readNode("\"" + dateMinute + "\"", OffsetDateTime.class));
+        assertEquals(zonedMinute, BINDER.readNode("\"" + zonedMinute + "\"", ZonedDateTime.class));
+        assertEquals("\"" + wholeMinute + "\"", BINDER.writeNodeAsString(wholeMinute));
+        assertEquals("\"" + dateMinute + "\"", BINDER.writeNodeAsString(dateMinute));
+        assertEquals("\"" + zonedMinute + "\"", BINDER.writeNodeAsString(zonedMinute));
+    }
+
+    @Test
     void pojoIsoRoundTripWorksForStringAndUtf8() {
         for (Object parsed : new Object[]{
                 BINDER.readNode(JSON, TemporalPojo.class),
