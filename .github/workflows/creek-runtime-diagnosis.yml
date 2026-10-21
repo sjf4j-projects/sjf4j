@@ -25,18 +25,21 @@ jobs:
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Measure full Creek runtime versus Jackson with varying OneOf counts
         run: |
+          set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
             '.*CreekRuntimeDiagnosisBenchmark[.]creek_.*' \
             -p polyCount=0,1,4,8 -f 1 -wi 4 -w 300ms -i 6 -r 300ms -t 1 \
             -prof gc -rf json -rff creek-runtime-counts.json | tee creek-runtime-counts.txt
       - name: Measure polymorphic List runtime vs Jackson
         run: |
+          set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
             '.*CreekRuntimeDiagnosisBenchmark[.]list_.*' \
             -p polyCount=0,1,4,8 -f 1 -wi 4 -w 300ms -i 6 -r 300ms -t 1 \
             -prof gc -rf json -rff creek-runtime-list.json | tee creek-runtime-list.txt
       - name: Measure isolated Runtime OneOf overhead vs same concrete subtype
         run: |
+          set -o pipefail
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
             '.*CreekRuntimeDiagnosisBenchmark[.]subtype_.*' \
             -p polyCount=0 -f 1 -wi 5 -w 300ms -i 8 -r 300ms -t 1 \
