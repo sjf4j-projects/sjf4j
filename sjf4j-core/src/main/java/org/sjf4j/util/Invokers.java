@@ -104,6 +104,23 @@ public final class Invokers {
     }
 
     /**
+     * Prepares an array-based Creator call once for arities beyond Func5.
+     * The adapted handle has the exact signature (Object[]) -> Object.
+     * Returns null when a signature cannot be adapted; the caller may retain
+     * invokeWithArguments as a compatibility fallback.
+     */
+    public static MethodHandle createArgsCreatorSpreader(MethodHandle creator) {
+        if (creator == null || creator.type().parameterCount() <= 5) return null;
+        try {
+            int arity = creator.type().parameterCount();
+            return creator.asType(MethodType.genericMethodType(arity))
+                    .asSpreader(Object[].class, arity);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    /**
      * Fixed-arity creator bridge for mixed primitive/reference signatures.
      * All Object-to-primitive conversions are prepared at metadata creation.
      * Existing Func1...Func5 interfaces cover every parameter combination.
