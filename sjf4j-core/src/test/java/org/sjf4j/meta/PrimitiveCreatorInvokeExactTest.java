@@ -117,7 +117,8 @@ class PrimitiveCreatorInvokeExactTest {
         assertEquals(1, instance.a);
         assertEquals(6, instance.f);
 
-        SixPrimitives direct = (SixPrimitives) spreader.invokeExact(args);
+        Object result = (Object) spreader.invokeExact(args);
+        SixPrimitives direct = (SixPrimitives) result;
         assertEquals(instance.a, direct.a);
         assertEquals(instance.f, direct.f);
 
