@@ -128,11 +128,14 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(compiled.success, compiled.diagnostics());
 
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("Fastjson2Writer writer,"), source);
+        assertTrue(source.contains("com.alibaba.fastjson2.JSONWriter w,"), source);
+        assertTrue(source.contains("createNativeWriter()"), source);
+        assertTrue(source.contains("createNativeWriterUtf8()"), source);
+        assertFalse(source.contains("Fastjson2Writer writer,"), source);
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
-        assertTrue(source.contains("writer.nativeWriter()"), source);
-        assertTrue(source.contains("writer.writeRaw("), source);
+        assertTrue(source.contains("new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(w)"), source);
+        assertFalse(source.contains("writer.nativeWriter()"), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);
 
@@ -182,4 +185,68 @@ class Fastjson2CompiledWrapperIntegrationTest {
             assertFalse(customized.contains("\"absent\""), customized);
         }
     }
+
+    @Test
+    void streamingValueCodecUsesAnAdapterOnlyForItsValue() throws Exception {
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
+                "fixture/StreamValue.java",
+                "package fixture; public class StreamValue { "
+                + "public final String text; public StreamValue(String text) { this.text = text; } }",
+                "fixture/StreamBean.java",
+                "package fixture; public class StreamBean { "
+                + "public StreamValue value = new StreamValue(\"example\"); "
+                + "public String other = \"native\"; }",
+                "fixture/Codecs.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeValue; "
+                + "import org.sjf4j.value.ValueCodec; "
+                + "public class Codecs { public static int writes; "
+                + "@NodeValue public static final ValueCodec<StreamValue, String> STREAM = "
+                + "new ValueCodec.StreamingValueCodec<>(StreamValue.class, String.class, "
+                + "v -> v.text, StreamValue::new, null, "
+                + "(writer, value) -> { writes++; writer.writeStringValue(\"stream:\" + value.text); }); }",
+                "fixture/Binder.java",
+                "package fixture; import java.io.*; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
+                + "@WriteTo String write(StreamBean value) throws IOException; "
+                + "@WriteTo byte[] writeBytes(StreamBean value) throws IOException; "
+                + "@WriteTo void toWriter(StreamBean value, Writer output) throws IOException; "
+                + "@WriteTo void toStream(StreamBean value, OutputStream output) throws IOException; }"
+        ), CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        String generated = compiled.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("com.alibaba.fastjson2.JSONWriter w,"), generated);
+        assertTrue(generated.contains("new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(w)"),
+                generated);
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> codecsType = loader.loadClass("fixture.Codecs");
+            org.sjf4j.value.ValueRegistry.registerAnnotated(codecsType);
+            Class<?> binderType = loader.loadClass("fixture.Binder");
+            Class<?> beanType = loader.loadClass("fixture.StreamBean");
+            Object binder = CompiledInstances.global(binderType);
+            Object bean = beanType.getConstructor().newInstance();
+
+            String json = (String) binderType.getMethod("write", beanType)
+                    .invoke(binder, bean);
+            assertTrue(json.contains("\"value\":\"stream:example\""), json);
+            assertTrue(json.contains("\"other\":\"native\""), json);
+            byte[] bytes = (byte[]) binderType.getMethod("writeBytes", beanType)
+                    .invoke(binder, bean);
+            assertEquals(json, new String(bytes, StandardCharsets.UTF_8));
+
+            StringWriter chars = new StringWriter();
+            binderType.getMethod("toWriter", beanType, java.io.Writer.class)
+                    .invoke(binder, bean, chars);
+            assertEquals(json, chars.toString());
+
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            binderType.getMethod("toStream", beanType, java.io.OutputStream.class)
+                    .invoke(binder, bean, stream);
+            assertEquals(json, stream.toString(StandardCharsets.UTF_8));
+            assertEquals(4, codecsType.getField("writes").getInt(null));
+        }
+    }
+
 }
