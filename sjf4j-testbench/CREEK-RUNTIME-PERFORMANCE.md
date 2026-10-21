@@ -63,6 +63,31 @@ All `µs/op`, `B/op` is in parentheses:
 - A/B a 0-OneOf Creek model separately to isolate fixed overhead; do not attribute that baseline to UUID/OneOf.
 - Rerun locally with at least two forks and full warmups before treating CI microsecond ratios as stable.
 
+## Experiment: one-argument CreatorState without Object[1]
+
+Branch-only experimental implementation: `CreatorInfo.newPojoWithOneArg()` and `CreatorState` storing the one argument directly in the existing field; creators with 0 or 2+ arguments retain the original array representation. Unit tests cover explicit null and missing primitives, duplicate assignment and multi-argument regression.
+
+- Pre-change: [corrected baseline run 39577820001](https://github.com/sjf4j-projects/sjf4j/actions/runs/39577820001)
+- Post-change: [run 39578950687](https://github.com/sjf4j-projects/sjf4j/actions/runs/39578950687), [raw report](https://github.com/sjf4j-projects/sjf4j/actions/runs/39578950687/artifacts/12335716888)
+- Java CI and CodeQL passed post-change.
+
+### Allocation A/B (B/op)
+
+| Workload | Baseline | One-arg experiment | Change |
+| --- | ---: | ---: | ---: |
+| PolyTypeA direct | 664 | 640 | -24 |
+| PolyTypeA OneOf first | 712 | 688 | -24 |
+| PolyTypeA OneOf last | 912 | 888 | -24 |
+| PolyTypeB OneOf first | 1008 | 1008 | 0 |
+| PolyTypeB direct | 960 | 1016 | +56 |
+| List of 8 polymorphic elements | 3480 | 3384 | -96 |
+| Full Creek with 8 elements | 6688 | 6648 | -40 |
+| Full Creek with 0 elements | 3760 | 3760 | 0 |
+
+For timing, absolute native numbers varied by roughly 40% across shared CI runners, making cross-run speedup ratios unreliable. Within-run relative slowdown for full Creek with 8 elements changed from Runtime 4.028 / Native 2.840 = 1.42x to Runtime 5.060 / Native 3.975 = 1.27x; List 8 changed from 2.168 / 1.714 = 1.26x to 2.799 / 2.484 = 1.13x. These directions are encouraging **but do not establish a stable latency speedup**.
+
+The allocation benefit is limited: `PolyTypeB` (primitive double) did not improve even though `PolyTypeA(UUID)` saved 24 B/op. The remaining bottleneck likely includes boxing and generic creator dispatch. Keep this optimization experimental pending local JMH; do not merge based on shared CI measurements alone.
+
 ## Run locally
 
 ```bash
