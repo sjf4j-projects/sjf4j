@@ -219,16 +219,87 @@ final class ReadEmitter {
         }
     }
 
+    /** Fast path for a key discriminator in the first JSON member. */
+    void emitOneOfReadHelper(JavaWriter out, BindingValue value) {
+        String info = value.helperName() + "_info";
+        out.beginBlock("private " + value.type() + " " + value.helperName()
+                + "(" + backend.readerType() + " reader) throws java.io.IOException");
+        out.beginBlock("if (!reader.nextIfObjectStart())");
+        out.beginBlock("if (reader.nextIfNull())");
+        out.line("return null;");
+        out.endBlock();
+        out.line("reader.startObject();");
+        out.endBlock();
+
+        out.line("String firstName = reader.nextName();");
+        out.beginBlock("if (firstName == null)");
+        out.beginBlock("if (" + info + ".fallbackNull)");
+        out.line("return null;");
+        out.endBlock();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + JavaWriter.stringLiteral("not found value for discriminator key '" + value.oneOfKey() + "'")
+                + ");");
+        out.endBlock();
+
+        out.beginBlock("if (!" + JavaWriter.stringLiteral(value.oneOfKey()) + ".equals(firstName))");
+        out.line("return (" + value.type() + ") org.sjf4j.binding.OneOfIO"
+                + ".readOneOfAfterFirstField(reader, " + info
+                + ", this.context, firstName, reader.readRaw());");
+        out.endBlock();
+
+        out.line("Object discriminator = reader.readRaw();");
+        out.beginBlock("if (discriminator != null)");
+        out.beginBlock("switch (String.valueOf(discriminator))");
+        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+            for (String when : subtype.when) {
+                out.line("case " + JavaWriter.stringLiteral(when) + ":");
+            }
+            out.indent();
+            out.line("return " + subtype.compiled.helperName() + "_content(reader);");
+            out.dedent();
+        }
+        out.endBlock();
+        out.endBlock();
+
+        out.beginBlock("if (" + info + ".fallbackNull)");
+        out.beginBlock("while (!reader.nextIfObjectEnd())");
+        out.line("reader.nextName();");
+        out.line("reader.skipNode();");
+        out.endBlock();
+        out.line("return null;");
+        out.endBlock();
+        out.beginBlock("if (discriminator == null)");
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + JavaWriter.stringLiteral("not found value for discriminator key '" + value.oneOfKey() + "'")
+                + ");");
+        out.endBlock();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + JavaWriter.stringLiteral("oneOf discriminator has no matching mapping: value='")
+                + " + discriminator + " + JavaWriter.stringLiteral("'") + ");");
+        out.endBlock();
+    }
+
+    /** Subtype body starts after START_OBJECT and the already consumed discriminator. */
+    void emitOneOfSubtypeContent(JavaWriter out, BindingValue subtype) {
+        out.beginBlock("private " + subtype.type() + " " + subtype.helperName()
+                + "_content(" + backend.readerType() + " reader) throws java.io.IOException");
+        emitPojo(out, subtype, true);
+        out.endBlock();
+    }
+
     private void emitPojo(
             JavaWriter out,
             BindingValue value) {
+        emitPojo(out, value, false);
+    }
 
+    private void emitPojo(JavaWriter out, BindingValue value, boolean insideObject) {
         if (value.creator() != null) {
-            emitCreator(out, value);
+            emitCreator(out, value, insideObject);
             return;
         }
 
-        emitObjectStart(out);
+        if (!insideObject) emitObjectStart(out);
 
         out.line(
                 value.type() +
@@ -268,8 +339,8 @@ final class ReadEmitter {
     }
 
     /** Compiled creator binding: typed arguments and deferred writable fields. */
-    private void emitCreator(JavaWriter out, BindingValue value) {
-        emitObjectStart(out);
+    private void emitCreator(JavaWriter out, BindingValue value, boolean insideObject) {
+        if (!insideObject) emitObjectStart(out);
 
         int argCount = value.creator().parameterTypes().size();
         int pendingCount = 0;
@@ -727,8 +798,11 @@ final class ReadEmitter {
                         "this.context)";
 
             case ONE_OF:
+                if (value.oneOfKey() != null) {
+                    return value.helperName() + "(" + reader + ")";
+                }
                 return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
-                        + ".readOneOf(" + reader + ", " + value.helperName() + ", this.context)";
+                        + ".readOneOf(" + reader + ", " + value.helperName() + "_info, this.context)";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
