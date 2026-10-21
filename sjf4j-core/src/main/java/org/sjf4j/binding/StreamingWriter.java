@@ -20,6 +20,11 @@ import java.util.RandomAccess;
 import java.util.UUID;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 
 /**
  * Unified streaming writer for structured data.
@@ -149,6 +154,27 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
     /** Writes the ISO representation, with backend fast paths when equivalent. */
     public void writeLocalTime(LocalTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    /** Writes the ISO representation; backend overrides must preserve it exactly. */
+    public void writeLocalDateTime(LocalDateTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeInstant(Instant value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeOffsetDateTime(OffsetDateTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeZonedDateTime(ZonedDateTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeOffsetTime(OffsetTime value) throws IOException {
         writeString(value == null ? null : value.toString());
     }
 
