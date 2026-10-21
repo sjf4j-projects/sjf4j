@@ -566,9 +566,9 @@ public final class StreamingIO {
                     throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                 }
 
-                Class<?> target = oneOfInfo.matchByWhen(parentValue == UNSET ? null : parentValue);
+                LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(parentValue == UNSET ? null : parentValue);
                 if (target != null) {
-                    Object value = readNode(reader, target, context);
+                    Object value = readNode(reader, target.clazz, target.clazz, target.get(), context);
                     if (state.isCreated()) {
                         property.invokeSetterIfPresent(state.pojo(), value);
                     } else {
@@ -640,10 +640,10 @@ public final class StreamingIO {
             }
         }
 
-        Class<?> target = oneOfInfo.matchByWhen(parentValue == UNSET ? null : parentValue);
+        LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(parentValue == UNSET ? null : parentValue);
         Object value;
         if (target != null) {
-            value = NodeMapper.convert(deferredRaw, target, false, context);
+            value = NodeMapper.convert(deferredRaw, target.clazz, false, context);
         } else if (oneOfInfo.fallbackNull) {
             value = null;
         } else {
