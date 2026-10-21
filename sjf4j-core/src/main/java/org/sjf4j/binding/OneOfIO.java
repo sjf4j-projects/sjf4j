@@ -15,6 +15,7 @@ import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Types;
 
 import java.io.IOException;
@@ -290,11 +291,24 @@ public final class OneOfIO {
             ValueInfo codec = ci.argValueCodecs[argIdx];
             Object value;
             if (codec != null) {
+                if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
+                    rawValue = Numbers.to((Number) rawValue, codec.rawClazz);
+                }
                 value = codec.rawToValue(rawValue);
             } else {
                 Type argType = ci.argGenericDependent[argIdx]
                         ? Types.resolveMemberType(ownerClazz, ownerClazz, ci.argTypes[argIdx])
                         : ci.argTypes[argIdx];
+                if (rawValue instanceof Number) {
+                    Class<?> boxed = Types.rawBox(argType);
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
+                    if (ti.valueSet != null) {
+                        ValueInfo selected = ti.valueSet.selectForRead(JsonType.NUMBER, context.valueFormat(boxed));
+                        if (Number.class.isAssignableFrom(selected.rawClazz)) {
+                            rawValue = Numbers.to((Number) rawValue, selected.rawClazz);
+                        }
+                    }
+                }
                 value = NodeMapper.convert(rawValue, argType, false, context);
             }
             state.acceptCtorArg(argIdx, value);
@@ -307,9 +321,23 @@ public final class OneOfIO {
             if (fi.oneOfInfo != null) {
                 value = _convertRawOneOf(rawValue, fi.oneOfInfo, context);
             } else if (fi.valueInfo != null) {
-                value = fi.valueInfo.rawToValue(rawValue);
+                ValueInfo codec = fi.valueInfo;
+                if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
+                    rawValue = Numbers.to((Number) rawValue, codec.rawClazz);
+                }
+                value = codec.rawToValue(rawValue);
             } else {
                 Type argType = Types.resolveMemberType(ownerClazz, ownerClazz, fi.type);
+                if (rawValue instanceof Number) {
+                    Class<?> boxed = Types.rawBox(argType);
+                    TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
+                    if (ti.valueSet != null) {
+                        ValueInfo selected = ti.valueSet.selectForRead(JsonType.NUMBER, context.valueFormat(boxed));
+                        if (Number.class.isAssignableFrom(selected.rawClazz)) {
+                            rawValue = Numbers.to((Number) rawValue, selected.rawClazz);
+                        }
+                    }
+                }
                 value = NodeMapper.convert(rawValue, argType, false, context);
             }
             if (state.isCreated()) {

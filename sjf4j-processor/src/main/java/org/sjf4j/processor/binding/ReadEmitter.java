@@ -350,10 +350,12 @@ final class ReadEmitter {
             case BIG_INTEGER: decoded = numeric + "toBigInteger((Number) " + raw + ")"; break;
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
-                // Buffered JSON numbers keep the backend's natural Number subtype,
-                // which may differ from this codec's declared raw numeric class.
-                return "(" + value.type() + ") " + STREAMING_IO
-                        + ".decodeBufferedValueCodec(" + raw + ", " + value.helperName() + ")";
+                // readRaw() may return Integer when the selected codec expects Long.
+                String codec = value.helperName();
+                return "(" + value.type() + ") " + codec + ".rawToValue("
+                        + raw + " instanceof Number && Number.class.isAssignableFrom(" + codec + ".rawClazz)"
+                        + " ? " + numeric + "to((Number) " + raw + ", " + codec + ".rawClazz)"
+                        + " : " + raw + ")";
             default:
                 throw new AssertionError("Unsupported compiled OneOf prefix type " + value.kind());
         }
