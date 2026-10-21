@@ -10,6 +10,7 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.BiConsumer;
+import java.util.function.DoubleFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -90,6 +91,31 @@ public final class Invokers {
             } catch (Throwable ignored) {
                 return null;
             }
+        }
+    }
+
+    /**
+     * A primitive double creator avoids the generic Object[]/invokeWithArguments
+     * path. Never fall back to MethodHandleProxies for this optimization.
+     */
+    @SuppressWarnings("unchecked")
+    public static DoubleFunction<Object> createDoubleCreatorLambda(MethodHandles.Lookup lookup,
+                                                                   MethodHandle creator) {
+        if (creator == null || creator.type().parameterCount() != 1
+                || creator.type().parameterType(0) != double.class) {
+            return null;
+        }
+        try {
+            return (DoubleFunction<Object>) LambdaMetafactory.metafactory(
+                    lookup,
+                    "apply",
+                    MethodType.methodType(DoubleFunction.class),
+                    MethodType.methodType(Object.class, double.class),
+                    creator,
+                    creator.type().changeReturnType(Object.class)
+            ).getTarget().invoke();
+        } catch (Throwable ignored) {
+            return null;
         }
     }
 
