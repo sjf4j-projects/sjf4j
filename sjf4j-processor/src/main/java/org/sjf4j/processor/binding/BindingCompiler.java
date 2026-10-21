@@ -522,13 +522,6 @@ final class BindingCompiler {
             BindingValue child = compileValue(BindingPlan.Direction.READ_FROM,
                     subtype, method, generated);
             if (child == null) return false;
-            for (BindingProperty property : child.properties()) {
-                if (annotation.key().equals(property.name())
-                        || java.util.Arrays.asList(property.aliases()).contains(annotation.key())) {
-                    // A discriminator alias would bypass duplicate-key checks.
-                    return false;
-                }
-            }
             subtypes.add(new BindingValue.OneOfSubtype(subtype, child, false,
                     annotation.mappings()[i].when()));
         }
@@ -552,6 +545,7 @@ final class BindingCompiler {
             publicConstructors++;
             for (VariableElement arg : ((ExecutableElement) enclosed).getParameters()) {
                 if (key.equals(context.annotations.propertyName(arg, arg.getSimpleName().toString()))
+                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key)
                         || !simpleOneOfReadValue(arg.asType())) return false;
             }
         }
@@ -561,6 +555,16 @@ final class BindingCompiler {
             if (writable == null) continue;
             if (key.equals(property.name()) || !simpleOneOfReadValue(writable.type())
                     || hasMemberOneOf(property.read()) || hasMemberOneOf(property.write())) return false;
+            // Mirror the POJO/Creator property alias precedence before creating
+            // compiled subtype helpers. An alias overlapping the discriminator
+            // must select the ordinary runtime OneOf path.
+            NodeProperty writerAnnotation = writable.member().getAnnotation(NodeProperty.class);
+            NodeProperty readerAnnotation = property.read() == null ? null
+                    : property.read().member().getAnnotation(NodeProperty.class);
+            String[] aliases = writerAnnotation != null && writerAnnotation.aliases().length != 0
+                    ? writerAnnotation.aliases()
+                    : readerAnnotation == null ? new String[0] : readerAnnotation.aliases();
+            if (java.util.Arrays.asList(aliases).contains(key)) return false;
         }
         return true;
     }
