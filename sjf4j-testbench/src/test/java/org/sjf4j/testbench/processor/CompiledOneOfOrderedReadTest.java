@@ -123,9 +123,9 @@ public class CompiledOneOfOrderedReadTest {
     @Test
     void noArgsSubtypeRestoresPrefixProperty() throws Exception {
         Gamma first = assertInstanceOf(Gamma.class,
-                READER.read("{\\"@type\\":\\"gamma\\",\\"value\\":19,\\"name\\":\\"Ada\\"}"));
+                READER.read("{\"@type\":\"gamma\",\"value\":19,\"name\":\"Ada\"}"));
         Gamma last = assertInstanceOf(Gamma.class,
-                READER.read("{\\"value\\":19,\\"name\\":\\"Ada\\",\\"@type\\":\\"gamma\\"}"));
+                READER.read("{\"value\":19,\"name\":\"Ada\",\"@type\":\"gamma\"}"));
         assertEquals(19, first.getValue());
         assertEquals("Ada", first.getName());
         assertEquals(19, last.getValue());
