@@ -33,7 +33,7 @@ class CompiledTemporalStreamingTest {
                 + "\"offsetDateTime\":\"2026-10-21T12:30:01.123456789+02:00\","
                 + "\"zonedDateTime\":\"2026-10-21T12:30:01.123+02:00[Europe/Paris]\","
                 + "\"offsetTime\":\"12:30:01.123456789+02:00\","
-                + "\"date\":\"2026-10-21T10:30:01.123Z\","
+                + "\"legacyDate\":\"2026-10-21T10:30:01.123Z\","
                 + "\"calendar\":\"2026-10-21T12:30:01.123+02:00[Europe/Paris]\","
                 + "\"patternOffset\":\"2026/10/21 12:30:01+02:00\"}";
         for (String backend : new String[]{
@@ -51,7 +51,7 @@ class CompiledTemporalStreamingTest {
                             + " public OffsetDateTime offsetDateTime;"
                             + " public ZonedDateTime zonedDateTime;"
                             + " public OffsetTime offsetTime;"
-                            + " public java.util.Date date;"
+                            + " public java.util.Date legacyDate;"
                             + " public java.util.Calendar calendar;"
                             + " @NodeProperty(codecPattern=\"yyyy/MM/dd HH:mm:ssXXX\")"
                             + " public OffsetDateTime patternOffset;"
@@ -85,7 +85,7 @@ class CompiledTemporalStreamingTest {
                                 binder, input.getBytes(StandardCharsets.UTF_8))
                 }) {
                     assertEquals(LocalDate.of(2026, 10, 21),
-                            beanClass.getField("date").get(bean), backend);
+                            beanClass.getField("legacyDate").get(bean), backend);
                     assertEquals(LocalTime.of(12, 30),
                             beanClass.getField("time").get(bean), backend);
                     assertEquals(LocalDateTime.of(2026, 10, 21, 12, 30, 1, 123_456_789),
