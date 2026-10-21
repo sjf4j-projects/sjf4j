@@ -51,7 +51,9 @@ public class CreekRuntimeDiagnosisBenchmark {
         TestModel reduced = new TestModel(full.getName(), full.getDecimal(),
                 full.getAnEnum(), full.getList(), values.subList(0, polyCount));
         creekJson = JACKSON.writeValueAsString(reduced);
-        listJson = JACKSON.writeValueAsString(reduced.getPolymorphicTypes());
+        // Preserve polymorphic @type metadata from the typed Creek property.
+        // Serializing an untyped root List loses Jackson's declared PolyBase element type.
+        listJson = JACKSON.readTree(creekJson).get("polymorphicTypes").toString();
         creekUtf8 = creekJson.getBytes(StandardCharsets.UTF_8);
         firstA = "{\"@type\":\"poly-a\",\"id\":\"" + ID + "\"}";
         lastA = "{\"id\":\"" + ID + "\",\"@type\":\"poly-a\"}";
