@@ -104,12 +104,55 @@ public class CompiledOneOfBoundaryTest {
         public AliasValue() {}
     }
 
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = FactoryAliasValue.class, when = "factory")
+    })
+    public interface FactoryAliasChoice {}
+
+    public static final class FactoryAliasValue implements FactoryAliasChoice {
+        private final String value;
+
+        // This is the sole public constructor, but binding selects the factory.
+        public FactoryAliasValue() { this.value = "default"; }
+        private FactoryAliasValue(String value) { this.value = value; }
+
+        @NodeCreator
+        public static FactoryAliasValue of(
+                @NodeProperty(value = "value", aliases = {"kind"}) String value) {
+            return new FactoryAliasValue(value);
+        }
+
+        public String getValue() { return value; }
+    }
+
+    @OneOf(key = "kind", mappings = {
+            @OneOfMapping(type = FactoryValue.class, when = "regular")
+    })
+    public interface FactoryChoice {}
+
+    public static final class FactoryValue implements FactoryChoice {
+        private final String value;
+
+        public FactoryValue() { this.value = "default"; }
+        private FactoryValue(String value) { this.value = value; }
+
+        @NodeCreator
+        public static FactoryValue of(
+                @NodeProperty(value = "value", aliases = {"legacy_value"}) String value) {
+            return new FactoryValue(value);
+        }
+
+        public String getValue() { return value; }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     @BindingOptions(registries = {CodecRegistry.class})
     public interface Reader {
         @ReadFrom NumericChoice readNumeric(String json) throws IOException;
         @ReadFrom OptionalChoice readOptional(String json) throws IOException;
         @ReadFrom AliasChoice readAlias(String json) throws IOException;
+        @ReadFrom FactoryAliasChoice readFactoryAlias(String json) throws IOException;
+        @ReadFrom FactoryChoice readFactory(String json) throws IOException;
     }
 
     static {
@@ -163,4 +206,36 @@ public class CompiledOneOfBoundaryTest {
                 BINDER.readAlias("{\"kind\":\"alias\"}"));
         assertEquals("alias", value.value);
     }
+    @Test
+    void selectedFactoryCreatorDiscriminatorAliasUsesRuntimeFallback() throws Exception {
+        for (java.lang.reflect.Method method : BINDER.getClass().getDeclaredMethods()) {
+            assertFalse(method.getReturnType() == FactoryAliasValue.class
+                    && method.getName().endsWith("_content"),
+                    "Factory argument alias overlapping the discriminator must disable compiled OneOf");
+        }
+
+        FactoryAliasValue actual = assertInstanceOf(FactoryAliasValue.class,
+                BINDER.readFactoryAlias("{\\"kind\\":\\"factory\\"}"));
+        assertEquals("factory", actual.getValue(),
+                "Runtime OneOf must bind the discriminator to the selected factory argument");
+    }
+
+    @Test
+    void safeFactoryCreatorStillUsesCompiledOneOf() throws Exception {
+        boolean hasCompiledReader = false;
+        for (java.lang.reflect.Method method : BINDER.getClass().getDeclaredMethods()) {
+            hasCompiledReader |= method.getReturnType() == FactoryValue.class
+                    && method.getName().endsWith("_content");
+        }
+        assertTrue(hasCompiledReader, "Nonconflicting factory should remain compiled");
+
+        for (String input : Arrays.asList(
+                "{\\"kind\\":\\"regular\\",\\"legacy_value\\":\\"ok\\"}",
+                "{\\"legacy_value\\":\\"ok\\",\\"kind\\":\\"regular\\"}")) {
+            FactoryValue actual = assertInstanceOf(FactoryValue.class, BINDER.readFactory(input));
+            assertEquals("ok", actual.getValue());
+        }
+    }
+
+
 }
