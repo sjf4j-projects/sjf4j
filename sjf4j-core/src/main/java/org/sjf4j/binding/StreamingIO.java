@@ -996,7 +996,7 @@ public final class StreamingIO {
         return matcher;
     }
 
-    private static NameMatcher cacheCreatorNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
+    static NameMatcher cacheCreatorNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
         BackendCache cache = pojoInfo.backendCache(reader.backend);
         NameMatcher matcher = cache.creatorNameMatcher;
         if (matcher == null) {
