@@ -66,8 +66,8 @@ public class CreekPolyCountBenchmark {
             throw new IllegalStateException("compiled Creek OneOf reads differ");
         }
         try {
-            SJF4J_COMPILED.readPoly("{\\"@type\\":\\"poly-a\\",\\"id\\":\\"" + id
-                    + "\\",\\"@type\\":\\"poly-a\\"}");
+            SJF4J_COMPILED.readPoly("{\"@type\":\"poly-a\",\"id\":\"" + id
+                    + "\",\"@type\":\"poly-a\"}");
             throw new IllegalStateException("duplicate discriminator was accepted");
         } catch (org.sjf4j.exception.BindingException expectedDuplicate) {
             if (!expectedDuplicate.getMessage().contains("duplicate oneOf discriminator")) {
