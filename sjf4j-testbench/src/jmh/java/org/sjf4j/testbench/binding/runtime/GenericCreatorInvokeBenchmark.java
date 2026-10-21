@@ -7,7 +7,7 @@ import org.sjf4j.meta.TypeRegistry;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Isolates the generic 1-5 argument Creator invocation strategy. Both methods
+ * Isolates both fixed-arity (1-5) and cached array-spreader (>5) Creator invocation. Both methods
  * share the same metadata and argument array; only invocation differs.
  * Deliberately tests multiple primitive/reference combinations, not a
  * backend-specific double constructor.
@@ -23,8 +23,11 @@ public class GenericCreatorInvokeBenchmark {
     public record One(double value) {}
     public record Three(int id, String name, double value) {}
     public record Five(long count, String name, boolean active, float ratio, int id) {}
+    public record Six(int id, String name, long count, double value, boolean active, float ratio) {}
+    public record Ten(int id, String name, long count, double value, boolean active,
+                      float ratio, String note, int level, long version, double fraction) {}
 
-    @Param({"1", "3", "5"})
+    @Param({"1", "3", "5", "6", "10"})
     public int arity;
 
     private CreatorInfo info;
@@ -48,6 +51,17 @@ public class GenericCreatorInvokeBenchmark {
                 arguments = new Object[]{99L, "ninety nine", true, 1.25f, 7};
                 if (info.argsCreatorLambda5 == null) throw new IllegalStateException("missing Func5");
                 break;
+            case 6:
+                info = TypeRegistry.requireRegisteredPojoInfo(Six.class).creatorInfo;
+                arguments = new Object[]{7, "six", 123456789L, 12.5, true, 1.25f};
+                if (info.argsCreatorLambda5 != null) throw new IllegalStateException("unexpected Func5");
+                break;
+            case 10:
+                info = TypeRegistry.requireRegisteredPojoInfo(Ten.class).creatorInfo;
+                arguments = new Object[]{7, "ten", 123456789L, 12.5, true,
+                        1.25f, "note", 3, 9000L, 0.125};
+                if (info.argsCreatorLambda5 != null) throw new IllegalStateException("unexpected Func5");
+                break;
             default:
                 throw new IllegalArgumentException("arity");
         }
@@ -57,7 +71,7 @@ public class GenericCreatorInvokeBenchmark {
     }
 
     @Benchmark
-    public Object generic_func_invoke_exact() {
+    public Object cached_creator_invoke_exact() {
         return info.newPojoWithArgs(arguments);
     }
 
