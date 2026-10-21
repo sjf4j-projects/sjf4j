@@ -5,7 +5,7 @@ Independent branch from `main`; no changes from PR #68 and no changes to Compile
 ## Reproduction and result sources
 
 - Baseline JMH: [run 39576471877](https://github.com/sjf4j-projects/sjf4j/actions/runs/39576471877) (valid isolated subtype samples and Creek count results).
-- Corrected complete JMH: [run 39577820001](https://github.com/sjf4j-projects/sjf4j/actions/runs/39577820001); [raw JSON and logs](https://github.com/sjf4j-projects/sjf4j/actions/runs/39577820001/artifacts/12334405171).
+- Corrected complete JMH: [run 39577820001](https://github.com/sjf4j-projects/sjf4j/actions/runs/39577820001); [raw JSON and logs](https://github.com/sjf4j-projects/sjf4j/actions/runs/39577820001/artifacts/12335531265).
 - JDK 17, shared GitHub Actions runner, forked JMH, GC allocation profiler. Results are indicative: the absolute timing changed substantially between runs; within-run relative directions and B/op are more informative.
 - Inputs: same prepared JSON for Runtime/Jackson native, parse anew on every measured operation, `@type` first unless explicitly tested otherwise.
 - JMH setup checks output equality. Polymorphic `listJson` is extracted from the strongly typed Creek JSON tree so the discriminator is not discarded by root List serialization. Workflow uses `set -o pipefail` to propagate JMH failures.
