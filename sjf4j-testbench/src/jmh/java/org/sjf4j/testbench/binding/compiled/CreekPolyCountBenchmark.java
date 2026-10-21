@@ -77,9 +77,9 @@ public class CreekPolyCountBenchmark {
 
         boolean compiledA = false, compiledB = false;
         for (java.lang.reflect.Method method : SJF4J_COMPILED.getClass().getDeclaredMethods()) {
-            compiledA |= method.getName().contains("PolyTypeA")
+            compiledA |= method.getReturnType() == PolyTypeA.class
                     && method.getName().endsWith("_content");
-            compiledB |= method.getName().contains("PolyTypeB")
+            compiledB |= method.getReturnType() == PolyTypeB.class
                     && method.getName().endsWith("_content");
         }
         if (!compiledA || !compiledB) {
