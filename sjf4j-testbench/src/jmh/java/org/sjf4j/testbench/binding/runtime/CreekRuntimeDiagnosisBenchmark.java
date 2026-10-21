@@ -8,6 +8,8 @@ import org.sjf4j.testbench.model.creek.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.lang.reflect.Type;
+import org.sjf4j.TypeReference;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +33,8 @@ public class CreekRuntimeDiagnosisBenchmark {
     @Param({"0", "1", "4", "8"})
     public int polyCount;
 
+    private static final Type POLY_LIST_TYPE = new TypeReference<List<PolyBase>>() {}.getType();
+    private String listJson;
     private String creekJson;
     private byte[] creekUtf8;
     private String firstA;
@@ -45,6 +49,7 @@ public class CreekRuntimeDiagnosisBenchmark {
         TestModel reduced = new TestModel(full.getName(), full.getDecimal(),
                 full.getAnEnum(), full.getList(), values.subList(0, polyCount));
         creekJson = JACKSON.writeValueAsString(reduced);
+        listJson = JACKSON.writeValueAsString(reduced.getPolymorphicTypes());
         creekUtf8 = creekJson.getBytes(StandardCharsets.UTF_8);
         firstA = "{\"@type\":\"poly-a\",\"id\":\"" + ID + "\"}";
         lastA = "{\"id\":\"" + ID + "\",\"@type\":\"poly-a\"}";
@@ -55,6 +60,11 @@ public class CreekRuntimeDiagnosisBenchmark {
                 "native Creek");
         verify(reduced, RUNTIME.readNode(creekJson, TestModel.class),
                 "runtime Creek");
+        verify(reduced.getPolymorphicTypes(), RUNTIME.readNode(listJson, POLY_LIST_TYPE),
+                "runtime polymorphic list");
+        verify(reduced.getPolymorphicTypes(),
+                JACKSON.readValue(listJson, new com.fasterxml.jackson.core.type.TypeReference<List<PolyBase>>() {}),
+                "native polymorphic list");
         verify(new PolyTypeA(ID), RUNTIME.readNode(firstA, PolyBase.class),
                 "A first OneOf");
         verify(new PolyTypeA(ID), RUNTIME.readNode(lastA, PolyBase.class),
@@ -85,6 +95,22 @@ public class CreekRuntimeDiagnosisBenchmark {
         return JACKSON.readValue(creekJson, TestModel.class);
     }
 
+    @Benchmark public Object list_runtime_string() {
+        return RUNTIME.readNode(listJson, POLY_LIST_TYPE);
+    }
+    @Benchmark public Object list_jackson_native() throws IOException {
+        return JACKSON.readValue(listJson,
+                new com.fasterxml.jackson.core.type.TypeReference<List<PolyBase>>() {});
+    }
+    @Benchmark public Object subtype_a_jackson_native() throws IOException {
+        return JACKSON.readValue(firstA, PolyBase.class);
+    }
+    @Benchmark public Object subtype_a_jackson_direct() throws IOException {
+        return JACKSON.readValue(firstA, PolyTypeA.class);
+    }
+    @Benchmark public Object subtype_b_jackson_native() throws IOException {
+        return JACKSON.readValue(firstB, PolyBase.class);
+    }
     @Benchmark public Object subtype_a_oneof_first_string() {
         return RUNTIME.readNode(firstA, PolyBase.class);
     }
