@@ -135,21 +135,21 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
     PatternedValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = new TemporalValueCodec<>(LocalDateTime.class,
             LocalDateTime::toString, LocalDateTime::format,
             LocalDateTime::parse, LocalDateTime::parse,
-            StreamingReader::readLocalDateTime, null);
+            StreamingReader::readLocalDateTime, StreamingWriter::writeLocalDateTime);
 
     PatternedValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = new TemporalValueCodec<>(OffsetDateTime.class,
             OffsetDateTime::toString, OffsetDateTime::format,
             OffsetDateTime::parse, OffsetDateTime::parse,
-            StreamingReader::readOffsetDateTime, null);
+            StreamingReader::readOffsetDateTime, StreamingWriter::writeOffsetDateTime);
 
     PatternedValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = new TemporalValueCodec<>(ZonedDateTime.class,
             ZonedDateTime::toString, ZonedDateTime::format,
             ZonedDateTime::parse, ZonedDateTime::parse,
-            StreamingReader::readZonedDateTime, null);
+            StreamingReader::readZonedDateTime, StreamingWriter::writeZonedDateTime);
 
     PatternedValueCodec<OffsetTime, String> OFFSET_TIME = new TemporalValueCodec<>(OffsetTime.class,
             OffsetTime::toString, OffsetTime::format,
             OffsetTime::parse, OffsetTime::parse,
-            StreamingReader::readOffsetTime, null);
+            StreamingReader::readOffsetTime, StreamingWriter::writeOffsetTime);
 
 }
