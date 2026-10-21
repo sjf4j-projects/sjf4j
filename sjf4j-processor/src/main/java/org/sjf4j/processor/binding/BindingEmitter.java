@@ -72,7 +72,22 @@ final class BindingEmitter {
                             + JavaWriter.stringLiteral(value.oneOfProperty()) + ").oneOfInfo";
             generated.addField(out -> out.line(
                     "private static final org.sjf4j.meta.OneOfInfo " + value.helperName()
-                            + " = " + source + ";"));
+                            + "_info = " + source + ";"));
+            if (value.oneOfKey() != null) {
+                // The compiled Jackson2 fast path matches the discriminator
+                // through JsonParser.nextFieldName(SerializedString).
+                generated.addField(out -> out.line(
+                        "private static final org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher "
+                                + value.helperName() + "_discriminator = new "
+                                + "org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher("
+                                + JavaWriter.stringLiteral(value.oneOfKey()) + ");"));
+                generated.addHelper(out -> reads.emitOneOfReadHelper(out, value));
+                for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
+                    BindingValue compiled = value.oneOfSubtypes().get(i).compiled;
+                    int index = i;
+                    generated.addHelper(out -> reads.emitOneOfSubtypeContent(out, value, compiled, index));
+                }
+            }
             return;
         }
         if (value.kind() == BindingValue.Kind.ONE_OF

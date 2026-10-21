@@ -96,7 +96,8 @@ public final class BindingGenerator {
                 new BindingCompiler(
                         context,
                         names,
-                        context.metadata(type));
+                        context.metadata(type),
+                        backend.backend());
 
         List<BindingCompiler.CompiledMethod> compiled =
                 new ArrayList<BindingCompiler.CompiledMethod>(
