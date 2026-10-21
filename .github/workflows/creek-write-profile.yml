@@ -5,6 +5,8 @@ on:
     paths:
       - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CreekWritePolyCountBenchmark.java'
       - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CreekWriteListCountBenchmark.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/WriteEmitter.java'
+      - 'sjf4j-processor/src/test/java/org/sjf4j/processor/CompiledJacksonMixedPojoWriteTest.java'
       - '.github/workflows/creek-write-profile.yml'
 
 permissions:
@@ -34,14 +36,14 @@ jobs:
             ls -lah sjf4j-testbench/build/libs
             exit 1
           fi
-          java -jar "$jar" '.*CreekWriteListCountBenchmark.*' \
+          java -jar "$jar" '.*CreekWrite(Poly|List)CountBenchmark.*' \
             -bm avgt -tu us -t 1 -f 3 -wi 5 -w 300ms -i 7 -r 300ms \
             -prof gc -rf json -rff creek-write-jmh.json | tee creek-write-jmh.log
       - name: Preserve JMH output
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: creek-write-listcount-jmh
+          name: creek-write-mixed-pojo-jmh
           path: |
             creek-write-jmh.json
             creek-write-jmh.log

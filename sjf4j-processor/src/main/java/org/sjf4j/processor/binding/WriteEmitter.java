@@ -524,21 +524,12 @@ final class WriteEmitter {
     }
 
     /**
-     * Keep the POJO structure and all non-codec fields on JsonGenerator.
-     * Only conversion through the selected ValueInfo stays adapter-based.
+     * An adapted descendant must not force ordinary POJO fields through the
+     * StreamingWriter facade. Only the adapted subtree needs that interface.
      */
     private boolean mixedJacksonPojo(BindingValue value) {
-        if (!isJackson() || value.kind() != BindingValue.Kind.POJO) return false;
-        boolean hasCodec = false;
-        for (BindingProperty property : value.properties()) {
-            BindingValue child = property.value();
-            if (child.kind() == BindingValue.Kind.VALUE_CODEC) {
-                hasCodec = true;
-            } else if (!nativeEligible(child, new HashSet<BindingValue>())) {
-                return false;
-            }
-        }
-        return hasCodec;
+        return isJackson() && value.kind() == BindingValue.Kind.POJO
+                && containsAdaptedValue(value, new HashSet<BindingValue>());
     }
 
     private void emitMixedJacksonPojo(JavaWriter out, BindingValue value) {
@@ -562,9 +553,22 @@ final class WriteEmitter {
             if (child.kind() == BindingValue.Kind.VALUE_CODEC) {
                 CodecWriteEmitter.emit(out, child, expression, "writer", "g", backend.backend());
             } else if (child.kind() == BindingValue.Kind.STRING) {
-                out.line("g.writeString(" + expression + ");");
-            } else {
+                // Evaluate the getter once, including on the null path.
+                out.beginBlock("");
+                out.line("String item = " + expression + ";");
+                out.beginBlock("if (item == null)");
+                out.line("g.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("g.writeString(item);");
+                out.endBlock();
+                out.endBlock();
+            } else if (nativeEligible(child, new HashSet<BindingValue>())) {
                 jackson.emitValue(out, child, expression);
+            } else {
+                // OneOf, dynamic containers and nested adapted POJOs retain
+                // their existing compiled/runtime semantics on this subtree.
+                writeValue(out, child, "writer", expression);
             }
         }
         out.line("g.writeEndObject();");
@@ -855,17 +859,14 @@ final class WriteEmitter {
                 return;
 
             case ENUM:
-                out.beginBlock(
-                        "if (" + expression +
-                                " == null)");
+                out.beginBlock("");
+                out.line(value.type() + " item = " + expression + ";");
+                out.beginBlock("if (item == null)");
                 out.line(writer + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(
-                        writer +
-                                ".writeStringValue(" +
-                                expression +
-                                ".name());");
+                out.line(writer + ".writeStringValue(item.name());");
+                out.endBlock();
                 out.endBlock();
                 return;
 
