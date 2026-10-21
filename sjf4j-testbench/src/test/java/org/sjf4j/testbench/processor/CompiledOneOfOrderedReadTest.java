@@ -17,7 +17,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** The compiled CURRENT/key OneOf reader must not depend on JSON member order. */
-class CompiledOneOfOrderedReadTest {
+public class CompiledOneOfOrderedReadTest {
 
     private static final String ID = "123e4567-e89b-12d3-a456-426614174000";
     private static final Reader READER = CompiledInstances.global(Reader.class);
@@ -62,6 +62,18 @@ class CompiledOneOfOrderedReadTest {
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Reader {
         @ReadFrom Variant read(String json) throws IOException;
+    }
+
+    @Test
+    void generatedSubtypeReadersAreUsed() {
+        boolean alpha = false;
+        boolean beta = false;
+        for (java.lang.reflect.Method method : READER.getClass().getDeclaredMethods()) {
+            alpha |= method.getReturnType() == Alpha.class && method.getName().endsWith("_content");
+            beta |= method.getReturnType() == Beta.class && method.getName().endsWith("_content");
+        }
+        assertTrue(alpha, "Alpha must use a generated OneOf subtype reader");
+        assertTrue(beta, "Beta must use a generated OneOf subtype reader");
     }
 
     @Test
