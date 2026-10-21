@@ -3,6 +3,10 @@ package org.sjf4j.meta;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.util.Invokers;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -46,6 +50,38 @@ class PrimitiveCreatorInvokeExactTest {
         }
     }
 
+    public static final class SevenMixedFactory {
+        final String name;
+        final int id;
+        final double value;
+        final boolean enabled;
+        final long count;
+        final float ratio;
+        final String note;
+
+        private SevenMixedFactory(String name, int id, double value, boolean enabled,
+                                  long count, float ratio, String note) {
+            this.name = name;
+            this.id = id;
+            this.value = value;
+            this.enabled = enabled;
+            this.count = count;
+            this.ratio = ratio;
+            this.note = note;
+        }
+
+        @NodeCreator
+        public static SevenMixedFactory create(@NodeProperty("name") String name,
+                                               @NodeProperty("id") int id,
+                                               @NodeProperty("value") double value,
+                                               @NodeProperty("enabled") boolean enabled,
+                                               @NodeProperty("count") long count,
+                                               @NodeProperty("ratio") float ratio,
+                                               @NodeProperty("note") String note) {
+            return new SevenMixedFactory(name, id, value, enabled, count, ratio, note);
+        }
+    }
+
     @Test
     void supportsFiveDifferentPrimitiveTypesWithoutSpecialFunctions() {
         CreatorInfo info = TypeRegistry.requireRegisteredPojoInfo(AllPrimitives.class).creatorInfo;
@@ -69,12 +105,52 @@ class PrimitiveCreatorInvokeExactTest {
     }
 
     @Test
-    void moreThanFiveParametersKeepExistingHandleFallback() {
+    void moreThanFiveParametersUseCachedSpreaderWithPrimitiveDefaults() throws Throwable {
         CreatorInfo info = TypeRegistry.requireRegisteredPojoInfo(SixPrimitives.class).creatorInfo;
         assertNull(info.argsCreatorLambda1);
         assertNull(info.argsCreatorLambda5);
-        SixPrimitives instance = (SixPrimitives) info.newPojoWithArgs(new Object[]{1, 2, 3, 4, 5, 6});
+        MethodHandle spreader = Invokers.createArgsCreatorSpreader(info.argsCreatorHandle);
+        assertNotNull(spreader);
+        assertEquals(MethodType.methodType(Object.class, Object[].class), spreader.type());
+        Object[] args = new Object[]{1, 2, 3, 4, 5, 6};
+        SixPrimitives instance = (SixPrimitives) info.newPojoWithArgs(args.clone());
         assertEquals(1, instance.a);
         assertEquals(6, instance.f);
+
+        SixPrimitives direct = (SixPrimitives) spreader.invokeExact(args);
+        assertEquals(instance.a, direct.a);
+        assertEquals(instance.f, direct.f);
+
+        SixPrimitives missing = (SixPrimitives) info.newPojoWithArgs(
+                new Object[]{1, null, 3, null, 5, null});
+        assertEquals(0, missing.b);
+        assertEquals(0, missing.d);
+        assertEquals(0, missing.f);
+    }
+
+    @Test
+    void sevenMixedFactoryUsesSameGenericArraySpreader() {
+        CreatorInfo info = TypeRegistry.requireRegisteredPojoInfo(SevenMixedFactory.class).creatorInfo;
+        assertNotNull(Invokers.createArgsCreatorSpreader(info.argsCreatorHandle));
+
+        SevenMixedFactory value = (SevenMixedFactory) info.newPojoWithArgs(
+                new Object[]{"factory", 7, 12.5, true, 1234L, 1.25f, "note"});
+        assertEquals("factory", value.name);
+        assertEquals(7, value.id);
+        assertEquals(12.5, value.value);
+        assertTrue(value.enabled);
+        assertEquals(1234L, value.count);
+        assertEquals(1.25f, value.ratio);
+        assertEquals("note", value.note);
+
+        SevenMixedFactory missing = (SevenMixedFactory) info.newPojoWithArgs(
+                new Object[]{null, null, null, null, null, null, null});
+        assertNull(missing.name);
+        assertEquals(0, missing.id);
+        assertEquals(0.0, missing.value);
+        assertFalse(missing.enabled);
+        assertEquals(0L, missing.count);
+        assertEquals(0f, missing.ratio);
+        assertNull(missing.note);
     }
 }
