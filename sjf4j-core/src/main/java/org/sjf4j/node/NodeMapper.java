@@ -16,6 +16,7 @@ import org.sjf4j.meta.CreatorState;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.OneOfInfo;
+import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
@@ -1099,7 +1100,7 @@ public final class NodeMapper {
 
     private static Object _convertOneOf(Object node, Class<?> toBoxed,
                                         OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, RuntimeContext context) {
-        Class<?> targetClazz;
+        LazyTypeInfo target;
         JsonType jsonType = JsonType.of(node);
 
         if (oneOfInfo.hasDiscriminator) {
@@ -1140,8 +1141,8 @@ public final class NodeMapper {
                         "not found value for discriminator key '" + oneOfInfo.key + "'", ps);
             }
 
-            targetClazz = oneOfInfo.matchByWhen(discriminatorValue);
-            if (targetClazz == null) {
+            target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);
+            if (target == null) {
                 if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                     return null;
                 }
@@ -1149,8 +1150,8 @@ public final class NodeMapper {
                         discriminatorValue + "'", ps);
             }
         } else {
-            targetClazz = oneOfInfo.matchByJsonType(jsonType);
-            if (targetClazz == null) {
+            target = oneOfInfo.lazyTypeInfoByJsonType(jsonType);
+            if (target == null) {
                 if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                     return null;
                 }
@@ -1159,7 +1160,7 @@ public final class NodeMapper {
             }
         }
 
-        return _convert(node, targetClazz, Types.rawBox(targetClazz), null, deepCopy, ps, context);
+        return _convert(node, target.clazz, Types.rawBox(target.clazz), target.get(), deepCopy, ps, context);
     }
 
     /**

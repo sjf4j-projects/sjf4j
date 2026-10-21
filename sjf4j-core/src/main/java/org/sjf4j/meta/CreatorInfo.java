@@ -30,6 +30,10 @@ public class CreatorInfo {
     public final TypeRegistry.Func5 argsCreatorLambda5;
     public final String[] argNames;
     public final Type[] argTypes;
+    /** Whether an argument type must be resolved against the actual generic owner. */
+    public final boolean[] argGenericDependent;
+    /** Lazy metadata for concrete Class arguments; null for generic argument types. */
+    public final LazyTypeInfo[] argTypeInfos;
     public final String[] argCodecNames;
     public final ValueInfo[] argValueCodecs;
     public final Map<String, Integer> argIndexes;
@@ -59,6 +63,19 @@ public class CreatorInfo {
         this.argsCreatorLambda5 = argsCreatorLambda5;
         this.argNames = argNames;
         this.argTypes = argTypes;
+        if (argTypes == null) {
+            this.argGenericDependent = null;
+            this.argTypeInfos = null;
+        } else {
+            this.argGenericDependent = new boolean[argTypes.length];
+            this.argTypeInfos = new LazyTypeInfo[argTypes.length];
+            for (int i = 0; i < argTypes.length; i++) {
+                this.argGenericDependent[i] = Types.containsTypeVariable(argTypes[i]);
+                if (argTypes[i] instanceof Class<?>) {
+                    this.argTypeInfos[i] = new LazyTypeInfo((Class<?>) argTypes[i]);
+                }
+            }
+        }
         this.argCodecNames = argCodecNames;
         this.argValueCodecs = argValueCodecs;
         this.argIndexes = argIndexes;

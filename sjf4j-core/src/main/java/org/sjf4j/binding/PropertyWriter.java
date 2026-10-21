@@ -7,6 +7,7 @@ import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.TypeInfo;
+import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.util.Invokers;
@@ -638,7 +639,7 @@ public interface PropertyWriter {
                                         Function<Object, Object> getterLambda) {
         Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
         Class<?> valueClazz = Types.rawBox(valueType);
-        TypeInfo[] typeInfoRef = new TypeInfo[1];
+        LazyTypeInfo typeInfoRef = new LazyTypeInfo(valueClazz);
 
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -646,11 +647,7 @@ public interface PropertyWriter {
                 return _writeNullValueField(writer, preparedName, context, count);
             }
 
-            TypeInfo typeInfo = typeInfoRef[0];
-            if (typeInfo == null) {
-                typeInfo = TypeRegistry.registerTypeInfo(valueClazz);
-                typeInfoRef[0] = typeInfo;
-            }
+            TypeInfo typeInfo = typeInfoRef.get();
             count = _writeName(writer, preparedName, count);
             StreamingIO.writeMap(writer, (Map<?, ?>) value, typeInfo, context);
             return count;
@@ -681,7 +678,7 @@ public interface PropertyWriter {
                                          Function<Object, Object> getterLambda) {
         Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
         Class<?> elementClazz = Types.rawBox(elementType);
-        TypeInfo[] typeInfoRef = new TypeInfo[1];
+        LazyTypeInfo typeInfoRef = new LazyTypeInfo(elementClazz);
 
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -690,11 +687,7 @@ public interface PropertyWriter {
             }
             count = _writeName(writer, preparedName, count);
 
-            TypeInfo typeInfo = typeInfoRef[0];
-            if (typeInfo == null) {
-                typeInfo = TypeRegistry.registerTypeInfo(elementClazz);
-                typeInfoRef[0] = typeInfo;
-            }
+            TypeInfo typeInfo = typeInfoRef.get();
             StreamingIO.writeList(writer, (List<?>) value, typeInfo, context);
             return count;
         };
@@ -717,7 +710,7 @@ public interface PropertyWriter {
                                         Function<Object, Object> getterLambda) {
         Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
         Class<?> elementClazz = Types.rawBox(elementType);
-        TypeInfo[] typeInfoRef = new TypeInfo[1];
+        LazyTypeInfo typeInfoRef = new LazyTypeInfo(elementClazz);
 
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -726,11 +719,7 @@ public interface PropertyWriter {
             }
             count = _writeName(writer, preparedName, count);
 
-            TypeInfo typeInfo = typeInfoRef[0];
-            if (typeInfo == null) {
-                typeInfo = TypeRegistry.registerTypeInfo(elementClazz);
-                typeInfoRef[0] = typeInfo;
-            }
+            TypeInfo typeInfo = typeInfoRef.get();
             StreamingIO.writeSet(writer, (Set<?>) value, typeInfo, context);
             return count;
         };
@@ -739,7 +728,7 @@ public interface PropertyWriter {
     static PropertyWriter _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
         Class<?> compClazz = fieldBoxed.getComponentType();
-        TypeInfo[] typeInfoRef = {compClazz.isPrimitive() ? TypeInfo.NONE : null};
+        LazyTypeInfo typeInfoRef = new LazyTypeInfo(compClazz);
 
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -748,11 +737,7 @@ public interface PropertyWriter {
             }
             count = _writeName(writer, preparedName, count);
 
-            TypeInfo typeInfo = typeInfoRef[0];
-            if (typeInfo == null) {
-                typeInfo = TypeRegistry.registerTypeInfo(compClazz);
-                typeInfoRef[0] = typeInfo;
-            }
+            TypeInfo typeInfo = compClazz.isPrimitive() ? TypeInfo.NONE : typeInfoRef.get();
             StreamingIO.writeArray(writer, value, value.getClass(), typeInfo, context);
             return count;
         };
@@ -787,7 +772,7 @@ public interface PropertyWriter {
 
     static PropertyWriter _createForObject(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
-        TypeInfo[] typeInfoRef = new TypeInfo[1];
+        LazyTypeInfo typeInfoRef = new LazyTypeInfo(fieldBoxed);
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -803,11 +788,7 @@ public interface PropertyWriter {
              * Subclasses retain normal runtime-polymorphic semantics.
              */
             if (value.getClass() == fieldBoxed) {
-                TypeInfo typeInfo = typeInfoRef[0];
-                if (typeInfo == null) {
-                    typeInfo = TypeRegistry.registerTypeInfo(fieldBoxed);
-                    typeInfoRef[0] = typeInfo;
-                }
+                TypeInfo typeInfo = typeInfoRef.get();
 
                 if (typeInfo.pojoInfo != null) {
                     StreamingIO.writePojo(writer, value, typeInfo.pojoInfo, context);

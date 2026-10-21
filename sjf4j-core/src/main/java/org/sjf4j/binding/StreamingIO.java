@@ -13,6 +13,7 @@ import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.CreatorInfo;
+import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.CreatorState;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
@@ -523,13 +524,22 @@ public final class StreamingIO {
              */
             int argIndex = pojoInfo.creatorMatchArgs[index];
             if (argIndex >= 0) {
-                Type argType = Types.resolveMemberType(type, boxed, creator.argTypes[argIndex]);
-                Class<?> argBoxed = Types.rawBox(argType);
                 ValueInfo codec = creator.argValueCodecs[argIndex];
-
-                Object value = codec == null
-                        ? readNode(reader, argType, argBoxed, null, context)
-                        : readValueCodec(reader, codec, context);
+                Object value;
+                if (codec != null) {
+                    value = readValueCodec(reader, codec, context);
+                } else {
+                    LazyTypeInfo lazy = creator.argTypeInfos[argIndex];
+                    if (lazy != null) {
+                        value = readNode(reader, lazy.clazz, Types.box(lazy.clazz), lazy.get(), context);
+                    } else {
+                        Type argType = creator.argGenericDependent[argIndex]
+                                ? Types.resolveMemberType(type, boxed, creator.argTypes[argIndex])
+                                : creator.argTypes[argIndex];
+                        Class<?> argBoxed = Types.rawBox(argType);
+                        value = readNode(reader, argType, argBoxed, null, context);
+                    }
+                }
                 state.acceptCtorArg(argIndex, value);
                 if (parentKey != null && parentKey.equals(name)) {
                     parentValue = value;
@@ -558,9 +568,9 @@ public final class StreamingIO {
                     throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                 }
 
-                Class<?> target = oneOfInfo.matchByWhen(parentValue == UNSET ? null : parentValue);
+                LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(parentValue == UNSET ? null : parentValue);
                 if (target != null) {
-                    Object value = readNode(reader, target, context);
+                    Object value = readNode(reader, target.clazz, target.clazz, target.get(), context);
                     if (state.isCreated()) {
                         property.invokeSetterIfPresent(state.pojo(), value);
                     } else {
@@ -632,10 +642,10 @@ public final class StreamingIO {
             }
         }
 
-        Class<?> target = oneOfInfo.matchByWhen(parentValue == UNSET ? null : parentValue);
+        LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(parentValue == UNSET ? null : parentValue);
         Object value;
         if (target != null) {
-            value = NodeMapper.convert(deferredRaw, target, false, context);
+            value = NodeMapper.convert(deferredRaw, target.clazz, false, context);
         } else if (oneOfInfo.fallbackNull) {
             value = null;
         } else {
@@ -996,7 +1006,7 @@ public final class StreamingIO {
         return matcher;
     }
 
-    private static NameMatcher cacheCreatorNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
+    static NameMatcher cacheCreatorNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
         BackendCache cache = pojoInfo.backendCache(reader.backend);
         NameMatcher matcher = cache.creatorNameMatcher;
         if (matcher == null) {

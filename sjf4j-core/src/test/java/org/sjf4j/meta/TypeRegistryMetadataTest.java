@@ -310,6 +310,45 @@ class TypeRegistryMetadataTest {
         assertEquals(Long.class, creatorInfo.argValueCodecs[0].rawClazz);
     }
 
+    static class MixedCreatorTypes {
+        final Instant timestamp;
+        final List<String> tags;
+
+        @NodeCreator
+        MixedCreatorTypes(@NodeProperty("timestamp") Instant timestamp,
+                          @NodeProperty("tags") List<String> tags) {
+            this.timestamp = timestamp;
+            this.tags = tags;
+        }
+    }
+
+    @Test
+    void lazyTypeInfoCachesRegisteredTypesAndNone() {
+        LazyTypeInfo instant = new LazyTypeInfo(Instant.class);
+        TypeInfo instantInfo = instant.get();
+        assertSame(TypeRegistry.registerTypeInfo(Instant.class), instantInfo);
+        assertSame(instantInfo, instant.get());
+
+        LazyTypeInfo string = new LazyTypeInfo(String.class);
+        assertSame(TypeInfo.NONE, string.get());
+        assertSame(TypeInfo.NONE, string.get());
+    }
+
+    @Test
+    void creatorMetadataLazilyCachesOnlyConcreteClassArguments() {
+        CreatorInfo creator = TypeRegistry.requireRegisteredPojoInfo(MixedCreatorTypes.class).creatorInfo;
+        assertEquals(2, creator.argTypeInfos.length);
+        assertEquals(Instant.class, creator.argTypeInfos[0].clazz);
+        assertSame(TypeRegistry.registerTypeInfo(Instant.class), creator.argTypeInfos[0].get());
+        assertSame(creator.argTypeInfos[0].get(), creator.argTypeInfos[0].get());
+        // List<String> must retain its full parameterized type for binding.
+        assertNull(creator.argTypeInfos[1]);
+
+        CreatorInfo primitive = TypeRegistry.requireRegisteredPojoInfo(PrimitiveArgs.class).creatorInfo;
+        assertEquals(boolean.class, primitive.argTypeInfos[0].clazz);
+        assertSame(TypeInfo.NONE, primitive.argTypeInfos[0].get());
+    }
+
     @Test
     void bindingMetadataFailuresUseBindingException() {
         BindingException missingCodec = assertThrows(BindingException.class,

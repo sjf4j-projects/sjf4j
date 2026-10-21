@@ -8,7 +8,7 @@ import org.sjf4j.value.ValueInfo;
 import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.util.Invokers;
 import org.sjf4j.meta.TypeInfo;
-import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.util.Types;
 
 import java.io.IOException;
@@ -149,13 +149,9 @@ public interface PropertyReader {
         if (Map.class.isAssignableFrom(fieldBoxed)) {
             Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
             Class<?> valueBoxed = Types.rawBox(valueType);
-            TypeInfo[] valueTiRef = new TypeInfo[1];
+            LazyTypeInfo valueTiRef = new LazyTypeInfo(valueBoxed);
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo valueTi = valueTiRef[0];
-                if (valueTi == null) {
-                    valueTi = TypeRegistry.registerTypeInfo(valueBoxed);
-                    valueTiRef[0] = valueTi;
-                }
+                TypeInfo valueTi = valueTiRef.get();
                 Object value = StreamingIO.readMap(reader, fieldType, fieldBoxed, valueType, valueBoxed, valueTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -173,13 +169,9 @@ public interface PropertyReader {
         if (List.class.isAssignableFrom(fieldBoxed)) {
             Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
             Class<?> elementBoxed = Types.rawBox(elementType);
-            TypeInfo[] elementTiRef = new TypeInfo[1];
+            LazyTypeInfo elementTiRef = new LazyTypeInfo(elementBoxed);
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo elementTi = elementTiRef[0];
-                if (elementTi == null) {
-                    elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
-                    elementTiRef[0] = elementTi;
-                }
+                TypeInfo elementTi = elementTiRef.get();
                 Object value = StreamingIO.readList(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -197,13 +189,9 @@ public interface PropertyReader {
         if (Set.class.isAssignableFrom(fieldBoxed)) {
             Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
             Class<?> elementBoxed = Types.rawBox(elementType);
-            TypeInfo[] elementTiRef = new TypeInfo[1];
+            LazyTypeInfo elementTiRef = new LazyTypeInfo(elementBoxed);
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo elementTi = elementTiRef[0];
-                if (elementTi == null) {
-                    elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
-                    elementTiRef[0] = elementTi;
-                }
+                TypeInfo elementTi = elementTiRef.get();
                 Object value = StreamingIO.readSet(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -212,13 +200,9 @@ public interface PropertyReader {
         if (fieldBoxed.isArray()) {
             Class<?> componentClazz = fieldBoxed.getComponentType();
             Class<?> componentBoxed = Types.box(componentClazz);
-            TypeInfo[] componentTiRef = new TypeInfo[1];
+            LazyTypeInfo componentTiRef = new LazyTypeInfo(componentClazz);
             return (reader, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo componentTi = componentTiRef[0];
-                if (componentTi == null) {
-                    componentTi = TypeRegistry.registerTypeInfo(componentClazz);
-                    componentTiRef[0] = componentTi;
-                }
+                TypeInfo componentTi = componentTiRef.get();
                 Object value = StreamingIO.readArray(reader, fieldType, fieldBoxed, componentClazz, componentBoxed,
                         componentTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
@@ -302,13 +286,9 @@ public interface PropertyReader {
 
         // Resolve metadata lazily and reuse it for subsequent reads through StreamingIO.
 
-        TypeInfo[] fieldTiRef = new TypeInfo[1];
+        LazyTypeInfo fieldTiRef = new LazyTypeInfo(fieldBoxed);
         return (reader, owner, ownerType, ownerBoxed, context) -> {
-            TypeInfo fieldTi = fieldTiRef[0];
-            if (fieldTi == null) {
-                fieldTi = TypeRegistry.registerTypeInfo(fieldBoxed);
-                fieldTiRef[0] = fieldTi;
-            }
+            TypeInfo fieldTi = fieldTiRef.get();
             Object value = StreamingIO.readNode(reader, fieldType, fieldBoxed, fieldTi, context);
             Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
         };
