@@ -50,7 +50,7 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
                         "DEFAULT " + name + " -> " + defaultInfo.rawType);
             }
-            for (String format : new String[]{"", "canonical", "iso", "epochMillis", "compact", "alpha", "beta"}) {
+            for (String format : new String[]{"", "standard", "iso", "epochMillis", "compact", "alpha", "beta"}) {
                 ValueCodecMetadata info = metadata.valueCodec(value.asType(), format);
                 if (info != null) {
                     processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
