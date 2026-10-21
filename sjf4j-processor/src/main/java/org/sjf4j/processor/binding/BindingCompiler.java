@@ -1,6 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NamingStrategy;
@@ -48,6 +49,7 @@ final class BindingCompiler {
     private final ProcessorContext context;
     private final NameAllocator names;
     private final CompiledMetadata metadata;
+    private final Backend backend;
     private final StandardCreatorResolver creators;
 
     private final TypeMirror stringType;
@@ -64,11 +66,13 @@ final class BindingCompiler {
     BindingCompiler(
             ProcessorContext context,
             NameAllocator names,
-            CompiledMetadata metadata) {
+            CompiledMetadata metadata,
+            Backend backend) {
 
         this.context = context;
         this.names = names;
         this.metadata = metadata;
+        this.backend = backend;
         this.creators = new StandardCreatorResolver(context);
 
         this.stringType = requiredType("java.lang.String");
@@ -493,7 +497,8 @@ final class BindingCompiler {
      */
     private boolean compileOneOfRead(BindingValue value, OneOf annotation,
                                      ExecutableElement method, GeneratedClass generated) {
-        if (annotation == null || annotation.scope() != OneOf.Scope.CURRENT
+        if (backend != Backend.JACKSON2 || annotation == null
+                || annotation.scope() != OneOf.Scope.CURRENT
                 || annotation.key().isEmpty() || !annotation.path().isEmpty()
                 || annotation.mappings().length == 0) return true;
 
