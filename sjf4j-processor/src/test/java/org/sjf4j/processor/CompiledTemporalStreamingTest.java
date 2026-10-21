@@ -85,7 +85,7 @@ class CompiledTemporalStreamingTest {
                                 binder, input.getBytes(StandardCharsets.UTF_8))
                 }) {
                     assertEquals(LocalDate.of(2026, 10, 21),
-                            beanClass.getField("legacyDate").get(bean), backend);
+                            beanClass.getField("date").get(bean), backend);
                     assertEquals(LocalTime.of(12, 30),
                             beanClass.getField("time").get(bean), backend);
                     assertEquals(LocalDateTime.of(2026, 10, 21, 12, 30, 1, 123_456_789),
@@ -101,7 +101,7 @@ class CompiledTemporalStreamingTest {
                     assertEquals(OffsetTime.parse("12:30:01.123456789+02:00"),
                             beanClass.getField("offsetTime").get(bean), backend);
                     assertEquals(Date.from(Instant.parse("2026-10-21T10:30:01.123Z")),
-                            beanClass.getField("date").get(bean), backend);
+                            beanClass.getField("legacyDate").get(bean), backend);
                     Calendar calendar = (Calendar) beanClass.getField("calendar").get(bean);
                     assertEquals("Europe/Paris", calendar.getTimeZone().getID(), backend);
                     assertEquals(Instant.parse("2026-10-21T10:30:01.123Z").toEpochMilli(),
