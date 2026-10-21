@@ -752,16 +752,9 @@ public final class ReflectUtil {
             if (creatorHandle == null) creatorHandle = recordInfo.compCtorHandle;
         }
         if (creator != null && creator.getParameterCount() > 0) {
-            boolean hasPrimitiveArg = false;
-            for (Class<?> argType : creator.getParameterTypes()) {
-                if (argType.isPrimitive()) {
-                    hasPrimitiveArg = true;
-                    break;
-                }
-            }
-
-            if (!hasPrimitiveArg) {
-                switch (creator.getParameterCount()) {
+            // Reference-only signatures use LambdaMetafactory. Mixed primitive
+            // signatures use the same FuncN via an adapted invokeExact bridge.
+            switch (creator.getParameterCount()) {
                     case 1:
                         creatorLambda1 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func1.class, 1);
                         break;
@@ -779,7 +772,6 @@ public final class ReflectUtil {
                         break;
                     default:
                         break;
-                }
             }
 
             Parameter[] params = creator.getParameters();
