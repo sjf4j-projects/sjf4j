@@ -43,6 +43,25 @@ public class CreatorInfo {
     public final boolean hasCodecNameBinding;
 
     /**
+     * Retains the existing construction contract for callers providing
+     * generic creator functions only. Primitive specialization is optional.
+     */
+    public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
+                       Executable argsCreator, MethodHandle argsCreatorHandle,
+                       TypeRegistry.Func1 argsCreatorLambda1, TypeRegistry.Func2 argsCreatorLambda2,
+                       TypeRegistry.Func3 argsCreatorLambda3, TypeRegistry.Func4 argsCreatorLambda4,
+                       TypeRegistry.Func5 argsCreatorLambda5,
+                       String[] argNames, Type[] argTypes,
+                       String[] argCodecNames, ValueInfo[] argValueCodecs,
+                       Map<String, Integer> argIndexes,
+                       Map<String, String> aliasMap) {
+        this(clazz, noArgsCtorHandle, noArgsCtorLambda, argsCreator, argsCreatorHandle,
+                argsCreatorLambda1, null, argsCreatorLambda2, argsCreatorLambda3,
+                argsCreatorLambda4, argsCreatorLambda5,
+                argNames, argTypes, argCodecNames, argValueCodecs, argIndexes, aliasMap);
+    }
+
+    /**
      * Creates creator metadata for an object type.
      */
     public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
