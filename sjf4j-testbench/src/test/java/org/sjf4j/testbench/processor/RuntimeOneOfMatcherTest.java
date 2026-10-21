@@ -36,7 +36,7 @@ public class RuntimeOneOfMatcherTest {
         public final int age;
 
         @NodeCreator
-        public CreatorPet(@NodeProperty("id") UUID id,
+        public CreatorPet(@NodeProperty(value = "id", codecName = "standard") UUID id,
                           @NodeProperty(value = "age", aliases = {"years"}) int age) {
             this.id = id;
             this.age = age;
@@ -62,7 +62,7 @@ public class RuntimeOneOfMatcherTest {
     @MethodSource("backends")
     void readsCreatorAliasesAndValueCodecsInEitherDiscriminatorOrder(
             String backend, Binder<?, ?> binder) {
-        // The first input uses the streaming codec branch; the second buffers
+        // The first input uses the explicitly selected streaming UUID codec; the second buffers
         // the UUID and alias before learning the concrete subtype.
         String[] objects = {
                 "{\"kind\":\"pet\",\"id\":\"" + ID + "\",\"years\":7,\"extra\":\"after\"}",
