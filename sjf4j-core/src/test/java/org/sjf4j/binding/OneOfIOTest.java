@@ -272,8 +272,8 @@ class OneOfIOTest {
         LazyTypeInfo dog = oneOf.lazyTypeInfoByWhen("dog");
         assertSame(dog, oneOf.lazyTypeInfoByWhen("hound"));
         assertSame(Dog.class, oneOf.matchByWhen("dog"));
-        assertSame(TypeRegistry.requireRegisteredPojoInfo(Dog.class), dog.pojoInfo());
-        assertSame(dog.pojoInfo(), dog.pojoInfo());
+        assertSame(TypeRegistry.requireRegisteredPojoInfo(Dog.class), dog.requirePojoInfo());
+        assertSame(dog.requirePojoInfo(), dog.requirePojoInfo());
     }
 
     @OneOf(key = "kind", mappings = {@OneOfMapping(type = NestedDog.class, when = "nested")})

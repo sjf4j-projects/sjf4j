@@ -28,7 +28,7 @@ public final class LazyTypeInfo {
     }
 
     /** Returns POJO metadata for a key-discriminated OneOf target. */
-    public PojoInfo pojoInfo() {
+    public PojoInfo requirePojoInfo() {
         PojoInfo pi = get().pojoInfo;
         if (pi == null) {
             throw new BindingException("class '" + clazz.getName() + "' is not a POJO");

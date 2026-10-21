@@ -216,10 +216,10 @@ class Jackson2ReaderTest {
         try (Jackson2Reader reader = reader("[\"" + text + "\",null,\"" + text + "\"]")) {
             reader.startArray();
             assertEquals(StreamingReader.Token.STRING, reader.peekToken());
-            assertEquals(uuid, reader.readUUID());
-            assertNull(reader.readUUID());
+            assertEquals(uuid, reader.readUuid());
+            assertNull(reader.readUuid());
             assertFalse(reader.nextIfNull());
-            assertEquals(uuid, reader.readUUID());
+            assertEquals(uuid, reader.readUuid());
             reader.endArray();
             reader.endDocument();
         }
@@ -227,15 +227,15 @@ class Jackson2ReaderTest {
         try (Jackson2Reader reader = reader("{\"id\":\"" + text + "\"}")) {
             reader.startObject();
             assertEquals("id", reader.nextName());
-            assertEquals(uuid, reader.readUUID());
+            assertEquals(uuid, reader.readUuid());
             reader.endObject();
             reader.endDocument();
         }
 
         try (Jackson2Reader reader = reader("[\"invalid\",42]")) {
             reader.startArray();
-            assertThrows(IllegalArgumentException.class, reader::readUUID);
-            assertThrows(IOException.class, reader::readUUID);
+            assertThrows(IllegalArgumentException.class, reader::readUuid);
+            assertThrows(IOException.class, reader::readUuid);
             reader.endArray();
         }
     }
@@ -245,7 +245,7 @@ class Jackson2ReaderTest {
         String text = "ffffffff-0000-1234-abcd-000000000000";
         try (Jackson2Reader reader = new Jackson2Reader(
                 new JsonFactory().createParser(("\"" + text + "\"").getBytes(java.nio.charset.StandardCharsets.UTF_8)))) {
-            assertEquals(java.util.UUID.fromString(text), reader.readUUID());
+            assertEquals(java.util.UUID.fromString(text), reader.readUuid());
             reader.endDocument();
         }
     }

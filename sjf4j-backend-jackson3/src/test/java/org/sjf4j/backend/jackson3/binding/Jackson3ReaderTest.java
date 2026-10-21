@@ -182,10 +182,10 @@ class Jackson3ReaderTest {
         try (Jackson3Reader reader = reader("[\"" + text + "\",null,\"" + text + "\"]")) {
             reader.startArray();
             assertEquals(StreamingReader.Token.STRING, reader.peekToken());
-            assertEquals(uuid, reader.readUUID());
-            assertNull(reader.readUUID());
+            assertEquals(uuid, reader.readUuid());
+            assertNull(reader.readUuid());
             assertFalse(reader.nextIfNull());
-            assertEquals(uuid, reader.readUUID());
+            assertEquals(uuid, reader.readUuid());
             reader.endArray();
             reader.endDocument();
         }
@@ -193,15 +193,15 @@ class Jackson3ReaderTest {
         try (Jackson3Reader reader = reader("{\"id\":\"" + text + "\"}")) {
             reader.startObject();
             assertEquals("id", reader.nextName());
-            assertEquals(uuid, reader.readUUID());
+            assertEquals(uuid, reader.readUuid());
             reader.endObject();
             reader.endDocument();
         }
 
         try (Jackson3Reader reader = reader("[\"invalid\",42]")) {
             reader.startArray();
-            assertThrows(IllegalArgumentException.class, reader::readUUID);
-            assertThrows(IOException.class, reader::readUUID);
+            assertThrows(IllegalArgumentException.class, reader::readUuid);
+            assertThrows(IOException.class, reader::readUuid);
             reader.endArray();
         }
     }
@@ -212,7 +212,7 @@ class Jackson3ReaderTest {
         try (Jackson3Reader reader = new Jackson3Reader(
                 new JsonFactory().createParser(ObjectReadContext.empty(),
                         ("\"" + text + "\"").getBytes(java.nio.charset.StandardCharsets.UTF_8)))) {
-            assertEquals(java.util.UUID.fromString(text), reader.readUUID());
+            assertEquals(java.util.UUID.fromString(text), reader.readUuid());
             reader.endDocument();
         }
     }

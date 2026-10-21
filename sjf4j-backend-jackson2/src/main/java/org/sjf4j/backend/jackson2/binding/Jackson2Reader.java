@@ -237,7 +237,7 @@ public final class Jackson2Reader extends StreamingReader {
      * -------------------------------------------------------------- */
 
     @Override
-    public UUID readUUID() throws IOException {
+    public UUID readUuid() throws IOException {
 //        String str = readString();
 //        return str == null ? null : FastUuid.parseUUID(str);
         JsonToken token = prefetched ? parser.currentToken() : parser.nextToken();

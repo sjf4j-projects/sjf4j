@@ -36,12 +36,17 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
 @State(Scope.Thread)
 public class CreatorContainerBenchmark {
+
+    public static void main(String[] args) throws Exception {
+        Main.main(new String[]{CreatorContainerBenchmark.class.getName()});
+    }
+
     private static final String ID = "123e4567-e89b-12d3-a456-426614174000";
     private static final Jackson2Binder JACKSON2 = new Jackson2Binder();
     private static final Fastjson2Binder FASTJSON2 = new Fastjson2Binder();
@@ -68,10 +73,6 @@ public class CreatorContainerBenchmark {
             this.fixed = fixed;
             this.values = values;
         }
-    }
-
-    public static void main(String[] args) throws Exception {
-        Main.main(new String[]{CreatorContainerBenchmark.class.getName()});
     }
 
     @Setup

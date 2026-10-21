@@ -89,7 +89,7 @@ public final class OneOfIO {
     private static Object _readByDtorKey(StreamingReader reader, OneOfInfo oneOfInfo,
                                          RuntimeContext context) throws IOException {
         final boolean fallbackNull = oneOfInfo.fallbackNull;
-        final String discriminatorKey = oneOfInfo.key;
+        final String dtorKey = oneOfInfo.key;
         String[] pendingNames = null;
         Object[] pendingValues = null;
         int pendingSize = 0;
@@ -99,26 +99,26 @@ public final class OneOfIO {
         int index;
         while ((index = reader.nextNameMatch(matcher, 0)) != NameMatcher.OBJECT_END) {
             if (index == 0) {
-                Object discriminatorValue = reader.readRaw();
-                if (discriminatorValue == null) {
+                Object dtorValue = reader.readRaw();
+                if (dtorValue == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(reader);
                         return null;
                     }
-                    throw new BindingException("not found value for discriminator key '" + discriminatorKey + "'");
+                    throw new BindingException("not found value for discriminator key '" + dtorKey + "'");
                 }
 
-                LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);
+                LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(dtorValue);
                 if (target == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(reader);
                         return null;
                     }
-                    throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
+                    throw new BindingException("oneOf discriminator has no matching mapping: value='" + dtorValue + "'");
                 }
 
-                return _readRemainingObject(reader, target, pendingNames, pendingValues, pendingSize,
-                        discriminatorKey, discriminatorValue, context);
+                return _readPojoRemaining(reader, target, pendingNames, pendingValues, pendingSize,
+                        dtorKey, dtorValue, context);
             }
 
             String name = reader.currentName();
@@ -140,17 +140,17 @@ public final class OneOfIO {
         if (fallbackNull) {
             return null;
         }
-        throw new BindingException("not found value for discriminator key '" + discriminatorKey + "'");
+        throw new BindingException("not found value for discriminator key '" + dtorKey + "'");
     }
 
 
-    private static Object _readRemainingObject(StreamingReader reader, LazyTypeInfo target,
-                                               String[] pendingNames, Object[] pendingValues, int pendingSize,
-                                               String discriminatorKey, Object discriminatorValue,
-                                               RuntimeContext context) throws IOException {
+    private static Object _readPojoRemaining(StreamingReader reader, LazyTypeInfo target,
+                                             String[] pendingNames, Object[] pendingValues, int pendingSize,
+                                             String discriminatorKey, Object discriminatorValue,
+                                             RuntimeContext context) throws IOException {
 
         Class<?> targetClazz = target.clazz;
-        PojoInfo pi = target.pojoInfo();
+        PojoInfo pi = target.requirePojoInfo();
         CreatorInfo ci = pi.creatorInfo;
         CreatorState state = new CreatorState(ci);
 

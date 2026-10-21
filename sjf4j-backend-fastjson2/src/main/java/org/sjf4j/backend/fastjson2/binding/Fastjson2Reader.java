@@ -184,7 +184,7 @@ public final class Fastjson2Reader extends StreamingReader {
     }
 
     @Override
-    public UUID readUUID() {
+    public UUID readUuid() {
         peeked = null;
         return reader.readUUID();
     }

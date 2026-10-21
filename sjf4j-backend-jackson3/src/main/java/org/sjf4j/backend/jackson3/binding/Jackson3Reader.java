@@ -232,7 +232,7 @@ public final class Jackson3Reader extends StreamingReader {
      * -------------------------------------------------------------- */
 
     @Override
-    public UUID readUUID() throws IOException {
+    public UUID readUuid() throws IOException {
         JsonToken token = prefetched ? parser.currentToken() : parser.nextToken();
         prefetched = false;
         if (token == JsonToken.VALUE_NULL) {

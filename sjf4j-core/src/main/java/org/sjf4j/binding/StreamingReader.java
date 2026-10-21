@@ -314,54 +314,6 @@ public abstract class StreamingReader implements Closeable {
      */
     public abstract String readString() throws IOException;
 
-    /** Reads a canonical UUID, with a backend override when direct decoding is available. */
-    public UUID readUUID() throws IOException {
-        String value = readString();
-        return value == null ? null : FastUuid.parseUUID(value);
-    }
-
-    /** Reads an ISO date; backends may override with direct decoding. */
-    public LocalDate readLocalDate() throws IOException {
-        String value = readString();
-        return value == null ? null : LocalDate.parse(value);
-    }
-
-    /** Reads an ISO time; backends may override with direct decoding. */
-    public LocalTime readLocalTime() throws IOException {
-        String value = readString();
-        return value == null ? null : LocalTime.parse(value);
-    }
-
-    /** Reads an ISO date-time; backends may override with direct decoding. */
-    public LocalDateTime readLocalDateTime() throws IOException {
-        String value = readString();
-        return value == null ? null : LocalDateTime.parse(value);
-    }
-
-    /** Reads an ISO-8601 instant; supported backends may decode directly. */
-    public Instant readInstant() throws IOException {
-        String value = readString();
-        return value == null ? null : Instant.parse(value);
-    }
-
-    /** Reads an ISO offset date-time. */
-    public OffsetDateTime readOffsetDateTime() throws IOException {
-        String value = readString();
-        return value == null ? null : OffsetDateTime.parse(value);
-    }
-
-    /** Reads an ISO zoned date-time. */
-    public ZonedDateTime readZonedDateTime() throws IOException {
-        String value = readString();
-        return value == null ? null : ZonedDateTime.parse(value);
-    }
-
-    /** Reads an ISO offset time. */
-    public OffsetTime readOffsetTime() throws IOException {
-        String value = readString();
-        return value == null ? null : OffsetTime.parse(value);
-    }
-
 
     /**
      * Reads and consumes the current logical numeric value using the
@@ -545,6 +497,58 @@ public abstract class StreamingReader implements Closeable {
      * @return the value, or {@code null} for JSON {@code null}
      */
     public abstract BigDecimal readBigDecimal() throws IOException;
+
+
+
+
+    /** Reads a canonical UUID, with a backend override when direct decoding is available. */
+    public UUID readUuid() throws IOException {
+        String value = readString();
+        return value == null ? null : FastUuid.parseUUID(value);
+    }
+
+    /** Reads an ISO date; backends may override with direct decoding. */
+    public LocalDate readLocalDate() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalDate.parse(value);
+    }
+
+    /** Reads an ISO time; backends may override with direct decoding. */
+    public LocalTime readLocalTime() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalTime.parse(value);
+    }
+
+    /** Reads an ISO date-time; backends may override with direct decoding. */
+    public LocalDateTime readLocalDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalDateTime.parse(value);
+    }
+
+    /** Reads an ISO-8601 instant; supported backends may decode directly. */
+    public Instant readInstant() throws IOException {
+        String value = readString();
+        return value == null ? null : Instant.parse(value);
+    }
+
+    /** Reads an ISO offset date-time. */
+    public OffsetDateTime readOffsetDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : OffsetDateTime.parse(value);
+    }
+
+    /** Reads an ISO zoned date-time. */
+    public ZonedDateTime readZonedDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : ZonedDateTime.parse(value);
+    }
+
+    /** Reads an ISO offset time. */
+    public OffsetTime readOffsetTime() throws IOException {
+        String value = readString();
+        return value == null ? null : OffsetTime.parse(value);
+    }
+
 
 
     /**
