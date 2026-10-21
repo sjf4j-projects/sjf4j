@@ -18,7 +18,6 @@ import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -225,12 +224,6 @@ public final class Fastjson2Reader extends StreamingReader {
     public ZonedDateTime readZonedDateTime() {
         peeked = null;
         return reader.readZonedDateTime();
-    }
-
-    @Override
-    public OffsetTime readOffsetTime() {
-        peeked = null;
-        return reader.nextIfNull() ? null : reader.readOffsetTime();
     }
 
     @Override
