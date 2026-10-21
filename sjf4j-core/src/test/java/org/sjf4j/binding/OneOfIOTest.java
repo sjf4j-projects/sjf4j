@@ -12,11 +12,16 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.meta.LazyTypeInfo;
+import org.sjf4j.meta.OneOfInfo;
+import org.sjf4j.meta.TypeRegistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 
@@ -30,7 +35,7 @@ class OneOfIOTest {
         public Animal pet;
     }
 
-    @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")}, key = "kind")
+    @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = {"dog", "hound"}), @OneOfMapping(type = Cat.class, when = "cat")}, key = "kind")
     static class Animal extends JsonObject { public String name; }
     static class Dog extends Animal { public boolean barks; }
     static class Cat extends Animal { public int lives; }
@@ -235,17 +240,21 @@ class OneOfIOTest {
     }
 
     @Test
-    void currentKeySupportsObjectContainerSubtype() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
-        for (String input : new String[]{
-                "{\"payload\":{\"kind\":\"map\",\"value\":7},\"after\":5}",
-                "{\"payload\":{\"value\":7,\"kind\":\"map\"},\"after\":5}"
-        }) {
-            MapHolder holder = (MapHolder) binder.readNode(input, MapHolder.class);
-            assertInstanceOf(java.util.LinkedHashMap.class, holder.payload);
-            assertEquals(7, ((Number) holder.payload.get("value")).intValue());
-            assertEquals(5, holder.after);
-        }
+    void rejectsNonPojoTargetsForKeyDiscriminator() {
+        BindingException error = assertThrows(BindingException.class, () ->
+                new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+                        "{\"payload\":{\"kind\":\"map\",\"value\":7}}", MapHolder.class));
+        assertTrue(error.getMessage().contains("requires a POJO subtype"));
+    }
+
+    @Test
+    void lazySubtypeMetadataIsSharedAcrossDiscriminatorAliases() {
+        OneOfInfo oneOf = TypeRegistry.registerTypeInfo(Animal.class).oneOfInfo;
+        LazyTypeInfo dog = oneOf.lazyTypeInfoByWhen("dog");
+        assertSame(dog, oneOf.lazyTypeInfoByWhen("hound"));
+        assertSame(Dog.class, oneOf.matchByWhen("dog"));
+        assertSame(TypeRegistry.requireRegisteredPojoInfo(Dog.class), dog.pojoInfo());
+        assertSame(dog.pojoInfo(), dog.pojoInfo());
     }
 
     @OneOf(key = "kind", mappings = {@OneOfMapping(type = NestedDog.class, when = "nested")})
