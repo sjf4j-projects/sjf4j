@@ -106,6 +106,44 @@ class StreamingExtendedTemporalCodecTest {
     }
 
     @Test
+    void nativeAndFallbackTemporalWritersMatchJavaIsoExactly() {
+        OffsetDateTime[] offsets = {
+                OffsetDateTime.parse("2026-10-21T12:30+02:00"),
+                OffsetDateTime.parse("2026-10-21T12:30:01+02:00"),
+                OffsetDateTime.parse("2026-10-21T12:30:01.123456789Z"),
+                OffsetDateTime.parse("2026-10-21T12:30:01.123+02:00:30")
+        };
+        OffsetTime[] times = {
+                OffsetTime.parse("12:30+02:00"),
+                OffsetTime.parse("12:30:01+02:00"),
+                OffsetTime.parse("12:30:01.123456789Z"),
+                OffsetTime.parse("12:30:01.123+02:00:30")
+        };
+        ZonedDateTime[] zones = {
+                ZonedDateTime.parse("2026-10-21T12:30+02:00[Europe/Paris]"),
+                ZonedDateTime.parse("2026-10-21T12:30:01+02:00[Europe/Paris]"),
+                ZonedDateTime.parse("2026-10-21T12:30:01.123456789Z"),
+                ZonedDateTime.parse("2026-10-21T12:30:01.123+02:00")
+        };
+
+        for (OffsetDateTime value : offsets) {
+            assertEquals("\"" + value + "\"", BINDER.writeNodeAsString(value), value.toString());
+            assertEquals("\"" + value + "\"", new String(
+                    BINDER.writeNodeAsBytes(value), StandardCharsets.UTF_8), value.toString());
+        }
+        for (OffsetTime value : times) {
+            assertEquals("\"" + value + "\"", BINDER.writeNodeAsString(value), value.toString());
+            assertEquals("\"" + value + "\"", new String(
+                    BINDER.writeNodeAsBytes(value), StandardCharsets.UTF_8), value.toString());
+        }
+        for (ZonedDateTime value : zones) {
+            assertEquals("\"" + value + "\"", BINDER.writeNodeAsString(value), value.toString());
+            assertEquals("\"" + value + "\"", new String(
+                    BINDER.writeNodeAsBytes(value), StandardCharsets.UTF_8), value.toString());
+        }
+    }
+
+    @Test
     void pojoIsoRoundTripWorksForStringAndUtf8() {
         for (Object parsed : new Object[]{
                 BINDER.readNode(JSON, TemporalPojo.class),
