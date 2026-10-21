@@ -682,11 +682,11 @@ public final class ReflectUtil {
         Executable creator = null;
         boolean explicitCreator = false;
         MethodHandle creatorHandle = null;
-        TypeRegistry.Func1 creatorLambda1 = null;
-        TypeRegistry.Func2 creatorLambda2 = null;
-        TypeRegistry.Func3 creatorLambda3 = null;
-        TypeRegistry.Func4 creatorLambda4 = null;
-        TypeRegistry.Func5 creatorLambda5 = null;
+        CreatorInfo.Function1 creatorLambda1 = null;
+        CreatorInfo.Function2 creatorLambda2 = null;
+        CreatorInfo.Function3 creatorLambda3 = null;
+        CreatorInfo.Function4 creatorLambda4 = null;
+        CreatorInfo.Function5 creatorLambda5 = null;
         String[] argNames = null;
         Type[] argTypes = null;
         Map<String, Integer> argIndexes = null;
@@ -756,19 +756,19 @@ public final class ReflectUtil {
             // signatures use the same FuncN via an adapted invokeExact bridge.
             switch (creator.getParameterCount()) {
                     case 1:
-                        creatorLambda1 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func1.class, 1);
+                        creatorLambda1 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, CreatorInfo.Function1.class, 1);
                         break;
                     case 2:
-                        creatorLambda2 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func2.class, 2);
+                        creatorLambda2 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, CreatorInfo.Function2.class, 2);
                         break;
                     case 3:
-                        creatorLambda3 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func3.class, 3);
+                        creatorLambda3 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, CreatorInfo.Function3.class, 3);
                         break;
                     case 4:
-                        creatorLambda4 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func4.class, 4);
+                        creatorLambda4 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, CreatorInfo.Function4.class, 4);
                         break;
                     case 5:
-                        creatorLambda5 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, TypeRegistry.Func5.class, 5);
+                        creatorLambda5 = Invokers.createArgsCreatorLambda(lookup, creatorHandle, CreatorInfo.Function5.class, 5);
                         break;
                     default:
                         break;

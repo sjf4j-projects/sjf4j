@@ -42,8 +42,8 @@ import java.util.concurrent.TimeUnit;
 public class CreekModelBenchmark {
 
     public static void main(String[] args) throws IOException {
-//        Main.main(new String[]{CreekModelBenchmark.class.getName()});
-        Main.main(new String[]{CreekModelBenchmark.class.getName() + ".write"});
+        Main.main(new String[]{CreekModelBenchmark.class.getName()});
+//        Main.main(new String[]{CreekModelBenchmark.class.getName() + ".write"});
     }
 
     private static final ObjectMapper JACKSON_NATIVE = new ObjectMapper();

@@ -24,12 +24,12 @@ public class CreatorInfo {
     public final Supplier<?> noArgsCtorLambda;
     public final Executable argsCreator;
     public final MethodHandle argsCreatorHandle;
-    private final MethodHandle argsCreatorSpreader;
-    public final TypeRegistry.Func1 argsCreatorLambda1;
-    public final TypeRegistry.Func2 argsCreatorLambda2;
-    public final TypeRegistry.Func3 argsCreatorLambda3;
-    public final TypeRegistry.Func4 argsCreatorLambda4;
-    public final TypeRegistry.Func5 argsCreatorLambda5;
+    public final Function1 argsCreatorLambda1;
+    public final Function2 argsCreatorLambda2;
+    public final Function3 argsCreatorLambda3;
+    public final Function4 argsCreatorLambda4;
+    public final Function5 argsCreatorLambda5;
+    public final MethodHandle argsCreatorSpreader;
     public final String[] argNames;
     public final Type[] argTypes;
     /** Whether an argument type must be resolved against the actual generic owner. */
@@ -47,8 +47,8 @@ public class CreatorInfo {
      */
     public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
                        Executable argsCreator, MethodHandle argsCreatorHandle,
-                       TypeRegistry.Func1 argsCreatorLambda1, TypeRegistry.Func2 argsCreatorLambda2,
-                       TypeRegistry.Func3 argsCreatorLambda3, TypeRegistry.Func4 argsCreatorLambda4, TypeRegistry.Func5 argsCreatorLambda5,
+                       Function1 argsCreatorLambda1, Function2 argsCreatorLambda2,
+                       Function3 argsCreatorLambda3, Function4 argsCreatorLambda4, Function5 argsCreatorLambda5,
                        String[] argNames, Type[] argTypes,
                        String[] argCodecNames, ValueInfo[] argValueCodecs,
                        Map<String, Integer> argIndexes,
@@ -58,12 +58,12 @@ public class CreatorInfo {
         this.noArgsCtorLambda = noArgsCtorLambda;
         this.argsCreator = argsCreator;
         this.argsCreatorHandle = argsCreatorHandle;
-        this.argsCreatorSpreader = Invokers.createArgsCreatorSpreader(argsCreatorHandle);
         this.argsCreatorLambda1 = argsCreatorLambda1;
         this.argsCreatorLambda2 = argsCreatorLambda2;
         this.argsCreatorLambda3 = argsCreatorLambda3;
         this.argsCreatorLambda4 = argsCreatorLambda4;
         this.argsCreatorLambda5 = argsCreatorLambda5;
+        this.argsCreatorSpreader = Invokers.createArgsCreatorSpreader(argsCreatorHandle);
         this.argNames = argNames;
         this.argTypes = argTypes;
         if (argTypes == null) {
@@ -216,4 +216,32 @@ public class CreatorInfo {
         if (clazz == char.class) return '\0';
         return null;
     }
+
+
+    @FunctionalInterface
+    public interface Function1 {
+        Object apply(Object a1);
+    }
+
+    @FunctionalInterface
+    public interface Function2 {
+        Object apply(Object a1, Object a2);
+    }
+
+    @FunctionalInterface
+    public interface Function3 {
+        Object apply(Object a1, Object a2, Object a3);
+    }
+
+    @FunctionalInterface
+    public interface Function4 {
+        Object apply(Object a1, Object a2, Object a3, Object a4);
+    }
+
+    @FunctionalInterface
+    public interface Function5 {
+        Object apply(Object a1, Object a2, Object a3, Object a4, Object a5);
+    }
+
+
 }

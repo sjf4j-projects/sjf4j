@@ -413,29 +413,4 @@ public final class TypeRegistry {
 
     }
 
-    @FunctionalInterface
-    public interface Func1 {
-        Object apply(Object a1);
-    }
-
-    @FunctionalInterface
-    public interface Func2 {
-        Object apply(Object a1, Object a2);
-    }
-
-    @FunctionalInterface
-    public interface Func3 {
-        Object apply(Object a1, Object a2, Object a3);
-    }
-
-    @FunctionalInterface
-    public interface Func4 {
-        Object apply(Object a1, Object a2, Object a3, Object a4);
-    }
-
-    @FunctionalInterface
-    public interface Func5 {
-        Object apply(Object a1, Object a2, Object a3, Object a4, Object a5);
-    }
-
 }

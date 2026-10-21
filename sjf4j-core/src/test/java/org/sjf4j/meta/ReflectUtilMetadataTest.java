@@ -375,11 +375,11 @@ class ReflectUtilMetadataTest {
         assertNull(Invokers.createConstructorLambda(lookup, LambdaCtorPojo.class, null));
 
         CreatorInfo creatorInfo = ReflectUtil.analyzeCreator(LambdaCtorPojo.class, lookup);
-        TypeRegistry.Func1 creator = Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 1);
+        CreatorInfo.Function1 creator = Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, CreatorInfo.Function1.class, 1);
         assertNotNull(creator);
         LambdaCtorPojo created = (LambdaCtorPojo) creator.apply("han");
         assertEquals("han", created.name);
-        assertNull(Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, TypeRegistry.Func1.class, 0));
+        assertNull(Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, CreatorInfo.Function1.class, 0));
         assertNull(Invokers.createArgsCreatorLambda(lookup, creatorInfo.argsCreatorHandle, null, 1));
 
         assertFalse(ReflectUtil.isRecord(GetterPojo.class));

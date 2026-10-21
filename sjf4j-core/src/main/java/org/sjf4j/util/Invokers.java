@@ -1,6 +1,7 @@
 package org.sjf4j.util;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.meta.CreatorInfo;
 import org.sjf4j.meta.TypeRegistry;
 
 import java.lang.invoke.LambdaMetafactory;
@@ -131,8 +132,8 @@ public final class Invokers {
             final Class<?> owner = creator.type().returnType();
             switch (arity) {
                 case 1:
-                    if (funcType != TypeRegistry.Func1.class) return null;
-                    return funcType.cast((TypeRegistry.Func1) a -> {
+                    if (funcType != CreatorInfo.Function1.class) return null;
+                    return funcType.cast((CreatorInfo.Function1) a -> {
                         try {
                             return (Object) adapted.invokeExact(a);
                         } catch (Throwable e) {
@@ -140,8 +141,8 @@ public final class Invokers {
                         }
                     });
                 case 2:
-                    if (funcType != TypeRegistry.Func2.class) return null;
-                    return funcType.cast((TypeRegistry.Func2) (a, b) -> {
+                    if (funcType != CreatorInfo.Function2.class) return null;
+                    return funcType.cast((CreatorInfo.Function2) (a, b) -> {
                         try {
                             return (Object) adapted.invokeExact(a, b);
                         } catch (Throwable e) {
@@ -149,8 +150,8 @@ public final class Invokers {
                         }
                     });
                 case 3:
-                    if (funcType != TypeRegistry.Func3.class) return null;
-                    return funcType.cast((TypeRegistry.Func3) (a, b, c) -> {
+                    if (funcType != CreatorInfo.Function3.class) return null;
+                    return funcType.cast((CreatorInfo.Function3) (a, b, c) -> {
                         try {
                             return (Object) adapted.invokeExact(a, b, c);
                         } catch (Throwable e) {
@@ -158,8 +159,8 @@ public final class Invokers {
                         }
                     });
                 case 4:
-                    if (funcType != TypeRegistry.Func4.class) return null;
-                    return funcType.cast((TypeRegistry.Func4) (a, b, c, d) -> {
+                    if (funcType != CreatorInfo.Function4.class) return null;
+                    return funcType.cast((CreatorInfo.Function4) (a, b, c, d) -> {
                         try {
                             return (Object) adapted.invokeExact(a, b, c, d);
                         } catch (Throwable e) {
@@ -167,8 +168,8 @@ public final class Invokers {
                         }
                     });
                 case 5:
-                    if (funcType != TypeRegistry.Func5.class) return null;
-                    return funcType.cast((TypeRegistry.Func5) (a, b, c, d, e) -> {
+                    if (funcType != CreatorInfo.Function5.class) return null;
+                    return funcType.cast((CreatorInfo.Function5) (a, b, c, d, e) -> {
                         try {
                             return (Object) adapted.invokeExact(a, b, c, d, e);
                         } catch (Throwable ex) {
