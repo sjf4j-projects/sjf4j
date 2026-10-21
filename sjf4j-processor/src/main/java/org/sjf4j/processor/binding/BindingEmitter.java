@@ -4,6 +4,9 @@ import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /** Coordinates source emission for compiled binder methods and helpers. */
 final class BindingEmitter {
 
@@ -14,6 +17,7 @@ final class BindingEmitter {
     private boolean stringHelperEmitted;
     private final boolean fastjson2;
     private boolean byteOrderFieldEmitted;
+    private final Set<String> emittedOneOfReadBodies = new HashSet<>();
 
     BindingEmitter(
             ProcessorContext context,
@@ -72,7 +76,16 @@ final class BindingEmitter {
                             + JavaWriter.stringLiteral(value.oneOfProperty()) + ").oneOfInfo";
             generated.addField(out -> out.line(
                     "private static final org.sjf4j.meta.OneOfInfo " + value.helperName()
-                            + " = " + source + ";"));
+                            + "_info = " + source + ";"));
+            if (value.oneOfKey() != null) {
+                generated.addHelper(out -> reads.emitOneOfReadHelper(out, value));
+                for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+                    BindingValue compiled = subtype.compiled;
+                    if (compiled != null && emittedOneOfReadBodies.add(compiled.helperName())) {
+                        generated.addHelper(out -> reads.emitOneOfSubtypeContent(out, compiled));
+                    }
+                }
+            }
             return;
         }
         if (value.kind() == BindingValue.Kind.ONE_OF
