@@ -2,6 +2,7 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
+import org.sjf4j.JsonType;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -14,6 +15,7 @@ import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.OneOfInfo;
+import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -245,6 +247,23 @@ class OneOfIOTest {
                 new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
                         "{\"payload\":{\"kind\":\"map\",\"value\":7}}", MapHolder.class));
         assertTrue(error.getMessage().contains("requires a POJO subtype"));
+    }
+
+    @Test
+    void jsonTypeMappingsReuseLazyMetadataIncludingNone() {
+        OneOfInfo info = TypeRegistry.requireRegisteredPojoInfo(JsonTypeContainer.class)
+                .propertyLookup.get("value").oneOfInfo;
+
+        LazyTypeInfo text = info.lazyTypeInfoByJsonType(JsonType.STRING);
+        assertSame(String.class, text.clazz);
+        assertSame(TypeInfo.NONE, text.get());
+        assertSame(text, info.lazyTypeInfoByJsonType(JsonType.STRING));
+        assertSame(String.class, info.matchByJsonType(JsonType.STRING));
+
+        LazyTypeInfo integer = info.lazyTypeInfoByJsonType(JsonType.NUMBER);
+        assertSame(Integer.class, integer.clazz);
+        assertSame(TypeInfo.NONE, integer.get());
+        assertSame(integer, info.lazyTypeInfoByJsonType(JsonType.NUMBER));
     }
 
     @Test
