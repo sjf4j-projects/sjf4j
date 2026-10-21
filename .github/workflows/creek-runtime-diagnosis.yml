@@ -29,6 +29,12 @@ jobs:
             '.*CreekRuntimeDiagnosisBenchmark[.]creek_.*' \
             -p polyCount=0,1,4,8 -f 1 -wi 4 -w 300ms -i 6 -r 300ms -t 1 \
             -prof gc -rf json -rff creek-runtime-counts.json | tee creek-runtime-counts.txt
+      - name: Measure polymorphic List runtime vs Jackson
+        run: |
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CreekRuntimeDiagnosisBenchmark[.]list_.*' \
+            -p polyCount=0,1,4,8 -f 1 -wi 4 -w 300ms -i 6 -r 300ms -t 1 \
+            -prof gc -rf json -rff creek-runtime-list.json | tee creek-runtime-list.txt
       - name: Measure isolated Runtime OneOf overhead vs same concrete subtype
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
@@ -43,6 +49,8 @@ jobs:
           path: |
             creek-runtime-counts.json
             creek-runtime-counts.txt
+            creek-runtime-list.json
+            creek-runtime-list.txt
             creek-runtime-subtypes.json
             creek-runtime-subtypes.txt
           if-no-files-found: warn
