@@ -215,7 +215,7 @@ public class CompiledOneOfBoundaryTest {
         }
 
         FactoryAliasValue actual = assertInstanceOf(FactoryAliasValue.class,
-                BINDER.readFactoryAlias("{\\"kind\\":\\"factory\\"}"));
+                BINDER.readFactoryAlias("{\"kind\":\"factory\"}"));
         assertEquals("factory", actual.getValue(),
                 "Runtime OneOf must bind the discriminator to the selected factory argument");
     }
@@ -230,8 +230,8 @@ public class CompiledOneOfBoundaryTest {
         assertTrue(hasCompiledReader, "Nonconflicting factory should remain compiled");
 
         for (String input : Arrays.asList(
-                "{\\"kind\\":\\"regular\\",\\"legacy_value\\":\\"ok\\"}",
-                "{\\"legacy_value\\":\\"ok\\",\\"kind\\":\\"regular\\"}")) {
+                "{\"kind\":\"regular\",\"legacy_value\":\"ok\"}",
+                "{\"legacy_value\":\"ok\",\"kind\":\"regular\"}")) {
             FactoryValue actual = assertInstanceOf(FactoryValue.class, BINDER.readFactory(input));
             assertEquals("ok", actual.getValue());
         }
