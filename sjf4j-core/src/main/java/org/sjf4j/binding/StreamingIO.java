@@ -18,6 +18,7 @@ import org.sjf4j.meta.CreatorState;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.util.Types;
+import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.value.ValueSet;
@@ -315,6 +316,21 @@ public final class StreamingIO {
                 : valueSet.defaultInfo.rawJsonType;
         ValueInfo codec = valueSet.selectForRead(jsonType, preferredFormat);
         return readValueCodec(reader, codec, context);
+    }
+
+    /**
+     * Converts a buffered JSON scalar to a typed codec value.
+     * Jackson's readRaw() may choose Integer for a small JSON number even when
+     * the selected ValueCodec declares Long (or another numeric raw class).
+     * Keep ValueInfo.rawToValue strict; normalize only this buffering boundary.
+     */
+    public static Object decodeBufferedValueCodec(Object raw, ValueInfo valueInfo) {
+        Class<?> rawClass = valueInfo.rawClazz;
+        if (raw instanceof Number && Number.class.isAssignableFrom(rawClass)
+                && !rawClass.isInstance(raw)) {
+            raw = Numbers.to((Number) raw, rawClass);
+        }
+        return valueInfo.rawToValue(raw);
     }
 
     public static Object readValueCodec(StreamingReader reader, ValueInfo valueInfo,
