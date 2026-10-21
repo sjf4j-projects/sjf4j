@@ -1,9 +1,13 @@
 package org.sjf4j.value;
 
+import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingWriter;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.function.BiFunction;
@@ -42,7 +46,8 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
      * Generic codec for temporal types (LocalDate, LocalTime, etc.) with
      * optional DateTimeFormatter pattern support.
      */
-    final class TemporalValueCodec<V> implements PatternedValueCodec<V, String> {
+    final class TemporalValueCodec<V> extends ValueCodec.StreamingValueCodec<V, String>
+            implements PatternedValueCodec<V, String> {
         private final Class<V> type;
         private final DateTimeFormatter formatter;
         private final Function<V, String> toString;
@@ -55,14 +60,25 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
                                   BiFunction<V, DateTimeFormatter, String> format,
                                   Function<String, V> parse,
                                   BiFunction<String, DateTimeFormatter, V> parseWith) {
-            this(type, null, toString, format, parse, parseWith);
+            this(type, null, toString, format, parse, parseWith, null, null);
+        }
+
+        public TemporalValueCodec(Class<V> type,
+                                  Function<V, String> toString,
+                                  BiFunction<V, DateTimeFormatter, String> format,
+                                  Function<String, V> parse,
+                                  BiFunction<String, DateTimeFormatter, V> parseWith,
+                                  Reader<V> streamReader, Writer<V> streamWriter) {
+            this(type, null, toString, format, parse, parseWith, streamReader, streamWriter);
         }
 
         private TemporalValueCodec(Class<V> type, DateTimeFormatter formatter,
                                    Function<V, String> toString,
                                    BiFunction<V, DateTimeFormatter, String> format,
                                    Function<String, V> parse,
-                                   BiFunction<String, DateTimeFormatter, V> parseWith) {
+                                   BiFunction<String, DateTimeFormatter, V> parseWith,
+                                   Reader<V> streamReader, Writer<V> streamWriter) {
+            super(type, String.class, toString, parse, streamReader, streamWriter);
             this.type = type;
             this.formatter = formatter;
             this.toString = toString;
@@ -94,8 +110,10 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
 
         @Override
         public ValueCodec<V, String> withPattern(String pattern) {
+            // Custom formats use a precompiled DateTimeFormatter rather than
+            // streaming ISO functions; no per-value pattern checks.
             return new TemporalValueCodec<>(type, DateTimeFormatter.ofPattern(pattern),
-                    toString, format, parse, parseWith);
+                    toString, format, parse, parseWith, null, null);
         }
     }
 
@@ -106,22 +124,32 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
 
     PatternedValueCodec<LocalDate, String> LOCAL_DATE = new TemporalValueCodec<>(LocalDate.class,
             LocalDate::toString, LocalDate::format,
-            LocalDate::parse, LocalDate::parse);
+            LocalDate::parse, LocalDate::parse,
+            StreamingReader::readLocalDate, StreamingWriter::writeLocalDate);
 
     PatternedValueCodec<LocalTime, String> LOCAL_TIME = new TemporalValueCodec<>(LocalTime.class,
             LocalTime::toString, LocalTime::format,
-            LocalTime::parse, LocalTime::parse);
+            LocalTime::parse, LocalTime::parse,
+            StreamingReader::readLocalTime, StreamingWriter::writeLocalTime);
 
     PatternedValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = new TemporalValueCodec<>(LocalDateTime.class,
             LocalDateTime::toString, LocalDateTime::format,
-            LocalDateTime::parse, LocalDateTime::parse);
+            LocalDateTime::parse, LocalDateTime::parse,
+            StreamingReader::readLocalDateTime, StreamingWriter::writeLocalDateTime);
 
     PatternedValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = new TemporalValueCodec<>(OffsetDateTime.class,
             OffsetDateTime::toString, OffsetDateTime::format,
-            OffsetDateTime::parse, OffsetDateTime::parse);
+            OffsetDateTime::parse, OffsetDateTime::parse,
+            StreamingReader::readOffsetDateTime, StreamingWriter::writeOffsetDateTime);
 
     PatternedValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = new TemporalValueCodec<>(ZonedDateTime.class,
             ZonedDateTime::toString, ZonedDateTime::format,
-            ZonedDateTime::parse, ZonedDateTime::parse);
+            ZonedDateTime::parse, ZonedDateTime::parse,
+            StreamingReader::readZonedDateTime, StreamingWriter::writeZonedDateTime);
+
+    PatternedValueCodec<OffsetTime, String> OFFSET_TIME = new TemporalValueCodec<>(OffsetTime.class,
+            OffsetTime::toString, OffsetTime::format,
+            OffsetTime::parse, OffsetTime::parse,
+            StreamingReader::readOffsetTime, StreamingWriter::writeOffsetTime);
 
 }

@@ -2,9 +2,12 @@ package org.sjf4j.value;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingWriter;
 import org.sjf4j.util.FastUuid;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -19,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -145,6 +149,73 @@ public interface ValueCodec<V, R> {
         }
     }
 
+    /**
+     * A regular ValueCodec with optional direct streaming paths.
+     * A missing direction retains the existing typed raw ValueCodec path.
+     * A streaming function consumes or writes exactly one JSON value,
+     * including JSON null.
+     */
+    class StreamingValueCodec<V, R> implements ValueCodec<V, R> {
+        @FunctionalInterface
+        public interface Reader<V> {
+            V read(StreamingReader reader) throws IOException;
+        }
+
+        @FunctionalInterface
+        public interface Writer<V> {
+            void write(StreamingWriter writer, V value) throws IOException;
+        }
+
+        private final Class<V> valueClazz;
+        private final Class<R> rawClazz;
+        private final Function<V, R> encoder;
+        private final Function<R, V> decoder;
+        private final Function<V, V> copier;
+        private final Reader<V> streamReader;
+        private final Writer<V> streamWriter;
+
+        public StreamingValueCodec(Class<V> valueClazz, Class<R> rawClazz,
+                                   Function<V, R> encoder, Function<R, V> decoder,
+                                   Reader<V> streamReader, Writer<V> streamWriter) {
+            this(valueClazz, rawClazz, encoder, decoder, Function.identity(), streamReader, streamWriter);
+        }
+
+        public StreamingValueCodec(Class<V> valueClazz, Class<R> rawClazz,
+                                   Function<V, R> encoder, Function<R, V> decoder,
+                                   Function<V, V> copier, Reader<V> streamReader, Writer<V> streamWriter) {
+            this.valueClazz = valueClazz;
+            this.rawClazz = rawClazz;
+            this.encoder = encoder;
+            this.decoder = decoder;
+            this.copier = copier;
+            this.streamReader = streamReader;
+            this.streamWriter = streamWriter;
+        }
+
+        @Override
+        public R valueToRaw(V value) {
+            return value == null ? null : encoder.apply(value);
+        }
+
+        @Override
+        public V rawToValue(R raw) {
+            return raw == null ? null : decoder.apply(raw);
+        }
+
+        @Override
+        public Class<V> valueClazz() { return valueClazz; }
+
+        @Override
+        public Class<R> rawClazz() { return rawClazz; }
+
+        @Override
+        public V valueCopy(V value) { return copier.apply(value); }
+
+        public Reader<V> streamReader() { return streamReader; }
+
+        public Writer<V> streamWriter() { return streamWriter; }
+    }
+
     // ──────────────────────────────────────────────────────────────
     //  Built-in codec instances
     // ──────────────────────────────────────────────────────────────
@@ -163,9 +234,10 @@ public interface ValueCodec<V, R> {
                 }
             });
 
-    @NodeValue
-    ValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,
-            FastUuid::toString, FastUuid::parseUUID);
+    @NodeValue(format = "standard", defaultCodec = true)
+    ValueCodec<UUID, String> UUID_CODEC = new StreamingValueCodec<>(UUID.class, String.class,
+            FastUuid::toString, FastUuid::parseUUID,
+            StreamingReader::readUUID, StreamingWriter::writeUUID);
 
     @NodeValue
     ValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,
@@ -184,8 +256,8 @@ public interface ValueCodec<V, R> {
             ZoneId::getId, ZoneId::of);
 
     @NodeValue(format = "iso", defaultCodec = true)
-    ValueCodec<Instant, String> INSTANT_STR = new SimpleValueCodec<>(Instant.class, String.class,
-            Instant::toString, Instant::parse);
+    ValueCodec<Instant, String> INSTANT_STR = new StreamingValueCodec<>(Instant.class, String.class,
+            Instant::toString, Instant::parse, StreamingReader::readInstant, StreamingWriter::writeInstant);
 
     @NodeValue(format = "epochMillis")
     ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
@@ -218,34 +290,44 @@ public interface ValueCodec<V, R> {
                 catch (UnknownHostException e) { throw new BindingException("invalid InetAddress '" + raw + "'", e); }
             });
 
-    @NodeValue
-    ValueCodec<Date, String> DATE = new SimpleValueCodec<>(Date.class, String.class,
-            v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)));
+    @NodeValue(format = "iso", defaultCodec = true)
+    ValueCodec<Date, String> DATE = new StreamingValueCodec<>(Date.class, String.class,
+            v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)),
+            reader -> {
+                Instant instant = reader.readInstant();
+                return instant == null ? null : Date.from(instant);
+            }, (writer, date) -> writer.writeInstant(date == null ? null : date.toInstant()));
 
     // Retain the historical PatternedValueCodec fields as aliases; register
     // all built-in value types from this single declaration surface.
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<LocalDate, String> LOCAL_DATE = PatternedValueCodec.LOCAL_DATE;
 
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<LocalTime, String> LOCAL_TIME = PatternedValueCodec.LOCAL_TIME;
 
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = PatternedValueCodec.LOCAL_DATE_TIME;
 
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = PatternedValueCodec.OFFSET_DATE_TIME;
 
-    @NodeValue
+    @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = PatternedValueCodec.ZONED_DATE_TIME;
+
+    @NodeValue(format = "iso", defaultCodec = true)
+    ValueCodec<OffsetTime, String> OFFSET_TIME = PatternedValueCodec.OFFSET_TIME;
 
     // ──────────────────────────────────────────────────────────────
     //  Complex codecs → private static methods + method reference
     // ──────────────────────────────────────────────────────────────
 
-    @NodeValue
-    ValueCodec<Calendar, String> CALENDAR = new SimpleValueCodec<>(Calendar.class, String.class,
-            ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw);
+    @NodeValue(format = "iso", defaultCodec = true)
+    ValueCodec<Calendar, String> CALENDAR = new StreamingValueCodec<>(Calendar.class, String.class,
+            ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw,
+            reader -> ValueCodec._calendarFromZonedDateTime(reader.readZonedDateTime()),
+            (writer, calendar) -> writer.writeZonedDateTime(calendar == null ? null
+                    : ZonedDateTime.ofInstant(calendar.toInstant(), calendar.getTimeZone().toZoneId())));
 
     // calendar → string
     static String _calendarToRaw(Calendar value) {
@@ -256,7 +338,11 @@ public interface ValueCodec<V, R> {
 
     // string → calendar
     static Calendar _calendarFromRaw(String raw) {
-        ZonedDateTime zonedDateTime = ZonedDateTime.parse(raw);
+        return _calendarFromZonedDateTime(ZonedDateTime.parse(raw));
+    }
+
+    static Calendar _calendarFromZonedDateTime(ZonedDateTime zonedDateTime) {
+        if (zonedDateTime == null) return null;
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zonedDateTime.getZone()));
         calendar.setTimeInMillis(zonedDateTime.toInstant().toEpochMilli());
         return calendar;

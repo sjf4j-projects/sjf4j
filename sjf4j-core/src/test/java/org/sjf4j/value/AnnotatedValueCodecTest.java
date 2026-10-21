@@ -40,9 +40,19 @@ class AnnotatedValueCodecTest {
     void discoversBuiltinsAndPreservesDefaultAndNamedFormats() {
         long annotated = Arrays.stream(ValueCodec.class.getDeclaredFields())
                 .filter(f -> f.isAnnotationPresent(NodeValue.class)).count();
-        assertEquals(22, annotated);
+        assertEquals(23, annotated);
 
         assertEquals(String.class, TypeRegistry.requireRegisteredValueInfo(UUID.class, null).rawClazz);
+        assertEquals("standard", TypeRegistry.requireRegisteredValueInfo(UUID.class, null).valueFormat);
+        assertSame(ValueCodec.UUID_CODEC, TypeRegistry.requireRegisteredValueInfo(UUID.class, "standard").codec);
+        assertThrows(BindingException.class,
+                () -> TypeRegistry.requireRegisteredValueInfo(UUID.class, "canonical"));
+        assertThrows(BindingException.class,
+                () -> TypeRegistry.requireRegisteredValueInfo(UUID.class, ""));
+        assertThrows(BindingException.class,
+                () -> TypeRegistry.requireRegisteredValueInfo(LocalDate.class, ""));
+        assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamReader);
+        assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamWriter);
         assertEquals(String.class, TypeRegistry.requireRegisteredValueInfo(Instant.class, null).rawClazz);
         assertEquals("iso", TypeRegistry.requireRegisteredValueInfo(Instant.class, null).valueFormat);
         assertEquals("iso", TypeRegistry.requireRegisteredValueInfo(Instant.class, "iso").valueFormat);

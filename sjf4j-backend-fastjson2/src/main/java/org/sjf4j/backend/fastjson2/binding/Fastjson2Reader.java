@@ -12,6 +12,13 @@ import org.sjf4j.util.Asserts;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -174,6 +181,49 @@ public final class Fastjson2Reader extends StreamingReader {
     public String readString() {
         peeked = null;
         return reader.readString();
+    }
+
+    @Override
+    public UUID readUUID() {
+        peeked = null;
+        return reader.readUUID();
+    }
+
+    @Override
+    public LocalDate readLocalDate() {
+        peeked = null;
+        return reader.readLocalDate();
+    }
+
+    @Override
+    public LocalTime readLocalTime() {
+        peeked = null;
+        return reader.readLocalTime();
+    }
+
+    @Override
+    public LocalDateTime readLocalDateTime() {
+        peeked = null;
+        // Fastjson2 readLocalDateTime() does not consume JSON null itself.
+        return reader.nextIfNull() ? null : reader.readLocalDateTime();
+    }
+
+    @Override
+    public Instant readInstant() {
+        peeked = null;
+        return reader.readInstant();
+    }
+
+    @Override
+    public OffsetDateTime readOffsetDateTime() {
+        peeked = null;
+        return reader.nextIfNull() ? null : reader.readOffsetDateTime();
+    }
+
+    @Override
+    public ZonedDateTime readZonedDateTime() {
+        peeked = null;
+        return reader.readZonedDateTime();
     }
 
     @Override

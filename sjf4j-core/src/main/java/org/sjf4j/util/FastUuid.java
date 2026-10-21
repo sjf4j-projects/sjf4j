@@ -157,6 +157,35 @@ public class FastUuid {
     }
 
     /**
+     * Parses a canonical UUID directly from a Jackson parser's character buffer,
+     * without materializing a 36-character String or a CharSequence wrapper.
+     * The caller must not advance the parser until this method returns.
+     */
+    public static UUID parseUUID(char[] chars, int offset, int length) {
+        if (length != UUID_STRING_LENGTH
+                || offset < 0 || offset > chars.length - UUID_STRING_LENGTH
+                || chars[offset + 8] != '-' || chars[offset + 13] != '-'
+                || chars[offset + 18] != '-' || chars[offset + 23] != '-') {
+            throw new IllegalArgumentException("Illegal UUID string");
+        }
+
+        long most = (hex(chars, offset, 8) << 32)
+                | (hex(chars, offset + 9, 4) << 16)
+                | hex(chars, offset + 14, 4);
+        long least = (hex(chars, offset + 19, 4) << 48)
+                | hex(chars, offset + 24, 12);
+        return new UUID(most, least);
+    }
+
+    private static long hex(char[] chars, int offset, int length) {
+        long value = 0;
+        for (int i = 0; i < length; i++) {
+            value = (value << 4) | getHexValueForChar(chars[offset + i]);
+        }
+        return value;
+    }
+
+    /**
      * Returns a string representation of the given UUID. The returned string is formatted as described in
      * {@link UUID#toString()}.
      *

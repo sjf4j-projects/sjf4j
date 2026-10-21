@@ -702,6 +702,11 @@ final class ReadEmitter {
                             + ".rawToValue(" + reader + "." + rawReader + "()) : "
                             + runtimeRead + ")";
                 }
+                // The selected codec owns its streaming path. Preserve the
+                // existing typed-raw fast path for ordinary ValueCodecs.
+                scalarRead = "(" + value.helperName() + ".streamReader != null ? "
+                        + value.helperName() + ".streamReader.read(" + reader + ") : "
+                        + scalarRead + ")";
                 boolean autoRead = value.codecName() == null && value.codecPattern() == null;
                 if (autoRead) {
                     String set = value.helperName() + "Set";

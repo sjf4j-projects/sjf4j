@@ -318,6 +318,20 @@ public final class StreamingIO {
 
     public static Object readValueCodec(StreamingReader reader, ValueInfo valueInfo,
                                         RuntimeContext context) throws IOException {
+        if (valueInfo.streamReader != null) {
+            if (valueInfo.runtimeClazz != null && valueInfo.runtimeClazz != valueInfo.valueClazz) {
+                throw new BindingException("cannot decode value type '" + valueInfo.valueClazz.getName()
+                        + "' as runtime subtype '" + valueInfo.runtimeClazz.getName() + "'");
+            }
+            try {
+                return valueInfo.streamReader.read(reader);
+            } catch (BindingException | IOException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new BindingException("failed to decode value type '" + valueInfo.valueClazz.getName()
+                        + "' with streaming ValueCodec", e);
+            }
+        }
         Class<?> raw = valueInfo.rawClazz;
 
         /*
@@ -1030,7 +1044,11 @@ public final class StreamingIO {
 
             if (typeInfo.valueSet != null) {
                 ValueInfo vi = typeInfo.requireValueInfo(context.valueFormat(clazz));
-                _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+                if (vi.streamWriter != null) {
+                    vi.streamWriter.write(writer, node);
+                } else {
+                    _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+                }
                 return;
             }
         }
@@ -1148,7 +1166,11 @@ public final class StreamingIO {
          */
         if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.valueFormat(clazz));
-            _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+            if (vi.streamWriter != null) {
+                vi.streamWriter.write(writer, node);
+            } else {
+                _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+            }
             return;
         }
 

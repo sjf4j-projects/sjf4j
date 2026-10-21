@@ -209,6 +209,47 @@ class Jackson2ReaderTest {
         }
     }
 
+    @Test
+    void readsCanonicalUuidWithoutStringAndKeepsPrefetchedState() throws Exception {
+        String text = "123e4567-e89b-12d3-a456-426614174000";
+        java.util.UUID uuid = java.util.UUID.fromString(text);
+        try (Jackson2Reader reader = reader("[\"" + text + "\",null,\"" + text + "\"]")) {
+            reader.startArray();
+            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
+            assertEquals(uuid, reader.readUUID());
+            assertNull(reader.readUUID());
+            assertFalse(reader.nextIfNull());
+            assertEquals(uuid, reader.readUUID());
+            reader.endArray();
+            reader.endDocument();
+        }
+
+        try (Jackson2Reader reader = reader("{\"id\":\"" + text + "\"}")) {
+            reader.startObject();
+            assertEquals("id", reader.nextName());
+            assertEquals(uuid, reader.readUUID());
+            reader.endObject();
+            reader.endDocument();
+        }
+
+        try (Jackson2Reader reader = reader("[\"invalid\",42]")) {
+            reader.startArray();
+            assertThrows(IllegalArgumentException.class, reader::readUUID);
+            assertThrows(IOException.class, reader::readUUID);
+            reader.endArray();
+        }
+    }
+
+    @Test
+    void readsUuidFromUtf8Parser() throws Exception {
+        String text = "ffffffff-0000-1234-abcd-000000000000";
+        try (Jackson2Reader reader = new Jackson2Reader(
+                new JsonFactory().createParser(("\"" + text + "\"").getBytes(java.nio.charset.StandardCharsets.UTF_8)))) {
+            assertEquals(java.util.UUID.fromString(text), reader.readUUID());
+            reader.endDocument();
+        }
+    }
+
     private static Jackson2Reader reader(String json) throws IOException {
         return new Jackson2Reader(new JsonFactory().createParser(json));
     }

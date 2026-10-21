@@ -7,6 +7,7 @@ import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Types;
+import org.sjf4j.util.FastUuid;
 
 import java.io.Closeable;
 import java.io.Flushable;
@@ -16,6 +17,14 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
+import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 
 /**
  * Unified streaming writer for structured data.
@@ -132,6 +141,42 @@ public abstract class StreamingWriter implements Closeable, Flushable {
 
     /** Writes a non-null string value. */
     public abstract void writeStringValue(String value) throws IOException;
+
+    /** Writes a canonical UUID, with a backend override when direct encoding is available. */
+    public void writeUUID(UUID value) throws IOException {
+        writeString(value == null ? null : FastUuid.toString(value));
+    }
+
+    /** Writes the ISO representation, with backend fast paths when equivalent. */
+    public void writeLocalDate(LocalDate value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    /** Writes the ISO representation, with backend fast paths when equivalent. */
+    public void writeLocalTime(LocalTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    /** Writes the ISO representation; backend overrides must preserve it exactly. */
+    public void writeLocalDateTime(LocalDateTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeInstant(Instant value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeOffsetDateTime(OffsetDateTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeZonedDateTime(ZonedDateTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
+
+    public void writeOffsetTime(OffsetTime value) throws IOException {
+        writeString(value == null ? null : value.toString());
+    }
 
     public void writeString(String value) throws IOException {
         if (value == null) {

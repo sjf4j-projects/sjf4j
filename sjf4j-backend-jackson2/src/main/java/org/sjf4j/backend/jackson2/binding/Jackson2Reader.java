@@ -7,6 +7,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.FastUuid;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Jackson 2 adapter for the consuming-value streaming protocol.
@@ -233,6 +235,19 @@ public final class Jackson2Reader extends StreamingReader {
     /* --------------------------------------------------------------
      * String / generic number
      * -------------------------------------------------------------- */
+
+    @Override
+    public UUID readUUID() throws IOException {
+        JsonToken token = prefetched ? parser.currentToken() : parser.nextToken();
+        prefetched = false;
+        if (token == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        if (token != JsonToken.VALUE_STRING) {
+            throw expected("string or null", token);
+        }
+        return FastUuid.parseUUID(parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
+    }
 
     @Override
     public String readString() throws IOException {

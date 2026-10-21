@@ -18,6 +18,10 @@ final class CodecWriteEmitter {
         out.indent();
 
         String info = value.helperName();
+        out.beginBlock("if (" + info + ".streamWriter != null)");
+        out.line(info + ".streamWriter.write(" + writer + ", codecValue);");
+        out.endBlock(" else {");
+        out.indent();
         String method = value.codecRawType() == null ? null
                 : nativeWrite(value.codecRawType().toString(), backend, nativeWriter != null);
         if (method == null) {
@@ -42,6 +46,7 @@ final class CodecWriteEmitter {
             out.line(writer + ".writeRaw(rawValue, this.context);");
             out.endBlock();
         }
+        out.endBlock();
         out.endBlock();
         out.endBlock();
     }

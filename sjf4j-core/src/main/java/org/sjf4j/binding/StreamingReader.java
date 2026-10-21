@@ -3,11 +3,20 @@ import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.util.FastUuid;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 
 /**
  * Streaming reader for JSON-semantic structured data.
@@ -304,6 +313,54 @@ public abstract class StreamingReader implements Closeable {
      * @return string value, or {@code null}
      */
     public abstract String readString() throws IOException;
+
+    /** Reads a canonical UUID, with a backend override when direct decoding is available. */
+    public UUID readUUID() throws IOException {
+        String value = readString();
+        return value == null ? null : FastUuid.parseUUID(value);
+    }
+
+    /** Reads an ISO date; backends may override with direct decoding. */
+    public LocalDate readLocalDate() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalDate.parse(value);
+    }
+
+    /** Reads an ISO time; backends may override with direct decoding. */
+    public LocalTime readLocalTime() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalTime.parse(value);
+    }
+
+    /** Reads an ISO date-time; backends may override with direct decoding. */
+    public LocalDateTime readLocalDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : LocalDateTime.parse(value);
+    }
+
+    /** Reads an ISO-8601 instant; supported backends may decode directly. */
+    public Instant readInstant() throws IOException {
+        String value = readString();
+        return value == null ? null : Instant.parse(value);
+    }
+
+    /** Reads an ISO offset date-time. */
+    public OffsetDateTime readOffsetDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : OffsetDateTime.parse(value);
+    }
+
+    /** Reads an ISO zoned date-time. */
+    public ZonedDateTime readZonedDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : ZonedDateTime.parse(value);
+    }
+
+    /** Reads an ISO offset time. */
+    public OffsetTime readOffsetTime() throws IOException {
+        String value = readString();
+        return value == null ? null : OffsetTime.parse(value);
+    }
 
 
     /**

@@ -55,6 +55,14 @@ class CompiledCodecRawIOTest {
                     backend + ": explicit Instant Long optimization missing");
             assertTrue(generated.contains(".writeRaw(rawValue, this.context)"),
                     backend + ": runtime raw-type fallback missing");
+            assertTrue(generated.contains(".streamReader.read("),
+                    backend + ": compiled streaming codec read path missing");
+            assertTrue(generated.contains(".streamWriter.write("),
+                    backend + ": compiled streaming codec write path missing");
+            if (backend.equals("FASTJSON2")) {
+                assertTrue(generated.contains("w.writeName"),
+                        backend + ": native POJO writer was lost");
+            }
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
                 assertTrue(generated.contains(" g = writer.nativeWriter();"),
                         backend + ": mixed native POJO path missing");
