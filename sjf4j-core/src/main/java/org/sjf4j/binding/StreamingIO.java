@@ -533,7 +533,9 @@ public final class StreamingIO {
                     if (lazy != null) {
                         value = readNode(reader, lazy.clazz, Types.box(lazy.clazz), lazy.get(), context);
                     } else {
-                        Type argType = Types.resolveMemberType(type, boxed, creator.argTypes[argIndex]);
+                        Type argType = creator.argGenericDependent[argIndex]
+                                ? Types.resolveMemberType(type, boxed, creator.argTypes[argIndex])
+                                : creator.argTypes[argIndex];
                         Class<?> argBoxed = Types.rawBox(argType);
                         value = readNode(reader, argType, argBoxed, null, context);
                     }
