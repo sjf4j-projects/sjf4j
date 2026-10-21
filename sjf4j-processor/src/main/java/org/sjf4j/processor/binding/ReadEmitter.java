@@ -228,6 +228,11 @@ final class ReadEmitter {
         out.beginBlock("if (reader.nextIfNull())");
         out.line("return null;");
         out.endBlock();
+        // Mirror OneOfIO for non-object inputs when FAILBACK_NULL is configured.
+        out.beginBlock("if (" + info + ".fallbackNull)");
+        out.line("reader.skipNode();");
+        out.line("return null;");
+        out.endBlock();
         out.line("reader.startObject();");
         out.endBlock();
 
@@ -345,7 +350,10 @@ final class ReadEmitter {
             case BIG_INTEGER: decoded = numeric + "toBigInteger((Number) " + raw + ")"; break;
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
-                return "(" + value.type() + ") " + value.helperName() + ".rawToValue(" + raw + ")";
+                // Buffered JSON numbers keep the backend's natural Number subtype,
+                // which may differ from this codec's declared raw numeric class.
+                return "(" + value.type() + ") " + STREAMING_IO
+                        + ".decodeBufferedValueCodec(" + raw + ", " + value.helperName() + ")";
             default:
                 throw new AssertionError("Unsupported compiled OneOf prefix type " + value.kind());
         }
