@@ -1,27 +1,38 @@
 package org.sjf4j.meta;
 
+import org.sjf4j.exception.BindingException;
+
 /**
- * Lazily resolves cached metadata for an OneOf mapping target.
+ * Lazily resolves a fixed class's metadata from the global type registry.
  *
- * <p>Subtype metadata must not be analyzed while constructing OneOfInfo:
- * recursive polymorphic object graphs can refer back to the declaring type.</p>
+ * <p>Resolution is deferred to avoid eager analysis of recursive type graphs.
+ * Cached TypeInfo includes {@link TypeInfo#NONE} for unregistered types.</p>
  */
 public final class LazyTypeInfo {
 
     public final Class<?> clazz;
-    private volatile TypeInfo typeInfo;
+    private TypeInfo typeInfo;
 
     public LazyTypeInfo(Class<?> clazz) {
         this.clazz = clazz;
     }
 
-    /** Resolves a key-discriminated POJO subtype once, then reuses its metadata. */
-    public PojoInfo pojoInfo() {
+    /** Returns the metadata, resolving it at most once in sequential use. */
+    public TypeInfo get() {
         TypeInfo ti = typeInfo;
         if (ti == null) {
-            ti = TypeRegistry.registerTypeInfo(clazz, true);
+            ti = TypeRegistry.registerTypeInfo(clazz);
             typeInfo = ti;
         }
-        return ti.pojoInfo;
+        return ti;
+    }
+
+    /** Returns POJO metadata for a key-discriminated OneOf target. */
+    public PojoInfo pojoInfo() {
+        PojoInfo pi = get().pojoInfo;
+        if (pi == null) {
+            throw new BindingException("class '" + clazz.getName() + "' is not a POJO");
+        }
+        return pi;
     }
 }
