@@ -34,20 +34,12 @@ jobs:
       - name: Creek compiled OneOf read correctness (first/last discriminator)
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CreekPolyCountBenchmark[.]read_compiled        run: |
-          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*OneOfReadBenchmark[.](root|envelope)_(string|utf8)_(compiled|runtime|jackson_native|jackson_blackbird)$' \
-            -f 1 -wi 3 -w 200ms -i 4 -r 200ms -t 1
- \
+            '.*CreekPolyCountBenchmark[.]read_compiled$' \
             -p polyCount=8 -f 0 -wi 0 -i 1 -r 100ms -t 1
       - name: Creek OneOf count slope (CI runner, indicative only)
         run: |
           java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*CreekPolyCountBenchmark[.]read_(compiled|native|runtime)        run: |
-          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
-            '.*OneOfReadBenchmark[.](root|envelope)_(string|utf8)_(compiled|runtime|jackson_native|jackson_blackbird)$' \
-            -f 1 -wi 3 -w 200ms -i 4 -r 200ms -t 1
- \
+            '.*CreekPolyCountBenchmark[.]read_(compiled|native|runtime)$' \
             -f 1 -wi 3 -w 200ms -i 4 -r 200ms -t 1
       - name: OneOf vs Jackson2 quick JMH comparison (CI runner, indicative only)
         run: |
