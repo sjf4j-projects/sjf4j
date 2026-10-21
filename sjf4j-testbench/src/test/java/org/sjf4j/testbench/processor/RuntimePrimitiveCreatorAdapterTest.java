@@ -109,6 +109,33 @@ class RuntimePrimitiveCreatorAdapterTest {
         }
     }
 
+    public static final class Six {
+        public final int id;
+        public final String name;
+        public final boolean enabled;
+        public final long count;
+        public final double value;
+        public final String note;
+
+        @NodeCreator
+        public Six(@NodeProperty("id") int id,
+                   @NodeProperty("name") String name,
+                   @NodeProperty("enabled") boolean enabled,
+                   @NodeProperty("count") long count,
+                   @NodeProperty("value") double value,
+                   @NodeProperty("note") String note) {
+            this.id = id;
+            this.name = name;
+            this.enabled = enabled;
+            this.count = count;
+            this.value = value;
+            this.note = note;
+        }
+    }
+
+    public record Eight(int id, String name, boolean enabled, long count,
+                        double value, String note, float ratio, int level) {}
+
     public record MixedRecord(int id, String name, double value) {}
 
     public static final class Factory {
@@ -194,6 +221,38 @@ class RuntimePrimitiveCreatorAdapterTest {
         assertEquals(0.0d, partial.value, backend);
         assertFalse(partial.active, backend);
         assertEquals(0L, partial.count, backend);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void largeCreatorsReadMixedTypesAndMissingPrimitives(String backend, Binder<?, ?> binder) {
+        CreatorInfo sixInfo = TypeRegistry.requireRegisteredPojoInfo(Six.class).creatorInfo;
+        assertNull(sixInfo.argsCreatorLambda5, backend);
+
+        Six full = (Six) binder.readNode(
+                "{\"note\":\"N\",\"count\":12345678901,\"id\":7,"
+                + "\"enabled\":true,\"name\":\"six\",\"value\":2.125}", Six.class);
+        assertEquals(7, full.id, backend);
+        assertEquals("six", full.name, backend);
+        assertTrue(full.enabled, backend);
+        assertEquals(12345678901L, full.count, backend);
+        assertEquals(2.125, full.value, backend);
+        assertEquals("N", full.note, backend);
+
+        Six missing = (Six) binder.readNode("{\"name\":\"partial\",\"id\":null}", Six.class);
+        assertEquals(0, missing.id, backend);
+        assertEquals("partial", missing.name, backend);
+        assertFalse(missing.enabled, backend);
+        assertEquals(0L, missing.count, backend);
+        assertEquals(0.0, missing.value, backend);
+        assertNull(missing.note, backend);
+
+        Eight eight = (Eight) binder.readNode(
+                "{\"ratio\":1.25,\"level\":9,\"note\":\"eight\","
+                + "\"value\":12.5,\"count\":10000000000,\"enabled\":true,"
+                + "\"name\":\"record\",\"id\":3}", Eight.class);
+        assertEquals(new Eight(3, "record", true, 10000000000L,
+                12.5, "eight", 1.25f, 9), eight, backend);
     }
 
     @ParameterizedTest(name = "{0}")
