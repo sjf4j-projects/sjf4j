@@ -13,6 +13,10 @@ import java.util.UUID;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 
 /**
  * Streaming reader for JSON-semantic structured data.
@@ -332,6 +336,30 @@ public abstract class StreamingReader implements Closeable {
     public LocalDateTime readLocalDateTime() throws IOException {
         String value = readString();
         return value == null ? null : LocalDateTime.parse(value);
+    }
+
+    /** Reads an ISO-8601 instant; supported backends may decode directly. */
+    public Instant readInstant() throws IOException {
+        String value = readString();
+        return value == null ? null : Instant.parse(value);
+    }
+
+    /** Reads an ISO offset date-time. */
+    public OffsetDateTime readOffsetDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : OffsetDateTime.parse(value);
+    }
+
+    /** Reads an ISO zoned date-time. */
+    public ZonedDateTime readZonedDateTime() throws IOException {
+        String value = readString();
+        return value == null ? null : ZonedDateTime.parse(value);
+    }
+
+    /** Reads an ISO offset time. */
+    public OffsetTime readOffsetTime() throws IOException {
+        String value = readString();
+        return value == null ? null : OffsetTime.parse(value);
     }
 
 
