@@ -231,8 +231,11 @@ final class ReadEmitter {
         out.line("reader.startObject();");
         out.endBlock();
 
-        out.line("String firstName = reader.nextName();");
-        out.beginBlock("if (firstName == null)");
+        // Match the common discriminator-first layout without asking Jackson
+        // to materialize the property name on the successful match.
+        out.line("int firstIndex = reader.nextNameMatch("
+                + value.helperName() + "_discriminator, 0);");
+        out.beginBlock("if (firstIndex == " + NAME_MATCHER + ".OBJECT_END)");
         out.beginBlock("if (" + info + ".fallbackNull)");
         out.line("return null;");
         out.endBlock();
@@ -241,10 +244,10 @@ final class ReadEmitter {
                 + ");");
         out.endBlock();
 
-        out.beginBlock("if (!" + JavaWriter.stringLiteral(value.oneOfKey()) + ".equals(firstName))");
+        out.beginBlock("if (firstIndex != 0)");
         out.line("return (" + value.type() + ") org.sjf4j.binding.OneOfIO"
                 + ".readOneOfAfterFirstField(reader, " + info
-                + ", this.context, firstName, reader.readRaw());");
+                + ", this.context, reader.currentName(), reader.readRaw());");
         out.endBlock();
 
         out.line("Object discriminator = reader.readRaw();");
