@@ -7,6 +7,7 @@ on:
       - 'sjf4j-core/src/main/**'
       - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/CreekRuntimeDiagnosisBenchmark.java'
       - '.github/workflows/creek-runtime-diagnosis.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/PrimitiveCreatorInvocationBenchmark.java'
 
 jobs:
   runtime-diagnosis:
@@ -44,6 +45,13 @@ jobs:
             '.*CreekRuntimeDiagnosisBenchmark[.]subtype_.*' \
             -p polyCount=0 -f 1 -wi 5 -w 300ms -i 8 -r 300ms -t 1 \
             -prof gc -rf json -rff creek-runtime-subtypes.json | tee creek-runtime-subtypes.txt
+      - name: Measure primitive creator function vs existing handle allocation
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*PrimitiveCreatorInvocationBenchmark[.].*' \
+            -f 1 -wi 5 -w 300ms -i 8 -r 300ms -t 1 \
+            -prof gc -rf json -rff creek-primitive-creator.json | tee creek-primitive-creator.txt
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -56,4 +64,6 @@ jobs:
             creek-runtime-list.txt
             creek-runtime-subtypes.json
             creek-runtime-subtypes.txt
+            creek-primitive-creator.json
+            creek-primitive-creator.txt
           if-no-files-found: warn
