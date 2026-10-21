@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.function.BiFunction;
@@ -138,10 +139,17 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
 
     PatternedValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = new TemporalValueCodec<>(OffsetDateTime.class,
             OffsetDateTime::toString, OffsetDateTime::format,
-            OffsetDateTime::parse, OffsetDateTime::parse);
+            OffsetDateTime::parse, OffsetDateTime::parse,
+            StreamingReader::readOffsetDateTime, null);
 
     PatternedValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = new TemporalValueCodec<>(ZonedDateTime.class,
             ZonedDateTime::toString, ZonedDateTime::format,
-            ZonedDateTime::parse, ZonedDateTime::parse);
+            ZonedDateTime::parse, ZonedDateTime::parse,
+            StreamingReader::readZonedDateTime, null);
+
+    PatternedValueCodec<OffsetTime, String> OFFSET_TIME = new TemporalValueCodec<>(OffsetTime.class,
+            OffsetTime::toString, OffsetTime::format,
+            OffsetTime::parse, OffsetTime::parse,
+            StreamingReader::readOffsetTime, null);
 
 }
