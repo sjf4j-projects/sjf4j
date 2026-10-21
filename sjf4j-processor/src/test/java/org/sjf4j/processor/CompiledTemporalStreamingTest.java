@@ -9,6 +9,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -22,7 +28,14 @@ class CompiledTemporalStreamingTest {
         ObjectMapper json = new ObjectMapper();
         String input = "{\"date\":\"2026-10-21\",\"time\":\"12:30\","
                 + "\"dateTime\":\"2026-10-21T12:30:01.123456789\","
-                + "\"patternDate\":\"2026/10/21\"}";
+                + "\"patternDate\":\"2026/10/21\","
+                + "\"instant\":\"2026-10-21T10:30:01.123Z\","
+                + "\"offsetDateTime\":\"2026-10-21T12:30:01.123456789+02:00\","
+                + "\"zonedDateTime\":\"2026-10-21T12:30:01.123+02:00[Europe/Paris]\","
+                + "\"offsetTime\":\"12:30:01.123456789+02:00\","
+                + "\"date\":\"2026-10-21T10:30:01.123Z\","
+                + "\"calendar\":\"2026-10-21T12:30:01.123+02:00[Europe/Paris]\","
+                + "\"patternOffset\":\"2026/10/21 12:30:01+02:00\"}";
         for (String backend : new String[]{
                 "FASTJSON2", "JACKSON2", "JACKSON3", "GSON", "JSONP", "SIMPLE"}) {
             Map<String, String> sources = new LinkedHashMap<>();
@@ -34,6 +47,14 @@ class CompiledTemporalStreamingTest {
                             + " public LocalTime time;"
                             + " public LocalDateTime dateTime;"
                             + " @NodeProperty(codecPattern=\"yyyy/MM/dd\") public LocalDate patternDate;"
+                            + " public Instant instant;"
+                            + " public OffsetDateTime offsetDateTime;"
+                            + " public ZonedDateTime zonedDateTime;"
+                            + " public OffsetTime offsetTime;"
+                            + " public java.util.Date date;"
+                            + " public java.util.Calendar calendar;"
+                            + " @NodeProperty(codecPattern=\"yyyy/MM/dd HH:mm:ssXXX\")"
+                            + " public OffsetDateTime patternOffset;"
                             + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import java.time.*;"
@@ -71,6 +92,22 @@ class CompiledTemporalStreamingTest {
                             beanClass.getField("dateTime").get(bean), backend);
                     assertEquals(LocalDate.of(2026, 10, 21),
                             beanClass.getField("patternDate").get(bean), backend);
+                    assertEquals(Instant.parse("2026-10-21T10:30:01.123Z"),
+                            beanClass.getField("instant").get(bean), backend);
+                    assertEquals(OffsetDateTime.parse("2026-10-21T12:30:01.123456789+02:00"),
+                            beanClass.getField("offsetDateTime").get(bean), backend);
+                    assertEquals(ZonedDateTime.parse("2026-10-21T12:30:01.123+02:00[Europe/Paris]"),
+                            beanClass.getField("zonedDateTime").get(bean), backend);
+                    assertEquals(OffsetTime.parse("12:30:01.123456789+02:00"),
+                            beanClass.getField("offsetTime").get(bean), backend);
+                    assertEquals(Date.from(Instant.parse("2026-10-21T10:30:01.123Z")),
+                            beanClass.getField("date").get(bean), backend);
+                    Calendar calendar = (Calendar) beanClass.getField("calendar").get(bean);
+                    assertEquals("Europe/Paris", calendar.getTimeZone().getID(), backend);
+                    assertEquals(Instant.parse("2026-10-21T10:30:01.123Z").toEpochMilli(),
+                            calendar.getTimeInMillis(), backend);
+                    assertEquals(OffsetDateTime.parse("2026-10-21T12:30:01+02:00"),
+                            beanClass.getField("patternOffset").get(bean), backend);
 
                     String written = (String) binderClass.getMethod("writeString", beanClass)
                             .invoke(binder, bean);
