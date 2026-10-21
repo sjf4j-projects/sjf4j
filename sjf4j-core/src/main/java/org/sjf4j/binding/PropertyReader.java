@@ -9,7 +9,6 @@ import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.util.Invokers;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.LazyTypeInfo;
-import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.util.Types;
 
 import java.io.IOException;
