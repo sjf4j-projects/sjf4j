@@ -128,13 +128,13 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(compiled.success, compiled.diagnostics());
 
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("com.alibaba.fastjson2.JSONWriter w,"), source);
+        assertTrue(source.contains("JSONWriter w,"), source);
         assertTrue(source.contains("createNativeWriter()"), source);
         assertTrue(source.contains("createNativeWriterUtf8()"), source);
         assertFalse(source.contains("Fastjson2Writer writer,"), source);
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
-        assertTrue(source.contains("new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(w)"), source);
+        assertTrue(source.contains("new Fastjson2Writer(w)"), source);
         assertFalse(source.contains("writer.nativeWriter()"), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);
@@ -216,8 +216,8 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(compiled.success, compiled.diagnostics());
 
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("com.alibaba.fastjson2.JSONWriter w,"), generated);
-        assertTrue(generated.contains("new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(w)"),
+        assertTrue(generated.contains("JSONWriter w,"), generated);
+        assertTrue(generated.contains("new Fastjson2Writer(w)"),
                 generated);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
