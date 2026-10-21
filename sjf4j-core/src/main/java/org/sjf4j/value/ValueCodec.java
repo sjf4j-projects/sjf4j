@@ -237,7 +237,7 @@ public interface ValueCodec<V, R> {
     @NodeValue(format = "standard", defaultCodec = true)
     ValueCodec<UUID, String> UUID_CODEC = new StreamingValueCodec<>(UUID.class, String.class,
             FastUuid::toString, FastUuid::parseUUID,
-            StreamingReader::readUuid, StreamingWriter::writeUUID);
+            StreamingReader::readUuid, StreamingWriter::writeUuid);
 
     @NodeValue
     ValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
+import com.fasterxml.jackson.databind.ser.std.UUIDSerializer;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.StreamingWriter;
@@ -12,6 +13,7 @@ import org.sjf4j.util.Asserts;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 
 /**
  * Jackson 2 adapter for the SJF4J streaming writer protocol.
@@ -214,6 +216,19 @@ public final class Jackson2Writer extends StreamingWriter {
         generator.writeNumber(Asserts.notNull(value, "value"));
     }
 
+
+    private static final class UUIDSerializerHolder {
+        static final UUIDSerializer INSTANCE = new UUIDSerializer();
+    }
+
+    @Override
+    public void writeUuid(UUID value) throws IOException {
+        if (value == null) {
+            generator.writeNull();
+        } else {
+            UUIDSerializerHolder.INSTANCE.serialize(value, generator, null);
+        }
+    }
 
     /*
      * Lifecycle

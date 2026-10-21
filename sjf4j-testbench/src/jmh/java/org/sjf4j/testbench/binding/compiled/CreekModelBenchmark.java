@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 /** Same Creek POJO, String input/output, with parsing and serialization inside each operation. */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 20, time = 400, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 5, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
@@ -42,7 +42,8 @@ import java.util.concurrent.TimeUnit;
 public class CreekModelBenchmark {
 
     public static void main(String[] args) throws IOException {
-        Main.main(new String[]{CreekModelBenchmark.class.getName()});
+//        Main.main(new String[]{CreekModelBenchmark.class.getName()});
+        Main.main(new String[]{CreekModelBenchmark.class.getName() + ".write"});
     }
 
     private static final ObjectMapper JACKSON_NATIVE = new ObjectMapper();

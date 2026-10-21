@@ -143,7 +143,7 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     public abstract void writeStringValue(String value) throws IOException;
 
     /** Writes a canonical UUID, with a backend override when direct encoding is available. */
-    public void writeUUID(UUID value) throws IOException {
+    public void writeUuid(UUID value) throws IOException {
         writeString(value == null ? null : FastUuid.toString(value));
     }
 

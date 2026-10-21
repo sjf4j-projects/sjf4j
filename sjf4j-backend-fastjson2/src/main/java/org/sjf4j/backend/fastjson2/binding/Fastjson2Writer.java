@@ -148,7 +148,7 @@ public final class Fastjson2Writer extends StreamingWriter {
     }
 
     @Override
-    public void writeUUID(UUID value) {
+    public void writeUuid(UUID value) {
         writer.writeUUID(value);
     }
 

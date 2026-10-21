@@ -40,16 +40,16 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 20, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 15, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class RuntimeReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
-//        Main.main(new String[]{RuntimeReadBenchmark.class.getName() + ".jackson2_.*"});
+//        Main.main(new String[]{RuntimeReadBenchmark.class.getName()});
+        Main.main(new String[]{RuntimeReadBenchmark.class.getName() + ".jackson2"});
     }
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
