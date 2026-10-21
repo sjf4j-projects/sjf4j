@@ -14,6 +14,8 @@ import java.math.BigInteger;
 import java.util.UUID;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
@@ -166,6 +168,19 @@ public final class Fastjson2Writer extends StreamingWriter {
         } else {
             writer.writeLocalTime(value);
         }
+    }
+
+    @Override
+    public void writeLocalDateTime(LocalDateTime value) {
+        // Native Fastjson2 uses a space instead of the ISO 'T' separator.
+        writer.writeString(value == null ? null : value.toString());
+    }
+
+    @Override
+    public void writeInstant(Instant value) {
+        // The native implementation uses DateTimeFormatter.ISO_INSTANT,
+        // the same textual representation as Instant.toString().
+        writer.writeInstant(value);
     }
 
     @Override
