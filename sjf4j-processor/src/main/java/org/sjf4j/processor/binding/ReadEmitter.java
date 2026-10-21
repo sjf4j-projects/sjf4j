@@ -280,22 +280,23 @@ final class ReadEmitter {
     }
 
     /** Subtype body starts after START_OBJECT and the already consumed discriminator. */
-    void emitOneOfSubtypeContent(JavaWriter out, BindingValue subtype) {
+    void emitOneOfSubtypeContent(JavaWriter out, BindingValue subtype, String discriminatorKey) {
         out.beginBlock("private " + subtype.type() + " " + subtype.helperName()
                 + "_content(" + backend.readerType() + " reader) throws java.io.IOException");
-        emitPojo(out, subtype, true);
+        emitPojo(out, subtype, true, discriminatorKey);
         out.endBlock();
     }
 
     private void emitPojo(
             JavaWriter out,
             BindingValue value) {
-        emitPojo(out, value, false);
+        emitPojo(out, value, false, null);
     }
 
-    private void emitPojo(JavaWriter out, BindingValue value, boolean insideObject) {
+    private void emitPojo(JavaWriter out, BindingValue value, boolean insideObject,
+                          String consumedDiscriminator) {
         if (value.creator() != null) {
-            emitCreator(out, value, insideObject);
+            emitCreator(out, value, insideObject, consumedDiscriminator);
             return;
         }
 
@@ -323,13 +324,13 @@ final class ReadEmitter {
                                     : "") +
                             ")) != " + NAME_MATCHER + ".OBJECT_END)");
 
-            emitMatchedPojoProperty(out, value);
+            emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
             out.line("String name;");
             out.beginBlock(
                     "while ((name = reader.nextName()) != null)");
 
-            emitStringPojoProperty(out, value);
+            emitStringPojoProperty(out, value, consumedDiscriminator);
         }
 
         if (fastjson2Pojo == null || value.properties().isEmpty()) {
@@ -339,7 +340,8 @@ final class ReadEmitter {
     }
 
     /** Compiled creator binding: typed arguments and deferred writable fields. */
-    private void emitCreator(JavaWriter out, BindingValue value, boolean insideObject) {
+    private void emitCreator(JavaWriter out, BindingValue value, boolean insideObject,
+                             String consumedDiscriminator) {
         if (!insideObject) emitObjectStart(out);
 
         int argCount = value.creator().parameterTypes().size();
@@ -370,11 +372,11 @@ final class ReadEmitter {
             out.beginBlock("while ((nameIndex = reader.nextNameMatch(" + matcherFieldName(value)
                     + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
                     + ")) != " + NAME_MATCHER + ".OBJECT_END)");
-            emitMatchedPojoProperty(out, value);
+            emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
             out.line("String name;");
             out.beginBlock("while ((name = reader.nextName()) != null)");
-            emitStringPojoProperty(out, value);
+            emitStringPojoProperty(out, value, consumedDiscriminator);
         }
         if (fastjson2Pojo == null || size == 0) out.endBlock();
 
@@ -421,13 +423,12 @@ final class ReadEmitter {
         }
     }
 
-    private void emitMatchedPojoProperty(
-            JavaWriter out,
-            BindingValue value) {
-        emitMatchedPojoProperty(out, value, true);
+    void emitMatchedPojoProperty(JavaWriter out, BindingValue value, boolean updateExpected) {
+        emitMatchedPojoProperty(out, value, updateExpected, null);
     }
 
-    void emitMatchedPojoProperty(JavaWriter out, BindingValue value, boolean updateExpected) {
+    private void emitMatchedPojoProperty(JavaWriter out, BindingValue value,
+                                         boolean updateExpected, String consumedDiscriminator) {
         out.beginBlock("switch (nameIndex)");
 
         int index = 0;
@@ -445,6 +446,7 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
+        emitDuplicateOneOfCheck(out, consumedDiscriminator, "reader.currentName()");
         emitUnknownObjectProperty(out, value, "reader.currentName()");
         out.line("break;");
         out.dedent();
@@ -454,7 +456,7 @@ final class ReadEmitter {
 
     private void emitStringPojoProperty(
             JavaWriter out,
-            BindingValue value) {
+            BindingValue value, String consumedDiscriminator) {
 
         out.beginBlock("switch (name)");
 
@@ -483,10 +485,20 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
+        emitDuplicateOneOfCheck(out, consumedDiscriminator, "name");
         emitUnknownObjectProperty(out, value, "name");
         out.line("break;");
         out.dedent();
 
+        out.endBlock();
+    }
+
+    private void emitDuplicateOneOfCheck(JavaWriter out, String discriminator, String name) {
+        if (discriminator == null) return;
+        out.beginBlock("if (" + JavaWriter.stringLiteral(discriminator) + ".equals(" + name + "))");
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + JavaWriter.stringLiteral("duplicate oneOf discriminator key '" + discriminator + "'")
+                + ");");
         out.endBlock();
     }
 
