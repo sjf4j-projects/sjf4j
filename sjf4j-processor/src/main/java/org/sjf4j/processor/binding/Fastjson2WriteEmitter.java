@@ -8,7 +8,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
-/** Fastjson2 compiled write generation using a shared streaming/native writer. */
+/** Fastjson2 compiled write generation directly against the native JSONWriter. */
 final class Fastjson2WriteEmitter {
 
     private enum FastjsonMode {
@@ -49,7 +49,7 @@ final class Fastjson2WriteEmitter {
     }
 
 
-    /** Emits Fastjson2 code through one buffer shared by native and codec writes. */
+    /** Emits Fastjson2 code into one native buffer shared by normal and codec writes. */
     void emitMethod(
             JavaWriter out,
             BindingValue value,
@@ -61,15 +61,13 @@ final class Fastjson2WriteEmitter {
         boolean utf8 = output == BindingPlan.WriteOutput.BYTES
                 || output == BindingPlan.WriteOutput.OUTPUT_STREAM;
         FastjsonMode mode = utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16;
-        String writer = names.newName("writer");
-        String raw = names.newName("raw");
-        // Never attach the caller-owned destination before serialization succeeds.
-        // close() flushes attached writers even if a compiled helper throws.
-        String create = utf8 ? "createWriterUtf8()" : "createWriter()";
+        String raw = names.newName("w");
+        // Keep the caller-owned destination detached until serialization succeeds.
+        // The native writer owns only its in-memory output buffer.
+        String create = utf8 ? "createNativeWriterUtf8()" : "createNativeWriter()";
 
-        out.beginBlock("try (org.sjf4j.backend.fastjson2.binding.Fastjson2Writer "
-                + writer + " = this.binder." + create + ")");
-        out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + writer + ".nativeWriter();");
+        out.beginBlock("try (com.alibaba.fastjson2.JSONWriter "
+                + raw + " = this.binder." + create + ")");
 
         // Raw field-name optimizations require compatible Fastjson2 features.
         out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
@@ -97,17 +95,18 @@ final class Fastjson2WriteEmitter {
 
         if (value.helperRequired()) {
             out.line(fastjsonHelperName(value, mode) + "("
-                    + writer + ", " + source + ");");
+                    + raw + ", " + source + ");");
         } else {
-            emitNativeValue(out, value, source, mode, raw, writer, names.newName("item"));
+            emitNativeValue(out, value, source, mode, raw,
+                    codecAdapter(raw), names.newName("item"));
         }
 
         switch (output) {
             case STRING:
-                out.line("return " + writer + ".toString();");
+                out.line("return " + raw + ".toString();");
                 break;
             case BYTES:
-                out.line("return " + writer + ".toBytes();");
+                out.line("return " + raw + ".getBytes();");
                 break;
             case WRITER:
             case OUTPUT_STREAM:
@@ -143,7 +142,8 @@ final class Fastjson2WriteEmitter {
         out.beginBlock("if (org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
                 + (mode == FastjsonMode.UTF8 ? "supportsRawUtf8Names(" : "supportsRawUtf16Names(")
                 + writer + ".nativeWriter()))");
-        out.line(fastjsonHelperName(subtype, mode) + "(" + writer + ", " + expression + ");");
+        out.line(fastjsonHelperName(subtype, mode) + "(" + writer
+                + ".nativeWriter(), " + expression + ");");
         out.endBlock(" else {");
         out.indent();
         out.line("org.sjf4j.binding.StreamingIO.writeNode(" + writer + ", "
@@ -171,9 +171,8 @@ final class Fastjson2WriteEmitter {
         boolean withCodec = hasCodec(value, new HashSet<BindingValue>());
         out.beginBlock("private " + (withCodec ? "" : "static ") + "void "
                 + fastjsonHelperName(value, mode)
-                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer, "
+                + "(com.alibaba.fastjson2.JSONWriter w, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
         out.beginBlock("if (value == null)");
         out.line("w.writeNull();");
         out.line("return;");
@@ -290,15 +289,21 @@ final class Fastjson2WriteEmitter {
         }
     }
 
+    // Create a StreamingWriter adapter only for the codec streaming or
+    // generic-raw fallback branches; native writes do not need a wrapper.
+    private String codecAdapter(String raw) {
+        return "new org.sjf4j.backend.fastjson2.binding.Fastjson2Writer(" + raw + ")";
+    }
+
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode) {
-        emitNativeValue(out, value, expression, mode, "w", "writer", "item");
+        emitNativeValue(out, value, expression, mode, "w", codecAdapter("w"), "item");
     }
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode, String raw, String writer, String item) {
         if (value.helperRequired()) {
-            out.line(fastjsonHelperName(value, mode) + "(" + writer + ", " + expression + ");");
+            out.line(fastjsonHelperName(value, mode) + "(" + raw + ", " + expression + ");");
             return;
         }
 
