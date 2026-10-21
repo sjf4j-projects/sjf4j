@@ -102,6 +102,12 @@ tasks.test {
     )
 }
 
+tasks.named("build") {
+    dependsOn(tasks.named("jmhJar"))
+}
+
+//////////////////
+// jacoco
 val coverageProjects = listOf(":sjf4j-core", ":sjf4j-asm", ":sjf4j-schema")
 evaluationDependsOn(":sjf4j-schema")
 val schemaOfficialLatestTest = project(":sjf4j-schema").tasks.named("officialLatestTest")
