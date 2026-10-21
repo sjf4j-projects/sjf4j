@@ -15,6 +15,7 @@ import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.OneOfInfo;
+import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
