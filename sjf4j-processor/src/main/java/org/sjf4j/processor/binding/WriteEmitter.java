@@ -87,8 +87,9 @@ final class WriteEmitter {
         // helpers. No runtime fallback is needed solely for includeNulls=false.
         boolean nativeJackson = isJackson()
                 && nativeEligible(compiled.value(), new HashSet<BindingValue>());
-        if (!nativeJackson) out.beginBlock("if (!this.context.includeNulls)");
-        switch (plan.writeOutput()) {
+        if (!nativeJackson) {
+            out.beginBlock("if (!this.context.includeNulls)");
+            switch (plan.writeOutput()) {
             case STRING:
                 out.line("return this.binder.writeNodeAsString(" + source + ");");
                 break;
@@ -104,7 +105,8 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(plan.writeOutput());
         }
-        if (!nativeJackson) out.endBlock();
+            out.endBlock();
+        }
 
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
