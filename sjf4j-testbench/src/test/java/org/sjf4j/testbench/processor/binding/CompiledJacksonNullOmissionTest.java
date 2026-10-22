@@ -147,7 +147,7 @@ public class CompiledJacksonNullOmissionTest {
         Jackson3Compiled omitting = CompiledInstances.create(Jackson3Compiled.class,
                 new RuntimeContext(false));
         Jackson3Binder runtime = new Jackson3Binder(
-                new tools.jackson.core.JsonFactory(), new RuntimeContext(false));
+                new tools.jackson.core.json.JsonFactory(), new RuntimeContext(false));
 
         equivalent(runtime.writeNodeAsString(bean), omitting.writePojo(bean));
         equivalent(runtime.writeNodeAsString(bean),
