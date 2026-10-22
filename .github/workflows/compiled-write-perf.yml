@@ -30,8 +30,8 @@ jobs:
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
           java -jar "$jar" \
-            '.*(CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|direct)|CreekModelBenchmark\.write_(compiled|native|blackbird))' \
-            -bm avgt -tu us -t 1 -f 3 -wi 4 -w 250ms -i 7 -r 250ms \
+            '.*(CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|direct|direct_wrapped)|CreekModelBenchmark\.write_(compiled|native|blackbird))' \
+            -bm avgt -tu us -t 1 -f 5 -wi 15 -w 400ms -i 10 -r 400ms \
             -prof gc -rf json -rff write-perf-results.json \
             | tee write-perf.log
       - name: Summarize comparable pairs and allocations
@@ -43,10 +43,10 @@ jobs:
           items={r['benchmark'].split('.')[-1]:r for r in runs}
           print("# Compiled Write / Creek JMH")
           print()
-          print("One hosted runner, same JVM/JMH settings; these results are diagnostic, not a cross-machine guarantee.")
+          print("JDK17; five forks, six seconds warmup per fork; interpret within-run gaps and JMH uncertainty.")
           print()
-          print("| Case | Compiled (us/op) | Native | Blackbird | Direct | Native/Compiled | Blackbird/Compiled | Alloc Compiled (B/op) |")
-          print("|---|---:|---:|---:|---:|---:|---:|---:|")
+          print("| Case | Compiled (us/op) | Native | Blackbird | Direct | Direct+Wrapper | Native/Compiled | Blackbird/Compiled | Alloc Compiled (B/op) |")
+          print("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
           for name in sorted(n for n in items if n.endswith('_compiled')):
               prefix=name.removesuffix('_compiled')
               get=lambda suffix:items.get(prefix+'_'+suffix)
@@ -54,6 +54,7 @@ jobs:
               n=get('native')
               b=get('blackbird')
               d=get('direct')
+              dw=get('direct_wrapped')
               if not n or not b:
                   print(f"**MISSING comparator for {prefix}**")
                   continue
@@ -61,7 +62,7 @@ jobs:
               fmt=lambda v:f"{score(v):.3f}" if v else "—"
               alloc=c.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score')
               a=f"{alloc:.1f}" if alloc is not None else "—"
-              print(f"| {prefix} | {fmt(c)} | {fmt(n)} | {fmt(b)} | {fmt(d)} | {score(n)/score(c):.3f}x | {score(b)/score(c):.3f}x | {a} |")
+              print(f"| {prefix} | {fmt(c)} | {fmt(n)} | {fmt(b)} | {fmt(d)} | {fmt(dw)} | {score(n)/score(c):.3f}x | {score(b)/score(c):.3f}x | {a} |")
           print()
           print("Blackbird/Compiled >1 means compiled is faster; check error bars and repeat on fixed hardware before declaring a stable advantage.")
           PY
