@@ -207,7 +207,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -225,7 +225,7 @@ final class WriteEmitter {
         out.beginBlock("try (" + backend.writerType() + " " + writer +
                 " = this.binder.createWriter())");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
         out.line("return " + writer + ".toString();");
         out.endBlock();
@@ -241,7 +241,7 @@ final class WriteEmitter {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer);
+            emitWriteBody(out, value, source, writer, names);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -259,7 +259,7 @@ final class WriteEmitter {
                     + " = new org.sjf4j.binding.FastStringWriter(); "
                     + backend.writerType() + " " + writer
                     + " = this.binder.createWriter(" + output + "))");
-            emitWriteBody(out, value, source, writer);
+            emitWriteBody(out, value, source, writer, names);
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
             out.endBlock();
@@ -281,7 +281,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
         out.line("return " + output + ".toByteArray();");
         out.endBlock();
@@ -303,7 +303,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + ");");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
     }
 
@@ -311,14 +311,15 @@ final class WriteEmitter {
             JavaWriter out,
             BindingValue value,
             String source,
-            String writer) {
+            String writer,
+            NameAllocator names) {
 
         out.line(writer + ".startDocument();");
 
         if (isJackson()) {
             jackson.emitRoot(out, value, source, writer);
-        } else if (isGsonOrJsonp() && value.helperRequired()) {
-            out.line(value.helperName() + "(" + writer + ", " + source + ");");
+        } else if (isGsonOrJsonp()) {
+            other.emitRoot(out, value, source, writer, names);
         } else {
             streaming.writeValue(out, value, writer, source);
         }
