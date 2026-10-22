@@ -11,16 +11,16 @@ import java.util.Set;
 /** Emits direct concrete-writer binding code. */
 final class WriteEmitter {
 
-    private static final String STREAMING_IO =
-            "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
+    private final StreamingWriteEmitter streaming;
 
     WriteEmitter(BackendSpec backend) {
         this.backend = backend;
+        this.streaming = new StreamingWriteEmitter(backend);
         switch (backend.backend()) {
             case FASTJSON2:
                 fastjson2 = new Fastjson2WriteEmitter();
@@ -83,32 +83,11 @@ final class WriteEmitter {
                         plan,
                         0);
 
-        // Omission of null object properties is delegated once at the call
-        // boundary; the default compiled native hot path remains unchanged.
-        out.beginBlock("if (!this.context.includeNulls)");
-        switch (plan.writeOutput()) {
-            case STRING:
-                out.line("return this.binder.writeNodeAsString(" + source + ");");
-                break;
-            case BYTES:
-                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
-                break;
-            case WRITER:
-            case OUTPUT_STREAM:
-                out.line("this.binder.writeNode(" +
-                        BindingSource.parameterName(plan, 1) + ", " + source + ");");
-                out.line("return;");
-                break;
-            default:
-                throw new AssertionError(plan.writeOutput());
-        }
-        out.endBlock();
-
-        // Dynamic children invalidate whole-method specialization. Delegate to
-        // the configured runtime binder rather than emitting mixed static/dynamic code.
-        if (!nativeEligible(compiled.value(), new HashSet<BindingValue>())
-                && !containsAdaptedValue(compiled.value(),
-                        new HashSet<BindingValue>())) {
+        // Only the streaming-only backends retain whole-root fallback rules.
+        // JSON native backends compile structural nodes and fall back locally.
+        if (!usesSharedStructure()) {
+            // Preserve streaming-only null-policy and dynamic-root semantics.
+            out.beginBlock("if (!this.context.includeNulls)");
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -118,21 +97,41 @@ final class WriteEmitter {
                     break;
                 case WRITER:
                 case OUTPUT_STREAM:
-                    out.line("this.binder.writeNode(" +
-                            BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                    out.line("this.binder.writeNode("
+                            + BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                    out.line("return;");
                     break;
                 default:
                     throw new AssertionError(plan.writeOutput());
             }
-            BindingSource.endOverride(out);
-            return;
+            out.endBlock();
+
+            if (streaming.shouldFallbackRoot(compiled.value())) {
+                switch (plan.writeOutput()) {
+                    case STRING:
+                        out.line("return this.binder.writeNodeAsString(" + source + ");");
+                        break;
+                    case BYTES:
+                        out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                        break;
+                    case WRITER:
+                    case OUTPUT_STREAM:
+                        out.line("this.binder.writeNode("
+                                + BindingSource.parameterName(plan, 1)
+                                + ", " + source + ");");
+                        break;
+                    default:
+                        throw new AssertionError(plan.writeOutput());
+                }
+                BindingSource.endOverride(out);
+                return;
+            }
         }
 
         NameAllocator names =
                 methodNames(plan);
 
-        if (backend.backend() == Backend.FASTJSON2
-                && fastjson2.nativeEligible(compiled.value(), new HashSet<BindingValue>())) {
+        if (backend.backend() == Backend.FASTJSON2) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
@@ -208,7 +207,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -226,7 +225,7 @@ final class WriteEmitter {
         out.beginBlock("try (" + backend.writerType() + " " + writer +
                 " = this.binder.createWriter())");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
         out.line("return " + writer + ".toString();");
         out.endBlock();
@@ -242,7 +241,7 @@ final class WriteEmitter {
             String writer = names.newName("writer");
             out.beginBlock("try (" + backend.writerType() + " " + writer
                     + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer);
+            emitWriteBody(out, value, source, writer, names);
             out.line("return " + writer + ".toBytes();");
             out.endBlock();
             return;
@@ -260,7 +259,7 @@ final class WriteEmitter {
                     + " = new org.sjf4j.binding.FastStringWriter(); "
                     + backend.writerType() + " " + writer
                     + " = this.binder.createWriter(" + output + "))");
-            emitWriteBody(out, value, source, writer);
+            emitWriteBody(out, value, source, writer, names);
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
             out.endBlock();
@@ -282,7 +281,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + "))");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
         out.line("return " + output + ".toByteArray();");
         out.endBlock();
@@ -304,7 +303,7 @@ final class WriteEmitter {
                         " = this.binder.createWriter(" +
                         output + ");");
 
-        emitWriteBody(out, value, source, writer);
+        emitWriteBody(out, value, source, writer, names);
 
     }
 
@@ -312,16 +311,17 @@ final class WriteEmitter {
             JavaWriter out,
             BindingValue value,
             String source,
-            String writer) {
+            String writer,
+            NameAllocator names) {
 
         out.line(writer + ".startDocument();");
 
-        if (hasNativeJsonWriter() && value.helperRequired()
-                && nativeEligible(value, new HashSet<BindingValue>())) {
-            out.line(value.helperName() + "(" + writer
-                    + "." + "nativeWriter" + "(), " + source + ");");
+        if (isJackson()) {
+            jackson.emitRoot(out, value, source, writer);
+        } else if (isGsonOrJsonp()) {
+            other.emitRoot(out, value, source, writer, names);
         } else {
-            writeValue(out, value, writer, source);
+            streaming.writeValue(out, value, writer, source);
         }
 
         out.line(writer + ".endDocument();");
@@ -329,82 +329,19 @@ final class WriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
-        // Fastjson2 accepts ValueCodec in native helpers while the generic
-        // streaming writer considers those subtrees non-native. A mixed POJO
-        // can therefore call this helper with Fastjson2Writer even when the
-        // same helper has native UTF-8/UTF-16 variants.
-        boolean fastjsonNative = backend.backend() == Backend.FASTJSON2
-                && fastjson2.nativeEligible(value, new HashSet<BindingValue>());
-        if (fastjsonNative) {
-            fastjson2.emitHelper(out, value);
-            if (!containsAdaptedValue(value, new HashSet<BindingValue>())) return;
-        }
-        // Generate a single native helper when the full type graph is concrete.
-        // Unresolved graphs retain the StreamingWriter fallback.
-        if (!fastjsonNative && hasNativeJsonWriter() && nativeEligible(value,
-                new HashSet<BindingValue>())) {
-            switch (backend.backend()) {
-                case JACKSON2:
-                case JACKSON3:
-                    jackson.emitHelper(out, value);
-                    return;
-                case FASTJSON2:
-                    fastjson2.emitHelper(out, value);
-                    return;
-                case GSON:
-                case JSONP:
-                    other.emitHelper(out, value);
-                    return;
-                default:
-                    throw new AssertionError(backend.backend());
-            }
-        }
-
-        if (mixedJacksonPojo(value)) {
-            emitMixedJacksonPojo(out, value);
+        if (isJackson()) {
+            jackson.emitHelper(out, value);
             return;
         }
-
-        out.beginBlock("private void " + value.helperName()
-                + "(" + backend.writerType() + " writer, "
-                + value.type() + " value) throws java.io.IOException");
-        switch (value.kind()) {
-            case ONE_OF:
-                emitOneOf(out, value);
-                break;
-            case POJO:
-            case JOJO:
-                emitPojo(out, value);
-                break;
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                out.line(STREAMING_IO + ".writeNode(writer, value, "
-                        + "this.context);");
-                break;
-            case LIST:
-            case SET:
-                emitCollection(out, value);
-                break;
-            case MAP:
-                emitMap(out, value);
-                break;
-            default:
-                throw new AssertionError("No write helper for " + value.kind());
+        if (backend.backend() == Backend.FASTJSON2) {
+            fastjson2.emitHelper(out, value);
+            return;
         }
-        out.endBlock();
-    }
-
-    private boolean hasNativeJsonWriter() {
-        switch (backend.backend()) {
-            case JACKSON2:
-            case JACKSON3:
-            case FASTJSON2:
-            case GSON:
-            case JSONP:
-                return true;
-            default:
-                return false;
+        if (isGsonOrJsonp()) {
+            other.emitHelper(out, value);
+            return;
         }
+        streaming.emitHelper(out, value);
     }
 
     private boolean isJackson() {
@@ -412,45 +349,20 @@ final class WriteEmitter {
                 || backend.backend() == Backend.JACKSON3;
     }
 
-    boolean needsStringHelper(BindingValue value) {
-        if (!hasNativeJsonWriter()
-                || value.direction() != BindingPlan.Direction.WRITE_TO) {
-            return false;
-        }
-        if (backend.backend() == Backend.FASTJSON2
-                && fastjson2.nativeEligible(value, new HashSet<BindingValue>())) {
-            return containsString(value, new HashSet<BindingValue>());
-        }
-        return containsNativeString(value, new HashSet<BindingValue>());
+    private boolean isGsonOrJsonp() {
+        return backend.backend() == Backend.GSON
+                || backend.backend() == Backend.JSONP;
     }
 
-    private boolean containsNativeString(BindingValue value, Set<BindingValue> visited) {
-        if (!visited.add(value)) return false;
-        if (value.helperRequired()
-                && nativeEligible(value, new HashSet<BindingValue>())) {
-            return containsString(value, new HashSet<BindingValue>());
-        }
-        switch (value.kind()) {
-            case ONE_OF:
-                for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-                    if (subtype.compiled != null
-                            && containsNativeString(subtype.compiled, visited)) return true;
-                }
-                return false;
-            case POJO:
-            case JOJO:
-                for (BindingProperty property : value.properties()) {
-                    if (containsNativeString(property.value(), visited)) return true;
-                }
-                return false;
-            case LIST:
-            case SET:
-                return containsNativeString(value.elementValue(), visited);
-            case MAP:
-                return containsNativeString(value.mapValue(), visited);
-            default:
-                return false;
-        }
+    private boolean usesSharedStructure() {
+        return isJackson() || isGsonOrJsonp()
+                || backend.backend() == Backend.FASTJSON2;
+    }
+
+    boolean needsStringHelper(BindingValue value) {
+        return usesSharedStructure()
+                && value.direction() == BindingPlan.Direction.WRITE_TO
+                && containsString(value, new HashSet<BindingValue>());
     }
 
     private boolean containsString(BindingValue value, Set<BindingValue> visited) {
@@ -512,8 +424,10 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(backend.backend());
         }
-        out.beginBlock("private static void _writeString(" + generator
-                + " g, String value) throws java.io.IOException");
+        // Only native JSON backends register this helper.
+        out.beginBlock("private static void _writeString(" + backend.writerType()
+                + " writer, String value) throws java.io.IOException");
+        out.line(generator + " g = writer.nativeWriter();");
         out.beginBlock("if (value == null)");
         out.line("g." + writeNull + "();");
         out.endBlock(" else {");
@@ -523,456 +437,15 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    /**
-     * An adapted descendant must not force ordinary POJO fields through the
-     * StreamingWriter facade. Only the adapted subtree needs that interface.
-     */
-    private boolean mixedJacksonPojo(BindingValue value) {
-        return isJackson() && value.kind() == BindingValue.Kind.POJO
-                && containsAdaptedValue(value, new HashSet<BindingValue>());
-    }
-
-    private void emitMixedJacksonPojo(JavaWriter out, BindingValue value) {
-        String generator = backend.backend() == Backend.JACKSON2
-                ? "com.fasterxml.jackson.core.JsonGenerator"
-                : "tools.jackson.core.JsonGenerator";
-        out.beginBlock("private void " + value.helperName()
-                + "(" + backend.writerType() + " writer, "
-                + value.type() + " value) throws java.io.IOException");
-        emitNullReturn(out);
-        out.line(generator + " g = writer.nativeWriter();");
-        out.line("g.writeStartObject();");
-        int index = 0;
-        for (BindingProperty property : value.properties()) {
-            BindingValue child = property.value();
-            out.line("g." + (backend.backend() == Backend.JACKSON2
-                    ? "writeFieldName" : "writeName")
-                    + "(" + compiledNameField(value, index++)
-                    + ".serializedName);");
-            String expression = propertyExpression(property, "value");
-            if (child.kind() == BindingValue.Kind.VALUE_CODEC) {
-                CodecWriteEmitter.emit(out, child, expression, "writer", "g", backend.backend());
-            } else if (child.kind() == BindingValue.Kind.STRING) {
-                // Evaluate the getter once, including on the null path.
-                out.beginBlock("");
-                out.line("String item = " + expression + ";");
-                out.beginBlock("if (item == null)");
-                out.line("g.writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line("g.writeString(item);");
-                out.endBlock();
-                out.endBlock();
-            } else if (nativeEligible(child, new HashSet<BindingValue>())) {
-                jackson.emitValue(out, child, expression);
-            } else {
-                // OneOf, dynamic containers and nested adapted POJOs retain
-                // their existing compiled/runtime semantics on this subtree.
-                writeValue(out, child, "writer", expression);
-            }
-        }
-        out.line("g.writeEndObject();");
-        out.endBlock();
-    }
-
-    private void emitOneOf(JavaWriter out, BindingValue value) {
-        emitNullReturn(out);
-        boolean hasMappedBranch = false;
-        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-            if (subtype.compiled != null || subtype.cachedPojo) {
-                hasMappedBranch = true;
-                break;
-            }
-        }
-        if (hasMappedBranch) {
-            out.line("Class<?> actualClass = value.getClass();");
-        }
-        int index = 0;
-        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-            String metadata = value.helperName() + "_subtype" + index++ + "_pojoInfo";
-            if (subtype.compiled == null && !subtype.cachedPojo) continue;
-            String type = subtype.type.toString();
-            out.beginBlock("if (actualClass == " + type + ".class)");
-            String expression = "(" + type + ") value";
-            if (subtype.cachedPojo) {
-                out.line(STREAMING_IO + ".writePojo(writer, value, " + metadata
-                        + ", this.context);");
-            } else if (backend.backend() == Backend.FASTJSON2
-                    && subtype.compiled.helperRequired()
-                    && fastjson2.nativeEligible(subtype.compiled, new HashSet<BindingValue>())) {
-                fastjson2.emitMappedSubtype(out, subtype.compiled, "writer", expression);
-            } else {
-                writeValue(out, subtype.compiled, "writer", expression);
-            }
-            out.line("return;");
-            out.endBlock();
-        }
-        // Unknown classes and subtypes with inaccessible fields retain Runtime semantics.
-        out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
-    }
-
     static String propertyExpression(BindingProperty property, String owner) {
         return property.constantString() == null
                 ? access(property.access(), owner)
                 : JavaWriter.stringLiteral(property.constantString());
     }
 
-    private void emitPojo(
-            JavaWriter out,
-            BindingValue value) {
-
-        emitNullReturn(out);
-        out.line("writer.startObject();");
-
-        int index = 0;
-
-        for (BindingProperty property :
-                value.properties()) {
-
-            if (index > 0) {
-                out.line("writer.separateProperty();");
-            }
-
-            out.line("writer.writeName(" +
-                    (backend.usesCompiledNames()
-                            ? compiledNameField(value, index)
-                            : JavaWriter.stringLiteral(property.name())) +
-                    ");");
-            index++;
-
-            writeValue(
-                    out,
-                    property.value(),
-                    "writer",
-                    propertyExpression(property, "value"));
-        }
-
-        if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
-            out.line("int count = " + index + ";");
-            out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
-                    + "value.dynamicProperties().entrySet())");
-            out.line("writer.writeName(entry.getKey(), count++ > 0);");
-            out.line(STREAMING_IO + ".writeNode(writer, entry.getValue(), "
-                    + "this.context);");
-            out.endBlock();
-        }
-
-        out.line("writer.endObject();");
-    }
-
-    private void emitCollection(
-            JavaWriter out,
-            BindingValue value) {
-
-        emitNullReturn(out);
-        out.line("writer.startArray();");
-        out.line("int count = 0;");
-
-        out.beginBlock(
-                "for (" +
-                        value.elementValue().type() +
-                        " element : value)");
-
-        out.beginBlock("if (count++ > 0)");
-        out.line("writer.separateElement();");
-        out.endBlock();
-
-        writeValue(
-                out,
-                value.elementValue(),
-                "writer",
-                "element");
-
-        out.endBlock();
-        out.line("writer.endArray();");
-    }
-
-    private void emitMap(
-            JavaWriter out,
-            BindingValue value) {
-
-        emitNullReturn(out);
-        out.line("writer.startObject();");
-        out.line("int count = 0;");
-
-        out.beginBlock(
-                "for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
-
-        out.beginBlock("if (count++ > 0)");
-        out.line("writer.separateProperty();");
-        out.endBlock();
-
-        out.line(
-                "writer.writeName((String) entry.getKey());");
-
-        writeValue(
-                out,
-                value.mapValue(),
-                "writer",
-                "(" +
-                        value.mapValue().type() +
-                        ") entry.getValue()");
-
-        out.endBlock();
-        out.line("writer.endObject();");
-    }
-
-    private void writeValue(
-            JavaWriter out,
-            BindingValue value,
-            String writer,
-            String expression) {
-
-        if (value.helperRequired()) {
-            // Dynamic containers without adapted descendants have no generated
-            // helper. A mixed compiled parent can still reach them.
-            if (!requiresWriteHelper(value)) {
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + expression + ", this.context);");
-                return;
-            }
-            // A mixed POJO graph uses StreamingWriter for its parent, but a
-            // fully concrete child may have a native-only helper signature.
-            if (hasNativeJsonWriter()
-                    && nativeEligible(value, new HashSet<BindingValue>())) {
-                if (backend.backend() == Backend.FASTJSON2) {
-                    // Fastjson2 native helpers are separately generated for UTF-8
-                    // and UTF-16. A streaming parent has no native-mode helper.
-                    out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                            + expression + ", this.context);");
-                } else {
-                    out.line(value.helperName() + "(" + writer + "."
-                            + "nativeWriter" + "(), " + expression + ");");
-                }
-            } else {
-                out.line(value.helperName() + "(" + writer + ", " + expression + ");");
-            }
-            return;
-        }
-
-        switch (value.kind()) {
-            case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, writer, null, backend.backend());
-                return;
-            case STRING:
-                out.line(
-                        writer +
-                                ".writeString(" +
-                                expression +
-                                ");");
-                return;
-
-            case CHARACTER:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Char");
-                return;
-
-            case BOOLEAN:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Boolean");
-                return;
-
-            case BYTE:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Byte");
-                return;
-
-            case SHORT:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Short");
-                return;
-
-            case INT:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Int");
-                return;
-
-            case LONG:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Long");
-                return;
-
-            case FLOAT:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Float");
-                return;
-
-            case DOUBLE:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        writer,
-                        expression,
-                        "Double");
-                return;
-
-            case NUMBER:
-                out.line(
-                        writer +
-                                ".writeNumber(" +
-                                expression +
-                                ");");
-                return;
-
-            case BIG_INTEGER:
-                out.line(
-                        writer +
-                                ".writeBigInteger(" +
-                                expression +
-                                ");");
-                return;
-
-            case BIG_DECIMAL:
-                out.line(
-                        writer +
-                                ".writeBigDecimal(" +
-                                expression +
-                                ");");
-                return;
-
-            case ENUM:
-                out.beginBlock("");
-                out.line(value.type() + " item = " + expression + ";");
-                out.beginBlock("if (item == null)");
-                out.line(writer + ".writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line(writer + ".writeStringValue(item.name());");
-                out.endBlock();
-                out.endBlock();
-                return;
-
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + expression + ", " + "this.context);");
-                return;
-
-            case RUNTIME:
-                out.line(
-                        STREAMING_IO +
-                                ".writeNode(" +
-                                writer + ", " +
-                                expression + ", " +
-                                "this.context);");
-                return;
-
-            default:
-                throw new AssertionError(
-                        "Unsupported write kind " +
-                                value.kind());
-        }
-    }
-
-    private void emitPrimitiveOrBoxed(
-            JavaWriter out,
-            BindingValue value,
-            String writer,
-            String expression,
-            String suffix) {
-
-        out.line(
-                writer +
-                        (value.primitive()
-                                ? ".write" + suffix + "Value("
-                                : ".write" + suffix + "(") +
-                        expression +
-                        ");");
-    }
-
-    private void emitNullReturn(JavaWriter out) {
-        out.beginBlock("if (value == null)");
-        out.line("writer.writeNull();");
-        out.line("return;");
-        out.endBlock();
-    }
-
-
-    /** Native helpers require a fully concrete type graph. */
+    /** Delegates streaming-only helper eligibility to the streaming emitter. */
     boolean requiresWriteHelper(BindingValue value) {
-        return nativeEligible(value, new HashSet<BindingValue>())
-                || containsAdaptedValue(value, new HashSet<BindingValue>());
-    }
-
-    /** Codec subtrees use compiled StreamingWriter, preserving native POJO fast paths. */
-    private boolean containsAdaptedValue(BindingValue value,
-            Set<BindingValue> visited) {
-        if (!visited.add(value)) return false;
-        switch (value.kind()) {
-            case VALUE_CODEC:
-            case ONE_OF:
-            case JOJO:
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                return true;
-            case POJO:
-                for (BindingProperty property : value.properties()) {
-                    if (containsAdaptedValue(property.value(), visited)) return true;
-                }
-                return false;
-            case LIST:
-            case SET:
-                return containsAdaptedValue(value.elementValue(), visited);
-            case MAP:
-                return containsAdaptedValue(value.mapValue(), visited);
-            default:
-                return false;
-        }
-    }
-
-    private boolean nativeEligible(BindingValue value,
-            Set<BindingValue> visited) {
-        if (!visited.add(value)) return true;
-        switch (value.kind()) {
-            case RUNTIME:
-            case ONE_OF:
-            case NUMBER:
-            case VALUE_CODEC:
-            case JOJO:
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                return false;
-            case POJO:
-                for (BindingProperty p : value.properties()) {
-                    if (!nativeEligible(p.value(), visited)) return false;
-                }
-                return true;
-            case LIST:
-            case SET:
-                return nativeEligible(value.elementValue(), visited);
-            case MAP:
-                return nativeEligible(value.mapValue(), visited);
-            default:
-                return true;
-        }
+        return usesSharedStructure() || streaming.requiresWriteHelper(value);
     }
 
     static String access(

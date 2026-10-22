@@ -1,116 +1,212 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 
-/** Native compiled writer emitter shared by Jackson 2 and Jackson 3. */
-final class JacksonWriteEmitter {
+/**
+ * Jackson 2/3 compiled write generation.
+ *
+ * Every structural helper accepts the Jackson StreamingWriter and its value.
+ * Each helper obtains the native generator locally. A codec, OneOf or dynamic
+ * child changes only that child's emission; it never changes the parent's
+ * POJO/List/Set/Map implementation or the helper signature.
+ */
+final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
+
+    private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
     JacksonWriteEmitter(BackendSpec backend) {
         this.backend = backend;
     }
 
-    private String jacksonGeneratorType() {
-        return backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2
+    private boolean jackson2() {
+        return backend.backend() == Backend.JACKSON2;
+    }
+
+    private String generatorType() {
+        return jackson2()
                 ? "com.fasterxml.jackson.core.JsonGenerator"
                 : "tools.jackson.core.JsonGenerator";
     }
 
+    /** Writes a root scalar or delegates a root structural value. */
+    void emitRoot(JavaWriter out, BindingValue value, String expression, String writer) {
+        if (value.helperRequired()) {
+            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            return;
+        }
+        out.line(generatorType() + " g = " + writer + ".nativeWriter();");
+        emitValue(out, value, expression, writer);
+    }
 
+    /**
+     * Generates all structural nodes using the same writer/value convention.
+     * Instance helpers are needed by codec metadata and local runtime fallbacks.
+     */
     void emitHelper(JavaWriter out, BindingValue value) {
-        boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
-        out.beginBlock("private static void " + value.helperName() + "("
-                + jacksonGeneratorType() + " g, " + value.type()
+        out.beginBlock("private void " + value.helperName() + "("
+                + backend.writerType() + " writer, " + value.type()
                 + " value) throws java.io.IOException");
-        out.beginBlock("if (value == null)");
-        out.line("g.writeNull();");
-        out.line("return;");
-        out.endBlock();
-        switch (value.kind()) {
-            case POJO:
-                out.line("g.writeStartObject();");
-                int index = 0;
-                for (BindingProperty property : value.properties()) {
-                    String field = WriteEmitter.compiledNameField(value, index++) + ".serializedName";
-                    BindingValue child = property.value();
-                    String expr = WriteEmitter.propertyExpression(property, "value");
-                    out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
-                            + "(" + field + ");");
-                    emitValue(out, child, expr);
-                }
-                out.line("g.writeEndObject();");
-                break;
-            case LIST:
-                out.line("g.writeStartArray();");
-                out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
-                emitValue(out, value.elementValue(), "value.get(i)");
-                out.endBlock();
-                out.line("g.writeEndArray();");
-                break;
-            case SET:
-                out.line("g.writeStartArray();");
-                out.beginBlock("for (" + value.elementValue().type() + " element : value)");
-                emitValue(out, value.elementValue(), "element");
-                out.endBlock();
-                out.line("g.writeEndArray();");
-                break;
-            case MAP:
-                out.line("g.writeStartObject();");
-                out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
-                out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
-                        + "((String) entry.getKey());");
-                emitValue(out, value.mapValue(),
-                        "(" + value.mapValue().type() + ") entry.getValue()");
-                out.endBlock();
-                out.line("g.writeEndObject();");
-                break;
-            default:
-                throw new AssertionError(value.kind());
+        out.line(generatorType() + " g = writer.nativeWriter();");
+
+        if (value.kind() == BindingValue.Kind.ONE_OF) {
+            structures.emitOneOf(out, value);
+        } else if (value.kind() == BindingValue.Kind.JSON_OBJECT
+                || value.kind() == BindingValue.Kind.JSON_ARRAY) {
+            out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
+        } else {
+            out.beginBlock("if (value == null)");
+            out.line("g.writeNull();");
+            out.line("return;");
+            out.endBlock();
+
+            switch (value.kind()) {
+                case POJO:
+                case JOJO:
+                    structures.emitPojo(out, value);
+                    break;
+                case LIST:
+                    structures.emitList(out, value);
+                    break;
+                case SET:
+                    structures.emitSet(out, value);
+                    break;
+                case MAP:
+                    structures.emitMap(out, value);
+                    break;
+                default:
+                    throw new AssertionError(value.kind());
+            }
         }
         out.endBlock();
     }
 
+    // All operations below execute in the annotation processor, never in
+    // generated bytecode. They map shared traversal to Jackson 2/3 tokens.
+    @Override
+    public void startObject(JavaWriter out) {
+        out.line("g.writeStartObject();");
+    }
 
-    void emitValue(JavaWriter out, BindingValue child, String expr) {
+    @Override
+    public void endObject(JavaWriter out) {
+        out.line("g.writeEndObject();");
+    }
+
+    @Override
+    public void startArray(JavaWriter out) {
+        out.line("g.writeStartArray();");
+    }
+
+    @Override
+    public void endArray(JavaWriter out) {
+        out.line("g.writeEndArray();");
+    }
+
+    @Override
+    public void writeNull(JavaWriter out) {
+        out.line("g.writeNull();");
+    }
+
+    @Override
+    public void writePropertyName(JavaWriter out, BindingValue owner, int index) {
+        out.line("g." + (jackson2() ? "writeFieldName" : "writeName") + "("
+                + WriteEmitter.compiledNameField(owner, index) + ".serializedName);");
+    }
+
+    @Override
+    public void writeDynamicName(JavaWriter out, String expression) {
+        out.line("g." + (jackson2() ? "writeFieldName" : "writeName")
+                + "(" + expression + ");");
+    }
+
+    @Override
+    public void writeMapName(JavaWriter out, String expression) {
+        writeDynamicName(out, expression);
+    }
+
+    @Override
+    public void writeValue(JavaWriter out, BindingValue value, String expression) {
+        emitValue(out, value, expression, "writer");
+    }
+
+    @Override
+    public void writeRuntimeValue(JavaWriter out, String expression) {
+        out.line(STREAMING_IO + ".writeNode(writer, " + expression
+                + ", this.context);");
+    }
+
+    /**
+     * Emits a value into the current generator, delegating only the leaf that
+     * needs Codec/Runtime handling. Structural helpers always accept
+     * (writer, value), never a separately passed native generator.
+     */
+    private void emitValue(JavaWriter out, BindingValue child,
+                           String expression, String writer) {
         if (child.helperRequired()) {
-            out.line(child.helperName() + "(g, " + expr + ");");
+            out.line(child.helperName() + "(" + writer + ", " + expression + ");");
             return;
         }
-        if (child.kind() == BindingValue.Kind.STRING) {
-            out.line("_writeString(g, " + expr + ");");
-            return;
-        }
-        String method;
         switch (child.kind()) {
-            case BOOLEAN: method = "writeBoolean"; break;
-            case BYTE: case SHORT: case INT: case LONG:
-            case FLOAT: case DOUBLE: case BIG_INTEGER: case BIG_DECIMAL:
-                method = "writeNumber"; break;
+            case VALUE_CODEC:
+                CodecWriteEmitter.emit(out, child, expression, writer, "g", backend.backend());
+                return;
+            case RUNTIME:
+                out.line(STREAMING_IO + ".writeNode(" + writer + ", " + expression
+                        + ", this.context);");
+                return;
+            case STRING:
+                out.line("_writeString(" + writer + ", " + expression + ");");
+                return;
+            case NUMBER:
+                out.line(writer + ".writeNumber(" + expression + ");");
+                return;
             case ENUM:
                 out.beginBlock("");
-                out.line(child.type() + " item = " + expr + ";");
+                out.line(child.type() + " item = " + expression + ";");
                 out.line("g.writeString(item == null ? null : item.name());");
                 out.endBlock();
                 return;
             case CHARACTER:
                 if (child.primitive()) {
-                    out.line("g.writeString(Character.toString(" + expr + "));");
+                    out.line("g.writeString(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
-                    out.line(child.type() + " item = " + expr + ";");
+                    out.line(child.type() + " item = " + expression + ";");
                     out.line("g.writeString(item == null ? null : item.toString());");
                     out.endBlock();
                 }
                 return;
             default:
-                throw new AssertionError("Unsupported Jackson native value " + child.kind());
+                break;
+        }
+
+        String method;
+        switch (child.kind()) {
+            case BOOLEAN:
+                method = "writeBoolean";
+                break;
+            case BYTE:
+            case SHORT:
+            case INT:
+            case LONG:
+            case FLOAT:
+            case DOUBLE:
+            case BIG_INTEGER:
+            case BIG_DECIMAL:
+                method = "writeNumber";
+                break;
+            default:
+                throw new AssertionError("Unsupported Jackson value " + child.kind());
         }
         if (child.primitive()) {
-            out.line("g." + method + "(" + expr + ");");
+            out.line("g." + method + "(" + expression + ");");
         } else {
             out.beginBlock("");
-            out.line(child.type() + " item = " + expr + ";");
+            out.line(child.type() + " item = " + expression + ";");
             out.beginBlock("if (item == null)");
             out.line("g.writeNull();");
             out.endBlock(" else {");
@@ -120,7 +216,4 @@ final class JacksonWriteEmitter {
             out.endBlock();
         }
     }
-
-
-
 }

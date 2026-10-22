@@ -50,6 +50,10 @@ class CompiledValueCodecDiscoveryTest {
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("requireRegisteredValueInfo"), backend + ": " + generated);
+            assertTrue(generated.contains("selectForRead("),
+                    backend + ": automatic read Codec registration missing");
+            assertTrue(generated.contains("context.valueFormat("),
+                    backend + ": Context-dependent Codec initialization missing");
             assertTrue(generated.contains("epochMillis"), backend + ": " + generated);
             assertTrue(generated.contains("yyyy/MM/dd"), backend + ": " + generated);
 
