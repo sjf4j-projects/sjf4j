@@ -144,7 +144,7 @@ final class BindingEmitter {
                         "private final boolean " + flag + ";"));
                 generated.addContextInitializer(out -> out.line(
                         "this." + flag + " = this." + value.helperName()
-                                + ".codec == " + intrinsic.codec() + ";"));
+                                + ".codec == (Object) " + intrinsic.codec() + ";"));
             }
             return;
         }
