@@ -867,6 +867,12 @@ final class ReadEmitter {
                 scalarRead = "(" + value.helperName() + ".streamReader != null ? "
                         + value.helperName() + ".streamReader.read(" + reader + ") : "
                         + scalarRead + ")";
+                IntrinsicCodec intrinsic = IntrinsicCodec.forValue(value);
+                if (intrinsic != null) {
+                    scalarRead = "(this." + intrinsic.fieldName(value) + " ? "
+                            + reader + "." + intrinsic.readMethod() + "() : "
+                            + scalarRead + ")";
+                }
                 boolean autoRead = value.codecName() == null && value.codecPattern() == null;
                 if (autoRead) {
                     String set = value.helperName() + "Set";
