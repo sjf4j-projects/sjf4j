@@ -83,10 +83,13 @@ final class WriteEmitter {
                         plan,
                         0);
 
-        // Omission of null object properties is delegated once at the call
-        // boundary; the default compiled native hot path remains unchanged.
-        out.beginBlock("if (!this.context.includeNulls)");
-        switch (plan.writeOutput()) {
+        // Fully concrete Jackson graphs receive includeNulls in native helpers.
+        // No runtime fallback is needed solely for the null policy.
+        boolean nativeJackson = isJackson()
+                && nativeEligible(compiled.value(), new HashSet<BindingValue>());
+        if (!nativeJackson) {
+            out.beginBlock("if (!this.context.includeNulls)");
+            switch (plan.writeOutput()) {
             case STRING:
                 out.line("return this.binder.writeNodeAsString(" + source + ");");
                 break;
@@ -102,7 +105,8 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(plan.writeOutput());
         }
-        out.endBlock();
+            out.endBlock();
+        }
 
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
@@ -318,8 +322,13 @@ final class WriteEmitter {
 
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
-            out.line(value.helperName() + "(" + writer
-                    + "." + "nativeWriter" + "(), " + source + ");");
+            if (isJackson()) {
+                out.line(value.helperName() + "(" + writer
+                        + ".nativeWriter(), " + source + ", this.context.includeNulls);");
+            } else {
+                out.line(value.helperName() + "(" + writer
+                        + ".nativeWriter(), " + source + ");");
+            }
         } else {
             writeValue(out, value, writer, source);
         }
@@ -741,8 +750,8 @@ final class WriteEmitter {
                     out.line(STREAMING_IO + ".writeNode(" + writer + ", "
                             + expression + ", this.context);");
                 } else {
-                    out.line(value.helperName() + "(" + writer + "."
-                            + "nativeWriter" + "(), " + expression + ");");
+                    out.line(value.helperName() + "(" + writer + ".nativeWriter(), "
+                            + expression + (isJackson() ? ", this.context.includeNulls" : "") + ");");
                 }
             } else {
                 out.line(value.helperName() + "(" + writer + ", " + expression + ");");
