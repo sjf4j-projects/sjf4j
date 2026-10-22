@@ -23,18 +23,19 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
-import org.sjf4j.testbench.model.User;
 import org.sjf4j.testbench.binding.handwritten.Jackson2HandPojoSerializedWriter;
 import org.sjf4j.testbench.binding.handwritten.Jackson3HandPojoSerializedWriter;
+import org.sjf4j.testbench.model.User;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.io.IOException;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
+
+import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;

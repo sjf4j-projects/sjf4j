@@ -1,11 +1,8 @@
 name: Compiled Write performance (focused)
 
-# Run only for the current Write-optimization branch; do not restore the
-# former expensive Creek benchmark as a general pull-request check.
+# Kept on demand after the optimization branch is merged.
+# Do not re-enable expensive JMH as a general PR or push check.
 on:
-  push:
-    branches:
-      - perf/jackson-compiled-string-native
   workflow_dispatch:
 
 permissions:
