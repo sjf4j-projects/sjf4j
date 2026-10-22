@@ -33,6 +33,10 @@ final class JacksonWriteEmitter {
 
     /** Writes a root scalar or delegates a root structural value. */
     void emitRoot(JavaWriter out, BindingValue value, String expression, String writer) {
+        if (value.helperRequired()) {
+            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            return;
+        }
         out.line(generatorType() + " g = " + writer + ".nativeWriter();");
         emitValue(out, value, expression, writer);
     }
