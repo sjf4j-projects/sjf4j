@@ -77,7 +77,7 @@ final class JacksonWriteEmitter {
                 out.line("g.writeStartObject();");
                 out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
                 if (omitNulls) {
-                    out.beginBlock("if (entry.getValue() == null) continue");
+                    out.beginBlock("if (entry.getValue() != null)");
                 }
                 out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
                         + "((String) entry.getKey());");
