@@ -292,15 +292,13 @@ Sjf4j sjf4j = new Sjf4j();
 User user = sjf4j.fromJson(json, User.class);
 String yaml = sjf4j.toYamlString(user);
 ```
-
-The same binding model works with raw nodes, POJOs, JOJOs, deep generic types, 
-and custom value types, allowing data to move directly between external formats and Java object graphs.
+Binding supports POJOs, Maps, Lists, JSON wrappers, generic types, and custom value types across multiple backends.
 
 Learn more → [Binding (Multi-Format)](https://sjf4j.org/docs/binding)
 
 ### Navigating
 
-Query, navigate, and mutate Java object graphs using JSON Path (RFC 9535) and JSON Pointer (RFC 6901).
+Query, navigate, and mutate Java object graphs using JSONPath (RFC 9535) and JSON Pointer (RFC 6901).
 
 ```java
 JsonPath.parse("$.scores.math").getInt(student);
@@ -409,6 +407,8 @@ public class Student {
 
 JSON Schema can also be used in the opposite direction through the online
 [Schema-to-Java Generator](https://sjf4j.org/generator).
+
+
 
 Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 

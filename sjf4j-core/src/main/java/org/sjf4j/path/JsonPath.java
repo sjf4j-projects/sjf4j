@@ -949,6 +949,17 @@ public class JsonPath {
         return result;
     }
 
+
+    /**
+     * Finds and converts all matches using strict conversion.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> find(Object container, T... reified) {
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
+        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+        return find(container, clazz);
+    }
+
     /**
      * Finds and converts all matches using lenient conversion.
      */

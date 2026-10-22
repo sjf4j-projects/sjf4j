@@ -37,6 +37,20 @@ public class JsonPathTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
+    public void findWithReifiedType() {
+        JsonObject document = JsonObject.of("names", JsonArray.of("Ada", "Lin"));
+        JsonPath path = JsonPath.parse("$.names[*]");
+
+        List<String> names = path.find(document, new String[0]);
+        assertEquals(Arrays.asList("Ada", "Lin"), names);
+        assertEquals(Collections.emptyList(), JsonPath.parse("$.missing").find(document, new String[0]));
+
+        assertThrows(IllegalArgumentException.class, () -> path.find(document, "Ada"));
+        assertThrows(NullPointerException.class, () -> path.find(document, (String[]) null));
+        assertThrows(NodeException.class, () -> path.find(document, new Integer[0]));
+    }
+
+    @Test
     public void testParse1() {
         String s1 = "$.a.b[0].c";
         JsonPath path1 = JsonPath.parse(s1);

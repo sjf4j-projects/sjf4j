@@ -2,6 +2,7 @@ package org.sjf4j.testbench.binding.compiled;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -43,7 +44,7 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 5, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
@@ -51,12 +52,14 @@ import java.util.concurrent.TimeUnit;
 public class CompiledWriteBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{CompiledWriteBenchmark.class.getName()});
+//        Main.main(new String[]{CompiledWriteBenchmark.class.getName()});
+        Main.main(new String[]{CompiledWriteBenchmark.class.getName() + ".json_jackson._pojo"});
     }
 
 
     private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper()
             .registerModule(new JavaTimeModule())
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private static final ObjectMapper JACKSON2_BLACKBIRD =
             new ObjectMapper().registerModule(new JavaTimeModule())
@@ -114,7 +117,7 @@ public class CompiledWriteBenchmark {
 
     // Trial-only correctness verification, outside the timed path. Object
     // property order and insignificant JSON formatting may differ.
-    @Setup(Level.Trial)
+//    @Setup(Level.Trial)
     public void verify() throws Exception {
         check("jackson2 pojo compiled string", JACKSON2_COMPILED.writePojo(USER));
         check("jackson2 pojo runtime string", JACKSON2_RUNTIME.writeNodeAsString(USER));

@@ -257,6 +257,7 @@ public class NodeMapperBenchmark {
         user.setPasswordHash("hash-" + index);
         user.setBio("Platform engineer " + index);
         user.setWebsite(ValueCodec.URI_CODEC.rawToValue("https://example.test/users/" + index));
+//        user.setWebsite("https://example.test/users/");
         user.setDepartment(index % 2 == 0 ? "Platform" : "Product");
         user.setAddress(new Address("Main Street " + index, "San Francisco", "CA", "9410" + index, "US"));
         user.setTags(List.of("java", "json", "team-" + index % 3));
@@ -335,6 +336,7 @@ public class NodeMapperBenchmark {
         user.setPasswordHash(node.getString("passwordHash"));
         user.setBio(node.getString("bio"));
         user.setWebsite(ValueCodec.URI_CODEC.rawToValue(node.getString("website")));
+//        user.setWebsite("website");
         user.setDepartment(node.getString("department"));
         user.setAddress(readAddress(node.getJsonObject("address")));
 
@@ -448,6 +450,7 @@ public class NodeMapperBenchmark {
         node.put("passwordHash", user.getPasswordHash());
         node.put("bio", user.getBio());
         node.put("website", ValueCodec.URI_CODEC.valueToRaw(user.getWebsite()));
+//        node.put("website", user.getWebsite());
         node.put("department", user.getDepartment());
         node.put("address", writeAddress(user.getAddress()));
 
