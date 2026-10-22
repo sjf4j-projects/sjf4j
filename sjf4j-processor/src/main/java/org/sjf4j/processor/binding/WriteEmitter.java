@@ -83,11 +83,10 @@ final class WriteEmitter {
                         plan,
                         0);
 
-        // Jackson compiles every structural node; unknown children fall back
-        // locally instead of invalidating the parent helper.
-        if (!usesSharedStructure() && backend.backend() != Backend.FASTJSON2) {
-            // Retain the existing null-policy and dynamic-graph fallback for
-            // the other backends. Jackson filters properties in generated code.
+        // Only the streaming-only backends retain whole-root fallback rules.
+        // JSON native backends compile structural nodes and fall back locally.
+        if (!usesSharedStructure()) {
+            // Preserve streaming-only null-policy and dynamic-root semantics.
             out.beginBlock("if (!this.context.includeNulls)");
             switch (plan.writeOutput()) {
                 case STRING:
@@ -107,7 +106,7 @@ final class WriteEmitter {
             }
             out.endBlock();
 
-            if (!nativeEligible(compiled.value(), new HashSet<BindingValue>())
+            if (!fullyConcreteGraph(compiled.value(), new HashSet<BindingValue>())
                     && !containsAdaptedValue(compiled.value(), new HashSet<BindingValue>())) {
                 switch (plan.writeOutput()) {
                     case STRING:
@@ -321,10 +320,6 @@ final class WriteEmitter {
             jackson.emitRoot(out, value, source, writer);
         } else if (isGsonOrJsonp() && value.helperRequired()) {
             out.line(value.helperName() + "(" + writer + ", " + source + ");");
-        } else if (hasNativeJsonWriter() && value.helperRequired()
-                && nativeEligible(value, new HashSet<BindingValue>())) {
-            out.line(value.helperName() + "(" + writer
-                    + ".nativeWriter(), " + source + ");");
         } else {
             writeValue(out, value, writer, source);
         }
@@ -375,19 +370,6 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    private boolean hasNativeJsonWriter() {
-        switch (backend.backend()) {
-            case JACKSON2:
-            case JACKSON3:
-            case FASTJSON2:
-            case GSON:
-            case JSONP:
-                return true;
-            default:
-                return false;
-        }
-    }
-
     private boolean isJackson() {
         return backend.backend() == Backend.JACKSON2
                 || backend.backend() == Backend.JACKSON3;
@@ -404,44 +386,9 @@ final class WriteEmitter {
     }
 
     boolean needsStringHelper(BindingValue value) {
-        if (usesSharedStructure()) {
-            return value.direction() == BindingPlan.Direction.WRITE_TO
-                    && containsString(value, new HashSet<BindingValue>());
-        }
-        if (!hasNativeJsonWriter()
-                || value.direction() != BindingPlan.Direction.WRITE_TO) {
-            return false;
-        }
-        return containsNativeString(value, new HashSet<BindingValue>());
-    }
-
-    private boolean containsNativeString(BindingValue value, Set<BindingValue> visited) {
-        if (!visited.add(value)) return false;
-        if (value.helperRequired()
-                && nativeEligible(value, new HashSet<BindingValue>())) {
-            return containsString(value, new HashSet<BindingValue>());
-        }
-        switch (value.kind()) {
-            case ONE_OF:
-                for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-                    if (subtype.compiled != null
-                            && containsNativeString(subtype.compiled, visited)) return true;
-                }
-                return false;
-            case POJO:
-            case JOJO:
-                for (BindingProperty property : value.properties()) {
-                    if (containsNativeString(property.value(), visited)) return true;
-                }
-                return false;
-            case LIST:
-            case SET:
-                return containsNativeString(value.elementValue(), visited);
-            case MAP:
-                return containsNativeString(value.mapValue(), visited);
-            default:
-                return false;
-        }
+        return usesSharedStructure()
+                && value.direction() == BindingPlan.Direction.WRITE_TO
+                && containsString(value, new HashSet<BindingValue>());
     }
 
     private boolean containsString(BindingValue value, Set<BindingValue> visited) {
@@ -675,7 +622,7 @@ final class WriteEmitter {
             // A mixed POJO graph uses StreamingWriter for its parent, but a
             // fully concrete child may have a native-only helper signature.
             if (hasNativeJsonWriter()
-                    && nativeEligible(value, new HashSet<BindingValue>())) {
+                    && fullyConcreteGraph(value, new HashSet<BindingValue>())) {
                 if (backend.backend() == Backend.FASTJSON2) {
                     // Fastjson2 native helpers are separately generated for UTF-8
                     // and UTF-16. A streaming parent has no native-mode helper.
@@ -857,14 +804,14 @@ final class WriteEmitter {
     }
 
 
-    /** Jackson always emits structural helpers; other backends retain legacy eligibility. */
+    /** JSON backends always compile structural helpers; streaming-only paths may fall back. */
     boolean requiresWriteHelper(BindingValue value) {
         if (usesSharedStructure()) return true;
-        return nativeEligible(value, new HashSet<BindingValue>())
+        return fullyConcreteGraph(value, new HashSet<BindingValue>())
                 || containsAdaptedValue(value, new HashSet<BindingValue>());
     }
 
-    /** Remaining non-Jackson paths use this legacy subtree classification. */
+    /** Streaming-only backends may need helpers for adapted descendants. */
     private boolean containsAdaptedValue(BindingValue value,
             Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
@@ -890,7 +837,7 @@ final class WriteEmitter {
         }
     }
 
-    private boolean nativeEligible(BindingValue value,
+    private boolean fullyConcreteGraph(BindingValue value,
             Set<BindingValue> visited) {
         if (!visited.add(value)) return true;
         switch (value.kind()) {
@@ -904,14 +851,14 @@ final class WriteEmitter {
                 return false;
             case POJO:
                 for (BindingProperty p : value.properties()) {
-                    if (!nativeEligible(p.value(), visited)) return false;
+                    if (!fullyConcreteGraph(p.value(), visited)) return false;
                 }
                 return true;
             case LIST:
             case SET:
-                return nativeEligible(value.elementValue(), visited);
+                return fullyConcreteGraph(value.elementValue(), visited);
             case MAP:
-                return nativeEligible(value.mapValue(), visited);
+                return fullyConcreteGraph(value.mapValue(), visited);
             default:
                 return true;
         }
