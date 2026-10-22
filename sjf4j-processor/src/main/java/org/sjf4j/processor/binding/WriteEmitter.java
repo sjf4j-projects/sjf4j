@@ -83,8 +83,8 @@ final class WriteEmitter {
                         plan,
                         0);
 
-        // Fully concrete Jackson graphs have dedicated null-omitting native
-        // helpers. No runtime fallback is needed solely for includeNulls=false.
+        // Fully concrete Jackson graphs receive includeNulls in native helpers.
+        // No runtime fallback is needed solely for the null policy.
         boolean nativeJackson = isJackson()
                 && nativeEligible(compiled.value(), new HashSet<BindingValue>());
         if (!nativeJackson) {
@@ -323,14 +323,8 @@ final class WriteEmitter {
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
             if (isJackson()) {
-                out.beginBlock("if (this.context.includeNulls)");
                 out.line(value.helperName() + "(" + writer
-                        + ".nativeWriter(), " + source + ");");
-                out.endBlock(" else {");
-                out.indent();
-                out.line(value.helperName() + "OmitNulls(" + writer
-                        + ".nativeWriter(), " + source + ");");
-                out.endBlock();
+                        + ".nativeWriter(), " + source + ", this.context.includeNulls);");
             } else {
                 out.line(value.helperName() + "(" + writer
                         + ".nativeWriter(), " + source + ");");
@@ -756,8 +750,8 @@ final class WriteEmitter {
                     out.line(STREAMING_IO + ".writeNode(" + writer + ", "
                             + expression + ", this.context);");
                 } else {
-                    out.line(value.helperName() + "(" + writer + "."
-                            + "nativeWriter" + "(), " + expression + ");");
+                    out.line(value.helperName() + "(" + writer + ".nativeWriter(), "
+                            + expression + (isJackson() ? ", this.context.includeNulls" : "") + ");");
                 }
             } else {
                 out.line(value.helperName() + "(" + writer + ", " + expression + ");");
