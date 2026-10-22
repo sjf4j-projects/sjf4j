@@ -38,18 +38,6 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
-    - name: Print failed compiler test diagnostics
-      if: ${{ failure() }}
-      run: |
-        python3 - <<'PY'
-        import glob, xml.etree.ElementTree as ET
-        for path in glob.glob('sjf4j-processor/build/test-results/test/TEST-*CompiledJacksonUnifiedWriteTest.xml'):
-            root = ET.parse(path).getroot()
-            for failure in root.iter('failure'):
-                print('FAILED:', path)
-                print((failure.text or '')[:18000])
-        PY
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
