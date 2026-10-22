@@ -77,7 +77,8 @@ class CompiledOneOfWriteTest {
             assertTrue(generated.contains("actualClass == Cat.class")
                             || generated.contains("actualClass == fixture.Cat.class"),
                     backend + ": missing Class dispatch");
-            assertTrue(generated.contains("_writeEnvelope("), backend);
+            assertTrue(generated.contains(backend.equals("FASTJSON2")
+                            ? "_writeEnvelopeUtf16(" : "_writeEnvelope("), backend);
             assertTrue(generated.contains("_writeCat"), backend);
             assertTrue(generated.contains("_writeHidden"), backend + ": constant subtype not compiled");
             assertTrue(generated.contains("requireRegisteredPojoInfo("),
