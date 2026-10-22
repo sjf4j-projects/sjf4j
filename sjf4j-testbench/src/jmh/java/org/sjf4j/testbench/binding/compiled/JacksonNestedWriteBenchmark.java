@@ -77,6 +77,8 @@ public class JacksonNestedWriteBenchmark {
     private static final Jackson2Binder MANUAL_BINDER = new Jackson2Binder();
     private static final Jackson2CompiledBinder COMPILED =
             CompiledInstances.global(Jackson2CompiledBinder.class);
+    private static final Jackson2CompiledBinderFull COMPILED_FULL =
+            CompiledInstances.global(Jackson2CompiledBinderFull.class);
 
     private static final SerializedString ID =
             new Jackson2CompiledName("id").serializedName;
@@ -93,6 +95,18 @@ public class JacksonNestedWriteBenchmark {
     public interface Jackson2CompiledBinder {
         @WriteTo
         String writeFriends(List<Friend> value) throws IOException;
+    }
+
+    // Same six write methods as the original broad benchmark; the only
+    // measured difference is the generated binder's interface shape.
+    @CompiledBinder(backend = Backend.JACKSON2)
+    public interface Jackson2CompiledBinderFull {
+        @WriteTo String writeFriend(Friend value) throws IOException;
+        @WriteTo byte[] writeFriendUtf8(Friend value) throws IOException;
+        @WriteTo String writeFriends(List<Friend> value) throws IOException;
+        @WriteTo byte[] writeFriendsUtf8(List<Friend> value) throws IOException;
+        @WriteTo String writeUser(User value) throws IOException;
+        @WriteTo byte[] writeUserUtf8(User value) throws IOException;
     }
 
     @Setup(Level.Trial)
@@ -124,6 +138,7 @@ public class JacksonNestedWriteBenchmark {
 
         JsonNode expected = NATIVE.readTree(NATIVE.writeValueAsString(friends));
         verify("compiled", expected, jackson2_list_string_compiled());
+        verify("compiled_full", expected, jackson2_list_string_compiled_full());
         verify("native", expected, jackson2_list_string_native());
         verify("blackbird", expected, jackson2_list_string_blackbird());
         verify("manual_helper", expected, jackson2_list_string_manual_helper());
@@ -141,6 +156,11 @@ public class JacksonNestedWriteBenchmark {
     @Benchmark
     public String jackson2_list_string_compiled() throws IOException {
         return COMPILED.writeFriends(friends);
+    }
+
+    @Benchmark
+    public String jackson2_list_string_compiled_full() throws IOException {
+        return COMPILED_FULL.writeFriends(friends);
     }
 
     @Benchmark
