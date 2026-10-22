@@ -137,6 +137,15 @@ final class BindingEmitter {
                                         : JavaWriter.stringLiteral(value.codecPattern()))
                                 + ");"));
             }
+            IntrinsicCodec intrinsic = IntrinsicCodec.forValue(value);
+            if (intrinsic != null) {
+                String flag = intrinsic.fieldName(value);
+                generated.addField(out -> out.line(
+                        "private final boolean " + flag + ";"));
+                generated.addContextInitializer(out -> out.line(
+                        "this." + flag + " = this." + value.helperName()
+                                + ".codec == " + intrinsic.codec() + ";"));
+            }
             return;
         }
         if (!value.helperRequired()) {
