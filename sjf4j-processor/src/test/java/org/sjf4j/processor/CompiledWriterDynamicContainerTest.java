@@ -49,6 +49,9 @@ class CompiledWriterDynamicContainerTest {
             NavigatorTestCompiler.Result result =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(result.success, backend + ": " + result.diagnostics());
+            assertFalse(result.generatedSource("fixture/Binder_Impl.java")
+                    .contains("StreamingWriteEmitter"),
+                    backend + ": compile-time emitter must not appear in generated code");
 
             try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
                 Class<?> rootClass = loader.loadClass("fixture.Envelope");
