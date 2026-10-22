@@ -38,16 +38,6 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
-    # Temporary JIT diagnostics; will be removed from final PR.
-    - name: Jackson helper inlining JMH (diagnostic)
-      run: |
-        set -euo pipefail
-        ./gradlew :sjf4j-testbench:jmhJar
-        JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)
-        java -jar "$JMH_JAR" '.*JacksonNestedWriteBenchmark.jackson2_list_string_(compiled|manual_helper|manual_inline|manual_noinline)' -p friendCount=8 -p listKind=array -p nullSecond=false -f 2 -wi 5 -i 7 -w 200ms -r 200ms -tu ns
-        JAVA_TOOL_OPTIONS='-XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining' java -jar "$JMH_JAR" '.*JacksonNestedWriteBenchmark.jackson2_list_string_(compiled|manual_helper)' -p friendCount=8 -p listKind=array -p nullSecond=false -f 1 -wi 5 -i 3 -w 250ms -r 250ms -tu ns > /tmp/jmh-inline.log 2>&1
-        echo 'JIT helper inline decisions:'
-        grep -E -C 2 'writeFriend|_writeList|writeListManual|writeFriendManual' /tmp/jmh-inline.log | tail -n 160 || true
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
