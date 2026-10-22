@@ -58,7 +58,13 @@ class CompiledCodecRawIOTest {
             assertTrue(generated.contains(".streamReader.read("),
                     backend + ": compiled streaming codec read path missing");
             assertTrue(generated.contains(".streamWriter.write("),
-                    backend + ": compiled streaming codec write path missing");
+                    backend + ": compiled streaming codec write fallback missing");
+            assertTrue(generated.contains("ValueCodec.UUID_CODEC"),
+                    backend + ": UUID codec identity guard missing");
+            assertTrue(generated.contains(".readUuid()"),
+                    backend + ": direct built-in UUID read missing");
+            assertTrue(generated.contains(".writeUuid(codecValue)"),
+                    backend + ": direct built-in UUID write missing");
             if (backend.equals("FASTJSON2")) {
                 assertTrue(generated.contains("w.writeName"),
                         backend + ": native POJO writer was lost");
