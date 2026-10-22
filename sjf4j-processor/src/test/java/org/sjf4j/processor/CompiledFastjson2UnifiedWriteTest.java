@@ -63,14 +63,14 @@ class CompiledFastjson2UnifiedWriteTest {
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
         assertTrue(generated.contains("instanceof RandomAccess"), generated);
         assertTrue(generated.contains("_writeString(w,"), generated);
-        assertTrue(generated.contains("_writeModelUtf8(writer,"), generated);
-        assertTrue(generated.contains("_writeModelUtf16(writer,"), generated);
+        assertTrue(generated.contains("_writeModelUtf8(writer, raw,"), generated);
+        assertTrue(generated.contains("_writeModelUtf16(writer, raw,"), generated);
         assertTrue(generated.contains("writeName") && generated.contains("Raw("), generated);
         assertTrue(generated.contains("this.context.includeNulls"), generated);
         assertTrue(generated.contains("StreamingIO.writeNode(writer,"), generated);
         assertFalse(generated.contains("StructuralWriteEmitter"), generated);
         // A OneOf/codec/dynamic descendant must not force its parent to Runtime.
-        assertTrue(generated.contains("_writeListUtf8(writer, property0);"), generated);
+        assertTrue(generated.contains("_writeListUtf8(writer, w, property0);"), generated);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> modelType = loader.loadClass("fixture.Model");

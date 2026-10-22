@@ -96,7 +96,7 @@ final class Fastjson2WriteEmitter {
 
         if (value.helperRequired()) {
             out.line(fastjsonHelperName(value, mode) + "("
-                    + writer + ", " + source + ");");
+                    + writer + ", " + raw + ", " + source + ");");
         } else {
             emitNativeValue(out, value, source, mode, raw, writer, names.newName("item"));
         }
@@ -213,8 +213,8 @@ final class Fastjson2WriteEmitter {
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
         out.beginBlock("private void " + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer, "
+                + "com.alibaba.fastjson2.JSONWriter w, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
@@ -290,7 +290,8 @@ final class Fastjson2WriteEmitter {
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode, String raw, String writer, String item) {
         if (value.helperRequired()) {
-            out.line(fastjsonHelperName(value, mode) + "(" + writer + ", " + expression + ");");
+            out.line(fastjsonHelperName(value, mode) + "(" + writer + ", "
+                    + raw + ", " + expression + ");");
             return;
         }
 

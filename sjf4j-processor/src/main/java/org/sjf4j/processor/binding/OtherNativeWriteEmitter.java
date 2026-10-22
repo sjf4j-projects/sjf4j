@@ -33,7 +33,10 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String writer, NameAllocator names) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            String generator = names.newName("g");
+            out.line(generatorType() + " " + generator + " = " + writer + ".nativeWriter();");
+            out.line(value.helperName() + "(" + writer + ", " + generator
+                    + ", " + expression + ");");
             return;
         }
 
@@ -53,9 +56,8 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     /** All structural helpers share the (writer, value) signature. */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
-                + backend.writerType() + " writer, " + value.type()
-                + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = writer.nativeWriter();");
+                + backend.writerType() + " writer, " + generatorType() + " g, "
+                + value.type() + " value) throws java.io.IOException");
 
         switch (value.kind()) {
             case JSON_OBJECT:
@@ -153,7 +155,8 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         // Method parameters are reserved for root values; helpers use their local scope.
         String item = names == null ? "item" : names.newName("item");
         if (child.helperRequired()) {
-            out.line(child.helperName() + "(writer, " + expression + ");");
+            out.line(child.helperName() + "(writer, " + generator
+                    + ", " + expression + ");");
             return;
         }
 
