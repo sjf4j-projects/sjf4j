@@ -2,6 +2,7 @@ package org.sjf4j.testbench.binding.compiled;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -47,6 +48,8 @@ public class CreekModelBenchmark {
     }
 
     private static final ObjectMapper JACKSON_NATIVE = new ObjectMapper();
+    private static final ObjectMapper JACKSON_BLACKBIRD =
+            new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Jackson2Binder SJF4J_RUNTIME = new Jackson2Binder();
     private static final CreekCompiledBinder SJF4J_COMPILED =
             CompiledInstances.global(CreekCompiledBinder.class);
@@ -89,6 +92,7 @@ public class CreekModelBenchmark {
         checkRead("runtime", expected, read_runtime());
         checkRead("compiled", expected, read_compiled());
         checkWrite("native", expectedTree, write_native(state), expected);
+        checkWrite("blackbird", expectedTree, write_blackbird(state), expected);
         checkWrite("runtime", expectedTree, write_runtime(state), expected);
         checkWrite("compiled", expectedTree, write_compiled(state), expected);
     }
@@ -127,6 +131,11 @@ public class CreekModelBenchmark {
     @Benchmark
     public String write_native(ModelState state) throws IOException {
         return JACKSON_NATIVE.writeValueAsString(state.model);
+    }
+
+    @Benchmark
+    public String write_blackbird(ModelState state) throws IOException {
+        return JACKSON_BLACKBIRD.writeValueAsString(state.model);
     }
 
     @Benchmark
