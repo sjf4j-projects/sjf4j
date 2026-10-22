@@ -1,5 +1,7 @@
 package org.sjf4j.testbench.binding.compiled;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -8,6 +10,7 @@ import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
@@ -22,6 +25,9 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson2.binding.Jackson2CompiledName;
+import org.sjf4j.backend.jackson2.binding.Jackson2Writer;
 import org.sjf4j.testbench.model.Friend;
 import org.sjf4j.testbench.model.User;
 import tools.jackson.databind.json.JsonMapper;
@@ -79,6 +85,17 @@ public class JacksonNestedWriteBenchmark {
     private static final JsonMapper JACKSON3_NATIVE = new JsonMapper();
     private static final JsonMapper JACKSON3_BLACKBIRD = JsonMapper.builder()
             .addModule(new tools.jackson.module.blackbird.BlackbirdModule()).build();
+
+    // These names and writer entrypoints match the generated Jackson2 helpers.
+    private static final Jackson2Binder JACKSON2_MANUAL_BINDER = new Jackson2Binder();
+    private static final SerializedString MANUAL_ID =
+            new Jackson2CompiledName("id").serializedName;
+    private static final SerializedString MANUAL_SINCE =
+            new Jackson2CompiledName("since").serializedName;
+    private static final SerializedString MANUAL_NAME =
+            new Jackson2CompiledName("name").serializedName;
+    private static final SerializedString MANUAL_CLOSE =
+            new Jackson2CompiledName("close").serializedName;
 
     private static final Jackson2CompiledBinder JACKSON2_COMPILED =
             CompiledInstances.global(Jackson2CompiledBinder.class);
@@ -173,6 +190,14 @@ public class JacksonNestedWriteBenchmark {
     }
 
     private void verifyOutputs() throws Exception {
+        JsonNode manualExpected = JACKSON2_NATIVE.readTree(
+                JACKSON2_NATIVE.writeValueAsString(friends));
+        check("jackson2_list_string_manual_helper", manualExpected,
+                jackson2_list_string_manual_helper());
+        check("jackson2_list_string_manual_inline", manualExpected,
+                jackson2_list_string_manual_inline());
+        check("jackson2_list_string_manual_noinline", manualExpected,
+                jackson2_list_string_manual_noinline());
         JsonNode friendExpected = JACKSON2_NATIVE.readTree(JACKSON2_NATIVE.writeValueAsString(friend));
         check("jackson2_friend_string_compiled", friendExpected, jackson2_friend_string_compiled());
         check("jackson2_friend_string_native", friendExpected, jackson2_friend_string_native());
@@ -471,4 +496,127 @@ public class JacksonNestedWriteBenchmark {
         return JACKSON3_BLACKBIRD.writeValueAsBytes(userWithNullFriends);
     }
 
+
+    // The three manual baselines preserve the same Jackson2Binder writer lifecycle
+    // as the generated compiled String entrypoint, varying only the call boundary
+    // around the per-Friend serialization.
+    @Benchmark
+    public String jackson2_list_string_manual_helper() throws IOException {
+        try (Jackson2Writer writer = JACKSON2_MANUAL_BINDER.createWriter()) {
+            writer.startDocument();
+            writeListManualHelper(writer.nativeWriter(), friends);
+            writer.endDocument();
+            writer.flush();
+            return writer.toString();
+        }
+    }
+
+    @Benchmark
+    public String jackson2_list_string_manual_inline() throws IOException {
+        try (Jackson2Writer writer = JACKSON2_MANUAL_BINDER.createWriter()) {
+            writer.startDocument();
+            writeListManualInline(writer.nativeWriter(), friends);
+            writer.endDocument();
+            writer.flush();
+            return writer.toString();
+        }
+    }
+
+    @Benchmark
+    public String jackson2_list_string_manual_noinline() throws IOException {
+        try (Jackson2Writer writer = JACKSON2_MANUAL_BINDER.createWriter()) {
+            writer.startDocument();
+            writeListManualNoInline(writer.nativeWriter(), friends);
+            writer.endDocument();
+            writer.flush();
+            return writer.toString();
+        }
+    }
+
+    private static void writeListManualHelper(JsonGenerator g, List<Friend> value)
+            throws IOException {
+        if (value == null) {
+            g.writeNull();
+            return;
+        }
+        g.writeStartArray();
+        for (int i = 0, n = value.size(); i < n; i++) {
+            writeFriendManual(g, value.get(i));
+        }
+        g.writeEndArray();
+    }
+
+    private static void writeListManualNoInline(JsonGenerator g, List<Friend> value)
+            throws IOException {
+        if (value == null) {
+            g.writeNull();
+            return;
+        }
+        g.writeStartArray();
+        for (int i = 0, n = value.size(); i < n; i++) {
+            writeFriendNoInline(g, value.get(i));
+        }
+        g.writeEndArray();
+    }
+
+    private static void writeFriendManual(JsonGenerator g, Friend item)
+            throws IOException {
+        if (item == null) {
+            g.writeNull();
+            return;
+        }
+        g.writeStartObject();
+        g.writeFieldName(MANUAL_ID);
+        g.writeNumber(item.getId());
+        g.writeFieldName(MANUAL_SINCE);
+        g.writeNumber(item.getSince());
+        g.writeFieldName(MANUAL_NAME);
+        String name = item.getName();
+        if (name == null) {
+            g.writeNull();
+        } else {
+            g.writeString(name);
+        }
+        g.writeFieldName(MANUAL_CLOSE);
+        g.writeBoolean(item.isClose());
+        g.writeEndObject();
+    }
+
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    private static void writeFriendNoInline(JsonGenerator g, Friend item)
+            throws IOException {
+        writeFriendManual(g, item);
+    }
+
+    private static void writeListManualInline(JsonGenerator g, List<Friend> value)
+            throws IOException {
+        if (value == null) {
+            g.writeNull();
+            return;
+        }
+        g.writeStartArray();
+        for (int i = 0, n = value.size(); i < n; i++) {
+            Friend item = value.get(i);
+            if (item == null) {
+                g.writeNull();
+                continue;
+            }
+            g.writeStartObject();
+            g.writeFieldName(MANUAL_ID);
+            g.writeNumber(item.getId());
+            g.writeFieldName(MANUAL_SINCE);
+            g.writeNumber(item.getSince());
+            g.writeFieldName(MANUAL_NAME);
+            String name = item.getName();
+            if (name == null) {
+                g.writeNull();
+            } else {
+                g.writeString(name);
+            }
+            g.writeFieldName(MANUAL_CLOSE);
+            g.writeBoolean(item.isClose());
+            g.writeEndObject();
+        }
+        g.writeEndArray();
+    }
 }
