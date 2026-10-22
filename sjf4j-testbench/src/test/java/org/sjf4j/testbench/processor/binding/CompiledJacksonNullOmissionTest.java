@@ -14,6 +14,8 @@ import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Writer;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -33,8 +35,8 @@ public class CompiledJacksonNullOmissionTest {
     public interface Jackson2Compiled {
         @WriteTo String writePojo(TestBean value) throws IOException;
         @WriteTo byte[] writePojoUtf8(TestBean value) throws IOException;
-        @WriteTo void writePojo(TestBean value, StringWriter output) throws IOException;
-        @WriteTo void writePojo(TestBean value, ByteArrayOutputStream output) throws IOException;
+        @WriteTo void writePojo(TestBean value, Writer output) throws IOException;
+        @WriteTo void writePojo(TestBean value, OutputStream output) throws IOException;
         @WriteTo String writeList(List<TestBean> value) throws IOException;
         @WriteTo String writeMap(Map<String, TestBean> value) throws IOException;
     }
