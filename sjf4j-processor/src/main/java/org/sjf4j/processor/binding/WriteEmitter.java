@@ -524,8 +524,14 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(backend.backend());
         }
-        out.beginBlock("private static void _writeString(" + generator
-                + " g, String value) throws java.io.IOException");
+        if (isJackson()) {
+            out.beginBlock("private static void _writeString(" + backend.writerType()
+                    + " writer, String value) throws java.io.IOException");
+            out.line(generator + " g = writer.nativeWriter();");
+        } else {
+            out.beginBlock("private static void _writeString(" + generator
+                    + " g, String value) throws java.io.IOException");
+        }
         out.beginBlock("if (value == null)");
         out.line("g." + writeNull + "();");
         out.endBlock(" else {");
