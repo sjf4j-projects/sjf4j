@@ -377,7 +377,6 @@ final class StreamingWriteEmitter {
 
     /** JSON backends always compile structural helpers; streaming-only paths may fall back. */
     boolean requiresWriteHelper(BindingValue value) {
-        if (usesSharedStructure()) return true;
         return fullyConcreteGraph(value, new HashSet<BindingValue>())
                 || containsAdaptedValue(value, new HashSet<BindingValue>());
     }
