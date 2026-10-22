@@ -18,6 +18,19 @@ final class CodecWriteEmitter {
         out.indent();
 
         String info = value.helperName();
+
+        // The identity guard is intentional: configured formats, patterns and
+        // runtime codec registrations must retain their selected Codec semantics.
+        // Only the canonical built-in instance can take this direct route.
+        BuiltInDirect builtIn = builtInDirect(value.type().toString());
+        if (builtIn != null) {
+            out.beginBlock("if ((Object) " + info + ".codec == org.sjf4j.value.ValueCodec."
+                    + builtIn.constant + ")");
+            out.line(writer + "." + builtIn.method + "(codecValue);");
+            out.endBlock(" else {");
+            out.indent();
+        }
+
         out.beginBlock("if (" + info + ".streamWriter != null)");
         out.line(info + ".streamWriter.write(" + writer + ", codecValue);");
         out.endBlock(" else {");
@@ -47,8 +60,37 @@ final class CodecWriteEmitter {
             out.endBlock();
         }
         out.endBlock();
+        if (builtIn != null) out.endBlock();
         out.endBlock();
         out.endBlock();
+    }
+
+    /**
+     * Canonical streaming built-ins; raw-only, patterned, and custom Codec
+     * implementations continue through the normal ValueInfo path.
+     */
+    private static BuiltInDirect builtInDirect(String valueType) {
+        switch (valueType) {
+            case "java.util.UUID": return new BuiltInDirect("UUID_CODEC", "writeUuid");
+            case "java.time.Instant": return new BuiltInDirect("INSTANT_STR", "writeInstant");
+            case "java.time.LocalDate": return new BuiltInDirect("LOCAL_DATE", "writeLocalDate");
+            case "java.time.LocalTime": return new BuiltInDirect("LOCAL_TIME", "writeLocalTime");
+            case "java.time.LocalDateTime": return new BuiltInDirect("LOCAL_DATE_TIME", "writeLocalDateTime");
+            case "java.time.OffsetDateTime": return new BuiltInDirect("OFFSET_DATE_TIME", "writeOffsetDateTime");
+            case "java.time.OffsetTime": return new BuiltInDirect("OFFSET_TIME", "writeOffsetTime");
+            case "java.time.ZonedDateTime": return new BuiltInDirect("ZONED_DATE_TIME", "writeZonedDateTime");
+            default: return null;
+        }
+    }
+
+    private static final class BuiltInDirect {
+        final String constant;
+        final String method;
+
+        BuiltInDirect(String constant, String method) {
+            this.constant = constant;
+            this.method = method;
+        }
     }
 
     private static String nativeWrite(String raw, Backend backend, boolean nativeWriter) {
