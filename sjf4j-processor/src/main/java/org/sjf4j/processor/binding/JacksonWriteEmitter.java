@@ -211,7 +211,7 @@ final class JacksonWriteEmitter {
                         + ", this.context);");
                 return;
             case STRING:
-                out.line("_writeString(g, " + expression + ");");
+                out.line("_writeString(" + writer + ", " + expression + ");");
                 return;
             case NUMBER:
                 out.line(writer + ".writeNumber(" + expression + ");");
