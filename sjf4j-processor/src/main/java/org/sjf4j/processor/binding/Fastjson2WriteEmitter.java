@@ -5,7 +5,6 @@ import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Set;
 
 /** Fastjson2 compiled write generation using a shared streaming/native writer. */
@@ -167,86 +166,35 @@ final class Fastjson2WriteEmitter {
         out.line("w.writeNameRaw(" + name + ");");
     }
 
-    private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
-        boolean withCodec = hasCodec(value, new HashSet<BindingValue>());
-        out.beginBlock("private " + (withCodec ? "" : "static ") + "void "
-                + fastjsonHelperName(value, mode)
-                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer, "
-                + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
-        out.beginBlock("if (value == null)");
-        out.line("w.writeNull();");
-        out.line("return;");
-        out.endBlock();
+    /** Structural code is shared; a mode-specific APT adapter emits native tokens. */
+    private final class ModeOperations implements StructuralWriteEmitter.Operations {
+        private final FastjsonMode mode;
 
-        switch (value.kind()) {
-            case POJO:
-                out.line("w.startObject();");
-                emitNativeProperties(out, value, mode);
-                out.line("w.endObject();");
-                break;
-            case LIST:
-                out.line("w.startArray();");
-                out.beginBlock("if (value instanceof java.util.RandomAccess)");
-                out.beginBlock("for (int i = 0, size = value.size(); i < size; i++)");
-                out.beginBlock("if (i != 0)");
-                out.line("w.writeComma();");
-                out.endBlock();
-                if (value.elementValue().kind() == BindingValue.Kind.STRING) {
-                    out.line("w.writeString(value.get(i));");
-                } else {
-                    emitNativeValue(out, value.elementValue(), "value.get(i)", mode);
-                }
-                out.endBlock();
-                out.endBlock(" else {");
-                out.indent();
-                out.line("int count = 0;");
-                out.beginBlock("for (" + value.elementValue().type() + " element : value)");
-                out.beginBlock("if (count++ > 0)");
-                out.line("w.writeComma();");
-                out.endBlock();
-                if (value.elementValue().kind() == BindingValue.Kind.STRING) {
-                    out.line("w.writeString(element);");
-                } else {
-                    emitNativeValue(out, value.elementValue(), "element", mode);
-                }
-                out.endBlock();
-                out.endBlock();
-                out.line("w.endArray();");
-                break;
-            case SET:
-                out.line("w.startArray();");
-                out.line("int count = 0;");
-                out.beginBlock("for (" + value.elementValue().type() + " element : value)");
-                out.beginBlock("if (count++ > 0)");
-                out.line("w.writeComma();");
-                out.endBlock();
-                emitNativeValue(out, value.elementValue(), "element", mode);
-                out.endBlock();
-                out.line("w.endArray();");
-                break;
-            case MAP:
-                out.line("w.startObject();");
-                out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
-                out.line("w.writeName((String) entry.getKey());");
-                out.line("w.writeColon();");
-                emitNativeValue(out, value.mapValue(),
-                        "(" + value.mapValue().type() + ") entry.getValue()", mode);
-                out.endBlock();
-                out.line("w.endObject();");
-                break;
-            default:
-                throw new AssertionError(value.kind());
+        ModeOperations(FastjsonMode mode) {
+            this.mode = mode;
         }
-        out.endBlock();
-    }
 
-    private void emitNativeProperties(JavaWriter out, BindingValue value, FastjsonMode mode) {
-        int index = 0;
-        for (BindingProperty property : value.properties()) {
-            BindingValue child = property.value();
-            String field = WriteEmitter.compiledNameField(value, index++);
-            String expr = WriteEmitter.propertyExpression(property, "value");
+        @Override
+        public void startObject(JavaWriter out) { out.line("w.startObject();"); }
+
+        @Override
+        public void endObject(JavaWriter out) { out.line("w.endObject();"); }
+
+        @Override
+        public void startArray(JavaWriter out) { out.line("w.startArray();"); }
+
+        @Override
+        public void endArray(JavaWriter out) { out.line("w.endArray();"); }
+
+        @Override
+        public void writeNull(JavaWriter out) { out.line("w.writeNull();"); }
+
+        // writeNameRaw/writeNameXRaw and writeName(String) insert object-member
+        // separators themselves. Adding writeComma() here would corrupt JSON.
+        @Override
+        public void writePropertyName(JavaWriter out, BindingValue owner, int index) {
+            BindingProperty property = owner.properties().get(index);
+            String field = WriteEmitter.compiledNameField(owner, index);
             if (fixedRawName(property.name())) {
                 int length = property.name().length();
                 String args = field + ".rawName0";
@@ -256,10 +204,84 @@ final class Fastjson2WriteEmitter {
             } else {
                 emitFastjsonName(out, fastjsonNameExpr(field, mode));
             }
-            emitNativeValue(out, child, expr, mode);
+        }
+
+        @Override
+        public void writeDynamicName(JavaWriter out, String expression) {
+            out.line("w.writeName(" + expression + ");");
+            out.line("w.writeColon();");
+        }
+
+        @Override
+        public void writeMapName(JavaWriter out, String expression) {
+            writeDynamicName(out, expression);
+        }
+
+        @Override
+        public void writeValue(JavaWriter out, BindingValue value, String expression) {
+            emitNativeValue(out, value, expression, mode);
+        }
+
+        @Override
+        public void writeRuntimeValue(JavaWriter out, String expression) {
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(writer, "
+                    + expression + ", this.context);");
+        }
+
+        @Override
+        public boolean explicitArraySeparators() { return true; }
+
+        @Override
+        public void beforeArrayElement(JavaWriter out, String ordinal) {
+            out.beginBlock("if (" + ordinal + " != 0)");
+            out.line("w.writeComma();");
+            out.endBlock();
         }
     }
 
+    /** Every structural helper has the same (writer, value) signature. */
+    private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
+        out.beginBlock("private void " + fastjsonHelperName(value, mode)
+                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer, "
+                + value.type() + " value) throws java.io.IOException");
+        out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
+
+        if (value.kind() == BindingValue.Kind.JSON_OBJECT
+                || value.kind() == BindingValue.Kind.JSON_ARRAY) {
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(writer, value, this.context);");
+        } else {
+            StructuralWriteEmitter structure =
+                    new StructuralWriteEmitter(new ModeOperations(mode));
+            if (value.kind() != BindingValue.Kind.ONE_OF) {
+                out.beginBlock("if (value == null)");
+                out.line("w.writeNull();");
+                out.line("return;");
+                out.endBlock();
+            }
+
+            switch (value.kind()) {
+                case POJO:
+                case JOJO:
+                    structure.emitPojo(out, value);
+                    break;
+                case LIST:
+                    structure.emitList(out, value);
+                    break;
+                case SET:
+                    structure.emitSet(out, value);
+                    break;
+                case MAP:
+                    structure.emitMap(out, value);
+                    break;
+                case ONE_OF:
+                    structure.emitOneOf(out, value);
+                    break;
+                default:
+                    throw new AssertionError(value.kind());
+            }
+        }
+        out.endBlock();
+    }
 
     private String fastjsonWriteMethod(BindingValue.Kind kind) {
         switch (kind) {
@@ -305,6 +327,15 @@ final class Fastjson2WriteEmitter {
         switch (value.kind()) {
             case VALUE_CODEC:
                 CodecWriteEmitter.emit(out, value, expression, writer, raw, Backend.FASTJSON2);
+                return;
+            case RUNTIME:
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+                out.line("org.sjf4j.binding.StreamingIO.writeNode("
+                        + writer + ", " + expression + ", this.context);");
+                return;
+            case NUMBER:
+                out.line(writer + ".writeNumber(" + expression + ");");
                 return;
             case STRING:
                 out.line("_writeString(" + raw + ", " + expression + ");");
@@ -356,52 +387,6 @@ final class Fastjson2WriteEmitter {
         }
     }
 
-
-    /** Codec raw conversion is local to a field, not a reason to discard native POJO writes. */
-    boolean nativeEligible(BindingValue value, Set<BindingValue> visited) {
-        if (!visited.add(value)) return true;
-        switch (value.kind()) {
-            case RUNTIME:
-            case ONE_OF:
-            case NUMBER:
-            case JOJO:
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                return false;
-            case POJO:
-                for (BindingProperty property : value.properties()) {
-                    if (!nativeEligible(property.value(), visited)) return false;
-                }
-                return true;
-            case LIST:
-            case SET:
-                return nativeEligible(value.elementValue(), visited);
-            case MAP:
-                return nativeEligible(value.mapValue(), visited);
-            default:
-                return true;
-        }
-    }
-
-    private boolean hasCodec(BindingValue value, Set<BindingValue> visited) {
-        if (!visited.add(value)) return false;
-        switch (value.kind()) {
-            case VALUE_CODEC:
-                return true;
-            case POJO:
-                for (BindingProperty property : value.properties()) {
-                    if (hasCodec(property.value(), visited)) return true;
-                }
-                return false;
-            case LIST:
-            case SET:
-                return hasCodec(value.elementValue(), visited);
-            case MAP:
-                return hasCodec(value.mapValue(), visited);
-            default:
-                return false;
-        }
-    }
 
     void emitHelper(JavaWriter out, BindingValue value) {
         for (FastjsonMode mode : fastjsonModes) {
