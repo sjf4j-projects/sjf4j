@@ -18,6 +18,13 @@ final class CodecWriteEmitter {
         out.indent();
 
         String info = value.helperName();
+        IntrinsicCodec intrinsic = IntrinsicCodec.forValue(value);
+        if (intrinsic != null) {
+            out.beginBlock("if (this." + intrinsic.fieldName(value) + ")");
+            out.line(writer + "." + intrinsic.writeMethod() + "(codecValue);");
+            out.endBlock(" else {");
+            out.indent();
+        }
         out.beginBlock("if (" + info + ".streamWriter != null)");
         out.line(info + ".streamWriter.write(" + writer + ", codecValue);");
         out.endBlock(" else {");
@@ -48,6 +55,7 @@ final class CodecWriteEmitter {
         }
         out.endBlock();
         out.endBlock();
+        if (intrinsic != null) out.endBlock();
         out.endBlock();
     }
 
