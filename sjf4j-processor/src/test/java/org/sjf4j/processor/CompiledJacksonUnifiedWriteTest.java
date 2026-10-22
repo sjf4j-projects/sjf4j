@@ -55,7 +55,7 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("instanceof RandomAccess"), backend);
             assertTrue(generated.contains("writer.nativeWriter()"), backend);
             assertTrue(generated.contains("private void _write"), backend);
-            assertTrue(generated.contains("_writeString(g,"), backend);
+            assertTrue(generated.contains("_writeString(writer,"), backend);
             assertFalse(generated.contains("boolean includeNulls)"), backend);
             assertTrue(generated.contains("this.context.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(writer,"), backend);
