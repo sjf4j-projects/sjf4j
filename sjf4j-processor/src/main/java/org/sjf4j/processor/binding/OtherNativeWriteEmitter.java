@@ -1,60 +1,75 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 
-/** Native compiled writer emitter shared by Gson and JSON-P. */
-final class OtherNativeWriteEmitter {
+/**
+ * Gson and JSON-P write adapters for the shared compile-time structural
+ * traversal. Only native token operations differ; generated code does not
+ * depend on StructuralWriteEmitter at runtime.
+ */
+final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations {
+
+    private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
     OtherNativeWriteEmitter(BackendSpec backend) {
         this.backend = backend;
     }
 
-    void emitHelper(JavaWriter out, BindingValue value) {
-        boolean gson = backend.backend() == org.sjf4j.annotation.binding.Backend.GSON;
-        String generatorType = gson
-                ? "com.google.gson.stream.JsonWriter"
+    private boolean gson() {
+        return backend.backend() == Backend.GSON;
+    }
+
+    private String generatorType() {
+        return gson() ? "com.google.gson.stream.JsonWriter"
                 : "jakarta.json.stream.JsonGenerator";
-        String beginObject = gson ? "beginObject" : "writeStartObject";
-        String endObject = gson ? "endObject" : "writeEnd";
-        String beginArray = gson ? "beginArray" : "writeStartArray";
-        String endArray = gson ? "endArray" : "writeEnd";
-        String nullMethod = gson ? "nullValue" : "writeNull";
-        String nameMethod = gson ? "name" : "writeKey";
-        out.beginBlock("private static void " + value.helperName() + "("
-                + generatorType + " g, " + value.type() + " value) throws java.io.IOException");
-        out.beginBlock("if (value == null)");
-        out.line("g." + nullMethod + "();");
-        out.line("return;");
-        out.endBlock();
+    }
+
+    /** All structural helpers share the (writer, value) signature. */
+    void emitHelper(JavaWriter out, BindingValue value) {
+        out.beginBlock("private void " + value.helperName() + "("
+                + backend.writerType() + " writer, " + value.type()
+                + " value) throws java.io.IOException");
+        out.line(generatorType() + " g = writer.nativeWriter();");
+
         switch (value.kind()) {
-            case POJO:
-                out.line("g." + beginObject + "();");
-                for (BindingProperty property : value.properties()) {
-                    String expr = WriteEmitter.propertyExpression(property, "value");
-                    out.line("g." + nameMethod + "("
-                            + JavaWriter.stringLiteral(property.name()) + ");");
-                    emitValue(out, property.value(), expr);
-                }
-                out.line("g." + endObject + "();");
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+            case ARRAY:
+                writeRuntimeValue(out, "value");
                 break;
+            case ONE_OF:
+                structures.emitOneOf(out, value);
+                break;
+            case POJO:
+            case JOJO:
             case LIST:
             case SET:
-                out.line("g." + beginArray + "();");
-                out.beginBlock("for (" + value.elementValue().type() + " element : value)");
-                emitValue(out, value.elementValue(), "element");
-                out.endBlock();
-                out.line("g." + endArray + "();");
-                break;
             case MAP:
-                out.line("g." + beginObject + "();");
-                out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
-                out.line("g." + nameMethod + "((String) entry.getKey());");
-                emitValue(out, value.mapValue(),
-                        "(" + value.mapValue().type() + ") entry.getValue()");
+                out.beginBlock("if (value == null)");
+                writeNull(out);
+                out.line("return;");
                 out.endBlock();
-                out.line("g." + endObject + "();");
+                switch (value.kind()) {
+                    case POJO:
+                    case JOJO:
+                        structures.emitPojo(out, value);
+                        break;
+                    case LIST:
+                        structures.emitList(out, value);
+                        break;
+                    case SET:
+                        structures.emitSet(out, value);
+                        break;
+                    case MAP:
+                        structures.emitMap(out, value);
+                        break;
+                    default:
+                        throw new AssertionError(value.kind());
+                }
                 break;
             default:
                 throw new AssertionError(value.kind());
@@ -62,65 +77,122 @@ final class OtherNativeWriteEmitter {
         out.endBlock();
     }
 
-    private void emitValue(JavaWriter out, BindingValue child, String expr) {
-        boolean gson = backend.backend() == org.sjf4j.annotation.binding.Backend.GSON;
-        String scalarMethod = gson ? "value" : "write";
-        String nullMethod = gson ? "nullValue" : "writeNull";
+    @Override
+    public void startObject(JavaWriter out) {
+        out.line("g." + (gson() ? "beginObject" : "writeStartObject") + "();");
+    }
+
+    @Override
+    public void endObject(JavaWriter out) {
+        out.line("g." + (gson() ? "endObject" : "writeEnd") + "();");
+    }
+
+    @Override
+    public void startArray(JavaWriter out) {
+        out.line("g." + (gson() ? "beginArray" : "writeStartArray") + "();");
+    }
+
+    @Override
+    public void endArray(JavaWriter out) {
+        out.line("g." + (gson() ? "endArray" : "writeEnd") + "();");
+    }
+
+    @Override
+    public void writeNull(JavaWriter out) {
+        out.line("g." + (gson() ? "nullValue" : "writeNull") + "();");
+    }
+
+    @Override
+    public void writePropertyName(JavaWriter out, BindingValue owner, int index) {
+        writeDynamicName(out, JavaWriter.stringLiteral(owner.properties().get(index).name()));
+    }
+
+    @Override
+    public void writeDynamicName(JavaWriter out, String expression) {
+        out.line("g." + (gson() ? "name" : "writeKey") + "(" + expression + ");");
+    }
+
+    @Override
+    public void writeMapName(JavaWriter out, String expression) {
+        writeDynamicName(out, expression);
+    }
+
+    @Override
+    public void writeRuntimeValue(JavaWriter out, String expression) {
+        out.line(STREAMING_IO + ".writeNode(writer, " + expression + ", this.context);");
+    }
+
+    @Override
+    public void writeValue(JavaWriter out, BindingValue child, String expression) {
         if (child.helperRequired()) {
-            out.line(child.helperName() + "(g, " + expr + ");");
+            out.line(child.helperName() + "(writer, " + expression + ");");
             return;
         }
+
+        String method = gson() ? "value" : "write";
         if (child.kind() == BindingValue.Kind.STRING) {
-            out.line("_writeString(g, " + expr + ");");
+            out.line("_writeString(writer, " + expression + ");");
             return;
         }
-        if (child.kind() == BindingValue.Kind.ENUM || child.kind() == BindingValue.Kind.CHARACTER) {
-            if (child.primitive()) {
-                out.line("g." + scalarMethod + "(Character.toString(" + expr + "));");
-            } else {
-                out.beginBlock("");
-                out.line(child.type() + " item = " + expr + ";");
-                out.beginBlock("if (item == null)");
-                out.line("g." + nullMethod + "();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line("g." + scalarMethod + "(item."
-                        + (child.kind() == BindingValue.Kind.ENUM ? "name()" : "toString()")
-                        + ");");
-                out.endBlock();
-                out.endBlock();
-            }
-            return;
+        switch (child.kind()) {
+            case VALUE_CODEC:
+                CodecWriteEmitter.emit(out, child, expression, "writer", null, backend.backend());
+                return;
+            case RUNTIME:
+                writeRuntimeValue(out, expression);
+                return;
+            case NUMBER:
+                out.line("writer.writeNumber(" + expression + ");");
+                return;
+            case ENUM:
+            case CHARACTER:
+                if (child.primitive()) {
+                    out.line("g." + method + "(Character.toString(" + expression + "));");
+                } else {
+                    out.beginBlock("");
+                    out.line(child.type() + " item = " + expression + ";");
+                    out.beginBlock("if (item == null)");
+                    writeNull(out);
+                    out.endBlock(" else {");
+                    out.indent();
+                    out.line("g." + method + "(item."
+                            + (child.kind() == BindingValue.Kind.ENUM ? "name()" : "toString()")
+                            + ");");
+                    out.endBlock();
+                    out.endBlock();
+                }
+                return;
+            default:
+                break;
         }
-        String valueExpr = "item";
+
         if (child.primitive()) {
-            String rawExpr = expr;
-            if (!gson && (child.kind() == BindingValue.Kind.BYTE
+            String arg = expression;
+            if (!gson() && (child.kind() == BindingValue.Kind.BYTE
                     || child.kind() == BindingValue.Kind.SHORT)) {
-                rawExpr = "(int) (" + expr + ")";
-            } else if (!gson && child.kind() == BindingValue.Kind.FLOAT) {
-                rawExpr = "(double) (" + expr + ")";
+                arg = "(int) (" + expression + ")";
+            } else if (!gson() && child.kind() == BindingValue.Kind.FLOAT) {
+                arg = "(double) (" + expression + ")";
             }
-            out.line("g." + scalarMethod + "(" + rawExpr + ");");
+            out.line("g." + method + "(" + arg + ");");
         } else {
             out.beginBlock("");
-            out.line(child.type() + " item = " + expr + ";");
+            out.line(child.type() + " item = " + expression + ";");
             out.beginBlock("if (item == null)");
-            out.line("g." + nullMethod + "();");
+            writeNull(out);
             out.endBlock(" else {");
             out.indent();
-            if (!gson && (child.kind() == BindingValue.Kind.BYTE
+            String arg = "item";
+            if (!gson() && (child.kind() == BindingValue.Kind.BYTE
                     || child.kind() == BindingValue.Kind.SHORT)) {
-                valueExpr = "item.intValue()";
+                arg = "item.intValue()";
             } else if (child.kind() == BindingValue.Kind.FLOAT) {
-                // Both adapters widen boxed float to double before serialization.
-                valueExpr = "item.doubleValue()";
+                // Preserve the previous widening semantics for boxed floats.
+                arg = "item.doubleValue()";
             }
-            out.line("g." + scalarMethod + "(" + valueExpr + ");");
+            out.line("g." + method + "(" + arg + ");");
             out.endBlock();
             out.endBlock();
         }
     }
-
-
 }
