@@ -55,6 +55,7 @@ final class StreamingWriteEmitter {
                 throw new AssertionError("No write helper for " + value.kind());
         }
         out.endBlock();
+    }
 
     private void emitOneOf(JavaWriter out, BindingValue value) {
         emitNullReturn(out);
