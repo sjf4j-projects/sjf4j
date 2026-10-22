@@ -60,7 +60,7 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("instanceof RandomAccess"), backend);
             assertTrue(generated.contains("writer.nativeWriter()"), backend);
             assertTrue(generated.contains("private void _write"), backend);
-            assertTrue(generated.contains("_writeString(writer,"), backend);
+            assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("_writeList(writer, property0);"), backend);
             assertTrue(generated.contains("_writeMap(writer, property2);"), backend);
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
