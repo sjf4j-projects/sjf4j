@@ -190,7 +190,7 @@ final class StreamingWriteEmitter {
         out.line("writer.endObject();");
     }
 
-    private void writeValue(
+    void writeValue(
             JavaWriter out,
             BindingValue value,
             String writer,
