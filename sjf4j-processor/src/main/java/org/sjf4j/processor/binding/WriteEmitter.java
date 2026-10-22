@@ -83,9 +83,11 @@ final class WriteEmitter {
                         plan,
                         0);
 
-        // Omission of null object properties is delegated once at the call
-        // boundary; the default compiled native hot path remains unchanged.
-        out.beginBlock("if (!this.context.includeNulls)");
+        // Fully concrete Jackson graphs have dedicated null-omitting native
+        // helpers. No runtime fallback is needed solely for includeNulls=false.
+        boolean nativeJackson = isJackson()
+                && nativeEligible(compiled.value(), new HashSet<BindingValue>());
+        if (!nativeJackson) out.beginBlock("if (!this.context.includeNulls)");
         switch (plan.writeOutput()) {
             case STRING:
                 out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -102,7 +104,7 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(plan.writeOutput());
         }
-        out.endBlock();
+        if (!nativeJackson) out.endBlock();
 
         // Dynamic children invalidate whole-method specialization. Delegate to
         // the configured runtime binder rather than emitting mixed static/dynamic code.
@@ -318,8 +320,19 @@ final class WriteEmitter {
 
         if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
-            out.line(value.helperName() + "(" + writer
-                    + "." + "nativeWriter" + "(), " + source + ");");
+            if (isJackson()) {
+                out.beginBlock("if (this.context.includeNulls)");
+                out.line(value.helperName() + "(" + writer
+                        + ".nativeWriter(), " + source + ");");
+                out.endBlock(" else {");
+                out.indent();
+                out.line(value.helperName() + "OmitNulls(" + writer
+                        + ".nativeWriter(), " + source + ");");
+                out.endBlock();
+            } else {
+                out.line(value.helperName() + "(" + writer
+                        + ".nativeWriter(), " + source + ");");
+            }
         } else {
             writeValue(out, value, writer, source);
         }
