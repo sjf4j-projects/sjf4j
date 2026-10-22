@@ -19,8 +19,17 @@ final class JacksonWriteEmitter {
 
 
     void emitHelper(JavaWriter out, BindingValue value) {
+        emitHelper(out, value, false);
+        emitHelper(out, value, true);
+    }
+
+    private static String helperName(BindingValue value, boolean omitNulls) {
+        return value.helperName() + (omitNulls ? "OmitNulls" : "");
+    }
+
+    private void emitHelper(JavaWriter out, BindingValue value, boolean omitNulls) {
         boolean jackson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.JACKSON2;
-        out.beginBlock("private static void " + value.helperName() + "("
+        out.beginBlock("private static void " + helperName(value, omitNulls) + "("
                 + jacksonGeneratorType() + " g, " + value.type()
                 + " value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
@@ -35,33 +44,46 @@ final class JacksonWriteEmitter {
                     String field = WriteEmitter.compiledNameField(value, index++) + ".serializedName";
                     BindingValue child = property.value();
                     String expr = WriteEmitter.propertyExpression(property, "value");
+                    if (omitNulls && !child.primitive()) {
+                        // Evaluate each accessor only once; JSON null object members
+                        // are omitted, but null array entries remain in place.
+                        String item = "property" + (index - 1);
+                        out.line(child.type() + " " + item + " = " + expr + ";");
+                        out.beginBlock("if (" + item + " != null)");
+                        expr = item;
+                    }
                     out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
                             + "(" + field + ");");
-                    emitValue(out, child, expr);
+                    emitValue(out, child, expr, omitNulls);
+                    if (omitNulls && !child.primitive()) out.endBlock();
                 }
                 out.line("g.writeEndObject();");
                 break;
             case LIST:
                 out.line("g.writeStartArray();");
                 out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
-                emitValue(out, value.elementValue(), "value.get(i)");
+                emitValue(out, value.elementValue(), "value.get(i)", omitNulls);
                 out.endBlock();
                 out.line("g.writeEndArray();");
                 break;
             case SET:
                 out.line("g.writeStartArray();");
                 out.beginBlock("for (" + value.elementValue().type() + " element : value)");
-                emitValue(out, value.elementValue(), "element");
+                emitValue(out, value.elementValue(), "element", omitNulls);
                 out.endBlock();
                 out.line("g.writeEndArray();");
                 break;
             case MAP:
                 out.line("g.writeStartObject();");
                 out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
+                if (omitNulls) {
+                    out.beginBlock("if (entry.getValue() == null) continue");
+                }
                 out.line("g." + (jackson2 ? "writeFieldName" : "writeName")
                         + "((String) entry.getKey());");
                 emitValue(out, value.mapValue(),
-                        "(" + value.mapValue().type() + ") entry.getValue()");
+                        "(" + value.mapValue().type() + ") entry.getValue()", omitNulls);
+                if (omitNulls) out.endBlock();
                 out.endBlock();
                 out.line("g.writeEndObject();");
                 break;
@@ -73,8 +95,12 @@ final class JacksonWriteEmitter {
 
 
     void emitValue(JavaWriter out, BindingValue child, String expr) {
+        emitValue(out, child, expr, false);
+    }
+
+    private void emitValue(JavaWriter out, BindingValue child, String expr, boolean omitNulls) {
         if (child.helperRequired()) {
-            out.line(child.helperName() + "(g, " + expr + ");");
+            out.line(helperName(child, omitNulls) + "(g, " + expr + ");");
             return;
         }
         if (child.kind() == BindingValue.Kind.STRING) {
