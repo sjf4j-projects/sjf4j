@@ -400,7 +400,7 @@ public class CompiledWriteBenchmark {
 
     // Jackson3 counterpart; use the same direct handwritten token sequence.
     @Benchmark
-    public String json_jackson3_pojo_string_direct() {
+    public String json_jackson3_pojo_string_direct() throws IOException {
         tools.jackson.core.util.BufferRecycler recycler =
                 JACKSON3_DIRECT_FACTORY._getBufferRecycler();
         tools.jackson.core.io.SegmentedStringWriter output =
@@ -417,7 +417,7 @@ public class CompiledWriteBenchmark {
     }
 
     @Benchmark
-    public byte[] json_jackson3_pojo_utf8_direct() {
+    public byte[] json_jackson3_pojo_utf8_direct() throws IOException {
         tools.jackson.core.util.BufferRecycler recycler =
                 JACKSON3_DIRECT_FACTORY._getBufferRecycler();
         tools.jackson.core.util.ByteArrayBuilder output =
