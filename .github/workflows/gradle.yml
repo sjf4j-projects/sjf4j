@@ -38,6 +38,72 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    # Temporary diagnostic run on this benchmark-only branch.
+    - name: Jackson List helper A/B JMH (diagnostic)
+      run: |
+        set -euo pipefail
+        ./gradlew :sjf4j-testbench:jmhJar
+        JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)
+        java -jar "$JMH_JAR" '.*JacksonNestedWriteBenchmark.jackson2_list_string_(compiled|manual_helper|manual_inline|manual_noinline)      if: ${{ always() }}
+      run: |
+        python3 - <<'PY'
+        import os
+        import xml.etree.ElementTree as ET
+        path = 'sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml'
+        if not os.path.exists(path):
+            print(f'JaCoCo report not found: {path}')
+            raise SystemExit(0)
+        root = ET.parse(path).getroot()
+        for counter in root.findall('counter'):
+            if counter.attrib['type'] in ('BRANCH', 'LINE', 'INSTRUCTION', 'METHOD'):
+                missed = int(counter.attrib['missed'])
+                covered = int(counter.attrib['covered'])
+                total = missed + covered
+                pct = (covered / total * 100.0) if total else 100.0
+                print(f"{counter.attrib['type']}: {covered}/{total} {pct:.2f}%")
+        PY
+
+    - name: Upload coverage to Codecov
+      if: ${{ always() && hashFiles('sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml') != '' && env.CODECOV_TOKEN != '' }}
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ env.CODECOV_TOKEN }}
+        files: sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml
+        fail_ci_if_error: true
+
+    # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
+    # If your project does not have the Gradle Wrapper configured, you can use the following configuration to run Gradle with a specified version.
+    #
+    # - name: Setup Gradle
+    #   uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+    #   with:
+    #     gradle-version: '8.9'
+    #
+    # - name: Build with Gradle 8.9
+    #   run: gradle build
+
+  dependency-submission:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    # Generates and submits a dependency graph, enabling Dependabot Alerts for all project dependencies.
+    # See: https://github.com/gradle/actions/blob/main/dependency-submission/README.md
+    - name: Generate and submit dependency graph
+      uses: gradle/actions/dependency-submission@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+ \
+          -p friendCount=0,1,4,8 -p listKind=array -p nullSecond=false \
+          -f 1 -wi 4 -i 5 -w 200ms -r 250ms -tu ns -prof gc
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
