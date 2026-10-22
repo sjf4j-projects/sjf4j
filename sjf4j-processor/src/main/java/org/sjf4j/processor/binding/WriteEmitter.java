@@ -85,7 +85,7 @@ final class WriteEmitter {
 
         // Jackson compiles every structural node; unknown children fall back
         // locally instead of invalidating the parent helper.
-        if (!isJackson() && backend.backend() != Backend.FASTJSON2) {
+        if (!usesSharedStructure() && backend.backend() != Backend.FASTJSON2) {
             // Retain the existing null-policy and dynamic-graph fallback for
             // the other backends. Jackson filters properties in generated code.
             out.beginBlock("if (!this.context.includeNulls)");
@@ -319,6 +319,8 @@ final class WriteEmitter {
 
         if (isJackson()) {
             jackson.emitRoot(out, value, source, writer);
+        } else if (isGsonOrJsonp() && value.helperRequired()) {
+            out.line(value.helperName() + "(" + writer + ", " + source + ");");
         } else if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
             out.line(value.helperName() + "(" + writer
@@ -340,20 +342,10 @@ final class WriteEmitter {
             fastjson2.emitHelper(out, value);
             return;
         }
-        // Generate a single native helper when the full type graph is concrete.
-        // Unresolved graphs retain the StreamingWriter fallback.
-        if (hasNativeJsonWriter() && nativeEligible(value,
-                new HashSet<BindingValue>())) {
-            switch (backend.backend()) {
-                case GSON:
-                case JSONP:
-                    other.emitHelper(out, value);
-                    return;
-                default:
-                    throw new AssertionError(backend.backend());
-            }
+        if (isGsonOrJsonp()) {
+            other.emitHelper(out, value);
+            return;
         }
-
         out.beginBlock("private void " + value.helperName()
                 + "(" + backend.writerType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
@@ -401,8 +393,18 @@ final class WriteEmitter {
                 || backend.backend() == Backend.JACKSON3;
     }
 
+    private boolean isGsonOrJsonp() {
+        return backend.backend() == Backend.GSON
+                || backend.backend() == Backend.JSONP;
+    }
+
+    private boolean usesSharedStructure() {
+        return isJackson() || isGsonOrJsonp()
+                || backend.backend() == Backend.FASTJSON2;
+    }
+
     boolean needsStringHelper(BindingValue value) {
-        if (isJackson() || backend.backend() == Backend.FASTJSON2) {
+        if (usesSharedStructure()) {
             return value.direction() == BindingPlan.Direction.WRITE_TO
                     && containsString(value, new HashSet<BindingValue>());
         }
@@ -501,7 +503,7 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(backend.backend());
         }
-        if (isJackson() || backend.backend() == Backend.FASTJSON2) {
+        if (usesSharedStructure()) {
             out.beginBlock("private static void _writeString(" + backend.writerType()
                     + " writer, String value) throws java.io.IOException");
             out.line(generator + " g = writer.nativeWriter();");
@@ -857,7 +859,7 @@ final class WriteEmitter {
 
     /** Jackson always emits structural helpers; other backends retain legacy eligibility. */
     boolean requiresWriteHelper(BindingValue value) {
-        if (isJackson() || backend.backend() == Backend.FASTJSON2) return true;
+        if (usesSharedStructure()) return true;
         return nativeEligible(value, new HashSet<BindingValue>())
                 || containsAdaptedValue(value, new HashSet<BindingValue>());
     }
