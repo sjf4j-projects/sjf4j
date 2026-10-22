@@ -36,8 +36,11 @@ class CompiledWriteRoutingBoundaryTest {
                 assertFalse(generated.contains("private static void _writeString("), backend);
             } else {
                 // _writeString always takes the SJF4J writer, not a native generator.
-                assertTrue(generated.contains("private static void _writeString(org.sjf4j."),
-                        backend + ": " + generated);
+                // JavaWriter imports backend writer types, so signatures use simple names.
+                assertTrue(generated.contains("private static void _writeString("),
+                        backend + ": missing String helper");
+                assertTrue(generated.contains(" writer, String value)"),
+                        backend + ": String helper must accept its streaming writer");
             }
             // JsonObject and JsonArray are still dynamic: do not compile their contents.
             assertTrue(generated.contains("StreamingIO.writeNode(writer, value, this.context)"),
