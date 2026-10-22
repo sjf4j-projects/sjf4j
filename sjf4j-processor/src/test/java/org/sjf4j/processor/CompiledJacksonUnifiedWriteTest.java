@@ -35,9 +35,14 @@ class CompiledJacksonUnifiedWriteTest {
                     + " public List<Animal> animals = new LinkedList<>(Arrays.asList(new Cat(), null));"
                     + " public List<String> words = new ArrayList<>(Arrays.asList(\"first\", null, \"last\"));"
                     + " public Map<String,Object> extras = new LinkedHashMap<>();"
+                    + " public Map<String,UUID> ids = new LinkedHashMap<>();"
+                    + " public Map<String,List<String>> groups = new LinkedHashMap<>();"
+                    + " public Set<String> tags = new LinkedHashSet<>(Arrays.asList(\"alpha\", \"beta\"));"
                     + " public UUID id = UUID.fromString(\"123e4567-e89b-12d3-a456-426614174000\");"
                     + " public String omitted = null;"
-                    + " public Model() { extras.put(\"number\", 23); extras.put(\"skip\", null); }"
+                    + " public Model() { extras.put(\"number\", 23); extras.put(\"skip\", null);"
+                    + " ids.put(\"primary\", id); ids.put(\"empty\", null);"
+                    + " groups.put(\"items\", Arrays.asList(\"a\", null, \"b\")); }"
                     + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
@@ -86,9 +91,18 @@ class CompiledJacksonUnifiedWriteTest {
                 assertEquals(23, full.path("extras").path("number").asInt(), backend);
                 assertEquals("123e4567-e89b-12d3-a456-426614174000",
                         full.path("id").asText(), backend);
+                assertEquals("123e4567-e89b-12d3-a456-426614174000",
+                        full.path("ids").path("primary").asText(), backend);
+                assertTrue(full.path("ids").path("empty").isNull(), backend);
+                assertTrue(full.path("groups").path("items").get(1).isNull(), backend);
+                assertEquals("alpha", full.path("tags").get(0).asText(), backend);
+                assertEquals("beta", full.path("tags").get(1).asText(), backend);
 
                 assertFalse(filtered.has("omitted"), backend);
                 assertFalse(filtered.path("extras").has("skip"), backend);
+                assertFalse(filtered.path("ids").has("empty"), backend);
+                assertTrue(filtered.path("groups").path("items").get(1).isNull(), backend);
+                assertEquals(2, filtered.path("tags").size(), backend);
                 assertTrue(filtered.path("animals").get(1).isNull(), backend);
                 assertTrue(filtered.path("words").get(1).isNull(), backend);
             }
