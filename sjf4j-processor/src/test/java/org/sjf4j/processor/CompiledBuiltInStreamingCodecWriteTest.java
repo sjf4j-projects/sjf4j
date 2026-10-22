@@ -7,6 +7,7 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.RuntimeContext;
 
 import java.net.URLClassLoader;
+import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
         ObjectMapper mapper = new ObjectMapper();
         UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
         Instant instant = Instant.parse("2024-02-03T04:05:06Z");
+        URI website = URI.create("https://example.test/path?a=1");
         LocalDate date = LocalDate.of(2024, 2, 3);
         LocalTime time = LocalTime.of(4, 5, 6);
         LocalDateTime dateTime = LocalDateTime.of(date, time);
@@ -43,7 +45,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                     "package fixture; import java.util.UUID; import java.time.*;"
                     + "import org.sjf4j.annotation.node.NodeProperty;"
                     + "public class Bean {"
-                    + "public UUID uuid; public Instant instant;"
+                    + "public UUID uuid; public Instant instant; public java.net.URI website;"
                     + "public LocalDate date; public LocalTime time;"
                     + "public LocalDateTime dateTime;"
                     + "public OffsetDateTime offsetDateTime;"
@@ -65,6 +67,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("ValueCodec.UUID_CODEC"), backend);
+            assertTrue(generated.contains("ValueCodec.URI_CODEC"), backend);
             assertTrue(generated.contains("ValueCodec.LOCAL_DATE_TIME"), backend);
             assertTrue(generated.contains(".writeUuid(codecValue);"), backend);
             assertTrue(generated.contains(".writeLocalDateTime(codecValue);"), backend);
@@ -76,6 +79,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Object bean = beanType.getConstructor().newInstance();
                 beanType.getField("uuid").set(bean, uuid);
+                beanType.getField("website").set(bean, website);
                 beanType.getField("instant").set(bean, instant);
                 beanType.getField("date").set(bean, date);
                 beanType.getField("time").set(bean, time);
@@ -88,6 +92,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                 JsonNode normal = mapper.readTree((String) binderType.getMethod("write", beanType)
                         .invoke(binder, bean));
                 assertEquals(uuid.toString(), normal.path("uuid").asText(), backend);
+                assertEquals(website.toString(), normal.path("website").asText(), backend);
                 assertEquals(instant.toString(), normal.path("instant").asText(), backend);
                 assertEquals(date.toString(), normal.path("date").asText(), backend);
                 assertEquals(time.toString(), normal.path("time").asText(), backend);
@@ -104,6 +109,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                 assertEquals(instant.toEpochMilli(), alternate.path("instant").asLong(), backend);
                 assertEquals("2024/02/03 04:05:06", alternate.path("patterned").asText(), backend);
                 assertEquals(uuid.toString(), alternate.path("uuid").asText(), backend);
+                assertEquals(website.toString(), alternate.path("website").asText(), backend);
 
                 assertEquals("\"" + uuid + "\"", binderType.getMethod("writeUuid", UUID.class)
                         .invoke(binder, uuid), backend);
