@@ -184,17 +184,21 @@ public class CompiledWriteBenchmark {
 
         check("jackson2 native pojo string", json_jackson2_pojo_string_native());
         check("jackson2 blackbird pojo string", json_jackson2_pojo_string_blackbird());
+        check("jackson2 direct wrapped pojo string", json_jackson2_pojo_string_direct_wrapped());
         check("jackson2 direct pojo string", json_jackson2_pojo_string_direct());
         check("jackson2 native pojo utf8", json_jackson2_pojo_utf8_native());
         check("jackson2 blackbird pojo utf8", json_jackson2_pojo_utf8_blackbird());
+        check("jackson2 direct wrapped pojo utf8", json_jackson2_pojo_utf8_direct_wrapped());
         check("jackson2 direct pojo utf8", json_jackson2_pojo_utf8_direct());
         check("jackson2 native map string", json_jackson2_map_string_native());
         check("jackson2 native map utf8", json_jackson2_map_utf8_native());
         check("jackson3 native pojo string", json_jackson3_pojo_string_native());
         check("jackson3 blackbird pojo string", json_jackson3_pojo_string_blackbird());
+        check("jackson3 direct wrapped pojo string", json_jackson3_pojo_string_direct_wrapped());
         check("jackson3 direct pojo string", json_jackson3_pojo_string_direct());
         check("jackson3 native pojo utf8", json_jackson3_pojo_utf8_native());
         check("jackson3 blackbird pojo utf8", json_jackson3_pojo_utf8_blackbird());
+        check("jackson3 direct wrapped pojo utf8", json_jackson3_pojo_utf8_direct_wrapped());
         check("jackson3 direct pojo utf8", json_jackson3_pojo_utf8_direct());
         check("jackson3 native map string", json_jackson3_map_string_native());
         check("jackson3 native map utf8", json_jackson3_map_utf8_native());
@@ -322,6 +326,26 @@ public class CompiledWriteBenchmark {
         }
     }
 
+    // Diagnostic: identical handwritten field emission as Direct, but the
+    // same SJF4J Writer creation, flush and release lifecycle as Compiled.
+    @Benchmark
+    public String json_jackson2_pojo_string_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriter()) {
+            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toString();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_pojo_utf8_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriterUtf8()) {
+            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toBytes();
+        }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
@@ -435,6 +459,24 @@ public class CompiledWriteBenchmark {
         } finally {
             output.release();
             recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson3_pojo_string_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriter()) {
+            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toString();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson3_pojo_utf8_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriterUtf8()) {
+            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toBytes();
         }
     }
 
