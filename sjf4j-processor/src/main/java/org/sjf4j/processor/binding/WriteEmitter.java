@@ -373,11 +373,6 @@ final class WriteEmitter {
             }
         }
 
-        if (mixedJacksonPojo(value)) {
-            emitMixedJacksonPojo(out, value);
-            return;
-        }
-
         out.beginBlock("private void " + value.helperName()
                 + "(" + backend.writerType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
@@ -537,58 +532,6 @@ final class WriteEmitter {
         out.indent();
         out.line("g." + writeString + "(value);");
         out.endBlock();
-        out.endBlock();
-    }
-
-    /**
-     * An adapted descendant must not force ordinary POJO fields through the
-     * StreamingWriter facade. Only the adapted subtree needs that interface.
-     */
-    private boolean mixedJacksonPojo(BindingValue value) {
-        return isJackson() && value.kind() == BindingValue.Kind.POJO
-                && containsAdaptedValue(value, new HashSet<BindingValue>());
-    }
-
-    private void emitMixedJacksonPojo(JavaWriter out, BindingValue value) {
-        String generator = backend.backend() == Backend.JACKSON2
-                ? "com.fasterxml.jackson.core.JsonGenerator"
-                : "tools.jackson.core.JsonGenerator";
-        out.beginBlock("private void " + value.helperName()
-                + "(" + backend.writerType() + " writer, "
-                + value.type() + " value) throws java.io.IOException");
-        emitNullReturn(out);
-        out.line(generator + " g = writer.nativeWriter();");
-        out.line("g.writeStartObject();");
-        int index = 0;
-        for (BindingProperty property : value.properties()) {
-            BindingValue child = property.value();
-            out.line("g." + (backend.backend() == Backend.JACKSON2
-                    ? "writeFieldName" : "writeName")
-                    + "(" + compiledNameField(value, index++)
-                    + ".serializedName);");
-            String expression = propertyExpression(property, "value");
-            if (child.kind() == BindingValue.Kind.VALUE_CODEC) {
-                CodecWriteEmitter.emit(out, child, expression, "writer", "g", backend.backend());
-            } else if (child.kind() == BindingValue.Kind.STRING) {
-                // Evaluate the getter once, including on the null path.
-                out.beginBlock("");
-                out.line("String item = " + expression + ";");
-                out.beginBlock("if (item == null)");
-                out.line("g.writeNull();");
-                out.endBlock(" else {");
-                out.indent();
-                out.line("g.writeString(item);");
-                out.endBlock();
-                out.endBlock();
-            } else if (nativeEligible(child, new HashSet<BindingValue>())) {
-                jackson.emitValue(out, child, expression);
-            } else {
-                // OneOf, dynamic containers and nested adapted POJOs retain
-                // their existing compiled/runtime semantics on this subtree.
-                writeValue(out, child, "writer", expression);
-            }
-        }
-        out.line("g.writeEndObject();");
         out.endBlock();
     }
 
