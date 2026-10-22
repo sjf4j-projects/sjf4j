@@ -619,22 +619,8 @@ final class WriteEmitter {
                         + expression + ", this.context);");
                 return;
             }
-            // A mixed POJO graph uses StreamingWriter for its parent, but a
-            // fully concrete child may have a native-only helper signature.
-            if (hasNativeJsonWriter()
-                    && fullyConcreteGraph(value, new HashSet<BindingValue>())) {
-                if (backend.backend() == Backend.FASTJSON2) {
-                    // Fastjson2 native helpers are separately generated for UTF-8
-                    // and UTF-16. A streaming parent has no native-mode helper.
-                    out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                            + expression + ", this.context);");
-                } else {
-                    out.line(value.helperName() + "(" + writer + ".nativeWriter(), "
-                            + expression + (isJackson() ? ", this.context.includeNulls" : "") + ");");
-                }
-            } else {
-                out.line(value.helperName() + "(" + writer + ", " + expression + ");");
-            }
+            // All remaining helpers use the same (writer, value) convention.
+            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
             return;
         }
 
