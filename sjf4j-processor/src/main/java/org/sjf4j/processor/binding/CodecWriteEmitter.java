@@ -26,7 +26,9 @@ final class CodecWriteEmitter {
         if (builtIn != null) {
             out.beginBlock("if ((Object) " + info + ".codec == org.sjf4j.value.ValueCodec."
                     + builtIn.constant + ")");
-            out.line(writer + "." + builtIn.method + "(codecValue);");
+            String valueExpr = builtIn.rawString ? "codecValue.toString()" : "codecValue";
+            String target = builtIn.rawString && nativeWriter != null ? nativeWriter : writer;
+            out.line(target + "." + builtIn.method + "(" + valueExpr + ");");
             out.endBlock(" else {");
             out.indent();
         }
@@ -72,6 +74,9 @@ final class CodecWriteEmitter {
     private static BuiltInDirect builtInDirect(String valueType) {
         switch (valueType) {
             case "java.util.UUID": return new BuiltInDirect("UUID_CODEC", "writeUuid");
+            // URI has no dedicated StreamingWriter method, but its canonical
+            // Codec is exactly URI::toString. Write that raw String directly.
+            case "java.net.URI": return new BuiltInDirect("URI_CODEC", "writeString", true);
             case "java.time.Instant": return new BuiltInDirect("INSTANT_STR", "writeInstant");
             case "java.time.LocalDate": return new BuiltInDirect("LOCAL_DATE", "writeLocalDate");
             case "java.time.LocalTime": return new BuiltInDirect("LOCAL_TIME", "writeLocalTime");
@@ -86,10 +91,16 @@ final class CodecWriteEmitter {
     private static final class BuiltInDirect {
         final String constant;
         final String method;
+        final boolean rawString;
 
         BuiltInDirect(String constant, String method) {
+            this(constant, method, false);
+        }
+
+        BuiltInDirect(String constant, String method, boolean rawString) {
             this.constant = constant;
             this.method = method;
+            this.rawString = rawString;
         }
     }
 
