@@ -85,7 +85,7 @@ final class WriteEmitter {
 
         // Jackson compiles every structural node; unknown children fall back
         // locally instead of invalidating the parent helper.
-        if (!isJackson()) {
+        if (!isJackson() && backend.backend() != Backend.FASTJSON2) {
             // Retain the existing null-policy and dynamic-graph fallback for
             // the other backends. Jackson filters properties in generated code.
             out.beginBlock("if (!this.context.includeNulls)");
@@ -133,8 +133,7 @@ final class WriteEmitter {
         NameAllocator names =
                 methodNames(plan);
 
-        if (backend.backend() == Backend.FASTJSON2
-                && fastjson2.nativeEligible(compiled.value(), new HashSet<BindingValue>())) {
+        if (backend.backend() == Backend.FASTJSON2) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
@@ -337,24 +336,15 @@ final class WriteEmitter {
             jackson.emitHelper(out, value);
             return;
         }
-        // Fastjson2 accepts ValueCodec in native helpers while the generic
-        // streaming writer considers those subtrees non-native. A mixed POJO
-        // can therefore call this helper with Fastjson2Writer even when the
-        // same helper has native UTF-8/UTF-16 variants.
-        boolean fastjsonNative = backend.backend() == Backend.FASTJSON2
-                && fastjson2.nativeEligible(value, new HashSet<BindingValue>());
-        if (fastjsonNative) {
+        if (backend.backend() == Backend.FASTJSON2) {
             fastjson2.emitHelper(out, value);
-            if (!containsAdaptedValue(value, new HashSet<BindingValue>())) return;
+            return;
         }
         // Generate a single native helper when the full type graph is concrete.
         // Unresolved graphs retain the StreamingWriter fallback.
-        if (!fastjsonNative && hasNativeJsonWriter() && nativeEligible(value,
+        if (hasNativeJsonWriter() && nativeEligible(value,
                 new HashSet<BindingValue>())) {
             switch (backend.backend()) {
-                case FASTJSON2:
-                    fastjson2.emitHelper(out, value);
-                    return;
                 case GSON:
                 case JSONP:
                     other.emitHelper(out, value);
@@ -412,17 +402,13 @@ final class WriteEmitter {
     }
 
     boolean needsStringHelper(BindingValue value) {
-        if (isJackson()) {
+        if (isJackson() || backend.backend() == Backend.FASTJSON2) {
             return value.direction() == BindingPlan.Direction.WRITE_TO
                     && containsString(value, new HashSet<BindingValue>());
         }
         if (!hasNativeJsonWriter()
                 || value.direction() != BindingPlan.Direction.WRITE_TO) {
             return false;
-        }
-        if (backend.backend() == Backend.FASTJSON2
-                && fastjson2.nativeEligible(value, new HashSet<BindingValue>())) {
-            return containsString(value, new HashSet<BindingValue>());
         }
         return containsNativeString(value, new HashSet<BindingValue>());
     }
@@ -554,10 +540,6 @@ final class WriteEmitter {
             if (subtype.cachedPojo) {
                 out.line(STREAMING_IO + ".writePojo(writer, value, " + metadata
                         + ", this.context);");
-            } else if (backend.backend() == Backend.FASTJSON2
-                    && subtype.compiled.helperRequired()
-                    && fastjson2.nativeEligible(subtype.compiled, new HashSet<BindingValue>())) {
-                fastjson2.emitMappedSubtype(out, subtype.compiled, "writer", expression);
             } else {
                 writeValue(out, subtype.compiled, "writer", expression);
             }
@@ -875,7 +857,7 @@ final class WriteEmitter {
 
     /** Jackson always emits structural helpers; other backends retain legacy eligibility. */
     boolean requiresWriteHelper(BindingValue value) {
-        if (isJackson()) return true;
+        if (isJackson() || backend.backend() == Backend.FASTJSON2) return true;
         return nativeEligible(value, new HashSet<BindingValue>())
                 || containsAdaptedValue(value, new HashSet<BindingValue>());
     }
