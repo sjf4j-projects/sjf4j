@@ -83,16 +83,13 @@ final class WriteEmitter {
                         plan,
                         0);
 
-        // Jackson always compiles structural nodes. Only unresolved children
-        // use local runtime fallback; they do not invalidate parent helpers.
+        // Jackson compiles every structural node; unknown children fall back
+        // locally instead of invalidating the parent helper.
         if (!isJackson()) {
-            // Fully concrete Jackson graphs receive includeNulls in native helpers.
-            // No runtime fallback is needed solely for the null policy.
-            boolean nativeJackson = isJackson()
-                    && nativeEligible(compiled.value(), new HashSet<BindingValue>());
-            if (!nativeJackson) {
-                out.beginBlock("if (!this.context.includeNulls)");
-                switch (plan.writeOutput()) {
+            // Retain the existing null-policy and dynamic-graph fallback for
+            // the other backends. Jackson filters properties in generated code.
+            out.beginBlock("if (!this.context.includeNulls)");
+            switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
                     break;
@@ -101,21 +98,17 @@ final class WriteEmitter {
                     break;
                 case WRITER:
                 case OUTPUT_STREAM:
-                    out.line("this.binder.writeNode(" +
-                            BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                    out.line("this.binder.writeNode("
+                            + BindingSource.parameterName(plan, 1) + ", " + source + ");");
                     out.line("return;");
                     break;
                 default:
                     throw new AssertionError(plan.writeOutput());
             }
-                out.endBlock();
-            }
+            out.endBlock();
 
-            // Dynamic children invalidate whole-method specialization. Delegate to
-            // the configured runtime binder rather than emitting mixed static/dynamic code.
             if (!nativeEligible(compiled.value(), new HashSet<BindingValue>())
-                    && !containsAdaptedValue(compiled.value(),
-                            new HashSet<BindingValue>())) {
+                    && !containsAdaptedValue(compiled.value(), new HashSet<BindingValue>())) {
                 switch (plan.writeOutput()) {
                     case STRING:
                         out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -125,8 +118,9 @@ final class WriteEmitter {
                         break;
                     case WRITER:
                     case OUTPUT_STREAM:
-                        out.line("this.binder.writeNode(" +
-                                BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                        out.line("this.binder.writeNode("
+                                + BindingSource.parameterName(plan, 1)
+                                + ", " + source + ");");
                         break;
                     default:
                         throw new AssertionError(plan.writeOutput());
@@ -134,7 +128,6 @@ final class WriteEmitter {
                 BindingSource.endOverride(out);
                 return;
             }
-
         }
 
         NameAllocator names =
