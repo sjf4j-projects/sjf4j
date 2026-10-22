@@ -33,7 +33,7 @@ jobs:
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
           java -jar "$jar" \
-            '.*(CompiledWriteBenchmark\\.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|direct)|CreekModelBenchmark\\.write_(compiled|native|blackbird))' \
+            '.*(CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|direct)|CreekModelBenchmark\.write_(compiled|native|blackbird))' \
             -bm avgt -tu us -t 1 -f 3 -wi 4 -w 250ms -i 7 -r 250ms \
             -prof gc -rf json -rff write-perf-results.json \
             | tee write-perf.log
