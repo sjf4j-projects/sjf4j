@@ -41,7 +41,7 @@ class CompiledGsonJsonpRootScalarTest {
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("g2 = writer.nativeWriter();"), backend);
-            assertTrue(generated.contains("_writeString(writer, value);"), backend);
+            assertTrue(generated.contains("_writeString(g, value);"), backend);
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> impl = loader.loadClass("fixture.Binder_Impl");
                 Class<?> choice = loader.loadClass("fixture.Choice");
