@@ -83,37 +83,16 @@ final class WriteEmitter {
                         plan,
                         0);
 
-        // Fully concrete Jackson graphs receive includeNulls in native helpers.
-        // No runtime fallback is needed solely for the null policy.
-        boolean nativeJackson = isJackson()
-                && nativeEligible(compiled.value(), new HashSet<BindingValue>());
-        if (!nativeJackson) {
-            out.beginBlock("if (!this.context.includeNulls)");
-            switch (plan.writeOutput()) {
-            case STRING:
-                out.line("return this.binder.writeNodeAsString(" + source + ");");
-                break;
-            case BYTES:
-                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
-                break;
-            case WRITER:
-            case OUTPUT_STREAM:
-                out.line("this.binder.writeNode(" +
-                        BindingSource.parameterName(plan, 1) + ", " + source + ");");
-                out.line("return;");
-                break;
-            default:
-                throw new AssertionError(plan.writeOutput());
-        }
-            out.endBlock();
-        }
-
-        // Dynamic children invalidate whole-method specialization. Delegate to
-        // the configured runtime binder rather than emitting mixed static/dynamic code.
-        if (!nativeEligible(compiled.value(), new HashSet<BindingValue>())
-                && !containsAdaptedValue(compiled.value(),
-                        new HashSet<BindingValue>())) {
-            switch (plan.writeOutput()) {
+        // Jackson always compiles structural nodes. Only unresolved children
+        // use local runtime fallback; they do not invalidate parent helpers.
+        if (!isJackson()) {
+            // Fully concrete Jackson graphs receive includeNulls in native helpers.
+            // No runtime fallback is needed solely for the null policy.
+            boolean nativeJackson = isJackson()
+                    && nativeEligible(compiled.value(), new HashSet<BindingValue>());
+            if (!nativeJackson) {
+                out.beginBlock("if (!this.context.includeNulls)");
+                switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
                     break;
@@ -124,12 +103,38 @@ final class WriteEmitter {
                 case OUTPUT_STREAM:
                     out.line("this.binder.writeNode(" +
                             BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                    out.line("return;");
                     break;
                 default:
                     throw new AssertionError(plan.writeOutput());
             }
-            BindingSource.endOverride(out);
-            return;
+                out.endBlock();
+            }
+
+            // Dynamic children invalidate whole-method specialization. Delegate to
+            // the configured runtime binder rather than emitting mixed static/dynamic code.
+            if (!nativeEligible(compiled.value(), new HashSet<BindingValue>())
+                    && !containsAdaptedValue(compiled.value(),
+                            new HashSet<BindingValue>())) {
+                switch (plan.writeOutput()) {
+                    case STRING:
+                        out.line("return this.binder.writeNodeAsString(" + source + ");");
+                        break;
+                    case BYTES:
+                        out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                        break;
+                    case WRITER:
+                    case OUTPUT_STREAM:
+                        out.line("this.binder.writeNode(" +
+                                BindingSource.parameterName(plan, 1) + ", " + source + ");");
+                        break;
+                    default:
+                        throw new AssertionError(plan.writeOutput());
+                }
+                BindingSource.endOverride(out);
+                return;
+            }
+
         }
 
         NameAllocator names =
@@ -320,7 +325,9 @@ final class WriteEmitter {
 
         out.line(writer + ".startDocument();");
 
-        if (hasNativeJsonWriter() && value.helperRequired()
+        if (isJackson()) {
+            jackson.emitRoot(out, value, source, writer);
+        } else if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
             if (isJackson()) {
                 out.line(value.helperName() + "(" + writer
@@ -338,6 +345,10 @@ final class WriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
+        if (isJackson()) {
+            jackson.emitHelper(out, value);
+            return;
+        }
         // Fastjson2 accepts ValueCodec in native helpers while the generic
         // streaming writer considers those subtrees non-native. A mixed POJO
         // can therefore call this helper with Fastjson2Writer even when the
@@ -422,6 +433,10 @@ final class WriteEmitter {
     }
 
     boolean needsStringHelper(BindingValue value) {
+        if (isJackson()) {
+            return value.direction() == BindingPlan.Direction.WRITE_TO
+                    && containsString(value, new HashSet<BindingValue>());
+        }
         if (!hasNativeJsonWriter()
                 || value.direction() != BindingPlan.Direction.WRITE_TO) {
             return false;
@@ -927,6 +942,7 @@ final class WriteEmitter {
 
     /** Native helpers require a fully concrete type graph. */
     boolean requiresWriteHelper(BindingValue value) {
+        if (isJackson()) return true;
         return nativeEligible(value, new HashSet<BindingValue>())
                 || containsAdaptedValue(value, new HashSet<BindingValue>());
     }
