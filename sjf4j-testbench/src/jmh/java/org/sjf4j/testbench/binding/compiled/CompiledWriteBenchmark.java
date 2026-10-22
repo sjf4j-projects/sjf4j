@@ -131,7 +131,9 @@ public class CompiledWriteBenchmark {
 
     // Trial-only correctness verification, outside the timed path. Object
     // property order and insignificant JSON formatting may differ.
-    @Setup(Level.Trial)
+    // Legacy full-backend verification is kept callable, but the diagnostic
+    // benchmarks verify their own paths without making JMH setup dependent on
+    // unrelated backends.
     public void verify() throws Exception {
         check("jackson2 pojo compiled string", JACKSON2_COMPILED.writePojo(USER));
         check("jackson2 pojo runtime string", JACKSON2_RUNTIME.writeNodeAsString(USER));
@@ -208,6 +210,14 @@ public class CompiledWriteBenchmark {
         check("fastjson2 native pojo utf8", json_fastjson2_pojo_utf8_native());
         check("fastjson2 native map string", json_fastjson2_map_string_native());
         check("fastjson2 native map utf8", json_fastjson2_map_utf8_native());
+    }
+
+    @Setup(Level.Trial)
+    public void verifyDirectWrapped() throws Exception {
+        check("jackson2 direct wrapped string", json_jackson2_pojo_string_direct_wrapped());
+        check("jackson2 direct wrapped utf8", json_jackson2_pojo_utf8_direct_wrapped());
+        check("jackson3 direct wrapped string", json_jackson3_pojo_string_direct_wrapped());
+        check("jackson3 direct wrapped utf8", json_jackson3_pojo_utf8_direct_wrapped());
     }
 
     private static void check(String label, String json) throws IOException {
