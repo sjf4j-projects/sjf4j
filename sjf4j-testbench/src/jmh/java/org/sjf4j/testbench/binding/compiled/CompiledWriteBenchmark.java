@@ -131,7 +131,7 @@ public class CompiledWriteBenchmark {
 
     // Trial-only correctness verification, outside the timed path. Object
     // property order and insignificant JSON formatting may differ.
-//    @Setup(Level.Trial)
+    @Setup(Level.Trial)
     public void verify() throws Exception {
         check("jackson2 pojo compiled string", JACKSON2_COMPILED.writePojo(USER));
         check("jackson2 pojo runtime string", JACKSON2_RUNTIME.writeNodeAsString(USER));
