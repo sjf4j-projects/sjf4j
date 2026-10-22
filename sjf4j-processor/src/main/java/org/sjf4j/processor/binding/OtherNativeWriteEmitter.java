@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.NameAllocator;
 
 /**
  * Gson and JSON-P write adapters for the shared compile-time structural
@@ -26,6 +27,28 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     private String generatorType() {
         return gson() ? "com.google.gson.stream.JsonWriter"
                 : "jakarta.json.stream.JsonGenerator";
+    }
+
+    /** Handles Gson/JSON-P root scalars without the streaming-only emitter. */
+    void emitRoot(JavaWriter out, BindingValue value, String expression,
+                  String writer, NameAllocator names) {
+        if (value.helperRequired()) {
+            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            return;
+        }
+
+        String generator = names.newName("g");
+        switch (value.kind()) {
+            case STRING:
+            case VALUE_CODEC:
+            case NUMBER:
+            case RUNTIME:
+                // These paths do not need a native generator local.
+                break;
+            default:
+                out.line(generatorType() + " " + generator + " = " + writer + ".nativeWriter();");
+        }
+        emitValue(out, value, expression, generator, names);
     }
 
     /** All structural helpers share the (writer, value) signature. */
@@ -123,6 +146,13 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeValue(JavaWriter out, BindingValue child, String expression) {
+        emitValue(out, child, expression, "g", null);
+    }
+
+    private void emitValue(JavaWriter out, BindingValue child, String expression,
+                           String generator, NameAllocator names) {
+        // Method parameters are reserved for root values; helpers use their local scope.
+        String item = names == null ? "item" : names.newName("item");
         if (child.helperRequired()) {
             out.line(child.helperName() + "(writer, " + expression + ");");
             return;
@@ -146,15 +176,15 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             case ENUM:
             case CHARACTER:
                 if (child.primitive()) {
-                    out.line("g." + method + "(Character.toString(" + expression + "));");
+                    out.line(generator + "." + method + "(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
-                    out.line(child.type() + " item = " + expression + ";");
-                    out.beginBlock("if (item == null)");
-                    writeNull(out);
+                    out.line(child.type() + " " + item + " = " + expression + ";");
+                    out.beginBlock("if (" + item + " == null)");
+                    out.line(generator + "." + (gson() ? "nullValue" : "writeNull") + "();");
                     out.endBlock(" else {");
                     out.indent();
-                    out.line("g." + method + "(item."
+                    out.line(generator + "." + method + "(" + item + "."
                             + (child.kind() == BindingValue.Kind.ENUM ? "name()" : "toString()")
                             + ");");
                     out.endBlock();
@@ -173,23 +203,23 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             } else if (!gson() && child.kind() == BindingValue.Kind.FLOAT) {
                 arg = "(double) (" + expression + ")";
             }
-            out.line("g." + method + "(" + arg + ");");
+            out.line(generator + "." + method + "(" + arg + ");");
         } else {
             out.beginBlock("");
-            out.line(child.type() + " item = " + expression + ";");
-            out.beginBlock("if (item == null)");
-            writeNull(out);
+            out.line(child.type() + " " + item + " = " + expression + ";");
+            out.beginBlock("if (" + item + " == null)");
+            out.line(generator + "." + (gson() ? "nullValue" : "writeNull") + "();");
             out.endBlock(" else {");
             out.indent();
-            String arg = "item";
+            String arg = item;
             if (!gson() && (child.kind() == BindingValue.Kind.BYTE
                     || child.kind() == BindingValue.Kind.SHORT)) {
-                arg = "item.intValue()";
+                arg = item + ".intValue()";
             } else if (child.kind() == BindingValue.Kind.FLOAT) {
                 // Preserve the previous widening semantics for boxed floats.
-                arg = "item.doubleValue()";
+                arg = item + ".doubleValue()";
             }
-            out.line("g." + method + "(" + arg + ");");
+            out.line(generator + "." + method + "(" + arg + ");");
             out.endBlock();
             out.endBlock();
         }
