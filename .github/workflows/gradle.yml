@@ -38,6 +38,13 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    # Temporary JMH smoke run for the focused 3-element A/B.
+    - name: Focused Jackson null-element JMH (diagnostic)
+      run: |
+        set -euo pipefail
+        ./gradlew :sjf4j-testbench:jmhJar
+        JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)
+        java -jar "$JMH_JAR" '.*JacksonNestedWriteBenchmark.jackson2_list_string_.*' -p friendCount=3 -p listKind=array -p nullSecond=true,false -f 1 -wi 4 -i 5 -w 200ms -r 200ms -tu ns
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
