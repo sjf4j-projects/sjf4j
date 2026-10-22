@@ -25,6 +25,14 @@ final class StructuralWriteEmitter {
         void writeMapName(JavaWriter out, String expression);
         void writeValue(JavaWriter out, BindingValue value, String expression);
         void writeRuntimeValue(JavaWriter out, String expression);
+
+        // Jackson writes delimiters automatically. Backends with explicit
+        // separators may override these compile-time hooks; counters are then
+        // generated only for those backends.
+        default boolean explicitObjectSeparators() { return false; }
+        default boolean explicitArraySeparators() { return false; }
+        default void beforeObjectMember(JavaWriter out, String ordinal) {}
+        default void beforeArrayElement(JavaWriter out, String ordinal) {}
     }
 
     private final Operations ops;
@@ -35,6 +43,7 @@ final class StructuralWriteEmitter {
 
     void emitPojo(JavaWriter out, BindingValue value) {
         ops.startObject(out);
+        if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         int index = 0;
         for (BindingProperty property : value.properties()) {
             BindingValue child = property.value();
@@ -47,6 +56,9 @@ final class StructuralWriteEmitter {
                 expr = propertyVar;
             }
 
+            if (ops.explicitObjectSeparators()) {
+                ops.beforeObjectMember(out, "memberCount++");
+            }
             ops.writePropertyName(out, value, index);
             ops.writeValue(out, child, expr);
             if (!child.primitive()) out.endBlock();
@@ -58,6 +70,9 @@ final class StructuralWriteEmitter {
                     + "value.dynamicProperties().entrySet())");
             out.line("Object dynamicValue = entry.getValue();");
             out.beginBlock("if (this.context.includeNulls || dynamicValue != null)");
+            if (ops.explicitObjectSeparators()) {
+                ops.beforeObjectMember(out, "memberCount++");
+            }
             ops.writeDynamicName(out, "entry.getKey()");
             ops.writeRuntimeValue(out, "dynamicValue");
             out.endBlock();
@@ -71,11 +86,16 @@ final class StructuralWriteEmitter {
         ops.startArray(out);
         out.beginBlock("if (value instanceof java.util.RandomAccess)");
         out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
+        if (ops.explicitArraySeparators()) ops.beforeArrayElement(out, "i");
         ops.writeValue(out, value.elementValue(), "value.get(i)");
         out.endBlock();
         out.endBlock(" else {");
         out.indent();
+        if (ops.explicitArraySeparators()) out.line("int elementCount = 0;");
         out.beginBlock("for (" + value.elementValue().type() + " element : value)");
+        if (ops.explicitArraySeparators()) {
+            ops.beforeArrayElement(out, "elementCount++");
+        }
         ops.writeValue(out, value.elementValue(), "element");
         out.endBlock();
         out.endBlock();
@@ -84,7 +104,11 @@ final class StructuralWriteEmitter {
 
     void emitSet(JavaWriter out, BindingValue value) {
         ops.startArray(out);
+        if (ops.explicitArraySeparators()) out.line("int elementCount = 0;");
         out.beginBlock("for (" + value.elementValue().type() + " element : value)");
+        if (ops.explicitArraySeparators()) {
+            ops.beforeArrayElement(out, "elementCount++");
+        }
         ops.writeValue(out, value.elementValue(), "element");
         out.endBlock();
         ops.endArray(out);
@@ -92,9 +116,13 @@ final class StructuralWriteEmitter {
 
     void emitMap(JavaWriter out, BindingValue value) {
         ops.startObject(out);
+        if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
         out.line("Object mapValue = entry.getValue();");
         out.beginBlock("if (this.context.includeNulls || mapValue != null)");
+        if (ops.explicitObjectSeparators()) {
+            ops.beforeObjectMember(out, "memberCount++");
+        }
         ops.writeMapName(out, "(String) entry.getKey()");
         ops.writeValue(out, value.mapValue(),
                 "(" + value.mapValue().type() + ") mapValue");
