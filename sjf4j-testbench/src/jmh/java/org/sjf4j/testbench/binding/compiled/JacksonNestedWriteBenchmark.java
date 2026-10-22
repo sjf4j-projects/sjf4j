@@ -27,7 +27,6 @@ import org.sjf4j.testbench.model.User;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -45,7 +44,8 @@ import java.util.concurrent.TimeUnit;
  * Default list has three entries (Friend, null, Friend), matching the original
  * CompiledWriteBenchmark fixture. Change -p friendCount=0,1,2,3,4,8 and
  * -p listKind=array,linked to isolate the per-element cost and List#get(i).
- * All lists with at least two elements contain null at index 1.
+ * Use -p nullSecond=false,true to separate null-element handling.
+ * The default input contains null at index 1, matching the User fixture.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -66,6 +66,9 @@ public class JacksonNestedWriteBenchmark {
     @Param({"array"})
     public String listKind;
 
+    @Param({"true"})
+    public boolean nullSecond;
+
     private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -85,7 +88,7 @@ public class JacksonNestedWriteBenchmark {
     private Friend friend;
     private List<Friend> friends;
     private User user;
-    private User userWithoutFriends;
+    private User userWithNullFriends;
 
     @Setup(org.openjdk.jmh.annotations.Level.Trial)
     public void setup() throws Exception {
@@ -110,19 +113,25 @@ public class JacksonNestedWriteBenchmark {
 
         for (int i = 0; i < friendCount; i++) {
             if (i < fixture.getFriends().size()) {
-                friends.add(fixture.getFriends().get(i));
+                Friend value = fixture.getFriends().get(i);
+                if (value == null && !nullSecond) {
+                    value = new Friend(1000L + i, "friend-" + i,
+                            1600000000000L + i, (i & 1) == 0);
+                }
+                friends.add(value);
             } else {
                 friends.add(new Friend(1000L + i, "friend-" + i,
                         1600000000000L + i, (i & 1) == 0));
             }
         }
 
-        // Do not mutate shared benchmark data; maintain identical properties in
-        // both User variants except for the friends field itself.
+        // Do not mutate shared benchmark data; keep the same User type and
+        // all properties identical except for the value of the friends field.
+        // This is a null-value control, NOT a User class without that field.
         user = JACKSON2_NATIVE.readValue(CompiledReadBenchmark.JSON_DATA, User.class);
         user.setFriends(friends);
-        userWithoutFriends = JACKSON2_NATIVE.readValue(CompiledReadBenchmark.JSON_DATA, User.class);
-        userWithoutFriends.setFriends(null);
+        userWithNullFriends = JACKSON2_NATIVE.readValue(CompiledReadBenchmark.JSON_DATA, User.class);
+        userWithNullFriends.setFriends(null);
 
         verifyOutputs();
     }
@@ -206,19 +215,19 @@ public class JacksonNestedWriteBenchmark {
         check("jackson3_user_utf8_native", userExpected, jackson3_user_utf8_native());
         check("jackson3_user_utf8_blackbird", userExpected, jackson3_user_utf8_blackbird());
 
-        JsonNode user_without_friendsExpected = JACKSON2_NATIVE.readTree(JACKSON2_NATIVE.writeValueAsString(userWithoutFriends));
-        check("jackson2_user_without_friends_string_compiled", user_without_friendsExpected, jackson2_user_without_friends_string_compiled());
-        check("jackson2_user_without_friends_string_native", user_without_friendsExpected, jackson2_user_without_friends_string_native());
-        check("jackson2_user_without_friends_string_blackbird", user_without_friendsExpected, jackson2_user_without_friends_string_blackbird());
-        check("jackson2_user_without_friends_utf8_compiled", user_without_friendsExpected, jackson2_user_without_friends_utf8_compiled());
-        check("jackson2_user_without_friends_utf8_native", user_without_friendsExpected, jackson2_user_without_friends_utf8_native());
-        check("jackson2_user_without_friends_utf8_blackbird", user_without_friendsExpected, jackson2_user_without_friends_utf8_blackbird());
-        check("jackson3_user_without_friends_string_compiled", user_without_friendsExpected, jackson3_user_without_friends_string_compiled());
-        check("jackson3_user_without_friends_string_native", user_without_friendsExpected, jackson3_user_without_friends_string_native());
-        check("jackson3_user_without_friends_string_blackbird", user_without_friendsExpected, jackson3_user_without_friends_string_blackbird());
-        check("jackson3_user_without_friends_utf8_compiled", user_without_friendsExpected, jackson3_user_without_friends_utf8_compiled());
-        check("jackson3_user_without_friends_utf8_native", user_without_friendsExpected, jackson3_user_without_friends_utf8_native());
-        check("jackson3_user_without_friends_utf8_blackbird", user_without_friendsExpected, jackson3_user_without_friends_utf8_blackbird());
+        JsonNode user_null_friendsExpected = JACKSON2_NATIVE.readTree(JACKSON2_NATIVE.writeValueAsString(userWithNullFriends));
+        check("jackson2_user_null_friends_string_compiled", user_null_friendsExpected, jackson2_user_null_friends_string_compiled());
+        check("jackson2_user_null_friends_string_native", user_null_friendsExpected, jackson2_user_null_friends_string_native());
+        check("jackson2_user_null_friends_string_blackbird", user_null_friendsExpected, jackson2_user_null_friends_string_blackbird());
+        check("jackson2_user_null_friends_utf8_compiled", user_null_friendsExpected, jackson2_user_null_friends_utf8_compiled());
+        check("jackson2_user_null_friends_utf8_native", user_null_friendsExpected, jackson2_user_null_friends_utf8_native());
+        check("jackson2_user_null_friends_utf8_blackbird", user_null_friendsExpected, jackson2_user_null_friends_utf8_blackbird());
+        check("jackson3_user_null_friends_string_compiled", user_null_friendsExpected, jackson3_user_null_friends_string_compiled());
+        check("jackson3_user_null_friends_string_native", user_null_friendsExpected, jackson3_user_null_friends_string_native());
+        check("jackson3_user_null_friends_string_blackbird", user_null_friendsExpected, jackson3_user_null_friends_string_blackbird());
+        check("jackson3_user_null_friends_utf8_compiled", user_null_friendsExpected, jackson3_user_null_friends_utf8_compiled());
+        check("jackson3_user_null_friends_utf8_native", user_null_friendsExpected, jackson3_user_null_friends_utf8_native());
+        check("jackson3_user_null_friends_utf8_blackbird", user_null_friendsExpected, jackson3_user_null_friends_utf8_blackbird());
 
     }
 
@@ -403,63 +412,63 @@ public class JacksonNestedWriteBenchmark {
     }
 
     @Benchmark
-    public String jackson2_user_without_friends_string_compiled() throws IOException {
-        return JACKSON2_COMPILED.writeUser(userWithoutFriends);
+    public String jackson2_user_null_friends_string_compiled() throws IOException {
+        return JACKSON2_COMPILED.writeUser(userWithNullFriends);
     }
 
     @Benchmark
-    public String jackson2_user_without_friends_string_native() throws IOException {
-        return JACKSON2_NATIVE.writeValueAsString(userWithoutFriends);
+    public String jackson2_user_null_friends_string_native() throws IOException {
+        return JACKSON2_NATIVE.writeValueAsString(userWithNullFriends);
     }
 
     @Benchmark
-    public String jackson2_user_without_friends_string_blackbird() throws IOException {
-        return JACKSON2_BLACKBIRD.writeValueAsString(userWithoutFriends);
+    public String jackson2_user_null_friends_string_blackbird() throws IOException {
+        return JACKSON2_BLACKBIRD.writeValueAsString(userWithNullFriends);
     }
 
     @Benchmark
-    public byte[] jackson2_user_without_friends_utf8_compiled() throws IOException {
-        return JACKSON2_COMPILED.writeUserUtf8(userWithoutFriends);
+    public byte[] jackson2_user_null_friends_utf8_compiled() throws IOException {
+        return JACKSON2_COMPILED.writeUserUtf8(userWithNullFriends);
     }
 
     @Benchmark
-    public byte[] jackson2_user_without_friends_utf8_native() throws IOException {
-        return JACKSON2_NATIVE.writeValueAsBytes(userWithoutFriends);
+    public byte[] jackson2_user_null_friends_utf8_native() throws IOException {
+        return JACKSON2_NATIVE.writeValueAsBytes(userWithNullFriends);
     }
 
     @Benchmark
-    public byte[] jackson2_user_without_friends_utf8_blackbird() throws IOException {
-        return JACKSON2_BLACKBIRD.writeValueAsBytes(userWithoutFriends);
+    public byte[] jackson2_user_null_friends_utf8_blackbird() throws IOException {
+        return JACKSON2_BLACKBIRD.writeValueAsBytes(userWithNullFriends);
     }
 
     @Benchmark
-    public String jackson3_user_without_friends_string_compiled() throws IOException {
-        return JACKSON3_COMPILED.writeUser(userWithoutFriends);
+    public String jackson3_user_null_friends_string_compiled() throws IOException {
+        return JACKSON3_COMPILED.writeUser(userWithNullFriends);
     }
 
     @Benchmark
-    public String jackson3_user_without_friends_string_native() throws IOException {
-        return JACKSON3_NATIVE.writeValueAsString(userWithoutFriends);
+    public String jackson3_user_null_friends_string_native() throws IOException {
+        return JACKSON3_NATIVE.writeValueAsString(userWithNullFriends);
     }
 
     @Benchmark
-    public String jackson3_user_without_friends_string_blackbird() throws IOException {
-        return JACKSON3_BLACKBIRD.writeValueAsString(userWithoutFriends);
+    public String jackson3_user_null_friends_string_blackbird() throws IOException {
+        return JACKSON3_BLACKBIRD.writeValueAsString(userWithNullFriends);
     }
 
     @Benchmark
-    public byte[] jackson3_user_without_friends_utf8_compiled() throws IOException {
-        return JACKSON3_COMPILED.writeUserUtf8(userWithoutFriends);
+    public byte[] jackson3_user_null_friends_utf8_compiled() throws IOException {
+        return JACKSON3_COMPILED.writeUserUtf8(userWithNullFriends);
     }
 
     @Benchmark
-    public byte[] jackson3_user_without_friends_utf8_native() throws IOException {
-        return JACKSON3_NATIVE.writeValueAsBytes(userWithoutFriends);
+    public byte[] jackson3_user_null_friends_utf8_native() throws IOException {
+        return JACKSON3_NATIVE.writeValueAsBytes(userWithNullFriends);
     }
 
     @Benchmark
-    public byte[] jackson3_user_without_friends_utf8_blackbird() throws IOException {
-        return JACKSON3_BLACKBIRD.writeValueAsBytes(userWithoutFriends);
+    public byte[] jackson3_user_null_friends_utf8_blackbird() throws IOException {
+        return JACKSON3_BLACKBIRD.writeValueAsBytes(userWithNullFriends);
     }
 
 }
