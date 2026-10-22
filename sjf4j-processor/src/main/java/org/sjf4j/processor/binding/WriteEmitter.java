@@ -317,7 +317,7 @@ final class WriteEmitter {
         out.line(writer + ".startDocument();");
 
         if (isJackson()) {
-            jackson.emitRoot(out, value, source, writer);
+            jackson.emitRoot(out, value, source, writer, names);
         } else if (isGsonOrJsonp()) {
             other.emitRoot(out, value, source, writer, names);
         } else {
@@ -424,10 +424,9 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(backend.backend());
         }
-        // Only native JSON backends register this helper.
-        out.beginBlock("private static void _writeString(" + backend.writerType()
-                + " writer, String value) throws java.io.IOException");
-        out.line(generator + " g = writer.nativeWriter();");
+        // Native JSON backends pass their existing generator directly.
+        out.beginBlock("private static void _writeString(" + generator
+                + " g, String value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
         out.line("g." + writeNull + "();");
         out.endBlock(" else {");

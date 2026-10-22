@@ -39,7 +39,6 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
         String generator = names.newName("g");
         switch (value.kind()) {
-            case STRING:
             case VALUE_CODEC:
             case NUMBER:
             case RUNTIME:
@@ -160,7 +159,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
         String method = gson() ? "value" : "write";
         if (child.kind() == BindingValue.Kind.STRING) {
-            out.line("_writeString(writer, " + expression + ");");
+            out.line("_writeString(" + generator + ", " + expression + ");");
             return;
         }
         switch (child.kind()) {

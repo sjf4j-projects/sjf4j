@@ -22,6 +22,7 @@ class CompiledWriteRoutingBoundaryTest {
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
                             + " @WriteTo String writeString(String value) throws java.io.IOException; "
+                            + " @WriteTo String writeNamedG(String g) throws java.io.IOException; "
                             + " @WriteTo String writeArray(int[] value) throws java.io.IOException; "
                             + " @WriteTo String writeObject(org.sjf4j.JsonObject value) throws java.io.IOException; "
                             + " @WriteTo String writeJsonArray(org.sjf4j.JsonArray value) throws java.io.IOException; "
@@ -35,12 +36,12 @@ class CompiledWriteRoutingBoundaryTest {
             if ("SIMPLE".equals(backend)) {
                 assertFalse(generated.contains("private static void _writeString("), backend);
             } else {
-                // _writeString always takes the SJF4J writer, not a native generator.
-                // JavaWriter imports backend writer types, so signatures use simple names.
                 assertTrue(generated.contains("private static void _writeString("),
-                        backend + ": missing String helper");
-                assertTrue(generated.contains(" writer, String value)"),
-                        backend + ": String helper must accept its streaming writer");
+                        backend + ": missing native String helper");
+                assertTrue(generated.contains(" g, String value)"),
+                        backend + ": String helper must accept the native generator");
+                assertFalse(generated.contains("_writeString(writer,"),
+                        backend + ": helper must not reacquire the generator");
             }
             // JsonObject and JsonArray are still dynamic: do not compile their contents.
             assertTrue(generated.contains("StreamingIO.writeNode(writer, value, this.context)"),
@@ -53,6 +54,8 @@ class CompiledWriteRoutingBoundaryTest {
                         .invoke(binder, "text"), backend);
                 assertEquals("null", impl.getMethod("writeString", String.class)
                         .invoke(binder, new Object[]{null}), backend);
+                assertEquals("\"named\"", impl.getMethod("writeNamedG", String.class)
+                        .invoke(binder, "named"), backend);
                 // Java arrays are intentionally delegated to Runtime on write.
                 assertEquals("[1,2,3]", impl.getMethod("writeArray", int[].class)
                         .invoke(binder, new int[]{1, 2, 3}), backend);
