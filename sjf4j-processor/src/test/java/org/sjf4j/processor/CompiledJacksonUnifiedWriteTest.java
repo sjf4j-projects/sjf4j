@@ -44,6 +44,7 @@ class CompiledJacksonUnifiedWriteTest {
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
                     + " @WriteTo String write(Model value) throws java.io.IOException; "
+                    + " @WriteTo String writeList(java.util.List<String> value) throws java.io.IOException; "
                     + "}");
 
             NavigatorTestCompiler.Result compiled =
@@ -66,6 +67,12 @@ class CompiledJacksonUnifiedWriteTest {
                 Object normal = CompiledInstances.global(binderType);
                 Object withoutNulls = CompiledInstances.create(binderType, new RuntimeContext(false));
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
+                java.lang.reflect.Method writeList = binderType.getMethod("writeList", java.util.List.class);
+                java.util.List<String> words = java.util.Arrays.asList("one", null, "two");
+                JsonNode arrayList = json.readTree((String) writeList.invoke(normal, new java.util.ArrayList<>(words)));
+                JsonNode linkedList = json.readTree((String) writeList.invoke(normal, new java.util.LinkedList<>(words)));
+                assertEquals(arrayList, linkedList, backend);
+                assertTrue(arrayList.get(1).isNull(), backend);
                 JsonNode full = json.readTree((String) write.invoke(normal, model));
                 JsonNode filtered = json.readTree((String) write.invoke(withoutNulls, model));
 
