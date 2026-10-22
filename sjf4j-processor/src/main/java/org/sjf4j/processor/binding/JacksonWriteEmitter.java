@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.NameAllocator;
 
 /**
  * Jackson 2/3 compiled write generation.
@@ -33,13 +34,15 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     }
 
     /** Writes a root scalar or delegates a root structural value. */
-    void emitRoot(JavaWriter out, BindingValue value, String expression, String writer) {
+    void emitRoot(JavaWriter out, BindingValue value, String expression,
+                  String writer, NameAllocator names) {
         if (value.helperRequired()) {
             out.line(value.helperName() + "(" + writer + ", " + expression + ");");
             return;
         }
-        out.line(generatorType() + " g = " + writer + ".nativeWriter();");
-        emitValue(out, value, expression, writer);
+        String generator = names.newName("g");
+        out.line(generatorType() + " " + generator + " = " + writer + ".nativeWriter();");
+        emitValue(out, value, expression, writer, generator, names.newName("item"));
     }
 
     /**
@@ -130,7 +133,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     @Override
     public void writeValue(JavaWriter out, BindingValue value, String expression) {
-        emitValue(out, value, expression, "writer");
+        emitValue(out, value, expression, "writer", "g", "item");
     }
 
     @Override
@@ -145,38 +148,38 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      * (writer, value), never a separately passed native generator.
      */
     private void emitValue(JavaWriter out, BindingValue child,
-                           String expression, String writer) {
+                           String expression, String writer, String generator, String item) {
         if (child.helperRequired()) {
             out.line(child.helperName() + "(" + writer + ", " + expression + ");");
             return;
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, writer, "g", backend.backend());
+                CodecWriteEmitter.emit(out, child, expression, writer, generator, backend.backend());
                 return;
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + writer + ", " + expression
                         + ", this.context);");
                 return;
             case STRING:
-                out.line("_writeString(" + writer + ", " + expression + ");");
+                out.line("_writeString(" + generator + ", " + expression + ");");
                 return;
             case NUMBER:
                 out.line(writer + ".writeNumber(" + expression + ");");
                 return;
             case ENUM:
                 out.beginBlock("");
-                out.line(child.type() + " item = " + expression + ";");
-                out.line("g.writeString(item == null ? null : item.name());");
+                out.line(child.type() + " " + item + " = " + expression + ";");
+                out.line(generator + ".writeString(" + item + " == null ? null : " + item + ".name());");
                 out.endBlock();
                 return;
             case CHARACTER:
                 if (child.primitive()) {
-                    out.line("g.writeString(Character.toString(" + expression + "));");
+                    out.line(generator + ".writeString(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
-                    out.line(child.type() + " item = " + expression + ";");
-                    out.line("g.writeString(item == null ? null : item.toString());");
+                    out.line(child.type() + " " + item + " = " + expression + ";");
+                    out.line(generator + ".writeString(" + item + " == null ? null : " + item + ".toString());");
                     out.endBlock();
                 }
                 return;
@@ -203,15 +206,15 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 throw new AssertionError("Unsupported Jackson value " + child.kind());
         }
         if (child.primitive()) {
-            out.line("g." + method + "(" + expression + ");");
+            out.line(generator + "." + method + "(" + expression + ");");
         } else {
             out.beginBlock("");
-            out.line(child.type() + " item = " + expression + ";");
-            out.beginBlock("if (item == null)");
-            out.line("g.writeNull();");
+            out.line(child.type() + " " + item + " = " + expression + ";");
+            out.beginBlock("if (" + item + " == null)");
+            out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line("g." + method + "(item);");
+            out.line(generator + "." + method + "(" + item + ");");
             out.endBlock();
             out.endBlock();
         }

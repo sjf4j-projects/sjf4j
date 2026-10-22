@@ -62,7 +62,7 @@ class CompiledFastjson2UnifiedWriteTest {
 
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
         assertTrue(generated.contains("instanceof RandomAccess"), generated);
-        assertTrue(generated.contains("_writeString(writer,"), generated);
+        assertTrue(generated.contains("_writeString(w,"), generated);
         assertTrue(generated.contains("_writeModelUtf8(writer,"), generated);
         assertTrue(generated.contains("_writeModelUtf16(writer,"), generated);
         assertTrue(generated.contains("writeName") && generated.contains("Raw("), generated);

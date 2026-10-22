@@ -23,8 +23,17 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.testbench.binding.handwritten.Jackson2HandPojoSerializedWriter;
+import org.sjf4j.testbench.binding.handwritten.Jackson3HandPojoSerializedWriter;
 import org.sjf4j.testbench.model.User;
 import tools.jackson.databind.json.JsonMapper;
+
+import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.io.SegmentedStringWriter;
+import com.fasterxml.jackson.core.util.BufferRecycler;
+import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -62,6 +71,11 @@ public class CompiledWriteBenchmark {
             new ObjectMapper().registerModule(new JavaTimeModule())
                     .registerModule(new BlackbirdModule())
                     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    private static final JsonFactory JACKSON2_DIRECT_FACTORY = JACKSON2_NATIVE.getFactory();
+    private static final tools.jackson.core.json.JsonFactory JACKSON3_DIRECT_FACTORY =
+            new tools.jackson.core.json.JsonFactory();
+    private static final tools.jackson.core.ObjectWriteContext JACKSON3_DIRECT_CONTEXT =
+            tools.jackson.core.ObjectWriteContext.empty();
     private static final JsonMapper JACKSON3_NATIVE = new JsonMapper();
     private static final JsonMapper JACKSON3_BLACKBIRD = JsonMapper.builder()
             .addModule(new tools.jackson.module.blackbird.BlackbirdModule()).build();
@@ -167,14 +181,18 @@ public class CompiledWriteBenchmark {
 
         check("jackson2 native pojo string", json_jackson2_pojo_string_native());
         check("jackson2 blackbird pojo string", json_jackson2_pojo_string_blackbird());
+        check("jackson2 direct pojo string", json_jackson2_pojo_string_direct());
         check("jackson2 native pojo utf8", json_jackson2_pojo_utf8_native());
         check("jackson2 blackbird pojo utf8", json_jackson2_pojo_utf8_blackbird());
+        check("jackson2 direct pojo utf8", json_jackson2_pojo_utf8_direct());
         check("jackson2 native map string", json_jackson2_map_string_native());
         check("jackson2 native map utf8", json_jackson2_map_utf8_native());
         check("jackson3 native pojo string", json_jackson3_pojo_string_native());
         check("jackson3 blackbird pojo string", json_jackson3_pojo_string_blackbird());
+        check("jackson3 direct pojo string", json_jackson3_pojo_string_direct());
         check("jackson3 native pojo utf8", json_jackson3_pojo_utf8_native());
         check("jackson3 blackbird pojo utf8", json_jackson3_pojo_utf8_blackbird());
+        check("jackson3 direct pojo utf8", json_jackson3_pojo_utf8_direct());
         check("jackson3 native map string", json_jackson3_map_string_native());
         check("jackson3 native map utf8", json_jackson3_map_utf8_native());
         check("gson native pojo string", json_gson_pojo_string_native());
@@ -268,6 +286,39 @@ public class CompiledWriteBenchmark {
         return JACKSON2_NATIVE.writeValueAsBytes(MAP);
     }
 
+
+    // Direct handwritten Jackson generator baseline: same User input, same output
+    // materialization and pooled buffers as compiled write, no SJF4J emitter.
+    @Benchmark
+    public String json_jackson2_pojo_string_direct() throws IOException {
+        BufferRecycler recycler = JACKSON2_DIRECT_FACTORY._getBufferRecycler();
+        SegmentedStringWriter output = new SegmentedStringWriter(recycler);
+        try {
+            try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(output)) {
+                Jackson2HandPojoSerializedWriter.writeUser(g, USER);
+            }
+            return output.getAndClear();
+        } finally {
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_pojo_utf8_direct() throws IOException {
+        BufferRecycler recycler = JACKSON2_DIRECT_FACTORY._getBufferRecycler();
+        ByteArrayBuilder output = new ByteArrayBuilder(recycler);
+        try {
+            try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(
+                    output, JsonEncoding.UTF8)) {
+                Jackson2HandPojoSerializedWriter.writeUser(g, USER);
+            }
+            return output.toByteArray();
+        } finally {
+            output.release();
+            recycler.releaseToPool();
+        }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
@@ -345,6 +396,43 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_jackson3_map_utf8_native() throws Exception {
         return JACKSON3_NATIVE.writeValueAsBytes(MAP);
+    }
+
+
+    // Jackson3 counterpart; use the same direct handwritten token sequence.
+    @Benchmark
+    public String json_jackson3_pojo_string_direct() throws IOException {
+        tools.jackson.core.util.BufferRecycler recycler =
+                JACKSON3_DIRECT_FACTORY._getBufferRecycler();
+        tools.jackson.core.io.SegmentedStringWriter output =
+                new tools.jackson.core.io.SegmentedStringWriter(recycler);
+        try {
+            try (tools.jackson.core.JsonGenerator g = JACKSON3_DIRECT_FACTORY.createGenerator(
+                    JACKSON3_DIRECT_CONTEXT, output)) {
+                Jackson3HandPojoSerializedWriter.writeUser(g, USER);
+            }
+            return output.getAndClear();
+        } finally {
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson3_pojo_utf8_direct() throws IOException {
+        tools.jackson.core.util.BufferRecycler recycler =
+                JACKSON3_DIRECT_FACTORY._getBufferRecycler();
+        tools.jackson.core.util.ByteArrayBuilder output =
+                new tools.jackson.core.util.ByteArrayBuilder(recycler);
+        try {
+            try (tools.jackson.core.JsonGenerator g = JACKSON3_DIRECT_FACTORY.createGenerator(
+                    JACKSON3_DIRECT_CONTEXT, output)) {
+                Jackson3HandPojoSerializedWriter.writeUser(g, USER);
+            }
+            return output.toByteArray();
+        } finally {
+            output.release();
+            recycler.releaseToPool();
+        }
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
