@@ -501,7 +501,7 @@ final class WriteEmitter {
             default:
                 throw new AssertionError(backend.backend());
         }
-        if (isJackson()) {
+        if (isJackson() || backend.backend() == Backend.FASTJSON2) {
             out.beginBlock("private static void _writeString(" + backend.writerType()
                     + " writer, String value) throws java.io.IOException");
             out.line(generator + " g = writer.nativeWriter();");
