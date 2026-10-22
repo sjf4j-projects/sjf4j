@@ -322,13 +322,8 @@ final class WriteEmitter {
             jackson.emitRoot(out, value, source, writer);
         } else if (hasNativeJsonWriter() && value.helperRequired()
                 && nativeEligible(value, new HashSet<BindingValue>())) {
-            if (isJackson()) {
-                out.line(value.helperName() + "(" + writer
-                        + ".nativeWriter(), " + source + ", this.context.includeNulls);");
-            } else {
-                out.line(value.helperName() + "(" + writer
-                        + ".nativeWriter(), " + source + ");");
-            }
+            out.line(value.helperName() + "(" + writer
+                    + ".nativeWriter(), " + source + ");");
         } else {
             writeValue(out, value, writer, source);
         }
@@ -357,10 +352,6 @@ final class WriteEmitter {
         if (!fastjsonNative && hasNativeJsonWriter() && nativeEligible(value,
                 new HashSet<BindingValue>())) {
             switch (backend.backend()) {
-                case JACKSON2:
-                case JACKSON3:
-                    jackson.emitHelper(out, value);
-                    return;
                 case FASTJSON2:
                     fastjson2.emitHelper(out, value);
                     return;
@@ -882,14 +873,14 @@ final class WriteEmitter {
     }
 
 
-    /** Native helpers require a fully concrete type graph. */
+    /** Jackson always emits structural helpers; other backends retain legacy eligibility. */
     boolean requiresWriteHelper(BindingValue value) {
         if (isJackson()) return true;
         return nativeEligible(value, new HashSet<BindingValue>())
                 || containsAdaptedValue(value, new HashSet<BindingValue>());
     }
 
-    /** Codec subtrees use compiled StreamingWriter, preserving native POJO fast paths. */
+    /** Remaining non-Jackson paths use this legacy subtree classification. */
     private boolean containsAdaptedValue(BindingValue value,
             Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
