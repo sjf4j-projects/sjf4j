@@ -1,13 +1,8 @@
 name: Creek write profiling (experimental)
 
+# Keep the expensive profiling workflow available on demand, not on every PR.
 on:
-  pull_request:
-    paths:
-      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CreekWritePolyCountBenchmark.java'
-      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CreekWriteListCountBenchmark.java'
-      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/WriteEmitter.java'
-      - 'sjf4j-processor/src/test/java/org/sjf4j/processor/CompiledJacksonMixedPojoWriteTest.java'
-      - '.github/workflows/creek-write-profile.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
