@@ -38,7 +38,6 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         switch (value.kind()) {
             case JSON_OBJECT:
             case JSON_ARRAY:
-            case ARRAY:
                 writeRuntimeValue(out, "value");
                 break;
             case ONE_OF:

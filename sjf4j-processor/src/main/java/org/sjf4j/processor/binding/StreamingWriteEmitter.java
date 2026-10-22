@@ -329,12 +329,6 @@ final class StreamingWriteEmitter {
                 out.endBlock();
                 return;
 
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + expression + ", " + "this.context);");
-                return;
-
             case RUNTIME:
                 out.line(
                         STREAMING_IO +
