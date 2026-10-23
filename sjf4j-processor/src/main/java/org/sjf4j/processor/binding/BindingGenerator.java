@@ -55,6 +55,28 @@ public final class BindingGenerator {
         }
 
         generated.enableRuntimeContext();
+        // Backend configuration is a runtime I/O concern; structural binding
+        // decisions remain owned by the annotation processor.
+        String backendConfigType = null;
+        String mapperConvenience = null;
+        switch (backend.backend()) {
+            case JACKSON2:
+                backendConfigType = "com.fasterxml.jackson.core.JsonFactory";
+                mapperConvenience = "com.fasterxml.jackson.databind.ObjectMapper";
+                break;
+            case JACKSON3:
+                backendConfigType = "tools.jackson.core.json.JsonFactory";
+                break;
+            case GSON:
+                backendConfigType = "com.google.gson.Gson";
+                break;
+            default:
+                break;
+        }
+        if (backendConfigType != null) {
+            generated.enableBackendConstructor(
+                    backendConfigType, backend.binderType(), mapperConvenience);
+        }
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
         generated.addContextInitializer(out ->
