@@ -19,7 +19,7 @@ final class JsonPathComparisonSupport {
         List<Executable> assertions = new ArrayList<>(cases.length);
         for (String[] c : cases) assertions.add(() -> {
             try {
-                assertEquals(json(c[3]), JsonPath.parse(c[1]).eval(json(c[2])), c[0]);
+                assertEquals(json(c[3]), JsonPath.parse(c[1]).find(json(c[2])), c[0]);
             } catch (RuntimeException e) {
                 fail(c[0], e);
             }
@@ -30,7 +30,7 @@ final class JsonPathComparisonSupport {
     static void noConsensus(String[][] cases) {
         for (String[] c : cases) {
             try {
-                JsonPath.parse(c[1]).eval(json(c[2]));
+                JsonPath.parse(c[1]).find(json(c[2]));
             } catch (RuntimeException ignored) {
                 // Unsupported syntax has no normative result.
             }
@@ -41,7 +41,7 @@ final class JsonPathComparisonSupport {
         List<Executable> assertions = new ArrayList<>(cases.length);
         for (String[] c : cases) {
             assertions.add(() -> assertThrows(RuntimeException.class,
-                    () -> JsonPath.parse(c[1]).eval(json(c[2])), c[0]));
+                    () -> JsonPath.parse(c[1]).find(json(c[2])), c[0]));
         }
         assertAll(assertions);
     }

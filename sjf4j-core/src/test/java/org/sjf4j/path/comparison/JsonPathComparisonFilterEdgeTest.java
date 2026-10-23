@@ -23,7 +23,7 @@ class JsonPathComparisonFilterEdgeTest {
                 {"filter_expression_with_value_after_dot_notation_with_wildcard_on_array_of_objects", "$.*[?(@.key)]", "[{\"some\":\"some value\"},{\"key\":\"value\"}]", "[]"}
         });
         assertEquals(Sjf4j.global().fromJson("[[1,2,3,4]]"),
-                JsonPath.parse("$[?(@.length() == 4)]").eval(Sjf4j.global().fromJson(LENGTHS)),
+                JsonPath.parse("$[?(@.length() == 4)]").find(Sjf4j.global().fromJson(LENGTHS)),
                 "filter_expression_with_length_function");
     }
 

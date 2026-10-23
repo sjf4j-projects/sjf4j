@@ -41,13 +41,12 @@ public class JsonPathTest {
         JsonObject document = JsonObject.of("names", JsonArray.of("Ada", "Lin"));
         JsonPath path = JsonPath.parse("$.names[*]");
 
-        List<String> names = path.find(document, new String[0]);
+        List<String> names = path.find(document);
         assertEquals(Arrays.asList("Ada", "Lin"), names);
-        assertEquals(Collections.emptyList(), JsonPath.parse("$.missing").find(document, new String[0]));
+        assertEquals(Collections.emptyList(), JsonPath.parse("$.missing").find(document));
 
-        assertThrows(IllegalArgumentException.class, () -> path.find(document, "Ada"));
-        assertThrows(NullPointerException.class, () -> path.find(document, (String[]) null));
-        assertThrows(NodeException.class, () -> path.find(document, new Integer[0]));
+        Object obj = path.find(document);
+        assertEquals("[Ada, Lin]", obj.toString());
     }
 
     @Test
@@ -1000,19 +999,20 @@ public class JsonPathTest {
     public void testEval1() {
         Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         JsonPath pathSum = JsonPath.parse("$..age.sum()");
-        log.info("sum={}", pathSum.eval(person));
+        log.info("sum={}", (Object) pathSum.eval(person));
 
         JsonPath pathLength = JsonPath.parse("$..age.length()");
-        log.info("length={}", pathLength.eval(person));
+        log.info("length={}", (Object) pathLength.eval(person));
 
         JsonPath pathCount = JsonPath.parse("$..age.count()");
-        log.info("count={}", pathCount.eval(person));
+        log.info("count={}", (Object) pathCount.eval(person));
 
         JsonPath pathMatch = JsonPath.parse("$..email.match('alice..xample.com')");
-        log.info("match={}", pathMatch.eval(person));
+        log.info("match={}", (Object) pathMatch.eval(person));
 
         JsonPath pathSearch = JsonPath.parse("$..email.search('alice')");
-        log.info("search={}", pathSearch.eval(person));
+        log.info("search={}", (Object) pathSearch.eval(person));
+
         JsonPath pathSearch2 = JsonPath.parse("$..email.search('zack')");
         log.info("search={}", pathSearch2.eval(person, Boolean.class));
     }
@@ -1027,7 +1027,7 @@ public class JsonPathTest {
         List babies = JsonPath.parse("$.babies").eval(p1, List.class);
         log.info("babies={}", babies);
 
-        long cnt = JsonPath.parse("$.babies.count()").eval(p1, Long.class);
+        Long cnt = JsonPath.parse("$.babies.count()").eval(p1);
         log.info("cnt={}", cnt);
     }
 
@@ -1085,23 +1085,23 @@ public class JsonPathTest {
         log.info("rs15={}", rs15);
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testRfc9535_2() {
         JsonObject jo = JsonObject.fromJson(RFC9535_EXAMPLE1);
-        Object rs1 = jo.evalByPath("$.a[?@.b == 'kilo'].b");
+        List<String> rs1 = jo.findByPath("$.a[?@.b == 'kilo'].b", String.class);
         log.info("rs1={}", rs1);
         assertEquals(Collections.singletonList("kilo"), rs1);
+        assertEquals("kilo", jo.evalByPath("$.a[?@.b == 'kilo'].b"));
 
         Object rs3 = jo.evalByPath("$.a[?@>3.5].count()");
         log.info("rs3={}", rs3);
         assertEquals(3, rs3);
 
-        Object rs10 = jo.evalByPath("$.a[?search(@.b, \"[jk]\")].b");
+        List<String> rs10 = jo.findByPath("$.a[?search(@.b, \"[jk]\")].b", String.class);
         log.info("rs10={}", rs10);
-        assertEquals("k", ((List<Object>) rs10).get(1));
+        assertEquals("k", rs10.get(1));
 
-        Object v1 = jo.evalByPath("$..*[?(@.b == 'kilo')].b");
+        List<String> v1 = jo.findByPath("$..*[?(@.b == 'kilo')].b", String.class);
         log.info("v1={}", v1);
         assertEquals(Collections.singletonList("kilo"), v1);
     }

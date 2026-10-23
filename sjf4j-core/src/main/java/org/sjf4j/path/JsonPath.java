@@ -913,24 +913,24 @@ public class JsonPath {
      * --------------------------------------------------------------
      */
 
-    /**
-     * Finds all matching values for this path.
-     * <p>
-     * The returned list is empty when there is no match. Explicit null matches
-     * are retained as null elements; missing locations are omitted.
-     */
-    public List<Object> find(Object container) {
-        Asserts.notNull(container, "container");
-        if (singleGet) {
-            List<Object> result = new ArrayList<>(1);
-            Object value = _findOne(container, 1, segments.length);
-            if (value != MISSING) result.add(value);
-            return result;
-        }
-        List<Object> result = new ArrayList<>();
-        _findAll(container, container, 1, segments.length, result, Function.identity(), new NodeWalker.Access());
-        return result;
-    }
+//    /**
+//     * Finds all matching values for this path.
+//     * <p>
+//     * The returned list is empty when there is no match. Explicit null matches
+//     * are retained as null elements; missing locations are omitted.
+//     */
+//    public List<Object> find(Object container) {
+//        Asserts.notNull(container, "container");
+//        if (singleGet) {
+//            List<Object> result = new ArrayList<>(1);
+//            Object value = _findOne(container, 1, segments.length);
+//            if (value != MISSING) result.add(value);
+//            return result;
+//        }
+//        List<Object> result = new ArrayList<>();
+//        _findAll(container, container, 1, segments.length, result, Function.identity(), new NodeWalker.Access());
+//        return result;
+//    }
 
     /**
      * Finds and converts all matches using strict conversion.
@@ -977,6 +977,7 @@ public class JsonPath {
         return result;
     }
 
+
     /*
      * --------------------------------------------------------------
      * Eval
@@ -991,7 +992,7 @@ public class JsonPath {
      * When the last segment is a function token, the function is invoked with
      * the matched value(s) as target plus parsed literal arguments.
      */
-    public Object eval(Object container) {
+    public Object _eval(Object container) {
         Asserts.notNull(container, "container");
         PathSegment tk = segments[segments.length - 1];
         if (singleGet) {
@@ -1024,7 +1025,7 @@ public class JsonPath {
         Asserts.notNull(clazz, "clazz");
         Object value = null;
         try {
-            value = eval(container);
+            value = _eval(container);
             if (!singleGet && !(tail() instanceof PathSegment.Function) && value instanceof List && ((List<?>) value).size() == 1
                     && !Collection.class.isAssignableFrom(clazz) && clazz != JsonArray.class && !clazz.isArray()) {
                 value = ((List<?>) value).get(0);
@@ -1044,6 +1045,19 @@ public class JsonPath {
             throw new NodeException(message, e);
         }
     }
+
+    /**
+     * Evaluates the path and converts the result using strict conversion.
+     * A single-element multi-match list is unwrapped when the requested target
+     * is neither a collection, {@link JsonArray}, nor a Java array.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T eval(Object container, T... reified) {
+        if (reified.length > 0) throw new IllegalArgumentException("reified varargs must be empty");
+        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+        return eval(container, clazz);
+    }
+
 
     /**
      * Evaluates the path and converts the result using lenient conversion.
