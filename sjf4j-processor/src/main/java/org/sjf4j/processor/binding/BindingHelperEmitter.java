@@ -98,9 +98,7 @@ final class BindingHelperEmitter {
                 && CodecWriteEmitter.builtInConstant(value.type().toString()) != null) {
             String flag = value.helperName() + "BuiltIn";
             generated.addField(out -> out.line("private final boolean " + flag + ";"));
-            generated.addContextInitializer(out -> out.line("this." + flag
-                    + " = (Object) this." + value.helperName() + ".codec == org.sjf4j.value.ValueCodec."
-                    + CodecWriteEmitter.builtInConstant(value.type().toString()) + ";"));
+
         }
         if (autoRead) {
             generated.addContextInitializer(out -> out.line(
@@ -109,17 +107,25 @@ final class BindingHelperEmitter {
                             + value.helperName() + "Set.defaultInfo.rawJsonType, "
                             + "context.valueFormat(" + value.type() + ".class));"));
         } else {
-            generated.addContextInitializer(out -> out.line(
-                    "this." + value.helperName() + " = "
-                            + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
-                            + value.type() + ".class, "
-                            + (value.codecName() == null
-                                    ? "context.valueFormat(" + value.type() + ".class)"
-                                    : JavaWriter.stringLiteral(value.codecName()))
-                            + ", "
-                            + (value.codecPattern() == null ? "null"
-                                    : JavaWriter.stringLiteral(value.codecPattern()))
-                            + ");"));
+            generated.addContextInitializer(out -> {
+                out.line("this." + value.helperName() + " = "
+                        + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
+                        + value.type() + ".class, "
+                        + (value.codecName() == null
+                                ? "context.valueFormat(" + value.type() + ".class)"
+                                : JavaWriter.stringLiteral(value.codecName()))
+                        + ", "
+                        + (value.codecPattern() == null ? "null"
+                                : JavaWriter.stringLiteral(value.codecPattern()))
+                        + ");");
+                String canonical = value.direction() == BindingPlan.Direction.WRITE_TO
+                        ? CodecWriteEmitter.builtInConstant(value.type().toString()) : null;
+                if (canonical != null) {
+                    out.line("this." + value.helperName() + "BuiltIn = (Object) this."
+                            + value.helperName() + ".codec == org.sjf4j.value.ValueCodec."
+                            + canonical + ";");
+                }
+            });
         }
     }
 
