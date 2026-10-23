@@ -938,6 +938,9 @@ public class JsonPath {
     public <T> List<T> find(Object container, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Asserts.notNull(container, "container");
+        if (tail() instanceof PathSegment.Function) {
+            throw new NodeException("function path '" + this + "' cannot be used with find()");
+        }
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -966,6 +969,9 @@ public class JsonPath {
     public <T> List<T> findAs(Object container, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Asserts.notNull(container, "container");
+        if (tail() instanceof PathSegment.Function) {
+            throw new NodeException("function path '" + this + "' cannot be used with findAs()");
+        }
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
