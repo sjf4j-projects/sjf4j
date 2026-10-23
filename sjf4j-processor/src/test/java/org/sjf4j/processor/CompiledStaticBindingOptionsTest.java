@@ -82,10 +82,10 @@ class CompiledStaticBindingOptionsTest {
             Class<?> beanType = loader.loadClass("fixture.Bean");
             Object binder = CompiledInstances.global(binderType);
             Object bean = beanType.getConstructor().newInstance();
-            assertEquals("{\\"when\\":1234}",
+            assertEquals("{\"when\":1234}",
                     binderType.getMethod("write", beanType).invoke(binder, bean));
             Object decoded = binderType.getMethod("read", String.class)
-                    .invoke(binder, "{\\"when\\":1234}");
+                    .invoke(binder, "{\"when\":1234}");
             assertEquals(java.time.Instant.ofEpochMilli(1234),
                     beanType.getField("when").get(decoded));
         }
