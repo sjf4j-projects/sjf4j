@@ -134,9 +134,9 @@ class CompiledValueCodecDiscoveryTest {
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
-                        .contains("readValueCodec"), compiled.generatedSource("fixture/Binder_Impl.java"));
+                         .contains("Third.MONEY"), compiled.generatedSource("fixture/Binder_Impl.java"));
 
-        ValueRegistry.registerAnnotated(ClasspathRegistries.Third.class);
+        // Configured binders directly reference the declared codec: no global registration.
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
             Object binder = binderType.getConstructor().newInstance();
@@ -167,7 +167,7 @@ class CompiledValueCodecDiscoveryTest {
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("alpha"), generated);
-        assertTrue(generated.contains("readValueCodec"), generated);
+        assertTrue(generated.contains("First.ALPHA"), generated);
+        assertFalse(generated.contains("requireRegisteredValueInfo"), generated);
     }
 }
