@@ -62,9 +62,9 @@ class CompiledJacksonUnifiedWriteTest {
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("instanceof RandomAccess"), backend);
             assertTrue(generated.contains("writer.nativeWriter()"), backend);
-            assertTrue(generated.contains("private void _write"), backend);
+            assertTrue(generated.contains("private static void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
-            assertTrue(generated.contains("private void _writeStringMember("), backend);
+            assertTrue(generated.contains("private static void _writeStringMember("), backend);
             assertFalse(generated.contains("if (value == null && !this.context.includeNulls)"), backend);
             assertTrue(generated.contains("_writeString(g, value);"), backend);
             assertTrue(generated.contains("_writeStringMember(g,"), backend);
