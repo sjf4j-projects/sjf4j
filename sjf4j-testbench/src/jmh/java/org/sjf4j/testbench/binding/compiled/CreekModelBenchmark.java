@@ -89,6 +89,7 @@ public class CreekModelBenchmark {
         }
 
         checkRead("native", expected, read_native());
+        checkRead("blackbird", expected, read_blackbird());
         checkRead("runtime", expected, read_runtime());
         checkRead("compiled", expected, read_compiled());
         checkWrite("native", expectedTree, write_native(state), expected);
@@ -116,6 +117,11 @@ public class CreekModelBenchmark {
     @Benchmark
     public TestModel read_native() throws IOException {
         return JACKSON_NATIVE.readValue(json, TestModel.class);
+    }
+
+    @Benchmark
+    public TestModel read_blackbird() throws IOException {
+        return JACKSON_BLACKBIRD.readValue(json, TestModel.class);
     }
 
     @Benchmark

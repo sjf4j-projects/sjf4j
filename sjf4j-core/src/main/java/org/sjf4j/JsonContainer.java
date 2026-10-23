@@ -758,18 +758,19 @@ public abstract class JsonContainer {
      */
 
     /**
-     * Finds all path matches.
-     */
-    public List<Object> findByPath(String path) {
-        return JsonPath.parse(path).find(this);
-    }
-
-    /**
      * Finds all path matches converted to target type.
      */
     public <T> List<T> findByPath(String path, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).find(this, clazz);
+    }
+
+    /**
+     * Finds all path matches.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> findByPath(String path, T... reified) {
+        return JsonPath.parse(path).find(this, reified);
     }
 
     /**
@@ -785,12 +786,6 @@ public abstract class JsonContainer {
      * Eval
      * --------------------------------------------------------------
      */
-    /**
-     * Evaluates a path and returns a single value or list result.
-     */
-    public Object evalByPath(String path) {
-        return JsonPath.parse(path).eval(this);
-    }
 
     /**
      * Evaluates path and converts result to target type.
@@ -798,6 +793,14 @@ public abstract class JsonContainer {
     public <T> T evalByPath(String path, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         return JsonPath.parse(path).eval(this, clazz);
+    }
+
+    /**
+     * Evaluates a path and returns a single value or list result.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T evalByPath(String path, T... reified) {
+        return JsonPath.parse(path).eval(this, reified);
     }
 
     /**
