@@ -140,10 +140,13 @@ public final class BindingGenerator {
             return;
         }
 
+        org.sjf4j.annotation.binding.BindingOptions staticOptions =
+                type.getAnnotation(org.sjf4j.annotation.binding.BindingOptions.class);
         BindingEmitter emitter =
                 new BindingEmitter(
                         context,
-                        backend);
+                        backend,
+                        staticOptions == null ? null : staticOptions.includeNulls());
 
         for (BindingCompiler.CompiledMethod method :
                 compiled) {
