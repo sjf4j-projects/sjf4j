@@ -37,7 +37,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String writer, NameAllocator names) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            out.line(value.helperName() + "(" + writer + ", " + writer
+                    + ".nativeWriter(), " + expression + ");");
             return;
         }
         String generator = names.newName("g");
@@ -51,9 +52,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
-                + backend.writerType() + " writer, " + value.type()
-                + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = writer.nativeWriter();");
+                + backend.writerType() + " writer, " + generatorType()
+                + " g, " + value.type() + " value) throws java.io.IOException");
 
         if (value.kind() == BindingValue.Kind.ONE_OF) {
             structures.emitOneOf(out, value);
@@ -160,7 +160,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     private void emitValue(JavaWriter out, BindingValue child,
                            String expression, String writer, String generator, String item) {
         if (child.helperRequired()) {
-            out.line(child.helperName() + "(" + writer + ", " + expression + ");");
+            out.line(child.helperName() + "(" + writer + ", " + generator
+                    + ", " + expression + ");");
             return;
         }
         switch (child.kind()) {
