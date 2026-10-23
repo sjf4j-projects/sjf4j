@@ -92,6 +92,11 @@ public class CompiledWriteBenchmark {
 
     private static final Jackson2Binder JACKSON2_RUNTIME = new Jackson2Binder();
     private static final Jackson3Binder JACKSON3_RUNTIME = new Jackson3Binder();
+    private final org.sjf4j.testbench.binding.handwritten.Jackson2HandPojoOwnedCodecWriter
+            jackson2OwnedCodec = new org.sjf4j.testbench.binding.handwritten.Jackson2HandPojoOwnedCodecWriter(JACKSON2_RUNTIME);
+    private final org.sjf4j.testbench.binding.handwritten.Jackson3HandPojoOwnedCodecWriter
+            jackson3OwnedCodec = new org.sjf4j.testbench.binding.handwritten.Jackson3HandPojoOwnedCodecWriter(JACKSON3_RUNTIME);
+
     private static final GsonBinder GSON_RUNTIME = new GsonBinder();
     private static final Fastjson2Binder FASTJSON2_RUNTIME = new Fastjson2Binder();
     private static final JsonpBinder JSONP_RUNTIME = new JsonpBinder();
@@ -230,6 +235,8 @@ public class CompiledWriteBenchmark {
         check("jackson2 direct compiled-shape utf8", json_jackson2_pojo_utf8_direct_compiled_shape());
         check("jackson2 direct flat strings string", json_jackson2_pojo_string_direct_flat_strings());
         check("jackson2 direct flat strings utf8", json_jackson2_pojo_utf8_direct_flat_strings());
+        check("jackson2 owned codec handwritten string", json_jackson2_pojo_string_direct_owned_codec());
+        check("jackson2 owned codec handwritten utf8", json_jackson2_pojo_utf8_direct_owned_codec());
         check("jackson3 direct wrapped string", json_jackson3_pojo_string_direct_wrapped());
         check("jackson3 direct wrapped utf8", json_jackson3_pojo_utf8_direct_wrapped());
         check("jackson3 direct ordered string", json_jackson3_pojo_string_direct_ordered());
@@ -238,6 +245,8 @@ public class CompiledWriteBenchmark {
         check("jackson3 direct compiled-shape utf8", json_jackson3_pojo_utf8_direct_compiled_shape());
         check("jackson3 direct flat strings string", json_jackson3_pojo_string_direct_flat_strings());
         check("jackson3 direct flat strings utf8", json_jackson3_pojo_utf8_direct_flat_strings());
+        check("jackson3 owned codec handwritten string", json_jackson3_pojo_string_direct_owned_codec());
+        check("jackson3 owned codec handwritten utf8", json_jackson3_pojo_utf8_direct_owned_codec());
     }
 
     private static void checkUri(String label, String json) throws IOException {
@@ -488,6 +497,17 @@ public class CompiledWriteBenchmark {
         }
     }
 
+    /** Handwritten fields, but owns the injected Binder and matches generated URI null semantics. */
+    @Benchmark
+    public String json_jackson2_pojo_string_direct_owned_codec() throws IOException {
+        return jackson2OwnedCodec.writePojoString(USER);
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_pojo_utf8_direct_owned_codec() throws IOException {
+        return jackson2OwnedCodec.writePojoUtf8(USER);
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
@@ -675,6 +695,17 @@ public class CompiledWriteBenchmark {
             w.flush();
             return w.toBytes();
         }
+    }
+
+    /** Handwritten fields, but owns the injected Binder and matches generated URI null semantics. */
+    @Benchmark
+    public String json_jackson3_pojo_string_direct_owned_codec() throws IOException {
+        return jackson3OwnedCodec.writePojoString(USER);
+    }
+
+    @Benchmark
+    public byte[] json_jackson3_pojo_utf8_direct_owned_codec() throws IOException {
+        return jackson3OwnedCodec.writePojoUtf8(USER);
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
