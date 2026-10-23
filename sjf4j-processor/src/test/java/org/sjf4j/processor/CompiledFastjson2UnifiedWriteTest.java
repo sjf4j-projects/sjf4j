@@ -111,9 +111,9 @@ class CompiledFastjson2UnifiedWriteTest {
             assertTrue(full.path("groups").path("items").get(1).isNull());
             assertEquals("alpha", full.path("tags").get(0).asText());
 
-            assertFalse(filtered.has("omitted"));
-            assertFalse(filtered.path("extras").has("skip"));
-            assertFalse(filtered.path("ids").has("empty"));
+            assertTrue(filtered.path("omitted").isNull());
+            assertTrue(filtered.path("extras").path("skip").isNull());
+            assertTrue(filtered.path("ids").path("empty").isNull());
             assertTrue(filtered.path("animals").get(1).isNull());
             assertTrue(filtered.path("groups").path("items").get(1).isNull());
             assertTrue(filtered.path("words").get(1).isNull());
