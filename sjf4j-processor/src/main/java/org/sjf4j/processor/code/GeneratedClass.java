@@ -218,6 +218,11 @@ public final class GeneratedClass {
         this.staticBinderIncludeNulls = includeNulls;
     }
 
+    /** Enables direct injection of an already configured backend binder. */
+    public void enableBinderConstructor(String binderType) {
+        this.backendBinderType = binderType;
+    }
+
     /** Enables a native-backend constructor for generated CompiledBinder implementations. */
     public void enableBackendConstructor(String backendType, String binderType,
                                          String mapperConvenienceType) {
@@ -351,6 +356,20 @@ public final class GeneratedClass {
                 initializer.write(out);
             }
             out.endBlock();
+            if (backendBinderType != null) {
+                out.blank();
+                out.beginBlock("public " + simpleName + "(" + backendBinderType
+                        + " nativeBinder)");
+                out.line("org.sjf4j.RuntimeContext context = " + (Boolean.FALSE.equals(staticBinderIncludeNulls)
+                        ? "new org.sjf4j.RuntimeContext(false);"
+                        : "org.sjf4j.RuntimeContext.EMPTY;"));
+                out.line("this.context = context;");
+                out.line("this.binder = java.util.Objects.requireNonNull(nativeBinder, \"nativeBinder\");");
+                for (int i = 1; i < contextInitializers.size(); i++) {
+                    contextInitializers.get(i).write(out);
+                }
+                out.endBlock();
+            }
             if (backendConstructorType != null) {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendConstructorType + " backend)");
