@@ -10,7 +10,7 @@ final class CodecWriteEmitter {
 
     static void emit(JavaWriter out, BindingValue value, String expression,
                      String writer, String nativeWriter, Backend backend) {
-        if (value.staticCodec() != null) {
+        if (value.staticCodec() != null || value.staticNodeValue()) {
             emitStatic(out, value, expression, writer, nativeWriter, backend);
             return;
         }
@@ -73,7 +73,9 @@ final class CodecWriteEmitter {
         out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
         out.endBlock(" else {");
         out.indent();
-        out.line(rawType + " rawValue = " + value.helperName() + ".valueToRaw(codecValue);");
+        out.line(rawType + " rawValue = " + (value.staticNodeValue()
+                ? value.nodeValueEncode("codecValue")
+                : value.helperName() + ".valueToRaw(codecValue)") + ";");
         if (method == null) {
             // Compound raw structures still use generic JSON node handling.
             out.line(writer + ".writeRaw(rawValue, org.sjf4j.RuntimeContext.EMPTY);");
