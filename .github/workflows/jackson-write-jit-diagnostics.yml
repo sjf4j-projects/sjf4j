@@ -23,9 +23,9 @@ jobs:
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           java -jar "$jar" '.*CompiledWriteBenchmark\.json_jackson2_pojo_string_(compiled|direct_wrapped)' \
             -bm avgt -tu us -t 1 -f 1 -wi 15 -w 400ms -i 5 -r 400ms \
-            -jvmArgs '-XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining -XX:CompileCommand=print,org/sjf4j/testbench/binding/compiled/*._writeUser -XX:CompileCommand=print,org/sjf4j/testbench/binding/handwritten/Jackson2HandPojoSerializedWriter.writeUser' \
+            -jvmArgs '-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompilation -XX:+PrintInlining' \
             -rf json -rff jit-results.json > jit-full.log 2>&1
-          grep -E '(CompiledWriteBenchmark\\$Jackson2CompiledBinder_Impl|Jackson2HandPojoSerializedWriter::(writeUser|str|address|tags|friend|friends)|_writeUser|_writeStringMember|_writeAddress|_writeList|_writeFriend)' jit-full.log | tail -n 250 > jit-interesting.log || true
+          grep -E '(@ [0-9]+.*(_writeUser|_writeStringMember|_writeAddress|_writeList|_writeFriend|Jackson2HandPojoSerializedWriter::(writeUser|str|address|tags|friends))|CompiledWriteBenchmark\\$Jackson2CompiledBinder_Impl|_writeUser \()' jit-full.log | tail -n 150 > jit-interesting.log || true
           tail -n 45 jit-full.log
           echo '== EXCERPT =='
           tail -n 250 jit-interesting.log
