@@ -221,8 +221,9 @@ public interface ValueCodec<V, R> {
     // ──────────────────────────────────────────────────────────────
 
     @NodeValue
-    ValueCodec<URI, String> URI_CODEC = new SimpleValueCodec<>(URI.class, String.class,
-            URI::toString, URI::create);
+    ValueCodec<URI, String> URI_CODEC = new StreamingValueCodec<>(URI.class, String.class,
+            URI::toString, URI::create, null,
+            (writer, uri) -> writer.writeStringValue(uri.toString()));
 
     @NodeValue
     ValueCodec<URL, String> URL_CODEC = new SimpleValueCodec<>(URL.class, String.class,

@@ -21,7 +21,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** The direct predefined path must respect runtime codec and pattern selection. */
+/** Selected streaming codecs and raw fallbacks preserve runtime format selection. */
 class CompiledBuiltInStreamingCodecWriteTest {
 
     @Test
@@ -61,16 +61,14 @@ class CompiledBuiltInStreamingCodecWriteTest {
                     + "@WriteTo String write(Bean bean) throws java.io.IOException;"
                     + "@WriteTo String writeUuid(java.util.UUID uuid) throws java.io.IOException;"
                     + "@WriteTo String writeDateTime(java.time.LocalDateTime value) throws java.io.IOException;"
+                    + "@WriteTo String writeUri(java.net.URI uri) throws java.io.IOException;"
                     + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("ValueCodec.UUID_CODEC"), backend);
-            assertTrue(generated.contains("ValueCodec.URI_CODEC"), backend);
-            assertTrue(generated.contains("ValueCodec.LOCAL_DATE_TIME"), backend);
-            assertTrue(generated.contains(".writeUuid(codecValue);"), backend);
-            assertTrue(generated.contains(".writeLocalDateTime(codecValue);"), backend);
+            assertFalse(generated.contains("== ValueCodec."), backend);
+            assertFalse(generated.contains("BuiltIn"), backend);
             assertTrue(generated.contains(".streamWriter.write("), backend);
             assertTrue(generated.contains(".valueToRaw(codecValue)"), backend);
 
@@ -117,6 +115,10 @@ class CompiledBuiltInStreamingCodecWriteTest {
                         binderType.getMethod("writeDateTime", LocalDateTime.class)
                                 .invoke(binder, dateTime), backend);
                 assertEquals("null", binderType.getMethod("writeUuid", UUID.class)
+                        .invoke(binder, new Object[]{null}), backend);
+                assertEquals("\"" + website + "\"", binderType.getMethod("writeUri", URI.class)
+                        .invoke(binder, website), backend);
+                assertEquals("null", binderType.getMethod("writeUri", URI.class)
                         .invoke(binder, new Object[]{null}), backend);
             }
         }
