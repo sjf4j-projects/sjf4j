@@ -24,7 +24,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public String includeNullsExpression() {
-        return fixedIncludeNulls == null ? "this.context.includeNulls" : fixedIncludeNulls.toString();
+        return fixedIncludeNulls == null ? "_FALLBACK_CONTEXT.includeNulls" : fixedIncludeNulls.toString();
     }
 
     private boolean gson() {
@@ -59,7 +59,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     /** All structural helpers share the (writer, value) signature. */
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName() + "("
+        out.beginBlock("private static void " + value.helperName() + "("
                 + backend.writerType() + " writer, " + value.type()
                 + " value) throws java.io.IOException");
         out.line(generatorType() + " g = writer.nativeWriter();");
@@ -147,7 +147,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
-        out.line(STREAMING_IO + ".writeNode(writer, " + expression + ", this.context);");
+        out.line(STREAMING_IO + ".writeNode(writer, " + expression + ", _FALLBACK_CONTEXT);");
     }
 
     @Override
