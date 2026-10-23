@@ -44,6 +44,7 @@ public final class GeneratedClass {
             new ArrayList<Member>();
 
     private boolean runtimeContextConstructor;
+    private Boolean staticBinderIncludeNulls;
     private String backendConstructorType;
     private String backendBinderType;
     private String backendMapperConvenienceType;
@@ -212,6 +213,11 @@ public final class GeneratedClass {
         runtimeContextConstructor = true;
     }
 
+    /** Fixes the default null policy for a statically configured CompiledBinder. */
+    public void setStaticBinderIncludeNulls(boolean includeNulls) {
+        this.staticBinderIncludeNulls = includeNulls;
+    }
+
     /** Enables a native-backend constructor for generated CompiledBinder implementations. */
     public void enableBackendConstructor(String backendType, String binderType,
                                          String mapperConvenienceType) {
@@ -334,7 +340,9 @@ public final class GeneratedClass {
         if (runtimeContextConstructor) {
             if (written) out.blank();
             out.beginBlock("public " + simpleName + "()");
-            out.line("this(org.sjf4j.RuntimeContext.EMPTY);");
+            out.line("this(" + (Boolean.FALSE.equals(staticBinderIncludeNulls)
+                    ? "new org.sjf4j.RuntimeContext(false)"
+                    : "org.sjf4j.RuntimeContext.EMPTY") + ");");
             out.endBlock();
             out.blank();
             out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
@@ -346,7 +354,9 @@ public final class GeneratedClass {
             if (backendConstructorType != null) {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendConstructorType + " backend)");
-                out.line("org.sjf4j.RuntimeContext context = org.sjf4j.RuntimeContext.EMPTY;");
+                out.line("org.sjf4j.RuntimeContext context = " + (Boolean.FALSE.equals(staticBinderIncludeNulls)
+                        ? "new org.sjf4j.RuntimeContext(false);"
+                        : "org.sjf4j.RuntimeContext.EMPTY;"));
                 out.line("this.context = context;");
                 out.line("this.binder = new " + backendBinderType + "(backend, context);");
                 for (Member initializer : contextInitializers) {
