@@ -62,24 +62,21 @@ final class CodecWriteEmitter {
         out.endBlock();
     }
 
-    /** Emit the declared codec directly, without ValueInfo/TypeRegistry selection. */
+    /** Emit fixed typed raw values directly. No codec/streamer selection at write time. */
     private static void emitStatic(JavaWriter out, BindingValue value, String expression,
                                    String writer, String nativeWriter, Backend backend) {
+        String rawType = value.codecRawType().toString();
+        String method = nativeWrite(rawType, backend, nativeWriter != null);
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
         out.beginBlock("if (codecValue == null)");
         out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
         out.endBlock(" else {");
         out.indent();
-        out.beginBlock("if (" + value.helperName() + "Writer != null)");
-        out.line(value.helperName() + "Writer.write(" + writer + ", codecValue);");
-        out.endBlock(" else {");
-        out.indent();
-        String rawType = value.codecRawType().toString();
         out.line(rawType + " rawValue = " + value.helperName() + ".valueToRaw(codecValue);");
-        String method = nativeWrite(rawType, backend, nativeWriter != null);
         if (method == null) {
-            out.line(writer + ".writeRaw(rawValue, this.context);");
+            // Compound raw structures still use generic JSON node handling.
+            out.line(writer + ".writeRaw(rawValue, org.sjf4j.RuntimeContext.EMPTY);");
         } else if (nativeWriter != null && "writeString".equals(method)
                 && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
             out.line("_writeString(" + nativeWriter + ", rawValue);");
@@ -92,7 +89,6 @@ final class CodecWriteEmitter {
                     + "(" + rawArgument(rawType, backend, nativeWriter != null) + ");");
             out.endBlock();
         }
-        out.endBlock();
         out.endBlock();
         out.endBlock();
     }
