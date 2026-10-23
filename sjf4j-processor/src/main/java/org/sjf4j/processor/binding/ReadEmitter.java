@@ -849,6 +849,16 @@ final class ReadEmitter {
                 return reader + ".readBigDecimal()";
 
             case VALUE_CODEC:
+                if (value.staticCodec() != null) {
+                    String fixedReader = codecRawReader(value);
+                    String rawExpression = fixedReader == null
+                            ? "(" + value.codecRawType() + ") " + reader + ".readRaw()"
+                            : reader + "." + fixedReader + "()";
+                    String fixedDecode = value.helperName() + ".rawToValue(" + rawExpression + ")";
+                    return "(" + value.type() + ") (" + value.helperName()
+                            + "Reader != null ? " + value.helperName() + "Reader.read("
+                            + reader + ") : " + fixedDecode + ")";
+                }
                 String rawReader = codecRawReader(value);
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + reader + ", "
                         + value.helperName() + ", this.context)";
