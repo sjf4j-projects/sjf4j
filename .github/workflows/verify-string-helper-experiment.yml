@@ -16,4 +16,8 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile processor and run testbench tests
-        run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar --no-daemon
+        run: |
+          ./gradlew :sjf4j-processor:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar --no-daemon --continue || {
+            grep -h -A 12 "<failure" sjf4j-processor/build/test-results/test/TEST-*.xml | head -n 140 || true
+            exit 1
+          }
