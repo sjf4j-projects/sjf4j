@@ -28,7 +28,7 @@ final class StreamingWriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName()
+        out.beginBlock("private static void " + value.helperName()
                 + "(" + backend.writerType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
@@ -42,7 +42,7 @@ final class StreamingWriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line(STREAMING_IO + ".writeNode(writer, value, "
-                        + "this.context);");
+                        + "_FALLBACK_CONTEXT);");
                 break;
             case LIST:
             case SET:
@@ -78,7 +78,7 @@ final class StreamingWriteEmitter {
             String expression = "(" + type + ") value";
             if (subtype.cachedPojo) {
                 out.line(STREAMING_IO + ".writePojo(writer, value, " + metadata
-                        + ", this.context);");
+                        + ", _FALLBACK_CONTEXT);");
             } else {
                 writeValue(out, subtype.compiled, "writer", expression);
             }
@@ -86,7 +86,7 @@ final class StreamingWriteEmitter {
             out.endBlock();
         }
         // Unknown classes and subtypes with inaccessible fields retain Runtime semantics.
-        out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
+        out.line(STREAMING_IO + ".writeNode(writer, value, _FALLBACK_CONTEXT);");
     }
 
 
@@ -126,7 +126,7 @@ final class StreamingWriteEmitter {
                     + "value.dynamicProperties().entrySet())");
             out.line("writer.writeName(entry.getKey(), count++ > 0);");
             out.line(STREAMING_IO + ".writeNode(writer, entry.getValue(), "
-                    + "this.context);");
+                    + "_FALLBACK_CONTEXT);");
             out.endBlock();
         }
 
@@ -201,7 +201,7 @@ final class StreamingWriteEmitter {
             // helper. A mixed compiled parent can still reach them.
             if (!requiresWriteHelper(value)) {
                 out.line(STREAMING_IO + ".writeNode(" + writer + ", "
-                        + expression + ", this.context);");
+                        + expression + ", _FALLBACK_CONTEXT);");
                 return;
             }
             // All remaining helpers use the same (writer, value) convention.
@@ -335,7 +335,7 @@ final class StreamingWriteEmitter {
                                 ".writeNode(" +
                                 writer + ", " +
                                 expression + ", " +
-                                "this.context);");
+                                "_FALLBACK_CONTEXT);");
                 return;
 
             default:
