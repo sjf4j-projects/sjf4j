@@ -60,7 +60,7 @@ public final class RegistryDiscovery {
         // Explicit compiled binding configuration is closed over its own
         // declarations and nominated registries; unrelated source registries
         // must not change the generated binding semantics.
-        if (owner.getAnnotation(BindingOptions.class) == null) {
+        if (owner.getAnnotation(org.sjf4j.annotation.binding.CompiledBinder.class) == null) {
             List<String> names = new ArrayList<>(sourceRegistries.keySet());
             Collections.sort(names);
             for (String name : names) {
