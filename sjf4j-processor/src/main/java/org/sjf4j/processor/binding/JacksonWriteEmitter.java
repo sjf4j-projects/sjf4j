@@ -121,6 +121,16 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     }
 
     @Override
+    public boolean supportsStringMember() { return true; }
+
+    @Override
+    public void writeStringMember(JavaWriter out, BindingValue owner, int index,
+                                  String expression) {
+        out.line("_writeStringMember(g, " + WriteEmitter.compiledNameField(owner, index)
+                + ".serializedName, " + expression + ");");
+    }
+
+    @Override
     public void writeDynamicName(JavaWriter out, String expression) {
         out.line("g." + (jackson2() ? "writeFieldName" : "writeName")
                 + "(" + expression + ");");

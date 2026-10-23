@@ -3,6 +3,7 @@ package org.sjf4j.value;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
+import org.sjf4j.meta.TypeRegistry;
 
 import java.io.File;
 import java.net.URI;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class BuiltInValueCodecTest {
 
@@ -42,6 +44,14 @@ class BuiltInValueCodecTest {
     static class InstantContainer {
         public List<Instant> events;
         public Map<String, Instant> checkpoints;
+    }
+
+    @Test
+    void uriBuiltInOffersStreamingOutputWithoutLosingRawConversion() {
+        ValueInfo info = TypeRegistry.requireRegisteredValueInfo(URI.class, null);
+        assertNotNull(info.streamWriter);
+        URI uri = URI.create("https://example.com/stream?a=1");
+        assertEquals(uri.toString(), info.valueToRaw(uri));
     }
 
     @Test

@@ -37,6 +37,7 @@ import com.fasterxml.jackson.core.util.BufferRecycler;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 
 import java.io.IOException;
+import java.net.URI;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -96,6 +97,7 @@ public class CompiledWriteBenchmark {
     private static final JsonpBinder JSONP_RUNTIME = new JsonpBinder();
     private static final SimpleJsonBinder SIMPLE_RUNTIME = new SimpleJsonBinder();
 
+    private static final URI URI_VALUE = URI.create("https://example.test/person?id=123");
     private static final User USER;
     private static final Map<String, Object> MAP;
     private static final jakarta.json.JsonObject JSONP_TREE;
@@ -131,7 +133,9 @@ public class CompiledWriteBenchmark {
 
     // Trial-only correctness verification, outside the timed path. Object
     // property order and insignificant JSON formatting may differ.
-//    @Setup(Level.Trial)
+    // Legacy full-backend verification is kept callable, but the diagnostic
+    // benchmarks verify their own paths without making JMH setup dependent on
+    // unrelated backends.
     public void verify() throws Exception {
         check("jackson2 pojo compiled string", JACKSON2_COMPILED.writePojo(USER));
         check("jackson2 pojo runtime string", JACKSON2_RUNTIME.writeNodeAsString(USER));
@@ -184,17 +188,21 @@ public class CompiledWriteBenchmark {
 
         check("jackson2 native pojo string", json_jackson2_pojo_string_native());
         check("jackson2 blackbird pojo string", json_jackson2_pojo_string_blackbird());
+        check("jackson2 direct wrapped pojo string", json_jackson2_pojo_string_direct_wrapped());
         check("jackson2 direct pojo string", json_jackson2_pojo_string_direct());
         check("jackson2 native pojo utf8", json_jackson2_pojo_utf8_native());
         check("jackson2 blackbird pojo utf8", json_jackson2_pojo_utf8_blackbird());
+        check("jackson2 direct wrapped pojo utf8", json_jackson2_pojo_utf8_direct_wrapped());
         check("jackson2 direct pojo utf8", json_jackson2_pojo_utf8_direct());
         check("jackson2 native map string", json_jackson2_map_string_native());
         check("jackson2 native map utf8", json_jackson2_map_utf8_native());
         check("jackson3 native pojo string", json_jackson3_pojo_string_native());
         check("jackson3 blackbird pojo string", json_jackson3_pojo_string_blackbird());
+        check("jackson3 direct wrapped pojo string", json_jackson3_pojo_string_direct_wrapped());
         check("jackson3 direct pojo string", json_jackson3_pojo_string_direct());
         check("jackson3 native pojo utf8", json_jackson3_pojo_utf8_native());
         check("jackson3 blackbird pojo utf8", json_jackson3_pojo_utf8_blackbird());
+        check("jackson3 direct wrapped pojo utf8", json_jackson3_pojo_utf8_direct_wrapped());
         check("jackson3 direct pojo utf8", json_jackson3_pojo_utf8_direct());
         check("jackson3 native map string", json_jackson3_map_string_native());
         check("jackson3 native map utf8", json_jackson3_map_utf8_native());
@@ -206,6 +214,26 @@ public class CompiledWriteBenchmark {
         check("fastjson2 native map utf8", json_fastjson2_map_utf8_native());
     }
 
+    @Setup(Level.Trial)
+    public void verifyDirectWrapped() throws Exception {
+        checkUri("jackson2 uri compiled", json_jackson2_uri_compiled());
+        checkUri("jackson2 uri runtime", json_jackson2_uri_runtime());
+        checkUri("jackson2 uri direct", json_jackson2_uri_direct());
+        checkUri("jackson3 uri compiled", json_jackson3_uri_compiled());
+        checkUri("jackson3 uri runtime", json_jackson3_uri_runtime());
+        checkUri("jackson3 uri direct", json_jackson3_uri_direct());
+        check("jackson2 direct wrapped string", json_jackson2_pojo_string_direct_wrapped());
+        check("jackson2 direct wrapped utf8", json_jackson2_pojo_utf8_direct_wrapped());
+        check("jackson3 direct wrapped string", json_jackson3_pojo_string_direct_wrapped());
+        check("jackson3 direct wrapped utf8", json_jackson3_pojo_utf8_direct_wrapped());
+    }
+
+    private static void checkUri(String label, String json) throws IOException {
+        if (!URI_VALUE.toString().equals(JACKSON2_NATIVE.readTree(json).asText())) {
+            throw new IllegalStateException("URI JSON differs: " + label);
+        }
+    }
+
     private static void check(String label, String json) throws IOException {
         if (!EXPECTED_TREE.equals(JACKSON2_NATIVE.readTree(json))) {
             throw new IllegalStateException("JSON differs: " + label);
@@ -215,6 +243,58 @@ public class CompiledWriteBenchmark {
     private static void check(String label, byte[] utf8) throws IOException {
         if (!EXPECTED_TREE.equals(JACKSON2_NATIVE.readTree(utf8))) {
             throw new IllegalStateException("UTF-8 JSON differs: " + label);
+        }
+    }
+
+    // Scalar URI case isolates streaming Codec dispatch from POJO member writes.
+    @Benchmark
+    public String json_jackson2_uri_compiled() throws IOException {
+        return JACKSON2_COMPILED.writeUri(URI_VALUE);
+    }
+
+    @Benchmark
+    public String json_jackson2_uri_runtime() {
+        return JACKSON2_RUNTIME.writeNodeAsString(URI_VALUE);
+    }
+
+    @Benchmark
+    public String json_jackson2_uri_direct() throws IOException {
+        BufferRecycler recycler = JACKSON2_DIRECT_FACTORY._getBufferRecycler();
+        SegmentedStringWriter output = new SegmentedStringWriter(recycler);
+        try {
+            try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(output)) {
+                g.writeString(URI_VALUE.toString());
+            }
+            return output.getAndClear();
+        } finally {
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson3_uri_compiled() throws IOException {
+        return JACKSON3_COMPILED.writeUri(URI_VALUE);
+    }
+
+    @Benchmark
+    public String json_jackson3_uri_runtime() {
+        return JACKSON3_RUNTIME.writeNodeAsString(URI_VALUE);
+    }
+
+    @Benchmark
+    public String json_jackson3_uri_direct() throws IOException {
+        tools.jackson.core.util.BufferRecycler recycler =
+                JACKSON3_DIRECT_FACTORY._getBufferRecycler();
+        tools.jackson.core.io.SegmentedStringWriter output =
+                new tools.jackson.core.io.SegmentedStringWriter(recycler);
+        try {
+            try (tools.jackson.core.JsonGenerator g = JACKSON3_DIRECT_FACTORY.createGenerator(
+                    JACKSON3_DIRECT_CONTEXT, output)) {
+                g.writeString(URI_VALUE.toString());
+            }
+            return output.getAndClear();
+        } finally {
+            recycler.releaseToPool();
         }
     }
 
@@ -322,11 +402,32 @@ public class CompiledWriteBenchmark {
         }
     }
 
+    // Diagnostic: identical handwritten field emission as Direct, but the
+    // same SJF4J Writer creation, flush and release lifecycle as Compiled.
+    @Benchmark
+    public String json_jackson2_pojo_string_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriter()) {
+            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toString();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_pojo_utf8_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriterUtf8()) {
+            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toBytes();
+        }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
         @WriteTo byte[] writePojoUtf8(User value) throws IOException;
         @WriteTo String writeMap(Map<String, Object> value) throws IOException;
+        @WriteTo String writeUri(URI value) throws IOException;
         @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
@@ -438,11 +539,30 @@ public class CompiledWriteBenchmark {
         }
     }
 
+    @Benchmark
+    public String json_jackson3_pojo_string_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriter()) {
+            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toString();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson3_pojo_utf8_direct_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriterUtf8()) {
+            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+            writer.flush();
+            return writer.toBytes();
+        }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
         @WriteTo byte[] writePojoUtf8(User value) throws IOException;
         @WriteTo String writeMap(Map<String, Object> value) throws IOException;
+        @WriteTo String writeUri(URI value) throws IOException;
         @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
