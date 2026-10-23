@@ -1,0 +1,71 @@
+name: Jackson Direct vs Compiled JMH
+
+on:
+  pull_request:
+    branches:
+      - feat/compiled-binder-static-config-backend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Compare Jackson2/3 direct and compiled write paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
+          test -n "$jar"
+          java -jar "$jar" \
+            '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct|direct_wrapped|direct_owned_codec)$' \
+            -bm avgt -tu ns -t 1 -f 2 -wi 8 -w 400ms -i 8 -r 400ms \
+            -prof gc -rf json -rff jackson-write-comparison.json \
+            | tee jackson-write-comparison.log
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee jackson-write-comparison.md
+          import json
+          runs=json.load(open('jackson-write-comparison.json'))
+          rows={r['benchmark'].split('.')[-1]:r for r in runs}
+          print('# Jackson Direct vs Compiled (ns/op; lower is better)')
+          print('JDK 17, 2 forks. All four versions verified for equivalent JSON in trial setup.')
+          print()
+          print('| Backend | Output | Compiled | Direct | Direct Wrapped | Direct Owned Codec | Allocation (B/op) |')
+          print('|---|---|---:|---:|---:|---:|---:|')
+          for b in ('jackson2','jackson3'):
+              for fmt in ('string','utf8'):
+                  base=f'json_{b}_pojo_{fmt}_'
+                  get=lambda kind:rows[base+kind]
+                  score=lambda kind:get(kind)['primaryMetric']['score']
+                  alloc=get('compiled').get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score')
+                  alloc_fmt=f'{alloc:.1f}' if alloc is not None else '—'
+                  print(f'| {b} | {fmt} | {score("compiled"):.1f} | {score("direct"):.1f} | {score("direct_wrapped"):.1f} | {score("direct_owned_codec"):.1f} | {alloc_fmt} |')
+          print()
+          for name,run in sorted(rows.items()):
+              metric=run['primaryMetric']
+              print(f'- {name}: {metric["score"]:.1f} ± {metric["scoreError"]:.1f} ns/op')
+          PY
+          cat jackson-write-comparison.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson-write-comparison
+          path: |
+            jackson-write-comparison.json
+            jackson-write-comparison.log
+            jackson-write-comparison.md
+          if-no-files-found: warn
