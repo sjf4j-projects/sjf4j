@@ -99,4 +99,39 @@ class CompiledBackendInjectionTest {
         }
     }
 
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void allRemainingBackendsAcceptConfiguredBinderAdapters() throws Exception {
+        for (String backend : new String[]{"FASTJSON2", "JSONP", "SIMPLE"}) {
+            NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Bean.java",
+                    "package fixture; public class Bean { public String text = \"hello\"; }",
+                    "fixture/Binder.java", "package fixture; import java.io.IOException; "
+                            + "import org.sjf4j.annotation.binding.*; "
+                            + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
+                            + "@WriteTo String write(Bean value) throws IOException; }"
+            ), CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class binderType = loader.loadClass("fixture.Binder");
+                Class<?> beanType = loader.loadClass("fixture.Bean");
+                Object nativeBinder;
+                switch (backend) {
+                    case "FASTJSON2":
+                        nativeBinder = new org.sjf4j.backend.fastjson2.binding.Fastjson2Binder();
+                        break;
+                    case "JSONP":
+                        nativeBinder = new org.sjf4j.backend.jsonp.binding.JsonpBinder();
+                        break;
+                    default:
+                        nativeBinder = new org.sjf4j.binding.simple.SimpleJsonBinder();
+                }
+                Object binder = CompiledInstances.create(binderType, nativeBinder);
+                Object bean = beanType.getConstructor().newInstance();
+                assertEquals("{\"text\":\"hello\"}",
+                        binderType.getMethod("write", beanType).invoke(binder, bean), backend);
+            }
+        }
+    }
+
 }
