@@ -378,12 +378,10 @@ public final class GeneratedClass {
                         : "org.sjf4j.RuntimeContext.EMPTY;"));
                 out.line("this.context = context;");
                 out.line("this.binder = new " + backendBinderType + "(backend, context);");
-                for (Member initializer : contextInitializers) {
-                    if (initializer != null) {
-                        // The ordinary context constructor initializes the binder
-                        // separately; exclude that first binder assignment here.
-                        if (initializer != contextInitializers.get(0)) initializer.write(out);
-                    }
+                // The first context initializer creates the default Binder;
+                // this constructor already provided a native Binder instead.
+                for (int i = 1; i < contextInitializers.size(); i++) {
+                    contextInitializers.get(i).write(out);
                 }
                 out.endBlock();
                 if (backendMapperConvenienceType != null) {
