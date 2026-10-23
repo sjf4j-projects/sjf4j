@@ -80,6 +80,9 @@ final class BindingHelperEmitter {
     }
 
     private void emitCodecMetadata(BindingValue value, GeneratedClass generated) {
+        // Annotated value nodes compile directly to their declared methods
+        // and require no codec field or runtime registry lookup.
+        if (value.staticNodeValue()) return;
         if (value.staticCodec() != null) {
             org.sjf4j.processor.discovery.ValueCodecMetadata codec = value.staticCodec();
             String valueType = codec.valueType.toString();
