@@ -428,7 +428,6 @@ public class CompiledWriteBenchmark {
         @WriteTo byte[] writePojoUtf8(User value) throws IOException;
         @WriteTo String writeMap(Map<String, Object> value) throws IOException;
         @WriteTo String writeUri(URI value) throws IOException;
-        @WriteTo String writeUri(URI value) throws IOException;
         @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
@@ -563,6 +562,7 @@ public class CompiledWriteBenchmark {
         @WriteTo String writePojo(User value) throws IOException;
         @WriteTo byte[] writePojoUtf8(User value) throws IOException;
         @WriteTo String writeMap(Map<String, Object> value) throws IOException;
+        @WriteTo String writeUri(URI value) throws IOException;
         @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
