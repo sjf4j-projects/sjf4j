@@ -220,17 +220,25 @@ public class CompiledWriteBenchmark {
     }
 
     @Setup(Level.Trial)
-    public void verifyDirectWrapped() throws Exception {
+    public void verifyJacksonComparators() throws Exception {
         checkUri("jackson2 uri compiled", json_jackson2_uri_compiled());
         checkUri("jackson2 uri runtime", json_jackson2_uri_runtime());
         checkUri("jackson2 uri direct", json_jackson2_uri_direct());
         checkUri("jackson3 uri compiled", json_jackson3_uri_compiled());
         checkUri("jackson3 uri runtime", json_jackson3_uri_runtime());
         checkUri("jackson3 uri direct", json_jackson3_uri_direct());
+        check("jackson2 direct string", json_jackson2_pojo_string_direct());
+        check("jackson2 direct utf8", json_jackson2_pojo_utf8_direct());
+        check("jackson2 compiled string", (String) json_jackson2_pojo_string_compiled());
+        check("jackson2 compiled utf8", json_jackson2_pojo_utf8_compiled());
         check("jackson2 direct wrapped string", json_jackson2_pojo_string_direct_wrapped());
         check("jackson2 direct wrapped utf8", json_jackson2_pojo_utf8_direct_wrapped());
         check("jackson2 owned codec handwritten string", json_jackson2_pojo_string_direct_owned_codec());
         check("jackson2 owned codec handwritten utf8", json_jackson2_pojo_utf8_direct_owned_codec());
+        check("jackson3 direct string", json_jackson3_pojo_string_direct());
+        check("jackson3 direct utf8", json_jackson3_pojo_utf8_direct());
+        check("jackson3 compiled string", (String) json_jackson3_pojo_string_compiled());
+        check("jackson3 compiled utf8", json_jackson3_pojo_utf8_compiled());
         check("jackson3 direct wrapped string", json_jackson3_pojo_string_direct_wrapped());
         check("jackson3 direct wrapped utf8", json_jackson3_pojo_utf8_direct_wrapped());
         check("jackson3 owned codec handwritten string", json_jackson3_pojo_string_direct_owned_codec());
