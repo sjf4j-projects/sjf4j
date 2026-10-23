@@ -82,6 +82,7 @@ public final class BindingGenerator {
             generated.enableBackendConstructor(
                     backendConfigType, backend.binderType(), mapperConvenience);
         }
+        generated.enableBinderConstructor(backend.binderType());
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
         generated.addContextInitializer(out ->
