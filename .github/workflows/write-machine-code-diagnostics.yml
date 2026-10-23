@@ -46,9 +46,9 @@ jobs:
           for m in re.finditer(r'Compiled method \((?:c1|c2)\).*', s):
               chunk=s[m.start():m.start()+3500]
               header=chunk[:chunk.find('\n')]
-              method=re.search(r'\\s([\\w.$/]+)::(_writeUser|writeUser)\\s',header)
+              method=re.search(r'([\\w.$/]+)::(_writeUser|writeUser)\\b',chunk[:1500])
               if not method: continue
-              size=re.search(r'main code\\s*\\[0x[0-9a-f]+,0x[0-9a-f]+\\]\\s*=\\s*(\\d+)',chunk)
+              size=re.search(r'(?:main code|total in heap)\\s*\\[0x[0-9a-f]+,0x[0-9a-f]+\\]\\s*=\\s*(\\d+)',chunk)
               records.append((method.group(1),method.group(2),size.group(1) if size else 'unknown',header))
           print('== TARGET JIT MACHINE CODE SIZES ==')
           for r in records:print(*r,sep=' | ')
