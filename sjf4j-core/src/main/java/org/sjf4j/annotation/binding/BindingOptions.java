@@ -1,7 +1,5 @@
 package org.sjf4j.annotation.binding;
 
-import org.sjf4j.value.ValueRegistry;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -10,11 +8,10 @@ import java.lang.annotation.Target;
 /**
  * Compile-time options for an SJF4J compiled interface.
  *
- * <p>Registry holder classes may be declared in the current module or an
- * already-compiled dependency. This option only exposes their declarations
- * to the annotation processor. Application initialization is still responsible
- * for runtime registration (for example, via
- * {@link ValueRegistry#registerAnnotated(Class)}).
+ * <p>For @CompiledBinder, the interface itself and any explicitly listed
+ * registry holders provide compile-time ValueCodec declarations. Static
+ * bindings do not require global ValueRegistry registration. Other compiled
+ * interface families preserve their existing runtime semantics.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
