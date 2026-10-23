@@ -51,7 +51,8 @@ final class StructuralWriteEmitter {
         for (BindingProperty property : value.properties()) {
             BindingValue child = property.value();
             String expr = WriteEmitter.propertyExpression(property, "value");
-            if (!child.primitive()) {
+            boolean stringMember = child.kind() == BindingValue.Kind.STRING && ops.supportsStringMember();
+            if (!child.primitive() && !stringMember) {
                 // Evaluate a getter once, including when null properties are omitted.
                 String propertyVar = "property" + index;
                 out.line(child.type() + " " + propertyVar + " = " + expr + ";");
@@ -62,13 +63,13 @@ final class StructuralWriteEmitter {
             if (ops.explicitObjectSeparators()) {
                 ops.beforeObjectMember(out, "memberCount++");
             }
-            if (child.kind() == BindingValue.Kind.STRING && ops.supportsStringMember()) {
+            if (stringMember) {
                 ops.writeStringMember(out, value, index, expr);
             } else {
                 ops.writePropertyName(out, value, index);
                 ops.writeValue(out, child, expr);
             }
-            if (!child.primitive()) out.endBlock();
+            if (!child.primitive() && !stringMember) out.endBlock();
             index++;
         }
 
