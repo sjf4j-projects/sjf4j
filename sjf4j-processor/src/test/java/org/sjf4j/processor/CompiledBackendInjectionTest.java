@@ -36,7 +36,7 @@ class CompiledBackendInjectionTest {
         NavigatorTestCompiler.Result compiled = compile("GSON");
         assertTrue(compiled.success, compiled.diagnostics());
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("GsonBinder nativeBinder"), source);
+        assertTrue(source.contains("GsonBinder backendBinder"), source);
         assertFalse(source.contains("Gson backend"), source);
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class binderType = loader.loadClass("fixture.Binder");
