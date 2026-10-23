@@ -124,7 +124,7 @@ class CompiledValueCodecReviewTest {
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "@BindingOptions(registries={FirstCodecs.class,DefaultCodecs.class}, "
-                + "valueCodecs={@CodecMapping(type=Tag.class, format=\\\"second\\\")}) "
+                + "valueCodecs={@CodecMapping(type=Tag.class, format=\"second\")}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
                 + "@ReadFrom Tag read(String json) throws java.io.IOException; }");
 
