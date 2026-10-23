@@ -3,6 +3,8 @@ package org.sjf4j.processor.binding;
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.PropertyStrategy;
@@ -186,11 +188,15 @@ final class BindingCompiler {
                 List<ValueCodecMetadata> candidates = metadata.valueCodecs(type);
                 String selectedFormat = codecPattern == null && codecName != null
                         ? codecName : metadata.selectedFormat(type);
-                if (candidates.isEmpty()) {
+                if (candidates.isEmpty() && context.types.isNodeValue(type)) {
+                    if (!compileAnnotatedNodeValue(type, value, method, generated)) {
+                        return null;
+                    }
+                } else if (candidates.isEmpty()) {
                     error(method, generated, "No statically declared ValueCodec for "
                             + type + "; add an @NodeValue field to the interface or @BindingOptions.registries");
                     return null;
-                }
+                } else {
                 if (selectedFormat == null && candidates.size() > 1) {
                     error(method, generated, "Multiple ValueCodecs for " + type
                             + "; select a format with @BindingOptions.valueCodecs or @NodeProperty(codecName)");
@@ -205,6 +211,7 @@ final class BindingCompiler {
                 value.staticCodec(selected);
                 value.codecSelection(selectedFormat, codecPattern);
                 value.codecRawType(selected.rawType);
+                }
             } else {
                 value.codecSelection(codecName, codecPattern);
                 // Dynamic binders preserve RuntimeContext format selection.
@@ -285,6 +292,73 @@ final class BindingCompiler {
         }
 
         return value;
+    }
+
+    /**
+     * Compile the declared @ValueToRaw / @RawToValue contract into direct
+     * calls. Unlike SimpleValueCodec, the raw-to-value conversion must receive
+     * JSON null unchanged: @RawToValue may deliberately map it to a value.
+     */
+    private boolean compileAnnotatedNodeValue(TypeMirror type, BindingValue value,
+                                              ExecutableElement site, GeneratedClass generated) {
+        TypeElement owner = context.types.typeElement(type);
+        TypeMirror rawType = context.types.nodeValueRawType(type);
+        if (owner == null || rawType == null) {
+            error(site, generated, "Cannot resolve @NodeValue raw type for " + type);
+            return false;
+        }
+        String encoder = null;
+        String decoder = null;
+        for (Element member : context.elements.getAllMembers(owner)) {
+            if (member.getAnnotation(ValueToRaw.class) != null
+                    && member.getKind() == ElementKind.METHOD) {
+                ExecutableElement candidate = (ExecutableElement) member;
+                if (!candidate.getModifiers().contains(Modifier.STATIC)
+                        && candidate.getParameters().isEmpty()) {
+                    if (encoder != null) {
+                        error(site, generated, "Ambiguous @ValueToRaw methods on " + type);
+                        return false;
+                    }
+                    encoder = candidate.getSimpleName().toString();
+                }
+            }
+            if (member.getAnnotation(RawToValue.class) == null) continue;
+            if (member.getKind() == ElementKind.METHOD) {
+                ExecutableElement candidate = (ExecutableElement) member;
+                if (candidate.getModifiers().contains(Modifier.STATIC)
+                        && candidate.getParameters().size() == 1
+                        && context.typeUtils.isSameType(context.typeUtils.erasure(
+                                candidate.getParameters().get(0).asType()),
+                                context.typeUtils.erasure(rawType))) {
+                    if (decoder != null) {
+                        error(site, generated, "Ambiguous @RawToValue factories on " + type);
+                        return false;
+                    }
+                    decoder = ((TypeElement) candidate.getEnclosingElement())
+                            .getQualifiedName() + "." + candidate.getSimpleName();
+                }
+            } else if (member.getKind() == ElementKind.CONSTRUCTOR) {
+                ExecutableElement candidate = (ExecutableElement) member;
+                if (candidate.getParameters().size() == 1
+                        && context.typeUtils.isSameType(context.typeUtils.erasure(
+                                candidate.getParameters().get(0).asType()),
+                                context.typeUtils.erasure(rawType))) {
+                    if (decoder != null) {
+                        error(site, generated, "Ambiguous @RawToValue factories on " + type);
+                        return false;
+                    }
+                    decoder = "new " + type;
+                }
+            }
+        }
+        if (encoder == null || decoder == null) {
+            error(site, generated, "@NodeValue " + type
+                    + " requires accessible @ValueToRaw and @RawToValue methods for static binding");
+            return false;
+        }
+        value.nodeValueMethods(encoder, decoder);
+        value.codecRawType(rawType);
+        return true;
     }
 
     private BindingValue.Kind resolveKind(
