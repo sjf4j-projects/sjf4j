@@ -21,6 +21,9 @@ final class StructuralWriteEmitter {
         void endArray(JavaWriter out);
         void writeNull(JavaWriter out);
         void writePropertyName(JavaWriter out, BindingValue owner, int index);
+        default boolean supportsStringMember() { return false; }
+        default void writeStringMember(JavaWriter out, BindingValue owner, int index,
+                                       String expression) { throw new UnsupportedOperationException(); }
         void writeDynamicName(JavaWriter out, String expression);
         void writeMapName(JavaWriter out, String expression);
         void writeValue(JavaWriter out, BindingValue value, String expression);
@@ -59,8 +62,12 @@ final class StructuralWriteEmitter {
             if (ops.explicitObjectSeparators()) {
                 ops.beforeObjectMember(out, "memberCount++");
             }
-            ops.writePropertyName(out, value, index);
-            ops.writeValue(out, child, expr);
+            if (child.kind() == BindingValue.Kind.STRING && ops.supportsStringMember()) {
+                ops.writeStringMember(out, value, index, expr);
+            } else {
+                ops.writePropertyName(out, value, index);
+                ops.writeValue(out, child, expr);
+            }
             if (!child.primitive()) out.endBlock();
             index++;
         }

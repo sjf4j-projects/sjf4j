@@ -77,7 +77,11 @@ public final class Jackson2HandPojoSerializedWriter {
             return;
         }
         g.writeStartArray();
-        for (int i = 0, n = v.size(); i < n; i++) writeUser(g, v.get(i));
+        if (v instanceof java.util.RandomAccess) {
+            for (int i = 0, n = v.size(); i < n; i++) writeUser(g, v.get(i));
+        } else {
+            for (User item : v) writeUser(g, item);
+        }
         g.writeEndArray();
     }
 
@@ -151,8 +155,7 @@ public final class Jackson2HandPojoSerializedWriter {
             return;
         }
         g.writeStartArray();
-        for (int i = 0, n = v.size(); i < n; i++) {
-            Friend f = v.get(i);
+        for (Friend f : v) {
             if (f == null) {
                 g.writeNull();
                 continue;
@@ -176,10 +179,17 @@ public final class Jackson2HandPojoSerializedWriter {
             return;
         }
         g.writeStartArray();
-        for (int i = 0, n = v.size(); i < n; i++) {
-            String s = v.get(i);
-            if (s == null) g.writeNull();
-            else g.writeString(s);
+        if (v instanceof java.util.RandomAccess) {
+            for (int i = 0, n = v.size(); i < n; i++) {
+                String s = v.get(i);
+                if (s == null) g.writeNull();
+                else g.writeString(s);
+            }
+        } else {
+            for (String s : v) {
+                if (s == null) g.writeNull();
+                else g.writeString(s);
+            }
         }
         g.writeEndArray();
     }
