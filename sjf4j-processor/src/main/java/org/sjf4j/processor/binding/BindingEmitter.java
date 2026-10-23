@@ -15,7 +15,8 @@ final class BindingEmitter {
 
     BindingEmitter(
             ProcessorContext context,
-            BackendSpec backend) {
+            BackendSpec backend,
+            Boolean fixedIncludeNulls) {
 
         this.fastjson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2;
         this.reads =
@@ -25,7 +26,7 @@ final class BindingEmitter {
 
         this.writes =
                 new WriteEmitter(
-                        backend);
+                        backend, fixedIncludeNulls);
         this.helpers = new BindingHelperEmitter(context, reads, writes);
     }
 
