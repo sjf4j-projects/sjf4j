@@ -71,8 +71,8 @@ class CompiledGsonJsonpUnifiedWriteTest {
             assertFalse(generated.contains("this.context.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(writer,"), backend);
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
-            assertFalse(generated.contains("private static void _writeModel("), backend);
-            assertTrue(generated.contains("private void _writeModel("), backend);
+            assertTrue(generated.contains("private static void _writeModel("), backend);
+            assertFalse(generated.contains("private void _writeModel("), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");
