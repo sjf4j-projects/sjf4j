@@ -434,6 +434,25 @@ final class WriteEmitter {
         out.line("g." + writeString + "(value);");
         out.endBlock();
         out.endBlock();
+
+        if (isJackson()) {
+            String nameType = backend.backend() == Backend.JACKSON2
+                    ? "com.fasterxml.jackson.core.SerializableString"
+                    : "tools.jackson.core.io.SerializedString";
+            String nameMethod = backend.backend() == Backend.JACKSON2
+                    ? "writeFieldName" : "writeName";
+            out.beginBlock("private static void _writeStringMember(" + generator
+                    + " g, " + nameType
+                    + " name, String value) throws java.io.IOException");
+            out.line("g." + nameMethod + "(name);");
+            out.beginBlock("if (value == null)");
+            out.line("g.writeNull();");
+            out.endBlock(" else {");
+            out.indent();
+            out.line("g.writeString(value);");
+            out.endBlock();
+            out.endBlock();
+        }
     }
 
     static String propertyExpression(BindingProperty property, String owner) {
