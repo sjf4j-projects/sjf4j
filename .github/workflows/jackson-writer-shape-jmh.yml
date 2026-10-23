@@ -1,4 +1,4 @@
-name: Jackson compiled writer shape diagnostics
+name: Jackson Direct vs Compiled JMH
 
 on:
   pull_request:
@@ -20,69 +20,52 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build JMH jar and compile generated binders
+      - name: Build JMH jar
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Inspect actual Jackson CompiledBinder helper structure
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          files=[p for p in Path('sjf4j-testbench/build').rglob('*.java')
-                 if p.name.endswith('_Impl.java') and 'CompiledWriteBenchmark' in str(p)]
-          print('Generated implementations:', [str(p) for p in files])
-          for p in files:
-              lines=p.read_text().splitlines()
-              for i,line in enumerate(lines):
-                  if any(tag in line for tag in ('void _writeUser(', 'void _writeAddress(',
-                         'void _writeFriend(', 'void _writeList(', 'writePojo(', 'writePojoUtf8(')):
-                      print('SOURCE',p,'lines',i+1,'..',min(i+90,len(lines)))
-                      print('\n'.join(f'{j+1:04d} {lines[j]}' for j in range(max(0,i-2),min(i+90,len(lines)))))
-          PY
-      - name: Run paired JMH, same wrapper and output buffers
+      - name: Compare Jackson2/3 direct and compiled write paths
         shell: bash
         run: |
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
           java -jar "$jar" \
-            '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|compiled_injected|direct_wrapped|direct_compiled_shape|direct_owned_codec)$' \
+            '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct|direct_wrapped|direct_owned_codec)$' \
             -bm avgt -tu ns -t 1 -f 2 -wi 8 -w 400ms -i 8 -r 400ms \
-            -prof gc -rf json -rff jackson-writer-shape-results.json \
-            | tee jackson-writer-shape.log
-      - name: Compare deltas
+            -prof gc -rf json -rff jackson-write-comparison.json \
+            | tee jackson-write-comparison.log
+      - name: Summary
         shell: bash
         run: |
-          python3 - <<'PY' | tee jackson-writer-shape-summary.md
+          python3 - <<'PY' | tee jackson-write-comparison.md
           import json
-          runs = json.load(open('jackson-writer-shape-results.json'))
-          d = {r['benchmark'].split('.')[-1]:r for r in runs}
-          print('# Jackson 2/3 Compiled vs direct shape (JDK 17)')
-          print('Same SJF4J writer lifecycle, explicit per-instance Binder field, and URI codec null contract.')
-          print('Compiled injected and manual owned reuse the same concrete backend Binder object.')
+          runs=json.load(open('jackson-write-comparison.json'))
+          rows={r['benchmark'].split('.')[-1]:r for r in runs}
+          print('# Jackson Direct vs Compiled (ns/op; lower is better)')
+          print('JDK 17, 2 forks. All four versions verified for equivalent JSON in trial setup.')
           print()
-          print('| Backend | Output | Compiled default | Compiled injected | Direct wrapped | Direct shape | Manual owned+codec | Injected minus manual (ns) |')
-          print('|---|---|---:|---:|---:|---:|---:|---:|')
+          print('| Backend | Output | Compiled | Direct | Direct Wrapped | Direct Owned Codec | Allocation (B/op) |')
+          print('|---|---|---:|---:|---:|---:|---:|')
           for b in ('jackson2','jackson3'):
               for fmt in ('string','utf8'):
-                  prefix=f'json_{b}_pojo_{fmt}_'
-                  get=lambda suffix:d[prefix+suffix]['primaryMetric']['score']
-                  c=get('compiled'); ci=get('compiled_injected'); w=get('direct_wrapped')
-                  sh=get('direct_compiled_shape'); manual=get('direct_owned_codec')
-                  print(f'| {b} | {fmt} | {c:.1f} | {ci:.1f} | {w:.1f} | {sh:.1f} | {manual:.1f} | {ci-manual:+.1f} |')
+                  base=f'json_{b}_pojo_{fmt}_'
+                  get=lambda kind:rows[base+kind]
+                  score=lambda kind:get(kind)['primaryMetric']['score']
+                  alloc=get('compiled').get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score')
+                  alloc_fmt=f'{alloc:.1f}' if alloc is not None else '—'
+                  print(f'| {b} | {fmt} | {score("compiled"):.1f} | {score("direct"):.1f} | {score("direct_wrapped"):.1f} | {score("direct_owned_codec"):.1f} | {alloc_fmt} |')
           print()
-          print('## JMH scores, uncertainty, allocation')
-          for k,v in sorted(d.items()):
-              a=v.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score')
-              print(f'- {k}: {v["primaryMetric"]["score"]:.1f} ± {v["primaryMetric"]["scoreError"]:.1f} ns/op; allocation={a:.1f} B/op' if a is not None else k)
+          for name,run in sorted(rows.items()):
+              metric=run['primaryMetric']
+              print(f'- {name}: {metric["score"]:.1f} ± {metric["scoreError"]:.1f} ns/op')
           PY
-          cat jackson-writer-shape-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload full diagnostics
+          cat jackson-write-comparison.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson-writer-shape-jmh
+          name: jackson-write-comparison
           path: |
-            jackson-writer-shape-results.json
-            jackson-writer-shape.log
-            jackson-writer-shape-summary.md
+            jackson-write-comparison.json
+            jackson-write-comparison.log
+            jackson-write-comparison.md
           if-no-files-found: warn
