@@ -95,23 +95,6 @@ final class BindingHelperEmitter {
                             + JavaWriter.stringLiteral(value.codecPattern()) + ")";
             generated.addField(out -> out.line("private static final " + codecType
                     + " " + name + " = " + selected + ";"));
-            if (value.direction() == BindingPlan.Direction.READ_FROM) {
-                generated.addField(out -> out.line(
-                        "private static final org.sjf4j.value.ValueCodec.StreamingValueCodec.Reader<"
-                                + valueType + "> " + name + "Reader = "
-                                + name + " instanceof org.sjf4j.value.ValueCodec.StreamingValueCodec "
-                                + "? ((org.sjf4j.value.ValueCodec.StreamingValueCodec<"
-                                + valueType + ", " + rawType + ">) " + name
-                                + ").streamReader() : null;"));
-            } else {
-                generated.addField(out -> out.line(
-                        "private static final org.sjf4j.value.ValueCodec.StreamingValueCodec.Writer<"
-                                + valueType + "> " + name + "Writer = "
-                                + name + " instanceof org.sjf4j.value.ValueCodec.StreamingValueCodec "
-                                + "? ((org.sjf4j.value.ValueCodec.StreamingValueCodec<"
-                                + valueType + ", " + rawType + ">) " + name
-                                + ").streamWriter() : null;"));
-            }
             return;
         }
         // Unconstrained reads select a Codec according to the incoming JSON type.
