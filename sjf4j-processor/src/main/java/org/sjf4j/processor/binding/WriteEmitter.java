@@ -370,6 +370,9 @@ final class WriteEmitter {
         switch (value.kind()) {
             case STRING:
                 return true;
+            case VALUE_CODEC:
+                return isJackson() && value.codecRawType() != null
+                        && "java.lang.String".equals(value.codecRawType().toString());
             case ONE_OF:
                 for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
                     if (subtype.compiled != null && containsString(subtype.compiled, visited)) return true;
