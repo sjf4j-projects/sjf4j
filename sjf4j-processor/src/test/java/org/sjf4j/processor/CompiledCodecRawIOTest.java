@@ -66,8 +66,7 @@ class CompiledCodecRawIOTest {
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
                 assertTrue(generated.contains(" g = writer.nativeWriter();"),
                         backend + ": mixed native POJO path missing");
-                assertTrue(generated.contains("g.writeString(((String) rawValue))")
-                                || generated.contains("g.writeString(((java.lang.String) rawValue))"),
+                assertTrue(generated.contains("_writeString(g, (String) rawValue)"),
                         backend + ": native codec write missing");
             }
 
