@@ -80,6 +80,40 @@ final class BindingHelperEmitter {
     }
 
     private void emitCodecMetadata(BindingValue value, GeneratedClass generated) {
+        if (value.staticCodec() != null) {
+            org.sjf4j.processor.discovery.ValueCodecMetadata codec = value.staticCodec();
+            String valueType = codec.valueType.toString();
+            String rawType = codec.rawType.toString();
+            String name = value.helperName();
+            String reference = codec.declaration.getEnclosingElement().toString()
+                    + "." + codec.declaration.getSimpleName();
+            String codecType = "org.sjf4j.value.ValueCodec<" + valueType + ", " + rawType + ">";
+            String selected = value.codecPattern() == null
+                    ? reference
+                    : "((org.sjf4j.value.PatternedValueCodec<" + valueType + ", " + rawType
+                            + ">) " + reference + ").withPattern("
+                            + JavaWriter.stringLiteral(value.codecPattern()) + ")";
+            generated.addField(out -> out.line("private static final " + codecType
+                    + " " + name + " = " + selected + ";"));
+            if (value.direction() == BindingPlan.Direction.READ_FROM) {
+                generated.addField(out -> out.line(
+                        "private static final org.sjf4j.value.ValueCodec.StreamingValueCodec.Reader<"
+                                + valueType + "> " + name + "Reader = "
+                                + name + " instanceof org.sjf4j.value.ValueCodec.StreamingValueCodec "
+                                + "? ((org.sjf4j.value.ValueCodec.StreamingValueCodec<"
+                                + valueType + ", " + rawType + ">) " + name
+                                + ").streamReader() : null;"));
+            } else {
+                generated.addField(out -> out.line(
+                        "private static final org.sjf4j.value.ValueCodec.StreamingValueCodec.Writer<"
+                                + valueType + "> " + name + "Writer = "
+                                + name + " instanceof org.sjf4j.value.ValueCodec.StreamingValueCodec "
+                                + "? ((org.sjf4j.value.ValueCodec.StreamingValueCodec<"
+                                + valueType + ", " + rawType + ">) " + name
+                                + ").streamWriter() : null;"));
+            }
+            return;
+        }
         // Unconstrained reads select a Codec according to the incoming JSON type.
         // Explicit codecName and codecPattern remain strict.
         boolean autoRead = value.direction() == BindingPlan.Direction.READ_FROM
