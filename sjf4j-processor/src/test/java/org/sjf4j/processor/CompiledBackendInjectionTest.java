@@ -73,4 +73,30 @@ class CompiledBackendInjectionTest {
                     binderType.getMethod("write", beanType).invoke(fromMapper, bean));
         }
     }
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void jackson3AcceptsNativeFactory() throws Exception {
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Bean.java",
+                "package fixture; public class Bean { public String text = \"hello\"; }",
+                "fixture/Binder.java", "package fixture; import java.io.IOException; "
+                        + "import org.sjf4j.annotation.binding.*; "
+                        + "@CompiledBinder(backend=Backend.JACKSON3) public interface Binder { "
+                        + "@WriteTo String write(Bean value) throws IOException; }"
+        ), CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
+                .contains("JsonFactory backend"));
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class binderType = loader.loadClass("fixture.Binder");
+            Class<?> beanType = loader.loadClass("fixture.Bean");
+            Object binder = CompiledInstances.create(
+                    binderType, new tools.jackson.core.json.JsonFactory());
+            Object bean = beanType.getConstructor().newInstance();
+            assertEquals("{\"text\":\"hello\"}",
+                    binderType.getMethod("write", beanType).invoke(binder, bean));
+        }
+    }
+
 }
