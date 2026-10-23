@@ -3,9 +3,6 @@ name: Compiled Write performance (focused)
 # Kept on demand after the optimization branch is merged.
 # Do not re-enable expensive JMH as a general PR or push check.
 on:
-  push:
-    branches:
-      - perf/write-direct-wrapped-diagnostics
   workflow_dispatch:
 
 permissions:
