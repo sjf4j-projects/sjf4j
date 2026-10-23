@@ -21,7 +21,7 @@ final class StructuralWriteEmitter {
         void endArray(JavaWriter out);
         void writeNull(JavaWriter out);
         void writePropertyName(JavaWriter out, BindingValue owner, int index);
-        default String includeNullsExpression() { return "this.context.includeNulls"; }
+        default String includeNullsExpression() { return "_FALLBACK_CONTEXT.includeNulls"; }
         default boolean supportsStringMember() { return false; }
         default void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                        String expression) { throw new UnsupportedOperationException(); }
@@ -166,7 +166,7 @@ final class StructuralWriteEmitter {
             out.beginBlock("if (actualClass == " + type + ".class)");
             if (subtype.cachedPojo) {
                 out.line("org.sjf4j.binding.StreamingIO.writePojo(writer, value, "
-                        + metadata + ", this.context);");
+                        + metadata + ", _FALLBACK_CONTEXT);");
             } else {
                 ops.writeValue(out, subtype.compiled, "(" + type + ") value");
             }
