@@ -42,7 +42,8 @@ class CompiledStaticBindingOptionsTest {
         assertTrue(generated.contains("Binder.KEY"), generated);
         assertFalse(generated.contains("context.includeNulls"), generated);
         assertTrue(generated.contains("private static void _writeBean("), generated);
-        assertTrue(generated.contains("private static fixture.Bean _readBean("), generated);
+        assertTrue(generated.contains("_readBean("), generated);
+        assertFalse(generated.contains("private fixture.Bean _readBean("), generated);
         assertFalse(generated.contains("private final org.sjf4j.RuntimeContext context;"), generated);
         assertFalse(generated.contains("this.context"), generated);
         assertTrue(generated.contains("private final org.sjf4j.backend.jackson2.binding.Jackson2Binder binder;"),
