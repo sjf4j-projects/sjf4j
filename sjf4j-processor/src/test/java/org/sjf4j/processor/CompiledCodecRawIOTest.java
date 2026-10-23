@@ -144,7 +144,7 @@ class CompiledCodecRawIOTest {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Object binder = CompiledInstances.global(binderType);
                 UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
-                assertEquals("\\"" + id + "\\"",
+                assertEquals("\"" + id + "\"",
                         binderType.getMethod("writeUuid", UUID.class).invoke(binder, id), backend);
                 assertEquals("null",
                         binderType.getMethod("writeUuid", UUID.class)
