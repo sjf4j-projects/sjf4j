@@ -59,7 +59,8 @@ class CompiledTemporalStreamingTest {
             sources.put("fixture/Binder.java",
                     "package fixture; import java.time.*;"
                             + "import org.sjf4j.annotation.binding.*;"
-                            + "@CompiledBinder(backend=Backend." + backend + ")"
+                            + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\\"iso\\")}) "
+                     + "@CompiledBinder(backend=Backend." + backend + ")"
                             + "public interface Binder {"
                             + " @ReadFrom Bean readString(String json) throws java.io.IOException;"
                             + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;"
