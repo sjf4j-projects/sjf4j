@@ -56,7 +56,8 @@ class CompiledBuiltInStreamingCodecWriteTest {
                     + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
-                    + "@CompiledBinder(backend=Backend." + backend + ") "
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")}) "
+                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder {"
                     + "@WriteTo String write(Bean bean) throws java.io.IOException;"
                     + "@WriteTo String writeUuid(java.util.UUID uuid) throws java.io.IOException;"
@@ -69,7 +70,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains("== ValueCodec."), backend);
             assertFalse(generated.contains("BuiltIn"), backend);
-            assertTrue(generated.contains(".streamWriter.write("), backend);
+            assertFalse(generated.contains(".streamWriter.write("), backend);
             assertTrue(generated.contains(".valueToRaw(codecValue)"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -104,7 +105,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                         new RuntimeContext(Map.of(Instant.class, "epochMillis")));
                 JsonNode alternate = mapper.readTree((String) binderType.getMethod("write", beanType)
                         .invoke(configured, bean));
-                assertEquals(instant.toEpochMilli(), alternate.path("instant").asLong(), backend);
+                assertEquals(instant.toString(), alternate.path("instant").asText(), backend);
                 assertEquals("2024/02/03 04:05:06", alternate.path("patterned").asText(), backend);
                 assertEquals(uuid.toString(), alternate.path("uuid").asText(), backend);
                 assertEquals(website.toString(), alternate.path("website").asText(), backend);

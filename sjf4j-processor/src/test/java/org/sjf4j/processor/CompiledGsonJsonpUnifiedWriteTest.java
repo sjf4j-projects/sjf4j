@@ -68,7 +68,7 @@ class CompiledGsonJsonpUnifiedWriteTest {
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("writer.nativeWriter()"), backend);
             assertTrue(generated.contains("_writeList(writer, property0);"), backend);
-            assertTrue(generated.contains("this.context.includeNulls"), backend);
+            assertFalse(generated.contains("this.context.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(writer,"), backend);
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertFalse(generated.contains("private static void _writeModel("), backend);
@@ -113,9 +113,9 @@ class CompiledGsonJsonpUnifiedWriteTest {
                 assertEquals(new java.math.BigInteger("1234567890123456789012345"),
                         full.path("large").bigIntegerValue(), backend);
 
-                assertFalse(filtered.has("omitted"), backend);
-                assertFalse(filtered.path("extras").has("skip"), backend);
-                assertFalse(filtered.path("ids").has("empty"), backend);
+                assertTrue(filtered.path("omitted").isNull(), backend);
+                assertTrue(filtered.path("extras").path("skip").isNull(), backend);
+                assertTrue(filtered.path("ids").path("empty").isNull(), backend);
                 assertTrue(filtered.path("animals").get(1).isNull(), backend);
                 assertTrue(filtered.path("words").get(1).isNull(), backend);
                 assertTrue(filtered.path("groups").path("items").get(1).isNull(), backend);

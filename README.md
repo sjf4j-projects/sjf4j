@@ -147,6 +147,54 @@ Maven (`maven-compiler-plugin`):
     </path>
 </annotationProcessorPaths>
 ```
+
+**Compiled JSON binding (static configuration)**
+
+`@CompiledBinder` generates typed JSON read/write methods. Apply `@BindingOptions`
+to fix the null policy and select codecs at compilation time:
+
+```java
+@CompiledBinder(backend = Backend.JACKSON2)
+@BindingOptions(
+    includeNulls = false,
+    valueCodecs = {
+        @CodecMapping(type = Instant.class, format = "epochMillis")
+    }
+)
+public interface UserJson {
+    @WriteTo String write(User user) throws IOException;
+    @ReadFrom User read(String json) throws IOException;
+}
+```
+
+Built-in `@NodeValue` codecs and fields declared directly in the interface
+are discovered automatically. Use `registries = {MyCodecs.class}` for external
+`public static final ValueCodec<V, R>` fields; runtime
+`ValueRegistry.registerAnnotated()` is **not needed** for these statically
+selected codecs. If several formats exist for a value type, select one with
+`valueCodecs = {@CodecMapping(type = ..., format = ...)}` or use
+`@NodeProperty(codecName = ...)` on an individual property.
+
+The generated implementation also accepts native backend configuration:
+
+```java
+Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+GsonBinder backend = new GsonBinder(gson);
+MyGsonBinder binder = CompiledInstances.create(MyGsonBinder.class, backend);
+```
+
+This example assumes `@CompiledBinder(backend = Backend.GSON)`. For
+Jackson 2, construct `new Jackson2Binder(mapper.getFactory())` first; for
+Fastjson2, construct `new Fastjson2Binder(readerContext, writerContext)`.
+The generated implementation accepts **only the concrete SJF4J Binder** for
+its selected backend. The Binder controls native parser/generator configuration;
+it does not delegate to custom Gson TypeAdapters or Jackson databind serializers.
+`@CompiledBinder` always uses static Codec resolution, whether or not
+`@BindingOptions` is present. The annotation only provides explicit null and
+format overrides; multi-format codecs require `@CodecMapping`.
+The legacy `CompiledInstances.create(type, RuntimeContext)` overload remains
+for other compiled components and migration.
+
 </details>
 
 

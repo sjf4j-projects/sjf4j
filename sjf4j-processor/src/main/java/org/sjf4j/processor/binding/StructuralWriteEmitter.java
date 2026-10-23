@@ -21,6 +21,7 @@ final class StructuralWriteEmitter {
         void endArray(JavaWriter out);
         void writeNull(JavaWriter out);
         void writePropertyName(JavaWriter out, BindingValue owner, int index);
+        default String includeNullsExpression() { return "this.context.includeNulls"; }
         default boolean supportsStringMember() { return false; }
         default void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                        String expression) { throw new UnsupportedOperationException(); }
@@ -44,6 +45,15 @@ final class StructuralWriteEmitter {
         this.ops = ops;
     }
 
+    /** Emit a nullable-member guard only when the compiled null policy requires it. */
+    private boolean beginNullableMember(JavaWriter out, String value) {
+        String includeNulls = ops.includeNullsExpression();
+        if ("true".equals(includeNulls)) return false;
+        out.beginBlock("if (" + ("false".equals(includeNulls) ? value + " != null"
+                : includeNulls + " || " + value + " != null") + ")");
+        return true;
+    }
+
     void emitPojo(JavaWriter out, BindingValue value) {
         ops.startObject(out);
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
@@ -53,26 +63,22 @@ final class StructuralWriteEmitter {
             boolean stringMember = child.kind() == BindingValue.Kind.STRING
                     && ops.supportsStringMember();
             String expr = WriteEmitter.propertyExpression(property, "value");
+            boolean guard = false;
             if (!child.primitive()) {
-                // Evaluate a getter once, including when null properties are omitted.
                 String propertyVar = "property" + index;
                 out.line(child.type() + " " + propertyVar + " = " + expr + ";");
-                if (!stringMember) {
-                    out.beginBlock("if (this.context.includeNulls || " + propertyVar + " != null)");
-                }
+                if (!stringMember) guard = beginNullableMember(out, propertyVar);
                 expr = propertyVar;
             }
 
-            if (ops.explicitObjectSeparators()) {
-                ops.beforeObjectMember(out, "memberCount++");
-            }
+            if (ops.explicitObjectSeparators()) ops.beforeObjectMember(out, "memberCount++");
             if (stringMember) {
                 ops.writeStringMember(out, value, index, expr);
             } else {
                 ops.writePropertyName(out, value, index);
                 ops.writeValue(out, child, expr);
             }
-            if (!child.primitive() && !stringMember) out.endBlock();
+            if (guard) out.endBlock();
             index++;
         }
 
@@ -80,13 +86,11 @@ final class StructuralWriteEmitter {
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
                     + "value.dynamicProperties().entrySet())");
             out.line("Object dynamicValue = entry.getValue();");
-            out.beginBlock("if (this.context.includeNulls || dynamicValue != null)");
-            if (ops.explicitObjectSeparators()) {
-                ops.beforeObjectMember(out, "memberCount++");
-            }
+            boolean guard = beginNullableMember(out, "dynamicValue");
+            if (ops.explicitObjectSeparators()) ops.beforeObjectMember(out, "memberCount++");
             ops.writeDynamicName(out, "entry.getKey()");
             ops.writeRuntimeValue(out, "dynamicValue");
-            out.endBlock();
+            if (guard) out.endBlock();
             out.endBlock();
         }
         ops.endObject(out);
@@ -130,14 +134,12 @@ final class StructuralWriteEmitter {
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
         out.line("Object mapValue = entry.getValue();");
-        out.beginBlock("if (this.context.includeNulls || mapValue != null)");
-        if (ops.explicitObjectSeparators()) {
-            ops.beforeObjectMember(out, "memberCount++");
-        }
+        boolean guard = beginNullableMember(out, "mapValue");
+        if (ops.explicitObjectSeparators()) ops.beforeObjectMember(out, "memberCount++");
         ops.writeMapName(out, "(String) entry.getKey()");
         ops.writeValue(out, value.mapValue(),
                 "(" + value.mapValue().type() + ") mapValue");
-        out.endBlock();
+        if (guard) out.endBlock();
         out.endBlock();
         ops.endObject(out);
     }

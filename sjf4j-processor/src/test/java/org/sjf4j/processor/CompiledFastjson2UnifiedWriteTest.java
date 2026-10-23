@@ -66,7 +66,7 @@ class CompiledFastjson2UnifiedWriteTest {
         assertTrue(generated.contains("_writeModelUtf8(writer,"), generated);
         assertTrue(generated.contains("_writeModelUtf16(writer,"), generated);
         assertTrue(generated.contains("writeName") && generated.contains("Raw("), generated);
-        assertTrue(generated.contains("this.context.includeNulls"), generated);
+        assertFalse(generated.contains("this.context.includeNulls"), generated);
         assertTrue(generated.contains("StreamingIO.writeNode(writer,"), generated);
         assertFalse(generated.contains("StructuralWriteEmitter"), generated);
         // A OneOf/codec/dynamic descendant must not force its parent to Runtime.
@@ -111,9 +111,9 @@ class CompiledFastjson2UnifiedWriteTest {
             assertTrue(full.path("groups").path("items").get(1).isNull());
             assertEquals("alpha", full.path("tags").get(0).asText());
 
-            assertFalse(filtered.has("omitted"));
-            assertFalse(filtered.path("extras").has("skip"));
-            assertFalse(filtered.path("ids").has("empty"));
+            assertTrue(filtered.path("omitted").isNull());
+            assertTrue(filtered.path("extras").path("skip").isNull());
+            assertTrue(filtered.path("ids").path("empty").isNull());
             assertTrue(filtered.path("animals").get(1).isNull());
             assertTrue(filtered.path("groups").path("items").get(1).isNull());
             assertTrue(filtered.path("words").get(1).isNull());

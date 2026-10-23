@@ -20,6 +20,12 @@ final class Fastjson2WriteEmitter {
         }
     }
 
+    private final Boolean fixedIncludeNulls;
+
+    Fastjson2WriteEmitter(Boolean fixedIncludeNulls) {
+        this.fixedIncludeNulls = fixedIncludeNulls;
+    }
+
     private final Set<FastjsonMode> fastjsonModes = EnumSet.noneOf(FastjsonMode.class);
     void registerWriteOutput(BindingPlan.WriteOutput output) {
         switch (output) {
@@ -139,6 +145,11 @@ final class Fastjson2WriteEmitter {
     /** Structural code is shared; a mode-specific APT adapter emits native tokens. */
     private final class ModeOperations implements StructuralWriteEmitter.Operations {
         private final FastjsonMode mode;
+
+        @Override
+        public String includeNullsExpression() {
+            return fixedIncludeNulls == null ? "this.context.includeNulls" : fixedIncludeNulls.toString();
+        }
 
         ModeOperations(FastjsonMode mode) {
             this.mode = mode;

@@ -43,6 +43,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "fixture/Binder.java",
                 "package fixture; import java.io.*; "
                 + "import org.sjf4j.annotation.binding.*; "
+                 + "@BindingOptions(registries={Codecs.class}) "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
                 + "@WriteTo void getterToWriter(FailingGetter value, Writer output) throws IOException; "
                 + "@WriteTo void getterToStream(FailingGetter value, OutputStream output) throws IOException; "
@@ -117,6 +118,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "fixture/Binder.java",
                 "package fixture; import java.io.*; "
                 + "import org.sjf4j.annotation.binding.*; "
+                + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")}) "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
                 + "@ReadFrom Bean read(String json) throws IOException; "
                 + "@WriteTo String write(Bean bean) throws IOException; "
@@ -132,7 +134,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
         assertTrue(source.contains("writer.nativeWriter()"), source);
-        assertTrue(source.contains("writer.writeRaw("), source);
+        assertFalse(source.contains("requireRegisteredValueInfo"), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);
 
@@ -178,8 +180,8 @@ class Fastjson2CompiledWrapperIntegrationTest {
             RuntimeContext context = new RuntimeContext(Map.of(Instant.class, "epochMillis"), false);
             Object configured = CompiledInstances.create(type, context);
             String customized = (String) type.getMethod("write", beanType).invoke(configured, bean);
-            assertTrue(customized.contains("\"when\":1704103200000"), customized);
-            assertFalse(customized.contains("\"absent\""), customized);
+            assertTrue(customized.contains("\"when\":\"2024-01-01T10:00:00Z\""), customized);
+            assertTrue(customized.contains("\"absent\":null"), customized);
         }
     }
 }

@@ -80,6 +80,26 @@ final class BindingHelperEmitter {
     }
 
     private void emitCodecMetadata(BindingValue value, GeneratedClass generated) {
+        // Annotated value nodes compile directly to their declared methods
+        // and require no codec field or runtime registry lookup.
+        if (value.staticNodeValue()) return;
+        if (value.staticCodec() != null) {
+            org.sjf4j.processor.discovery.ValueCodecMetadata codec = value.staticCodec();
+            String valueType = codec.valueType.toString();
+            String rawType = codec.rawType.toString();
+            String name = value.helperName();
+            String reference = codec.declaration.getEnclosingElement().toString()
+                    + "." + codec.declaration.getSimpleName();
+            String codecType = "org.sjf4j.value.ValueCodec<" + valueType + ", " + rawType + ">";
+            String selected = value.codecPattern() == null
+                    ? reference
+                    : "((org.sjf4j.value.PatternedValueCodec<" + valueType + ", " + rawType
+                            + ">) " + reference + ").withPattern("
+                            + JavaWriter.stringLiteral(value.codecPattern()) + ")";
+            generated.addField(out -> out.line("private static final " + codecType
+                    + " " + name + " = " + selected + ";"));
+            return;
+        }
         // Unconstrained reads select a Codec according to the incoming JSON type.
         // Explicit codecName and codecPattern remain strict.
         boolean autoRead = value.direction() == BindingPlan.Direction.READ_FROM

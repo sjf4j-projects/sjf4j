@@ -44,6 +44,8 @@ public final class GeneratedClass {
             new ArrayList<Member>();
 
     private boolean runtimeContextConstructor;
+    private Boolean staticBinderIncludeNulls;
+    private String backendBinderType;
 
     private boolean valid = true;
 
@@ -209,6 +211,16 @@ public final class GeneratedClass {
         runtimeContextConstructor = true;
     }
 
+    /** Fixes the default null policy for a statically configured CompiledBinder. */
+    public void setStaticBinderIncludeNulls(boolean includeNulls) {
+        this.staticBinderIncludeNulls = includeNulls;
+    }
+
+    /** Enables direct injection of an already configured backend binder. */
+    public void enableBinderConstructor(String binderType) {
+        this.backendBinderType = binderType;
+    }
+
     /** Adds an assignment after the generated constructor's context field is set. */
     public void addContextInitializer(Member member) {
         contextInitializers.add(Asserts.notNull(member, "member"));
@@ -323,15 +335,38 @@ public final class GeneratedClass {
         if (runtimeContextConstructor) {
             if (written) out.blank();
             out.beginBlock("public " + simpleName + "()");
-            out.line("this(org.sjf4j.RuntimeContext.EMPTY);");
+            out.line("this(" + (Boolean.FALSE.equals(staticBinderIncludeNulls)
+                    ? "new org.sjf4j.RuntimeContext(false)"
+                    : "org.sjf4j.RuntimeContext.EMPTY") + ");");
             out.endBlock();
             out.blank();
             out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
-            out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
+            if (staticBinderIncludeNulls == null) {
+                out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
+            } else {
+                out.line("java.util.Objects.requireNonNull(context, \"context\");");
+                out.line("this.context = " + (staticBinderIncludeNulls
+                        ? "org.sjf4j.RuntimeContext.EMPTY;"
+                        : "new org.sjf4j.RuntimeContext(false);"));
+            }
             for (Member initializer : contextInitializers) {
                 initializer.write(out);
             }
             out.endBlock();
+            if (backendBinderType != null) {
+                out.blank();
+                out.beginBlock("public " + simpleName + "(" + backendBinderType
+                        + " nativeBinder)");
+                out.line("org.sjf4j.RuntimeContext context = " + (Boolean.FALSE.equals(staticBinderIncludeNulls)
+                        ? "new org.sjf4j.RuntimeContext(false);"
+                        : "org.sjf4j.RuntimeContext.EMPTY;"));
+                out.line("this.context = context;");
+                out.line("this.binder = java.util.Objects.requireNonNull(nativeBinder, \"nativeBinder\");");
+                for (int i = 1; i < contextInitializers.size(); i++) {
+                    contextInitializers.get(i).write(out);
+                }
+                out.endBlock();
+            }
             written = true;
         }
 

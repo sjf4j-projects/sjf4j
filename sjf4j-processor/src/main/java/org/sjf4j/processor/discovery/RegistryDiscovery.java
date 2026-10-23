@@ -57,15 +57,20 @@ public final class RegistryDiscovery {
             result.put(builtins.getQualifiedName().toString(), builtins);
         }
 
-        List<String> names = new ArrayList<>(sourceRegistries.keySet());
-        Collections.sort(names);
-        for (String name : names) {
-            result.putIfAbsent(name, sourceRegistries.get(name));
+        // Explicit compiled binding configuration is closed over its own
+        // declarations and nominated registries; unrelated source registries
+        // must not change the generated binding semantics.
+        if (owner.getAnnotation(org.sjf4j.annotation.binding.CompiledBinder.class) == null) {
+            List<String> names = new ArrayList<>(sourceRegistries.keySet());
+            Collections.sort(names);
+            for (String name : names) {
+                result.putIfAbsent(name, sourceRegistries.get(name));
+            }
         }
-        // An explicit list is scoped to the annotated compiled interface.
         for (TypeElement registry : explicitRegistries(owner)) {
             result.putIfAbsent(registry.getQualifiedName().toString(), registry);
         }
+        result.putIfAbsent(owner.getQualifiedName().toString(), owner);
         return new ArrayList<>(result.values());
     }
 

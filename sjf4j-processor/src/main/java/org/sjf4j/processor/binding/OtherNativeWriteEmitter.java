@@ -14,10 +14,17 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final Boolean fixedIncludeNulls;
     private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
-    OtherNativeWriteEmitter(BackendSpec backend) {
+    OtherNativeWriteEmitter(BackendSpec backend, Boolean fixedIncludeNulls) {
         this.backend = backend;
+        this.fixedIncludeNulls = fixedIncludeNulls;
+    }
+
+    @Override
+    public String includeNullsExpression() {
+        return fixedIncludeNulls == null ? "this.context.includeNulls" : fixedIncludeNulls.toString();
     }
 
     private boolean gson() {

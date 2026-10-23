@@ -55,10 +55,17 @@ public final class BindingGenerator {
         }
 
         generated.enableRuntimeContext();
+        org.sjf4j.annotation.binding.BindingOptions options =
+                type.getAnnotation(org.sjf4j.annotation.binding.BindingOptions.class);
+        generated.setStaticBinderIncludeNulls(options == null || options.includeNulls());
+        // The generated binder only accepts the already configured SJF4J
+        // backend adapter. Native parser/generator settings belong to the
+        // adapter and are never modified by the generated implementation.
+        generated.enableBinderConstructor(backend.binderType());
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
         generated.addContextInitializer(out ->
-                out.line("this.binder = new " + backend.binderType() + "(context);"));
+                out.line("this.binder = new " + backend.binderType() + "(this.context);"));
 
         List<ResolvedMethod> resolvedMethods =
                 context.methods.abstractMethods(type);
@@ -118,10 +125,13 @@ public final class BindingGenerator {
             return;
         }
 
+        org.sjf4j.annotation.binding.BindingOptions staticOptions =
+                type.getAnnotation(org.sjf4j.annotation.binding.BindingOptions.class);
         BindingEmitter emitter =
                 new BindingEmitter(
                         context,
-                        backend);
+                        backend,
+                        staticOptions == null || staticOptions.includeNulls());
 
         for (BindingCompiler.CompiledMethod method :
                 compiled) {

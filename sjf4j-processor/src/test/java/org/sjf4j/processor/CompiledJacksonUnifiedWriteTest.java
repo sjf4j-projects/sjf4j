@@ -65,7 +65,7 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("private void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("private void _writeStringMember("), backend);
-            assertTrue(generated.contains("if (value == null && !this.context.includeNulls)"), backend);
+            assertFalse(generated.contains("if (value == null && !this.context.includeNulls)"), backend);
             assertTrue(generated.contains("_writeString(g, value);"), backend);
             assertTrue(generated.contains("_writeStringMember(g,"), backend);
             assertTrue(generated.contains("_writeList(writer, property0);"), backend);
@@ -73,7 +73,7 @@ class CompiledJacksonUnifiedWriteTest {
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertFalse(generated.contains("boolean includeNulls)"), backend);
-            assertTrue(generated.contains("this.context.includeNulls"), backend);
+            assertFalse(generated.contains("this.context.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(writer,"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -111,9 +111,9 @@ class CompiledJacksonUnifiedWriteTest {
                 assertEquals("alpha", full.path("tags").get(0).asText(), backend);
                 assertEquals("beta", full.path("tags").get(1).asText(), backend);
 
-                assertFalse(filtered.has("omitted"), backend);
-                assertFalse(filtered.path("extras").has("skip"), backend);
-                assertFalse(filtered.path("ids").has("empty"), backend);
+                assertTrue(filtered.path("omitted").isNull(), backend);
+                assertTrue(filtered.path("extras").path("skip").isNull(), backend);
+                assertTrue(filtered.path("ids").path("empty").isNull(), backend);
                 assertTrue(filtered.path("groups").path("items").get(1).isNull(), backend);
                 assertEquals(2, filtered.path("tags").size(), backend);
                 assertTrue(filtered.path("animals").get(1).isNull(), backend);

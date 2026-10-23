@@ -350,8 +350,27 @@ final class ReadEmitter {
             case BIG_INTEGER: decoded = numeric + "toBigInteger((Number) " + raw + ")"; break;
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
-                // readRaw() may return Integer when the selected codec expects Long.
                 String codec = value.helperName();
+                if (value.staticCodec() != null || value.staticNodeValue()) {
+                    String targetRaw = value.codecRawType().toString();
+                    boolean numericRaw = targetRaw.equals("java.lang.Number")
+                            || targetRaw.equals("java.lang.Byte")
+                            || targetRaw.equals("java.lang.Short")
+                            || targetRaw.equals("java.lang.Integer")
+                            || targetRaw.equals("java.lang.Long")
+                            || targetRaw.equals("java.lang.Float")
+                            || targetRaw.equals("java.lang.Double")
+                            || targetRaw.equals("java.math.BigInteger")
+                            || targetRaw.equals("java.math.BigDecimal");
+                    String converted = numericRaw
+                            ? "(" + raw + " == null ? null : " + numeric
+                                    + "to((Number) " + raw + ", " + targetRaw + ".class))"
+                            : "(" + targetRaw + ") " + raw;
+                    return "(" + value.type() + ") " + (value.staticNodeValue()
+                            ? value.nodeValueDecode(converted)
+                            : codec + ".rawToValue(" + converted + ")");
+                }
+                // Dynamic ValueInfo codec selection retains the rawClazz check.
                 return "(" + value.type() + ") " + codec + ".rawToValue("
                         + raw + " instanceof Number && Number.class.isAssignableFrom(" + codec + ".rawClazz)"
                         + " ? " + numeric + "to((Number) " + raw + ", " + codec + ".rawClazz)"
@@ -849,6 +868,16 @@ final class ReadEmitter {
                 return reader + ".readBigDecimal()";
 
             case VALUE_CODEC:
+                if (value.staticCodec() != null || value.staticNodeValue()) {
+                    String fixedReader = codecRawReader(value);
+                    String rawExpression = fixedReader == null
+                            ? "(" + value.codecRawType() + ") " + reader + ".readRaw()"
+                            : reader + "." + fixedReader + "()";
+                    String fixedDecode = value.staticNodeValue()
+                            ? value.nodeValueDecode(rawExpression)
+                            : value.helperName() + ".rawToValue(" + rawExpression + ")";
+                    return "(" + value.type() + ") " + fixedDecode;
+                }
                 String rawReader = codecRawReader(value);
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + reader + ", "
                         + value.helperName() + ", this.context)";

@@ -46,6 +46,7 @@ class CompiledRuntimeContextInjectionTest {
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
+                + "@BindingOptions(registries={Codecs.class},valueCodecs={@CodecMapping(type=Token.class,format=\"\")}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
                 + "@ReadFrom Token read(String json) throws IOException; "
                 + "@WriteTo String write(Token token) throws IOException; "
@@ -63,7 +64,8 @@ class CompiledRuntimeContextInjectionTest {
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
         assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
         assertTrue(binderSource.contains("RuntimeContext context)"), binderSource);
-        assertTrue(binderSource.contains("context.valueFormat("), binderSource);
+        assertFalse(binderSource.contains("context.valueFormat("), binderSource);
+        assertFalse(binderSource.contains("requireRegisteredValueInfo"), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
         assertFalse(binderSource.contains("org.sjf4j.Nodes."), binderSource);
 
@@ -98,10 +100,10 @@ class CompiledRuntimeContextInjectionTest {
 
             assertEquals("\"d:hello\"", binderInterface.getMethod("write", tokenClass)
                     .invoke(defaultBinder, token));
-            assertEquals("\"a:hello\"", binderInterface.getMethod("write", tokenClass)
+            assertEquals("\"d:hello\"", binderInterface.getMethod("write", tokenClass)
                     .invoke(configuredBinder, token));
             assertEquals("hello", tokenClass.getField("value").get(
-                    binderInterface.getMethod("read", String.class).invoke(configuredBinder, "\"a:hello\"")));
+                    binderInterface.getMethod("read", String.class).invoke(configuredBinder, "\"d:hello\"")));
 
             Class outerInterface = loader.loadClass("fixture.Outer");
             Class<?> sourceClass = loader.loadClass("fixture.Source");
@@ -124,7 +126,7 @@ class CompiledRuntimeContextInjectionTest {
             String configuredJson = (String) binderInterface.getMethod("writeBean", beanClass)
                     .invoke(configuredBinder, bean);
             assertTrue(defaultJson.contains("\"empty\":null"), defaultJson);
-            assertFalse(configuredJson.contains("\"empty\""), configuredJson);
+            assertTrue(configuredJson.contains("\"empty\":null"), configuredJson);
             assertTrue(configuredJson.contains("\"name\":\"x\""), configuredJson);
         }
     }
@@ -145,6 +147,7 @@ class CompiledRuntimeContextInjectionTest {
                     "fixture/Binder.java",
                     "package fixture; import java.io.IOException; "
                     + "import org.sjf4j.annotation.binding.*; "
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")},includeNulls=false) "
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
                     + "@ReadFrom Bean read(String json) throws IOException; "
@@ -169,8 +172,8 @@ class CompiledRuntimeContextInjectionTest {
                 String custom = (String) type.getMethod("write", beanType).invoke(configured, bean);
                 assertTrue(standard.contains("2024-01-01T10:00:00Z"), backend + ": " + standard);
                 assertTrue(standard.contains("\"street\":\"Main\""), backend + ": " + standard);
-                assertTrue(standard.contains("\"empty\":null"), backend + ": " + standard);
-                assertTrue(custom.contains("1704103200000"), backend + ": " + custom);
+                assertFalse(standard.contains("\"empty\""), backend + ": " + standard);
+                assertTrue(custom.contains("2024-01-01T10:00:00Z"), backend + ": " + custom);
                 assertTrue(custom.contains("\"street\":\"Main\""), backend + ": " + custom);
                 assertFalse(custom.contains("\"empty\""), backend + ": " + custom);
 
