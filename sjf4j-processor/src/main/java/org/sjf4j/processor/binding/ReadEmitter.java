@@ -351,7 +351,7 @@ final class ReadEmitter {
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
                 String codec = value.helperName();
-                if (value.staticCodec() != null) {
+                if (value.staticCodec() != null || value.staticNodeValue()) {
                     String targetRaw = value.codecRawType().toString();
                     boolean numericRaw = targetRaw.equals("java.lang.Number")
                             || targetRaw.equals("java.lang.Byte")
@@ -366,7 +366,9 @@ final class ReadEmitter {
                             ? "(" + raw + " == null ? null : " + numeric
                                     + "to((Number) " + raw + ", " + targetRaw + ".class))"
                             : "(" + targetRaw + ") " + raw;
-                    return "(" + value.type() + ") " + codec + ".rawToValue(" + converted + ")";
+                    return "(" + value.type() + ") " + (value.staticNodeValue()
+                            ? value.nodeValueDecode(converted)
+                            : codec + ".rawToValue(" + converted + ")");
                 }
                 // Dynamic ValueInfo codec selection retains the rawClazz check.
                 return "(" + value.type() + ") " + codec + ".rawToValue("
@@ -866,12 +868,14 @@ final class ReadEmitter {
                 return reader + ".readBigDecimal()";
 
             case VALUE_CODEC:
-                if (value.staticCodec() != null) {
+                if (value.staticCodec() != null || value.staticNodeValue()) {
                     String fixedReader = codecRawReader(value);
                     String rawExpression = fixedReader == null
                             ? "(" + value.codecRawType() + ") " + reader + ".readRaw()"
                             : reader + "." + fixedReader + "()";
-                    String fixedDecode = value.helperName() + ".rawToValue(" + rawExpression + ")";
+                    String fixedDecode = value.staticNodeValue()
+                            ? value.nodeValueDecode(rawExpression)
+                            : value.helperName() + ".rawToValue(" + rawExpression + ")";
                     return "(" + value.type() + ") " + fixedDecode;
                 }
                 String rawReader = codecRawReader(value);
