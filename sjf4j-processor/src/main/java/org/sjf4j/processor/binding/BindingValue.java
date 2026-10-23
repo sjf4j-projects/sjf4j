@@ -59,6 +59,8 @@ final class BindingValue {
     private String codecPattern;
     private TypeMirror codecRawType;
     private ValueCodecMetadata staticCodec;
+    private String nodeValueEncoder;
+    private String nodeValueDecoder;
     private List<String> ignoredNames = Collections.emptyList();
     private boolean readDynamic;
     private boolean writeDynamic;
@@ -205,6 +207,23 @@ final class BindingValue {
 
     ValueCodecMetadata staticCodec() {
         return staticCodec;
+    }
+
+    void nodeValueMethods(String encoder, String decoder) {
+        this.nodeValueEncoder = encoder;
+        this.nodeValueDecoder = decoder;
+    }
+
+    boolean staticNodeValue() {
+        return nodeValueEncoder != null && nodeValueDecoder != null;
+    }
+
+    String nodeValueEncode(String value) {
+        return value + "." + nodeValueEncoder + "()";
+    }
+
+    String nodeValueDecode(String raw) {
+        return nodeValueDecoder + "(" + raw + ")";
     }
 
     List<String> ignoredNames() {
