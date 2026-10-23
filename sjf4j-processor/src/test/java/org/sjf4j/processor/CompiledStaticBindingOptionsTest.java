@@ -163,6 +163,36 @@ class CompiledStaticBindingOptionsTest {
         }
     }
 
+
+    @Test
+    void unconfiguredCompiledBinderUsesStaticCodecAndNullPolicyByDefault() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/User.java",
+                "package fixture; import java.net.URI; "
+                + "public class User { public URI homepage = URI.create(\"https://example.org\"); }",
+                "fixture/Binder.java",
+                "package fixture; import java.io.IOException; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "@CompiledBinder(backend=Backend.JACKSON2) public interface Binder { "
+                + "@WriteTo String write(User user) throws IOException; }"
+        ), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(source.contains("URI_CODEC"), source);
+        assertFalse(source.contains(".streamWriter"), source);
+        assertFalse(source.contains(".rawClazz"), source);
+        assertFalse(source.contains("requireRegisteredValueInfo"), source);
+        assertFalse(source.contains("this.context.includeNulls"), source);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
+            Class<?> userType = loader.loadClass("fixture.User");
+            Object binder = binderType.getConstructor().newInstance();
+            Object user = userType.getConstructor().newInstance();
+            assertEquals("{\"homepage\":\"https://example.org\"}",
+                    binderType.getMethod("write", userType).invoke(binder, user));
+        }
+    }
+
     @Test
     void multiFormatWithoutSelectionIsACompilationError() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
