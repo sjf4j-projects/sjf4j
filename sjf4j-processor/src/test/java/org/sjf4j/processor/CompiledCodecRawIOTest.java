@@ -66,9 +66,8 @@ class CompiledCodecRawIOTest {
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
                 assertTrue(generated.contains(" g = writer.nativeWriter();"),
                         backend + ": mixed native POJO path missing");
-                assertTrue(generated.contains("g.writeString(((String) rawValue))")
-                                || generated.contains("g.writeString(((java.lang.String) rawValue))"),
-                        backend + ": native codec write missing");
+                assertTrue(generated.contains("_writeString(g, (String) rawValue);"),
+                        backend + ": shared Jackson codec string helper missing");
             }
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -122,4 +121,36 @@ class CompiledCodecRawIOTest {
             }
         }
     }
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void jacksonCodecOnlyWriteStillGeneratesStringHelper() throws Exception {
+        for (String backend : new String[]{"JACKSON2", "JACKSON3"}) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Binder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + ")"
+                    + "public interface Binder {"
+                    + " @WriteTo String writeUuid(java.util.UUID id) throws java.io.IOException;"
+                    + "}");
+            NavigatorTestCompiler.Result compiled =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+
+            String generated = compiled.generatedSource("fixture/Binder_Impl.java");
+            assertTrue(generated.contains("private static void _writeString("), backend);
+            assertTrue(generated.contains("_writeString(g, (String) rawValue);"), backend);
+
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class binderType = loader.loadClass("fixture.Binder");
+                Object binder = CompiledInstances.global(binderType);
+                UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+                assertEquals("\"" + id + "\"",
+                        binderType.getMethod("writeUuid", UUID.class).invoke(binder, id), backend);
+                assertEquals("null",
+                        binderType.getMethod("writeUuid", UUID.class)
+                                .invoke(binder, new Object[]{null}), backend);
+            }
+        }
+    }
+
 }
