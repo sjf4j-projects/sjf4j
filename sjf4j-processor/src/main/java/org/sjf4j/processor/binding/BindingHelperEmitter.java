@@ -99,7 +99,7 @@ final class BindingHelperEmitter {
             String flag = value.helperName() + "BuiltIn";
             generated.addField(out -> out.line("private final boolean " + flag + ";"));
             generated.addContextInitializer(out -> out.line("this." + flag
-                    + " = this." + value.helperName() + ".codec == org.sjf4j.value.ValueCodec."
+                    + " = (Object) this." + value.helperName() + ".codec == org.sjf4j.value.ValueCodec."
                     + CodecWriteEmitter.builtInConstant(value.type().toString()) + ";"));
         }
         if (autoRead) {
