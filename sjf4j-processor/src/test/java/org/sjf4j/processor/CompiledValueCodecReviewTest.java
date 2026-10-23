@@ -123,7 +123,8 @@ class CompiledValueCodecReviewTest {
                 + "public static final ValueCodec<Tag,Long> SECOND = new TagCodec(\"default\"); }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
-                + "@BindingOptions(registries={FirstCodecs.class,DefaultCodecs.class}) "
+                + "@BindingOptions(registries={FirstCodecs.class,DefaultCodecs.class}, "
+                + "valueCodecs={@CodecMapping(type=Tag.class, format=\\\"second\\\")}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
                 + "@ReadFrom Tag read(String json) throws java.io.IOException; }");
 
@@ -132,11 +133,11 @@ class CompiledValueCodecReviewTest {
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
         assertFalse(generated.contains("Null.rawToValue(null)"), generated);
-        assertTrue(generated.contains(".multiples"), generated);
+        assertFalse(generated.contains("ValueSet"), generated);
+        assertTrue(generated.contains("DefaultCodecs.SECOND"), generated);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
-            ValueRegistry.registerAnnotated(loader.loadClass("fixture.FirstCodecs"));
-            ValueRegistry.registerAnnotated(loader.loadClass("fixture.DefaultCodecs"));
+            // Static codec selection must be independent of global registration.
             Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
             Object binder = binderType.getConstructor().newInstance();
             Object nullValue = binderType.getMethod("read", String.class).invoke(binder, "null");
