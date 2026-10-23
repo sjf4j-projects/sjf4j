@@ -116,8 +116,9 @@ class CompiledBuiltInStreamingCodecWriteTest {
                                 .invoke(binder, dateTime), backend);
                 assertEquals("null", binderType.getMethod("writeUuid", UUID.class)
                         .invoke(binder, new Object[]{null}), backend);
-                assertEquals("\"" + website + "\"", binderType.getMethod("writeUri", URI.class)
-                        .invoke(binder, website), backend);
+                String uriJson = (String) binderType.getMethod("writeUri", URI.class)
+                        .invoke(binder, website);
+                assertEquals(website.toString(), mapper.readTree(uriJson).asText(), backend);
                 assertEquals("null", binderType.getMethod("writeUri", URI.class)
                         .invoke(binder, new Object[]{null}), backend);
             }
