@@ -43,7 +43,6 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "fixture/Binder.java",
                 "package fixture; import java.io.*; "
                 + "import org.sjf4j.annotation.binding.*; "
-                + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")}) "
                  + "@BindingOptions(registries={Codecs.class}) "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
                 + "@WriteTo void getterToWriter(FailingGetter value, Writer output) throws IOException; "
@@ -119,6 +118,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "fixture/Binder.java",
                 "package fixture; import java.io.*; "
                 + "import org.sjf4j.annotation.binding.*; "
+                + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")}) "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
                 + "@ReadFrom Bean read(String json) throws IOException; "
                 + "@WriteTo String write(Bean bean) throws IOException; "
