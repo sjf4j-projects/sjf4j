@@ -238,6 +238,108 @@ public final class Jackson2WriteShapeDiagnostics {
         g.writeEndObject();
     }
 
+    // Exact same Writer and nested-helper structure; only collapse two-level
+    // string member helpers into the original one-level hand-written str(g,..).
+    public void writeWrappedFlatString(org.sjf4j.backend.jackson2.binding.Jackson2Writer writer, User v) throws IOException {
+        com.fasterxml.jackson.core.JsonGenerator g = writer.nativeWriter();
+        if (v == null) { g.writeNull(); return; }
+        g.writeStartObject();
+        g.writeFieldName(ID);
+        g.writeNumber(v.getId());
+        g.writeFieldName(CREATED_AT);
+        g.writeNumber(v.getCreatedAt());
+        g.writeFieldName(UPDATED_AT);
+        g.writeNumber(v.getUpdatedAt());
+        g.writeFieldName(REPUTATION);
+        g.writeNumber(v.getReputation());
+        g.writeFieldName(LOGIN_COUNT);
+        g.writeNumber(v.getLoginCount());
+        g.writeFieldName(AGE);
+        g.writeNumber(v.getAge());
+        g.writeFieldName(ACTIVE);
+        g.writeBoolean(v.isActive());
+        g.writeFieldName(VERIFIED);
+        g.writeBoolean(v.isVerified());
+        g.writeFieldName(ADMIN);
+        g.writeBoolean(v.isAdmin());
+        g.writeFieldName(SUSPENDED);
+        g.writeBoolean(v.isSuspended());
+        g.writeFieldName(SCORE);
+        g.writeNumber(v.getScore());
+        g.writeFieldName(LATITUDE);
+        g.writeNumber(v.getLatitude());
+        g.writeFieldName(LONGITUDE);
+        g.writeNumber(v.getLongitude());
+        str(g, USERNAME, v.getUsername());
+        str(g, EMAIL, v.getEmail());
+        str(g, DISPLAY_NAME, v.getDisplayName());
+        str(g, PASSWORD_HASH, v.getPasswordHash());
+        str(g, BIO, v.getBio());
+        g.writeFieldName(WEBSITE);
+        java.net.URI codecValue = v.getWebsite();
+        if (codecValue == null) g.writeNull();
+        else _writeString(g, org.sjf4j.value.ValueCodec.URI_CODEC.valueToRaw(codecValue));
+        str(g, DEPARTMENT, v.getDepartment());
+        g.writeFieldName(ADDRESS);
+        writeAddressFlatString(writer, v.getAddress());
+        g.writeFieldName(TAGS);
+        writeTagsFlatString(writer, v.getTags());
+        g.writeFieldName(FRIENDS);
+        writeFriendsFlatString(writer, v.getFriends());
+        g.writeEndObject();
+    }
+
+    private void writeAddressFlatString(org.sjf4j.backend.jackson2.binding.Jackson2Writer writer, Address v) throws IOException {
+        com.fasterxml.jackson.core.JsonGenerator g = writer.nativeWriter();
+        if (v == null) { g.writeNull(); return; }
+        g.writeStartObject();
+        str(g, STREET, v.getStreet());
+        str(g, CITY, v.getCity());
+        str(g, STATE, v.getState());
+        str(g, ZIP, v.getZip());
+        str(g, COUNTRY, v.getCountry());
+        g.writeEndObject();
+    }
+
+    private void writeTagsFlatString(org.sjf4j.backend.jackson2.binding.Jackson2Writer writer, List<String> v) throws IOException {
+        com.fasterxml.jackson.core.JsonGenerator g = writer.nativeWriter();
+        if (v == null) { g.writeNull(); return; }
+        g.writeStartArray();
+        if (v instanceof java.util.RandomAccess) {
+            for (int i = 0, n = v.size(); i < n; i++) { String x = v.get(i); _writeString(g, x); }
+        } else {
+            for (String x : v) _writeString(g, x);
+        }
+        g.writeEndArray();
+    }
+
+    private void writeFriendsFlatString(org.sjf4j.backend.jackson2.binding.Jackson2Writer writer, List<Friend> v) throws IOException {
+        com.fasterxml.jackson.core.JsonGenerator g = writer.nativeWriter();
+        if (v == null) { g.writeNull(); return; }
+        g.writeStartArray();
+        if (v instanceof java.util.RandomAccess) {
+            for (int i = 0, n = v.size(); i < n; i++) writeFriendFlatString(writer, v.get(i));
+        } else {
+            for (Friend f : v) writeFriendFlatString(writer, f);
+        }
+        g.writeEndArray();
+    }
+
+    private void writeFriendFlatString(org.sjf4j.backend.jackson2.binding.Jackson2Writer writer, Friend v) throws IOException {
+        com.fasterxml.jackson.core.JsonGenerator g = writer.nativeWriter();
+        if (v == null) { g.writeNull(); return; }
+        g.writeStartObject();
+        g.writeFieldName(ID);
+        g.writeNumber(v.getId());
+        str(g, NAME, v.getName());
+        g.writeFieldName(SINCE);
+        g.writeNumber(v.getSince());
+        g.writeFieldName(CLOSE);
+        g.writeBoolean(v.isClose());
+        g.writeEndObject();
+    }
+
+
     private static void str(com.fasterxml.jackson.core.JsonGenerator g, com.fasterxml.jackson.core.SerializableString name, String value) throws IOException {
         g.writeFieldName(name);
         if (value == null) g.writeNull(); else g.writeString(value);
