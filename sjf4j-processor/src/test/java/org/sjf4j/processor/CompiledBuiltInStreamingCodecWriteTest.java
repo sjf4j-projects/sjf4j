@@ -56,7 +56,8 @@ class CompiledBuiltInStreamingCodecWriteTest {
                     + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
-                    + "@CompiledBinder(backend=Backend." + backend + ") "
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\\"iso\\")}) "
+                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder {"
                     + "@WriteTo String write(Bean bean) throws java.io.IOException;"
                     + "@WriteTo String writeUuid(java.util.UUID uuid) throws java.io.IOException;"
