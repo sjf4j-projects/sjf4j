@@ -47,6 +47,8 @@ final class StructuralWriteEmitter {
     void emitPojo(JavaWriter out, BindingValue value) {
         ops.startObject(out);
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
+        // Evaluate a stable Binder-level policy once per object invocation.
+        out.line("boolean includeNulls = this.context.includeNulls;");
         int index = 0;
         for (BindingProperty property : value.properties()) {
             BindingValue child = property.value();
@@ -55,7 +57,7 @@ final class StructuralWriteEmitter {
                 // Evaluate a getter once, including when null properties are omitted.
                 String propertyVar = "property" + index;
                 out.line(child.type() + " " + propertyVar + " = " + expr + ";");
-                out.beginBlock("if (this.context.includeNulls || " + propertyVar + " != null)");
+                out.beginBlock("if (includeNulls || " + propertyVar + " != null)");
                 expr = propertyVar;
             }
 
@@ -76,7 +78,7 @@ final class StructuralWriteEmitter {
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
                     + "value.dynamicProperties().entrySet())");
             out.line("Object dynamicValue = entry.getValue();");
-            out.beginBlock("if (this.context.includeNulls || dynamicValue != null)");
+            out.beginBlock("if (includeNulls || dynamicValue != null)");
             if (ops.explicitObjectSeparators()) {
                 ops.beforeObjectMember(out, "memberCount++");
             }
