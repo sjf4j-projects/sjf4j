@@ -1,137 +1,105 @@
 package org.sjf4j.processor;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.backend.gson.binding.GsonBinder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.jsonp.binding.JsonpBinder;
+import org.sjf4j.binding.simple.SimpleJsonBinder;
+import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.core.JsonFactory;
 
 import java.net.URLClassLoader;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
+/** Native parser/generator settings belong to the concrete SJF4J backend Binder. */
 class CompiledBackendInjectionTest {
 
-    @Test
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    void gsonConfigurationIsInjectedWithoutAContextArgument() throws Exception {
-        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
-                "fixture/Bean.java", "package fixture; public class Bean { public String text = \"<tag>\"; }",
-                "fixture/Binder.java", "package fixture; import java.io.IOException; "
-                        + "import org.sjf4j.annotation.binding.*; "
-                        + "@CompiledBinder(backend=Backend.GSON) public interface Binder { "
-                        + "@WriteTo String write(Bean value) throws IOException; }"
+    private static NavigatorTestCompiler.Result compile(String backend) throws Exception {
+        return NavigatorTestCompiler.compile(Map.of(
+                "fixture/Bean.java",
+                "package fixture; public class Bean { public String text = \"<tag>\"; }",
+                "fixture/Binder.java",
+                "package fixture; import java.io.IOException; "
+                + "import org.sjf4j.annotation.binding.*; "
+                + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
+                + "@WriteTo String write(Bean value) throws IOException; }"
         ), CodegenProcessor.class);
-        assertTrue(compiled.success, compiled.diagnostics());
-        assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
-                .contains("Gson backend"));
-
-        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
-            Class binderType = loader.loadClass("fixture.Binder");
-            Class<?> beanType = loader.loadClass("fixture.Bean");
-            Object bean = beanType.getConstructor().newInstance();
-            Gson gson = new GsonBuilder().disableHtmlEscaping().create();
-            Object injected = CompiledInstances.create(binderType, gson);
-            String json = (String) binderType.getMethod("write", beanType).invoke(injected, bean);
-            assertEquals("{\"text\":\"<tag>\"}", json);
-            assertThrows(IllegalArgumentException.class,
-                    () -> CompiledInstances.create(binderType, new JsonFactory()));
-            Object defaults = CompiledInstances.global(binderType);
-            String defaultJson = (String) binderType.getMethod("write", beanType).invoke(defaults, bean);
-            assertTrue(defaultJson.contains("\\u003c"), defaultJson);
-        }
     }
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
-    void jackson2AcceptsFactoryAndObjectMapper() throws Exception {
-        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
-                "fixture/Bean.java", "package fixture; public class Bean { public String text = \"é\"; }",
-                "fixture/Binder.java", "package fixture; import java.io.IOException; "
-                        + "import org.sjf4j.annotation.binding.*; "
-                        + "@CompiledBinder(backend=Backend.JACKSON2) public interface Binder { "
-                        + "@WriteTo String write(Bean value) throws IOException; }"
-        ), CodegenProcessor.class);
+    void gsonBackendIsInjectedWithoutNativeConstructors() throws Exception {
+        NavigatorTestCompiler.Result compiled = compile("GSON");
         assertTrue(compiled.success, compiled.diagnostics());
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("JsonFactory backend"), source);
-        assertTrue(source.contains("ObjectMapper mapper"), source);
-
+        assertTrue(source.contains("GsonBinder nativeBinder"), source);
+        assertFalse(source.contains("Gson backend"), source);
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class binderType = loader.loadClass("fixture.Binder");
             Class<?> beanType = loader.loadClass("fixture.Bean");
             Object bean = beanType.getConstructor().newInstance();
-            JsonFactory factory = new JsonFactory();
-            Object configured = CompiledInstances.create(binderType, factory);
-            assertEquals("{\"text\":\"é\"}",
-                    binderType.getMethod("write", beanType).invoke(configured, bean));
-            ObjectMapper mapper = new ObjectMapper(factory);
-            Object fromMapper = CompiledInstances.create(binderType, mapper);
-            assertEquals("{\"text\":\"é\"}",
-                    binderType.getMethod("write", beanType).invoke(fromMapper, bean));
-        }
-    }
-    @Test
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    void jackson3AcceptsNativeFactory() throws Exception {
-        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
-                "fixture/Bean.java",
-                "package fixture; public class Bean { public String text = \"hello\"; }",
-                "fixture/Binder.java", "package fixture; import java.io.IOException; "
-                        + "import org.sjf4j.annotation.binding.*; "
-                        + "@CompiledBinder(backend=Backend.JACKSON3) public interface Binder { "
-                        + "@WriteTo String write(Bean value) throws IOException; }"
-        ), CodegenProcessor.class);
-        assertTrue(compiled.success, compiled.diagnostics());
-        assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
-                .contains("JsonFactory backend"));
-
-        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
-            Class binderType = loader.loadClass("fixture.Binder");
-            Class<?> beanType = loader.loadClass("fixture.Bean");
-            Object binder = CompiledInstances.create(
-                    binderType, new tools.jackson.core.json.JsonFactory());
-            Object bean = beanType.getConstructor().newInstance();
-            assertEquals("{\"text\":\"hello\"}",
-                    binderType.getMethod("write", beanType).invoke(binder, bean));
+            GsonBinder configured = new GsonBinder(
+                    new GsonBuilder().disableHtmlEscaping().create());
+            Object bound = CompiledInstances.create(binderType, configured);
+            assertEquals("{\"text\":\"<tag>\"}",
+                    binderType.getMethod("write", beanType).invoke(bound, bean));
+            assertThrows(IllegalArgumentException.class, () ->
+                    CompiledInstances.create(binderType, new GsonBuilder().create()));
+            assertThrows(IllegalArgumentException.class, () ->
+                    CompiledInstances.create(binderType, new Jackson2Binder()));
         }
     }
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
-    void allRemainingBackendsAcceptConfiguredBinderAdapters() throws Exception {
-        for (String backend : new String[]{"FASTJSON2", "JSONP", "SIMPLE"}) {
-            NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
-                    "fixture/Bean.java",
-                    "package fixture; public class Bean { public String text = \"hello\"; }",
-                    "fixture/Binder.java", "package fixture; import java.io.IOException; "
-                            + "import org.sjf4j.annotation.binding.*; "
-                            + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
-                            + "@WriteTo String write(Bean value) throws IOException; }"
-            ), CodegenProcessor.class);
-            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+    void jacksonBackendAdaptersAreInjectedWithoutMapperDependency() throws Exception {
+        for (String backend : new String[]{"JACKSON2", "JACKSON3"}) {
+            NavigatorTestCompiler.Result compiled = compile(backend);
+            assertTrue(compiled.success, compiled.diagnostics());
+            String source = compiled.generatedSource("fixture/Binder_Impl.java");
+            assertFalse(source.contains("ObjectMapper mapper"), source);
+            assertFalse(source.contains("JsonFactory backend"), source);
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Class<?> beanType = loader.loadClass("fixture.Bean");
-                Object nativeBinder;
-                switch (backend) {
-                    case "FASTJSON2":
-                        nativeBinder = new org.sjf4j.backend.fastjson2.binding.Fastjson2Binder();
-                        break;
-                    case "JSONP":
-                        nativeBinder = new org.sjf4j.backend.jsonp.binding.JsonpBinder();
-                        break;
-                    default:
-                        nativeBinder = new org.sjf4j.binding.simple.SimpleJsonBinder();
-                }
-                Object binder = CompiledInstances.create(binderType, nativeBinder);
+                Object backendBinder = backend.equals("JACKSON2")
+                        ? new Jackson2Binder(new JsonFactory())
+                        : new Jackson3Binder(new tools.jackson.core.json.JsonFactory());
+                Object compiledBinder = CompiledInstances.create(binderType, backendBinder);
                 Object bean = beanType.getConstructor().newInstance();
-                assertEquals("{\"text\":\"hello\"}",
-                        binderType.getMethod("write", beanType).invoke(binder, bean), backend);
+                assertEquals("{\"text\":\"<tag>\"}",
+                        binderType.getMethod("write", beanType).invoke(compiledBinder, bean));
             }
         }
     }
 
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void otherAdaptersAreInjectable() throws Exception {
+        for (String backend : new String[]{"FASTJSON2", "JSONP", "SIMPLE"}) {
+            NavigatorTestCompiler.Result compiled = compile(backend);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            Object adapter;
+            switch (backend) {
+                case "FASTJSON2":
+                    adapter = new Fastjson2Binder(); break;
+                case "JSONP":
+                    adapter = new JsonpBinder(); break;
+                default:
+                    adapter = new SimpleJsonBinder();
+            }
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class binderType = loader.loadClass("fixture.Binder");
+                Class<?> beanType = loader.loadClass("fixture.Bean");
+                Object compiledBinder = CompiledInstances.create(binderType, adapter);
+                Object bean = beanType.getConstructor().newInstance();
+                assertEquals("{\"text\":\"<tag>\"}",
+                        binderType.getMethod("write", beanType).invoke(compiledBinder, bean));
+            }
+        }
+    }
 }
