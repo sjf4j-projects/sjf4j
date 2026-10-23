@@ -30,6 +30,10 @@ final class BindingHelperEmitter {
         }
         if (value.isCodec()) {
             emitCodecMetadata(value, generated);
+            if (value.direction() == BindingPlan.Direction.WRITE_TO
+                    && writes.usesJacksonNativeCodecHelper()) {
+                generated.addHelper(out -> writes.emitCodecHelper(out, value));
+            }
             return;
         }
         if (!value.helperRequired()) return;

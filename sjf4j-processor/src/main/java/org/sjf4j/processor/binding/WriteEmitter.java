@@ -54,6 +54,14 @@ final class WriteEmitter {
         return backend.usesCompiledNames();
     }
 
+    boolean usesJacksonNativeCodecHelper() {
+        return isJackson();
+    }
+
+    void emitCodecHelper(JavaWriter out, BindingValue value) {
+        jackson.emitCodecHelper(out, value);
+    }
+
     void emitCompiledNames(JavaWriter out, BindingValue value) {
         int index = 0;
         for (BindingProperty property : value.properties()) {
