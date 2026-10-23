@@ -341,7 +341,14 @@ public final class GeneratedClass {
             out.endBlock();
             out.blank();
             out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
-            out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
+            if (staticBinderIncludeNulls == null) {
+                out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
+            } else {
+                out.line("java.util.Objects.requireNonNull(context, \"context\");");
+                out.line("this.context = " + (staticBinderIncludeNulls
+                        ? "org.sjf4j.RuntimeContext.EMPTY;"
+                        : "new org.sjf4j.RuntimeContext(false);"));
+            }
             for (Member initializer : contextInitializers) {
                 initializer.write(out);
             }
