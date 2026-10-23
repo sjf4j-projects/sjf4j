@@ -110,6 +110,12 @@ final class WriteEmitter {
                     throw new AssertionError(plan.writeOutput());
             }
                 if (dynamicNulls) out.endBlock();
+                if (omitNulls) {
+                    // The streaming-only backend delegates static null omission
+                    // to its Binder; the rest of this generated method is unreachable.
+                    BindingSource.endOverride(out);
+                    return;
+                }
             }
 
             if (streaming.shouldFallbackRoot(compiled.value())) {
