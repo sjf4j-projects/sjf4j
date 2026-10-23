@@ -66,17 +66,20 @@ public final class CompiledInstances {
     }
 
     /**
-     * Creates a compiled binder with a native backend configuration object.
-     * The annotation processor emits a strongly typed constructor for supported
-     * backends (for example Gson or Jackson's JsonFactory/ObjectMapper).
+     * Creates a CompiledBinder using an already configured concrete SJF4J Binder.
+     * Backend-specific parser and generator configuration belongs to this Binder;
+     * the generated class does not alter the caller's native configuration.
      *
-     * <p>The type parameter B is inferred from the argument; the generated
-     * constructor performs the runtime type validation. Backend settings only
-     * configure native JSON input/output, not compiled property mapping.
+     * <p>The generic argument B is inferred, while matching the compiled
+     * interface's exact backend is verified during instance creation.
      */
     public static <T, B> T create(Class<T> type, B backend) {
         Asserts.notNull(type, "type");
         Asserts.notNull(backend, "backend");
+        if (!(backend instanceof org.sjf4j.binding.Binder)) {
+            throw new IllegalArgumentException("CompiledBinder backend must be an SJF4J Binder: "
+                    + backend.getClass().getName());
+        }
         Class<?> implClass = _implementationClass(type);
         java.lang.reflect.Constructor<?> match = null;
         for (java.lang.reflect.Constructor<?> constructor : implClass.getConstructors()) {
