@@ -91,6 +91,40 @@ class CompiledStaticBindingOptionsTest {
         }
     }
 
+
+    @Test
+    void staticPatternedCodecIsInitializedOnceAndRoundTrips() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Bean.java",
+                "package fixture; import java.time.LocalDate; "
+                        + "import org.sjf4j.annotation.node.NodeProperty; "
+                        + "public class Bean { @NodeProperty(codecPattern=\\"yyyy/MM/dd\\") "
+                        + "public LocalDate when = LocalDate.of(2024,1,2); }",
+                "fixture/Binder.java",
+                "package fixture; import java.io.IOException; "
+                        + "import org.sjf4j.annotation.binding.*; "
+                        + "@CompiledBinder(backend=Backend.JACKSON2) @BindingOptions "
+                        + "public interface Binder { "
+                        + "@WriteTo String write(Bean b) throws IOException; "
+                        + "@ReadFrom Bean read(String json) throws IOException; }"
+        ), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("withPattern"), generated);
+        assertFalse(generated.contains("requireRegisteredValueInfo"), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binderType = loader.loadClass("fixture.Binder");
+            Class<?> beanType = loader.loadClass("fixture.Bean");
+            Object binder = CompiledInstances.global(binderType);
+            Object bean = beanType.getConstructor().newInstance();
+            String written = (String) binderType.getMethod("write", beanType).invoke(binder, bean);
+            assertEquals("{\\"when\\":\\"2024/01/02\\"}", written);
+            Object decoded = binderType.getMethod("read", String.class).invoke(binder, written);
+            assertEquals(java.time.LocalDate.of(2024,1,2),
+                    beanType.getField("when").get(decoded));
+        }
+    }
+
     @Test
     void multiFormatWithoutSelectionIsACompilationError() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
