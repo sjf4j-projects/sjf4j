@@ -55,6 +55,11 @@ public final class BindingGenerator {
         }
 
         generated.enableRuntimeContext();
+        org.sjf4j.annotation.binding.BindingOptions options =
+                type.getAnnotation(org.sjf4j.annotation.binding.BindingOptions.class);
+        if (options != null) {
+            generated.setStaticBinderIncludeNulls(options.includeNulls());
+        }
         // Backend configuration is a runtime I/O concern; structural binding
         // decisions remain owned by the annotation processor.
         String backendConfigType = null;
