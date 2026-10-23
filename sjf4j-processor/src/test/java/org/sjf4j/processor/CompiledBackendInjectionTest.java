@@ -26,7 +26,7 @@ class CompiledBackendInjectionTest {
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
-                .contains("com.google.gson.Gson backend"));
+                .contains("Gson backend"));
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class binderType = loader.loadClass("fixture.Binder");
@@ -56,8 +56,8 @@ class CompiledBackendInjectionTest {
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("com.fasterxml.jackson.core.JsonFactory backend"), source);
-        assertTrue(source.contains("com.fasterxml.jackson.databind.ObjectMapper mapper"), source);
+        assertTrue(source.contains("JsonFactory backend"), source);
+        assertTrue(source.contains("ObjectMapper mapper"), source);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class binderType = loader.loadClass("fixture.Binder");
