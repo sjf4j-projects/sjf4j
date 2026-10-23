@@ -68,7 +68,7 @@ class CompiledGsonJsonpUnifiedWriteTest {
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("writer.nativeWriter()"), backend);
             assertTrue(generated.contains("_writeList(writer, property0);"), backend);
-            assertTrue(generated.contains("this.context.includeNulls"), backend);
+            assertFalse(generated.contains("this.context.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(writer,"), backend);
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertFalse(generated.contains("private static void _writeModel("), backend);
