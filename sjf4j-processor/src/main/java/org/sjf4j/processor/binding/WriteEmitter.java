@@ -13,31 +13,33 @@ final class WriteEmitter {
 
 
     private final BackendSpec backend;
+    private final Boolean fixedIncludeNulls;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
     private final StreamingWriteEmitter streaming;
 
-    WriteEmitter(BackendSpec backend) {
+    WriteEmitter(BackendSpec backend, Boolean fixedIncludeNulls) {
         this.backend = backend;
+        this.fixedIncludeNulls = fixedIncludeNulls;
         this.streaming = new StreamingWriteEmitter(backend);
         switch (backend.backend()) {
             case FASTJSON2:
-                fastjson2 = new Fastjson2WriteEmitter();
+                fastjson2 = new Fastjson2WriteEmitter(fixedIncludeNulls);
                 jackson = null;
                 other = null;
                 break;
             case JACKSON2:
             case JACKSON3:
                 fastjson2 = null;
-                jackson = new JacksonWriteEmitter(backend);
+                jackson = new JacksonWriteEmitter(backend, fixedIncludeNulls);
                 other = null;
                 break;
             case GSON:
             case JSONP:
                 fastjson2 = null;
                 jackson = null;
-                other = new OtherNativeWriteEmitter(backend);
+                other = new OtherNativeWriteEmitter(backend, fixedIncludeNulls);
                 break;
             default:
                 fastjson2 = null;
@@ -449,9 +451,15 @@ final class WriteEmitter {
             out.beginBlock("private void _writeStringMember(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
-            out.beginBlock("if (value == null && !this.context.includeNulls)");
-            out.line("return;");
-            out.endBlock();
+            if (fixedIncludeNulls == null) {
+                out.beginBlock("if (value == null && !this.context.includeNulls)");
+            } else if (!fixedIncludeNulls) {
+                out.beginBlock("if (value == null)");
+            }
+            if (fixedIncludeNulls == null || !fixedIncludeNulls) {
+                out.line("return;");
+                out.endBlock();
+            }
             out.line("g." + nameMethod + "(name);");
             out.line("_writeString(g, value);");
             out.endBlock();
