@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*CompiledWriteBenchmark\\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct|direct_wrapped)' \
+          java -jar "$jar" '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct|direct_wrapped)' \
             -bm avgt -tu us -t 1 -f 3 -wi 5 -w 250ms -i 5 -r 250ms \
             -prof gc -rf json -rff direct-parity-results.json | tee direct-parity.log
       - uses: actions/upload-artifact@v4
