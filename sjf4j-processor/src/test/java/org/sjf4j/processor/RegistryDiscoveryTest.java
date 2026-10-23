@@ -40,9 +40,7 @@ class RegistryDiscoveryTest {
                 + "@CompiledBinder public interface Binder {}"),
                 RegistryDiscoveryProbeProcessor.class);
         assertTrue(result.success, result.diagnostics());
-        assertTrue(result.diagnostics().contains("DISCOVER fixture.Money/ -> java.lang.String"),
-                result.diagnostics());
-        assertTrue(result.diagnostics().contains("DISCOVER fixture.Money/compact -> java.lang.String"),
+        assertFalse(result.diagnostics().contains("DISCOVER fixture.Money/"),
                 result.diagnostics());
         assertTrue(result.diagnostics().contains("DISCOVER java.util.UUID/standard -> java.lang.String"),
                 result.diagnostics());
@@ -53,8 +51,8 @@ class RegistryDiscoveryTest {
     @Test
     void namedDefaultCodecWinsOverEarlierNondefaultField() throws Exception {
         Map<String, String> sources = sources(
-                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder;"
-                + "@CompiledBinder public interface Binder {}");
+                "package fixture; import org.sjf4j.annotation.binding.*;"
+                + "@BindingOptions(registries={AmountCodecs.class}) @CompiledBinder public interface Binder {}");
         sources.put("fixture/Amount.java",
                 "package fixture; public final class Amount { public long value; }");
         sources.put("fixture/AmountCodecs.java",
@@ -175,8 +173,9 @@ class RegistryDiscoveryTest {
     @Test
     void rejectsDuplicateFormatAcrossSourceRegistryFields() throws Exception {
         Map<String, String> input = sources(
-                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; @CompiledBinder "
-                + "public interface Binder {}");
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "@BindingOptions(registries={Codecs.class, ExtraCodecs.class}) "
+                + "@CompiledBinder public interface Binder {}");
         input.put("fixture/ExtraCodecs.java",
                 "package fixture; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
