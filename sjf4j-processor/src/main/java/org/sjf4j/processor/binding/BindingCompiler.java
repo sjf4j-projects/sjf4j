@@ -13,6 +13,7 @@ import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.creator.CreatorPlan;
 import org.sjf4j.processor.creator.StandardCreatorResolver;
 import org.sjf4j.processor.discovery.CompiledMetadata;
+import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.Property;
@@ -181,15 +182,39 @@ final class BindingCompiler {
          */
         cache.put(key, value);
         if (kind == BindingValue.Kind.VALUE_CODEC) {
-            value.codecSelection(codecName, codecPattern);
-            // A format pattern can resolve a different runtime codec; use its
-            // declared raw type only when the declared formats are uniform.
-            TypeMirror rawType = metadata.stableCodecRawType(type,
-                    codecPattern == null ? codecName : null);
-            if (rawType == null && context.types.isNodeValue(type)) {
-                rawType = context.types.nodeValueRawType(type);
+            if (metadata.staticBinding()) {
+                List<ValueCodecMetadata> candidates = metadata.valueCodecs(type);
+                String selectedFormat = codecPattern == null && codecName != null
+                        ? codecName : metadata.selectedFormat(type);
+                if (candidates.isEmpty()) {
+                    error(method, generated, "No statically declared ValueCodec for "
+                            + type + "; add an @NodeValue field to the interface or @BindingOptions.registries");
+                    return null;
+                }
+                if (selectedFormat == null && candidates.size() > 1) {
+                    error(method, generated, "Multiple ValueCodecs for " + type
+                            + "; select a format with @BindingOptions.valueCodecs or @NodeProperty(codecName)");
+                    return null;
+                }
+                ValueCodecMetadata selected = metadata.valueCodec(type, selectedFormat);
+                if (selected == null) {
+                    error(method, generated, "Unknown @CodecMapping format '"
+                            + selectedFormat + "' for " + type);
+                    return null;
+                }
+                value.staticCodec(selected);
+                value.codecSelection(selectedFormat, codecPattern);
+                value.codecRawType(selected.rawType);
+            } else {
+                value.codecSelection(codecName, codecPattern);
+                // Dynamic binders preserve RuntimeContext format selection.
+                TypeMirror rawType = metadata.stableCodecRawType(type,
+                        codecPattern == null ? codecName : null);
+                if (rawType == null && context.types.isNodeValue(type)) {
+                    rawType = context.types.nodeValueRawType(type);
+                }
+                value.codecRawType(rawType);
             }
-            value.codecRawType(rawType);
         }
 
         if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC
