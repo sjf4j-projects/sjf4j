@@ -1,0 +1,88 @@
+name: Jackson compiled writer shape diagnostics
+
+on:
+  pull_request:
+    branches:
+      - feat/compiled-binder-static-config-backend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar and compile generated binders
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Inspect actual Jackson CompiledBinder helper structure
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files=[p for p in Path('sjf4j-testbench/build').rglob('*.java')
+                 if p.name.endswith('_Impl.java') and 'CompiledWriteBenchmark' in str(p)]
+          print('Generated implementations:', [str(p) for p in files])
+          for p in files:
+              lines=p.read_text().splitlines()
+              for i,line in enumerate(lines):
+                  if any(tag in line for tag in ('void _writeUser(', 'void _writeAddress(',
+                         'void _writeFriend(', 'void _writeList(', 'writePojo(', 'writePojoUtf8(')):
+                      print('SOURCE',p,'lines',i+1,'..',min(i+90,len(lines)))
+                      print('\n'.join(f'{j+1:04d} {lines[j]}' for j in range(max(0,i-2),min(i+90,len(lines)))))
+          PY
+      - name: Run paired JMH, same wrapper and output buffers
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
+          test -n "$jar"
+          java -jar "$jar" \
+            '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct_wrapped|direct_ordered|direct_compiled_shape)$' \
+            -bm avgt -tu ns -t 1 -f 2 -wi 8 -w 400ms -i 8 -r 400ms \
+            -prof gc -rf json -rff jackson-writer-shape-results.json \
+            | tee jackson-writer-shape.log
+      - name: Compare deltas
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee jackson-writer-shape-summary.md
+          import json
+          runs = json.load(open('jackson-writer-shape-results.json'))
+          d = {r['benchmark'].split('.')[-1]:r for r in runs}
+          print('# Jackson 2/3 Compiled vs direct shape (JDK 17)')
+          print('All comparisons use SJF4J writer buffer creation + flush + close;')
+          print('Direct ordered differs from direct wrapped only in field ordering.')
+          print('Direct compiled shape adds instance helpers, repeated nativeWriter() and two-level string handling.')
+          print()
+          print('| Backend | Output | Compiled | Direct wrapped | Direct ordered | Direct compiled shape | Gap vs shape (ns) | Gap vs wrapped (ns) |')
+          print('|---|---|---:|---:|---:|---:|---:|---:|')
+          for b in ('jackson2','jackson3'):
+              for fmt in ('string','utf8'):
+                  prefix=f'json_{b}_pojo_{fmt}_'
+                  get=lambda suffix:d[prefix+suffix]['primaryMetric']['score']
+                  c=get('compiled'); w=get('direct_wrapped'); o=get('direct_ordered'); s=get('direct_compiled_shape')
+                  print(f'| {b} | {fmt} | {c:.1f} | {w:.1f} | {o:.1f} | {s:.1f} | {c-s:+.1f} | {c-w:+.1f} |')
+          print()
+          print('## JMH scores, uncertainty, allocation')
+          for k,v in sorted(d.items()):
+              a=v.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score')
+              print(f'- {k}: {v["primaryMetric"]["score"]:.1f} ± {v["primaryMetric"]["scoreError"]:.1f} ns/op; allocation={a:.1f} B/op' if a is not None else k)
+          PY
+          cat jackson-writer-shape-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload full diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson-writer-shape-jmh
+          path: |
+            jackson-writer-shape-results.json
+            jackson-writer-shape.log
+            jackson-writer-shape-summary.md
+          if-no-files-found: warn
