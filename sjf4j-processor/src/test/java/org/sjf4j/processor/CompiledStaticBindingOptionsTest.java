@@ -125,6 +125,44 @@ class CompiledStaticBindingOptionsTest {
         }
     }
 
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void staticCodecAndOmittedNullsWorkAcrossJsonBackends() throws Exception {
+        for (String backend : new String[]{"SIMPLE", "JACKSON2", "JACKSON3",
+                "GSON", "FASTJSON2", "JSONP"}) {
+            NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Bean.java",
+                    "package fixture; import java.net.URI; "
+                            + "public class Bean { "
+                            + "public URI website = URI.create(\"https://test.example/\"); "
+                            + "public String empty; }",
+                    "fixture/Binder.java",
+                    "package fixture; import java.io.IOException; "
+                            + "import org.sjf4j.annotation.binding.*; "
+                            + "@CompiledBinder(backend=Backend." + backend + ") "
+                            + "@BindingOptions(includeNulls=false) public interface Binder { "
+                            + "@WriteTo String write(Bean bean) throws IOException; "
+                            + "@ReadFrom Bean read(String json) throws IOException; }"
+            ), CodegenProcessor.class);
+            assertTrue(result.success, backend + ": " + result.diagnostics());
+            String generated = result.generatedSource("fixture/Binder_Impl.java");
+            assertFalse(generated.contains("requireRegisteredValueInfo"), backend + ": " + generated);
+            try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+                Class binderType = loader.loadClass("fixture.Binder");
+                Class<?> beanType = loader.loadClass("fixture.Bean");
+                Object binder = CompiledInstances.global(binderType);
+                Object bean = beanType.getConstructor().newInstance();
+                String json = (String) binderType.getMethod("write", beanType).invoke(binder, bean);
+                assertTrue(json.contains("\"website\":\"https://test.example/\""), backend + ": " + json);
+                assertFalse(json.contains("\"empty\""), backend + ": " + json);
+                Object decoded = binderType.getMethod("read", String.class).invoke(binder, json);
+                assertEquals(java.net.URI.create("https://test.example/"),
+                        beanType.getField("website").get(decoded), backend);
+            }
+        }
+    }
+
     @Test
     void multiFormatWithoutSelectionIsACompilationError() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
