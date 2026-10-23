@@ -362,7 +362,7 @@ final class WriteEmitter {
     boolean needsStringHelper(BindingValue value) {
         return usesSharedStructure()
                 && value.direction() == BindingPlan.Direction.WRITE_TO
-                && containsString(value, new HashSet<BindingValue>());
+                && (isJackson() || containsString(value, new HashSet<BindingValue>()));
     }
 
     private boolean containsString(BindingValue value, Set<BindingValue> visited) {
