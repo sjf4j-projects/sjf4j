@@ -3,6 +3,9 @@ name: Compiled Write performance (focused)
 # Kept on demand after the optimization branch is merged.
 # Do not re-enable expensive JMH as a general PR or push check.
 on:
+  push:
+    branches:
+      - perf/write-direct-wrapped-diagnostics
   workflow_dispatch:
 
 permissions:
@@ -30,7 +33,7 @@ jobs:
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
           java -jar "$jar" \
-            '.*(CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|direct|direct_wrapped)|CreekModelBenchmark\.write_(compiled|native|blackbird))' \
+            '.*(CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|direct|direct_wrapped)|CreekModelBenchmark\.write_(compiled|native|blackbird)|CompiledWriteBenchmark\.json_jackson[23]_uri_(compiled|runtime|direct))' \
             -bm avgt -tu us -t 1 -f 3 -wi 15 -w 400ms -i 10 -r 400ms \
             -prof gc -rf json -rff write-perf-results.json \
             | tee write-perf.log
@@ -49,6 +52,7 @@ jobs:
           print("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
           for name in sorted(n for n in items if n.endswith('_compiled')):
               prefix=name.removesuffix('_compiled')
+              if prefix.endswith('_uri'): continue
               get=lambda suffix:items.get(prefix+'_'+suffix)
               c=get('compiled')
               n=get('native')
@@ -63,6 +67,14 @@ jobs:
               alloc=c.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score')
               a=f"{alloc:.1f}" if alloc is not None else "—"
               print(f"| {prefix} | {fmt(c)} | {fmt(n)} | {fmt(b)} | {fmt(d)} | {fmt(dw)} | {score(n)/score(c):.3f}x | {score(b)/score(c):.3f}x | {a} |")
+          print()
+          print()
+          print("## Isolated URI Codec (us/op)")
+          print("| Backend | Compiled | Runtime | Direct |")
+          print("|---|---:|---:|---:|")
+          for backend in ('jackson2','jackson3'):
+              key='json_'+backend+'_uri'
+              print(f"| {backend} | {fmt(items.get(key+'_compiled'))} | {fmt(items.get(key+'_runtime'))} | {fmt(items.get(key+'_direct'))} |")
           print()
           print("Blackbird/Compiled >1 means compiled is faster; check error bars and repeat on fixed hardware before declaring a stable advantage.")
           PY
