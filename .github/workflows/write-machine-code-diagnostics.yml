@@ -38,6 +38,25 @@ jobs:
             -rf json -rff machine-results.json > machine-full.log 2>&1
           grep -E '(CompiledWriteBenchmark\\$Jackson2CompiledBinder_Impl::_writeUser|Jackson2HandPojoSerializedWriter::writeUser|CompiledWriteBenchmark\\$Jackson2CompiledBinder_Impl::_writeStringMember|hot method too big|size > DesiredMethodLimit)' machine-full.log | tail -n 130 > machine-focused.log || true
           tail -n 10 machine-full.log
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('machine-full.log').read_text(errors='replace')
+          records=[]
+          for m in re.finditer(r'Compiled method \((?:c1|c2)\).*', s):
+              chunk=s[m.start():m.start()+3500]
+              header=chunk[:chunk.find('\n')]
+              method=re.search(r'\\s([\\w.$/]+)::(_writeUser|writeUser)\\s',header)
+              if not method: continue
+              size=re.search(r'main code\\s*\\[0x[0-9a-f]+,0x[0-9a-f]+\\]\\s*=\\s*(\\d+)',chunk)
+              records.append((method.group(1),method.group(2),size.group(1) if size else 'unknown',header))
+          print('== TARGET JIT MACHINE CODE SIZES ==')
+          for r in records:print(*r,sep=' | ')
+          print('== DIRECT AND COMPILED METHOD SITE COUNTS ==')
+          for keyword in ('_writeStringMember','_writeAddress','_writeList','_writeUser','Jackson2HandPojoSerializedWriter::str'):
+              print(keyword, s.count(keyword))
+          Path('machine-summary.txt').write_text('\n'.join(' | '.join(r) for r in records))
+          PY
           cat machine-focused.log
       - uses: actions/upload-artifact@v4
         if: always()
@@ -48,4 +67,5 @@ jobs:
             machine-focused.log
             machine-results.json
             assembly-probe.log
+            machine-summary.txt
           if-no-files-found: warn
