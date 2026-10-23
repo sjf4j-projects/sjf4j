@@ -45,7 +45,7 @@ jobs:
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
           java -jar "$jar" \
-            '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct_wrapped|direct_ordered|direct_compiled_shape)$' \
+            '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct_wrapped|direct_compiled_shape|direct_flat_strings)$' \
             -bm avgt -tu ns -t 1 -f 2 -wi 8 -w 400ms -i 8 -r 400ms \
             -prof gc -rf json -rff jackson-writer-shape-results.json \
             | tee jackson-writer-shape.log
@@ -58,17 +58,17 @@ jobs:
           d = {r['benchmark'].split('.')[-1]:r for r in runs}
           print('# Jackson 2/3 Compiled vs direct shape (JDK 17)')
           print('All comparisons use SJF4J writer buffer creation + flush + close;')
-          print('Direct ordered differs from direct wrapped only in field ordering.')
-          print('Direct compiled shape adds instance helpers, repeated nativeWriter() and two-level string handling.')
+          print('Direct flat strings preserves the compiled-style Writer+instance-helper shape but replaces two-level string members with the one-level handwritten str helper.')
+          print('Direct compiled shape retains two-level string member helpers; flat strings isolates their cost.')
           print()
-          print('| Backend | Output | Compiled | Direct wrapped | Direct ordered | Direct compiled shape | Gap vs shape (ns) | Gap vs wrapped (ns) |')
+          print('| Backend | Output | Compiled | Direct wrapped | Compiled shape | Flat strings | Shape minus flat (ns) | Compiled minus flat (ns) |')
           print('|---|---|---:|---:|---:|---:|---:|---:|')
           for b in ('jackson2','jackson3'):
               for fmt in ('string','utf8'):
                   prefix=f'json_{b}_pojo_{fmt}_'
                   get=lambda suffix:d[prefix+suffix]['primaryMetric']['score']
-                  c=get('compiled'); w=get('direct_wrapped'); o=get('direct_ordered'); s=get('direct_compiled_shape')
-                  print(f'| {b} | {fmt} | {c:.1f} | {w:.1f} | {o:.1f} | {s:.1f} | {c-s:+.1f} | {c-w:+.1f} |')
+                  c=get('compiled'); w=get('direct_wrapped'); o=get('direct_flat_strings'); s=get('direct_compiled_shape')
+                  print(f'| {b} | {fmt} | {c:.1f} | {w:.1f} | {s:.1f} | {o:.1f} | {s-o:+.1f} | {c-o:+.1f} |')
           print()
           print('## JMH scores, uncertainty, allocation')
           for k,v in sorted(d.items()):
