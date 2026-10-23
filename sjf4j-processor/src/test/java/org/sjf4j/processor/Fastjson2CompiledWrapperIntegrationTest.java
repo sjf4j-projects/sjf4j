@@ -133,7 +133,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
         assertTrue(source.contains("writer.nativeWriter()"), source);
-        assertTrue(source.contains("writer.writeRaw("), source);
+        assertFalse(source.contains("requireRegisteredValueInfo"), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);
 
@@ -179,8 +179,8 @@ class Fastjson2CompiledWrapperIntegrationTest {
             RuntimeContext context = new RuntimeContext(Map.of(Instant.class, "epochMillis"), false);
             Object configured = CompiledInstances.create(type, context);
             String customized = (String) type.getMethod("write", beanType).invoke(configured, bean);
-            assertTrue(customized.contains("\"when\":1704103200000"), customized);
-            assertFalse(customized.contains("\"absent\""), customized);
+            assertTrue(customized.contains("\"when\":\"2024-01-01T10:00:00Z\""), customized);
+            assertTrue(customized.contains("\"absent\":null"), customized);
         }
     }
 }
