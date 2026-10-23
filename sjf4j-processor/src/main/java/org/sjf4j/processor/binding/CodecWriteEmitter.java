@@ -10,6 +10,10 @@ final class CodecWriteEmitter {
 
     static void emit(JavaWriter out, BindingValue value, String expression,
                      String writer, String nativeWriter, Backend backend) {
+        if (value.staticCodec() != null) {
+            emitStatic(out, value, expression, writer, nativeWriter, backend);
+            return;
+        }
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
         out.beginBlock("if (codecValue == null)");
@@ -51,6 +55,41 @@ final class CodecWriteEmitter {
             // A different RuntimeContext format or later registration may use
             // a different raw type. Do not force the compiler's selected shape.
             out.line(writer + ".writeRaw(rawValue, this.context);");
+            out.endBlock();
+        }
+        out.endBlock();
+        out.endBlock();
+        out.endBlock();
+    }
+
+    /** Emit the declared codec directly, without ValueInfo/TypeRegistry selection. */
+    private static void emitStatic(JavaWriter out, BindingValue value, String expression,
+                                   String writer, String nativeWriter, Backend backend) {
+        out.beginBlock("");
+        out.line(value.type() + " codecValue = " + expression + ";");
+        out.beginBlock("if (codecValue == null)");
+        out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+        out.endBlock(" else {");
+        out.indent();
+        out.beginBlock("if (" + value.helperName() + "Writer != null)");
+        out.line(value.helperName() + "Writer.write(" + writer + ", codecValue);");
+        out.endBlock(" else {");
+        out.indent();
+        String rawType = value.codecRawType().toString();
+        out.line(rawType + " rawValue = " + value.helperName() + ".valueToRaw(codecValue);");
+        String method = nativeWrite(rawType, backend, nativeWriter != null);
+        if (method == null) {
+            out.line(writer + ".writeRaw(rawValue, this.context);");
+        } else if (nativeWriter != null && "writeString".equals(method)
+                && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
+            out.line("_writeString(" + nativeWriter + ", rawValue);");
+        } else {
+            out.beginBlock("if (rawValue == null)");
+            out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
+            out.line((nativeWriter == null ? writer : nativeWriter) + "." + method
+                    + "(" + rawArgument(rawType, backend, nativeWriter != null) + ");");
             out.endBlock();
         }
         out.endBlock();
