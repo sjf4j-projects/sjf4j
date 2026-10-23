@@ -77,6 +77,18 @@ class CompiledStaticBindingOptionsTest {
         String generated = result.generatedSource("fixture/Binder_Impl.java");
         assertTrue(generated.contains("INSTANT_EPOCH_MILLIS"), generated);
         assertFalse(generated.contains("requireRegisteredValueInfo"), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binderType = loader.loadClass("fixture.Binder");
+            Class<?> beanType = loader.loadClass("fixture.Bean");
+            Object binder = CompiledInstances.global(binderType);
+            Object bean = beanType.getConstructor().newInstance();
+            assertEquals("{\\"when\\":1234}",
+                    binderType.getMethod("write", beanType).invoke(binder, bean));
+            Object decoded = binderType.getMethod("read", String.class)
+                    .invoke(binder, "{\\"when\\":1234}");
+            assertEquals(java.time.Instant.ofEpochMilli(1234),
+                    beanType.getField("when").get(decoded));
+        }
     }
 
     @Test
