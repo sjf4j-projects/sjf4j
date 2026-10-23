@@ -44,6 +44,9 @@ public final class GeneratedClass {
             new ArrayList<Member>();
 
     private boolean runtimeContextConstructor;
+    private String backendConstructorType;
+    private String backendBinderType;
+    private String backendMapperConvenienceType;
 
     private boolean valid = true;
 
@@ -209,6 +212,14 @@ public final class GeneratedClass {
         runtimeContextConstructor = true;
     }
 
+    /** Enables a native-backend constructor for generated CompiledBinder implementations. */
+    public void enableBackendConstructor(String backendType, String binderType,
+                                         String mapperConvenienceType) {
+        this.backendConstructorType = backendType;
+        this.backendBinderType = binderType;
+        this.backendMapperConvenienceType = mapperConvenienceType;
+    }
+
     /** Adds an assignment after the generated constructor's context field is set. */
     public void addContextInitializer(Member member) {
         contextInitializers.add(Asserts.notNull(member, "member"));
@@ -332,6 +343,28 @@ public final class GeneratedClass {
                 initializer.write(out);
             }
             out.endBlock();
+            if (backendConstructorType != null) {
+                out.blank();
+                out.beginBlock("public " + simpleName + "(" + backendConstructorType + " backend)");
+                out.line("org.sjf4j.RuntimeContext context = org.sjf4j.RuntimeContext.EMPTY;");
+                out.line("this.context = context;");
+                out.line("this.binder = new " + backendBinderType + "(backend, context);");
+                for (Member initializer : contextInitializers) {
+                    if (initializer != null) {
+                        // The ordinary context constructor initializes the binder
+                        // separately; exclude that first binder assignment here.
+                        if (initializer != contextInitializers.get(0)) initializer.write(out);
+                    }
+                }
+                out.endBlock();
+                if (backendMapperConvenienceType != null) {
+                    out.blank();
+                    out.beginBlock("public " + simpleName + "("
+                            + backendMapperConvenienceType + " mapper)");
+                    out.line("this(mapper.getFactory());");
+                    out.endBlock();
+                }
+            }
             written = true;
         }
 
