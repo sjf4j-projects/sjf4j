@@ -148,7 +148,7 @@ final class Fastjson2WriteEmitter {
 
         @Override
         public String includeNullsExpression() {
-            return fixedIncludeNulls == null ? "this.context.includeNulls" : fixedIncludeNulls.toString();
+            return fixedIncludeNulls == null ? "_FALLBACK_CONTEXT.includeNulls" : fixedIncludeNulls.toString();
         }
 
         ModeOperations(FastjsonMode mode) {
@@ -206,7 +206,7 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writeRuntimeValue(JavaWriter out, String expression) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(writer, "
-                    + expression + ", this.context);");
+                    + expression + ", _FALLBACK_CONTEXT);");
         }
 
         @Override
@@ -222,14 +222,14 @@ final class Fastjson2WriteEmitter {
 
     /** Every structural helper has the same (writer, value) signature. */
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
-        out.beginBlock("private void " + fastjsonHelperName(value, mode)
+        out.beginBlock("private static void " + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer, "
                 + value.type() + " value) throws java.io.IOException");
         out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line("org.sjf4j.binding.StreamingIO.writeNode(writer, value, this.context);");
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(writer, value, _FALLBACK_CONTEXT);");
         } else {
             StructuralWriteEmitter structure =
                     new StructuralWriteEmitter(new ModeOperations(mode));
@@ -313,7 +313,7 @@ final class Fastjson2WriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line("org.sjf4j.binding.StreamingIO.writeNode("
-                        + writer + ", " + expression + ", this.context);");
+                        + writer + ", " + expression + ", _FALLBACK_CONTEXT);");
                 return;
             case NUMBER:
                 out.line(writer + ".writeNumber(" + expression + ");");
