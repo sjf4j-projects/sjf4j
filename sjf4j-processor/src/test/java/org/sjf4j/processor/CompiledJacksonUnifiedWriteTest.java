@@ -111,9 +111,9 @@ class CompiledJacksonUnifiedWriteTest {
                 assertEquals("alpha", full.path("tags").get(0).asText(), backend);
                 assertEquals("beta", full.path("tags").get(1).asText(), backend);
 
-                assertFalse(filtered.has("omitted"), backend);
-                assertFalse(filtered.path("extras").has("skip"), backend);
-                assertFalse(filtered.path("ids").has("empty"), backend);
+                assertTrue(filtered.path("omitted").isNull(), backend);
+                assertTrue(filtered.path("extras").path("skip").isNull(), backend);
+                assertTrue(filtered.path("ids").path("empty").isNull(), backend);
                 assertTrue(filtered.path("groups").path("items").get(1).isNull(), backend);
                 assertEquals(2, filtered.path("tags").size(), backend);
                 assertTrue(filtered.path("animals").get(1).isNull(), backend);
