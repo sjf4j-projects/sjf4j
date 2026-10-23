@@ -52,7 +52,7 @@ class CompiledValueCodecDiscoveryTest {
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains("requireRegisteredValueInfo"), backend);
             assertFalse(generated.contains("context.valueFormat("), backend);
-            assertTrue(generated.contains("epochMillis"), backend + ": " + generated);
+            assertTrue(generated.contains("INSTANT_EPOCH_MILLIS"), backend + ": " + generated);
             assertTrue(generated.contains("yyyy/MM/dd"), backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
