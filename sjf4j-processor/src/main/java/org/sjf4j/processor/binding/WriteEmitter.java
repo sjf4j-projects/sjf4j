@@ -88,8 +88,11 @@ final class WriteEmitter {
         // Only the streaming-only backends retain whole-root fallback rules.
         // JSON native backends compile structural nodes and fall back locally.
         if (!usesSharedStructure()) {
-            // Preserve streaming-only null-policy and dynamic-root semantics.
-            out.beginBlock("if (!this.context.includeNulls)");
+            // Static includeNulls is a compile-time constant, not a runtime switch.
+            boolean dynamicNulls = fixedIncludeNulls == null;
+            boolean omitNulls = Boolean.FALSE.equals(fixedIncludeNulls);
+            if (dynamicNulls || omitNulls) {
+                if (dynamicNulls) out.beginBlock("if (!this.context.includeNulls)");
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -106,7 +109,8 @@ final class WriteEmitter {
                 default:
                     throw new AssertionError(plan.writeOutput());
             }
-            out.endBlock();
+                if (dynamicNulls) out.endBlock();
+            }
 
             if (streaming.shouldFallbackRoot(compiled.value())) {
                 switch (plan.writeOutput()) {
