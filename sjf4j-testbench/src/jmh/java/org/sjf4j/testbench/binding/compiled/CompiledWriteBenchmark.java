@@ -224,8 +224,16 @@ public class CompiledWriteBenchmark {
         checkUri("jackson3 uri direct", json_jackson3_uri_direct());
         check("jackson2 direct wrapped string", json_jackson2_pojo_string_direct_wrapped());
         check("jackson2 direct wrapped utf8", json_jackson2_pojo_utf8_direct_wrapped());
+        check("jackson2 direct ordered string", json_jackson2_pojo_string_direct_ordered());
+        check("jackson2 direct ordered utf8", json_jackson2_pojo_utf8_direct_ordered());
+        check("jackson2 direct compiled-shape string", json_jackson2_pojo_string_direct_compiled_shape());
+        check("jackson2 direct compiled-shape utf8", json_jackson2_pojo_utf8_direct_compiled_shape());
         check("jackson3 direct wrapped string", json_jackson3_pojo_string_direct_wrapped());
         check("jackson3 direct wrapped utf8", json_jackson3_pojo_utf8_direct_wrapped());
+        check("jackson3 direct ordered string", json_jackson3_pojo_string_direct_ordered());
+        check("jackson3 direct ordered utf8", json_jackson3_pojo_utf8_direct_ordered());
+        check("jackson3 direct compiled-shape string", json_jackson3_pojo_string_direct_compiled_shape());
+        check("jackson3 direct compiled-shape utf8", json_jackson3_pojo_utf8_direct_compiled_shape());
     }
 
     private static void checkUri(String label, String json) throws IOException {
@@ -422,6 +430,42 @@ public class CompiledWriteBenchmark {
         }
     }
 
+    @Benchmark
+    public String json_jackson2_pojo_string_direct_ordered() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriter()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson2WriteShapeDiagnostics.writeOrdered(w.nativeWriter(), USER);
+            w.flush();
+            return w.toString();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson2_pojo_string_direct_compiled_shape() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriter()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson2WriteShapeDiagnostics.INSTANCE.writeWrapped(w, USER);
+            w.flush();
+            return w.toString();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_pojo_utf8_direct_ordered() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriterUtf8()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson2WriteShapeDiagnostics.writeOrdered(w.nativeWriter(), USER);
+            w.flush();
+            return w.toBytes();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson2_pojo_utf8_direct_compiled_shape() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriterUtf8()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson2WriteShapeDiagnostics.INSTANCE.writeWrapped(w, USER);
+            w.flush();
+            return w.toBytes();
+        }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
@@ -554,6 +598,42 @@ public class CompiledWriteBenchmark {
             Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
             writer.flush();
             return writer.toBytes();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson3_pojo_string_direct_ordered() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriter()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson3WriteShapeDiagnostics.writeOrdered(w.nativeWriter(), USER);
+            w.flush();
+            return w.toString();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson3_pojo_string_direct_compiled_shape() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriter()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson3WriteShapeDiagnostics.INSTANCE.writeWrapped(w, USER);
+            w.flush();
+            return w.toString();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson3_pojo_utf8_direct_ordered() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriterUtf8()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson3WriteShapeDiagnostics.writeOrdered(w.nativeWriter(), USER);
+            w.flush();
+            return w.toBytes();
+        }
+    }
+
+    @Benchmark
+    public byte[] json_jackson3_pojo_utf8_direct_compiled_shape() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriterUtf8()) {
+            org.sjf4j.testbench.binding.handwritten.Jackson3WriteShapeDiagnostics.INSTANCE.writeWrapped(w, USER);
+            w.flush();
+            return w.toBytes();
         }
     }
 
