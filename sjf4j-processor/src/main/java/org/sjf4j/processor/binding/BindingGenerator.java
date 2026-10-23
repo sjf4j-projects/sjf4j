@@ -54,7 +54,7 @@ public final class BindingGenerator {
             return;
         }
 
-        generated.enableRuntimeContext();
+        generated.enableStaticBinder();
         org.sjf4j.annotation.binding.BindingOptions options =
                 type.getAnnotation(org.sjf4j.annotation.binding.BindingOptions.class);
         generated.setStaticBinderIncludeNulls(options == null || options.includeNulls());
@@ -64,8 +64,6 @@ public final class BindingGenerator {
         generated.enableBinderConstructor(backend.binderType());
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
-        generated.addContextInitializer(out ->
-                out.line("this.binder = new " + backend.binderType() + "(this.context);"));
 
         List<ResolvedMethod> resolvedMethods =
                 context.methods.abstractMethods(type);
