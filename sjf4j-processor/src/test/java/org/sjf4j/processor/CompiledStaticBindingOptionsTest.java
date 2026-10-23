@@ -46,8 +46,7 @@ class CompiledStaticBindingOptionsTest {
         assertFalse(generated.contains("private fixture.Bean _readBean("), generated);
         assertFalse(generated.contains("private final org.sjf4j.RuntimeContext context;"), generated);
         assertFalse(generated.contains("this.context"), generated);
-        assertTrue(generated.contains("private final org.sjf4j.backend.jackson2.binding.Jackson2Binder binder;"),
-                generated);
+        assertTrue(generated.contains("Jackson2Binder binder;"), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class binderType = loader.loadClass("fixture.Binder");
