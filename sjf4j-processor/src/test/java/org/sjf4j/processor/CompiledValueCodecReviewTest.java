@@ -51,6 +51,7 @@ class CompiledValueCodecReviewTest {
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
+                + "@BindingOptions(registries={Codecs.class}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
                 + "@WriteTo String write(Child value) throws IOException; }");
 
@@ -58,7 +59,7 @@ class CompiledValueCodecReviewTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("requireRegisteredValueInfo"), source);
+        assertFalse(source.contains("requireRegisteredValueInfo"), source);
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
             Class<?> child = loader.loadClass("fixture.Child");
