@@ -22,4 +22,10 @@ public @interface BindingOptions {
 
     /** Additional classes containing annotated registration fields. */
     Class<?>[] registries() default {};
+
+    /** Include null-valued object members in generated binding writes. */
+    boolean includeNulls() default true;
+
+    /** Compile-time selections for value types with multiple codec formats. */
+    CodecMapping[] valueCodecs() default {};
 }
