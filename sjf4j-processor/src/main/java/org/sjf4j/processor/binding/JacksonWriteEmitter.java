@@ -54,7 +54,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     /**
      * Generates all structural nodes using the same writer/value convention.
-     * Instance helpers are needed by codec metadata and local runtime fallbacks.
+     * Helpers are static: the StreamingWriter parameter carries native I/O state,
+     * while dynamic fallback (when required) uses an explicit static context.
      */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private static void " + value.helperName() + "("
