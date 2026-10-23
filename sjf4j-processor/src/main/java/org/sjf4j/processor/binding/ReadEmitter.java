@@ -872,9 +872,7 @@ final class ReadEmitter {
                             ? "(" + value.codecRawType() + ") " + reader + ".readRaw()"
                             : reader + "." + fixedReader + "()";
                     String fixedDecode = value.helperName() + ".rawToValue(" + rawExpression + ")";
-                    return "(" + value.type() + ") (" + value.helperName()
-                            + "Reader != null ? " + value.helperName() + "Reader.read("
-                            + reader + ") : " + fixedDecode + ")";
+                    return "(" + value.type() + ") " + fixedDecode;
                 }
                 String rawReader = codecRawReader(value);
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + reader + ", "
