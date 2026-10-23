@@ -27,7 +27,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     @Override
     public String includeNullsExpression() {
-        return fixedIncludeNulls == null ? "this.context.includeNulls" : fixedIncludeNulls.toString();
+        return fixedIncludeNulls == null ? "_FALLBACK_CONTEXT.includeNulls" : fixedIncludeNulls.toString();
     }
 
     private boolean jackson2() {
@@ -57,7 +57,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      * Instance helpers are needed by codec metadata and local runtime fallbacks.
      */
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName() + "("
+        out.beginBlock("private static void " + value.helperName() + "("
                 + backend.writerType() + " writer, " + value.type()
                 + " value) throws java.io.IOException");
         out.line(generatorType() + " g = writer.nativeWriter();");
@@ -66,7 +66,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             structures.emitOneOf(out, value);
         } else if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
+            out.line(STREAMING_IO + ".writeNode(writer, value, _FALLBACK_CONTEXT);");
         } else {
             out.beginBlock("if (value == null)");
             out.line("g.writeNull();");
@@ -156,7 +156,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
         out.line(STREAMING_IO + ".writeNode(writer, " + expression
-                + ", this.context);");
+                + ", _FALLBACK_CONTEXT);");
     }
 
     /**
@@ -176,7 +176,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 return;
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + writer + ", " + expression
-                        + ", this.context);");
+                        + ", _FALLBACK_CONTEXT);");
                 return;
             case STRING:
                 out.line("_writeString(" + generator + ", " + expression + ");");
