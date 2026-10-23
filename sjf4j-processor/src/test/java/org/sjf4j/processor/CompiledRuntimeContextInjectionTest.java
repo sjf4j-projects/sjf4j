@@ -145,7 +145,7 @@ class CompiledRuntimeContextInjectionTest {
                     "fixture/Binder.java",
                     "package fixture; import java.io.IOException; "
                     + "import org.sjf4j.annotation.binding.*; "
-                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\\"iso\\")},includeNulls=false) "
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")},includeNulls=false) "
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
                     + "@ReadFrom Bean read(String json) throws IOException; "
