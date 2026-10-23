@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.util.Asserts;
 import org.sjf4j.processor.creator.CreatorPlan;
+import org.sjf4j.processor.discovery.ValueCodecMetadata;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
@@ -57,6 +58,7 @@ final class BindingValue {
     private String codecName;
     private String codecPattern;
     private TypeMirror codecRawType;
+    private ValueCodecMetadata staticCodec;
     private List<String> ignoredNames = Collections.emptyList();
     private boolean readDynamic;
     private boolean writeDynamic;
@@ -195,6 +197,14 @@ final class BindingValue {
 
     TypeMirror codecRawType() {
         return codecRawType;
+    }
+
+    void staticCodec(ValueCodecMetadata codec) {
+        this.staticCodec = codec;
+    }
+
+    ValueCodecMetadata staticCodec() {
+        return staticCodec;
     }
 
     List<String> ignoredNames() {
