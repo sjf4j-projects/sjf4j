@@ -57,9 +57,7 @@ public final class BindingGenerator {
         generated.enableRuntimeContext();
         org.sjf4j.annotation.binding.BindingOptions options =
                 type.getAnnotation(org.sjf4j.annotation.binding.BindingOptions.class);
-        if (options != null) {
-            generated.setStaticBinderIncludeNulls(options.includeNulls());
-        }
+        generated.setStaticBinderIncludeNulls(options == null || options.includeNulls());
         // The generated binder only accepts the already configured SJF4J
         // backend adapter. Native parser/generator settings belong to the
         // adapter and are never modified by the generated implementation.
@@ -133,7 +131,7 @@ public final class BindingGenerator {
                 new BindingEmitter(
                         context,
                         backend,
-                        staticOptions == null ? null : staticOptions.includeNulls());
+                        staticOptions == null || staticOptions.includeNulls());
 
         for (BindingCompiler.CompiledMethod method :
                 compiled) {
