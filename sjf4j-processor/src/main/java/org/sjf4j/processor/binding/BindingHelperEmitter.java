@@ -94,6 +94,14 @@ final class BindingHelperEmitter {
         }
         generated.addField(out -> out.line(
                 "private final org.sjf4j.value.ValueInfo " + value.helperName() + ";"));
+        if (value.direction() == BindingPlan.Direction.WRITE_TO
+                && CodecWriteEmitter.builtInConstant(value.type().toString()) != null) {
+            String flag = value.helperName() + "BuiltIn";
+            generated.addField(out -> out.line("private final boolean " + flag + ";"));
+            generated.addContextInitializer(out -> out.line("this." + flag
+                    + " = this." + value.helperName() + ".codec == org.sjf4j.value.ValueCodec."
+                    + CodecWriteEmitter.builtInConstant(value.type().toString()) + ";"));
+        }
         if (autoRead) {
             generated.addContextInitializer(out -> out.line(
                     "this." + value.helperName() + " = this."

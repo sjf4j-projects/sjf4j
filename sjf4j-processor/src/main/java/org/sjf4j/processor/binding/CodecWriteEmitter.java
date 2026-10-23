@@ -24,8 +24,7 @@ final class CodecWriteEmitter {
         // Only the canonical built-in instance can take this direct route.
         BuiltInDirect builtIn = builtInDirect(value.type().toString());
         if (builtIn != null) {
-            out.beginBlock("if ((Object) " + info + ".codec == org.sjf4j.value.ValueCodec."
-                    + builtIn.constant + ")");
+            out.beginBlock("if (this." + info + "BuiltIn)");
             String valueExpr = builtIn.rawString ? "codecValue.toString()" : "codecValue";
             String target = builtIn.rawString && nativeWriter != null ? nativeWriter : writer;
             out.line(target + "." + builtIn.method + "(" + valueExpr + ");");
@@ -71,6 +70,11 @@ final class CodecWriteEmitter {
      * Canonical streaming built-ins; raw-only, patterned, and custom Codec
      * implementations continue through the normal ValueInfo path.
      */
+    static String builtInConstant(String valueType) {
+        BuiltInDirect builtIn = builtInDirect(valueType);
+        return builtIn == null ? null : builtIn.constant;
+    }
+
     private static BuiltInDirect builtInDirect(String valueType) {
         switch (valueType) {
             case "java.util.UUID": return new BuiltInDirect("UUID_CODEC", "writeUuid");
