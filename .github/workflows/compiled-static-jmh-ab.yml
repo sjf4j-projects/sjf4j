@@ -1,0 +1,101 @@
+name: Compiled static helpers A/B JMH
+
+on:
+  pull_request:
+    branches:
+      - feat/compiled-binder-static-config-backend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ab-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build baseline PR97 and static-helper PR99 on same runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD commit: $(git rev-parse HEAD)"
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-pr97" ac33799d950d2cf9f1e18cdbe740f502f7ce39c8
+          echo "Base commit: $(git -C "$RUNNER_TEMP/sjf4j-pr97" rev-parse HEAD)"
+          cmp sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CompiledWriteBenchmark.java "$RUNNER_TEMP/sjf4j-pr97/sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CompiledWriteBenchmark.java"
+          cmp sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CompiledReadBenchmark.java "$RUNNER_TEMP/sjf4j-pr97/sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/CompiledReadBenchmark.java"
+          (cd "$RUNNER_TEMP/sjf4j-pr97" && ./gradlew :sjf4j-testbench:jmhJar --no-daemon)
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+          mkdir -p ab-results
+          cp "$(find "$RUNNER_TEMP/sjf4j-pr97/sjf4j-testbench/build/libs" -maxdepth 1 -name '*-jmh.jar' -print -quit)" ab-results/base.jar
+          cp "$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)" ab-results/static.jar
+          java -version 2>&1 | tee ab-results/java-version.txt
+      - name: A/B/B/A JMH on identical machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Jackson2/3 + Fastjson2 + Gson + JSONP + Simple; write/read String and UTF-8.
+          # Existing handwritten wrapped Jackson writer is an unaffected control.
+          pattern='.*Compiled(WriteBenchmark\.json_(jackson[23]|fastjson2|gson|jsonp|simple)_pojo_(string|utf8)_compiled|ReadBenchmark\.(jackson[23]|fastjson2|gson|jsonp|simple)_pojo_(string|utf8)_compiled|WriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_direct_wrapped)$'
+          for spec in "base-a:base" "static-a:static" "static-b:static" "base-b:base"; do
+            label="${spec%%:*}"
+            version="${spec##*:}"
+            java -jar "ab-results/$version.jar" "$pattern" \
+              -bm avgt -tu ns -t 1 -f 1 -wi 4 -w 350ms -i 7 -r 350ms \
+              -prof gc -rf json -rff "ab-results/$label.json" \
+              | tee "ab-results/$label.log"
+          done
+      - name: Summarize paired runs
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee ab-results/summary.md
+          import json, statistics
+          from pathlib import Path
+          root=Path('ab-results')
+          results={k:{r['benchmark'].split('.')[-2]+'.'+r['benchmark'].split('.')[-1]:r for r in json.loads((root/(k+'.json')).read_text())} for k in ('base-a','static-a','static-b','base-b')}
+          names=sorted(set.intersection(*(set(x) for x in results.values())))
+          assert len(names)>=24, f'Expected at least 24 benchmarks, got {len(names)}: {names}'
+          def score(tag,name):
+              return results[tag][name]['primaryMetric']['score']
+          def alloc(tag,name):
+              return results[tag][name].get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score')
+          print('# PR97 vs PR99 CompiledBinder static helper JMH')
+          print('JDK17, same GitHub-hosted runner, A/B/B/A ordering, 1 fork/run, 7 measurements each; ns/op (lower better).')
+          print()
+          print('| Benchmark | PR97 baseline | PR99 static | Delta ns/op | Change | Alloc Δ B/op |')
+          print('|---|---:|---:|---:|---:|---:|')
+          total=[]
+          for name in names:
+              a=statistics.mean([score('base-a',name),score('base-b',name)])
+              b=statistics.mean([score('static-a',name),score('static-b',name)])
+              allocation=statistics.mean(alloc(v,name) for v in ('static-a','static-b'))-statistics.mean(alloc(v,name) for v in ('base-a','base-b'))
+              change=(b/a-1)*100
+              total.append((name,change))
+              print(f'| {name} | {a:.1f} | {b:.1f} | {b-a:+.1f} | {change:+.2f}% | {allocation:+.1f} |')
+          print()
+          for grp in ('WriteBenchmark', 'ReadBenchmark', 'direct_wrapped'):
+              changes=[delta for name,delta in total if (grp=='direct_wrapped' and 'direct_wrapped' in name) or (grp!='direct_wrapped' and grp in name and 'direct_wrapped' not in name)]
+              if changes:
+                  print(f'{grp}: median score change {statistics.median(changes):+.2f}% over {len(changes)} methods')
+          print()
+          print('Interpret individual changes in light of per-run dispersion; these are microbenchmarks, not proof of throughput gain.')
+          print()
+          print('## Raw per-run ns/op and JMH error')
+          for name in names:
+              print(f'- {name}: '+', '.join(f'{k}={score(k,name):.1f} ± {results[k][name]["primaryMetric"]["scoreError"]:.1f}' for k in ('base-a','static-a','static-b','base-b')))
+          PY
+          cat ab-results/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload A/B results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-static-jmh-abba
+          path: ab-results/
+          if-no-files-found: warn

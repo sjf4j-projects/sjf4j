@@ -164,7 +164,7 @@ final class ReadEmitter {
             BindingValue value) {
 
         out.beginBlock(
-                "private " +
+                "private static " +
                         value.type() +
                         " " +
                         value.helperName() +
@@ -222,7 +222,7 @@ final class ReadEmitter {
     /** Compile CURRENT/key OneOf without depending on discriminator position. */
     void emitOneOfReadHelper(JavaWriter out, BindingValue value) {
         String info = value.helperName() + "_info";
-        out.beginBlock("private " + value.type() + " " + value.helperName()
+        out.beginBlock("private static " + value.type() + " " + value.helperName()
                 + "(" + backend.readerType() + " reader) throws java.io.IOException");
         out.beginBlock("if (!reader.nextIfObjectStart())");
         out.beginBlock("if (reader.nextIfNull())");
@@ -301,7 +301,7 @@ final class ReadEmitter {
     /** Continue parsing after the discriminator; replay only the raw prefix. */
     void emitOneOfSubtypeContent(JavaWriter out, BindingValue owner,
                                  BindingValue subtype, int index) {
-        out.beginBlock("private " + subtype.type() + " " + owner.helperName()
+        out.beginBlock("private static " + subtype.type() + " " + owner.helperName()
                 + "_subtype" + index + "_content(" + backend.readerType()
                 + " reader, String[] prefixNames, Object[] prefixValues, int prefixSize)"
                 + " throws java.io.IOException");
@@ -880,7 +880,7 @@ final class ReadEmitter {
                 }
                 String rawReader = codecRawReader(value);
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + reader + ", "
-                        + value.helperName() + ", this.context)";
+                        + value.helperName() + ", _FALLBACK_CONTEXT)";
                 String scalarRead;
                 if (rawReader == null) {
                     scalarRead = runtimeRead;
@@ -901,7 +901,7 @@ final class ReadEmitter {
                     String set = value.helperName() + "Set";
                     String selected = STREAMING_IO + ".readValueSet(" + reader + ", "
                             + value.type() + ".class, " + value.type() + ".class, "
-                            + set + ", this.context)";
+                            + set + ", _FALLBACK_CONTEXT)";
                     return "(" + value.type() + ") (" + set + ".multiples ? "
                             + selected + " : " + scalarRead + ")";
                 }
@@ -913,14 +913,14 @@ final class ReadEmitter {
                         STREAMING_IO +
                         ".readEnum(" + reader + ", " +
                         value.type() + ".class, " +
-                        "this.context)";
+                        "_FALLBACK_CONTEXT)";
 
             case ONE_OF:
                 if (value.oneOfKey() != null) {
                     return value.helperName() + "(" + reader + ")";
                 }
                 return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
-                        + ".readOneOf(" + reader + ", " + value.helperName() + "_info, this.context)";
+                        + ".readOneOf(" + reader + ", " + value.helperName() + "_info, _FALLBACK_CONTEXT)";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
@@ -934,7 +934,7 @@ final class ReadEmitter {
                         context.typeUtils
                                 .erasure(value.type()) +
                         ".class, " +
-                        "this.context)";
+                        "_FALLBACK_CONTEXT)";
 
             default:
                 throw new AssertionError(

@@ -1,0 +1,42 @@
+name: CompiledBinder static helpers CI
+
+on:
+  pull_request:
+    branches:
+      - feat/compiled-binder-static-config-backend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test processor and testbench
+        run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:test :sjf4j-testbench:compileJmhJava --no-daemon
+      - name: Verify static generated helper signatures
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files = list(Path('sjf4j-testbench/build/generated').rglob('*CompiledWriteBenchmark*Jackson*Impl.java'))
+          print('Checked generated benchmark classes:', [str(f) for f in files])
+          if not files: raise SystemExit('No generated Jackson binder classes found')
+          for f in files:
+              code = f.read_text()
+              if 'private final org.sjf4j.RuntimeContext context;' in code:
+                  raise SystemExit(f'Found instance RuntimeContext: {f}')
+              for marker in ('private static void _writeUser(', 'private static void _writeAddress(',
+                             'private static void _writeFriend('):
+                  if marker not in code: raise SystemExit(f'Missing {marker} in {f}')
+              if 'this.context' in code:
+                  raise SystemExit(f'Found this.context in {f}')
+          PY

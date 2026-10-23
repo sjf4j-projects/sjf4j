@@ -92,7 +92,7 @@ final class WriteEmitter {
             boolean dynamicNulls = fixedIncludeNulls == null;
             boolean omitNulls = Boolean.FALSE.equals(fixedIncludeNulls);
             if (dynamicNulls || omitNulls) {
-                if (dynamicNulls) out.beginBlock("if (!this.context.includeNulls)");
+                if (dynamicNulls) out.beginBlock("if (!_FALLBACK_CONTEXT.includeNulls)");
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -458,11 +458,11 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private void _writeStringMember(" + generator
+            out.beginBlock("private static void _writeStringMember(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
             if (fixedIncludeNulls == null) {
-                out.beginBlock("if (value == null && !this.context.includeNulls)");
+                out.beginBlock("if (value == null && !_FALLBACK_CONTEXT.includeNulls)");
             } else if (!fixedIncludeNulls) {
                 out.beginBlock("if (value == null)");
             }

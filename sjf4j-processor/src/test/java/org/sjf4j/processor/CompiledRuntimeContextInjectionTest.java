@@ -63,7 +63,9 @@ class CompiledRuntimeContextInjectionTest {
         String outerSource = compiled.generatedSource("fixture/Outer_Impl.java");
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
         assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
-        assertTrue(binderSource.contains("RuntimeContext context)"), binderSource);
+        assertTrue(binderSource.contains("RuntimeContext ignored)"), binderSource);
+        assertFalse(binderSource.contains("private final org.sjf4j.RuntimeContext context;"), binderSource);
+        assertFalse(binderSource.contains("this.context"), binderSource);
         assertFalse(binderSource.contains("context.valueFormat("), binderSource);
         assertFalse(binderSource.contains("requireRegisteredValueInfo"), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
