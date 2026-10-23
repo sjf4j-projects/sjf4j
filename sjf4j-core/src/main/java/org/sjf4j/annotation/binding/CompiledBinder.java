@@ -28,8 +28,8 @@ import java.lang.annotation.Target;
  * or created with custom settings using
  * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.RuntimeContext)}.
  * Native backend configuration may also be injected using
- * {@code CompiledInstances.create(UserJson.class, gson)} or the generated
- * implementation's strongly typed native-backend constructor.</p>
+ * {@code CompiledInstances.create(UserJson.class, gsonBinder)} or the generated
+ * implementation's strongly typed SJF4J backend-Binder constructor.</p>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
