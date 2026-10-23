@@ -40,6 +40,7 @@ class CompiledValueCodecDiscoveryTest {
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                     + "import java.io.IOException; "
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\\"iso\\")}) "
                     + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
                     + " @ReadFrom Bean read(String json) throws IOException; "
                     + " @WriteTo String write(Bean value) throws IOException; "
