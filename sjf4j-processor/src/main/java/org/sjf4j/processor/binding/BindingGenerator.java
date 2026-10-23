@@ -65,7 +65,7 @@ public final class BindingGenerator {
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
         generated.addContextInitializer(out ->
-                out.line("this.binder = new " + backend.binderType() + "(context);"));
+                out.line("this.binder = new " + backend.binderType() + "(this.context);"));
 
         List<ResolvedMethod> resolvedMethods =
                 context.methods.abstractMethods(type);
