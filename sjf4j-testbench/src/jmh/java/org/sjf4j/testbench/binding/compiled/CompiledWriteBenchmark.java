@@ -219,6 +219,12 @@ public class CompiledWriteBenchmark {
 
     @Setup(Level.Trial)
     public void verifyDirectWrapped() throws Exception {
+        checkUri("jackson2 uri stream wrapped", json_jackson2_uri_stream_wrapped());
+        checkUri("jackson2 uri codec wrapped", json_jackson2_uri_codec_wrapped());
+        checkUri("jackson2 uri native wrapped", json_jackson2_uri_native_wrapped());
+        checkUri("jackson3 uri stream wrapped", json_jackson3_uri_stream_wrapped());
+        checkUri("jackson3 uri codec wrapped", json_jackson3_uri_codec_wrapped());
+        checkUri("jackson3 uri native wrapped", json_jackson3_uri_native_wrapped());
         checkUri("jackson2 uri compiled", json_jackson2_uri_compiled());
         checkUri("jackson2 uri runtime", json_jackson2_uri_runtime());
         checkUri("jackson2 uri direct", json_jackson2_uri_direct());
@@ -328,6 +334,55 @@ public class CompiledWriteBenchmark {
     private static void check(String label, byte[] utf8) throws IOException {
         if (!EXPECTED_TREE.equals(JACKSON2_NATIVE.readTree(utf8))) {
             throw new IllegalStateException("UTF-8 JSON differs: " + label);
+        }
+    }
+
+
+    // Same Writer lifecycle across three URI paths: streaming callback,
+    // canonical fixed Codec, and direct generator string.
+    @Benchmark
+    public String json_jackson2_uri_stream_wrapped() throws IOException {
+        return JACKSON2_COMPILED.writeUri(URI_VALUE);
+    }
+
+    @Benchmark
+    public String json_jackson2_uri_codec_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriter()) {
+            w.nativeWriter().writeString(org.sjf4j.value.ValueCodec.URI_CODEC.valueToRaw(URI_VALUE));
+            w.flush();
+            return w.toString();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson2_uri_native_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriter()) {
+            w.nativeWriter().writeString(URI_VALUE.toString());
+            w.flush();
+            return w.toString();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson3_uri_stream_wrapped() throws IOException {
+        return JACKSON3_COMPILED.writeUri(URI_VALUE);
+    }
+
+    @Benchmark
+    public String json_jackson3_uri_codec_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriter()) {
+            w.nativeWriter().writeString(org.sjf4j.value.ValueCodec.URI_CODEC.valueToRaw(URI_VALUE));
+            w.flush();
+            return w.toString();
+        }
+    }
+
+    @Benchmark
+    public String json_jackson3_uri_native_wrapped() throws IOException {
+        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriter()) {
+            w.nativeWriter().writeString(URI_VALUE.toString());
+            w.flush();
+            return w.toString();
         }
     }
 
