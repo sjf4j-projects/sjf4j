@@ -37,7 +37,8 @@ class CompiledCodecRawIOTest {
                     + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
-                    + "@CompiledBinder(backend=Backend." + backend + ")"
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\\"iso\\")}) "
+                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + "public interface Binder {"
                     + " @WriteTo String write(Bean bean) throws java.io.IOException;"
                     + " @ReadFrom Bean read(String json) throws java.io.IOException;"
