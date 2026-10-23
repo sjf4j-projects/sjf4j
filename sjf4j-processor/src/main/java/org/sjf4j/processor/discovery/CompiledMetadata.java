@@ -22,8 +22,10 @@ public final class CompiledMetadata {
 
     public CompiledMetadata(ProcessorContext context, TypeElement owner) {
         this.valueCodecs = new ValueCodecResolver(context, context.discovery.registries(owner));
-        this.staticBinding = owner.getAnnotation(CompiledBinder.class) != null
-                && owner.getAnnotation(BindingOptions.class) != null;
+        // All CompiledBinder interfaces use static value-codec resolution.
+        // @BindingOptions only supplies optional overrides; it is not an
+        // opt-in switch for compiled semantics.
+        this.staticBinding = owner.getAnnotation(CompiledBinder.class) != null;
         this.selectedFormats = selections(context, owner);
     }
 
