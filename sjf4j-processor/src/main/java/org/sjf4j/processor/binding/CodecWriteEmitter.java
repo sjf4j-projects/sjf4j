@@ -32,6 +32,11 @@ final class CodecWriteEmitter {
             out.line("Object rawValue = " + info + ".valueToRaw(codecValue);");
             out.beginBlock("if (" + info + ".rawClazz == "
                     + value.codecRawType() + ".class)");
+            if (nativeWriter != null
+                    && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)
+                    && "java.lang.String".equals(value.codecRawType().toString())) {
+                out.line("_writeString(" + nativeWriter + ", (String) rawValue);");
+            } else {
             out.beginBlock("if (rawValue == null)");
             out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
             out.endBlock(" else {");
@@ -40,6 +45,7 @@ final class CodecWriteEmitter {
                     + "(" + rawArgument(value.codecRawType().toString(), backend,
                             nativeWriter != null) + ");");
             out.endBlock();
+            }
             out.endBlock(" else {");
             out.indent();
             // A different RuntimeContext format or later registration may use
