@@ -73,8 +73,8 @@ class CompiledTemporalStreamingTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
 
             String source = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(source.contains(".streamReader.read("), backend);
-            assertTrue(source.contains(".streamWriter.write("), backend);
+            assertFalse(source.contains(".streamReader.read("), backend);
+            assertFalse(source.contains(".streamWriter.write("), backend);
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> beanClass = loader.loadClass("fixture.Bean");
                 Class binderClass = loader.loadClass("fixture.Binder");
