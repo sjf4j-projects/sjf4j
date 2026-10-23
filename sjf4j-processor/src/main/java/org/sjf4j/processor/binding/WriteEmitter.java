@@ -446,16 +446,14 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private static void _writeStringMember(" + generator
+            out.beginBlock("private void _writeStringMember(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
-            out.line("g." + nameMethod + "(name);");
-            out.beginBlock("if (value == null)");
-            out.line("g.writeNull();");
-            out.endBlock(" else {");
-            out.indent();
-            out.line("g.writeString(value);");
+            out.beginBlock("if (value == null && !this.context.includeNulls)");
+            out.line("return;");
             out.endBlock();
+            out.line("g." + nameMethod + "(name);");
+            out.line("_writeString(g, value);");
             out.endBlock();
         }
     }
