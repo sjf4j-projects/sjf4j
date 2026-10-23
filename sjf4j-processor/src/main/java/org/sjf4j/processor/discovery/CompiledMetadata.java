@@ -29,7 +29,7 @@ public final class CompiledMetadata {
         this.selectedFormats = selections(context, owner);
     }
 
-    /** A configured CompiledBinder resolves its codecs without a Runtime ValueRegistry. */
+    /** Every CompiledBinder resolves its codecs without a Runtime ValueRegistry. */
     public boolean staticBinding() {
         return staticBinding;
     }
