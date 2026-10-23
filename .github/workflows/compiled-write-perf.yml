@@ -31,7 +31,7 @@ jobs:
           test -n "$jar"
           java -jar "$jar" \
             '.*(CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird|direct|direct_wrapped)|CreekModelBenchmark\.write_(compiled|native|blackbird))' \
-            -bm avgt -tu us -t 1 -f 5 -wi 15 -w 400ms -i 10 -r 400ms \
+            -bm avgt -tu us -t 1 -f 3 -wi 15 -w 400ms -i 10 -r 400ms \
             -prof gc -rf json -rff write-perf-results.json \
             | tee write-perf.log
       - name: Summarize comparable pairs and allocations
@@ -43,7 +43,7 @@ jobs:
           items={r['benchmark'].split('.')[-1]:r for r in runs}
           print("# Compiled Write / Creek JMH")
           print()
-          print("JDK17; five forks, six seconds warmup per fork; interpret within-run gaps and JMH uncertainty.")
+          print("JDK17; three forks, six seconds warmup per fork; interpret within-run gaps and JMH uncertainty.")
           print()
           print("| Case | Compiled (us/op) | Native | Blackbird | Direct | Direct+Wrapper | Native/Compiled | Blackbird/Compiled | Alloc Compiled (B/op) |")
           print("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
