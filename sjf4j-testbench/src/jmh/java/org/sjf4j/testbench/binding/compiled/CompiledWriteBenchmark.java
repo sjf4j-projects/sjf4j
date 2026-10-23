@@ -471,7 +471,7 @@ public class CompiledWriteBenchmark {
     }
 
     @Benchmark
-    public String json_jackson2_pojo_string_direct_flat_strings throws IOException {
+    public String json_jackson2_pojo_string_direct_flat_strings() throws IOException {
         try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriter()) {
             org.sjf4j.testbench.binding.handwritten.Jackson2WriteShapeDiagnostics.INSTANCE.writeWrappedFlatString(w, USER);
             w.flush();
@@ -480,7 +480,7 @@ public class CompiledWriteBenchmark {
     }
 
     @Benchmark
-    public byte[] json_jackson2_pojo_utf8_direct_flat_strings throws IOException {
+    public byte[] json_jackson2_pojo_utf8_direct_flat_strings() throws IOException {
         try (org.sjf4j.backend.jackson2.binding.Jackson2Writer w = JACKSON2_RUNTIME.createWriterUtf8()) {
             org.sjf4j.testbench.binding.handwritten.Jackson2WriteShapeDiagnostics.INSTANCE.writeWrappedFlatString(w, USER);
             w.flush();
@@ -660,7 +660,7 @@ public class CompiledWriteBenchmark {
     }
 
     @Benchmark
-    public String json_jackson3_pojo_string_direct_flat_strings throws IOException {
+    public String json_jackson3_pojo_string_direct_flat_strings() throws IOException {
         try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriter()) {
             org.sjf4j.testbench.binding.handwritten.Jackson3WriteShapeDiagnostics.INSTANCE.writeWrappedFlatString(w, USER);
             w.flush();
@@ -669,7 +669,7 @@ public class CompiledWriteBenchmark {
     }
 
     @Benchmark
-    public byte[] json_jackson3_pojo_utf8_direct_flat_strings throws IOException {
+    public byte[] json_jackson3_pojo_utf8_direct_flat_strings() throws IOException {
         try (org.sjf4j.backend.jackson3.binding.Jackson3Writer w = JACKSON3_RUNTIME.createWriterUtf8()) {
             org.sjf4j.testbench.binding.handwritten.Jackson3WriteShapeDiagnostics.INSTANCE.writeWrappedFlatString(w, USER);
             w.flush();
