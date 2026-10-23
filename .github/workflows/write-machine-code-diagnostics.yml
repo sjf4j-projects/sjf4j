@@ -1,0 +1,51 @@
+name: Jackson write machine-code diagnostics
+on:
+  push:
+    branches: [perf/write-machine-code-diagnostics]
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH benchmark
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Check profiler capabilities
+        shell: bash
+        run: |
+          echo '== PERF PERMISSION =='
+          cat /proc/sys/kernel/perf_event_paranoid || true
+          perf --version || true
+          perf stat -e cycles,instructions -- true || true
+          echo '== HOTSPOT ASSEMBLY CAPABILITY =='
+          java -XX:+UnlockDiagnosticVMOptions -XX:+PrintAssembly -version > assembly-probe.log 2>&1 || true
+          grep -Ei 'hsdis|assembler|assembly|disassembler' assembly-probe.log | head -n 20 || true
+      - name: Capture focused compiler output
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
+          java -jar "$jar" '.*CompiledWriteBenchmark\.json_jackson2_pojo_string_(compiled|direct_wrapped)' \
+            -bm avgt -tu us -t 1 -f 1 -wi 12 -w 350ms -i 5 -r 350ms \
+            -jvmArgs '-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompilation -XX:+PrintInlining -XX:CompileCommand=print,org/sjf4j/testbench/binding/compiled/CompiledWriteBenchmark$Jackson2CompiledBinder_Impl._writeUser -XX:CompileCommand=print,org/sjf4j/testbench/binding/handwritten/Jackson2HandPojoSerializedWriter.writeUser' \
+            -rf json -rff machine-results.json > machine-full.log 2>&1
+          grep -E '(CompiledWriteBenchmark\\$Jackson2CompiledBinder_Impl::_writeUser|Jackson2HandPojoSerializedWriter::writeUser|CompiledWriteBenchmark\\$Jackson2CompiledBinder_Impl::_writeStringMember|hot method too big|size > DesiredMethodLimit)' machine-full.log | tail -n 130 > machine-focused.log || true
+          tail -n 10 machine-full.log
+          cat machine-focused.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: machine-code-diagnostics
+          path: |
+            machine-full.log
+            machine-focused.log
+            machine-results.json
+            assembly-probe.log
+          if-no-files-found: warn
