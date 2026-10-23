@@ -1,0 +1,38 @@
+name: Null-policy local JMH experiment
+on:
+  push:
+    branches: [perf/write-cache-null-policy]
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        trial: [1, 2]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Verify semantics and run paired JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
+          java -jar "$jar" '.*CompiledWriteBenchmark\.json_jackson[23]_pojo_(string|utf8)_(compiled|direct_wrapped)' \
+            -bm avgt -tu us -t 1 -f 3 -wi 15 -w 400ms -i 10 -r 400ms \
+            -prof gc -rf json -rff results.json | tee results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: null-policy-${{ matrix.trial }}
+          path: |
+            results.json
+            results.log
+          if-no-files-found: warn
