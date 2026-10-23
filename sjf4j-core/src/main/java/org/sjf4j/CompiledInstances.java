@@ -65,6 +65,44 @@ public final class CompiledInstances {
         }
     }
 
+    /**
+     * Creates a compiled binder with a native backend configuration object.
+     * The annotation processor emits a strongly typed constructor for supported
+     * backends (for example Gson or Jackson's JsonFactory/ObjectMapper).
+     *
+     * <p>The type parameter B is inferred from the argument; the generated
+     * constructor performs the runtime type validation. Backend settings only
+     * configure native JSON input/output, not compiled property mapping.
+     */
+    public static <T, B> T create(Class<T> type, B backend) {
+        Asserts.notNull(type, "type");
+        Asserts.notNull(backend, "backend");
+        Class<?> implClass = _implementationClass(type);
+        java.lang.reflect.Constructor<?> match = null;
+        for (java.lang.reflect.Constructor<?> constructor : implClass.getConstructors()) {
+            Class<?>[] parameters = constructor.getParameterTypes();
+            if (parameters.length != 1 || parameters[0] == RuntimeContext.class
+                    || !parameters[0].isInstance(backend)) continue;
+            if (match != null) {
+                throw new IllegalArgumentException("Ambiguous backend constructors for "
+                        + implClass.getName() + " accepting " + backend.getClass().getName());
+            }
+            match = constructor;
+        }
+        if (match == null) {
+            throw new IllegalArgumentException("No compatible backend constructor for "
+                    + implClass.getName() + " accepting " + backend.getClass().getName());
+        }
+        try {
+            return type.cast(match.newInstance(backend));
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new NodeException("Cannot instantiate " + implClass.getName(), e);
+        } catch (InvocationTargetException e) {
+            throw new NodeException("Generated binder constructor failed for "
+                    + implClass.getName(), e.getCause());
+        }
+    }
+
     /** Compatibility alias for {@link #global(Class)}. */
     @Deprecated
     public static <T> T of(Class<T> type) {
