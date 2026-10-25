@@ -64,8 +64,8 @@ final class OutputBufferRecycler {
 
     /**
      * Up through 256K, use the smallest power-of-two tier from 1K.
-     * Beyond the cache cap, grow like a mutable builder: double the
-     * previous buffer size or fit the requested size, whichever is larger.
+     * Beyond the cache cap, allocate 1.5x the requested size for both
+     * character and byte output. Previous capacity does not influence growth.
      */
     static int growCapacity(int previous, int required) {
         if (required < 0 || required > MAX_ARRAY_SIZE)
@@ -74,6 +74,6 @@ final class OutputBufferRecycler {
             return Math.max(INITIAL_CAPACITY, Integer.highestOneBit(required - 1) << 1);
         }
         return (int) Math.min(MAX_ARRAY_SIZE,
-                Math.max((long) previous * 2L, (long) required));
+                (long) required + (required >> 1));
     }
 }

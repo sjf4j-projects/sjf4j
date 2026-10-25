@@ -5,8 +5,9 @@ import java.util.Arrays;
 
 /**
  * Unsynchronized recyclable OutputStream. The output buffer remains one
- * contiguous byte[]; beyond 256K it grows like a mutable builder and is
- * discarded on recycle, while a 256K buffer stays available to the thread.
+ * contiguous byte[]; above 256K it grows to 1.5x the required size.
+ * Oversized arrays are discarded on recycle, retaining a separate 256K
+ * buffer for subsequent smaller output.
  */
 public final class PooledByteArrayOutputStream extends OutputStream {
     private final OutputBufferRecycler recycler = OutputBufferRecycler.current();

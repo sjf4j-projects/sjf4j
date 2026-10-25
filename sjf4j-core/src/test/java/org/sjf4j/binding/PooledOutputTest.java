@@ -182,7 +182,7 @@ class PooledOutputTest {
     }
 
     @Test
-    void expansionUsesPowerOfTwoTiersUntil256KAndDoublesBeyond() {
+    void expansionUsesPowerOfTwoTiersUntil256KAndHeadroomBeyond() {
         assertEquals(1024, OutputBufferRecycler.growCapacity(512, 1024));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1200));
         assertEquals(4096, OutputBufferRecycler.growCapacity(1024, 3000));
@@ -191,15 +191,15 @@ class PooledOutputTest {
         assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 65537));
         assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 100000));
         assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 262144));
-        assertEquals(300000, OutputBufferRecycler.growCapacity(131072, 300000));
-        assertEquals(524288, OutputBufferRecycler.growCapacity(262144, 300000));
-        assertEquals(1048576, OutputBufferRecycler.growCapacity(524288, 900000));
+        assertEquals(450000, OutputBufferRecycler.growCapacity(131072, 300000));
+        assertEquals(450000, OutputBufferRecycler.growCapacity(262144, 300000));
+        assertEquals(1350000, OutputBufferRecycler.growCapacity(524288, 900000));
         assertEquals(Integer.MAX_VALUE - 8,
                 OutputBufferRecycler.growCapacity(65536, Integer.MAX_VALUE - 8));
     }
 
     @Test
-    void writerTransitionsToBuilderAndMaintains256KCache() {
+    void writerGrowsPast256KAndMaintains256KCache() {
         char[] oldCache = OutputBufferRecycler.acquireChars();
         try {
             PooledStringWriter writer = new PooledStringWriter();
@@ -226,7 +226,7 @@ class PooledOutputTest {
     }
 
     @Test
-    void writerSupportsDirectOversizeAndResetAcrossModes() {
+    void writerSupportsDirectOversizeAndReset() {
         char[] oldCache = OutputBufferRecycler.acquireChars();
         try {
             PooledStringWriter writer = new PooledStringWriter();
@@ -496,6 +496,37 @@ class PooledOutputTest {
             recycler.recycleChars(new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
         } finally {
             recycler.recycleChars(previous);
+        }
+    }
+
+    @Test
+    void oversizedArraysAreNotRetainedButThe256KBackupIs() {
+        char[] previousChars = OutputBufferRecycler.acquireChars();
+        byte[] previousBytes = OutputBufferRecycler.acquireBytes();
+        try {
+            String chars = "x".repeat(300 * 1024);
+            PooledStringWriter writer = new PooledStringWriter();
+            writer.write(chars);
+            assertEquals(chars, writer.getAndRecycle());
+
+            byte[] bytes = new byte[300 * 1024];
+            Arrays.fill(bytes, (byte) 33);
+            PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+            output.write(bytes, 0, bytes.length);
+            assertArrayEquals(bytes, output.getAndRecycle());
+
+            char[] cachedChars = OutputBufferRecycler.acquireChars();
+            byte[] cachedBytes = OutputBufferRecycler.acquireBytes();
+            try {
+                assertEquals(256 * 1024, cachedChars.length);
+                assertEquals(256 * 1024, cachedBytes.length);
+            } finally {
+                OutputBufferRecycler.release(cachedChars);
+                OutputBufferRecycler.release(cachedBytes);
+            }
+        } finally {
+            OutputBufferRecycler.release(previousChars);
+            OutputBufferRecycler.release(previousBytes);
         }
     }
 
