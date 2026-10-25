@@ -14,6 +14,7 @@ import org.sjf4j.binding.PooledStringWriter;
 import org.sjf4j.binding.PooledStringWriterRef;
 import org.sjf4j.binding.PooledStringWriterNoRetain;
 import org.sjf4j.binding.PooledStringWriterColdGrow;
+import org.sjf4j.binding.PooledStringWriterDeferredRetain;
 import org.sjf4j.binding.PooledStringWriterRefRetain;
 import org.sjf4j.binding.PooledStringWriterLargeExact;
 import org.sjf4j.binding.PooledStringWriterLargeDouble;
@@ -86,6 +87,7 @@ public class OutputBufferBenchmark {
                 || !expected.equals(jackson2StringJdk())
                 || !expected.equals(jackson2StringPooled()) || !expected.equals(jackson2StringPooledRef())
                 || !expected.equals(jackson2StringHandwrittenPooled())
+                || !expected.equals(gsonDeferredRetain())
                 || !expected.equals(gsonColdGrow())
                 || !expected.equals(gsonNoRetain()) || !expected.equals(gsonRefRetain())
                 || !expected.equals(gsonLargeDouble())
@@ -676,6 +678,31 @@ public class OutputBufferBenchmark {
     @Benchmark
     public String jackson2StringColdGrow() throws IOException {
         PooledStringWriterColdGrow out = new PooledStringWriterColdGrow();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
+                writer.writeString(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+    @Benchmark
+    public String gsonDeferredRetain() throws IOException {
+        PooledStringWriterDeferredRetain out = new PooledStringWriterDeferredRetain();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String jackson2StringDeferredRetain() throws IOException {
+        PooledStringWriterDeferredRetain out = new PooledStringWriterDeferredRetain();
         try {
             try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
                 writer.writeString(data);
