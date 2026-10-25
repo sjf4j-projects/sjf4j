@@ -125,6 +125,55 @@ class PooledOutputTest {
     }
 
     @Test
+    void recyclerReusesLargeCharAndByteOutputsWithin256KCap() {
+        // The 1.5x oversize rule allocates 192K for a single 128K write.
+        String contents = "x".repeat(128 * 1024);
+        PooledStringWriter writer = new PooledStringWriter();
+        writer.write(contents);
+        assertEquals(contents, writer.getAndRecycle());
+        char[] cachedChars = OutputBufferRecycler.acquireChars();
+        try {
+            assertEquals(192 * 1024, cachedChars.length);
+        } finally {
+            OutputBufferRecycler.release(cachedChars);
+        }
+
+        byte[] payload = new byte[128 * 1024];
+        Arrays.fill(payload, (byte) 7);
+        PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+        output.write(payload, 0, payload.length);
+        assertArrayEquals(payload, output.getAndRecycle());
+        byte[] cachedBytes = OutputBufferRecycler.acquireBytes();
+        try {
+            assertEquals(192 * 1024, cachedBytes.length);
+        } finally {
+            OutputBufferRecycler.release(cachedBytes);
+        }
+    }
+
+    @Test
+    void recyclerRejectsArraysBeyond256KCap() {
+        char[] priorChars = OutputBufferRecycler.acquireChars();
+        byte[] priorBytes = OutputBufferRecycler.acquireBytes();
+        try {
+            OutputBufferRecycler.release(new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
+            OutputBufferRecycler.release(new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
+            char[] chars = OutputBufferRecycler.acquireChars();
+            byte[] bytes = OutputBufferRecycler.acquireBytes();
+            try {
+                assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, chars.length);
+                assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, bytes.length);
+            } finally {
+                OutputBufferRecycler.release(chars);
+                OutputBufferRecycler.release(bytes);
+            }
+        } finally {
+            OutputBufferRecycler.release(priorChars);
+            OutputBufferRecycler.release(priorBytes);
+        }
+    }
+
+    @Test
     void expansionUsesPowerOfTwoTiersUntil64KAndHeadroomBeyond() {
         assertEquals(1024, OutputBufferRecycler.growCapacity(512, 1024));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1200));

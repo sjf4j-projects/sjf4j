@@ -5,13 +5,15 @@ package org.sjf4j.binding;
  *
  * <p>The cache holds raw arrays, never Writer / OutputStream instances. Taking
  * an array empties its slot, so nested serializations cannot share storage.
- * Buffers larger than the retention cap are discarded rather than pinned to
- * long-lived application threads.</p>
+ * Buffers larger than 256K elements are discarded rather than pinned to
+ * long-lived application threads. Retained sizes grow with observed output,
+ * up to that hard limit.</p>
  */
 final class OutputBufferRecycler {
 
     static final int INITIAL_CAPACITY = 1024;
-    static final int MAX_RETAINED_CAPACITY = 64 * 1024;
+    static final int MAX_RETAINED_CAPACITY = 256 * 1024;
+    private static final int MAX_POWER_OF_TWO_CAPACITY = 64 * 1024;
 
     private static final ThreadLocal<OutputBufferRecycler> LOCAL =
             ThreadLocal.withInitial(OutputBufferRecycler::new);
@@ -67,7 +69,7 @@ final class OutputBufferRecycler {
     static int growCapacity(int previous, int required) {
         if (required < 0 || required > Integer.MAX_VALUE - 8)
             throw new OutOfMemoryError("Buffer too large");
-        if (required <= MAX_RETAINED_CAPACITY) {
+        if (required <= MAX_POWER_OF_TWO_CAPACITY) {
             return Math.max(INITIAL_CAPACITY, Integer.highestOneBit(required - 1) << 1);
         }
         return (int) Math.min(Integer.MAX_VALUE - 8L,
