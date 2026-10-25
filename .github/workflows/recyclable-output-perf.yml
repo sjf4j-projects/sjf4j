@@ -50,10 +50,11 @@ jobs:
               key=(args['payloadLength'],args['alphabet'])
               rows.setdefault(key,{})[name]=r
           pairs=[
-              ('charsPooled','charsJdk'),('charsPooled','charsFast'),('charsPooled','charsJackson'),
+              ('charsPooled','charsJdk'),('charsPooled','charsFast'),('charsPooled','charsHandwrittenPooled'),('charsPooled','charsJackson'),
               ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson'),
-              ('gsonPooled','gsonJdk'),('gsonPooled','gsonFast'),
+              ('gsonPooled','gsonJdk'),('gsonPooled','gsonFast'),('gsonPooled','gsonHandwrittenPooled'),
               ('jackson2StringPooled','jackson2StringJdk'),
+              ('jackson2StringPooled','jackson2StringHandwrittenPooled'),
               ('jackson2StringPooled','jackson2StringSegmented'),
               ('jackson2BytesPooled','jackson2BytesJdk'),
               ('jackson2BytesPooled','jackson2BytesSegmented')]
