@@ -32,7 +32,7 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*OutputBufferBenchmark\..*' \
+          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsHandwrittenPooled|charsJackson|gsonPooled|gsonHandwrittenPooled|jackson2StringPooled|jackson2StringHandwrittenPooled|jackson2StringSegmented)' \
             -bm avgt -tu us -t 1 -f 3 -wi 5 -w 350ms -i 8 -r 350ms -p payloadLength=8192 -p alphabet=UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
@@ -50,11 +50,11 @@ jobs:
               key=(args['payloadLength'],args['alphabet'])
               rows.setdefault(key,{})[name]=r
           pairs=[
-              ('charsPooled','charsJdk'),('charsPooled','charsFast'),('charsPooled','charsHandwrittenPooled'),('charsPooled','charsBuilderPooled'),('charsPooled','charsJackson'),
+              ('charsPooled','charsJdk'),('charsPooled','charsFast'),('charsPooled','charsHandwrittenPooled'),('charsPooled','charsJackson'),
               ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson'),
-              ('gsonPooled','gsonJdk'),('gsonPooled','gsonFast'),('gsonPooled','gsonHandwrittenPooled'),('gsonPooled','gsonBuilderPooled'),
+              ('gsonPooled','gsonJdk'),('gsonPooled','gsonFast'),('gsonPooled','gsonHandwrittenPooled'),
               ('jackson2StringPooled','jackson2StringJdk'),
-              ('jackson2StringPooled','jackson2StringHandwrittenPooled'),('jackson2StringPooled','jackson2StringBuilderPooled'),
+              ('jackson2StringPooled','jackson2StringHandwrittenPooled'),
               ('jackson2StringPooled','jackson2StringSegmented'),
               ('jackson2BytesPooled','jackson2BytesJdk'),
               ('jackson2BytesPooled','jackson2BytesSegmented')]

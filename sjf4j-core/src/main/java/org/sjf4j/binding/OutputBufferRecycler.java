@@ -21,37 +21,35 @@ final class OutputBufferRecycler {
 
     private OutputBufferRecycler() {}
 
-    static OutputBufferRecycler current() { return LOCAL.get(); }
-
-    byte[] takeBytes() {
-        byte[] result = bytes;
-        bytes = null;
+    static byte[] acquireBytes() {
+        OutputBufferRecycler recycler = LOCAL.get();
+        byte[] result = recycler.bytes;
+        recycler.bytes = null;
         return result != null ? result : new byte[INITIAL_CAPACITY];
     }
 
-    char[] takeChars() {
-        char[] result = chars;
-        chars = null;
+    static char[] acquireChars() {
+        OutputBufferRecycler recycler = LOCAL.get();
+        char[] result = recycler.chars;
+        recycler.chars = null;
         return result != null ? result : new char[INITIAL_CAPACITY];
     }
 
-    void recycleBytes(byte[] array) {
+    static void release(byte[] array) {
         if (array.length > MAX_RETAINED_CAPACITY) return;
-        if (bytes == null || bytes.length < array.length) bytes = array;
+        OutputBufferRecycler recycler = LOCAL.get();
+        if (recycler.bytes == null || recycler.bytes.length < array.length) {
+            recycler.bytes = array;
+        }
     }
 
-    void recycleChars(char[] array) {
+    static void release(char[] array) {
         if (array.length > MAX_RETAINED_CAPACITY) return;
-        if (chars == null || chars.length < array.length) chars = array;
+        OutputBufferRecycler recycler = LOCAL.get();
+        if (recycler.chars == null || recycler.chars.length < array.length) {
+            recycler.chars = array;
+        }
     }
-
-    static byte[] acquireBytes() { return current().takeBytes(); }
-
-    static char[] acquireChars() { return current().takeChars(); }
-
-    static void release(byte[] array) { current().recycleBytes(array); }
-
-    static void release(char[] array) { current().recycleChars(array); }
 
     static int growCapacity(int previous, int required) {
         if (required < 0 || required > Integer.MAX_VALUE - 8)

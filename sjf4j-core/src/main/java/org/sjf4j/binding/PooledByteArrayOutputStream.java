@@ -11,8 +11,7 @@ import java.util.Arrays;
  * result. Call {@link #getAndRecycle()} or {@link #recycle()} after use.</p>
  */
 public final class PooledByteArrayOutputStream extends OutputStream {
-    private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
-    private byte[] buffer = recycler.takeBytes();
+    private byte[] buffer = OutputBufferRecycler.acquireBytes();
     private int count;
 
     public PooledByteArrayOutputStream() {}
@@ -83,7 +82,7 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         if (value != null) {
             buffer = null;
             count = 0;
-            recycler.recycleBytes(value);
+            OutputBufferRecycler.release(value);
         }
     }
 

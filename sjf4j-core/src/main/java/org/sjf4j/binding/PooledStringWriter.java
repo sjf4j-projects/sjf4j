@@ -14,8 +14,7 @@ import java.util.Arrays;
  * <p>This class is not thread safe. The result String owns independent storage.</p>
  */
 public final class PooledStringWriter extends Writer {
-    private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
-    private char[] buffer = recycler.takeChars();
+    private char[] buffer = OutputBufferRecycler.acquireChars();
     private int count;
 
     public PooledStringWriter() {}
@@ -41,29 +40,45 @@ public final class PooledStringWriter extends Writer {
         return count + length;
     }
 
+    /*
+     * Keep the common write paths small for JIT inlining. In particular,
+     * Jackson flushes the generator's char[] into this Writer repeatedly.
+     * Capacity growth is cold; validation and array copy stay inline.
+     */
+    private char[] grow(int required) {
+        return buffer = Arrays.copyOf(buffer,
+                OutputBufferRecycler.growCapacity(buffer.length, required));
+    }
+
     @Override
     public void write(int value) {
-        char[] dest = ensureCapacity(nextCount(1));
-        dest[count++] = (char) value;
+        char[] dest = active();
+        int pos = count;
+        if (pos == dest.length) dest = grow(pos + 1);
+        dest[pos] = (char) value;
+        count = pos + 1;
     }
 
     @Override
     public void write(char[] value, int offset, int length) {
-        if (offset < 0 || length < 0 || offset > value.length - length)
+        char[] dest = active();
+        if (length < 0 || length > Integer.MAX_VALUE - count)
             throw new IndexOutOfBoundsException();
-        if (length == 0) { active(); return; }
-        int end = nextCount(length);
-        System.arraycopy(value, offset, ensureCapacity(end), count, length);
+        int end = count + length;
+        if (end > dest.length) dest = grow(end);
+        // System.arraycopy checks the source range even when length is zero.
+        System.arraycopy(value, offset, dest, count, length);
         count = end;
     }
 
     @Override
     public void write(String value, int offset, int length) {
-        if (offset < 0 || length < 0 || offset > value.length() - length)
+        char[] dest = active();
+        if (length < 0 || length > Integer.MAX_VALUE - count)
             throw new IndexOutOfBoundsException();
-        if (length == 0) { active(); return; }
-        int end = nextCount(length);
-        value.getChars(offset, offset + length, ensureCapacity(end), count);
+        int end = count + length;
+        if (end > dest.length) dest = grow(end);
+        value.getChars(offset, offset + length, dest, count);
         count = end;
     }
 
@@ -131,7 +146,7 @@ public final class PooledStringWriter extends Writer {
         if (value != null) {
             buffer = null;
             count = 0;
-            recycler.recycleChars(value);
+            OutputBufferRecycler.release(value);
         }
     }
 
