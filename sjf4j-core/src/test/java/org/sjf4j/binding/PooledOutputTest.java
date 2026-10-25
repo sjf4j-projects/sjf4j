@@ -126,6 +126,10 @@ class PooledOutputTest {
 
     @Test
     void recyclerReusesLargeCharAndByteOutputsWithin256KCap() {
+        // Checkout existing caches first so the initial capacity is deterministic.
+        char[] previousChars = OutputBufferRecycler.acquireChars();
+        byte[] previousBytes = OutputBufferRecycler.acquireBytes();
+        try {
         // The 1.5x oversize rule allocates 192K for a single 128K write.
         String contents = "x".repeat(128 * 1024);
         PooledStringWriter writer = new PooledStringWriter();
@@ -148,6 +152,10 @@ class PooledOutputTest {
             assertEquals(192 * 1024, cachedBytes.length);
         } finally {
             OutputBufferRecycler.release(cachedBytes);
+        }
+        } finally {
+            OutputBufferRecycler.release(previousChars);
+            OutputBufferRecycler.release(previousBytes);
         }
     }
 
