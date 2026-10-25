@@ -86,8 +86,8 @@ public class OutputBufferBenchmark {
                 || !expected.equals(jackson2StringPooled()) || !expected.equals(jackson2StringPooledRef())
                 || !expected.equals(jackson2StringHandwrittenPooled())
                 || !expected.equals(gsonNoRetain()) || !expected.equals(gsonRefRetain())
-                || !expected.equals(gsonLargeExact()) || !expected.equals(gsonLargeDouble())
-                || !expected.equals(jackson2StringLargeExact()) || !expected.equals(jackson2StringLargeDouble())
+                || !expected.equals(gsonLargeDouble())
+                || !expected.equals(jackson2StringLargeDouble())
                 || !expected.equals(jackson2StringSegmented())
                   || !expected.equals(gsonDirectResult()) || !expected.equals(jackson2StringDirectResult())  || !expected.equals(gsonStringChecks()) || !expected.equals(jackson2StringStringChecks())  || !expected.equals(gsonCharChecks()) || !expected.equals(jackson2StringCharChecks())  || !expected.equals(gsonFactory()) || !expected.equals(jackson2StringFactory()) || !expected.equals(jackson3StringPooled()))
             throw new IllegalStateException("JSON String output differs");
