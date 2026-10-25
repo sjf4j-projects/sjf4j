@@ -98,10 +98,16 @@ class PooledOutputTest {
     }
 
     @Test
-    void expansionUsesRequiredHeadroom() {
+    void expansionUsesPowerOfTwoTiersUntil64KAndHeadroomBeyond() {
+        assertEquals(1024, OutputBufferRecycler.growCapacity(512, 1024));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1200));
-        assertEquals(4500, OutputBufferRecycler.growCapacity(1024, 3000));
+        assertEquals(4096, OutputBufferRecycler.growCapacity(1024, 3000));
         assertEquals(8192, OutputBufferRecycler.growCapacity(4096, 5000));
+        assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 65536));
+        assertEquals(98305, OutputBufferRecycler.growCapacity(65536, 65537));
+        assertEquals(150000, OutputBufferRecycler.growCapacity(65536, 100000));
+        assertEquals(Integer.MAX_VALUE - 8,
+                OutputBufferRecycler.growCapacity(65536, Integer.MAX_VALUE - 8));
     }
 
     @Test
