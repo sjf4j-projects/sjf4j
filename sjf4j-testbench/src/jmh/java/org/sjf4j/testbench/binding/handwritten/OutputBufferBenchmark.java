@@ -51,7 +51,7 @@ public class OutputBufferBenchmark {
 
     @Setup(Level.Trial)
     public void prepare() throws IOException {
-        String pattern = alphabet.equals("ASCII") ? "hello-1234\"\\\\\\n" : "中文🚀测试\"\\\\\\n";
+        String pattern = alphabet.equals("ASCII") ? "hello-1234\"\\\\\\n" : "中文测试例\"\\\\\\n";
         StringBuilder builder = new StringBuilder(payloadLength);
         while (builder.length() < payloadLength) builder.append(pattern);
         data = builder.substring(0, payloadLength);
