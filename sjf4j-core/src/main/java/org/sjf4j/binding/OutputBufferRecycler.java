@@ -28,6 +28,19 @@ final class OutputBufferRecycler {
         return result != null ? result : new byte[INITIAL_CAPACITY];
     }
 
+    static OutputBufferRecycler current() { return LOCAL.get(); }
+
+    char[] takeChars() {
+        char[] result = chars;
+        chars = null;
+        return result != null ? result : new char[INITIAL_CAPACITY];
+    }
+
+    void recycleChars(char[] array) {
+        if (array.length > MAX_RETAINED_CAPACITY) return;
+        if (chars == null || chars.length < array.length) chars = array;
+    }
+
     static char[] acquireChars() {
         OutputBufferRecycler recycler = LOCAL.get();
         char[] result = recycler.chars;

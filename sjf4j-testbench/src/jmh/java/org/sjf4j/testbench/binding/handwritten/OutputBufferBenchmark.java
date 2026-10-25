@@ -11,6 +11,7 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.binding.PooledStringWriter;
+import org.sjf4j.binding.PooledStringWriterRef;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -68,10 +69,10 @@ public class OutputBufferBenchmark {
                 || !java.util.Arrays.equals(bytes, bytesJackson()))
             throw new IllegalStateException("Byte output differs");
         String expected = gsonJdk();
-        if (!expected.equals(gsonFast()) || !expected.equals(gsonPooled())
+        if (!expected.equals(gsonFast()) || !expected.equals(gsonPooled()) || !expected.equals(gsonPooledRef())
                 || !expected.equals(gsonHandwrittenPooled())
                 || !expected.equals(jackson2StringJdk())
-                || !expected.equals(jackson2StringPooled())
+                || !expected.equals(jackson2StringPooled()) || !expected.equals(jackson2StringPooledRef())
                 || !expected.equals(jackson2StringHandwrittenPooled())
                 || !expected.equals(jackson2StringSegmented())
                 || !expected.equals(jackson3StringPooled()))
@@ -224,6 +225,17 @@ public class OutputBufferBenchmark {
         }
     }
 
+    @Benchmark
+    public String charsPooledRef() {
+        PooledStringWriterRef out = new PooledStringWriterRef();
+        try {
+            out.write(data);
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
     // Gson: a backend whose serializer writes through generic Writer.
 
     @Benchmark
@@ -271,6 +283,19 @@ public class OutputBufferBenchmark {
         }
     }
 
+    @Benchmark
+    public String gsonPooledRef() throws IOException {
+        PooledStringWriterRef out = new PooledStringWriterRef();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
     // Jackson 2: preserve the native generator, change only the output target.
 
     @Benchmark
@@ -285,6 +310,19 @@ public class OutputBufferBenchmark {
     @Benchmark
     public String jackson2StringPooled() throws IOException {
         PooledStringWriter out = new PooledStringWriter();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
+                writer.writeString(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String jackson2StringPooledRef() throws IOException {
+        PooledStringWriterRef out = new PooledStringWriterRef();
         try {
             try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
                 writer.writeString(data);
