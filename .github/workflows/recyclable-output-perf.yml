@@ -32,7 +32,7 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsHandwrittenPooled|charsJackson|charsLargeExact|charsLargeDouble|gsonPooled|gsonPooledRef|gsonNoRetain|gsonRefRetain|gsonLargeExact|gsonLargeDouble|gsonHandwrittenPooled|jackson2StringPooled|jackson2StringSegmented|jackson2StringLargeExact|jackson2StringLargeDouble)' \
+          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsHandwrittenPooled|charsJackson|charsLargeExact|charsLargeDouble|gsonPooled|gsonPooledRef|gsonNoRetain|gsonRefRetain|gsonLargeDouble|gsonHandwrittenPooled|jackson2StringPooled|jackson2StringSegmented|jackson2StringLargeDouble)' \
             -bm avgt -tu us -t 1 -f 2 -wi 5 -w 250ms -i 7 -r 250ms -p payloadLength=20480,131072 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
