@@ -12,6 +12,10 @@ import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.binding.PooledStringWriter;
 import org.sjf4j.binding.PooledStringWriterRef;
+import org.sjf4j.binding.PooledStringWriterNoRetain;
+import org.sjf4j.binding.PooledStringWriterRefRetain;
+import org.sjf4j.binding.PooledStringWriterLargeExact;
+import org.sjf4j.binding.PooledStringWriterLargeDouble;
 import org.sjf4j.binding.PooledStringWriterFactory;
 import org.sjf4j.binding.PooledStringWriterCharChecks;
 import org.sjf4j.binding.PooledStringWriterStringChecks;
@@ -66,6 +70,7 @@ public class OutputBufferBenchmark {
         if (!data.equals(charsJdk()) || !data.equals(charsFast())
                 || !data.equals(charsPooled())
                 || !data.equals(charsHandwrittenPooled())
+                || !data.equals(charsLargeExact()) || !data.equals(charsLargeDouble())
                 || !data.equals(charsJackson())
                 || !data.equals(charsDirectResult()) || !data.equals(charsStringChecks())
                 || !data.equals(charsCharChecks()) || !data.equals(charsFactory()))
@@ -80,6 +85,9 @@ public class OutputBufferBenchmark {
                 || !expected.equals(jackson2StringJdk())
                 || !expected.equals(jackson2StringPooled()) || !expected.equals(jackson2StringPooledRef())
                 || !expected.equals(jackson2StringHandwrittenPooled())
+                || !expected.equals(gsonNoRetain()) || !expected.equals(gsonRefRetain())
+                || !expected.equals(gsonLargeExact()) || !expected.equals(gsonLargeDouble())
+                || !expected.equals(jackson2StringLargeExact()) || !expected.equals(jackson2StringLargeDouble())
                 || !expected.equals(jackson2StringSegmented())
                   || !expected.equals(gsonDirectResult()) || !expected.equals(jackson2StringDirectResult())  || !expected.equals(gsonStringChecks()) || !expected.equals(jackson2StringStringChecks())  || !expected.equals(gsonCharChecks()) || !expected.equals(jackson2StringCharChecks())  || !expected.equals(gsonFactory()) || !expected.equals(jackson2StringFactory()) || !expected.equals(jackson3StringPooled()))
             throw new IllegalStateException("JSON String output differs");
@@ -550,4 +558,104 @@ public class OutputBufferBenchmark {
             out.recycle();
         }
     }
+    @Benchmark
+    public String gsonNoRetain() throws IOException {
+        PooledStringWriterNoRetain out = new PooledStringWriterNoRetain();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String gsonRefRetain() throws IOException {
+        PooledStringWriterRefRetain out = new PooledStringWriterRefRetain();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String charsLargeExact() throws IOException {
+        PooledStringWriterLargeExact out = new PooledStringWriterLargeExact();
+        try {
+            out.write(data);
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String gsonLargeExact() throws IOException {
+        PooledStringWriterLargeExact out = new PooledStringWriterLargeExact();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String jackson2StringLargeExact() throws IOException {
+        PooledStringWriterLargeExact out = new PooledStringWriterLargeExact();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
+                writer.writeString(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String charsLargeDouble() throws IOException {
+        PooledStringWriterLargeDouble out = new PooledStringWriterLargeDouble();
+        try {
+            out.write(data);
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String gsonLargeDouble() throws IOException {
+        PooledStringWriterLargeDouble out = new PooledStringWriterLargeDouble();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String jackson2StringLargeDouble() throws IOException {
+        PooledStringWriterLargeDouble out = new PooledStringWriterLargeDouble();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
+                writer.writeString(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
 }

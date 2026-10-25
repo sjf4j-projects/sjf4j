@@ -33,7 +33,7 @@ jobs:
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
           java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsHandwrittenPooled|charsJackson|bytesPooled|bytesJackson|gsonPooled|gsonHandwrittenPooled|jackson2StringPooled|jackson2StringHandwrittenPooled|jackson2StringSegmented|jackson2BytesPooled|jackson2BytesSegmented)' \
-            -bm avgt -tu us -t 1 -f 3 -wi 12 -w 350ms -i 10 -r 350ms -p payloadLength=8192,20480,131072 -p alphabet=ASCII,UNICODE \
+            -bm avgt -tu us -t 1 -f 2 -wi 5 -w 250ms -i 7 -r 250ms -p payloadLength=20480,131072 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -49,6 +49,7 @@ jobs:
               args=r['params']
               key=(args['payloadLength'],args['alphabet'])
               rows.setdefault(key,{})[name]=r
+          if not results: raise SystemExit('JMH produced no valid results')
           pairs=[
               ('charsDirectResult','charsPooled'),('gsonDirectResult','gsonPooled'),('jackson2StringDirectResult','jackson2StringPooled'),('charsStringChecks','charsPooled'),('gsonStringChecks','gsonPooled'),('jackson2StringStringChecks','jackson2StringPooled'),('charsCharChecks','charsPooled'),('gsonCharChecks','gsonPooled'),('jackson2StringCharChecks','jackson2StringPooled'),('charsFactory','charsPooled'),('gsonFactory','gsonPooled'),('jackson2StringFactory','jackson2StringPooled'),
               ('charsPooledRef','charsPooled'),('gsonPooledRef','gsonPooled'),('jackson2StringPooledRef','jackson2StringPooled'),('charsChunksPooled','charsChunksHandwritten'),('charsArrayChunksPooled','charsArrayChunksHandwritten'),('charsPooled','charsJdk'),('charsPooled','charsFast'),('charsPooled','charsHandwrittenPooled'),('charsPooled','charsJackson'),
@@ -59,7 +60,13 @@ jobs:
               ('jackson2StringPooled','jackson2StringSegmented'),
               ('jackson2BytesPooled','jackson2BytesJdk'),
               ('jackson2BytesPooled','jackson2BytesSegmented')]
-          print('# Recyclable output buffers vs baselines')
+          pairs = [
+              ('gsonNoRetain','gsonPooled'),('gsonRefRetain','gsonPooled'),('gsonPooledRef','gsonPooled'),
+              ('gsonLargeExact','gsonPooled'),('gsonLargeDouble','gsonPooled'),('gsonHandwrittenPooled','gsonPooled'),
+              ('charsLargeExact','charsPooled'),('charsLargeDouble','charsPooled'),('charsJackson','charsPooled'),
+              ('jackson2StringLargeExact','jackson2StringPooled'),('jackson2StringLargeDouble','jackson2StringPooled'),
+              ('jackson2StringSegmented','jackson2StringPooled')]
+          print('# Gson ASCII regression and 128K output growth A/B')
           print()
           print('JDK 25; each operation includes creating sink, writing, result materialization and recycling.')
           print('Speedup = baseline / pooled, so >1 means pooled is faster.')
