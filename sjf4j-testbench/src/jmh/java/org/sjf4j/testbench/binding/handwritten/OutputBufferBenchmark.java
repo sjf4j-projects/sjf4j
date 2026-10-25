@@ -15,6 +15,8 @@ import org.sjf4j.binding.PooledStringWriterRef;
 import org.sjf4j.binding.PooledStringWriterNoRetain;
 import org.sjf4j.binding.PooledStringWriterColdGrow;
 import org.sjf4j.binding.PooledStringWriterDeferredRetain;
+import org.sjf4j.binding.PooledStringWriterRefLargeDouble;
+import org.sjf4j.binding.PooledByteArrayOutputStreamLargeDouble;
 import org.sjf4j.binding.PooledStringWriterRefRetain;
 import org.sjf4j.binding.PooledStringWriterLargeExact;
 import org.sjf4j.binding.PooledStringWriterLargeDouble;
@@ -72,12 +74,14 @@ public class OutputBufferBenchmark {
         if (!data.equals(charsJdk()) || !data.equals(charsFast())
                 || !data.equals(charsPooled())
                 || !data.equals(charsHandwrittenPooled())
+                || !data.equals(charsRefLargeDouble())
                 || !data.equals(charsLargeExact()) || !data.equals(charsLargeDouble())
                 || !data.equals(charsJackson())
                 || !data.equals(charsDirectResult()) || !data.equals(charsStringChecks())
                 || !data.equals(charsCharChecks()) || !data.equals(charsFactory()))
             throw new IllegalStateException("Character output differs");
         if (!java.util.Arrays.equals(bytes, bytesJdk())
+                || !java.util.Arrays.equals(bytes, bytesLargeDouble())
                 || !java.util.Arrays.equals(bytes, bytesPooled())
                 || !java.util.Arrays.equals(bytes, bytesJackson()))
             throw new IllegalStateException("Byte output differs");
@@ -87,6 +91,8 @@ public class OutputBufferBenchmark {
                 || !expected.equals(jackson2StringJdk())
                 || !expected.equals(jackson2StringPooled()) || !expected.equals(jackson2StringPooledRef())
                 || !expected.equals(jackson2StringHandwrittenPooled())
+                || !expected.equals(gsonRefLargeDouble())
+                || !expected.equals(jackson2StringRefLargeDouble())
                 || !expected.equals(gsonDeferredRetain())
                 || !expected.equals(gsonColdGrow())
                 || !expected.equals(gsonNoRetain()) || !expected.equals(gsonRefRetain())
@@ -97,6 +103,7 @@ public class OutputBufferBenchmark {
             throw new IllegalStateException("JSON String output differs");
         byte[] expectedUtf8 = expected.getBytes(StandardCharsets.UTF_8);
         if (!java.util.Arrays.equals(expectedUtf8, jackson2BytesJdk())
+                || !java.util.Arrays.equals(expectedUtf8, jackson2BytesLargeDouble())
                 || !java.util.Arrays.equals(expectedUtf8, jackson2BytesPooled())
                 || !java.util.Arrays.equals(expectedUtf8, jackson2BytesSegmented()))
             throw new IllegalStateException("JSON bytes output differs");
@@ -711,5 +718,51 @@ public class OutputBufferBenchmark {
         } finally {
             out.recycle();
         }
+    }
+    @Benchmark
+    public String gsonRefLargeDouble() throws IOException {
+        PooledStringWriterRefLargeDouble out = new PooledStringWriterRefLargeDouble();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) { writer.value(data); }
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public String jackson2StringRefLargeDouble() throws IOException {
+        PooledStringWriterRefLargeDouble out = new PooledStringWriterRefLargeDouble();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) { writer.writeString(data); }
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public String charsRefLargeDouble() {
+        PooledStringWriterRefLargeDouble out = new PooledStringWriterRefLargeDouble();
+        try {
+            out.write(data);
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public byte[] bytesLargeDouble() {
+        PooledByteArrayOutputStreamLargeDouble out = new PooledByteArrayOutputStreamLargeDouble();
+        try {
+            out.write(bytes, 0, bytes.length);
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public byte[] jackson2BytesLargeDouble() throws IOException {
+        PooledByteArrayOutputStreamLargeDouble out = new PooledByteArrayOutputStreamLargeDouble();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out, JsonEncoding.UTF8)) {
+                writer.writeString(data);
+            }
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
     }
 }
