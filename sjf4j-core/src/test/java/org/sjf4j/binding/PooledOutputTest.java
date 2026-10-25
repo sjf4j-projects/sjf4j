@@ -98,7 +98,7 @@ class PooledOutputTest {
     }
 
     @Test
-    void expansionCopiesOnlyActiveContentForBothSinks() {
+    void expansionCopiesOnlyActiveContentForBothSinks() throws Exception {
         PooledStringWriter writer = new PooledStringWriter();
         PooledByteArrayOutputStream stream = new PooledByteArrayOutputStream();
         try {
