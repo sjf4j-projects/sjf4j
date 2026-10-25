@@ -508,7 +508,7 @@ class PooledOutputTest {
         assertEquals(1024, OutputBufferRecycler.growCapacity(1024, 1));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1025));
         assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 65536));
-        assertEquals(98305, OutputBufferRecycler.growCapacity(65536, 65537));
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 65537));
     }
 
 }
