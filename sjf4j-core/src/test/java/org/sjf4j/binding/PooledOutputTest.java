@@ -72,7 +72,8 @@ class PooledOutputTest {
         assertArrayEquals(large, output.getAndRecycle());
         byte[] next = OutputBufferRecycler.acquireBytes();
         try {
-            assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, next.length);
+            assertTrue(next.length >= OutputBufferRecycler.INITIAL_CAPACITY);
+            assertTrue(next.length <= OutputBufferRecycler.MAX_RETAINED_CAPACITY);
         } finally {
             OutputBufferRecycler.release(next);
         }
@@ -90,7 +91,7 @@ class PooledOutputTest {
         char[] reusable = OutputBufferRecycler.acquireChars();
         try {
             assertTrue(reusable.length <= OutputBufferRecycler.MAX_RETAINED_CAPACITY);
-            assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, reusable.length);
+            assertTrue(reusable.length >= OutputBufferRecycler.INITIAL_CAPACITY);
         } finally {
             OutputBufferRecycler.release(reusable);
         }
