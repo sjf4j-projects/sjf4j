@@ -10,7 +10,7 @@ package org.sjf4j.binding;
  */
 final class OutputBufferRecycler {
 
-    static final int INITIAL_CAPACITY = 1024;
+    static final int INITIAL_CAPACITY = 512;
     static final int MAX_RETAINED_CAPACITY = 64 * 1024;
 
     private static final ThreadLocal<OutputBufferRecycler> LOCAL =
@@ -54,7 +54,7 @@ final class OutputBufferRecycler {
     static int growCapacity(int previous, int required) {
         if (required < 0 || required > Integer.MAX_VALUE - 8)
             throw new OutOfMemoryError("Buffer too large");
-        long grown = (long) previous + (previous >> 1);
+        long grown = (long) previous << 1;
         return (int) Math.min(Integer.MAX_VALUE - 8L,
                 Math.max(grown, (long) required));
     }
