@@ -122,6 +122,64 @@ public class OutputBufferBenchmark {
         }
     }
 
+    private static final int CHUNK_SIZE = 64;
+
+    @Benchmark
+    public String charsChunksPooled() {
+        PooledStringWriter out = new PooledStringWriter();
+        try {
+            for (int pos = 0; pos < data.length(); pos += CHUNK_SIZE) {
+                out.write(data, pos, Math.min(CHUNK_SIZE, data.length() - pos));
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String charsChunksHandwritten() {
+        org.sjf4j.testbench.binding.handwritten.FastStringWriter out =
+                org.sjf4j.testbench.binding.handwritten.FastStringWriter.acquire();
+        try {
+            for (int pos = 0; pos < data.length(); pos += CHUNK_SIZE) {
+                out.write(data, pos, Math.min(CHUNK_SIZE, data.length() - pos));
+            }
+            return out.toStringAndRelease();
+        } finally {
+            out.release();
+        }
+    }
+
+    @Benchmark
+    public String charsArrayChunksPooled() {
+        PooledStringWriter out = new PooledStringWriter();
+        char[] src = data.toCharArray();
+        try {
+            for (int pos = 0; pos < src.length; pos += CHUNK_SIZE) {
+                out.write(src, pos, Math.min(CHUNK_SIZE, src.length - pos));
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String charsArrayChunksHandwritten() {
+        org.sjf4j.testbench.binding.handwritten.FastStringWriter out =
+                org.sjf4j.testbench.binding.handwritten.FastStringWriter.acquire();
+        char[] src = data.toCharArray();
+        try {
+            for (int pos = 0; pos < src.length; pos += CHUNK_SIZE) {
+                out.write(src, pos, Math.min(CHUNK_SIZE, src.length - pos));
+            }
+            return out.toStringAndRelease();
+        } finally {
+            out.release();
+        }
+    }
+
     @Benchmark
     public String charsJackson() throws IOException {
         BufferRecycler recycler = JACKSON2._getBufferRecycler();
