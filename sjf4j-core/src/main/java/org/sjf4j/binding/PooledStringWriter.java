@@ -30,7 +30,7 @@ public final class PooledStringWriter extends Writer {
 
     private char[] grow(int required) {
         char[] previous = active();
-        char[] next = new char[OutputBufferRecycler.growCapacity(previous.length, required)];
+        char[] next = new char[OutputBufferRecycler.growCapacity(previous.length, count, required)];
         System.arraycopy(previous, 0, next, 0, count);
         buffer = next;
         recycler.recycleChars(previous);

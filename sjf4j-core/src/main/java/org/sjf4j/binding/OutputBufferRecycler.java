@@ -64,16 +64,17 @@ final class OutputBufferRecycler {
 
     /**
      * Up through 256K, use the smallest power-of-two tier from 1K.
-     * Beyond the cache cap, allocate 1.5x the requested size for both
-     * character and byte output. Previous capacity does not influence growth.
+     * Above 256K, large appends allocate exactly what is required while
+     * small appends grow the previous capacity by 1.5x.
      */
-    static int growCapacity(int previous, int required) {
+    static int growCapacity(int previous, int used, int required) {
         if (required < 0 || required > MAX_ARRAY_SIZE)
             throw new OutOfMemoryError("Buffer too large");
         if (required <= MAX_RETAINED_CAPACITY) {
             return Math.max(INITIAL_CAPACITY, Integer.highestOneBit(required - 1) << 1);
         }
+        if (used == 0 || required - used >= used) return required;
         return (int) Math.min(MAX_ARRAY_SIZE,
-                (long) required + (required >> 1));
+                Math.max((long) required, (long) previous + (previous >> 1)));
     }
 }

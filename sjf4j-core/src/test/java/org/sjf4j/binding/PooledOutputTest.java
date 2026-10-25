@@ -183,17 +183,17 @@ class PooledOutputTest {
 
     @Test
     void expansionUsesPowerOfTwoTiersUntil256KAndHeadroomBeyond() {
-        assertEquals(1024, OutputBufferRecycler.growCapacity(512, 1024));
-        assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1200));
-        assertEquals(4096, OutputBufferRecycler.growCapacity(1024, 3000));
-        assertEquals(8192, OutputBufferRecycler.growCapacity(4096, 5000));
-        assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 65536));
-        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 65537));
-        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 100000));
-        assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 262144));
-        assertEquals(450000, OutputBufferRecycler.growCapacity(131072, 300000));
-        assertEquals(450000, OutputBufferRecycler.growCapacity(262144, 300000));
-        assertEquals(1350000, OutputBufferRecycler.growCapacity(524288, 900000));
+        assertEquals(1024, OutputBufferRecycler.growCapacity(512, 0, 1024));
+        assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 0, 1200));
+        assertEquals(4096, OutputBufferRecycler.growCapacity(1024, 0, 3000));
+        assertEquals(8192, OutputBufferRecycler.growCapacity(4096, 0, 5000));
+        assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 0, 65536));
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 65537));
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 100000));
+        assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 0, 262144));
+        assertEquals(300000, OutputBufferRecycler.growCapacity(131072, 0, 300000));
+        assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 0, 300000));
+        assertEquals(900000, OutputBufferRecycler.growCapacity(524288, 0, 900000));
         assertEquals(Integer.MAX_VALUE - 8,
                 OutputBufferRecycler.growCapacity(65536, Integer.MAX_VALUE - 8));
     }
@@ -500,6 +500,16 @@ class PooledOutputTest {
     }
 
     @Test
+    void adaptiveGrowthUsesExistingCapacityForSmallAppends() {
+        assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 0, 300000));
+        assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 200000, 300000));
+        assertEquals(450000, OutputBufferRecycler.growCapacity(300000, 299999, 300001));
+        assertEquals(600000, OutputBufferRecycler.growCapacity(400000, 400000, 400001));
+        assertEquals(900000, OutputBufferRecycler.growCapacity(800000, 400000, 900000));
+        assertEquals(800000, OutputBufferRecycler.growCapacity(800000, 400000, 800000));
+    }
+
+    @Test
     void oversizedArraysAreNotRetainedButThe256KBackupIs() {
         char[] previousChars = OutputBufferRecycler.acquireChars();
         byte[] previousBytes = OutputBufferRecycler.acquireBytes();
@@ -536,10 +546,10 @@ class PooledOutputTest {
                 () -> OutputBufferRecycler.growCapacity(1024, -1));
         assertThrows(OutOfMemoryError.class,
                 () -> OutputBufferRecycler.growCapacity(1024, Integer.MAX_VALUE));
-        assertEquals(1024, OutputBufferRecycler.growCapacity(1024, 1));
-        assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1025));
-        assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 65536));
-        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 65537));
+        assertEquals(1024, OutputBufferRecycler.growCapacity(1024, 0, 1));
+        assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 0, 1025));
+        assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 0, 65536));
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 65537));
     }
 
 }
