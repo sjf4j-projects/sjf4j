@@ -81,6 +81,7 @@ public class OutputBufferBenchmark {
                 || !data.equals(charsRefLargeDouble())
                 || !data.equals(charsLargeExact()) || !data.equals(charsLargeDouble())
                 || !data.equals(charsCap128()) || !data.equals(charsCap256())
+                || !data.equals(charsChunksJdk()) || !data.equals(charsChunksJackson())
                 || !data.equals(charsJackson())
                 || !data.equals(charsDirectResult()) || !data.equals(charsStringChecks())
                 || !data.equals(charsCharChecks()) || !data.equals(charsFactory()))
@@ -89,6 +90,9 @@ public class OutputBufferBenchmark {
                 || !java.util.Arrays.equals(bytes, bytesLargeDouble())
                 || !java.util.Arrays.equals(bytes, bytesCap128())
                 || !java.util.Arrays.equals(bytes, bytesCap256())
+                || !java.util.Arrays.equals(bytes, bytesChunksPooled())
+                || !java.util.Arrays.equals(bytes, bytesChunksJdk())
+                || !java.util.Arrays.equals(bytes, bytesChunksJackson())
                 || !java.util.Arrays.equals(bytes, bytesPooled())
                 || !java.util.Arrays.equals(bytes, bytesJackson()))
             throw new IllegalStateException("Byte output differs");
@@ -840,6 +844,60 @@ public class OutputBufferBenchmark {
             try (JsonGenerator writer = JACKSON2.createGenerator(out, JsonEncoding.UTF8)) { writer.writeString(data); }
             return out.getAndRecycle();
         } finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public String charsChunksJdk() {
+        StringWriter out = new StringWriter();
+        for (int pos = 0; pos < data.length(); pos += CHUNK_SIZE)
+            out.write(data, pos, Math.min(CHUNK_SIZE, data.length() - pos));
+        return out.toString();
+    }
+
+    @Benchmark
+    public String charsChunksJackson() throws IOException {
+        BufferRecycler recycler = JACKSON2._getBufferRecycler();
+        try (SegmentedStringWriter out = new SegmentedStringWriter(recycler)) {
+            for (int pos = 0; pos < data.length(); pos += CHUNK_SIZE)
+                out.write(data, pos, Math.min(CHUNK_SIZE, data.length() - pos));
+            return out.getAndClear();
+        } finally {
+            recycler.releaseToPool();
+        }
+    }
+
+    @Benchmark
+    public byte[] bytesChunksPooled() {
+        PooledByteArrayOutputStream out = new PooledByteArrayOutputStream();
+        try {
+            for (int pos = 0; pos < bytes.length; pos += CHUNK_SIZE)
+                out.write(bytes, pos, Math.min(CHUNK_SIZE, bytes.length - pos));
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public byte[] bytesChunksJdk() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (int pos = 0; pos < bytes.length; pos += CHUNK_SIZE)
+            out.write(bytes, pos, Math.min(CHUNK_SIZE, bytes.length - pos));
+        return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] bytesChunksJackson() throws IOException {
+        BufferRecycler recycler = JACKSON2._getBufferRecycler();
+        ByteArrayBuilder out = new ByteArrayBuilder(recycler);
+        try {
+            for (int pos = 0; pos < bytes.length; pos += CHUNK_SIZE)
+                out.write(bytes, pos, Math.min(CHUNK_SIZE, bytes.length - pos));
+            return out.toByteArray();
+        } finally {
+            out.release();
+            recycler.releaseToPool();
+        }
     }
 
 }

@@ -32,8 +32,8 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJackson|charsCap128|charsCap256|bytesPooled|bytesJackson|bytesCap128|bytesCap256|jackson2StringPooled|jackson2StringSegmented|jackson2StringCap128|jackson2StringCap256|jackson2BytesPooled|jackson2BytesSegmented|jackson2BytesCap128|jackson2BytesCap256)' \
-            -bm avgt -tu us -t 1 -f 2 -wi 4 -w 200ms -i 6 -r 200ms -p payloadLength=20480,131072 -p alphabet=ASCII,UNICODE \
+          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJdk|charsJackson|charsChunksPooled|charsChunksJdk|charsChunksJackson|bytesPooled|bytesJdk|bytesJackson|bytesChunksPooled|bytesChunksJdk|bytesChunksJackson|gsonPooled|gsonJdk|jackson2StringPooled|jackson2StringSegmented|jackson2BytesPooled|jackson2BytesSegmented)' \
+            -bm avgt -tu us -t 1 -f 2 -wi 4 -w 180ms -i 6 -r 180ms -p payloadLength=20480,131072,307200,1048576 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -51,24 +51,15 @@ jobs:
               rows.setdefault(key,{})[name]=r
           if not results: raise SystemExit('JMH produced no valid results')
           pairs=[
-              ('charsDirectResult','charsPooled'),('gsonDirectResult','gsonPooled'),('jackson2StringDirectResult','jackson2StringPooled'),('charsStringChecks','charsPooled'),('gsonStringChecks','gsonPooled'),('jackson2StringStringChecks','jackson2StringPooled'),('charsCharChecks','charsPooled'),('gsonCharChecks','gsonPooled'),('jackson2StringCharChecks','jackson2StringPooled'),('charsFactory','charsPooled'),('gsonFactory','gsonPooled'),('jackson2StringFactory','jackson2StringPooled'),
-              ('charsPooledRef','charsPooled'),('gsonPooledRef','gsonPooled'),('jackson2StringPooledRef','jackson2StringPooled'),('charsChunksPooled','charsChunksHandwritten'),('charsArrayChunksPooled','charsArrayChunksHandwritten'),('charsPooled','charsJdk'),('charsPooled','charsFast'),('charsPooled','charsHandwrittenPooled'),('charsPooled','charsJackson'),
+              ('charsPooled','charsJdk'),('charsPooled','charsJackson'),
+              ('charsChunksPooled','charsChunksJdk'),('charsChunksPooled','charsChunksJackson'),
               ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson'),
-              ('gsonPooled','gsonJdk'),('gsonPooled','gsonFast'),('gsonPooled','gsonHandwrittenPooled'),
-              ('jackson2StringPooled','jackson2StringJdk'),
-              ('jackson2StringPooled','jackson2StringHandwrittenPooled'),
+              ('bytesChunksPooled','bytesChunksJdk'),('bytesChunksPooled','bytesChunksJackson'),
+              ('gsonPooled','gsonJdk'),
               ('jackson2StringPooled','jackson2StringSegmented'),
-              ('jackson2BytesPooled','jackson2BytesJdk'),
-              ('jackson2BytesPooled','jackson2BytesSegmented')]
-          pairs = [
-              ('charsCap128','charsPooled'),('charsCap256','charsPooled'),('charsJackson','charsPooled'),
-              ('bytesCap128','bytesPooled'),('bytesCap256','bytesPooled'),('bytesJackson','bytesPooled'),
-              ('jackson2StringCap128','jackson2StringPooled'),('jackson2StringCap256','jackson2StringPooled'),
-              ('jackson2StringSegmented','jackson2StringPooled'),
-              ('jackson2BytesCap128','jackson2BytesPooled'),('jackson2BytesCap256','jackson2BytesPooled'),
-              ('jackson2BytesSegmented','jackson2BytesPooled')
+              ('jackson2BytesPooled','jackson2BytesSegmented')
           ]
-          print('# 64K / 128K / 256K recycler cap A/B after live-length copy change')
+          print('# Hybrid StringBuilder >256K vs StringWriter / Jackson / direct byte[]')
           print()
           print('JDK 25; each operation includes creating sink, writing, result materialization and recycling.')
           print('Speedup = baseline / pooled, so >1 means pooled is faster.')
