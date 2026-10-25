@@ -59,7 +59,8 @@ public class OutputBufferBenchmark {
 
         // Verify every output sink produces the same bytes/chars.
         if (!data.equals(charsJdk()) || !data.equals(charsFast())
-                || !data.equals(charsPooled()) || !data.equals(charsJackson()))
+                || !data.equals(charsPooled()) || !data.equals(charsHandwrittenPooled())
+                || !data.equals(charsJackson()))
             throw new IllegalStateException("Character output differs");
         if (!java.util.Arrays.equals(bytes, bytesJdk())
                 || !java.util.Arrays.equals(bytes, bytesPooled())
@@ -67,8 +68,10 @@ public class OutputBufferBenchmark {
             throw new IllegalStateException("Byte output differs");
         String expected = gsonJdk();
         if (!expected.equals(gsonFast()) || !expected.equals(gsonPooled())
+                || !expected.equals(gsonHandwrittenPooled())
                 || !expected.equals(jackson2StringJdk())
                 || !expected.equals(jackson2StringPooled())
+                || !expected.equals(jackson2StringHandwrittenPooled())
                 || !expected.equals(jackson2StringSegmented())
                 || !expected.equals(jackson3StringPooled()))
             throw new IllegalStateException("JSON String output differs");
@@ -103,6 +106,18 @@ public class OutputBufferBenchmark {
             return out.getAndRecycle();
         } finally {
             out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String charsHandwrittenPooled() {
+        org.sjf4j.testbench.binding.handwritten.FastStringWriter out =
+                org.sjf4j.testbench.binding.handwritten.FastStringWriter.acquire();
+        try {
+            out.write(data);
+            return out.toStringAndRelease();
+        } finally {
+            out.release();
         }
     }
 
@@ -183,6 +198,20 @@ public class OutputBufferBenchmark {
         }
     }
 
+    @Benchmark
+    public String gsonHandwrittenPooled() throws IOException {
+        org.sjf4j.testbench.binding.handwritten.FastStringWriter out =
+                org.sjf4j.testbench.binding.handwritten.FastStringWriter.acquire();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.toStringAndRelease();
+        } finally {
+            out.release();
+        }
+    }
+
     // Jackson 2: preserve the native generator, change only the output target.
 
     @Benchmark
@@ -204,6 +233,20 @@ public class OutputBufferBenchmark {
             return out.getAndRecycle();
         } finally {
             out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String jackson2StringHandwrittenPooled() throws IOException {
+        org.sjf4j.testbench.binding.handwritten.FastStringWriter out =
+                org.sjf4j.testbench.binding.handwritten.FastStringWriter.acquire();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
+                writer.writeString(data);
+            }
+            return out.toStringAndRelease();
+        } finally {
+            out.release();
         }
     }
 
