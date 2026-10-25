@@ -28,8 +28,10 @@ public final class PooledStringWriter extends Writer {
     private char[] ensureCapacity(int required) {
         char[] value = active();
         if (required > value.length) {
-            buffer = value = Arrays.copyOf(value,
-                    OutputBufferRecycler.growCapacity(value.length, required));
+            char[] previous = value;
+            buffer = value = Arrays.copyOf(previous,
+                    OutputBufferRecycler.growCapacity(previous.length, required));
+            OutputBufferRecycler.release(previous);
         }
         return value;
     }
@@ -46,8 +48,12 @@ public final class PooledStringWriter extends Writer {
      * Capacity growth is cold; validation and array copy stay inline.
      */
     private char[] grow(int required) {
-        return buffer = Arrays.copyOf(buffer,
-                OutputBufferRecycler.growCapacity(buffer.length, required));
+        char[] previous = buffer;
+        char[] next = Arrays.copyOf(previous,
+                OutputBufferRecycler.growCapacity(previous.length, required));
+        buffer = next;
+        OutputBufferRecycler.release(previous);
+        return next;
     }
 
     @Override
