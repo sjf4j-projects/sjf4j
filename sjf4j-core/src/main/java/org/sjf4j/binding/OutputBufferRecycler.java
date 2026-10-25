@@ -52,7 +52,8 @@ final class OutputBufferRecycler {
     }
 
     static int growCapacity(int previous, int required) {
-        if (required < 0) throw new OutOfMemoryError("Buffer too large");
+        if (required < 0 || required > Integer.MAX_VALUE - 8)
+            throw new OutOfMemoryError("Buffer too large");
         long grown = (long) previous + (previous >> 1);
         return (int) Math.min(Integer.MAX_VALUE - 8L,
                 Math.max(grown, (long) required));
