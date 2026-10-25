@@ -77,7 +77,7 @@ public final class PooledStringWriter extends Writer {
         if (length < 0 || length > Integer.MAX_VALUE - count)
             throw new IndexOutOfBoundsException();
         int end = count + length;
-        if (end > dest.length) dest = ensureCapacity(end);
+        dest = ensureCapacity(end);
         value.getChars(offset, offset + length, dest, count);
         count = end;
     }
