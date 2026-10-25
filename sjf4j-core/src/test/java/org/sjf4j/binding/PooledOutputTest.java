@@ -70,10 +70,12 @@ class PooledOutputTest {
         Arrays.fill(large, (byte) 9);
         output.write(large, 0, large.length);
         assertArrayEquals(large, output.getAndRecycle());
-        assertEquals(OutputBufferRecycler.INITIAL_CAPACITY,
-                OutputBufferRecycler.acquireBytes().length);
-        // Return the extra buffer in this test to keep the thread-local slot populated.
-        OutputBufferRecycler.release(new byte[OutputBufferRecycler.INITIAL_CAPACITY]);
+        byte[] next = OutputBufferRecycler.acquireBytes();
+        try {
+            assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, next.length);
+        } finally {
+            OutputBufferRecycler.release(next);
+        }
     }
 
     @Test
