@@ -4,14 +4,13 @@ import java.io.OutputStream;
 import java.util.Arrays;
 
 /**
- * Unsynchronized recyclable alternative to ByteArrayOutputStream.
- *
- * <p>The caller owns recycling. close() is deliberately a no-op so that
- * backends may close a supplied OutputStream before the caller retrieves the
- * result. Call {@link #getAndRecycle()} or {@link #recycle()} after use.</p>
+ * Unsynchronized recyclable OutputStream. The output buffer remains one
+ * contiguous byte[]; beyond 256K it grows like a mutable builder and is
+ * discarded on recycle, while a 256K buffer stays available to the thread.
  */
 public final class PooledByteArrayOutputStream extends OutputStream {
-    private byte[] buffer = OutputBufferRecycler.acquireBytes();
+    private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
+    private byte[] buffer = recycler.takeBytes();
     private int count;
 
     public PooledByteArrayOutputStream() {}
@@ -29,7 +28,9 @@ public final class PooledByteArrayOutputStream extends OutputStream {
             byte[] next = new byte[OutputBufferRecycler.growCapacity(previous.length, required)];
             System.arraycopy(previous, 0, next, 0, count);
             buffer = value = next;
-            OutputBufferRecycler.release(previous);
+            recycler.recycleBytes(previous);
+            if (required > OutputBufferRecycler.MAX_RETAINED_CAPACITY)
+                recycler.retainMaxBytes();
         }
         return value;
     }
@@ -70,7 +71,6 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         return Arrays.copyOf(active(), count);
     }
 
-    /** Copies the result, then returns the working buffer to the cache. */
     public byte[] getAndRecycle() {
         try {
             return toByteArray();
@@ -79,20 +79,18 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         }
     }
 
-    /** Recycles the working buffer; safe to call repeatedly. */
     public void recycle() {
         byte[] value = buffer;
         if (value != null) {
             buffer = null;
             count = 0;
-            OutputBufferRecycler.release(value);
+            recycler.recycleBytes(value);
         }
     }
 
     @Override
     public void flush() {}
 
-    /** No-op: the output owner, not the backend, controls recycling. */
     @Override
     public void close() {}
 }

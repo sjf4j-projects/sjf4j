@@ -1,40 +1,24 @@
 package org.sjf4j.binding;
 
 import java.io.Writer;
-import java.util.Arrays;
 
 /**
- * Unsynchronized in-memory Writer using a recyclable char[].
- *
- * <p>close() intentionally does not release the array: a backend may close a
- * caller-provided Writer before the caller obtains its resulting String.
- * The caller owning this buffer must call {@link #getAndRecycle()} after
- * successful output or {@link #recycle()} in a finally block.</p>
- *
- * <p>This class is not thread safe. The result String owns independent storage.</p>
+ * Unsynchronized recyclable Writer. Uses a cached char[] for output up
+ * through 256K characters, and StringBuilder for larger output. Closing
+ * the Writer does not release the result; its owner calls getAndRecycle()
+ * or recycle() explicitly.
  */
 public final class PooledStringWriter extends Writer {
     private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
     private char[] buffer = recycler.takeChars();
+    private StringBuilder large;
     private int count;
 
     public PooledStringWriter() {}
 
     private char[] active() {
         char[] value = buffer;
-        if (value == null) throw new IllegalStateException("Writer already recycled");
-        return value;
-    }
-
-    private char[] ensureCapacity(int required) {
-        char[] value = active();
-        if (required > value.length) {
-            char[] previous = value;
-            char[] next = new char[OutputBufferRecycler.growCapacity(previous.length, required)];
-            System.arraycopy(previous, 0, next, 0, count);
-            buffer = value = next;
-            recycler.recycleChars(previous);
-        }
+        if (value == null) throw new IllegalStateException("Writer already recycled or in large mode");
         return value;
     }
 
@@ -44,13 +28,19 @@ public final class PooledStringWriter extends Writer {
         return count + length;
     }
 
-    /*
-     * Keep the common write paths small for JIT inlining. In particular,
-     * Jackson flushes the generator's char[] into this Writer repeatedly.
-     * Capacity growth is cold; validation and array copy stay inline.
-     */
+    private StringBuilder switchToLarge(int required) {
+        char[] previous = active();
+        StringBuilder builder = new StringBuilder(required);
+        builder.append(previous, 0, count);
+        recycler.recycleChars(previous);
+        buffer = null;
+        large = builder;
+        recycler.retainMaxChars();
+        return builder;
+    }
+
     private char[] grow(int required) {
-        char[] previous = buffer;
+        char[] previous = active();
         char[] next = new char[OutputBufferRecycler.growCapacity(previous.length, required)];
         System.arraycopy(previous, 0, next, 0, count);
         buffer = next;
@@ -60,33 +50,56 @@ public final class PooledStringWriter extends Writer {
 
     @Override
     public void write(int value) {
+        StringBuilder builder = large;
+        if (builder != null) {
+            builder.append((char) value);
+            count++;
+            return;
+        }
         char[] dest = active();
-        int pos = count;
-        if (pos == dest.length) dest = grow(pos + 1);
-        dest[pos] = (char) value;
-        count = pos + 1;
+        int end = nextCount(1);
+        if (end > OutputBufferRecycler.MAX_RETAINED_CAPACITY) {
+            switchToLarge(end).append((char) value);
+        } else {
+            if (end > dest.length) dest = grow(end);
+            dest[count] = (char) value;
+        }
+        count = end;
     }
 
     @Override
     public void write(char[] value, int offset, int length) {
-        char[] dest = active();
-        if (length < 0 || length > Integer.MAX_VALUE - count)
-            throw new IndexOutOfBoundsException();
-        int end = count + length;
-        if (end > dest.length) dest = grow(end);
-        // System.arraycopy checks the source range even when length is zero.
-        System.arraycopy(value, offset, dest, count, length);
+        int end = nextCount(length);
+        StringBuilder builder = large;
+        if (builder != null) {
+            builder.append(value, offset, length);
+        } else {
+            char[] dest = active();
+            if (end > OutputBufferRecycler.MAX_RETAINED_CAPACITY) {
+                switchToLarge(end).append(value, offset, length);
+            } else {
+                if (end > dest.length) dest = grow(end);
+                System.arraycopy(value, offset, dest, count, length);
+            }
+        }
         count = end;
     }
 
     @Override
     public void write(String value, int offset, int length) {
-        char[] dest = active();
-        if (length < 0 || length > Integer.MAX_VALUE - count)
-            throw new IndexOutOfBoundsException();
-        int end = count + length;
-        dest = ensureCapacity(end);
-        value.getChars(offset, offset + length, dest, count);
+        int end = nextCount(length);
+        StringBuilder builder = large;
+        if (builder != null) {
+            builder.append(value, offset, offset + length);
+        } else {
+            char[] dest = active();
+            if (end > OutputBufferRecycler.MAX_RETAINED_CAPACITY) {
+                switchToLarge(end).append(value, offset, offset + length);
+            } else {
+                if (end > dest.length) dest = grow(end);
+                value.getChars(offset, offset + length, dest, count);
+            }
+        }
         count = end;
     }
 
@@ -116,30 +129,45 @@ public final class PooledStringWriter extends Writer {
             write((String) sequence, start, end - start);
         } else {
             int next = nextCount(end - start);
-            char[] dest = ensureCapacity(next);
-            for (int i = start, j = count; i < end; i++, j++)
-                dest[j] = sequence.charAt(i);
+            StringBuilder builder = large;
+            if (builder != null) {
+                builder.append(sequence, start, end);
+            } else {
+                char[] dest = active();
+                if (next > OutputBufferRecycler.MAX_RETAINED_CAPACITY) {
+                    switchToLarge(next).append(sequence, start, end);
+                } else {
+                    if (next > dest.length) dest = grow(next);
+                    for (int i = start, j = count; i < end; i++, j++)
+                        dest[j] = sequence.charAt(i);
+                }
+            }
             count = next;
         }
         return this;
     }
 
     public void reset() {
-        active();
+        if (large != null) {
+            large = null;
+            buffer = recycler.takeChars();
+        } else {
+            active();
+        }
         count = 0;
     }
 
     public int size() {
-        active();
+        if (large == null) active();
         return count;
     }
 
     @Override
     public String toString() {
-        return new String(active(), 0, count);
+        StringBuilder builder = large;
+        return builder != null ? builder.toString() : new String(active(), 0, count);
     }
 
-    /** Creates a detached String, then returns the working buffer to the cache. */
     public String getAndRecycle() {
         try {
             return toString();
@@ -148,20 +176,19 @@ public final class PooledStringWriter extends Writer {
         }
     }
 
-    /** Recycles the working buffer; safe to call repeatedly. */
     public void recycle() {
         char[] value = buffer;
         if (value != null) {
             buffer = null;
-            count = 0;
             recycler.recycleChars(value);
         }
+        large = null;
+        count = 0;
     }
 
     @Override
     public void flush() {}
 
-    /** No-op: the output owner, not the backend, controls recycling. */
     @Override
     public void close() {}
 }

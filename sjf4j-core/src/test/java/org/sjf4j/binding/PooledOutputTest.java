@@ -130,14 +130,14 @@ class PooledOutputTest {
         char[] previousChars = OutputBufferRecycler.acquireChars();
         byte[] previousBytes = OutputBufferRecycler.acquireBytes();
         try {
-        // The 1.5x oversize rule allocates 192K for a single 128K write.
+        // The power-of-two rule allocates 128K for a single 128K write.
         String contents = "x".repeat(128 * 1024);
         PooledStringWriter writer = new PooledStringWriter();
         writer.write(contents);
         assertEquals(contents, writer.getAndRecycle());
         char[] cachedChars = OutputBufferRecycler.acquireChars();
         try {
-            assertEquals(192 * 1024, cachedChars.length);
+            assertEquals(128 * 1024, cachedChars.length);
         } finally {
             OutputBufferRecycler.release(cachedChars);
         }
@@ -149,7 +149,7 @@ class PooledOutputTest {
         assertArrayEquals(payload, output.getAndRecycle());
         byte[] cachedBytes = OutputBufferRecycler.acquireBytes();
         try {
-            assertEquals(192 * 1024, cachedBytes.length);
+            assertEquals(128 * 1024, cachedBytes.length);
         } finally {
             OutputBufferRecycler.release(cachedBytes);
         }
@@ -182,16 +182,120 @@ class PooledOutputTest {
     }
 
     @Test
-    void expansionUsesPowerOfTwoTiersUntil64KAndHeadroomBeyond() {
+    void expansionUsesPowerOfTwoTiersUntil256KAndDoublesBeyond() {
         assertEquals(1024, OutputBufferRecycler.growCapacity(512, 1024));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1200));
         assertEquals(4096, OutputBufferRecycler.growCapacity(1024, 3000));
         assertEquals(8192, OutputBufferRecycler.growCapacity(4096, 5000));
         assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 65536));
-        assertEquals(98305, OutputBufferRecycler.growCapacity(65536, 65537));
-        assertEquals(150000, OutputBufferRecycler.growCapacity(65536, 100000));
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 65537));
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 100000));
+        assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 262144));
+        assertEquals(300000, OutputBufferRecycler.growCapacity(131072, 300000));
+        assertEquals(524288, OutputBufferRecycler.growCapacity(262144, 300000));
+        assertEquals(1048576, OutputBufferRecycler.growCapacity(524288, 900000));
         assertEquals(Integer.MAX_VALUE - 8,
                 OutputBufferRecycler.growCapacity(65536, Integer.MAX_VALUE - 8));
+    }
+
+    @Test
+    void writerTransitionsToBuilderAndMaintains256KCache() {
+        char[] oldCache = OutputBufferRecycler.acquireChars();
+        try {
+            PooledStringWriter writer = new PooledStringWriter();
+            try {
+                writer.write("x".repeat(256 * 1024));
+                assertEquals(256 * 1024, writer.size());
+                writer.append('A');
+                writer.append(new StringBuilder("世界"));
+                writer.append((CharSequence) null, 1, 3);
+                assertEquals(256 * 1024 + 5, writer.size());
+                String detached = writer.getAndRecycle();
+                assertEquals('A', detached.charAt(256 * 1024));
+                assertTrue(detached.endsWith("A世界ul"));
+                assertThrows(IllegalStateException.class, writer::size);
+            } finally {
+                writer.recycle();
+            }
+            char[] cached = OutputBufferRecycler.acquireChars();
+            assertEquals(256 * 1024, cached.length);
+            OutputBufferRecycler.release(cached);
+        } finally {
+            OutputBufferRecycler.release(oldCache);
+        }
+    }
+
+    @Test
+    void writerSupportsDirectOversizeAndResetAcrossModes() {
+        char[] oldCache = OutputBufferRecycler.acquireChars();
+        try {
+            PooledStringWriter writer = new PooledStringWriter();
+            try {
+                char[] large = new char[300 * 1024];
+                Arrays.fill(large, 'x');
+                writer.write(large, 0, large.length);
+                writer.write("中", 0, 1);
+                assertEquals(large.length + 1, writer.size());
+                assertEquals('中', writer.toString().charAt(large.length));
+                writer.reset();
+                assertEquals(0, writer.size());
+                writer.write("fresh");
+                assertEquals("fresh", writer.getAndRecycle());
+            } finally {
+                writer.recycle();
+            }
+            char[] cached = OutputBufferRecycler.acquireChars();
+            assertEquals(256 * 1024, cached.length);
+            OutputBufferRecycler.release(cached);
+        } finally {
+            OutputBufferRecycler.release(oldCache);
+        }
+    }
+
+    @Test
+    void byteOutputBeyond256KRetains256KAndGrowsWithoutClamping() {
+        byte[] oldCache = OutputBufferRecycler.acquireBytes();
+        try {
+            byte[] payload = new byte[300 * 1024];
+            Arrays.fill(payload, (byte) 31);
+            PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+            try {
+                output.write(payload, 0, payload.length);
+                assertEquals(payload.length, output.size());
+                output.write(42);
+                assertEquals(payload.length + 1, output.size());
+                byte[] result = output.getAndRecycle();
+                assertEquals(31, result[0]);
+                assertEquals(31, result[payload.length - 1]);
+                assertEquals(42, result[payload.length]);
+            } finally {
+                output.recycle();
+            }
+            byte[] cached = OutputBufferRecycler.acquireBytes();
+            assertEquals(256 * 1024, cached.length);
+            OutputBufferRecycler.release(cached);
+        } finally {
+            OutputBufferRecycler.release(oldCache);
+        }
+    }
+
+    @Test
+    void largeModeRejectsBadRangesAndCannotWriteAfterRecycle() {
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            writer.write("x".repeat(300 * 1024));
+            int size = writer.size();
+            assertThrows(IndexOutOfBoundsException.class,
+                    () -> writer.write(new char[2], 1, 2));
+            assertThrows(IndexOutOfBoundsException.class,
+                    () -> writer.write("abc", 3, 1));
+            assertEquals(size, writer.size());
+            writer.getAndRecycle();
+            assertThrows(IllegalStateException.class, () -> writer.write('a'));
+            assertThrows(IllegalStateException.class, () -> writer.append(new StringBuilder("x")));
+        } finally {
+            writer.recycle();
+        }
     }
 
     @Test
