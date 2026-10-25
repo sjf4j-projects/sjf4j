@@ -79,6 +79,31 @@ class PooledOutputTest {
     }
 
     @Test
+    void retainsSmallBufferAfterOversizedCharOutput() {
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            writer.write("x".repeat(100_000));
+            assertEquals(100_000, writer.size());
+        } finally {
+            writer.recycle();
+        }
+        char[] reusable = OutputBufferRecycler.acquireChars();
+        try {
+            assertTrue(reusable.length <= OutputBufferRecycler.MAX_RETAINED_CAPACITY);
+            assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, reusable.length);
+        } finally {
+            OutputBufferRecycler.release(reusable);
+        }
+    }
+
+    @Test
+    void expansionUsesRequiredHeadroom() {
+        assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1200));
+        assertEquals(4500, OutputBufferRecycler.growCapacity(1024, 3000));
+        assertEquals(8192, OutputBufferRecycler.growCapacity(4096, 5000));
+    }
+
+    @Test
     void appendAndBounds() {
         PooledStringWriter out = new PooledStringWriter();
         try {
