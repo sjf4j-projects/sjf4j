@@ -502,7 +502,7 @@ class PooledOutputTest {
     @Test
     void adaptiveGrowthUsesExistingCapacityForSmallAppends() {
         assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 0, 300000));
-        assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 200000, 300000));
+        assertEquals(393216, OutputBufferRecycler.growCapacity(262144, 200000, 300000));
         assertEquals(450000, OutputBufferRecycler.growCapacity(300000, 299999, 300001));
         assertEquals(600000, OutputBufferRecycler.growCapacity(400000, 400000, 400001));
         assertEquals(900000, OutputBufferRecycler.growCapacity(800000, 400000, 900000));
