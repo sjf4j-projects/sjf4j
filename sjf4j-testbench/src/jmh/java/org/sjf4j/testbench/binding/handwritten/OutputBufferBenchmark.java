@@ -40,7 +40,7 @@ public class OutputBufferBenchmark {
             tools.jackson.core.ObjectWriteContext.empty();
     private static final Gson GSON = new Gson();
 
-    @Param({"512", "8192"})
+    @Param({"512", "8192", "20480"})
     public int payloadLength;
 
     @Param({"ASCII", "UNICODE"})
