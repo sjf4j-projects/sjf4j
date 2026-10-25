@@ -66,7 +66,9 @@ public class OutputBufferBenchmark {
         if (!data.equals(charsJdk()) || !data.equals(charsFast())
                 || !data.equals(charsPooled())
                 || !data.equals(charsHandwrittenPooled())
-                || !data.equals(charsJackson()))
+                || !data.equals(charsJackson())
+                || !data.equals(charsDirectResult()) || !data.equals(charsStringChecks())
+                || !data.equals(charsCharChecks()) || !data.equals(charsFactory()))
             throw new IllegalStateException("Character output differs");
         if (!java.util.Arrays.equals(bytes, bytesJdk())
                 || !java.util.Arrays.equals(bytes, bytesPooled())
@@ -79,7 +81,7 @@ public class OutputBufferBenchmark {
                 || !expected.equals(jackson2StringPooled()) || !expected.equals(jackson2StringPooledRef())
                 || !expected.equals(jackson2StringHandwrittenPooled())
                 || !expected.equals(jackson2StringSegmented())
-                 || !expected.equals(charsDirectResult()) || !expected.equals(gsonDirectResult()) || !expected.equals(jackson2StringDirectResult()) || !expected.equals(charsStringChecks()) || !expected.equals(gsonStringChecks()) || !expected.equals(jackson2StringStringChecks()) || !expected.equals(charsCharChecks()) || !expected.equals(gsonCharChecks()) || !expected.equals(jackson2StringCharChecks()) || !expected.equals(charsFactory()) || !expected.equals(gsonFactory()) || !expected.equals(jackson2StringFactory()) || !expected.equals(jackson3StringPooled()))
+                  || !expected.equals(gsonDirectResult()) || !expected.equals(jackson2StringDirectResult())  || !expected.equals(gsonStringChecks()) || !expected.equals(jackson2StringStringChecks())  || !expected.equals(gsonCharChecks()) || !expected.equals(jackson2StringCharChecks())  || !expected.equals(gsonFactory()) || !expected.equals(jackson2StringFactory()) || !expected.equals(jackson3StringPooled()))
             throw new IllegalStateException("JSON String output differs");
         byte[] expectedUtf8 = expected.getBytes(StandardCharsets.UTF_8);
         if (!java.util.Arrays.equals(expectedUtf8, jackson2BytesJdk())
