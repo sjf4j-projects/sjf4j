@@ -98,6 +98,33 @@ class PooledOutputTest {
     }
 
     @Test
+    void expansionCopiesOnlyActiveContentForBothSinks() {
+        PooledStringWriter writer = new PooledStringWriter();
+        PooledByteArrayOutputStream stream = new PooledByteArrayOutputStream();
+        try {
+            writer.write("prefix");
+            char[] suffix = new char[128 * 1024];
+            Arrays.fill(suffix, 'x');
+            writer.write(suffix);
+            assertEquals(6 + suffix.length, writer.size());
+            assertEquals("prefix", writer.toString().substring(0, 6));
+            assertEquals('x', writer.toString().charAt(writer.size() - 1));
+
+            byte[] chunk = new byte[128 * 1024];
+            Arrays.fill(chunk, (byte) 42);
+            stream.write(new byte[] {1, 2, 3});
+            stream.write(chunk);
+            assertEquals(3 + chunk.length, stream.size());
+            byte[] result = stream.getAndRecycle();
+            assertArrayEquals(new byte[] {1, 2, 3}, Arrays.copyOf(result, 3));
+            assertEquals(42, result[result.length - 1]);
+        } finally {
+            writer.recycle();
+            stream.recycle();
+        }
+    }
+
+    @Test
     void expansionUsesPowerOfTwoTiersUntil64KAndHeadroomBeyond() {
         assertEquals(1024, OutputBufferRecycler.growCapacity(512, 1024));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 1200));

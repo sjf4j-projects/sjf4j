@@ -26,8 +26,9 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         byte[] value = active();
         if (required > value.length) {
             byte[] previous = value;
-            buffer = value = Arrays.copyOf(previous,
-                    OutputBufferRecycler.growCapacity(previous.length, required));
+            byte[] next = new byte[OutputBufferRecycler.growCapacity(previous.length, required)];
+            System.arraycopy(previous, 0, next, 0, count);
+            buffer = value = next;
             OutputBufferRecycler.release(previous);
         }
         return value;

@@ -30,8 +30,9 @@ public final class PooledStringWriter extends Writer {
         char[] value = active();
         if (required > value.length) {
             char[] previous = value;
-            buffer = value = Arrays.copyOf(previous,
-                    OutputBufferRecycler.growCapacity(previous.length, required));
+            char[] next = new char[OutputBufferRecycler.growCapacity(previous.length, required)];
+            System.arraycopy(previous, 0, next, 0, count);
+            buffer = value = next;
             recycler.recycleChars(previous);
         }
         return value;
@@ -50,8 +51,8 @@ public final class PooledStringWriter extends Writer {
      */
     private char[] grow(int required) {
         char[] previous = buffer;
-        char[] next = Arrays.copyOf(previous,
-                OutputBufferRecycler.growCapacity(previous.length, required));
+        char[] next = new char[OutputBufferRecycler.growCapacity(previous.length, required)];
+        System.arraycopy(previous, 0, next, 0, count);
         buffer = next;
         recycler.recycleChars(previous);
         return next;

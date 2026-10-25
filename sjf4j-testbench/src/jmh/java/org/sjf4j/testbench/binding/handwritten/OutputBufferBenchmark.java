@@ -11,6 +11,10 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.binding.FastStringWriter;
 import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.binding.PooledStringWriter;
+import org.sjf4j.binding.PooledStringWriterCap128;
+import org.sjf4j.binding.PooledStringWriterCap256;
+import org.sjf4j.binding.PooledByteArrayOutputStreamCap128;
+import org.sjf4j.binding.PooledByteArrayOutputStreamCap256;
 import org.sjf4j.binding.PooledStringWriterRef;
 import org.sjf4j.binding.PooledStringWriterNoRetain;
 import org.sjf4j.binding.PooledStringWriterColdGrow;
@@ -76,12 +80,15 @@ public class OutputBufferBenchmark {
                 || !data.equals(charsHandwrittenPooled())
                 || !data.equals(charsRefLargeDouble())
                 || !data.equals(charsLargeExact()) || !data.equals(charsLargeDouble())
+                || !data.equals(charsCap128()) || !data.equals(charsCap256())
                 || !data.equals(charsJackson())
                 || !data.equals(charsDirectResult()) || !data.equals(charsStringChecks())
                 || !data.equals(charsCharChecks()) || !data.equals(charsFactory()))
             throw new IllegalStateException("Character output differs");
         if (!java.util.Arrays.equals(bytes, bytesJdk())
                 || !java.util.Arrays.equals(bytes, bytesLargeDouble())
+                || !java.util.Arrays.equals(bytes, bytesCap128())
+                || !java.util.Arrays.equals(bytes, bytesCap256())
                 || !java.util.Arrays.equals(bytes, bytesPooled())
                 || !java.util.Arrays.equals(bytes, bytesJackson()))
             throw new IllegalStateException("Byte output differs");
@@ -98,12 +105,16 @@ public class OutputBufferBenchmark {
                 || !expected.equals(gsonNoRetain()) || !expected.equals(gsonRefRetain())
                 || !expected.equals(gsonLargeDouble())
                 || !expected.equals(jackson2StringLargeDouble())
+                || !expected.equals(jackson2StringCap128())
+                || !expected.equals(jackson2StringCap256())
                 || !expected.equals(jackson2StringSegmented())
                   || !expected.equals(gsonDirectResult()) || !expected.equals(jackson2StringDirectResult())  || !expected.equals(gsonStringChecks()) || !expected.equals(jackson2StringStringChecks())  || !expected.equals(gsonCharChecks()) || !expected.equals(jackson2StringCharChecks())  || !expected.equals(gsonFactory()) || !expected.equals(jackson2StringFactory()) || !expected.equals(jackson3StringPooled()))
             throw new IllegalStateException("JSON String output differs");
         byte[] expectedUtf8 = expected.getBytes(StandardCharsets.UTF_8);
         if (!java.util.Arrays.equals(expectedUtf8, jackson2BytesJdk())
                 || !java.util.Arrays.equals(expectedUtf8, jackson2BytesLargeDouble())
+                || !java.util.Arrays.equals(expectedUtf8, jackson2BytesCap128())
+                || !java.util.Arrays.equals(expectedUtf8, jackson2BytesCap256())
                 || !java.util.Arrays.equals(expectedUtf8, jackson2BytesPooled())
                 || !java.util.Arrays.equals(expectedUtf8, jackson2BytesSegmented()))
             throw new IllegalStateException("JSON bytes output differs");
@@ -765,4 +776,70 @@ public class OutputBufferBenchmark {
             return out.getAndRecycle();
         } finally { out.recycle(); }
     }
+
+    @Benchmark
+    public String charsCap128() {
+        PooledStringWriterCap128 out = new PooledStringWriterCap128();
+        try { out.write(data); return out.getAndRecycle(); }
+        finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public String jackson2StringCap128() throws IOException {
+        PooledStringWriterCap128 out = new PooledStringWriterCap128();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) { writer.writeString(data); }
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public byte[] bytesCap128() {
+        PooledByteArrayOutputStreamCap128 out = new PooledByteArrayOutputStreamCap128();
+        try { out.write(bytes, 0, bytes.length); return out.getAndRecycle(); }
+        finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public byte[] jackson2BytesCap128() throws IOException {
+        PooledByteArrayOutputStreamCap128 out = new PooledByteArrayOutputStreamCap128();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out, JsonEncoding.UTF8)) { writer.writeString(data); }
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+
+    @Benchmark
+    public String charsCap256() {
+        PooledStringWriterCap256 out = new PooledStringWriterCap256();
+        try { out.write(data); return out.getAndRecycle(); }
+        finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public String jackson2StringCap256() throws IOException {
+        PooledStringWriterCap256 out = new PooledStringWriterCap256();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) { writer.writeString(data); }
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public byte[] bytesCap256() {
+        PooledByteArrayOutputStreamCap256 out = new PooledByteArrayOutputStreamCap256();
+        try { out.write(bytes, 0, bytes.length); return out.getAndRecycle(); }
+        finally { out.recycle(); }
+    }
+
+    @Benchmark
+    public byte[] jackson2BytesCap256() throws IOException {
+        PooledByteArrayOutputStreamCap256 out = new PooledByteArrayOutputStreamCap256();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out, JsonEncoding.UTF8)) { writer.writeString(data); }
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
 }

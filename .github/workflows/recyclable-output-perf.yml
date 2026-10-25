@@ -32,8 +32,8 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsHandwrittenPooled|charsJackson|charsLargeExact|charsLargeDouble|charsRefLargeDouble|gsonPooled|gsonPooledRef|gsonDeferredRetain|gsonRefLargeDouble|gsonColdGrow|gsonNoRetain|gsonRefRetain|gsonLargeDouble|gsonHandwrittenPooled|jackson2StringPooled|jackson2StringSegmented|jackson2StringLargeDouble|jackson2StringColdGrow|jackson2StringDeferredRetain|jackson2StringRefLargeDouble|bytesPooled|bytesJackson|bytesLargeDouble|jackson2BytesPooled|jackson2BytesSegmented|jackson2BytesLargeDouble)' \
-            -bm avgt -tu us -t 1 -f 2 -wi 5 -w 250ms -i 7 -r 250ms -p payloadLength=20480,131072 -p alphabet=ASCII,UNICODE \
+          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJackson|charsCap128|charsCap256|bytesPooled|bytesJackson|bytesCap128|bytesCap256|jackson2StringPooled|jackson2StringSegmented|jackson2StringCap128|jackson2StringCap256|jackson2BytesPooled|jackson2BytesSegmented|jackson2BytesCap128|jackson2BytesCap256)' \
+            -bm avgt -tu us -t 1 -f 2 -wi 4 -w 200ms -i 6 -r 200ms -p payloadLength=20480,131072 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -61,12 +61,14 @@ jobs:
               ('jackson2BytesPooled','jackson2BytesJdk'),
               ('jackson2BytesPooled','jackson2BytesSegmented')]
           pairs = [
-              ('gsonRefLargeDouble','gsonPooled'),('charsRefLargeDouble','charsPooled'),('jackson2StringRefLargeDouble','jackson2StringPooled'),('bytesLargeDouble','bytesPooled'),('jackson2BytesLargeDouble','jackson2BytesPooled'),('gsonDeferredRetain','gsonPooled'),('jackson2StringDeferredRetain','jackson2StringPooled'),('gsonColdGrow','gsonPooled'),('jackson2StringColdGrow','jackson2StringPooled'),('gsonNoRetain','gsonPooled'),('gsonRefRetain','gsonPooled'),('gsonPooledRef','gsonPooled'),
-              ('gsonLargeExact','gsonPooled'),('gsonLargeDouble','gsonPooled'),('gsonHandwrittenPooled','gsonPooled'),
-              ('charsLargeExact','charsPooled'),('charsLargeDouble','charsPooled'),('charsJackson','charsPooled'),
-              ('jackson2StringLargeExact','jackson2StringPooled'),('jackson2StringLargeDouble','jackson2StringPooled'),
-              ('jackson2StringSegmented','jackson2StringPooled')]
-          print('# Gson ASCII regression and 128K output growth A/B')
+              ('charsCap128','charsPooled'),('charsCap256','charsPooled'),('charsJackson','charsPooled'),
+              ('bytesCap128','bytesPooled'),('bytesCap256','bytesPooled'),('bytesJackson','bytesPooled'),
+              ('jackson2StringCap128','jackson2StringPooled'),('jackson2StringCap256','jackson2StringPooled'),
+              ('jackson2StringSegmented','jackson2StringPooled'),
+              ('jackson2BytesCap128','jackson2BytesPooled'),('jackson2BytesCap256','jackson2BytesPooled'),
+              ('jackson2BytesSegmented','jackson2BytesPooled')
+          ]
+          print('# 64K / 128K / 256K recycler cap A/B after live-length copy change')
           print()
           print('JDK 25; each operation includes creating sink, writing, result materialization and recycling.')
           print('Speedup = baseline / pooled, so >1 means pooled is faster.')
