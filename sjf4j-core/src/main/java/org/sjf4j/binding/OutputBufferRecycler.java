@@ -67,6 +67,11 @@ final class OutputBufferRecycler {
      * Above 256K, large appends allocate exactly what is required while
      * small appends grow the previous capacity by 1.5x.
      */
+    // Legacy experimental sink variants in testbench still use this signature.
+    static int growCapacity(int previous, int required) {
+        return growCapacity(previous, 0, required);
+    }
+
     static int growCapacity(int previous, int used, int required) {
         if (required < 0 || required > MAX_ARRAY_SIZE)
             throw new OutOfMemoryError("Buffer too large");
