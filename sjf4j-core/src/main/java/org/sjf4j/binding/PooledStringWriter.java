@@ -14,7 +14,8 @@ import java.util.Arrays;
  * <p>This class is not thread safe. The result String owns independent storage.</p>
  */
 public final class PooledStringWriter extends Writer {
-    private char[] buffer = OutputBufferRecycler.acquireChars();
+    private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
+    private char[] buffer = recycler.takeChars();
     private int count;
 
     public PooledStringWriter() {}
@@ -130,7 +131,7 @@ public final class PooledStringWriter extends Writer {
         if (value != null) {
             buffer = null;
             count = 0;
-            OutputBufferRecycler.release(value);
+            recycler.recycleChars(value);
         }
     }
 

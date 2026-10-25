@@ -59,7 +59,8 @@ public class OutputBufferBenchmark {
 
         // Verify every output sink produces the same bytes/chars.
         if (!data.equals(charsJdk()) || !data.equals(charsFast())
-                || !data.equals(charsPooled()) || !data.equals(charsHandwrittenPooled())
+                || !data.equals(charsPooled()) || !data.equals(charsBuilderPooled())
+                || !data.equals(charsHandwrittenPooled())
                 || !data.equals(charsJackson()))
             throw new IllegalStateException("Character output differs");
         if (!java.util.Arrays.equals(bytes, bytesJdk())
@@ -68,9 +69,11 @@ public class OutputBufferBenchmark {
             throw new IllegalStateException("Byte output differs");
         String expected = gsonJdk();
         if (!expected.equals(gsonFast()) || !expected.equals(gsonPooled())
+                || !expected.equals(gsonBuilderPooled())
                 || !expected.equals(gsonHandwrittenPooled())
                 || !expected.equals(jackson2StringJdk())
                 || !expected.equals(jackson2StringPooled())
+                || !expected.equals(jackson2StringBuilderPooled())
                 || !expected.equals(jackson2StringHandwrittenPooled())
                 || !expected.equals(jackson2StringSegmented())
                 || !expected.equals(jackson3StringPooled()))
@@ -101,6 +104,17 @@ public class OutputBufferBenchmark {
     @Benchmark
     public String charsPooled() {
         PooledStringWriter out = new PooledStringWriter();
+        try {
+            out.write(data);
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String charsBuilderPooled() {
+        BuilderBufferWriter out = new BuilderBufferWriter();
         try {
             out.write(data);
             return out.getAndRecycle();
@@ -199,6 +213,19 @@ public class OutputBufferBenchmark {
     }
 
     @Benchmark
+    public String gsonBuilderPooled() throws IOException {
+        BuilderBufferWriter out = new BuilderBufferWriter();
+        try {
+            try (JsonWriter writer = GSON.newJsonWriter(out)) {
+                writer.value(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
     public String gsonHandwrittenPooled() throws IOException {
         org.sjf4j.testbench.binding.handwritten.FastStringWriter out =
                 org.sjf4j.testbench.binding.handwritten.FastStringWriter.acquire();
@@ -226,6 +253,19 @@ public class OutputBufferBenchmark {
     @Benchmark
     public String jackson2StringPooled() throws IOException {
         PooledStringWriter out = new PooledStringWriter();
+        try {
+            try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
+                writer.writeString(data);
+            }
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
+    @Benchmark
+    public String jackson2StringBuilderPooled() throws IOException {
+        BuilderBufferWriter out = new BuilderBufferWriter();
         try {
             try (JsonGenerator writer = JACKSON2.createGenerator(out)) {
                 writer.writeString(data);
