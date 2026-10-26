@@ -42,7 +42,11 @@ final class BindingHelperEmitter {
     }
 
     private void emitOneOfRead(BindingValue value, GeneratedClass generated) {
-        String source = value.oneOfOwner() == null
+        String source = value.oneOfCreatorIndex() >= 0
+                ? "org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
+                        + value.oneOfOwner() + ".class).creatorInfo.argOneOfInfos["
+                        + value.oneOfCreatorIndex() + "]"
+                : value.oneOfOwner() == null
                 ? "org.sjf4j.meta.TypeRegistry.registerTypeInfo("
                         + context.typeUtils.erasure(value.type()) + ".class).oneOfInfo"
                 : "org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("

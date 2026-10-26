@@ -533,7 +533,9 @@ final class BindingCompiler {
     private boolean canCompileOneOfReadSubtype(TypeMirror subtype, String key,
                                                ExecutableElement origin) {
         TypeElement type = context.types.typeElement(subtype);
-        if (type == null || type.getKind() != ElementKind.CLASS
+        if (type == null
+                || (type.getKind() != ElementKind.CLASS
+                && !"RECORD".equals(type.getKind().name()))
                 || !type.getModifiers().contains(Modifier.FINAL)
                 || !isVisibleOneOfSubtype(subtype)
                 || context.types.nodeKind(subtype) != NodeKind.OBJECT_POJO
@@ -557,9 +559,14 @@ final class BindingCompiler {
             List<? extends VariableElement> parameters = creator.executable().getParameters();
             for (int i = 0; i < parameters.size(); i++) {
                 VariableElement arg = parameters.get(i);
-                if (key.equals(context.annotations.propertyName(arg, arg.getSimpleName().toString()))
-                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key)
-                        || !simpleOneOfReadValue(creator.parameterTypes().get(i))) return false;
+                boolean isDiscriminator = key.equals(context.annotations.propertyName(
+                        arg, arg.getSimpleName().toString()))
+                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key);
+                // A consumed String creator argument can be initialized directly
+                // from the discriminator without buffering the whole object.
+                if (isDiscriminator
+                        ? !context.types.isSameErasure(creator.parameterTypes().get(i), stringType)
+                        : !simpleOneOfReadValue(creator.parameterTypes().get(i))) return false;
             }
         }
         for (Property property : context.properties.resolve(subtype).values()) {
@@ -1026,19 +1033,28 @@ final class BindingCompiler {
                     return false;
                 }
             }
-            if (arg.getAnnotation(OneOf.class) != null
-                    || creatorBoundMemberOneOf(value.type(), name)) {
-                error(method, generated, "@OneOf is not supported on creator-bound property "
+            OneOf override = creatorOneOf(value.type(), arg, name);
+            if (override != null && override.scope() != OneOf.Scope.CURRENT) {
+                error(method, generated, "creator @OneOf supports only scope=CURRENT: "
                         + value.type() + "." + name);
                 return false;
             }
-
-            BindingValue child = compileValue(value.direction(), creator.parameterTypes().get(i),
-                    method, generated,
-                    annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                            ? null : annotation.codecName(),
-                    annotation == null || annotation.codecPattern().isEmpty()
-                            ? null : annotation.codecPattern());
+            if (override != null && annotation != null
+                    && (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                    || !annotation.codecPattern().isEmpty())) {
+                error(method, generated, "creator @OneOf cannot be combined with a value codec on "
+                        + value.type() + "." + name);
+                return false;
+            }
+            BindingValue child = override == null
+                    ? compileValue(value.direction(), creator.parameterTypes().get(i),
+                            method, generated,
+                            annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                                    ? null : annotation.codecName(),
+                            annotation == null || annotation.codecPattern().isEmpty()
+                                    ? null : annotation.codecPattern())
+                    : compileCreatorOneOf(value, creator.parameterTypes().get(i), override,
+                            i, method, generated);
             if (child == null) return false;
             compiled.add(new BindingProperty(name, aliases, child, i, args.size()));
         }
@@ -1048,33 +1064,40 @@ final class BindingCompiler {
         return true;
     }
 
-    /**
-     * Reject member-specific OneOf on a Creator argument, including private
-     * final fields that PropertyResolver intentionally does not expose.
-     * A class-level OneOf on the argument's declared type remains supported.
-     */
-    private boolean creatorBoundMemberOneOf(TypeMirror ownerType, String name) {
+    /** Resolve Creator OneOf from parameter or bound member, including inherited fields. */
+    private OneOf creatorOneOf(TypeMirror ownerType, VariableElement parameter, String name) {
+        OneOf onParameter = parameter.getAnnotation(OneOf.class);
+        if (onParameter != null) return onParameter;
         Property property = context.properties.resolve(ownerType).get(name);
-        if (property != null &&
-                (hasMemberOneOf(property.read()) || hasMemberOneOf(property.write()))) {
-            return true;
+        if (property != null) {
+            OneOf declared = memberOneOf(property.read());
+            if (declared == null) declared = memberOneOf(property.write());
+            if (declared != null) return declared;
         }
         TypeElement owner = context.types.typeElement(ownerType);
-        if (owner == null) return false;
+        if (owner == null) return null;
         for (Element member : context.elements.getAllMembers(owner)) {
-            if (member.getKind() != ElementKind.FIELD
-                    || member.getAnnotation(OneOf.class) == null) continue;
+            if (member.getKind() != ElementKind.FIELD) continue;
+            OneOf declared = member.getAnnotation(OneOf.class);
+            if (declared == null) continue;
             String fieldName = context.annotations.propertyName(
                     member, member.getSimpleName().toString());
-            if (name.equals(fieldName)) return true;
-            NodeProperty propertyAnnotation = member.getAnnotation(NodeProperty.class);
-            if (propertyAnnotation != null) {
-                for (String alias : propertyAnnotation.aliases()) {
-                    if (name.equals(alias)) return true;
-                }
-            }
+            if (name.equals(fieldName)) return declared;
         }
-        return false;
+        return null;
+    }
+
+    /** Runtime metadata resolves and validates the effective annotation for this argument. */
+    private BindingValue compileCreatorOneOf(BindingValue owner, TypeMirror argType,
+                                              OneOf annotation, int index,
+                                              ExecutableElement method, GeneratedClass generated) {
+        TypeMirror type = context.types.concrete(argType);
+        BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF, false);
+        result.helperName(names.newName(helperSuggestion(owner.direction(), type)));
+        result.oneOfCreator(context.typeUtils.erasure(owner.type()).toString(), index);
+        if (!compileOneOfRead(result, annotation, method, generated)) return null;
+        helpers.add(result);
+        return result;
     }
 
     /** Constructor parameters first, then writable properties buffered until creation. */
@@ -1098,18 +1121,28 @@ final class BindingCompiler {
                 return false;
             }
             if (!claimCreatorNames(value, method, generated, claimed, name, aliases)) return false;
-            if (arg.getAnnotation(OneOf.class) != null
-                    || creatorBoundMemberOneOf(value.type(), name)) {
-                error(method, generated, "@OneOf is not supported on creator-bound property "
+            OneOf override = creatorOneOf(value.type(), arg, name);
+            if (override != null && override.scope() != OneOf.Scope.CURRENT) {
+                error(method, generated, "creator @OneOf supports only scope=CURRENT: "
                         + value.type() + "." + name);
                 return false;
             }
-            BindingValue child = compileValue(value.direction(), creator.parameterTypes().get(i),
-                    method, generated,
-                    annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                            ? null : annotation.codecName(),
-                    annotation == null || annotation.codecPattern().isEmpty()
-                            ? null : annotation.codecPattern());
+            if (override != null && annotation != null
+                    && (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                    || !annotation.codecPattern().isEmpty())) {
+                error(method, generated, "creator @OneOf cannot be combined with a value codec on "
+                        + value.type() + "." + name);
+                return false;
+            }
+            BindingValue child = override == null
+                    ? compileValue(value.direction(), creator.parameterTypes().get(i),
+                            method, generated,
+                            annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
+                                    ? null : annotation.codecName(),
+                            annotation == null || annotation.codecPattern().isEmpty()
+                                    ? null : annotation.codecPattern())
+                    : compileCreatorOneOf(value, creator.parameterTypes().get(i), override,
+                            i, method, generated);
             if (child == null) return false;
             compiled.add(new BindingProperty(name, aliases, child, i, args.size()));
             consumed.put(name, true);

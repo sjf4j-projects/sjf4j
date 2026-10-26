@@ -48,6 +48,7 @@ final class BindingValue {
     private String helperName;
     private String oneOfOwner;
     private String oneOfProperty;
+    private int oneOfCreatorIndex = -1;
     private String oneOfKey;
     private List<OneOfSubtype> oneOfSubtypes = Collections.emptyList();
     private CreatorPlan creator;
@@ -120,6 +121,15 @@ final class BindingValue {
     void oneOfMember(String owner, String property) {
         this.oneOfOwner = owner;
         this.oneOfProperty = property;
+    }
+
+    void oneOfCreator(String owner, int index) {
+        this.oneOfOwner = owner;
+        this.oneOfCreatorIndex = index;
+    }
+
+    int oneOfCreatorIndex() {
+        return oneOfCreatorIndex;
     }
 
     String oneOfOwner() {

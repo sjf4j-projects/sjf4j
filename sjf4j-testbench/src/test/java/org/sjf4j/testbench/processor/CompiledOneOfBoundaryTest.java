@@ -274,17 +274,17 @@ public class CompiledOneOfBoundaryTest {
         assertEquals("alias", value.value);
     }
     @Test
-    void selectedFactoryCreatorDiscriminatorAliasUsesRuntimeFallback() throws Exception {
+    void selectedFactoryCreatorStringDiscriminatorAliasUsesCompiledRead() throws Exception {
+        boolean compiled = false;
         for (java.lang.reflect.Method method : BINDER.getClass().getDeclaredMethods()) {
-            assertFalse(method.getReturnType() == FactoryAliasValue.class
-                    && method.getName().endsWith("_content"),
-                    "Factory argument alias overlapping the discriminator must disable compiled OneOf");
+            compiled |= method.getReturnType() == FactoryAliasValue.class
+                    && method.getName().endsWith("_content");
         }
+        assertTrue(compiled, "String creator discriminator aliases can be bound directly");
 
         FactoryAliasValue actual = assertInstanceOf(FactoryAliasValue.class,
                 BINDER.readFactoryAlias("{\"kind\":\"factory\"}"));
-        assertEquals("factory", actual.getValue(),
-                "Runtime OneOf must bind the discriminator to the selected factory argument");
+        assertEquals("factory", actual.getValue());
     }
 
     @Test
