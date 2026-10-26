@@ -5,7 +5,7 @@ import java.util.Arrays;
 
 /**
  * Unsynchronized recyclable OutputStream. The output buffer remains one
- * contiguous byte[]; above 256K bulk appends use exact sizing and small appends double capacity.
+ * contiguous byte[]; above 64K bulk appends use exact sizing and small appends double capacity.
  * Oversized arrays may be reused through a soft-referenced cache; no standby buffer is allocated.
  */
 public final class PooledByteArrayOutputStream extends OutputStream {
@@ -25,7 +25,7 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         byte[] value = active();
         if (required > value.length) {
             byte[] previous = value;
-            byte[] next = required > OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY
+            byte[] next = required > OutputBufferRecycler.MAX_RETAINED_CAPACITY
                     ? recycler.takeLargeBytes(required) : null;
             if (next == null)
                 next = new byte[OutputBufferRecycler.growBytesCapacity(previous.length, count, required)];
