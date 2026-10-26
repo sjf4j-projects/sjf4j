@@ -216,15 +216,17 @@ class OneOfIOTest {
     }
 
     @Test
-    void rejectsOneOfOnCreatorParametersOrCreatorBoundFields() {
+    void readsOneOfOnCreatorParametersAndCreatorBoundFields() {
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
-        BindingException field = assertThrows(BindingException.class,
-                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorMemberOneOf.class));
-        assertEquals(true, field.getMessage().contains("creator-bound property"));
-
-        BindingException parameter = assertThrows(BindingException.class,
-                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorParameterOneOf.class));
-        assertEquals(true, parameter.getMessage().contains("creator parameter"));
+        for (String json : new String[]{
+                "{\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9}}",
+                "{\"pet\":{\"name\":\"Mog\",\"lives\":9,\"species\":\"cat\"}}"
+        }) {
+            CreatorMemberOneOf field = (CreatorMemberOneOf) binder.readNode(json, CreatorMemberOneOf.class);
+            assertEquals(9, assertInstanceOf(Cat.class, field.pet).lives);
+            CreatorParameterOneOf parameter = (CreatorParameterOneOf) binder.readNode(json, CreatorParameterOneOf.class);
+            assertEquals(9, assertInstanceOf(Cat.class, parameter.pet).lives);
+        }
     }
 
     @Test
