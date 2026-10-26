@@ -1,16 +1,15 @@
-package org.sjf4j.backend.jackson3.binding;
+package org.sjf4j.backend.jackson2.binding;
 
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.NameMatcher;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.FastUuid;
-import tools.jackson.core.JsonParser;
-import tools.jackson.core.JsonToken;
-import tools.jackson.core.sym.PropertyNameMatcher;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -22,28 +21,28 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Jackson 3 adapter for the consuming-value streaming protocol.
+ * Jackson 2 adapter for the consuming-value streaming protocol.
  *
- * <p>The normal object-binding path keeps Jackson's cursor on a property name
+ * <p>The normal object-binding path keeps Jackson's cursor on FIELD_NAME
  * after {@link #nextNameMatch(NameMatcher)}. The following read operation
- * advances directly to its value, using Jackson's fused nextXxxValue methods
+ * advances directly to its value using Jackson's fused nextXxxValue methods
  * where available. No lookahead flag is needed on that hot path.</p>
  *
  * <p>{@code prefetched} is used only for a failed conditional probe,
  * {@link #peekToken()}, or a parser supplied with an existing current token.
  * Such a token has been fetched physically but remains unconsumed logically.</p>
  */
-public final class Jackson3Reader extends StreamingReader {
+public final class Jackson2Parser extends StreamingParser {
 
     private final JsonParser parser;
     private boolean prefetched;
 
     /**
      * Creates a reader, preserving a parser already positioned on a token.
-     * @param parser the Jackson 3 parser
+     * @param parser the Jackson 2 parser
      */
-    public Jackson3Reader(JsonParser parser) {
-        super(Backend.JACKSON3);
+    public Jackson2Parser(JsonParser parser) {
+        super(Backend.JACKSON2);
         this.parser = Asserts.notNull(parser, "parser");
         // A caller may supply a parser already positioned on the first token.
         this.prefetched = parser.currentToken() != null;
@@ -54,7 +53,7 @@ public final class Jackson3Reader extends StreamingReader {
      * -------------------------------------------------------------- */
 
     @Override
-    public void endDocument() throws IOException {
+    public void endRead() throws IOException {
         if (prefetched) {
             prefetched = false;
             JsonToken current = parser.currentToken();
@@ -81,12 +80,12 @@ public final class Jackson3Reader extends StreamingReader {
 
     @Override
     protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
-        return new Jackson3NameMatcher(writableProperties);
+        return new Jackson2NameMatcher(writableProperties);
     }
 
     @Override
     protected NameMatcher createNameMatcher(String[] names) {
-        return new Jackson3NameMatcher(names);
+        return new Jackson2NameMatcher(names);
     }
 
     /* --------------------------------------------------------------
@@ -162,25 +161,26 @@ public final class Jackson3Reader extends StreamingReader {
             if (current == JsonToken.END_OBJECT) {
                 return null;
             }
-            if (current != JsonToken.PROPERTY_NAME) {
-                throw expected(JsonToken.PROPERTY_NAME.name(), current);
+            if (current != JsonToken.FIELD_NAME) {
+                throw expected(JsonToken.FIELD_NAME.name(), current);
             }
             return parser.currentName();
         }
 
-        String name = parser.nextName();
+        String name = parser.nextFieldName();
         if (name != null) {
             return name;
         }
         if (parser.currentToken() == JsonToken.END_OBJECT) {
             return null;
         }
-        throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
+        throw expected(JsonToken.FIELD_NAME.name(), parser.currentToken());
     }
 
     /**
-     * Uses Jackson 3's native multi-name matcher. The matched property value
-     * remains pending; the parser is still on PROPERTY_NAME on return.
+     * Matches the next name. Jackson 2 can match an expected serialized name
+     * without materializing a String; remaining names use the fallback table.
+     * The parser stays at FIELD_NAME, so the value remains pending.
      */
     @Override
     public String currentName() throws IOException {
@@ -189,42 +189,47 @@ public final class Jackson3Reader extends StreamingReader {
 
     @Override
     public int nextNameMatch(NameMatcher matcher) throws IOException {
-        Jackson3NameMatcher jacksonMatcher = (Jackson3NameMatcher) matcher;
-        int match;
-
-        if (prefetched) {
-            // A probe has already advanced to the name or object end.
-            prefetched = false;
-            JsonToken current = parser.currentToken();
-            if (current == JsonToken.END_OBJECT) {
-                return NameMatcher.OBJECT_END;
-            }
-            if (current != JsonToken.PROPERTY_NAME) {
-                throw expected(JsonToken.PROPERTY_NAME.name(), current);
-            }
-            match = parser.currentNameMatch(jacksonMatcher.matcher);
-        } else {
-            match = parser.nextNameMatch(jacksonMatcher.matcher);
-        }
-
-        if (match >= 0) {
-            return match;
-        }
-        if (match == PropertyNameMatcher.MATCH_END_OBJECT) {
-            return NameMatcher.OBJECT_END;
-        }
-        if (match == PropertyNameMatcher.MATCH_UNKNOWN_NAME) {
-            // Aliases, unrecognized members: resolve without consuming value.
-            return matcher.fallback(parser.currentName());
-        }
-        // MATCH_ODD_TOKEN, or any other invalid matcher result.
-        throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
+        return nextNameMatch(matcher, -1);
     }
 
     @Override
     public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
-        // Jackson 3's native multi-name matcher does not require an index hint.
-        return nextNameMatch(matcher);
+        Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
+        if (prefetched) {
+            JsonToken current = parser.currentToken();
+            prefetched = false;
+            if (current == JsonToken.END_OBJECT) {
+                return NameMatcher.OBJECT_END;
+            }
+            if (current != JsonToken.FIELD_NAME) {
+                throw expected(JsonToken.FIELD_NAME.name(), current);
+            }
+            return matcher.fallback(parser.currentName());
+        }
+
+        if (expectedIndex >= 0 && expectedIndex < jacksonMatcher.serializedNames.length) {
+            if (parser.nextFieldName(jacksonMatcher.serializedNames[expectedIndex])) {
+                return expectedIndex;
+            }
+            // On mismatch, nextFieldName already advanced to the actual name/end.
+            JsonToken current = parser.currentToken();
+            if (current == JsonToken.FIELD_NAME) {
+                return matcher.fallback(parser.currentName());
+            }
+            if (current == JsonToken.END_OBJECT) {
+                return NameMatcher.OBJECT_END;
+            }
+            throw expected(JsonToken.FIELD_NAME.name(), current);
+        }
+
+        String name = parser.nextFieldName();
+        if (name != null) {
+            return matcher.fallback(name);
+        }
+        if (parser.currentToken() == JsonToken.END_OBJECT) {
+            return NameMatcher.OBJECT_END;
+        }
+        throw expected(JsonToken.FIELD_NAME.name(), parser.currentToken());
     }
 
     /* --------------------------------------------------------------
@@ -233,6 +238,8 @@ public final class Jackson3Reader extends StreamingReader {
 
     @Override
     public UUID readUuid() throws IOException {
+//        String str = readString();
+//        return str == null ? null : FastUuid.parseUUID(str);
         JsonToken token = prefetched ? parser.currentToken() : parser.nextToken();
         prefetched = false;
         if (token == JsonToken.VALUE_NULL) {
@@ -241,7 +248,7 @@ public final class Jackson3Reader extends StreamingReader {
         if (token != JsonToken.VALUE_STRING) {
             throw expected("string or null", token);
         }
-        return FastUuid.parseUUID(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
+        return FastUuid.parseUUID(parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
     }
 
     @Override
@@ -253,12 +260,12 @@ public final class Jackson3Reader extends StreamingReader {
                 return null;
             }
             if (current == JsonToken.VALUE_STRING) {
-                return parser.getString();
+                return parser.getText();
             }
             throw expected("string or null", current);
         }
 
-        String value = parser.nextStringValue();
+        String value = parser.nextTextValue();
         if (value != null) {
             return value;
         }
@@ -471,7 +478,7 @@ public final class Jackson3Reader extends StreamingReader {
 
     @Override
     public BigDecimal readBigDecimal() throws IOException {
-        // Preserve the existing Jackson3Reader's numeric conversion semantics:
+        // Preserve the existing Jackson2Parser's numeric conversion semantics:
         // a floating literal read as Double is converted using BigDecimal.valueOf.
         // Switching to getDecimalValue() changes scale (e.g. 1.20e-3).
         Number number = readNumber();
@@ -504,7 +511,7 @@ public final class Jackson3Reader extends StreamingReader {
             case START_ARRAY:
                 return readRawArray();
             case VALUE_STRING:
-                return parser.getString();
+                return parser.getText();
             case VALUE_NUMBER_INT:
             case VALUE_NUMBER_FLOAT:
                 return parser.getNumberValue();
@@ -521,7 +528,7 @@ public final class Jackson3Reader extends StreamingReader {
     private Map<String, Object> readRawObject() throws IOException {
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
-        while ((name = parser.nextName()) != null) {
+        while ((name = parser.nextFieldName()) != null) {
             value.put(name, readRaw(parser.nextToken()));
         }
         return value;
@@ -541,7 +548,7 @@ public final class Jackson3Reader extends StreamingReader {
      * -------------------------------------------------------------- */
 
     @Override
-    public void close() throws IOException {
+    public void release() throws IOException {
         parser.close();
     }
 
@@ -588,7 +595,7 @@ public final class Jackson3Reader extends StreamingReader {
                 return Token.OBJECT_START;
             case END_OBJECT:
                 return Token.OBJECT_END;
-            case PROPERTY_NAME:
+            case FIELD_NAME:
                 return Token.NAME;
             case START_ARRAY:
                 return Token.ARRAY_START;

@@ -4,7 +4,7 @@ import com.alibaba.fastjson2.JSONReader;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.NameMatcher;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
@@ -24,8 +24,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** StreamingReader backed directly by a Fastjson2 {@link JSONReader}. */
-public final class Fastjson2Reader extends StreamingReader {
+/** StreamingParser backed directly by a Fastjson2 {@link JSONReader}. */
+public final class Fastjson2Parser extends StreamingParser {
 
     private final JSONReader reader;
     private Token peeked;
@@ -34,7 +34,7 @@ public final class Fastjson2Reader extends StreamingReader {
      * Creates a reader around a Fastjson2 JSON cursor.
      * @param reader the Fastjson2 reader
      */
-    public Fastjson2Reader(JSONReader reader) {
+    public Fastjson2Parser(JSONReader reader) {
         super(Backend.FASTJSON2);
         this.reader = Asserts.notNull(reader, "reader");
     }
@@ -83,7 +83,7 @@ public final class Fastjson2Reader extends StreamingReader {
     }
 
     @Override
-    public void endDocument() throws IOException {
+    public void endRead() throws IOException {
         if (!reader.isEnd()) {
             throw new IOException("expected end of document");
         }
@@ -341,7 +341,7 @@ public final class Fastjson2Reader extends StreamingReader {
     }
 
     @Override
-    public void close() {
+    public void release() {
         reader.close();
     }
 

@@ -3,7 +3,7 @@ package org.sjf4j.backend.jackson3.binding;
 import tools.jackson.core.JsonGenerator;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -16,12 +16,12 @@ import java.math.BigInteger;
  * <p>Jackson owns object/array separators. The separated name overloads therefore
  * have exactly the same behavior as their non-separated counterparts.</p>
  */
-public final class Jackson3Writer extends StreamingWriter {
+public final class Jackson3Generator extends StreamingGenerator {
 
     private final JsonGenerator generator;
 
     /** Creates a writer around an existing Jackson generator. */
-    public Jackson3Writer(JsonGenerator generator) {
+    public Jackson3Generator(JsonGenerator generator) {
         super(Backend.JACKSON3);
         this.generator = Asserts.notNull(generator, "generator");
     }
@@ -190,12 +190,12 @@ public final class Jackson3Writer extends StreamingWriter {
      */
 
     @Override
-    public void flush() throws IOException {
+    public void endWrite() throws IOException {
         generator.flush();
     }
 
     @Override
-    public void close() throws IOException {
+    public void release() throws IOException {
         generator.close();
     }
 }

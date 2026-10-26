@@ -3,7 +3,7 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -21,8 +21,8 @@ import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
 
-/** StreamingWriter backed directly by a Fastjson2 {@link JSONWriter}. */
-public final class Fastjson2Writer extends StreamingWriter {
+/** StreamingGenerator backed directly by a Fastjson2 {@link JSONWriter}. */
+public final class Fastjson2Generator extends StreamingGenerator {
 
     private final JSONWriter writer;
     private final Writer charOutput;
@@ -35,7 +35,7 @@ public final class Fastjson2Writer extends StreamingWriter {
      * Creates a writer using a Fastjson2-owned output buffer.
      * @param writer the Fastjson2 writer
      */
-    public Fastjson2Writer(JSONWriter writer) {
+    public Fastjson2Generator(JSONWriter writer) {
         this(writer, null, null);
     }
 
@@ -44,7 +44,7 @@ public final class Fastjson2Writer extends StreamingWriter {
      * @param writer the Fastjson2 writer
      * @param output the character stream
      */
-    public Fastjson2Writer(JSONWriter writer, Writer output) {
+    public Fastjson2Generator(JSONWriter writer, Writer output) {
         this(writer, Asserts.notNull(output, "output"), null);
     }
 
@@ -53,11 +53,11 @@ public final class Fastjson2Writer extends StreamingWriter {
      * @param writer the Fastjson2 writer
      * @param output the byte stream
      */
-    public Fastjson2Writer(JSONWriter writer, OutputStream output) {
+    public Fastjson2Generator(JSONWriter writer, OutputStream output) {
         this(writer, null, Asserts.notNull(output, "output"));
     }
 
-    private Fastjson2Writer(JSONWriter writer, Writer charOutput, OutputStream byteOutput) {
+    private Fastjson2Generator(JSONWriter writer, Writer charOutput, OutputStream byteOutput) {
         super(Backend.FASTJSON2);
         this.writer = Asserts.notNull(writer, "writer");
         this.charOutput = charOutput;
@@ -294,7 +294,7 @@ public final class Fastjson2Writer extends StreamingWriter {
     }
 
     @Override
-    public void flush() throws IOException {
+    public void endWrite() throws IOException {
         if (charOutput != null) {
             writer.flushTo(charOutput);
         } else if (byteOutput != null) {
@@ -319,8 +319,7 @@ public final class Fastjson2Writer extends StreamingWriter {
     }
 
     @Override
-    public void close() throws IOException {
-        flush();
+    public void release() throws IOException {
         writer.close();
     }
 }

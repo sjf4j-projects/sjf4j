@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
  * The supplied contexts are configured in place to use doubles for decimal
  * reads and to write nulls; SJF4J controls omission of null object properties.
  */
-public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writer> {
+public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Generator> {
 
     private final JSONReader.Context readerContext;
     private final JSONWriter.Context writerContext;
@@ -76,33 +76,33 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
      * @param reader the Fastjson2 reader
      * @return a SJF4J streaming reader
      */
-    public Fastjson2Reader createReader(JSONReader reader) {
+    public Fastjson2Parser createParser(JSONReader reader) {
         Asserts.notNull(reader, "reader");
-        return new Fastjson2Reader(reader);
+        return new Fastjson2Parser(reader);
     }
 
     @Override
-    public Fastjson2Reader createReader(Reader input) throws IOException {
+    public Fastjson2Parser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Fastjson2Reader(JSONReader.of(input, readerContext));
+        return new Fastjson2Parser(JSONReader.of(input, readerContext));
     }
 
     @Override
-    public Fastjson2Reader createReader(InputStream input) {
+    public Fastjson2Parser createParser(InputStream input) {
         Asserts.notNull(input, "input");
-        return new Fastjson2Reader(JSONReader.of(input, StandardCharsets.UTF_8, readerContext));
+        return new Fastjson2Parser(JSONReader.of(input, StandardCharsets.UTF_8, readerContext));
     }
 
     @Override
-    public Fastjson2Reader createReader(String input) throws IOException {
+    public Fastjson2Parser createParser(String input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Fastjson2Reader(JSONReader.of(input, readerContext));
+        return new Fastjson2Parser(JSONReader.of(input, readerContext));
     }
 
     @Override
-    public Fastjson2Reader createReader(byte[] input) throws IOException {
+    public Fastjson2Parser createParser(byte[] input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Fastjson2Reader(JSONReader.of(input, readerContext));
+        return new Fastjson2Parser(JSONReader.of(input, readerContext));
     }
 
 
@@ -118,29 +118,29 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
      * @param writer the Fastjson2 writer
      * @return a SJF4J streaming writer
      */
-    public Fastjson2Writer createWriter(JSONWriter writer) {
+    public Fastjson2Generator createGenerator(JSONWriter writer) {
         Asserts.notNull(writer, "writer");
-        return new Fastjson2Writer(writer);
+        return new Fastjson2Generator(writer);
     }
 
     @Override
-    public Fastjson2Writer createWriter(Writer output) throws IOException {
+    public Fastjson2Generator createGenerator(Writer output) throws IOException {
         Asserts.notNull(output, "output");
-        return new Fastjson2Writer(JSONWriter.of(writerContext), output);
+        return new Fastjson2Generator(JSONWriter.of(writerContext), output);
     }
 
     @Override
-    public Fastjson2Writer createWriter(OutputStream output) throws IOException {
+    public Fastjson2Generator createGenerator(OutputStream output) throws IOException {
         Asserts.notNull(output, "output");
-        return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext), output);
+        return new Fastjson2Generator(JSONWriter.ofUTF8(writerContext), output);
     }
 
     /**
      * Creates an in-memory writer using this binder's configured context.
      * @return a writer with a Fastjson2-owned output buffer
      */
-    public Fastjson2Writer createWriter() {
-        return new Fastjson2Writer(JSONWriter.of(writerContext));
+    public Fastjson2Generator createGenerator() {
+        return new Fastjson2Generator(JSONWriter.of(writerContext));
     }
 
     /**
@@ -189,8 +189,8 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
      * Creates an in-memory UTF-8 writer for compiled byte[] output.
      * @return the UTF-8 streaming writer
      */
-    public Fastjson2Writer createWriterUtf8() {
-        return new Fastjson2Writer(JSONWriter.ofUTF8(writerContext));
+    public Fastjson2Generator createGeneratorUtf8() {
+        return new Fastjson2Generator(JSONWriter.ofUTF8(writerContext));
     }
 
     /**
@@ -201,10 +201,10 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
     @Override
     public String writeNodeAsString(Object node) {
         try (JSONWriter output = JSONWriter.of(writerContext)) {
-            Fastjson2Writer writer = new Fastjson2Writer(output);
-            writer.startDocument();
+            Fastjson2Generator writer = new Fastjson2Generator(output);
+            writer.startWrite();
             StreamingIO.writeNode(writer, node, context);
-            writer.endDocument();
+            writer.endWrite();
             return output.toString();
         } catch (BindingException e) {
             throw e;
@@ -218,10 +218,10 @@ public final class Fastjson2Binder extends Binder<Fastjson2Reader, Fastjson2Writ
     @Override
     public byte[] writeNodeAsBytes(Object node) {
         try (JSONWriter output = JSONWriter.ofUTF8(writerContext)) {
-            Fastjson2Writer writer = new Fastjson2Writer(output);
-            writer.startDocument();
+            Fastjson2Generator writer = new Fastjson2Generator(output);
+            writer.startWrite();
             StreamingIO.writeNode(writer, node, context);
-            writer.endDocument();
+            writer.endWrite();
             return output.getBytes();
         } catch (BindingException e) {
             throw e;

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ser.std.UUIDSerializer;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -18,12 +18,12 @@ import java.util.UUID;
  * <p>Jackson owns object/array separators. The separated name overloads therefore
  * have exactly the same behavior as their non-separated counterparts.</p>
  */
-public final class Jackson2Writer extends StreamingWriter {
+public final class Jackson2Generator extends StreamingGenerator {
 
     private final JsonGenerator generator;
 
     /** Creates a writer around an existing Jackson generator. */
-    public Jackson2Writer(JsonGenerator generator) {
+    public Jackson2Generator(JsonGenerator generator) {
         super(Backend.JACKSON2);
         this.generator = Asserts.notNull(generator, "generator");
     }
@@ -205,12 +205,12 @@ public final class Jackson2Writer extends StreamingWriter {
      */
 
     @Override
-    public void flush() throws IOException {
+    public void endWrite() throws IOException {
         generator.flush();
     }
 
     @Override
-    public void close() throws IOException {
+    public void release() throws IOException {
         generator.close();
     }
 }
