@@ -12,7 +12,7 @@ class PooledOutputTest {
 
     @BeforeEach
     void isolateThreadLocalRecyclerSlots() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         recycler.takeLargeBytes(1);
         recycler.takeLargeChars(1);
         recycler.takeBytes();
@@ -76,15 +76,15 @@ class PooledOutputTest {
     @Test
     void oversizedByteOutputRecyclesIntoSoftCache() {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        byte[] large = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
+        byte[] large = new byte[OutputPool.MAX_RETAINED_CAPACITY + 1];
         Arrays.fill(large, (byte) 9);
         output.write(large, 0, large.length);
         assertArrayEquals(large, output.getAndRecycle());
-        byte[] next = OutputBufferRecycler.acquireBytes();
+        byte[] next = OutputPool.acquireBytes();
         try {
             assertTrue(next.length >= large.length);
         } finally {
-            OutputBufferRecycler.release(next);
+            OutputPool.release(next);
         }
     }
 
@@ -97,11 +97,11 @@ class PooledOutputTest {
         } finally {
             writer.recycle();
         }
-        char[] reusable = OutputBufferRecycler.acquireChars();
+        char[] reusable = OutputPool.acquireChars();
         try {
-            assertTrue(reusable.length >= OutputBufferRecycler.INITIAL_CAPACITY);
+            assertTrue(reusable.length >= OutputPool.INITIAL_CAPACITY);
         } finally {
-            OutputBufferRecycler.release(reusable);
+            OutputPool.release(reusable);
         }
     }
 
@@ -135,8 +135,8 @@ class PooledOutputTest {
     @Test
     void recyclerReuses128KCharAndByteOutputsThroughSoftCache() {
         // Checkout existing caches first so the initial capacity is deterministic.
-        char[] previousChars = OutputBufferRecycler.acquireChars();
-        byte[] previousBytes = OutputBufferRecycler.acquireBytes();
+        char[] previousChars = OutputPool.acquireChars();
+        byte[] previousBytes = OutputPool.acquireBytes();
         try {
         // Two 64K writes exercise contiguous array growth without direct String pass-through.
         String contents = "x".repeat(128 * 1024);
@@ -144,11 +144,11 @@ class PooledOutputTest {
         writer.write(contents, 0, 64 * 1024);
         writer.write(contents, 64 * 1024, 64 * 1024);
         assertEquals(contents, writer.getAndRecycle());
-        char[] cachedChars = OutputBufferRecycler.acquireChars();
+        char[] cachedChars = OutputPool.acquireChars();
         try {
             assertEquals(128 * 1024, cachedChars.length);
         } finally {
-            OutputBufferRecycler.release(cachedChars);
+            OutputPool.release(cachedChars);
         }
 
         byte[] payload = new byte[128 * 1024];
@@ -156,28 +156,28 @@ class PooledOutputTest {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
         output.write(payload, 0, payload.length);
         assertArrayEquals(payload, output.getAndRecycle());
-        byte[] cachedBytes = OutputBufferRecycler.acquireBytes();
+        byte[] cachedBytes = OutputPool.acquireBytes();
         try {
             assertEquals(128 * 1024, cachedBytes.length);
         } finally {
-            OutputBufferRecycler.release(cachedBytes);
+            OutputPool.release(cachedBytes);
         }
         } finally {
-            OutputBufferRecycler.release(previousChars);
-            OutputBufferRecycler.release(previousBytes);
+            OutputPool.release(previousChars);
+            OutputPool.release(previousBytes);
         }
     }
 
     @Test
     void recyclerPrefersSoftArraysBeyond64KCap() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         char[] priorLargeChars = recycler.takeLargeChars(1);
         byte[] priorLargeBytes = recycler.takeLargeBytes(1);
         char[] priorChars = recycler.takeChars();
         byte[] priorBytes = recycler.takeBytes();
         try {
-            char[] softChars = new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
-            byte[] softBytes = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
+            char[] softChars = new char[OutputPool.MAX_RETAINED_CAPACITY + 1];
+            byte[] softBytes = new byte[OutputPool.MAX_RETAINED_CAPACITY + 1];
             recycler.recycleChars(softChars);
             recycler.recycleBytes(softBytes);
             assertSame(softChars, recycler.takeChars());
@@ -192,25 +192,25 @@ class PooledOutputTest {
 
     @Test
     void expansionUsesPowerOfTwoTiersUntil64KAndAdaptiveGrowthBeyond() {
-        assertEquals(1024, OutputBufferRecycler.growCapacity(512, 0, 1024));
-        assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 0, 1200));
-        assertEquals(4096, OutputBufferRecycler.growCapacity(1024, 0, 3000));
-        assertEquals(8192, OutputBufferRecycler.growCapacity(4096, 0, 5000));
-        assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 0, 65536));
-        assertEquals(65537, OutputBufferRecycler.growCapacity(65536, 0, 65537));
-        assertEquals(100000, OutputBufferRecycler.growCapacity(65536, 0, 100000));
-        assertEquals(98304, OutputBufferRecycler.growCapacity(65536, 65536, 65537));
-        assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 0, 262144));
-        assertEquals(300000, OutputBufferRecycler.growCapacity(131072, 0, 300000));
-        assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 0, 300000));
-        assertEquals(900000, OutputBufferRecycler.growCapacity(524288, 0, 900000));
+        assertEquals(1024, OutputPool.growCapacity(512, 0, 1024));
+        assertEquals(2048, OutputPool.growCapacity(1024, 0, 1200));
+        assertEquals(4096, OutputPool.growCapacity(1024, 0, 3000));
+        assertEquals(8192, OutputPool.growCapacity(4096, 0, 5000));
+        assertEquals(65536, OutputPool.growCapacity(32768, 0, 65536));
+        assertEquals(65537, OutputPool.growCapacity(65536, 0, 65537));
+        assertEquals(100000, OutputPool.growCapacity(65536, 0, 100000));
+        assertEquals(98304, OutputPool.growCapacity(65536, 65536, 65537));
+        assertEquals(262144, OutputPool.growCapacity(131072, 0, 262144));
+        assertEquals(300000, OutputPool.growCapacity(131072, 0, 300000));
+        assertEquals(300000, OutputPool.growCapacity(262144, 0, 300000));
+        assertEquals(900000, OutputPool.growCapacity(524288, 0, 900000));
         assertEquals(Integer.MAX_VALUE - 8,
-                OutputBufferRecycler.growCapacity(65536, Integer.MAX_VALUE - 8));
+                OutputPool.growCapacity(65536, Integer.MAX_VALUE - 8));
     }
 
     @Test
     void writerGrowsPast256KAndCachesOversizedArray() {
-        char[] oldCache = OutputBufferRecycler.acquireChars();
+        char[] oldCache = OutputPool.acquireChars();
         try {
             PooledStringWriter writer = new PooledStringWriter();
             try {
@@ -227,17 +227,17 @@ class PooledOutputTest {
             } finally {
                 writer.recycle();
             }
-            char[] cached = OutputBufferRecycler.acquireChars();
+            char[] cached = OutputPool.acquireChars();
             assertTrue(cached.length >= 256 * 1024 + 5);
-            OutputBufferRecycler.release(cached);
+            OutputPool.release(cached);
         } finally {
-            OutputBufferRecycler.release(oldCache);
+            OutputPool.release(oldCache);
         }
     }
 
     @Test
     void writerSupportsDirectOversizeResetAndReusesArray() {
-        char[] oldCache = OutputBufferRecycler.acquireChars();
+        char[] oldCache = OutputPool.acquireChars();
         try {
             PooledStringWriter writer = new PooledStringWriter();
             try {
@@ -254,17 +254,17 @@ class PooledOutputTest {
             } finally {
                 writer.recycle();
             }
-            char[] cached = OutputBufferRecycler.acquireChars();
+            char[] cached = OutputPool.acquireChars();
             assertTrue(cached.length >= 300 * 1024 + 1);
-            OutputBufferRecycler.release(cached);
+            OutputPool.release(cached);
         } finally {
-            OutputBufferRecycler.release(oldCache);
+            OutputPool.release(oldCache);
         }
     }
 
     @Test
     void byteOutputBeyond256KRetains256KAndGrowsWithoutClamping() {
-        byte[] oldCache = OutputBufferRecycler.acquireBytes();
+        byte[] oldCache = OutputPool.acquireBytes();
         try {
             byte[] payload = new byte[300 * 1024];
             Arrays.fill(payload, (byte) 31);
@@ -281,11 +281,11 @@ class PooledOutputTest {
             } finally {
                 output.recycle();
             }
-            byte[] cached = OutputBufferRecycler.acquireBytes();
+            byte[] cached = OutputPool.acquireBytes();
             assertTrue(cached.length >= payload.length + 1);
-            OutputBufferRecycler.release(cached);
+            OutputPool.release(cached);
         } finally {
-            OutputBufferRecycler.release(oldCache);
+            OutputPool.release(oldCache);
         }
     }
 
@@ -443,34 +443,34 @@ class PooledOutputTest {
     @Test
     void recyclerPrefersLargerBoundedCharAndByteArrays() {
         // Checkout clears each slot, so this test does not depend on another test's cache.
-        byte[] priorBytes = OutputBufferRecycler.acquireBytes();
-        char[] priorChars = OutputBufferRecycler.acquireChars();
+        byte[] priorBytes = OutputPool.acquireBytes();
+        char[] priorChars = OutputPool.acquireChars();
         try {
             byte[] smallBytes = new byte[2048];
             byte[] largeBytes = new byte[8192];
-            OutputBufferRecycler.release(smallBytes);
-            OutputBufferRecycler.release(largeBytes);
-            OutputBufferRecycler.release(new byte[4096]);
-            assertSame(largeBytes, OutputBufferRecycler.acquireBytes());
+            OutputPool.release(smallBytes);
+            OutputPool.release(largeBytes);
+            OutputPool.release(new byte[4096]);
+            assertSame(largeBytes, OutputPool.acquireBytes());
 
             char[] smallChars = new char[2048];
             char[] largeChars = new char[8192];
-            OutputBufferRecycler.release(smallChars);
-            OutputBufferRecycler.release(largeChars);
-            OutputBufferRecycler.release(new char[4096]);
-            assertSame(largeChars, OutputBufferRecycler.acquireChars());
+            OutputPool.release(smallChars);
+            OutputPool.release(largeChars);
+            OutputPool.release(new char[4096]);
+            assertSame(largeChars, OutputPool.acquireChars());
 
-            OutputBufferRecycler.release(largeBytes);
-            OutputBufferRecycler.release(largeChars);
+            OutputPool.release(largeBytes);
+            OutputPool.release(largeChars);
         } finally {
-            OutputBufferRecycler.release(priorBytes);
-            OutputBufferRecycler.release(priorChars);
+            OutputPool.release(priorBytes);
+            OutputPool.release(priorChars);
         }
     }
 
     @Test
     void recyclerFallsBackToStrongBuffersAfterSoftCheckout() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         byte[] oldSoftBytes = recycler.takeLargeBytes(1);
         char[] oldSoftChars = recycler.takeLargeChars(1);
         byte[] oldBytes = recycler.takeBytes();
@@ -498,7 +498,7 @@ class PooledOutputTest {
 
     @Test
     void recyclerSupportsDirectOwnershipAndNestedCheckout() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         char[] previous = recycler.takeChars();
         try {
             char[] candidate = new char[4096];
@@ -509,7 +509,7 @@ class PooledOutputTest {
             recycler.recycleChars(nested);
             recycler.recycleChars(candidate);
             assertSame(candidate, recycler.takeChars());
-            recycler.recycleChars(new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
+            recycler.recycleChars(new char[OutputPool.MAX_RETAINED_CAPACITY + 1]);
         } finally {
             recycler.recycleChars(previous);
         }
@@ -517,18 +517,18 @@ class PooledOutputTest {
 
     @Test
     void adaptiveGrowthUsesExistingCapacityForSmallAppends() {
-        assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 0, 300000));
-        assertEquals(393216, OutputBufferRecycler.growCapacity(262144, 200000, 300000));
-        assertEquals(450000, OutputBufferRecycler.growCapacity(300000, 299999, 300001));
-        assertEquals(600000, OutputBufferRecycler.growCapacity(400000, 400000, 400001));
-        assertEquals(900000, OutputBufferRecycler.growCapacity(800000, 400000, 900000));
-        assertEquals(800000, OutputBufferRecycler.growCapacity(800000, 400000, 800000));
+        assertEquals(300000, OutputPool.growCapacity(262144, 0, 300000));
+        assertEquals(393216, OutputPool.growCapacity(262144, 200000, 300000));
+        assertEquals(450000, OutputPool.growCapacity(300000, 299999, 300001));
+        assertEquals(600000, OutputPool.growCapacity(400000, 400000, 400001));
+        assertEquals(900000, OutputPool.growCapacity(800000, 400000, 900000));
+        assertEquals(800000, OutputPool.growCapacity(800000, 400000, 800000));
     }
 
     @Test
     void oversizedArraysRetainOnlyPreviouslyUsedBuffers() {
-        char[] previousChars = OutputBufferRecycler.acquireChars();
-        byte[] previousBytes = OutputBufferRecycler.acquireBytes();
+        char[] previousChars = OutputPool.acquireChars();
+        byte[] previousBytes = OutputPool.acquireBytes();
         try {
             String chars = "x".repeat(300 * 1024);
             PooledStringWriter writer = new PooledStringWriter();
@@ -541,43 +541,43 @@ class PooledOutputTest {
             output.write(bytes, 0, bytes.length);
             assertArrayEquals(bytes, output.getAndRecycle());
 
-            char[] cachedChars = OutputBufferRecycler.acquireChars();
-            byte[] cachedBytes = OutputBufferRecycler.acquireBytes();
+            char[] cachedChars = OutputPool.acquireChars();
+            byte[] cachedBytes = OutputPool.acquireBytes();
             try {
-                assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, cachedChars.length);
+                assertEquals(OutputPool.INITIAL_CAPACITY, cachedChars.length);
                 assertTrue(cachedBytes.length >= bytes.length);
             } finally {
-                OutputBufferRecycler.release(cachedChars);
-                OutputBufferRecycler.release(cachedBytes);
+                OutputPool.release(cachedChars);
+                OutputPool.release(cachedBytes);
             }
         } finally {
-            OutputBufferRecycler.release(previousChars);
-            OutputBufferRecycler.release(previousBytes);
+            OutputPool.release(previousChars);
+            OutputPool.release(previousBytes);
         }
     }
 
     @Test
     void byteGrowthUsesDoublingForSmallAppendsAndExactForBulk() {
-        assertEquals(262144, OutputBufferRecycler.growBytesCapacity(131072, 120000, 180000));
-        assertEquals(300000, OutputBufferRecycler.growBytesCapacity(262144, 0, 300000));
-        assertEquals(524288, OutputBufferRecycler.growBytesCapacity(262144, 262144, 262145));
-        assertEquals(1048576, OutputBufferRecycler.growBytesCapacity(524288, 524288, 524289));
-        assertEquals(900000, OutputBufferRecycler.growBytesCapacity(524288, 100000, 900000));
+        assertEquals(262144, OutputPool.growBytesCapacity(131072, 120000, 180000));
+        assertEquals(300000, OutputPool.growBytesCapacity(262144, 0, 300000));
+        assertEquals(524288, OutputPool.growBytesCapacity(262144, 262144, 262145));
+        assertEquals(1048576, OutputPool.growBytesCapacity(524288, 524288, 524289));
+        assertEquals(900000, OutputPool.growBytesCapacity(524288, 100000, 900000));
         assertEquals(Integer.MAX_VALUE - 8,
-                OutputBufferRecycler.growBytesCapacity(1073741824, 1073741824, 1073741825));
+                OutputPool.growBytesCapacity(1073741824, 1073741824, 1073741825));
     }
 
     @Test
     void expansionRejectsInvalidAndOversizedRequirements() {
         assertThrows(OutOfMemoryError.class,
-                () -> OutputBufferRecycler.growCapacity(1024, -1));
+                () -> OutputPool.growCapacity(1024, -1));
         assertThrows(OutOfMemoryError.class,
-                () -> OutputBufferRecycler.growCapacity(1024, Integer.MAX_VALUE));
-        assertEquals(1024, OutputBufferRecycler.growCapacity(1024, 0, 1));
-        assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 0, 1025));
-        assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 0, 65536));
-        assertEquals(65537, OutputBufferRecycler.growCapacity(65536, 0, 65537));
-        assertEquals(98304, OutputBufferRecycler.growCapacity(65536, 65536, 65537));
+                () -> OutputPool.growCapacity(1024, Integer.MAX_VALUE));
+        assertEquals(1024, OutputPool.growCapacity(1024, 0, 1));
+        assertEquals(2048, OutputPool.growCapacity(1024, 0, 1025));
+        assertEquals(65536, OutputPool.growCapacity(32768, 0, 65536));
+        assertEquals(65537, OutputPool.growCapacity(65536, 0, 65537));
+        assertEquals(98304, OutputPool.growCapacity(65536, 65536, 65537));
     }
 
 
@@ -662,7 +662,7 @@ class PooledOutputTest {
 
     @Test
     void softLargeCachesAreSeparateFromBoundedCachesAndPreferLargestArray() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         byte[] priorSmallBytes = recycler.takeBytes();
         char[] priorSmallChars = recycler.takeChars();
         byte[] priorLargeBytes = recycler.takeLargeBytes(1);
@@ -698,7 +698,7 @@ class PooledOutputTest {
 
     @Test
     void byteOutputReusesSoftCachedLargeArrayWithoutEagerAllocation() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         byte[] priorSmall = recycler.takeBytes();
         byte[] priorLarge = recycler.takeLargeBytes(1);
         try {
@@ -729,7 +729,7 @@ class PooledOutputTest {
 
     @Test
     void oneKilobyteOutputReusesOneMegabyteSoftBufferWithoutFullCopy() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         byte[] oldSoftBytes = recycler.takeLargeBytes(1);
         char[] oldSoftChars = recycler.takeLargeChars(1);
         byte[] oldSmallBytes = recycler.takeBytes();
@@ -818,7 +818,7 @@ class PooledOutputTest {
 
     @Test
     void buffersBeyond64KAreSoftWhile64KRemainsStrong() {
-        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        OutputPool recycler = OutputPool.current();
         byte[] strongBytes = new byte[64 * 1024];
         char[] strongChars = new char[64 * 1024];
         byte[] softBytes = new byte[128 * 1024];
@@ -850,9 +850,9 @@ class PooledOutputTest {
 
     @Test
     void growthAndDirectStringThresholdAre64K() {
-        assertEquals(65537, OutputBufferRecycler.growCapacity(65536, 0, 65537));
-        assertEquals(98304, OutputBufferRecycler.growCapacity(65536, 65536, 65537));
-        assertEquals(131073, OutputBufferRecycler.growCapacity(131072, 0, 131073));
+        assertEquals(65537, OutputPool.growCapacity(65536, 0, 65537));
+        assertEquals(98304, OutputPool.growCapacity(65536, 65536, 65537));
+        assertEquals(131073, OutputPool.growCapacity(131072, 0, 131073));
 
         PooledStringWriter medium = new PooledStringWriter();
         try {
@@ -895,9 +895,9 @@ class PooledOutputTest {
 
     @Test
     void byteGrowthSwitchesFromPowerOfTwoToAdaptiveAt64K() {
-        assertEquals(65536, OutputBufferRecycler.growBytesCapacity(32768, 0, 65536));
-        assertEquals(65537, OutputBufferRecycler.growBytesCapacity(65536, 0, 65537));
-        assertEquals(131072, OutputBufferRecycler.growBytesCapacity(65536, 65536, 65537));
-        assertEquals(100000, OutputBufferRecycler.growBytesCapacity(65536, 0, 100000));
+        assertEquals(65536, OutputPool.growBytesCapacity(32768, 0, 65536));
+        assertEquals(65537, OutputPool.growBytesCapacity(65536, 0, 65537));
+        assertEquals(131072, OutputPool.growBytesCapacity(65536, 65536, 65537));
+        assertEquals(100000, OutputPool.growBytesCapacity(65536, 0, 100000));
     }
 }

@@ -10,14 +10,14 @@ import java.lang.ref.SoftReference;
  * adaptive policy and complete first String writes can be passed through.
  * Only previously used arrays are recycled; no standby buffers are allocated.</p>
  */
-final class OutputBufferRecycler {
+final class OutputPool {
 
     static final int INITIAL_CAPACITY = 1024;
     static final int MAX_RETAINED_CAPACITY = 64 * 1024;
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
-    private static final ThreadLocal<OutputBufferRecycler> LOCAL =
-            ThreadLocal.withInitial(OutputBufferRecycler::new);
+    private static final ThreadLocal<OutputPool> LOCAL =
+            ThreadLocal.withInitial(OutputPool::new);
 
     private byte[] bytes;
     private char[] chars;
@@ -40,9 +40,9 @@ final class OutputBufferRecycler {
         return holder;
     }
 
-    private OutputBufferRecycler() {}
+    private OutputPool() {}
 
-    static OutputBufferRecycler current() { return LOCAL.get(); }
+    static OutputPool current() { return LOCAL.get(); }
 
     byte[] takeBytes() {
         byte[] result = takeLargeBytes(1);

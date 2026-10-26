@@ -9,7 +9,7 @@ import java.util.Arrays;
  * Oversized arrays may be reused through a soft-referenced cache; no standby buffer is allocated.
  */
 public final class PooledByteArrayOutputStream extends OutputStream {
-    private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
+    private final OutputPool recycler = OutputPool.current();
     private byte[] buffer = recycler.takeBytes();
     private int count;
 
@@ -25,10 +25,10 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         byte[] value = active();
         if (required > value.length) {
             byte[] previous = value;
-            byte[] next = required > OutputBufferRecycler.MAX_RETAINED_CAPACITY
+            byte[] next = required > OutputPool.MAX_RETAINED_CAPACITY
                     ? recycler.takeLargeBytes(required) : null;
             if (next == null)
-                next = new byte[OutputBufferRecycler.growBytesCapacity(previous.length, count, required)];
+                next = new byte[OutputPool.growBytesCapacity(previous.length, count, required)];
             System.arraycopy(previous, 0, next, 0, count);
             buffer = value = next;
             recycler.recycleBytes(previous);
