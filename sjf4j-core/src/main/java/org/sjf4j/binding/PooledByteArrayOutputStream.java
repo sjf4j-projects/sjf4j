@@ -6,7 +6,7 @@ import java.util.Arrays;
 /**
  * Unsynchronized recyclable OutputStream. The output buffer remains one
  * contiguous byte[]; above 256K bulk appends use exact sizing and small appends double capacity.
- * Oversized arrays are discarded on recycle; no standby buffer is allocated.
+ * Oversized arrays may be reused through a soft-referenced cache; no standby buffer is allocated.
  */
 public final class PooledByteArrayOutputStream extends OutputStream {
     private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
@@ -25,7 +25,10 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         byte[] value = active();
         if (required > value.length) {
             byte[] previous = value;
-            byte[] next = new byte[OutputBufferRecycler.growBytesCapacity(previous.length, count, required)];
+            byte[] next = required > OutputBufferRecycler.MAX_RETAINED_CAPACITY
+                    ? recycler.takeLargeBytes(required) : null;
+            if (next == null)
+                next = new byte[OutputBufferRecycler.growBytesCapacity(previous.length, count, required)];
             System.arraycopy(previous, 0, next, 0, count);
             buffer = value = next;
             recycler.recycleBytes(previous);
