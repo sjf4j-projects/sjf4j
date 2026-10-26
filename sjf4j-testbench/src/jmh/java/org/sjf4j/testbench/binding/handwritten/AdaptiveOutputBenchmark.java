@@ -30,7 +30,7 @@ public class AdaptiveOutputBenchmark {
     private BufferRecycler jackson2Recycler;
 
     @Setup(Level.Trial)
-    public void prepare() {
+    public void prepare() throws IOException {
         String pattern = "ASCII".equals(alphabet) ? "hello-1234" : "中文测试例";
         data = pattern.repeat((payloadLength + pattern.length() - 1) / pattern.length())
                 .substring(0, payloadLength);
