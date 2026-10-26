@@ -33,9 +33,9 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*StrongCacheCapBenchmark\.(charsWithEviction|bytesWithEviction)$' \
-            -bm avgt -tu us -t 1 -f 2 -wi 5 -w 120ms -i 4 -r 120ms \
-            -p strongLimit=65536,262144 -p payloadLength=131072,262144,307200,1048576 -p alphabet=ASCII,UNICODE \
+          java -jar "$jar" '.*SegmentedOutputBenchmark\.(currentPooled|chunksCurrentPooled|jacksonUnlimited|chunksJacksonUnlimited|jacksonCapped|chunksJacksonCapped)$' \
+            -bm avgt -tu us -t 1 -f 2 -wi 10 -w 150ms -i 3 -r 150ms \
+            -p payloadLength=1024,4096,16384,65536,131072,262144,307200,1048576 -p alphabet=ASCII,UNICODE -p segmentSize=131072 \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -48,22 +48,19 @@ jobs:
           if not results: raise SystemExit('JMH produced no results')
           rows={}
           for r in results:
-              key=(int(r['params']['payloadLength']),r['params']['alphabet'],r['benchmark'].split('.')[-1])
-              rows.setdefault(key,{})[int(r['params']['strongLimit'])]=r
-          print('# 64K vs 256K after simulated soft cache clearance every 32 writes')
-          print('JDK 25, 2 forks, 5 warmups + 4 measurements, 120ms each; 256-char chunks.')
-          print('Value measures both write and finalized return. Unicode byte payload is UTF-8 encoded.')
-          for method in ['charsWithEviction','bytesWithEviction']:
-              print('\\n## '+method)
-              print('| Size | Alphabet | 64K us/op | 256K us/op | 64K / 256K | 64K B/op | 256K B/op |')
-              print('|---:|---|---:|---:|---:|---:|---:|')
-              for (size,alphabet,m),limits in sorted(rows.items()):
-                  if m != method: continue
-                  if 65536 not in limits or 262144 not in limits: raise SystemExit(f'Missing {size} {alphabet} {method}')
-                  lo=limits[65536]; hi=limits[262144]
-                  lt=lo['primaryMetric']['score']; ht=hi['primaryMetric']['score']
-                  alloc=lambda v:v.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan'))
-                  print(f'| {size} | {alphabet} | {lt:.4f} | {ht:.4f} | {lt/ht:.3f}x | {alloc(lo):.0f} | {alloc(hi):.0f} |')
+              key=(int(r['params']['payloadLength']),r['params']['alphabet'])
+              rows.setdefault(key,{})[r['benchmark'].split('.')[-1]]=r
+          print('# Production char writer versus Jackson2 segmented')
+          print('JDK 25, 2 forks, 10 warmups, 3 measures, 150ms; us/op, B/op.')
+          for name,methods in [('bulk',['currentPooled','jacksonUnlimited','jacksonCapped']),('chunks256',['chunksCurrentPooled','chunksJacksonUnlimited','chunksJacksonCapped'])]:
+              print('\\n## '+name)
+              print('| Size | Alphabet | SJF us/op | Jackson native us/op | Jackson capped us/op | SJF B/op | Jackson native B/op | Jackson capped B/op |')
+              print('|---:|---|---:|---:|---:|---:|---:|---:|')
+              for (size,alphabet),items in sorted(rows.items()):
+                  if any(n not in items for n in methods): raise SystemExit(f'Missing {name} {size} {alphabet}')
+                  scores=[items[n]['primaryMetric']['score'] for n in methods]
+                  allocs=[items[n].get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan')) for n in methods]
+                  print(f'| {size} | {alphabet} | '+' | '.join(f'{v:.3f}' for v in scores)+' | '+' | '.join(f'{v:.0f}' for v in allocs)+' |')
           PY
           cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve measurements
