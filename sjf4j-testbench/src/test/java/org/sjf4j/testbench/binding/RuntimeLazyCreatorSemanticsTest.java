@@ -1,4 +1,4 @@
-package org.sjf4j.testbench.processor;
+package org.sjf4j.testbench.binding;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
