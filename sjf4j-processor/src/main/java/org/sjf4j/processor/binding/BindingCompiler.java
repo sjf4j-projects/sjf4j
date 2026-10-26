@@ -533,7 +533,9 @@ final class BindingCompiler {
     private boolean canCompileOneOfReadSubtype(TypeMirror subtype, String key,
                                                ExecutableElement origin) {
         TypeElement type = context.types.typeElement(subtype);
-        if (type == null || type.getKind() != ElementKind.CLASS
+        if (type == null
+                || (type.getKind() != ElementKind.CLASS
+                && !"RECORD".equals(type.getKind().name()))
                 || !type.getModifiers().contains(Modifier.FINAL)
                 || !isVisibleOneOfSubtype(subtype)
                 || context.types.nodeKind(subtype) != NodeKind.OBJECT_POJO
@@ -557,9 +559,14 @@ final class BindingCompiler {
             List<? extends VariableElement> parameters = creator.executable().getParameters();
             for (int i = 0; i < parameters.size(); i++) {
                 VariableElement arg = parameters.get(i);
-                if (key.equals(context.annotations.propertyName(arg, arg.getSimpleName().toString()))
-                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key)
-                        || !simpleOneOfReadValue(creator.parameterTypes().get(i))) return false;
+                boolean isDiscriminator = key.equals(context.annotations.propertyName(
+                        arg, arg.getSimpleName().toString()))
+                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key);
+                // A consumed String creator argument can be initialized directly
+                // from the discriminator without buffering the whole object.
+                if (isDiscriminator
+                        ? !context.types.isSameErasure(creator.parameterTypes().get(i), stringType)
+                        : !simpleOneOfReadValue(creator.parameterTypes().get(i))) return false;
             }
         }
         for (Property property : context.properties.resolve(subtype).values()) {

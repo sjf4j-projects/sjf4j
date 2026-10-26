@@ -135,6 +135,13 @@ public class CompiledCreatorOneOfTest {
     }
 
     @Test
+    void jackson2CompilesTheStringCreatorDiscriminatorFastPath() {
+        boolean hasCompiledSubtype = java.util.Arrays.stream(JACKSON.getClass().getDeclaredMethods())
+                .anyMatch(method -> method.getName().contains("_subtype0_content"));
+        assertTrue(hasCompiledSubtype, "Record subtype should compile without a runtime OneOf subtree");
+    }
+
+    @Test
     void readsRecordAndCreatorParametersForBothOrders() throws IOException {
         String[] pets = {
                 "{\"kind\":\"dog\",\"name\":\"Rex\",\"age\":7}",
