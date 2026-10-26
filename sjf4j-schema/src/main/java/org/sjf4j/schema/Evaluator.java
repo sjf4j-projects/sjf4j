@@ -560,10 +560,10 @@ public interface Evaluator {
                                 .onUnmappableCharacter(CodingErrorAction.REPORT)
                                 .decode(ByteBuffer.wrap(decoded)).toString();
                     }
-                    SimpleJsonParser reader = new SimpleJsonParser(new FastStringReader(content));
-                    reader.startRead();
-                    reader.skipNode();
-                    reader.endRead();
+                    SimpleJsonParser parser = new SimpleJsonParser(new FastStringReader(content));
+                    parser.startRead();
+                    parser.skipNode();
+                    parser.endRead();
                 } catch (Exception e) {
                     ctx.addError(instance, ps, contentMediaTypeKeywordPs, schemaUri, "contentMediaType",
                             "expected valid JSON content");

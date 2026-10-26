@@ -158,12 +158,12 @@ public interface ValueCodec<V, R> {
     class StreamingValueCodec<V, R> implements ValueCodec<V, R> {
         @FunctionalInterface
         public interface Parser<V> {
-            V read(StreamingParser reader) throws IOException;
+            V read(StreamingParser parser) throws IOException;
         }
 
         @FunctionalInterface
         public interface Generator<V> {
-            void write(StreamingGenerator writer, V value) throws IOException;
+            void write(StreamingGenerator generator, V value) throws IOException;
         }
 
         private final Class<V> valueClazz;
@@ -223,7 +223,7 @@ public interface ValueCodec<V, R> {
     @NodeValue
     ValueCodec<URI, String> URI_CODEC = new StreamingValueCodec<>(URI.class, String.class,
             URI::toString, URI::create, null,
-            (writer, uri) -> writer.writeStringValue(uri.toString()));
+            (generator, uri) -> generator.writeStringValue(uri.toString()));
 
     @NodeValue
     ValueCodec<URL, String> URL_CODEC = new SimpleValueCodec<>(URL.class, String.class,
@@ -294,10 +294,10 @@ public interface ValueCodec<V, R> {
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Date, String> DATE = new StreamingValueCodec<>(Date.class, String.class,
             v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)),
-            reader -> {
-                Instant instant = reader.readInstant();
+            parser -> {
+                Instant instant = parser.readInstant();
                 return instant == null ? null : Date.from(instant);
-            }, (writer, date) -> writer.writeInstant(date == null ? null : date.toInstant()));
+            }, (generator, date) -> generator.writeInstant(date == null ? null : date.toInstant()));
 
     // Retain the historical PatternedValueCodec fields as aliases; register
     // all built-in value types from this single declaration surface.
@@ -326,8 +326,8 @@ public interface ValueCodec<V, R> {
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Calendar, String> CALENDAR = new StreamingValueCodec<>(Calendar.class, String.class,
             ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw,
-            reader -> ValueCodec._calendarFromZonedDateTime(reader.readZonedDateTime()),
-            (writer, calendar) -> writer.writeZonedDateTime(calendar == null ? null
+            parser -> ValueCodec._calendarFromZonedDateTime(parser.readZonedDateTime()),
+            (generator, calendar) -> generator.writeZonedDateTime(calendar == null ? null
                     : ZonedDateTime.ofInstant(calendar.toInstant(), calendar.getTimeZone().toZoneId())));
 
     // calendar → string

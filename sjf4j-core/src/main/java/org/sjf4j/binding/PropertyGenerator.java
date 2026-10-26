@@ -39,7 +39,7 @@ public interface PropertyGenerator {
      * @param count number of properties already written
      * @return updated property count
      */
-    int generate(StreamingGenerator writer, CompiledName compiledName, Object owner, RuntimeContext context, int count) throws IOException;
+    int generate(StreamingGenerator generator, CompiledName compiledName, Object owner, RuntimeContext context, int count) throws IOException;
 
 
     @FunctionalInterface
@@ -90,7 +90,7 @@ public interface PropertyGenerator {
      */
 
     /**
-     * Selects a property writer once from its getter and resolved type metadata.
+     * Selects a property generator once from its getter and resolved type metadata.
      * Returns {@code null} when no getter is available.
      */
     static PropertyGenerator create(String fieldName, Type fieldType, Class<?> fieldBoxed,
@@ -227,19 +227,19 @@ public interface PropertyGenerator {
         ToIntFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                         _castClass(ToIntFunction.class), int.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 int value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeIntValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeIntValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(int.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 int value = (int) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeIntValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeIntValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -255,19 +255,19 @@ public interface PropertyGenerator {
         ToLongFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToLongFunction.class), long.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 long value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeLongValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeLongValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(long.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 long value = (long) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeLongValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeLongValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -283,19 +283,19 @@ public interface PropertyGenerator {
         ToDoubleFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToDoubleFunction.class), double.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 double value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeDoubleValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeDoubleValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(double.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 double value = (double) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeDoubleValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeDoubleValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -311,19 +311,19 @@ public interface PropertyGenerator {
         ToFloatFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToFloatFunction.class), float.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 float value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeFloatValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeFloatValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(float.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 float value = (float) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeFloatValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeFloatValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -339,19 +339,19 @@ public interface PropertyGenerator {
         ToShortFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToShortFunction.class), short.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 short value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeShortValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeShortValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(short.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 short value = (short) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeShortValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeShortValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -367,19 +367,19 @@ public interface PropertyGenerator {
         ToByteFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToByteFunction.class), byte.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 byte value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeByteValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeByteValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(byte.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 byte value = (byte) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeByteValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeByteValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -395,19 +395,19 @@ public interface PropertyGenerator {
         ToBooleanFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToBooleanFunction.class), boolean.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 boolean value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeBooleanValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeBooleanValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(boolean.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 boolean value = (boolean) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeBooleanValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeBooleanValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -423,19 +423,19 @@ public interface PropertyGenerator {
         ToCharFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToCharFunction.class), char.class);
         if (getterLambda != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 char value = getterLambda.apply(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeCharValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeCharValue(value);
                 return count;
             };
         }
         MethodHandle getter = getterHandle.asType(MethodType.methodType(char.class, Object.class));
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             try {
                 char value = (char) getter.invokeExact(owner);
-                count = _writeName(writer, preparedName, count);
-                writer.writeCharValue(value);
+                count = _writeName(generator, preparedName, count);
+                generator.writeCharValue(value);
                 return count;
             } catch (BindingException e) {
                 throw e;
@@ -455,182 +455,182 @@ public interface PropertyGenerator {
 
     static PropertyGenerator _createForString(String fieldName, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeStringValue((String) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeStringValue((String) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForInteger(String fieldName, MethodHandle getterHandle,
                                             Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeIntValue((Integer) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeIntValue((Integer) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForLong(String fieldName, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeLongValue((Long) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeLongValue((Long) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForDouble(String fieldName, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeDoubleValue((Double) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeDoubleValue((Double) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForFloat(String fieldName, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeFloatValue((Float) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeFloatValue((Float) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForShort(String fieldName, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeShortValue((Short) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeShortValue((Short) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForByte(String fieldName, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeByteValue((Byte) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeByteValue((Byte) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForBoolean(String fieldName, MethodHandle getterHandle,
                                             Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeBooleanValue((Boolean) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeBooleanValue((Boolean) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForCharacter(String fieldName, MethodHandle getterHandle,
                                               Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeCharValue((Character) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeCharValue((Character) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForBigInteger(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeBigIntegerValue((BigInteger) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeBigIntegerValue((BigInteger) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForBigDecimal(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeBigDecimalValue((BigDecimal) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeBigDecimalValue((BigDecimal) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForNumber(String fieldName, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeNumberValue((Number) value);
+            count = _writeName(generator, preparedName, count);
+            generator.writeNumberValue((Number) value);
             return count;
         };
     }
 
     static PropertyGenerator _createForEnum(String fieldName, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            writer.writeStringValue(((Enum<?>) value).name());
+            count = _writeName(generator, preparedName, count);
+            generator.writeStringValue(((Enum<?>) value).name());
             return count;
         };
     }
@@ -641,34 +641,34 @@ public interface PropertyGenerator {
         Class<?> valueClazz = Types.rawBox(valueType);
         LazyTypeInfo typeInfoRef = new LazyTypeInfo(valueClazz);
 
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
             TypeInfo typeInfo = typeInfoRef.get();
-            count = _writeName(writer, preparedName, count);
-            StreamingIO.writeMap(writer, (Map<?, ?>) value, typeInfo, context);
+            count = _writeName(generator, preparedName, count);
+            StreamingIO.writeMap(generator, (Map<?, ?>) value, typeInfo, context);
             return count;
         };
     }
 
     static PropertyGenerator _createForJsonObject(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
+            count = _writeName(generator, preparedName, count);
             Class<?> valueClazz = value.getClass();
             if (valueClazz == JsonObject.class) {
-                StreamingIO.writeJsonObject(writer, (JsonObject) value, context);
+                StreamingIO.writeJsonObject(generator, (JsonObject) value, context);
             } else {
                 PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(valueClazz);
-                StreamingIO.writePojo(writer, value, pi, context);
+                StreamingIO.writePojo(generator, value, pi, context);
             }
             return count;
         };
@@ -680,28 +680,28 @@ public interface PropertyGenerator {
         Class<?> elementClazz = Types.rawBox(elementType);
         LazyTypeInfo typeInfoRef = new LazyTypeInfo(elementClazz);
 
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
-            count = _writeName(writer, preparedName, count);
+            count = _writeName(generator, preparedName, count);
 
             TypeInfo typeInfo = typeInfoRef.get();
-            StreamingIO.writeList(writer, (List<?>) value, typeInfo, context);
+            StreamingIO.writeList(generator, (List<?>) value, typeInfo, context);
             return count;
         };
     }
 
     static PropertyGenerator _createForJsonArray(String fieldName, MethodHandle getterHandle,
                                               Function<Object, Object> getterLambda) {
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
-            count = _writeName(writer, preparedName, count);
-            StreamingIO.writeJsonArray(writer, (JsonArray) value, context);
+            count = _writeName(generator, preparedName, count);
+            StreamingIO.writeJsonArray(generator, (JsonArray) value, context);
             return count;
         };
     }
@@ -712,15 +712,15 @@ public interface PropertyGenerator {
         Class<?> elementClazz = Types.rawBox(elementType);
         LazyTypeInfo typeInfoRef = new LazyTypeInfo(elementClazz);
 
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
-            count = _writeName(writer, preparedName, count);
+            count = _writeName(generator, preparedName, count);
 
             TypeInfo typeInfo = typeInfoRef.get();
-            StreamingIO.writeSet(writer, (Set<?>) value, typeInfo, context);
+            StreamingIO.writeSet(generator, (Set<?>) value, typeInfo, context);
             return count;
         };
     }
@@ -730,15 +730,15 @@ public interface PropertyGenerator {
         Class<?> compClazz = fieldBoxed.getComponentType();
         LazyTypeInfo typeInfoRef = new LazyTypeInfo(compClazz);
 
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
-            count = _writeName(writer, preparedName, count);
+            count = _writeName(generator, preparedName, count);
 
             TypeInfo typeInfo = compClazz.isPrimitive() ? TypeInfo.NONE : typeInfoRef.get();
-            StreamingIO.writeArray(writer, value, value.getClass(), typeInfo, context);
+            StreamingIO.writeArray(generator, value, value.getClass(), typeInfo, context);
             return count;
         };
     }
@@ -748,24 +748,24 @@ public interface PropertyGenerator {
                                                Function<Object, Object> getterLambda,
                                                ValueInfo valueCodec) {
         if (valueCodec.streamGenerator != null) {
-            return (writer, preparedName, owner, context, count) -> {
+            return (generator, preparedName, owner, context, count) -> {
                 Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
                 if (value == null) {
-                    return _writeNullValueField(writer, preparedName, context, count);
+                    return _writeNullValueField(generator, preparedName, context, count);
                 }
-                count = _writeName(writer, preparedName, count);
-                valueCodec.streamGenerator.write(writer, value);
+                count = _writeName(generator, preparedName, count);
+                valueCodec.streamGenerator.write(generator, value);
                 return count;
             };
         }
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
-            StreamingIO.writeNode(writer, valueCodec.valueToRaw(value), context);
+            count = _writeName(generator, preparedName, count);
+            StreamingIO.writeNode(generator, valueCodec.valueToRaw(value), context);
             return count;
         };
     }
@@ -773,13 +773,13 @@ public interface PropertyGenerator {
     static PropertyGenerator _createForObject(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
         LazyTypeInfo typeInfoRef = new LazyTypeInfo(fieldBoxed);
-        return (writer, preparedName, owner, context, count) -> {
+        return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
-                return _writeNullValueField(writer, preparedName, context, count);
+                return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            count = _writeName(writer, preparedName, count);
+            count = _writeName(generator, preparedName, count);
 
             /*
              * Exact runtime type: bypass StreamingIO's complete
@@ -791,12 +791,12 @@ public interface PropertyGenerator {
                 TypeInfo typeInfo = typeInfoRef.get();
 
                 if (typeInfo.pojoInfo != null) {
-                    StreamingIO.writePojo(writer, value, typeInfo.pojoInfo, context);
+                    StreamingIO.writePojo(generator, value, typeInfo.pojoInfo, context);
                     return count;
                 }
             }
 
-            StreamingIO.writeNode(writer, value, context);
+            StreamingIO.writeNode(generator, value, context);
             return count;
         };
     }
@@ -812,18 +812,18 @@ public interface PropertyGenerator {
         return (Class<T>) clazz;
     }
 
-    static int _writeName(StreamingGenerator writer, CompiledName compiledName, int count) throws IOException {
-        writer.writeName(compiledName, count > 0);
+    static int _writeName(StreamingGenerator generator, CompiledName compiledName, int count) throws IOException {
+        generator.writeName(compiledName, count > 0);
         return count + 1;
     }
 
-    static int _writeNullValueField(StreamingGenerator writer, CompiledName compiledName,
+    static int _writeNullValueField(StreamingGenerator generator, CompiledName compiledName,
                                     RuntimeContext context, int count) throws IOException {
         if (!context.includeNulls) {
             return count;
         }
-        count = _writeName(writer, compiledName, count);
-        writer.writeNull();
+        count = _writeName(generator, compiledName, count);
+        generator.writeNull();
         return count;
     }
 

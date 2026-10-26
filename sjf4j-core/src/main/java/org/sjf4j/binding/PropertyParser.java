@@ -34,7 +34,7 @@ import java.util.function.ObjLongConsumer;
 @FunctionalInterface
 public interface PropertyParser {
 
-    void parse(StreamingParser reader, Object owner, Type ownerType, Class<?> ownerBoxed,
+    void parse(StreamingParser parser, Object owner, Type ownerType, Class<?> ownerBoxed,
               RuntimeContext context) throws IOException;
 
 
@@ -71,7 +71,7 @@ public interface PropertyParser {
      */
 
     /**
-     * Selects a property reader once from its setter and resolved type metadata.
+     * Selects a property parser once from its setter and resolved type metadata.
      * Returns {@code null} when no setter is available.
      */
     static PropertyParser create(String fieldName, Type fieldType, Class<?> fieldBoxed,
@@ -85,23 +85,23 @@ public interface PropertyParser {
         }
 
         if (genericDependent) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
                 Type runtimeFieldType = Types.resolveMemberType(ownerType, ownerBoxed, fieldType);
-                Object value = StreamingIO.readNode(reader, runtimeFieldType, context);
+                Object value = StreamingIO.readNode(parser, runtimeFieldType, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
         if (oneOfInfo != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Object value = OneOfIO.readOneOf(reader, oneOfInfo, context);
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Object value = OneOfIO.readOneOf(parser, oneOfInfo, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
         if (resolvedValueCodec != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Object value = StreamingIO.readValueCodec(reader, resolvedValueCodec, context);
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Object value = StreamingIO.readValueCodec(parser, resolvedValueCodec, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -150,17 +150,17 @@ public interface PropertyParser {
             Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
             Class<?> valueBoxed = Types.rawBox(valueType);
             LazyTypeInfo valueTiRef = new LazyTypeInfo(valueBoxed);
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo valueTi = valueTiRef.get();
-                Object value = StreamingIO.readMap(reader, fieldType, fieldBoxed, valueType, valueBoxed, valueTi, context);
+                Object value = StreamingIO.readMap(parser, fieldType, fieldBoxed, valueType, valueBoxed, valueTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
         if (fieldType == JsonObject.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
                 Object value = null;
-                Object raw = reader.readRaw();
+                Object raw = parser.readRaw();
                 if (raw != null) value = new JsonObject(StreamingIO.castMap(raw));
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -170,17 +170,17 @@ public interface PropertyParser {
             Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
             Class<?> elementBoxed = Types.rawBox(elementType);
             LazyTypeInfo elementTiRef = new LazyTypeInfo(elementBoxed);
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo elementTi = elementTiRef.get();
-                Object value = StreamingIO.readList(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
+                Object value = StreamingIO.readList(parser, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
 
         if (fieldType == JsonArray.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
                 Object value = null;
-                Object raw = reader.readRaw();
+                Object raw = parser.readRaw();
                 if (raw != null) value = new JsonArray(StreamingIO.castList(raw));
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -190,9 +190,9 @@ public interface PropertyParser {
             Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
             Class<?> elementBoxed = Types.rawBox(elementType);
             LazyTypeInfo elementTiRef = new LazyTypeInfo(elementBoxed);
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo elementTi = elementTiRef.get();
-                Object value = StreamingIO.readSet(reader, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
+                Object value = StreamingIO.readSet(parser, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -201,9 +201,9 @@ public interface PropertyParser {
             Class<?> componentClazz = fieldBoxed.getComponentType();
             Class<?> componentBoxed = Types.box(componentClazz);
             LazyTypeInfo componentTiRef = new LazyTypeInfo(componentClazz);
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo componentTi = componentTiRef.get();
-                Object value = StreamingIO.readArray(reader, fieldType, fieldBoxed, componentClazz, componentBoxed,
+                Object value = StreamingIO.readArray(parser, fieldType, fieldBoxed, componentClazz, componentBoxed,
                         componentTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -216,70 +216,70 @@ public interface PropertyParser {
          */
 
         if (fieldBoxed == String.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readString());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readString());
             };
         }
         if (fieldBoxed == Integer.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readInt());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readInt());
             };
         }
         if (fieldBoxed == Long.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readLong());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readLong());
             };
         }
         if (fieldBoxed == Double.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readDouble());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readDouble());
             };
         }
         if (fieldBoxed == Float.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readFloat());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readFloat());
             };
         }
         if (fieldBoxed == Short.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readShort());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readShort());
             };
         }
         if (fieldBoxed == Byte.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readByte());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readByte());
             };
         }
         if (fieldBoxed == Boolean.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBoolean());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readBoolean());
             };
         }
         if (fieldBoxed == Character.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readChar());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readChar());
             };
         }
         if (fieldBoxed == Number.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readNumber());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readNumber());
             };
         }
         if (fieldBoxed == BigInteger.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigInteger());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readBigInteger());
             };
         }
         if (fieldBoxed == BigDecimal.class) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, reader.readBigDecimal());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readBigDecimal());
             };
         }
         if (fieldBoxed.isEnum()) {
             @SuppressWarnings("rawtypes")
             Class<? extends Enum> enumType = fieldBoxed.asSubclass(Enum.class);
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                Object enumValue = StreamingIO.readEnum(reader, fieldBoxed, context);
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                Object enumValue = StreamingIO.readEnum(parser, fieldBoxed, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, enumValue);
             };
         }
@@ -287,9 +287,9 @@ public interface PropertyParser {
         // Resolve metadata lazily and reuse it for subsequent reads through StreamingIO.
 
         LazyTypeInfo fieldTiRef = new LazyTypeInfo(fieldBoxed);
-        return (reader, owner, ownerType, ownerBoxed, context) -> {
+        return (parser, owner, ownerType, ownerBoxed, context) -> {
             TypeInfo fieldTi = fieldTiRef.get();
-            Object value = StreamingIO.readNode(reader, fieldType, fieldBoxed, fieldTi, context);
+            Object value = StreamingIO.readNode(parser, fieldType, fieldBoxed, fieldTi, context);
             Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
         };
 
@@ -305,15 +305,15 @@ public interface PropertyParser {
         ObjIntConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjIntConsumer.class), int.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readIntValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readIntValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, int.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readIntValue());
+                setter.invokeExact(receiver, parser.readIntValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -327,15 +327,15 @@ public interface PropertyParser {
         ObjLongConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjLongConsumer.class), long.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readLongValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readLongValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, long.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readLongValue());
+                setter.invokeExact(receiver, parser.readLongValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -349,15 +349,15 @@ public interface PropertyParser {
         ObjDoubleConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjDoubleConsumer.class), double.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readDoubleValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readDoubleValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, double.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readDoubleValue());
+                setter.invokeExact(receiver, parser.readDoubleValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -371,15 +371,15 @@ public interface PropertyParser {
         ObjFloatConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjFloatConsumer.class), float.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readFloatValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readFloatValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, float.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readFloatValue());
+                setter.invokeExact(receiver, parser.readFloatValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -393,15 +393,15 @@ public interface PropertyParser {
         ObjShortConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjShortConsumer.class), short.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readShortValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readShortValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, short.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readShortValue());
+                setter.invokeExact(receiver, parser.readShortValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -415,15 +415,15 @@ public interface PropertyParser {
         ObjByteConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjByteConsumer.class), byte.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readByteValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readByteValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, byte.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readByteValue());
+                setter.invokeExact(receiver, parser.readByteValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -437,15 +437,15 @@ public interface PropertyParser {
         ObjBooleanConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjBooleanConsumer.class), boolean.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readBooleanValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readBooleanValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, boolean.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readBooleanValue());
+                setter.invokeExact(receiver, parser.readBooleanValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
@@ -459,15 +459,15 @@ public interface PropertyParser {
         ObjCharConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjCharConsumer.class), char.class);
         if (setterLambda != null) {
-            return (reader, owner, ownerType, ownerBoxed, context) -> {
-                setterLambda.accept(owner, reader.readCharValue());
+            return (parser, owner, ownerType, ownerBoxed, context) -> {
+                setterLambda.accept(owner, parser.readCharValue());
             };
         }
         MethodHandle setter = setterHandle.asType(
                 MethodType.methodType(void.class, Object.class, char.class));
-        return (reader, receiver, ownerType, ownerRawClazz, context) -> {
+        return (parser, receiver, ownerType, ownerRawClazz, context) -> {
             try {
-                setter.invokeExact(receiver, reader.readCharValue());
+                setter.invokeExact(receiver, parser.readCharValue());
             } catch (BindingException e) {
                 throw e;
             } catch (Throwable e) {
