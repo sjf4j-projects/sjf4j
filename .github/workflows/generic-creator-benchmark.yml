@@ -7,6 +7,7 @@ on:
       - 'sjf4j-core/src/main/java/org/sjf4j/util/Invokers.java'
       - 'sjf4j-core/src/main/java/org/sjf4j/meta/ReflectUtil.java'
       - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/GenericCreatorInvokeBenchmark.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/CreatorOneOfBenchmark.java'
       - 'sjf4j-core/src/test/java/org/sjf4j/meta/PrimitiveCreatorInvokeExactTest.java'
       - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/processor/RuntimePrimitiveCreatorAdapterTest.java'
       - '.github/workflows/generic-creator-benchmark.yml'
@@ -44,6 +45,13 @@ jobs:
             '.*CreekModelBenchmark[.]read_(runtime|native)' \
             -f 1 -wi 4 -w 350ms -i 8 -r 350ms -t 1 \
             -prof gc -rf json -rff creek-runtime-jmh.json | tee creek-runtime-jmh.txt
+      - name: Compare OneOf Creator runtime with Jackson2 subtype
+        run: |
+          set -o pipefail
+          java -jar sjf4j-testbench/build/libs/*-jmh.jar \
+            '.*CreatorOneOfBenchmark[.].*' \
+            -f 1 -wi 3 -w 300ms -i 5 -r 300ms -t 1 \
+            -prof gc -rf json -rff creator-oneof-jmh.json | tee creator-oneof-jmh.txt
       - name: Upload JMH results
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,4 +62,6 @@ jobs:
             generic-creator-jmh.txt
             creek-runtime-jmh.json
             creek-runtime-jmh.txt
+            creator-oneof-jmh.json
+            creator-oneof-jmh.txt
           if-no-files-found: warn
