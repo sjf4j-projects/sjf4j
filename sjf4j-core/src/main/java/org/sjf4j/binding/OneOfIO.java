@@ -268,7 +268,7 @@ public final class OneOfIO {
         BackendCache cache = info.backendCache(reader.backend);
         NameMatcher matcher = cache.nameMatcher;
         if (matcher == null) {
-            matcher = reader.createNameMatcher(new String[]{info.key});
+            matcher = reader.createNameMatcher(new String[]{info.discriminatorKey});
             cache.nameMatcher = matcher;
         }
         return matcher;
@@ -371,12 +371,12 @@ public final class OneOfIO {
                 throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
             }
             Object discriminator = info.keyDiscriminator
-                    ? Nodes.getInObject(raw, info.key)
+                    ? Nodes.getInObject(raw, info.discriminatorKey)
                     : info.compiledPath.getNode(raw);
             if (discriminator == null) {
                 if (info.fallbackNull) return null;
                 throw new BindingException("not found value for discriminator "
-                        + (info.keyDiscriminator ? "key '" + info.key + "'" : "path '" + info.path + "'"));
+                        + (info.keyDiscriminator ? "key '" + info.discriminatorKey + "'" : "path '" + info.discriminatorPath + "'"));
             }
             target = info.lazyTypeInfoByWhen(discriminator);
         }

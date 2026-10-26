@@ -38,9 +38,10 @@ public @interface OneOf {
     String discriminatorKey() default "";
 
     /**
-     * JSONPath used to locate the discriminator value within the configured scope.
+     * JSONPath used to locate the discriminator value.
+     * Supported only with {@link Scope#CURRENT}.
      */
-    String discriminatorPath() default "";   // Only works in Scope.CURRENT
+    String discriminatorPath() default "";
 
     /**
      * Scope for discriminator lookup.
