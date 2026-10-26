@@ -20,48 +20,60 @@ final class OutputBufferRecycler {
 
     private byte[] bytes;
     private char[] chars;
-    private SoftReference<byte[]> largeBytes;
-    private SoftReference<char[]> largeChars;
+    // Softly hold both large slots through one reusable holder. A direct
+    // SoftReference<byte[]> would need a new reference on every checkout/recycle.
+    private SoftReference<LargeBuffers> largeBuffers;
+
+    private static final class LargeBuffers {
+        byte[] bytes;
+        char[] chars;
+    }
+
+    private LargeBuffers largeBuffers(boolean create) {
+        SoftReference<LargeBuffers> ref = largeBuffers;
+        LargeBuffers holder = ref == null ? null : ref.get();
+        if (holder == null && create) {
+            holder = new LargeBuffers();
+            largeBuffers = new SoftReference<>(holder);
+        }
+        return holder;
+    }
 
     private OutputBufferRecycler() {}
 
     static OutputBufferRecycler current() { return LOCAL.get(); }
 
     byte[] takeBytes() {
-        byte[] result = bytes;
+        byte[] result = takeLargeBytes(1);
+        if (result != null) return result;
+        result = bytes;
         bytes = null;
         return result != null ? result : new byte[INITIAL_CAPACITY];
     }
 
     char[] takeChars() {
-        char[] result = chars;
+        char[] result = takeLargeChars(1);
+        if (result != null) return result;
+        result = chars;
         chars = null;
         return result != null ? result : new char[INITIAL_CAPACITY];
     }
 
     byte[] takeLargeBytes(int required) {
-        SoftReference<byte[]> ref = largeBytes;
-        if (ref == null) return null;
-        byte[] value = ref.get();
-        if (value == null) {
-            largeBytes = null;
-            return null;
-        }
-        if (value.length < required) return null;
-        largeBytes = null;
+        LargeBuffers holder = largeBuffers(false);
+        if (holder == null) return null;
+        byte[] value = holder.bytes;
+        if (value == null || value.length < required) return null;
+        holder.bytes = null;
         return value;
     }
 
     char[] takeLargeChars(int required) {
-        SoftReference<char[]> ref = largeChars;
-        if (ref == null) return null;
-        char[] value = ref.get();
-        if (value == null) {
-            largeChars = null;
-            return null;
-        }
-        if (value.length < required) return null;
-        largeChars = null;
+        LargeBuffers holder = largeBuffers(false);
+        if (holder == null) return null;
+        char[] value = holder.chars;
+        if (value == null || value.length < required) return null;
+        holder.chars = null;
         return value;
     }
 
@@ -69,10 +81,9 @@ final class OutputBufferRecycler {
         if (array.length <= MAX_RETAINED_CAPACITY) {
             if (bytes == null || bytes.length < array.length) bytes = array;
         } else {
-            SoftReference<byte[]> ref = largeBytes;
-            byte[] previous = ref == null ? null : ref.get();
-            if (previous == null || previous.length < array.length)
-                largeBytes = new SoftReference<>(array);
+            LargeBuffers holder = largeBuffers(true);
+            if (holder.bytes == null || holder.bytes.length < array.length)
+                holder.bytes = array;
         }
     }
 
@@ -80,10 +91,9 @@ final class OutputBufferRecycler {
         if (array.length <= MAX_RETAINED_CAPACITY) {
             if (chars == null || chars.length < array.length) chars = array;
         } else {
-            SoftReference<char[]> ref = largeChars;
-            char[] previous = ref == null ? null : ref.get();
-            if (previous == null || previous.length < array.length)
-                largeChars = new SoftReference<>(array);
+            LargeBuffers holder = largeBuffers(true);
+            if (holder.chars == null || holder.chars.length < array.length)
+                holder.chars = array;
         }
     }
 
