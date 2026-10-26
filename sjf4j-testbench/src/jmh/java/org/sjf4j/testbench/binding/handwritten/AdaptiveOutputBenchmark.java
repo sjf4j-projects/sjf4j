@@ -107,7 +107,7 @@ public class AdaptiveOutputBenchmark {
     }
 
     @Benchmark
-    public byte[] bytesJackson2() {
+    public byte[] bytesJackson2() throws IOException {
         ByteArrayBuilder out = new ByteArrayBuilder(jackson2Recycler);
         try {
             out.write(bytes, 0, bytes.length);
@@ -161,7 +161,7 @@ public class AdaptiveOutputBenchmark {
         return out.toByteArray();
     }    
     @Benchmark
-    public byte[] bytesChunksJackson2() {
+    public byte[] bytesChunksJackson2() throws IOException {
         ByteArrayBuilder out = new ByteArrayBuilder(jackson2Recycler);
         try {
             for (int i = 0; i < bytes.length; i += CHUNK_SIZE)
