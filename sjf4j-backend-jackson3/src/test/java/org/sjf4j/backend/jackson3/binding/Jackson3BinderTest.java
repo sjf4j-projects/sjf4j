@@ -46,13 +46,13 @@ class Jackson3BinderTest {
         String detached;
         try {
             {
-                Jackson3Generator writer = binder.createGenerator(chars);
+                Jackson3Generator generator = binder.createGenerator(chars);
                 try {
-                    writer.writeStringValue(value);
-                    writer.endWrite();
+                    generator.writeStringValue(value);
+                    generator.endWrite();
 
                 } finally {
-                    writer.release();
+                    generator.release();
                 }
             }
             detached = chars.getAndRecycle();
@@ -65,13 +65,13 @@ class Jackson3BinderTest {
         byte[] detachedUtf8;
         try {
             {
-                Jackson3Generator writer = binder.createGenerator(bytes);
+                Jackson3Generator generator = binder.createGenerator(bytes);
                 try {
-                    writer.writeStringValue(value);
-                    writer.endWrite();
+                    generator.writeStringValue(value);
+                    generator.endWrite();
 
                 } finally {
-                    writer.release();
+                    generator.release();
                 }
             }
             detachedUtf8 = bytes.getAndRecycle();
@@ -131,18 +131,18 @@ class Jackson3BinderTest {
         StringWriter output = new StringWriter();
 
         {
-            Jackson3Parser reader = binder.createParser(new StringReader("null"));
+            Jackson3Parser parser = binder.createParser(new StringReader("null"));
             try {
-                assertInstanceOf(Jackson3Parser.class, reader);
+                assertInstanceOf(Jackson3Parser.class, parser);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
-        Jackson3Generator writer = binder.createGenerator(output);
-        assertInstanceOf(Jackson3Generator.class, writer);
-        writer.writeNull();
-        writer.close();
+        Jackson3Generator generator = binder.createGenerator(output);
+        assertInstanceOf(Jackson3Generator.class, generator);
+        generator.writeNull();
+        generator.close();
         assertEquals("null", output.toString());
     }
 
@@ -153,21 +153,21 @@ class Jackson3BinderTest {
         TrackingOutputStream streamOutput = new TrackingOutputStream();
 
         {
-            Jackson3Generator writer = binder.createGenerator(writerOutput);
+            Jackson3Generator generator = binder.createGenerator(writerOutput);
             try {
-                writer.writeNull();
+                generator.writeNull();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
         {
-            Jackson3Generator writer = binder.createGenerator(streamOutput);
+            Jackson3Generator generator = binder.createGenerator(streamOutput);
             try {
-                writer.writeNull();
+                generator.writeNull();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
 
@@ -183,7 +183,7 @@ class Jackson3BinderTest {
                 .enable(JsonReadFeature.ALLOW_JAVA_COMMENTS)
                 .build();
         Document value = (Document) new Jackson3Binder(factory)
-                .readNode("/* configured parser */ {\"id\":7}", Document.class);
+                .readNode("/* configured nativeParser */ {\"id\":7}", Document.class);
 
         assertEquals(7, value.id);
     }
@@ -210,12 +210,12 @@ class Jackson3BinderTest {
         assertEquals("héllo", fromStream.title);
         assertTrue(new String(binder.writeNodeAsBytes(document()), StandardCharsets.UTF_8).contains("\"id\":7"));
         {
-            Jackson3Parser reader = binder.createParser("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE));
+            Jackson3Parser parser = binder.createParser("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE));
             try {
-                assertThrows(Exception.class, reader::nextIfNull);
+                assertThrows(Exception.class, parser::nextIfNull);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -238,30 +238,30 @@ class Jackson3BinderTest {
 
     @Test
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
-        JsonParser parser = new JsonFactory().createParser(ObjectReadContext.empty(), "null");
+        JsonParser nativeParser = new JsonFactory().createParser(ObjectReadContext.empty(), "null");
         {
-            Jackson3Parser reader = new Jackson3Binder(new JsonFactory()).createParser(parser);
+            Jackson3Parser parser = new Jackson3Binder(new JsonFactory()).createParser(nativeParser);
             try {
-                assertTrue(reader.nextIfNull());
+                assertTrue(parser.nextIfNull());
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
-        assertTrue(parser.isClosed());
+        assertTrue(nativeParser.isClosed());
 
         TrackingOutputStream output = new TrackingOutputStream();
-        JsonGenerator generator = new JsonFactory().createGenerator(ObjectWriteContext.empty(), output);
+        JsonGenerator nativeGenerator = new JsonFactory().createGenerator(ObjectWriteContext.empty(), output);
         {
-            Jackson3Generator writer = new Jackson3Binder(new JsonFactory()).createGenerator(generator);
+            Jackson3Generator generator = new Jackson3Binder(new JsonFactory()).createGenerator(nativeGenerator);
             try {
-                writer.writeNull();
+                generator.writeNull();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
-        assertTrue(generator.isClosed());
+        assertTrue(nativeGenerator.isClosed());
         assertTrue(output.closed);
         assertEquals("null", new String(output.toByteArray(), StandardCharsets.UTF_8));
     }

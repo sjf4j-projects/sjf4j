@@ -16,51 +16,51 @@ class Jackson2GeneratorTest {
     void writesValuesAndNullableDefaults() throws Exception {
         StringWriter output = new StringWriter();
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
-        Jackson2Generator writer = binder.createGenerator(output);
-        writer.startArray();
-        writer.writeString("text");
-        writer.writeCharValue('x');
-        writer.writeLongValue(1L);
-        writer.writeIntValue(2);
-        writer.writeShortValue((short) 3);
-        writer.writeByteValue((byte) 4);
-        writer.writeDoubleValue(5.5d);
-        writer.writeFloatValue(6.5f);
-        writer.writeBooleanValue(true);
-        writer.writeNumberValue(new BigInteger("12345678901234567890"));
-        writer.writeNumberValue(new BigDecimal("7.25"));
-        writer.writeNumberValue(new AtomicInteger(8));
-        writer.writeString(null);
-        writer.writeNumber(null);
-        writer.writeBigInteger(null);
-        writer.writeBigDecimal(null);
-        writer.endArray();
-        writer.endWrite();
+        Jackson2Generator generator = binder.createGenerator(output);
+        generator.startArray();
+        generator.writeString("text");
+        generator.writeCharValue('x');
+        generator.writeLongValue(1L);
+        generator.writeIntValue(2);
+        generator.writeShortValue((short) 3);
+        generator.writeByteValue((byte) 4);
+        generator.writeDoubleValue(5.5d);
+        generator.writeFloatValue(6.5f);
+        generator.writeBooleanValue(true);
+        generator.writeNumberValue(new BigInteger("12345678901234567890"));
+        generator.writeNumberValue(new BigDecimal("7.25"));
+        generator.writeNumberValue(new AtomicInteger(8));
+        generator.writeString(null);
+        generator.writeNumber(null);
+        generator.writeBigInteger(null);
+        generator.writeBigDecimal(null);
+        generator.endArray();
+        generator.endWrite();
 
         assertEquals("[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null,null,null]", output.toString());
-        writer.release();
+        generator.release();
     }
 
     @Test
     void writesPreparedNamesAndFusedProperties() throws Exception {
         StringWriter output = new StringWriter();
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
-        Jackson2Generator writer = binder.createGenerator(output);
+        Jackson2Generator generator = binder.createGenerator(output);
         Jackson2CompiledName text = new Jackson2CompiledName("te\"xt");
         Jackson2CompiledName number = new Jackson2CompiledName("number");
-        writer.startObject();
-        writer.writeName(text);
-        writer.writeString("value");
-        writer.writeName(number);
-        writer.writeIntValue(42);
-        writer.writeName(new Jackson2CompiledName("decimal"));
-        writer.writeBigDecimal(new BigDecimal("1.20"));
-        writer.writeName(new Jackson2CompiledName("nullable"));
-        writer.writeString(null);
-        writer.writeName(new Jackson2CompiledName("nullValue"));
-        writer.writeNull();
-        writer.endObject();
-        writer.release();
+        generator.startObject();
+        generator.writeName(text);
+        generator.writeString("value");
+        generator.writeName(number);
+        generator.writeIntValue(42);
+        generator.writeName(new Jackson2CompiledName("decimal"));
+        generator.writeBigDecimal(new BigDecimal("1.20"));
+        generator.writeName(new Jackson2CompiledName("nullable"));
+        generator.writeString(null);
+        generator.writeName(new Jackson2CompiledName("nullValue"));
+        generator.writeNull();
+        generator.endObject();
+        generator.release();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42,\"decimal\":1.20,\"nullable\":null,\"nullValue\":null}", output.toString());
     }

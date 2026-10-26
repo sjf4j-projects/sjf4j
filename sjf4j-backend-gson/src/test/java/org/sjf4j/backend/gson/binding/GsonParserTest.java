@@ -27,16 +27,16 @@ class GsonParserTest {
     @Test
     void skipsNestedNode() throws Exception {
         {
-            GsonParser reader = reader("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]");
+            GsonParser parser = parser("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]");
             try {
-                reader.startArray();
-                reader.skipNode();
-                assertEquals("kept", reader.readString());
-                reader.endArray();
-                reader.endRead();
+                parser.startArray();
+                parser.skipNode();
+                assertEquals("kept", parser.readString());
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -44,18 +44,18 @@ class GsonParserTest {
     @Test
     void preservesNumberRepresentations() throws Exception {
         {
-            GsonParser reader = reader("[1,2147483648,123456789012345678901234567890,1.25,1e10000]");
+            GsonParser parser = parser("[1,2147483648,123456789012345678901234567890,1.25,1e10000]");
             try {
-                reader.startArray();
-                assertInstanceOf(Integer.class, reader.readNumber());
-                assertInstanceOf(Long.class, reader.readNumber());
-                assertEquals(new BigInteger("123456789012345678901234567890"), reader.readNumber());
-                assertEquals(1.25d, reader.readNumber());
-                assertEquals(new BigDecimal("1e10000"), reader.readNumber());
-                reader.endArray();
+                parser.startArray();
+                assertInstanceOf(Integer.class, parser.readNumber());
+                assertInstanceOf(Long.class, parser.readNumber());
+                assertEquals(new BigInteger("123456789012345678901234567890"), parser.readNumber());
+                assertEquals(1.25d, parser.readNumber());
+                assertEquals(new BigDecimal("1e10000"), parser.readNumber());
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -63,18 +63,18 @@ class GsonParserTest {
     @Test
     void validatesNumericNarrowing() throws Exception {
         {
-            GsonParser reader = reader("[128,-129,32768,-32769,1e50]");
+            GsonParser parser = parser("[128,-129,32768,-32769,1e50]");
             try {
-                reader.startArray();
-                assertThrows(Exception.class, reader::readByteValue);
-                assertThrows(Exception.class, reader::readByteValue);
-                assertThrows(Exception.class, reader::readShortValue);
-                assertThrows(Exception.class, reader::readShortValue);
-                assertThrows(Exception.class, reader::readFloatValue);
-                reader.endArray();
+                parser.startArray();
+                assertThrows(Exception.class, parser::readByteValue);
+                assertThrows(Exception.class, parser::readByteValue);
+                assertThrows(Exception.class, parser::readShortValue);
+                assertThrows(Exception.class, parser::readShortValue);
+                assertThrows(Exception.class, parser::readFloatValue);
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -82,15 +82,15 @@ class GsonParserTest {
     @Test
     void readsShortAndFloatValues() throws Exception {
         {
-            GsonParser reader = reader("[32767,1.25]");
+            GsonParser parser = parser("[32767,1.25]");
             try {
-                reader.startArray();
-                assertEquals(Short.MAX_VALUE, reader.readShortValue());
-                assertEquals(1.25f, reader.readFloatValue());
-                reader.endArray();
+                parser.startArray();
+                assertEquals(Short.MAX_VALUE, parser.readShortValue());
+                assertEquals(1.25f, parser.readFloatValue());
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -98,13 +98,13 @@ class GsonParserTest {
     @Test
     void rejectsNullCharWithBindingException() throws Exception {
         {
-            GsonParser reader = reader("null");
+            GsonParser parser = parser("null");
             try {
-                BindingException error = assertThrows(BindingException.class, reader::readCharValue);
+                BindingException error = assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals("cannot read null as char", error.getMessage());
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -112,34 +112,34 @@ class GsonParserTest {
     @Test
     void exposesLogicalTokensAndConditionalConsumption() throws Exception {
         {
-            GsonParser reader = reader("{\"id\":null}");
+            GsonParser parser = parser("{\"id\":null}");
             try {
-                assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
-                assertFalse(reader.nextIfArrayStart());
-                reader.startObject();
-                assertEquals(StreamingParser.Token.NAME, reader.peekToken());
-                assertEquals("id", reader.nextName());
-                assertEquals(StreamingParser.Token.NULL, reader.peekToken());
-                assertTrue(reader.nextIfNull());
-                assertTrue(reader.nextIfObjectEnd());
-                assertEquals(StreamingParser.Token.EOF, reader.peekToken());
-                reader.endRead();
+                assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+                assertFalse(parser.nextIfArrayStart());
+                parser.startObject();
+                assertEquals(StreamingParser.Token.NAME, parser.peekToken());
+                assertEquals("id", parser.nextName());
+                assertEquals(StreamingParser.Token.NULL, parser.peekToken());
+                assertTrue(parser.nextIfNull());
+                assertTrue(parser.nextIfObjectEnd());
+                assertEquals(StreamingParser.Token.EOF, parser.peekToken());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            GsonParser reader = reader("[null]");
+            GsonParser parser = parser("[null]");
             try {
-                assertTrue(reader.nextIfArrayStart());
-                assertTrue(reader.nextIfNull());
-                assertFalse(reader.nextIfNull());
-                assertTrue(reader.nextIfArrayEnd());
+                assertTrue(parser.nextIfArrayStart());
+                assertTrue(parser.nextIfNull());
+                assertFalse(parser.nextIfNull());
+                assertTrue(parser.nextIfArrayEnd());
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -147,14 +147,14 @@ class GsonParserTest {
     @Test
     void readsRawNodesWithSjf4jCollectionAndNumberSemantics() throws Exception {
         {
-            GsonParser reader = reader(
+            GsonParser parser = parser(
                 "{\"text\":\"Ada\",\"number\":7,\"large\":123456789012345678901234567890,"
                         + "\"decimal\":1e10000,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
             try {
 
-                assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
-                Map<?, ?> value = (Map<?, ?>) reader.readRaw();
+                assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "large", "decimal", "enabled", "empty", "nested", "items"),
@@ -166,11 +166,11 @@ class GsonParserTest {
                 assertNull(value.get("empty"));
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(ArrayList.class, value.get("items").getClass());
-                assertEquals(StreamingParser.Token.EOF, reader.peekToken());
-                reader.endRead();
+                assertEquals(StreamingParser.Token.EOF, parser.peekToken());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -178,12 +178,12 @@ class GsonParserTest {
     @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() throws Exception {
         {
-            GsonParser reader = reader("");
+            GsonParser parser = parser("");
             try {
-                assertThrows(IOException.class, reader::readRaw);
+                assertThrows(IOException.class, parser::readRaw);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -191,16 +191,16 @@ class GsonParserTest {
     @Test
     void rawNodeConsumesOneValue() throws Exception {
         {
-            GsonParser reader = reader("[{\"id\":7},\"next\"]");
+            GsonParser parser = parser("[{\"id\":7},\"next\"]");
             try {
-                reader.startArray();
-                assertEquals(7, ((Map<?, ?>) reader.readRaw()).get("id"));
-                assertEquals(StreamingParser.Token.STRING, reader.peekToken());
-                assertEquals("next", reader.readString());
-                reader.endArray();
+                parser.startArray();
+                assertEquals(7, ((Map<?, ?>) parser.readRaw()).get("id"));
+                assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+                assertEquals("next", parser.readString());
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -209,29 +209,29 @@ class GsonParserTest {
     @Test
     void preservesGsonLenientScalarConversions() throws Exception {
         {
-            GsonParser reader = reader(
+            GsonParser parser = parser(
                 "[123,\"456\",\"789\",\"1.25\",\"12.5\"]");
             try {
 
-                reader.startArray();
+                parser.startArray();
 
                 // NUMBER -> String
-                assertEquals("123", reader.readString());
+                assertEquals("123", parser.readString());
 
                 // STRING -> numeric types
-                assertEquals(456, reader.readIntValue());
+                assertEquals(456, parser.readIntValue());
                 assertEquals(new BigInteger("789"),
-                        reader.readBigInteger());
+                        parser.readBigInteger());
                 assertEquals(new BigDecimal("1.25"),
-                        reader.readBigDecimal());
+                        parser.readBigDecimal());
                 assertEquals(12.5d,
-                        reader.readNumber().doubleValue());
+                        parser.readNumber().doubleValue());
 
-                reader.endArray();
-                reader.endRead();
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -252,7 +252,7 @@ class GsonParserTest {
 
 
 
-    private static GsonParser reader(String json) {
+    private static GsonParser parser(String json) {
         return new GsonParser(new JsonReader(new StringReader(json)));
     }
 }

@@ -68,18 +68,18 @@ class GsonBinderTest {
         nativeWriter.setSerializeNulls(false);
 
         {
-            GsonGenerator writer = binder.createGenerator(nativeWriter);
+            GsonGenerator generator = binder.createGenerator(nativeWriter);
             try {
                 assertTrue(nativeWriter.getSerializeNulls());
 
-                writer.startObject();
-                writer.writeName("value");
-                writer.writeNull();
-                writer.endObject();
-                writer.endWrite();
+                generator.startObject();
+                generator.writeName("value");
+                generator.writeNull();
+                generator.endObject();
+                generator.endWrite();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
 
@@ -135,84 +135,84 @@ class GsonBinderTest {
         byte[] json = "\"héllo\"".getBytes(StandardCharsets.UTF_8);
 
         {
-            GsonParser reader = binder.createParser("\"héllo\"");
+            GsonParser parser = binder.createParser("\"héllo\"");
             try {
-                assertEquals("héllo", reader.readString());
+                assertEquals("héllo", parser.readString());
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
         {
-            GsonParser reader = binder.createParser(json);
+            GsonParser parser = binder.createParser(json);
             try {
-                assertEquals("héllo", reader.readString());
+                assertEquals("héllo", parser.readString());
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
         {
-            GsonParser reader = binder.createParser(new ByteArrayInputStream(json));
+            GsonParser parser = binder.createParser(new ByteArrayInputStream(json));
             try {
-                assertEquals("héllo", reader.readString());
+                assertEquals("héllo", parser.readString());
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
         {
-            GsonParser reader = binder.createParser(new StringReader("\"héllo\""));
+            GsonParser parser = binder.createParser(new StringReader("\"héllo\""));
             try {
-                assertEquals("héllo", reader.readString());
+                assertEquals("héllo", parser.readString());
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
         {
-            GsonParser reader = binder.createParser(new JsonReader(new StringReader("\"héllo\"")));
+            GsonParser parser = binder.createParser(new JsonReader(new StringReader("\"héllo\"")));
             try {
-                assertEquals("héllo", reader.readString());
+                assertEquals("héllo", parser.readString());
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         StringWriter text = new StringWriter();
         {
-            GsonGenerator writer = binder.createGenerator(text);
+            GsonGenerator generator = binder.createGenerator(text);
             try {
-                writer.writeStringValue("héllo");
-                writer.endWrite();
+                generator.writeStringValue("héllo");
+                generator.endWrite();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
         assertEquals("\"héllo\"", text.toString());
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         {
-            GsonGenerator writer = binder.createGenerator(bytes);
+            GsonGenerator generator = binder.createGenerator(bytes);
             try {
-                writer.writeStringValue("héllo");
-                writer.endWrite();
+                generator.writeStringValue("héllo");
+                generator.endWrite();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
 
         StringWriter nativeOutput = new StringWriter();
         {
-            GsonGenerator writer = binder.createGenerator(new JsonWriter(nativeOutput));
+            GsonGenerator generator = binder.createGenerator(new JsonWriter(nativeOutput));
             try {
-                writer.writeStringValue("héllo");
-                writer.endWrite();
+                generator.writeStringValue("héllo");
+                generator.endWrite();
             } finally {
-                writer.release();
+                generator.release();
             }
         }
         assertEquals("\"héllo\"", nativeOutput.toString());

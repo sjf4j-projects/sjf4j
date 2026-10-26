@@ -31,30 +31,30 @@ class Jackson2ParserTest {
         NameMatcher matcher = new Jackson2NameMatcher("id", "name");
 
         {
-            Jackson2Parser reader =
-                     reader("{\"id\":7,\"unknown\":true,\"name\":\"Ada\"}");
+            Jackson2Parser parser =
+                     parser("{\"id\":7,\"unknown\":true,\"name\":\"Ada\"}");
             try {
-                reader.startObject();
+                parser.startObject();
 
                 // A failed conditional probe physically advances onto FIELD_NAME.
-                assertFalse(reader.nextIfObjectEnd());
-                assertEquals(0, reader.nextNameMatch(matcher));
-                assertEquals(7, reader.readIntValue());
+                assertFalse(parser.nextIfObjectEnd());
+                assertEquals(0, parser.nextNameMatch(matcher));
+                assertEquals(7, parser.readIntValue());
 
-                assertEquals(StreamingParser.Token.NAME, reader.peekToken());
-                assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
-                assertEquals("unknown", reader.currentName());
-                assertTrue(reader.readBooleanValue());
+                assertEquals(StreamingParser.Token.NAME, parser.peekToken());
+                assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
+                assertEquals("unknown", parser.currentName());
+                assertTrue(parser.readBooleanValue());
 
-                assertFalse(reader.nextIfObjectEnd());
-                assertEquals(1, reader.nextNameMatch(matcher));
-                assertEquals("Ada", reader.readString());
+                assertFalse(parser.nextIfObjectEnd());
+                assertEquals(1, parser.nextNameMatch(matcher));
+                assertEquals("Ada", parser.readString());
 
-                assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-                reader.endRead();
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -62,23 +62,23 @@ class Jackson2ParserTest {
     @Test
     void readsPrimitiveCharsUsingExactOneCharacterSemantics() throws Exception {
         {
-            Jackson2Parser reader = reader("[\"x\",null,\"\",\"xy\"]");
+            Jackson2Parser parser = parser("[\"x\",null,\"\",\"xy\"]");
             try {
-                reader.startArray();
-                assertEquals('x', reader.readCharValue());
+                parser.startArray();
+                assertEquals('x', parser.readCharValue());
 
-                BindingException nullError = assertThrows(BindingException.class, reader::readCharValue);
+                BindingException nullError = assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals("cannot read null as char", nullError.getMessage());
-                BindingException emptyError = assertThrows(BindingException.class, reader::readCharValue);
+                BindingException emptyError = assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals("cannot read char: expected single-character string, but length was 0",
                         emptyError.getMessage());
-                BindingException multipleError = assertThrows(BindingException.class, reader::readCharValue);
+                BindingException multipleError = assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals("cannot read char: expected single-character string, but length was 2",
                         multipleError.getMessage());
-                reader.endArray();
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -86,21 +86,21 @@ class Jackson2ParserTest {
     @Test
     void readsBoxedCharsUsingExactOneCharacterSemantics() throws Exception {
         {
-            Jackson2Parser reader = reader("[\"x\",null,\"\",\"xy\"]");
+            Jackson2Parser parser = parser("[\"x\",null,\"\",\"xy\"]");
             try {
-                reader.startArray();
-                assertEquals(Character.valueOf('x'), reader.readChar());
-                assertNull(reader.readChar());
-                BindingException emptyError = assertThrows(BindingException.class, reader::readChar);
+                parser.startArray();
+                assertEquals(Character.valueOf('x'), parser.readChar());
+                assertNull(parser.readChar());
+                BindingException emptyError = assertThrows(BindingException.class, parser::readChar);
                 assertEquals("cannot read char: expected single-character string, but length was 0",
                         emptyError.getMessage());
-                BindingException multipleError = assertThrows(BindingException.class, reader::readChar);
+                BindingException multipleError = assertThrows(BindingException.class, parser::readChar);
                 assertEquals("cannot read char: expected single-character string, but length was 2",
                         multipleError.getMessage());
-                reader.endArray();
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -108,28 +108,28 @@ class Jackson2ParserTest {
     @Test
     void preservesPrefetchedTokensAcrossConditionalOperations() throws Exception {
         {
-            Jackson2Parser reader = reader("{\"id\":7,\"name\":\"Ada\"}");
+            Jackson2Parser parser = parser("{\"id\":7,\"name\":\"Ada\"}");
             try {
-                assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
-                assertFalse(reader.nextIfNull());
-                assertTrue(reader.nextIfObjectStart());
+                assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+                assertFalse(parser.nextIfNull());
+                assertTrue(parser.nextIfObjectStart());
 
-                assertFalse(reader.nextIfArrayStart());
-                assertEquals(StreamingParser.Token.NAME, reader.peekToken());
-                assertEquals("id", reader.nextName());
+                assertFalse(parser.nextIfArrayStart());
+                assertEquals(StreamingParser.Token.NAME, parser.peekToken());
+                assertEquals("id", parser.nextName());
 
-                assertFalse(reader.nextIfNull());
-                assertEquals(StreamingParser.Token.NUMBER, reader.peekToken());
-                assertEquals(7, reader.readIntValue());
+                assertFalse(parser.nextIfNull());
+                assertEquals(StreamingParser.Token.NUMBER, parser.peekToken());
+                assertEquals(7, parser.readIntValue());
 
-                assertFalse(reader.nextIfObjectEnd());
-                assertEquals("name", reader.nextName());
-                assertEquals("Ada", reader.readString());
-                assertTrue(reader.nextIfObjectEnd());
-                reader.endRead();
+                assertFalse(parser.nextIfObjectEnd());
+                assertEquals("name", parser.nextName());
+                assertEquals("Ada", parser.readString());
+                assertTrue(parser.nextIfObjectEnd());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -137,17 +137,17 @@ class Jackson2ParserTest {
     @Test
     void preservesPrefetchedArrayElementsAcrossConditionalOperations() throws Exception {
         {
-            Jackson2Parser reader = reader("[null]");
+            Jackson2Parser parser = parser("[null]");
             try {
-                assertTrue(reader.nextIfArrayStart());
-                assertFalse(reader.nextIfArrayEnd());
-                assertEquals(StreamingParser.Token.NULL, reader.peekToken());
-                assertTrue(reader.nextIfNull());
-                assertTrue(reader.nextIfArrayEnd());
-                reader.endRead();
+                assertTrue(parser.nextIfArrayStart());
+                assertFalse(parser.nextIfArrayEnd());
+                assertEquals(StreamingParser.Token.NULL, parser.peekToken());
+                assertTrue(parser.nextIfNull());
+                assertTrue(parser.nextIfArrayEnd());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -158,28 +158,28 @@ class Jackson2ParserTest {
         NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.writableProperties);
         int id = matcher.fallback("id");
         int name = matcher.fallback("name");
-        CountingParser parser = new CountingParser(
+        CountingParser nativeParser = new CountingParser(
                 new JsonFactory().createParser("{\"id\":7,\"name\":\"Ada\"}"));
 
         {
-            Jackson2Parser reader = new Jackson2Parser(parser);
+            Jackson2Parser parser = new Jackson2Parser(nativeParser);
             try {
-                reader.startObject();
-                assertEquals(id, reader.nextNameMatch(matcher, id));
-                assertEquals(7, reader.readIntValue());
-                assertEquals(name, reader.nextNameMatch(matcher, name));
-                assertEquals("Ada", reader.readString());
-                assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-                reader.endRead();
+                parser.startObject();
+                assertEquals(id, parser.nextNameMatch(matcher, id));
+                assertEquals(7, parser.readIntValue());
+                assertEquals(name, parser.nextNameMatch(matcher, name));
+                assertEquals("Ada", parser.readString());
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
-        assertEquals(2, parser.expectedNameCalls);
-        assertEquals(1, parser.intValueCalls);
-        assertEquals(1, parser.textValueCalls);
+        assertEquals(2, nativeParser.expectedNameCalls);
+        assertEquals(1, nativeParser.intValueCalls);
+        assertEquals(1, nativeParser.textValueCalls);
     }
 
     @Test
@@ -188,18 +188,18 @@ class Jackson2ParserTest {
         NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.writableProperties);
 
         {
-            Jackson2Parser reader = reader("{\"unknown\":[1,{\"nested\":true}],\"id\":7}");
+            Jackson2Parser parser = parser("{\"unknown\":[1,{\"nested\":true}],\"id\":7}");
             try {
-                reader.startObject();
-                assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
-                reader.skipNode();
-                assertEquals(matcher.fallback("id"), reader.nextNameMatch(matcher));
-                assertEquals(7, reader.readIntValue());
-                assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-                reader.endRead();
+                parser.startObject();
+                assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
+                parser.skipNode();
+                assertEquals(matcher.fallback("id"), parser.nextNameMatch(matcher));
+                assertEquals(7, parser.readIntValue());
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -212,18 +212,18 @@ class Jackson2ParserTest {
         int name = matcher.fallback("name");
 
         {
-            Jackson2Parser reader = reader("{\"name\":\"Ada\",\"id\":7}");
+            Jackson2Parser parser = parser("{\"name\":\"Ada\",\"id\":7}");
             try {
-                reader.startObject();
-                assertEquals(name, reader.nextNameMatch(matcher, id));
-                assertEquals("Ada", reader.readString());
-                assertEquals(id, reader.nextNameMatch(matcher, id));
-                assertEquals(7, reader.readIntValue());
-                assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-                reader.endRead();
+                parser.startObject();
+                assertEquals(name, parser.nextNameMatch(matcher, id));
+                assertEquals("Ada", parser.readString());
+                assertEquals(id, parser.nextNameMatch(matcher, id));
+                assertEquals(7, parser.readIntValue());
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -231,11 +231,11 @@ class Jackson2ParserTest {
     @Test
     void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
         {
-            Jackson2Parser reader = reader(
+            Jackson2Parser parser = parser(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
             try {
-                Map<?, ?> value = (Map<?, ?>) reader.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -247,11 +247,11 @@ class Jackson2ParserTest {
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(ArrayList.class, value.get("items").getClass());
                 assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
-                assertEquals(StreamingParser.Token.EOF, reader.peekToken());
-                reader.endRead();
+                assertEquals(StreamingParser.Token.EOF, parser.peekToken());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -259,12 +259,12 @@ class Jackson2ParserTest {
     @Test
     void rejectsEmptyRawNodeInput() throws Exception {
         {
-            Jackson2Parser reader = reader("");
+            Jackson2Parser parser = parser("");
             try {
-                assertThrows(IOException.class, reader::readRaw);
+                assertThrows(IOException.class, parser::readRaw);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -274,46 +274,46 @@ class Jackson2ParserTest {
         String text = "123e4567-e89b-12d3-a456-426614174000";
         java.util.UUID uuid = java.util.UUID.fromString(text);
         {
-            Jackson2Parser reader = reader("[\"" + text + "\",null,\"" + text + "\"]");
+            Jackson2Parser parser = parser("[\"" + text + "\",null,\"" + text + "\"]");
             try {
-                reader.startArray();
-                assertEquals(StreamingParser.Token.STRING, reader.peekToken());
-                assertEquals(uuid, reader.readUuid());
-                assertNull(reader.readUuid());
-                assertFalse(reader.nextIfNull());
-                assertEquals(uuid, reader.readUuid());
-                reader.endArray();
-                reader.endRead();
+                parser.startArray();
+                assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+                assertEquals(uuid, parser.readUuid());
+                assertNull(parser.readUuid());
+                assertFalse(parser.nextIfNull());
+                assertEquals(uuid, parser.readUuid());
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            Jackson2Parser reader = reader("{\"id\":\"" + text + "\"}");
+            Jackson2Parser parser = parser("{\"id\":\"" + text + "\"}");
             try {
-                reader.startObject();
-                assertEquals("id", reader.nextName());
-                assertEquals(uuid, reader.readUuid());
-                reader.endObject();
-                reader.endRead();
+                parser.startObject();
+                assertEquals("id", parser.nextName());
+                assertEquals(uuid, parser.readUuid());
+                parser.endObject();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            Jackson2Parser reader = reader("[\"invalid\",42]");
+            Jackson2Parser parser = parser("[\"invalid\",42]");
             try {
-                reader.startArray();
-                assertThrows(IllegalArgumentException.class, reader::readUuid);
-                assertThrows(IOException.class, reader::readUuid);
-                reader.endArray();
+                parser.startArray();
+                assertThrows(IllegalArgumentException.class, parser::readUuid);
+                assertThrows(IOException.class, parser::readUuid);
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -322,19 +322,19 @@ class Jackson2ParserTest {
     void readsUuidFromUtf8Parser() throws Exception {
         String text = "ffffffff-0000-1234-abcd-000000000000";
         {
-            Jackson2Parser reader = new Jackson2Parser(
+            Jackson2Parser parser = new Jackson2Parser(
                 new JsonFactory().createParser(("\"" + text + "\"").getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             try {
-                assertEquals(java.util.UUID.fromString(text), reader.readUuid());
-                reader.endRead();
+                assertEquals(java.util.UUID.fromString(text), parser.readUuid());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
 
-    private static Jackson2Parser reader(String json) throws IOException {
+    private static Jackson2Parser parser(String json) throws IOException {
         return new Jackson2Parser(new JsonFactory().createParser(json));
     }
 

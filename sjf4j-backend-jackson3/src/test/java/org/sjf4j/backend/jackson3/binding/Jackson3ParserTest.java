@@ -32,30 +32,30 @@ class Jackson3ParserTest {
         NameMatcher matcher = new Jackson3NameMatcher("id", "name");
 
         {
-            Jackson3Parser reader =
-                     reader("{\"id\":7,\"unknown\":true,\"name\":\"Ada\"}");
+            Jackson3Parser parser =
+                     parser("{\"id\":7,\"unknown\":true,\"name\":\"Ada\"}");
             try {
-                reader.startObject();
+                parser.startObject();
 
                 // A failed conditional probe physically advances onto FIELD_NAME.
-                assertFalse(reader.nextIfObjectEnd());
-                assertEquals(0, reader.nextNameMatch(matcher));
-                assertEquals(7, reader.readIntValue());
+                assertFalse(parser.nextIfObjectEnd());
+                assertEquals(0, parser.nextNameMatch(matcher));
+                assertEquals(7, parser.readIntValue());
 
-                assertEquals(StreamingParser.Token.NAME, reader.peekToken());
-                assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
-                assertEquals("unknown", reader.currentName());
-                assertTrue(reader.readBooleanValue());
+                assertEquals(StreamingParser.Token.NAME, parser.peekToken());
+                assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
+                assertEquals("unknown", parser.currentName());
+                assertTrue(parser.readBooleanValue());
 
-                assertFalse(reader.nextIfObjectEnd());
-                assertEquals(1, reader.nextNameMatch(matcher));
-                assertEquals("Ada", reader.readString());
+                assertFalse(parser.nextIfObjectEnd());
+                assertEquals(1, parser.nextNameMatch(matcher));
+                assertEquals("Ada", parser.readString());
 
-                assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-                reader.endRead();
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -63,61 +63,61 @@ class Jackson3ParserTest {
     @Test
     void preservesPeekAndConditionalStateAcrossObjectsAndArrays() throws Exception {
         {
-            Jackson3Parser reader = reader("{\"id\":7,\"name\":\"Ada\"}");
+            Jackson3Parser parser = parser("{\"id\":7,\"name\":\"Ada\"}");
             try {
-                assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
-                assertFalse(reader.nextIfNull());
-                assertTrue(reader.nextIfObjectStart());
-                assertFalse(reader.nextIfArrayStart());
-                assertEquals(StreamingParser.Token.NAME, reader.peekToken());
-                assertEquals("id", reader.nextName());
-                assertFalse(reader.nextIfNull());
-                assertEquals(StreamingParser.Token.NUMBER, reader.peekToken());
-                assertEquals(7, reader.readIntValue());
-                assertFalse(reader.nextIfObjectEnd());
-                assertEquals("name", reader.nextName());
-                assertEquals("Ada", reader.readString());
-                assertTrue(reader.nextIfObjectEnd());
-                reader.endRead();
+                assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+                assertFalse(parser.nextIfNull());
+                assertTrue(parser.nextIfObjectStart());
+                assertFalse(parser.nextIfArrayStart());
+                assertEquals(StreamingParser.Token.NAME, parser.peekToken());
+                assertEquals("id", parser.nextName());
+                assertFalse(parser.nextIfNull());
+                assertEquals(StreamingParser.Token.NUMBER, parser.peekToken());
+                assertEquals(7, parser.readIntValue());
+                assertFalse(parser.nextIfObjectEnd());
+                assertEquals("name", parser.nextName());
+                assertEquals("Ada", parser.readString());
+                assertTrue(parser.nextIfObjectEnd());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            Jackson3Parser reader = reader("[null]");
+            Jackson3Parser parser = parser("[null]");
             try {
-                assertTrue(reader.nextIfArrayStart());
-                assertFalse(reader.nextIfArrayEnd());
-                assertEquals(StreamingParser.Token.NULL, reader.peekToken());
-                assertTrue(reader.nextIfNull());
-                assertTrue(reader.nextIfArrayEnd());
-                reader.endRead();
+                assertTrue(parser.nextIfArrayStart());
+                assertFalse(parser.nextIfArrayEnd());
+                assertEquals(StreamingParser.Token.NULL, parser.peekToken());
+                assertTrue(parser.nextIfNull());
+                assertTrue(parser.nextIfArrayEnd());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
 
     @Test
     void consumesTheCurrentTokenOfASuppliedParser() throws Exception {
-        JsonParser parser = new JsonFactory().createParser(
+        JsonParser nativeParser = new JsonFactory().createParser(
                 ObjectReadContext.empty(), "{\"id\":7}");
-        parser.nextToken();
+        nativeParser.nextToken();
 
         {
-            Jackson3Parser reader = new Jackson3Binder(new JsonFactory()).createParser(parser);
+            Jackson3Parser parser = new Jackson3Binder(new JsonFactory()).createParser(nativeParser);
             try {
-                reader.startObject();
-                assertEquals("id", reader.nextName());
-                assertEquals(7, reader.readIntValue());
-                reader.endObject();
-                reader.endRead();
+                parser.startObject();
+                assertEquals("id", parser.nextName());
+                assertEquals(7, parser.readIntValue());
+                parser.endObject();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -130,20 +130,20 @@ class Jackson3ParserTest {
         int name = matcher.fallback("name");
 
         {
-            Jackson3Parser reader = reader("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}");
+            Jackson3Parser parser = parser("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}");
             try {
-                reader.startObject();
-                assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
-                reader.skipNode();
-                assertEquals(name, reader.nextNameMatch(matcher));
-                assertEquals("Ada", reader.readString());
-                assertEquals(id, reader.nextNameMatch(matcher));
-                assertEquals(7, reader.readIntValue());
-                assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-                reader.endRead();
+                parser.startObject();
+                assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
+                parser.skipNode();
+                assertEquals(name, parser.nextNameMatch(matcher));
+                assertEquals("Ada", parser.readString());
+                assertEquals(id, parser.nextNameMatch(matcher));
+                assertEquals(7, parser.readIntValue());
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -151,22 +151,22 @@ class Jackson3ParserTest {
     @Test
     void readsScalarsWithCoreNumericAndCharacterSemantics() throws Exception {
         {
-            Jackson3Parser reader = reader("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]");
+            Jackson3Parser parser = parser("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]");
             try {
-                reader.startArray();
-                assertEquals(1, reader.readIntValue());
-                assertThrows(ArithmeticException.class, reader::readByteValue);
-                assertEquals(125d, reader.readDoubleValue());
-                assertEquals(new BigInteger("123456789012345678901234567890"), reader.readBigInteger());
-                assertEquals(new BigDecimal("0.0012"), reader.readBigDecimal());
-                assertEquals('x', reader.readCharValue());
-                assertThrows(BindingException.class, reader::readCharValue);
-                assertThrows(BindingException.class, reader::readCharValue);
-                assertThrows(BindingException.class, reader::readCharValue);
-                reader.endArray();
+                parser.startArray();
+                assertEquals(1, parser.readIntValue());
+                assertThrows(ArithmeticException.class, parser::readByteValue);
+                assertEquals(125d, parser.readDoubleValue());
+                assertEquals(new BigInteger("123456789012345678901234567890"), parser.readBigInteger());
+                assertEquals(new BigDecimal("0.0012"), parser.readBigDecimal());
+                assertEquals('x', parser.readCharValue());
+                assertThrows(BindingException.class, parser::readCharValue);
+                assertThrows(BindingException.class, parser::readCharValue);
+                assertThrows(BindingException.class, parser::readCharValue);
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -174,19 +174,19 @@ class Jackson3ParserTest {
     @Test
     void readsPrimitiveIntsAndLongsWithoutChangingNumericSemantics() throws Exception {
         {
-            Jackson3Parser reader = reader("[0,-1,1.9,2147483647,-2147483648,9223372036854775807]");
+            Jackson3Parser parser = parser("[0,-1,1.9,2147483647,-2147483648,9223372036854775807]");
             try {
-                reader.startArray();
-                assertEquals(0, reader.readIntValue());
-                assertEquals(-1L, reader.readLongValue());
-                assertEquals(1, reader.readIntValue());
-                assertEquals(Integer.MAX_VALUE, reader.readIntValue());
-                assertEquals(Integer.MIN_VALUE, reader.readIntValue());
-                assertEquals(Long.MAX_VALUE, reader.readLongValue());
-                reader.endArray();
+                parser.startArray();
+                assertEquals(0, parser.readIntValue());
+                assertEquals(-1L, parser.readLongValue());
+                assertEquals(1, parser.readIntValue());
+                assertEquals(Integer.MAX_VALUE, parser.readIntValue());
+                assertEquals(Integer.MIN_VALUE, parser.readIntValue());
+                assertEquals(Long.MAX_VALUE, parser.readLongValue());
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -194,11 +194,11 @@ class Jackson3ParserTest {
     @Test
     void readsRawNodesAndRejectsTrailingDocuments() throws Exception {
         {
-            Jackson3Parser reader = reader(
+            Jackson3Parser parser = parser(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
             try {
-                Map<?, ?> value = (Map<?, ?>) reader.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -209,22 +209,22 @@ class Jackson3ParserTest {
                 assertNull(value.get("empty"));
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(ArrayList.class, value.get("items").getClass());
-                assertEquals(StreamingParser.Token.EOF, reader.peekToken());
-                reader.endRead();
+                assertEquals(StreamingParser.Token.EOF, parser.peekToken());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            Jackson3Parser reader = reader("null null");
+            Jackson3Parser parser = parser("null null");
             try {
-                assertTrue(reader.nextIfNull());
-                assertThrows(IOException.class, reader::endRead);
+                assertTrue(parser.nextIfNull());
+                assertThrows(IOException.class, parser::endRead);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -234,46 +234,46 @@ class Jackson3ParserTest {
         String text = "123e4567-e89b-12d3-a456-426614174000";
         java.util.UUID uuid = java.util.UUID.fromString(text);
         {
-            Jackson3Parser reader = reader("[\"" + text + "\",null,\"" + text + "\"]");
+            Jackson3Parser parser = parser("[\"" + text + "\",null,\"" + text + "\"]");
             try {
-                reader.startArray();
-                assertEquals(StreamingParser.Token.STRING, reader.peekToken());
-                assertEquals(uuid, reader.readUuid());
-                assertNull(reader.readUuid());
-                assertFalse(reader.nextIfNull());
-                assertEquals(uuid, reader.readUuid());
-                reader.endArray();
-                reader.endRead();
+                parser.startArray();
+                assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+                assertEquals(uuid, parser.readUuid());
+                assertNull(parser.readUuid());
+                assertFalse(parser.nextIfNull());
+                assertEquals(uuid, parser.readUuid());
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            Jackson3Parser reader = reader("{\"id\":\"" + text + "\"}");
+            Jackson3Parser parser = parser("{\"id\":\"" + text + "\"}");
             try {
-                reader.startObject();
-                assertEquals("id", reader.nextName());
-                assertEquals(uuid, reader.readUuid());
-                reader.endObject();
-                reader.endRead();
+                parser.startObject();
+                assertEquals("id", parser.nextName());
+                assertEquals(uuid, parser.readUuid());
+                parser.endObject();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            Jackson3Parser reader = reader("[\"invalid\",42]");
+            Jackson3Parser parser = parser("[\"invalid\",42]");
             try {
-                reader.startArray();
-                assertThrows(IllegalArgumentException.class, reader::readUuid);
-                assertThrows(IOException.class, reader::readUuid);
-                reader.endArray();
+                parser.startArray();
+                assertThrows(IllegalArgumentException.class, parser::readUuid);
+                assertThrows(IOException.class, parser::readUuid);
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -282,20 +282,20 @@ class Jackson3ParserTest {
     void readsUuidFromUtf8Parser() throws Exception {
         String text = "ffffffff-0000-1234-abcd-000000000000";
         {
-            Jackson3Parser reader = new Jackson3Parser(
+            Jackson3Parser parser = new Jackson3Parser(
                 new JsonFactory().createParser(ObjectReadContext.empty(),
                         ("\"" + text + "\"").getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             try {
-                assertEquals(java.util.UUID.fromString(text), reader.readUuid());
-                reader.endRead();
+                assertEquals(java.util.UUID.fromString(text), parser.readUuid());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
 
-    private static Jackson3Parser reader(String json) throws IOException {
+    private static Jackson3Parser parser(String json) throws IOException {
         return new Jackson3Parser(new JsonFactory().createParser(ObjectReadContext.empty(), json));
     }
 
