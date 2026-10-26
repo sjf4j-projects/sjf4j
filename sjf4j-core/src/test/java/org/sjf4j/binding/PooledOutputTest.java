@@ -76,7 +76,7 @@ class PooledOutputTest {
     @Test
     void oversizedByteOutputRecyclesIntoSoftCache() {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        byte[] large = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
+        byte[] large = new byte[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1];
         Arrays.fill(large, (byte) 9);
         output.write(large, 0, large.length);
         assertArrayEquals(large, output.getAndRecycle());
@@ -133,7 +133,7 @@ class PooledOutputTest {
     }
 
     @Test
-    void recyclerReusesLargeCharAndByteOutputsWithin256KCap() {
+    void recyclerReuses128KCharAndByteOutputsThroughSoftCache() {
         // Checkout existing caches first so the initial capacity is deterministic.
         char[] previousChars = OutputBufferRecycler.acquireChars();
         byte[] previousBytes = OutputBufferRecycler.acquireBytes();
@@ -168,15 +168,15 @@ class PooledOutputTest {
     }
 
     @Test
-    void recyclerPrefersSoftArraysBeyond256KCap() {
+    void recyclerPrefersSoftArraysBeyond64KCap() {
         OutputBufferRecycler recycler = OutputBufferRecycler.current();
         char[] priorLargeChars = recycler.takeLargeChars(1);
         byte[] priorLargeBytes = recycler.takeLargeBytes(1);
         char[] priorChars = recycler.takeChars();
         byte[] priorBytes = recycler.takeBytes();
         try {
-            char[] softChars = new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
-            byte[] softBytes = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
+            char[] softChars = new char[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1];
+            byte[] softBytes = new byte[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1];
             recycler.recycleChars(softChars);
             recycler.recycleBytes(softBytes);
             assertSame(softChars, recycler.takeChars());
@@ -507,7 +507,7 @@ class PooledOutputTest {
             recycler.recycleChars(nested);
             recycler.recycleChars(candidate);
             assertSame(candidate, recycler.takeChars());
-            recycler.recycleChars(new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
+            recycler.recycleChars(new char[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1]);
         } finally {
             recycler.recycleChars(previous);
         }
@@ -679,8 +679,8 @@ class PooledOutputTest {
             assertNull(recycler.takeLargeBytes(1));
             assertNull(recycler.takeLargeChars(1));
 
-            byte[] boundedBytes = new byte[128 * 1024];
-            char[] boundedChars = new char[128 * 1024];
+            byte[] boundedBytes = new byte[64 * 1024];
+            char[] boundedChars = new char[64 * 1024];
             recycler.recycleBytes(boundedBytes);
             recycler.recycleChars(boundedChars);
             assertSame(boundedBytes, recycler.takeBytes());
@@ -810,6 +810,63 @@ class PooledOutputTest {
         } finally {
             outer.recycle();
             inner.recycle();
+        }
+    }
+
+    @Test
+    void buffersBeyond64KAreSoftWhile64KRemainsStrong() {
+        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        byte[] strongBytes = new byte[64 * 1024];
+        char[] strongChars = new char[64 * 1024];
+        byte[] softBytes = new byte[128 * 1024];
+        char[] softChars = new char[128 * 1024];
+
+        recycler.recycleBytes(strongBytes);
+        recycler.recycleChars(strongChars);
+        recycler.recycleBytes(softBytes);
+        recycler.recycleChars(softChars);
+
+        // Large arrays must never occupy the strongly retained slots.
+        assertSame(softBytes, recycler.takeLargeBytes(1));
+        assertSame(softChars, recycler.takeLargeChars(1));
+        assertSame(strongBytes, recycler.takeBytes());
+        assertSame(strongChars, recycler.takeChars());
+        recycler.recycleBytes(softBytes);
+        recycler.recycleChars(softChars);
+        recycler.recycleBytes(strongBytes);
+        recycler.recycleChars(strongChars);
+
+        // Even a power-of-two tier beyond 64K uses the soft slots.
+        byte[] justOver = new byte[64 * 1024 + 1];
+        char[] justOverChars = new char[64 * 1024 + 1];
+        recycler.recycleBytes(justOver);
+        recycler.recycleChars(justOverChars);
+        assertSame(softBytes, recycler.takeLargeBytes(1));
+        assertSame(softChars, recycler.takeLargeChars(1));
+    }
+
+    @Test
+    void growthAndDirectStringThresholdStayAt256K() {
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 65537));
+        assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 0, 131073));
+
+        PooledStringWriter medium = new PooledStringWriter();
+        try {
+            String source = "abc".repeat(43_691); // >64K, <256K
+            medium.write(source);
+            assertNotSame(source, medium.toString());
+            assertEquals(source, medium.getAndRecycle());
+        } finally {
+            medium.recycle();
+        }
+
+        PooledStringWriter large = new PooledStringWriter();
+        try {
+            String source = "汉".repeat(262145);
+            large.write(source);
+            assertSame(source, large.getAndRecycle());
+        } finally {
+            large.recycle();
         }
     }
 }
