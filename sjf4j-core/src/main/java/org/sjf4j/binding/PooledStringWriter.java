@@ -3,26 +3,21 @@ package org.sjf4j.binding;
 import java.io.Writer;
 
 /**
- * Unsynchronized recyclable Writer. Up to 256K characters it uses a pooled
- * char[]; incremental large outputs keep a contiguous softly cached char[].
- * A first full oversized String uses StringBuilder(value) for compact strings.
+ * Unsynchronized recyclable Writer. Incremental writes use a contiguous
+ * recycled char[] with a soft cache for arrays over 256K. A complete large
+ * String first write is held without copying until further data is appended.
  *
  * <p>close() is deliberately a no-op: a backend may close its Writer before
  * the caller retrieves its String. The owner must call getAndRecycle() or
- * recycle(). The large StringBuilder is never retained after recycle/reset.</p>
+ * recycle().</p>
  */
 public final class PooledStringWriter extends Writer {
     private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
     private char[] buffer = recycler.takeChars();
-    private StringBuilder large;
+    private String directString;
     private int count;
 
     public PooledStringWriter() {}
-
-    private void checkOpen() {
-        if (buffer == null && large == null)
-            throw new IllegalStateException("Writer already recycled");
-    }
 
     private char[] active() {
         char[] value = buffer;
@@ -42,7 +37,10 @@ public final class PooledStringWriter extends Writer {
                 ? recycler.takeLargeChars(required) : null;
         if (next == null)
             next = new char[OutputBufferRecycler.growCapacity(previous.length, count, required)];
-        System.arraycopy(previous, 0, next, 0, count);
+        // The direct String has not been copied into previous; materialize()
+        // performs the copy after ensuring capacity.
+        if (directString == null)
+            System.arraycopy(previous, 0, next, 0, count);
         buffer = next;
         recycler.recycleChars(previous);
         return next;
@@ -53,53 +51,48 @@ public final class PooledStringWriter extends Writer {
         return required > value.length ? grow(required) : value;
     }
 
+    private void materialize(int required) {
+        String value = directString;
+        if (value != null) {
+            char[] dest = ensureCapacity(required);
+            value.getChars(0, count, dest, 0);
+            directString = null;
+        }
+    }
+
     @Override
     public void write(int value) {
-        StringBuilder builder = large;
-        if (builder != null) {
-            builder.append((char) value);
-            count++;
-            return;
-        }
-        char[] dest = active();
-        int pos = count;
-        if (pos == dest.length) dest = grow(pos + 1);
-        dest[pos] = (char) value;
-        count = pos + 1;
+        int end = nextCount(1);
+        materialize(end);
+        char[] dest = ensureCapacity(end);
+        dest[count] = (char) value;
+        count = end;
     }
 
     @Override
     public void write(char[] value, int offset, int length) {
-        checkOpen();
+        active();
         if (offset < 0 || length < 0 || offset > value.length - length)
             throw new IndexOutOfBoundsException();
         int end = nextCount(length);
-        StringBuilder builder = large;
-        if (builder != null) {
-            builder.append(value, offset, length);
-        } else {
-            System.arraycopy(value, offset, ensureCapacity(end), count, length);
-        }
+        if (length == 0) return;
+        materialize(end);
+        System.arraycopy(value, offset, ensureCapacity(end), count, length);
         count = end;
     }
 
     @Override
     public void write(String value, int offset, int length) {
-        checkOpen();
+        active();
         if (offset < 0 || length < 0 || offset > value.length() - length)
             throw new IndexOutOfBoundsException();
         int end = nextCount(length);
-        StringBuilder builder = large;
-        if (builder != null) {
-            builder.append(value, offset, offset + length);
-        } else if (count == 0 && end > OutputBufferRecycler.MAX_RETAINED_CAPACITY
-                && offset == 0 && length == value.length()) {
-            // Preserve source coder when the complete first String is oversized.
-            char[] previous = active();
-            large = new StringBuilder(value);
-            buffer = null;
-            recycler.recycleChars(previous);
+        if (length == 0) return;
+        if (count == 0 && offset == 0 && length == value.length()
+                && end > OutputBufferRecycler.MAX_RETAINED_CAPACITY) {
+            directString = value;
         } else {
+            materialize(end);
             value.getChars(offset, offset + length, ensureCapacity(end), count);
         }
         count = end;
@@ -124,7 +117,7 @@ public final class PooledStringWriter extends Writer {
 
     @Override
     public PooledStringWriter append(CharSequence value, int start, int end) {
-        checkOpen();
+        active();
         CharSequence sequence = value == null ? "null" : value;
         if (start < 0 || end < start || end > sequence.length())
             throw new IndexOutOfBoundsException();
@@ -132,37 +125,32 @@ public final class PooledStringWriter extends Writer {
             write((String) sequence, start, end - start);
         } else {
             int next = nextCount(end - start);
-            StringBuilder builder = large;
-            if (builder != null) {
-                builder.append(sequence, start, end);
-            } else {
-                char[] dest = ensureCapacity(next);
-                for (int i = start, j = count; i < end; i++, j++)
-                    dest[j] = sequence.charAt(i);
-            }
+            if (next == count) return this;
+            materialize(next);
+            char[] dest = ensureCapacity(next);
+            for (int i = start, j = count; i < end; i++, j++)
+                dest[j] = sequence.charAt(i);
             count = next;
         }
         return this;
     }
 
     public void reset() {
-        checkOpen();
-        if (large != null) {
-            large = null;
-            buffer = recycler.takeChars();
-        }
+        active();
+        directString = null;
         count = 0;
     }
 
     public int size() {
-        checkOpen();
+        active();
         return count;
     }
 
     @Override
     public String toString() {
-        StringBuilder builder = large;
-        return builder != null ? builder.toString() : new String(active(), 0, count);
+        active();
+        String value = directString;
+        return value != null ? value : new String(buffer, 0, count);
     }
 
     public String getAndRecycle() {
@@ -174,7 +162,7 @@ public final class PooledStringWriter extends Writer {
     }
 
     public void recycle() {
-        large = null;
+        directString = null;
         char[] value = buffer;
         if (value != null) {
             buffer = null;
