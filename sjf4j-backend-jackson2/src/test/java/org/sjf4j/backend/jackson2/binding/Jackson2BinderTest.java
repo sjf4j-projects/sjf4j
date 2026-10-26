@@ -213,7 +213,7 @@ class Jackson2BinderTest {
         Jackson2Generator generator = binder.createGenerator(output);
         assertInstanceOf(Jackson2Generator.class, generator);
         generator.writeNull();
-        generator.close();
+        generator.release();
         assertEquals("null", output.toString());
     }
 
