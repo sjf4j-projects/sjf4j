@@ -201,13 +201,11 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
      */
     public String writeNodeAsString(Object node) {
         PooledStringWriter output = new PooledStringWriter();
-        try {
-            try (W writer = createWriter(output)) {
-                writer.startDocument();
-                StreamingIO.writeNode(writer, node, context);
-                writer.endDocument();
-                writer.flush();
-            }
+        try (W writer = createWriter(output)) {
+            writer.startDocument();
+            StreamingIO.writeNode(writer, node, context);
+            writer.endDocument();
+            writer.flush();
             return output.toString();
         } catch (BindingException e) {
             throw e;
@@ -223,13 +221,11 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
      */
     public byte[] writeNodeAsBytes(Object node) {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        try {
-            try (W writer = createWriter(output)) {
-                writer.startDocument();
-                StreamingIO.writeNode(writer, node, context);
-                writer.endDocument();
-                writer.flush();
-            }
+        try (W writer = createWriter(output)) {
+            writer.startDocument();
+            StreamingIO.writeNode(writer, node, context);
+            writer.endDocument();
+            writer.flush();
             return output.toByteArray();
         } catch (BindingException e) {
             throw e;
