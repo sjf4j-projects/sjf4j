@@ -66,10 +66,10 @@ class CompiledGsonJsonpUnifiedWriteTest {
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("instanceof RandomAccess"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
-            assertTrue(generated.contains("writer.nativeWriter()"), backend);
-            assertTrue(generated.contains("_writeList(writer, property0);"), backend);
+            assertTrue(generated.contains("generator.nativeWriter()"), backend);
+            assertTrue(generated.contains("_writeList(generator, property0);"), backend);
             assertTrue(generated.contains("this.context.includeNulls"), backend);
-            assertTrue(generated.contains("StreamingIO.writeNode(writer,"), backend);
+            assertTrue(generated.contains("StreamingIO.writeNode(generator,"), backend);
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertFalse(generated.contains("private static void _writeModel("), backend);
             assertTrue(generated.contains("private void _writeModel("), backend);

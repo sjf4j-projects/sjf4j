@@ -53,7 +53,7 @@ class CompiledJacksonMixedPojoWriteTest {
             if (!backend.equals("SIMPLE")) {
                 // An adapted List<OneOf> must not force the root POJO structure
                 // or its ordinary scalar fields through the writer facade.
-                assertTrue(generated.contains("g = writer.nativeWriter();"), backend);
+                assertTrue(generated.contains("g = generator.nativeWriter();"), backend);
                 assertTrue(generated.contains("g.writeStartObject();"), backend);
                 assertTrue(generated.contains("g.writeNumber(item);"), backend);
                 assertTrue(generated.contains("g.writeString(item == null ? null : item.name());"), backend);
