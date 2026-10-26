@@ -51,8 +51,8 @@ class AnnotatedValueCodecTest {
                 () -> TypeRegistry.requireRegisteredValueInfo(UUID.class, ""));
         assertThrows(BindingException.class,
                 () -> TypeRegistry.requireRegisteredValueInfo(LocalDate.class, ""));
-        assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamReader);
-        assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamWriter);
+        assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamParser);
+        assertNotNull(TypeRegistry.requireRegisteredValueInfo(UUID.class, null).streamGenerator);
         assertEquals(String.class, TypeRegistry.requireRegisteredValueInfo(Instant.class, null).rawClazz);
         assertEquals("iso", TypeRegistry.requireRegisteredValueInfo(Instant.class, null).valueFormat);
         assertEquals("iso", TypeRegistry.requireRegisteredValueInfo(Instant.class, "iso").valueFormat);
