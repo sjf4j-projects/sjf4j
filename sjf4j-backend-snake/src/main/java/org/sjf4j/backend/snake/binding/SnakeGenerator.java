@@ -1,7 +1,7 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
@@ -26,7 +26,7 @@ import java.io.Writer;
  * SnakeYAML event writer for JSON-semantic nodes. String scalars that would
  * otherwise resolve to another YAML type are quoted to preserve their type.
  */
-public final class SnakeWriter extends StreamingWriter {
+public final class SnakeGenerator extends StreamingGenerator {
 
     private static final Resolver RESOLVER = new Resolver();
     private static final ImplicitTuple PLAIN_IMPLICIT = new ImplicitTuple(true, false);
@@ -43,7 +43,7 @@ public final class SnakeWriter extends StreamingWriter {
      * @param output the character output stream
      * @param options the SnakeYAML emitter options
      */
-    public SnakeWriter(Writer output, DumperOptions options) {
+    public SnakeGenerator(Writer output, DumperOptions options) {
         super(Backend.SNAKE);
         this.output = Asserts.notNull(output, "output");
         this.options = Asserts.notNull(options, "options");
@@ -55,7 +55,7 @@ public final class SnakeWriter extends StreamingWriter {
      * Starts YAML stream and document.
      */
     @Override
-    public void startDocument() throws IOException {
+    public void startWrite() throws IOException {
         emitter.emit(new StreamStartEvent(null, null));
         emitter.emit(new DocumentStartEvent(null, null, options.isExplicitStart(), null, null));
     }
@@ -64,7 +64,7 @@ public final class SnakeWriter extends StreamingWriter {
      * Ends YAML document and stream.
      */
     @Override
-    public void endDocument() throws IOException {
+    public void endWrite() throws IOException {
         emitter.emit(new DocumentEndEvent(null, null, options.isExplicitEnd()));
         emitter.emit(new StreamEndEvent(null, null));
     }
@@ -190,17 +190,13 @@ public final class SnakeWriter extends StreamingWriter {
     /**
      * Flushes the caller-owned output without closing it.
      */
-    @Override
-    public void flush() throws IOException {
-        output.flush();
-    }
 
     /**
      * Emitter flushes the output on DocumentEndEvent and StreamEndEvent.
      * The caller owns the output writer.
      */
     @Override
-    public void close() throws IOException {
+    public void release() {
     }
 
 

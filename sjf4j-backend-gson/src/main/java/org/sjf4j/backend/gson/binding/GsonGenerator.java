@@ -2,13 +2,13 @@ package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
 
-/** StreamingWriter backed directly by a Gson {@link JsonWriter}. */
-public final class GsonWriter extends StreamingWriter {
+/** StreamingGenerator backed directly by a Gson {@link JsonWriter}. */
+public final class GsonGenerator extends StreamingGenerator {
 
     private final JsonWriter writer;
 
@@ -16,7 +16,7 @@ public final class GsonWriter extends StreamingWriter {
      * Creates a writer around a Gson JSON output cursor.
      * @param writer the Gson writer
      */
-    public GsonWriter(JsonWriter writer) {
+    public GsonGenerator(JsonWriter writer) {
         super(Backend.GSON);
         this.writer = Asserts.notNull(writer, "writer");
     }
@@ -108,12 +108,12 @@ public final class GsonWriter extends StreamingWriter {
     }
 
     @Override
-    public void flush() throws IOException {
+    public void endWrite() throws IOException {
         writer.flush();
     }
 
     @Override
-    public void close() throws IOException {
-        writer.close();
+    public void release() {
+        // Gson does not own the caller's output.
     }
 }

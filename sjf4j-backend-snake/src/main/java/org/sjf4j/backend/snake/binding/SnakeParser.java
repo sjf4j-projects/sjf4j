@@ -1,7 +1,7 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
@@ -34,8 +34,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** StreamingReader backed directly by SnakeYAML parser events. */
-public final class SnakeReader extends StreamingReader {
+/** StreamingParser backed directly by SnakeYAML parser events. */
+public final class SnakeParser extends StreamingParser {
 
     private static final Resolver RESOLVER = new Resolver();
     private static final String TAG_NULL = Tag.NULL.getValue();
@@ -58,19 +58,19 @@ public final class SnakeReader extends StreamingReader {
      * Creates a reader over a SnakeYAML event parser.
      * @param parser the SnakeYAML parser
      */
-    public SnakeReader(Parser parser) {
+    public SnakeParser(Parser parser) {
         super(Backend.SNAKE);
         this.parser = Asserts.notNull(parser, "parser");
     }
 
     @Override
-    public void startDocument() throws IOException {
+    public void startRead() throws IOException {
         require(StreamStartEvent.class);
         require(DocumentStartEvent.class);
     }
 
     @Override
-    public void endDocument() throws IOException {
+    public void endRead() throws IOException {
         if (depth != 0) {
             throw new IOException("expected end of document, but a structure is still open");
         }
@@ -498,7 +498,7 @@ public final class SnakeReader extends StreamingReader {
     }
 
     @Override
-    public void close() {
+    public void release() {
         // The caller owns the Reader supplied to SnakeYAML.
     }
 

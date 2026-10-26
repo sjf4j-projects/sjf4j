@@ -2,7 +2,7 @@ package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.stream.JsonGenerator;
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /** Streaming writer backed directly by a JSON-P {@link JsonGenerator}. */
-public final class JsonpWriter extends StreamingWriter {
+public final class JsonpGenerator extends StreamingGenerator {
 
     private final JsonGenerator generator;
 
@@ -18,7 +18,7 @@ public final class JsonpWriter extends StreamingWriter {
      * Creates a writer around a JSON-P generator.
      * @param generator the JSON-P generator
      */
-    public JsonpWriter(JsonGenerator generator) {
+    public JsonpGenerator(JsonGenerator generator) {
         super(Backend.JSONP);
         this.generator = Asserts.notNull(generator, "generator");
     }
@@ -127,12 +127,12 @@ public final class JsonpWriter extends StreamingWriter {
     }
 
     @Override
-    public void flush() throws IOException {
+    public void endWrite() throws IOException {
         generator.flush();
     }
 
     @Override
-    public void close() throws IOException {
+    public void release() throws IOException {
         generator.close();
     }
 }

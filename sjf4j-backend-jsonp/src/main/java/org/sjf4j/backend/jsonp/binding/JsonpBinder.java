@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
   * obtain these via {@link org.sjf4j.node.NodeMapper} conversion instead. Existing native JSON-P
  * nodes can still be written.
  */
-public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
+public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
 
     private final JsonProvider provider;
 
@@ -60,13 +60,16 @@ public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
      * @param parser the JSON-P parser
      * @return a SJF4J streaming reader
      */
-    public JsonpReader createReader(JsonParser parser) {
-        return new JsonpReader(Asserts.notNull(parser, "parser"));
+    public JsonpParser createParser(JsonParser parser) {
+        return new JsonpParser(Asserts.notNull(parser, "parser"));
     }
 
     @Override
-    public JsonpReader createReader(Reader input) throws IOException {
-        return createReader(provider.createParser(Asserts.notNull(input, "input")));
+    public JsonpParser createParser(Reader input) throws IOException {
+        Reader protectedInput = new java.io.FilterReader(Asserts.notNull(input, "input")) {
+            @Override public void close() { /* Caller owns input. */ }
+        };
+        return createParser(provider.createParser(protectedInput));
     }
 
     /**
@@ -74,13 +77,16 @@ public final class JsonpBinder extends Binder<JsonpReader, JsonpWriter> {
      * @param generator the JSON-P generator
      * @return a SJF4J streaming writer
      */
-    public JsonpWriter createWriter(JsonGenerator generator) {
-        return new JsonpWriter(Asserts.notNull(generator, "generator"));
+    public JsonpGenerator createGenerator(JsonGenerator generator) {
+        return new JsonpGenerator(Asserts.notNull(generator, "generator"));
     }
 
     @Override
-    public JsonpWriter createWriter(Writer output) throws IOException {
-        return createWriter(provider.createGenerator(Asserts.notNull(output, "output")));
+    public JsonpGenerator createGenerator(Writer output) throws IOException {
+        Writer protectedOutput = new java.io.FilterWriter(Asserts.notNull(output, "output")) {
+            @Override public void close() { /* Caller owns output. */ }
+        };
+        return createGenerator(provider.createGenerator(protectedOutput));
     }
 
     @Override

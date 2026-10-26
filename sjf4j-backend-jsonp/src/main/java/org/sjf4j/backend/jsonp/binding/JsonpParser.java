@@ -2,7 +2,7 @@ package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.stream.JsonParser;
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
@@ -16,14 +16,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * StreamingReader backed directly by a JSON-P {@link JsonParser}.
+ * StreamingParser backed directly by a JSON-P {@link JsonParser}.
  *
  * <p>Requires Jakarta JSON Processing API 2.1 or later. A supplied parser
  * retains its current event when {@code currentEvent()} is supported. When
  * that method is unsupported, the parser must not have been advanced before
  * construction, since its previous position cannot be recovered.</p>
  */
-public final class JsonpReader extends StreamingReader {
+public final class JsonpParser extends StreamingParser {
 
     private final JsonParser parser;
     private JsonParser.Event current;
@@ -32,7 +32,7 @@ public final class JsonpReader extends StreamingReader {
      * Creates a reader around a JSON-P event parser.
      * @param parser the JSON-P parser
      */
-    public JsonpReader(JsonParser parser) {
+    public JsonpParser(JsonParser parser) {
         super(Backend.JSONP);
         this.parser = Asserts.notNull(parser, "parser");
         try {
@@ -47,7 +47,7 @@ public final class JsonpReader extends StreamingReader {
     }
 
     @Override
-    public void endDocument() throws IOException {
+    public void endRead() throws IOException {
         if (current != null) {
             throw new IOException("expected end of document");
         }
@@ -260,7 +260,7 @@ public final class JsonpReader extends StreamingReader {
     }
 
     @Override
-    public void close() {
+    public void release() {
         parser.close();
     }
 

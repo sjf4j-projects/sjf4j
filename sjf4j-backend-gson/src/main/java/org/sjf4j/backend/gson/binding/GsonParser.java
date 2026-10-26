@@ -3,7 +3,7 @@ package org.sjf4j.backend.gson.binding;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
@@ -17,8 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** StreamingReader backed directly by a Gson {@link JsonReader}. */
-public final class GsonReader extends StreamingReader {
+/** StreamingParser backed directly by a Gson {@link JsonReader}. */
+public final class GsonParser extends StreamingParser {
 
     private final JsonReader reader;
 
@@ -26,13 +26,13 @@ public final class GsonReader extends StreamingReader {
      * Creates a reader around a Gson JSON cursor.
      * @param reader the Gson reader
      */
-    public GsonReader(JsonReader reader) {
+    public GsonParser(JsonReader reader) {
         super(Backend.GSON);
         this.reader = Asserts.notNull(reader, "reader");
     }
 
     @Override
-    public void endDocument() throws IOException {
+    public void endRead() throws IOException {
         if (reader.peek() != JsonToken.END_DOCUMENT) {
             throw new IOException("expected end of document");
         }
@@ -204,8 +204,8 @@ public final class GsonReader extends StreamingReader {
     }
 
     @Override
-    public void close() throws IOException {
-        reader.close();
+    public void release() {
+        // Gson has no pooled parser resources; the caller owns the input.
     }
 
     private Map<String, Object> _readRawObject() throws IOException {
