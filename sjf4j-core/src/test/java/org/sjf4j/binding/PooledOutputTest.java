@@ -138,10 +138,11 @@ class PooledOutputTest {
         char[] previousChars = OutputBufferRecycler.acquireChars();
         byte[] previousBytes = OutputBufferRecycler.acquireBytes();
         try {
-        // The power-of-two rule allocates 128K for a single 128K write.
+        // Two 64K writes exercise contiguous array growth without direct String pass-through.
         String contents = "x".repeat(128 * 1024);
         PooledStringWriter writer = new PooledStringWriter();
-        writer.write(contents);
+        writer.write(contents, 0, 64 * 1024);
+        writer.write(contents, 64 * 1024, 64 * 1024);
         assertEquals(contents, writer.getAndRecycle());
         char[] cachedChars = OutputBufferRecycler.acquireChars();
         try {
@@ -190,14 +191,15 @@ class PooledOutputTest {
     }
 
     @Test
-    void expansionUsesPowerOfTwoTiersUntil256KAndHeadroomBeyond() {
+    void expansionUsesPowerOfTwoTiersUntil64KAndAdaptiveGrowthBeyond() {
         assertEquals(1024, OutputBufferRecycler.growCapacity(512, 0, 1024));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 0, 1200));
         assertEquals(4096, OutputBufferRecycler.growCapacity(1024, 0, 3000));
         assertEquals(8192, OutputBufferRecycler.growCapacity(4096, 0, 5000));
         assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 0, 65536));
-        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 65537));
-        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 100000));
+        assertEquals(65537, OutputBufferRecycler.growCapacity(65536, 0, 65537));
+        assertEquals(100000, OutputBufferRecycler.growCapacity(65536, 0, 100000));
+        assertEquals(98304, OutputBufferRecycler.growCapacity(65536, 65536, 65537));
         assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 0, 262144));
         assertEquals(300000, OutputBufferRecycler.growCapacity(131072, 0, 300000));
         assertEquals(300000, OutputBufferRecycler.growCapacity(262144, 0, 300000));
@@ -574,12 +576,13 @@ class PooledOutputTest {
         assertEquals(1024, OutputBufferRecycler.growCapacity(1024, 0, 1));
         assertEquals(2048, OutputBufferRecycler.growCapacity(1024, 0, 1025));
         assertEquals(65536, OutputBufferRecycler.growCapacity(32768, 0, 65536));
-        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 65537));
+        assertEquals(65537, OutputBufferRecycler.growCapacity(65536, 0, 65537));
+        assertEquals(98304, OutputBufferRecycler.growCapacity(65536, 65536, 65537));
     }
 
 
     @Test
-    void stringWriterSwitchesAt256KAndPreservesMixedContent() {
+    void stringWriterGrowsPast64KAndPreservesMixedContent() {
         String prefix = "a".repeat(256 * 1024 - 2);
         PooledStringWriter writer = new PooledStringWriter();
         try {
@@ -846,15 +849,16 @@ class PooledOutputTest {
     }
 
     @Test
-    void growthAndDirectStringThresholdStayAt256K() {
-        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 65537));
-        assertEquals(262144, OutputBufferRecycler.growCapacity(131072, 0, 131073));
+    void growthAndDirectStringThresholdAre64K() {
+        assertEquals(65537, OutputBufferRecycler.growCapacity(65536, 0, 65537));
+        assertEquals(98304, OutputBufferRecycler.growCapacity(65536, 65536, 65537));
+        assertEquals(131073, OutputBufferRecycler.growCapacity(131072, 0, 131073));
 
         PooledStringWriter medium = new PooledStringWriter();
         try {
             String source = "abc".repeat(43_691); // >64K, <256K
             medium.write(source);
-            assertNotSame(source, medium.toString());
+            assertSame(source, medium.toString());
             assertEquals(source, medium.getAndRecycle());
         } finally {
             medium.recycle();
@@ -868,5 +872,32 @@ class PooledOutputTest {
         } finally {
             large.recycle();
         }
+    }
+
+    @Test
+    void oneShotStringUsesZeroCopyImmediatelyAbove64K() {
+        String small = "x".repeat(64 * 1024);
+        String big = "界".repeat(64 * 1024 + 1);
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            writer.write(small);
+            assertNotSame(small, writer.toString());
+            assertEquals(small, writer.toString());
+            writer.reset();
+            writer.write(big);
+            assertSame(big, writer.toString());
+            writer.append('!');
+            assertEquals(big + "!", writer.getAndRecycle());
+        } finally {
+            writer.recycle();
+        }
+    }
+
+    @Test
+    void byteGrowthSwitchesFromPowerOfTwoToAdaptiveAt64K() {
+        assertEquals(65536, OutputBufferRecycler.growBytesCapacity(32768, 0, 65536));
+        assertEquals(65537, OutputBufferRecycler.growBytesCapacity(65536, 0, 65537));
+        assertEquals(131072, OutputBufferRecycler.growBytesCapacity(65536, 65536, 65537));
+        assertEquals(100000, OutputBufferRecycler.growBytesCapacity(65536, 0, 100000));
     }
 }
