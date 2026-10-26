@@ -33,8 +33,8 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*AdaptiveOutputBenchmark\.(charsPooled|charsJackson2|charsChunksPooled|charsChunksJackson2|bytesPooled|bytesJdk|bytesChunksPooled|bytesChunksJdk)$' \
-            -bm avgt -tu us -t 1 -f 2 -wi 10 -w 200ms -i 3 -r 200ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE \
+          java -jar "$jar" '.*SegmentedOutputBenchmark\.(chunksCurrentPooled|chunksSegmentedBuilder|chunksSegmentedArray|chunksJacksonCapped|chunksJacksonUnlimited)$' \
+            -bm avgt -tu us -t 1 -f 2 -wi 10 -w 200ms -i 3 -r 200ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE -p segmentSize=131072,524288 \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -47,26 +47,18 @@ jobs:
           if not results: raise SystemExit('JMH produced no results')
           rows={}
           for r in results:
-              key=(r['params']['payloadLength'],r['params']['alphabet'])
+              key=(r['params']['payloadLength'],r['params']['alphabet'],r['params']['segmentSize'])
               rows.setdefault(key,{})[r['benchmark'].split('.')[-1]]=r
-          print('# Large-output soft-cache benchmark: SJF4J vs Jackson2 and JDK')
-          print('JDK 25; 2 forks, 10 warmups, 3 measurements; GC allocations B/op.')
-          pairs=[
-              ('charsPooled','charsJackson2'),
-              ('charsChunksPooled','charsChunksJackson2'),
-              ('bytesPooled','bytesJdk'),
-              ('bytesChunksPooled','bytesChunksJdk')
-          ]
-          print('| Size | Alphabet | Pooled | Baseline | Pooled us/op | Baseline us/op | Speedup | Pooled B/op | Baseline B/op |')
-          print('|---:|---|---|---|---:|---:|---:|---:|---:|')
-          for (size,alphabet),items in sorted(rows.items()):
-              for a,b in pairs:
-                  if a not in items or b not in items:
-                      raise SystemExit(f'Missing benchmark {(size,alphabet,a,b)}')
-                  x,y=items[a],items[b]
-                  xv,yv=x['primaryMetric']['score'],y['primaryMetric']['score']
-                  alloc=lambda r:r.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan'))
-                  print(f'| {size} | {alphabet} | {a} | {b} | {xv:.3f} | {yv:.3f} | {yv/xv:.2f}x | {alloc(x):.0f} | {alloc(y):.0f} |')
+          print('# Chunked segmented comparison: bounded strong + large soft cache')
+          print('| Size | Alphabet | Segment | Method | us/op | B/op |')
+          print('|---:|---|---:|---|---:|---:|')
+          for (size,alphabet,segment),items in sorted(rows.items()):
+              for name in ['chunksCurrentPooled','chunksSegmentedBuilder','chunksSegmentedArray','chunksJacksonCapped','chunksJacksonUnlimited']:
+                  if name not in items: raise SystemExit(f'Missing {size} {alphabet} {segment} {name}')
+                  row=items[name]
+                  score=row['primaryMetric']['score']
+                  alloc=row.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan'))
+                  print(f'| {size} | {alphabet} | {segment} | {name} | {score:.3f} | {alloc:.0f} |')
           PY
           cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve measurements
