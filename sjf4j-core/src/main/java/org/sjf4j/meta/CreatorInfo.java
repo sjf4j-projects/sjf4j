@@ -38,6 +38,8 @@ public class CreatorInfo {
     public final LazyTypeInfo[] argTypeInfos;
     public final String[] argCodecNames;
     public final ValueInfo[] argValueCodecs;
+    /** Explicit parameter or creator-bound field polymorphic mappings, indexed by creator argument. */
+    public final OneOfInfo[] argOneOfInfos;
     public final Map<String, Integer> argIndexes;
     public final Map<String, String> aliasMap;
     public final boolean hasCodecNameBinding;
@@ -81,6 +83,7 @@ public class CreatorInfo {
         }
         this.argCodecNames = argCodecNames;
         this.argValueCodecs = argValueCodecs;
+        this.argOneOfInfos = argTypes == null ? null : new OneOfInfo[argTypes.length];
         this.argIndexes = argIndexes;
         this.aliasMap = aliasMap;
         boolean hasCodecNameBinding = false;

@@ -524,9 +524,12 @@ public final class StreamingIO {
              */
             int argIndex = pojoInfo.creatorMatchArgs[index];
             if (argIndex >= 0) {
+                OneOfInfo argOneOf = creator.argOneOfInfos[argIndex];
                 ValueInfo codec = creator.argValueCodecs[argIndex];
                 Object value;
-                if (codec != null) {
+                if (argOneOf != null) {
+                    value = OneOfIO.readOneOf(reader, argOneOf, context);
+                } else if (codec != null) {
                     value = readValueCodec(reader, codec, context);
                 } else {
                     LazyTypeInfo lazy = creator.argTypeInfos[argIndex];

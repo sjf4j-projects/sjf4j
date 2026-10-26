@@ -189,9 +189,12 @@ public final class OneOfIO {
                     expectedIndex = index + 1;
                     int argIdx = pi.creatorMatchArgs[index];
                     if (argIdx >= 0) {
+                        OneOfInfo argOneOf = ci.argOneOfInfos[argIdx];
                         ValueInfo codec = ci.argValueCodecs[argIdx];
                         Object value;
-                        if (codec != null) {
+                        if (argOneOf != null) {
+                            value = readOneOf(reader, argOneOf, context);
+                        } else if (codec != null) {
                             value = StreamingIO.readValueCodec(reader, codec, context);
                         } else {
                             LazyTypeInfo lazy = ci.argTypeInfos[argIdx];
@@ -288,9 +291,12 @@ public final class OneOfIO {
         CreatorInfo ci = pi.creatorInfo;
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
+            OneOfInfo argOneOf = ci.argOneOfInfos[argIdx];
             ValueInfo codec = ci.argValueCodecs[argIdx];
             Object value;
-            if (codec != null) {
+            if (argOneOf != null) {
+                value = _convertRawOneOf(rawValue, argOneOf, context);
+            } else if (codec != null) {
                 if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
                     rawValue = Numbers.to((Number) rawValue, codec.rawClazz);
                 }

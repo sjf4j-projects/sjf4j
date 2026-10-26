@@ -1515,10 +1515,13 @@ public final class NodeMapper {
         Type argType = Types.resolveMemberType(targetType, targetClass, creator.argTypes[argIdx]);
         Class<?> argRaw = Types.rawBox(argType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
+        OneOfInfo argOneOf = creator.argOneOfInfos[argIdx];
         ValueInfo codec = creator.argValueCodecs[argIdx];
-        // Only a codec explicitly selected on the creator parameter is strict.
-        // Unannotated value parameters must select by the incoming JSON shape.
-        Object value = ti.oneOfInfo == null && codec != null
+        // Parameter-level polymorphism takes precedence over the declared type.
+        // Otherwise, preserve the ordinary codec and type-level OneOf paths.
+        Object value = argOneOf != null
+                ? (rawValue == null ? null : _convertOneOf(rawValue, argRaw, argOneOf, deepCopy, ps, context))
+                : ti.oneOfInfo == null && codec != null
                 ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, context)
                 : _convertSourceChild(rawValue, argType, argRaw, ti,
                         deepCopy, ps, context, externalSource);
