@@ -96,7 +96,7 @@ final class OutputBufferRecycler {
     }
 
     void recycleChars(char[] array) {
-        if (array.length <= MAX_RETAINED_CAPACITY) {
+        if (array.length <= strongCacheLimit) {
             if (chars == null || chars.length < array.length) chars = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
