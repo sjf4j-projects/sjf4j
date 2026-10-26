@@ -1,4 +1,4 @@
-package org.sjf4j.testbench.binding.runtime;
+package org.sjf4j.testbench.binding.compiled;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;

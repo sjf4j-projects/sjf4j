@@ -12,7 +12,7 @@ import java.io.Writer;
  * recycle().</p>
  */
 public final class PooledStringWriter extends Writer {
-    private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
+    private final OutputPool recycler = OutputPool.current();
     private char[] buffer = recycler.takeChars();
     private String directString;
     private int count;
@@ -33,10 +33,10 @@ public final class PooledStringWriter extends Writer {
 
     private char[] grow(int required) {
         char[] previous = active();
-        char[] next = required > OutputBufferRecycler.MAX_RETAINED_CAPACITY
+        char[] next = required > OutputPool.MAX_RETAINED_CAPACITY
                 ? recycler.takeLargeChars(required) : null;
         if (next == null)
-            next = new char[OutputBufferRecycler.growCapacity(previous.length, count, required)];
+            next = new char[OutputPool.growCapacity(previous.length, count, required)];
         // The direct String has not been copied into previous; materialize()
         // performs the copy after ensuring capacity.
         if (directString == null)
@@ -89,7 +89,7 @@ public final class PooledStringWriter extends Writer {
         int end = nextCount(length);
         if (length == 0) return;
         if (count == 0 && offset == 0 && length == value.length()
-                && end > OutputBufferRecycler.MAX_RETAINED_CAPACITY) {
+                && end > OutputPool.MAX_RETAINED_CAPACITY) {
             directString = value;
         } else {
             materialize(end);

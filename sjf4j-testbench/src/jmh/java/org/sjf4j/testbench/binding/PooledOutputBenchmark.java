@@ -1,5 +1,6 @@
-package org.sjf4j.testbench.binding.handwritten;
+package org.sjf4j.testbench.binding;
 
+import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.binding.PooledStringWriter;
 import org.sjf4j.binding.PooledByteArrayOutputStream;
@@ -8,6 +9,7 @@ import java.io.IOException;
 import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -21,14 +23,19 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 5, time = 150, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 150, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(2)
+@Warmup(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(1)
 @Threads(1)
 @State(Scope.Thread)
-public class AdaptiveOutputBenchmark {
+public class PooledOutputBenchmark {
+
+    public static void main(String[] args) throws Exception {
+        Main.main(new String[]{PooledOutputBenchmark.class.getName()});
+    }
+
     private static final int CHUNK_SIZE = 256;
-    @Param({"1024", "65536", "65537", "131072", "262144", "307200", "1048576"})
+    @Param({"1024", "65530", "307208", "1038576"})
     public int payloadLength;
     @Param({"ASCII", "UNICODE"})
     public String alphabet;
