@@ -4,8 +4,8 @@ package org.sjf4j.binding;
  * Per-thread byte[] and char[] recycling, with exclusive array checkout.
  *
  * <p>Each thread retains at most one array of each kind, up to 256K elements.
- * For output larger than that, a 256K fallback buffer is retained for
- * subsequent smaller outputs without pinning the oversized output itself.</p>
+ * Oversized arrays are not retained; only previously allocated reusable
+ * arrays remain cached.</p>
  */
 final class OutputBufferRecycler {
 
@@ -45,12 +45,6 @@ final class OutputBufferRecycler {
             chars = array;
     }
 
-    // Large output must not remove the 256K reuse opportunity on this thread.
-    void retainMaxBytes() {
-        if (bytes == null || bytes.length < MAX_RETAINED_CAPACITY)
-            bytes = new byte[MAX_RETAINED_CAPACITY];
-    }
-
     void retainMaxChars() {
         if (chars == null || chars.length < MAX_RETAINED_CAPACITY)
             chars = new char[MAX_RETAINED_CAPACITY];
@@ -67,6 +61,17 @@ final class OutputBufferRecycler {
      * Above 256K, large appends allocate exactly what is required while
      * small appends grow the previous capacity by 1.5x.
      */
+    /** Byte output uses exact sizing for bulk writes and doubling for small appends. */
+    static int growBytesCapacity(int previous, int used, int required) {
+        if (required < 0 || required > MAX_ARRAY_SIZE)
+            throw new OutOfMemoryError("Buffer too large");
+        if (required <= MAX_RETAINED_CAPACITY)
+            return Math.max(INITIAL_CAPACITY, Integer.highestOneBit(required - 1) << 1);
+        if (used == 0 || required - used >= used) return required;
+        return (int) Math.min(MAX_ARRAY_SIZE,
+                Math.max((long) required, (long) previous * 2));
+    }
+
     // Legacy experimental sink variants in testbench still use this signature.
     static int growCapacity(int previous, int required) {
         return growCapacity(previous, 0, required);
