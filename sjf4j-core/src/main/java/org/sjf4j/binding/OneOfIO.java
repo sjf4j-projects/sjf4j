@@ -290,11 +290,11 @@ public final class OneOfIO {
         CreatorInfo ci = pi.creatorInfo;
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
-            ValueInfo codec = ci.argValueCodecs[argIdx];
             Object value;
             if (ci.argOneOfInfos[argIdx] != null) {
                 value = _convertRawOneOf(rawValue, ci.argOneOfInfos[argIdx], context);
-            } else if (codec != null) {
+            } else if (ci.argValueCodecs[argIdx] != null) {
+                ValueInfo codec = ci.argValueCodecs[argIdx];
                 if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
                     rawValue = Numbers.to((Number) rawValue, codec.rawClazz);
                 }
