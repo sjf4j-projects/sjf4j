@@ -1137,8 +1137,10 @@ public final class NodeMapper {
                 if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                     return null;
                 }
-                throw new BindingException(
-                        "not found value for discriminator " + (oneOfInfo.keyDiscriminator ? "key '" + oneOfInfo.discriminatorKey : "path '" + oneOfInfo.discriminatorPath) + "'", ps);
+                throw new BindingException("not found value for discriminator "
+                        + (oneOfInfo.keyDiscriminator
+                        ? "key '" + oneOfInfo.discriminatorKey
+                        : "path '" + oneOfInfo.discriminatorPath) + "'", ps);
             }
 
             target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);

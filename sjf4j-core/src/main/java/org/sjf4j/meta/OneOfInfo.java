@@ -39,8 +39,8 @@ public class OneOfInfo {
                      String discriminatorPath, OneOf.Scope scope, OneOf.OnNoMatch onNoMatch) {
         this.clazz = clazz;
         this.mappings = mappings;
-        this.discriminatorKey = key;
-        this.discriminatorPath = path;
+        this.discriminatorKey = discriminatorKey;
+        this.discriminatorPath = discriminatorPath;
         this.scope = scope;
         this.onNoMatch = onNoMatch;
         this.fallbackNull = onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL;
