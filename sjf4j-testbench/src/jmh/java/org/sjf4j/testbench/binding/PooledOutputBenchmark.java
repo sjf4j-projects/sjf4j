@@ -16,6 +16,15 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Large ASCII String output may be significantly slower due to JDK Compact Strings.
+ * Converting a large char[] to String requires full Latin-1 compression,
+ * while Unicode content typically falls back to the faster UTF-16 path.
+ *
+ * Disabling Compact Strings (-XX:-CompactStrings) eliminates this slowdown,
+ * but is not recommended as a general JVM optimization.
+ */
+
+/**
  * Comparable output-sink benchmark: SJF4J versus JDK and Jackson2.
  * Measures allocation and completion for full writes and 256-element chunks.
  * Complete large String writes in SJF4J can return the original String
@@ -23,8 +32,8 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 7, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 3, time = 200, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 @Threads(1)
 @State(Scope.Thread)
@@ -166,7 +175,8 @@ public class PooledOutputBenchmark {
         for (int i = 0; i < bytes.length; i += CHUNK_SIZE)
             out.write(bytes, i, Math.min(CHUNK_SIZE, bytes.length - i));
         return out.toByteArray();
-    }    
+    }
+
     @Benchmark
     public byte[] bytesChunksJackson2() throws IOException {
         ByteArrayBuilder out = new ByteArrayBuilder(jackson2Recycler);
