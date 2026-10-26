@@ -33,7 +33,7 @@ public final class PooledStringWriter extends Writer {
 
     private char[] grow(int required) {
         char[] previous = active();
-        char[] next = required > OutputBufferRecycler.MAX_RETAINED_CAPACITY
+        char[] next = required > OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY
                 ? recycler.takeLargeChars(required) : null;
         if (next == null)
             next = new char[OutputBufferRecycler.growCapacity(previous.length, count, required)];
