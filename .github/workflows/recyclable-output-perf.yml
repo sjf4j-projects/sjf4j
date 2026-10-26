@@ -14,7 +14,7 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 65
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -22,8 +22,7 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Unit tests
-        run: ./gradlew :sjf4j-core:test --no-daemon
+      # Java CI runs :sjf4j-core:test independently; do not repeat it here.
       - name: Build JMH jar
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Compare native output sinks and allocation
@@ -32,8 +31,8 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJdk|charsJackson|charsChunksPooled|charsChunksJdk|charsChunksJackson|bytesPooled|bytesJdk|bytesJackson|bytesChunksPooled|bytesChunksJdk|bytesChunksJackson|gsonPooled|gsonJdk|jackson2StringPooled|jackson2StringSegmented|jackson2BytesPooled|jackson2BytesSegmented)' \
-            -bm avgt -tu us -t 1 -f 2 -wi 4 -w 180ms -i 6 -r 180ms -p payloadLength=20480,131072,307200,1048576 -p alphabet=ASCII,UNICODE \
+          java -jar "$jar" '.*OutputBufferBenchmark\\.(charsPooled|charsJdk|charsJackson|charsChunksPooled|charsChunksJdk|bytesPooled|bytesJdk|bytesJackson|bytesChunksPooled|bytesChunksJdk)' \
+            -bm avgt -tu us -t 1 -f 1 -wi 1 -w 120ms -i 3 -r 160ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -52,16 +51,14 @@ jobs:
           if not results: raise SystemExit('JMH produced no valid results')
           pairs=[
               ('charsPooled','charsJdk'),('charsPooled','charsJackson'),
-              ('charsChunksPooled','charsChunksJdk'),('charsChunksPooled','charsChunksJackson'),
+              ('charsChunksPooled','charsChunksJdk'),
               ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson'),
-              ('bytesChunksPooled','bytesChunksJdk'),('bytesChunksPooled','bytesChunksJackson'),
-              ('gsonPooled','gsonJdk'),
-              ('jackson2StringPooled','jackson2StringSegmented'),
-              ('jackson2BytesPooled','jackson2BytesSegmented')
+              ('bytesChunksPooled','bytesChunksJdk')
           ]
-          print('# Hybrid StringBuilder >256K vs StringWriter / Jackson / direct byte[]')
+          print('# Adaptive capacity growth: focused JMH (300K and 1MB)')
           print()
-          print('JDK 25; each operation includes creating sink, writing, result materialization and recycling.')
+          print('JDK 25; 1 fork, 1 warmup iteration, 3 measurement iterations. Screening run only.')
+          print('Each operation includes creating sink, writing, result materialization and recycling.')
           print('Speedup = baseline / pooled, so >1 means pooled is faster.')
           print()
           print('| Size | Alphabet | Pooled | Baseline | Pooled (us/op) | Baseline | Speedup | Pooled B/op | Baseline B/op |')
