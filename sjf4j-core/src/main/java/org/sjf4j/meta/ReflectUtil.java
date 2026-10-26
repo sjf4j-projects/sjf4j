@@ -232,6 +232,31 @@ public final class ReflectUtil {
             Type type = family.resolveType(propertyStrategy);
             Class<?> boxed = Types.rawBox(type);
             boolean genericDependent = Types.containsTypeVariable(type);
+            // Resolve creator-bound OneOf from the same property family as ordinary
+            // fields, including inherited and explicitly renamed fields.
+            int creatorArg = creatorInfo.getArgIndexOrAlias(finalName);
+            if (creatorArg >= 0 && family.oneOfInfo != null) {
+                OneOfInfo member = family.oneOfInfo;
+                if (member.scope != OneOf.Scope.CURRENT) {
+                    throw new BindingException("creator @OneOf supports only scope=CURRENT: '"
+                            + finalName + "' in " + clazz.getName());
+                }
+                if (creatorInfo.argValueCodecs[creatorArg] != null) {
+                    throw new BindingException("creator argument '" + finalName
+                            + "' cannot declare both @OneOf and a value codec");
+                }
+                OneOfInfo parameter = creatorInfo.argOneOfInfos[creatorArg];
+                if (parameter != null && (!parameter.discriminatorKey.equals(member.discriminatorKey)
+                        || !parameter.discriminatorPath.equals(member.discriminatorPath)
+                        || parameter.scope != member.scope || parameter.onNoMatch != member.onNoMatch
+                        || !java.util.Arrays.equals(parameter.mappings, member.mappings))) {
+                    throw new BindingException("conflicting @OneOf on creator parameter and field '"
+                            + finalName + "' in " + clazz.getName());
+                }
+                if (parameter == null) {
+                    creatorInfo.argOneOfInfos[creatorArg] = member;
+                }
+            }
             if (genericDependent &&
                     (family.oneOfInfo != null || family.codecName != null || family.codecPattern != null)) {
                 throw new BindingException("generic field '" + finalName +
@@ -779,24 +804,8 @@ public final class ReflectUtil {
                 argValueFormats[i] = codecName;
                 argValueCodecs[i] = _resolvePatternedValueCodec(Types.rawBox(argTypes[i]), codecName, codecPattern);
                 OneOf parameterOneOf = params[i].getAnnotation(OneOf.class);
-                OneOf fieldOneOf = null;
-                // Record component annotations may be propagated to both the
-                // constructor parameter and its backing field.
-                for (Field field : clazz.getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) continue;
-                    String fieldName = getExplicitName(field);
-                    if (fieldName == null) fieldName = getNamingStrategy(clazz).translate(field.getName());
-                    if (!name.equals(fieldName)) continue;
-                    fieldOneOf = field.getAnnotation(OneOf.class);
-                    break;
-                }
-                if (parameterOneOf != null && fieldOneOf != null && !parameterOneOf.equals(fieldOneOf)) {
-                    throw new BindingException("conflicting @OneOf on creator parameter and field '"
-                            + name + "' in " + clazz.getName());
-                }
-                OneOf explicitOneOf = parameterOneOf != null ? parameterOneOf : fieldOneOf;
-                if (explicitOneOf != null) {
-                    if (explicitOneOf.scope() != OneOf.Scope.CURRENT) {
+                if (parameterOneOf != null) {
+                    if (parameterOneOf.scope() != OneOf.Scope.CURRENT) {
                         throw new BindingException("creator @OneOf supports only scope=CURRENT: '"
                                 + name + "' in " + clazz.getName());
                     }
@@ -804,7 +813,7 @@ public final class ReflectUtil {
                         throw new BindingException("creator argument '" + name
                                 + "' cannot declare both @OneOf and a value codec");
                     }
-                    argOneOfInfos[i] = analyzeOneOf(Types.rawBox(argTypes[i]), explicitOneOf);
+                    argOneOfInfos[i] = analyzeOneOf(Types.rawBox(argTypes[i]), parameterOneOf);
                 }
             }
             argIndexes = createArgIndexes(argNames);

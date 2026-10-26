@@ -70,6 +70,42 @@ class RuntimeCreatorOneOfTest {
             onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL,
             mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {}
 
+    public static class InheritedBase {
+        @NodeProperty("animal")
+        @OneOf(discriminatorKey = "kind", mappings = {
+                @OneOfMapping(type = Dog.class, when = "dog"),
+                @OneOfMapping(type = Cat.class, when = "cat")
+        })
+        protected final Animal pet;
+        protected InheritedBase(Animal pet) { this.pet = pet; }
+    }
+
+    public static class InheritedZoo extends InheritedBase {
+        @NodeCreator
+        public InheritedZoo(@NodeProperty("animal") Animal pet) { super(pet); }
+    }
+
+    public static class InheritedConflictZoo extends InheritedBase {
+        @NodeCreator
+        public InheritedConflictZoo(@NodeProperty("animal")
+                @OneOf(discriminatorKey = "species",
+                        mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {
+            super(pet);
+        }
+    }
+
+    public static class InheritedParentBase {
+        @OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind",
+                mappings = @OneOfMapping(type = Dog.class, when = "dog"))
+        protected final Animal pet;
+        protected InheritedParentBase(Animal pet) { this.pet = pet; }
+    }
+
+    public static class InheritedParentZoo extends InheritedParentBase {
+        @NodeCreator
+        public InheritedParentZoo(@NodeProperty("pet") Animal pet) { super(pet); }
+    }
+
     public record ParentZoo(@OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind",
             mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {}
 
@@ -106,9 +142,27 @@ class RuntimeCreatorOneOfTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("backends")
+    void resolvesInheritedCreatorOneOfAndRejectsConflicts(String name, Binder<?, ?> binder) {
+        String json = "{\"animal\":{\"name\":\"Rex\",\"age\":7,\"kind\":\"dog\"}}";
+        InheritedZoo inherited = (InheritedZoo) binder.readNode(json, InheritedZoo.class);
+        assertEquals(7, assertInstanceOf(Dog.class, inherited.pet, name).age(), name);
+        InheritedZoo mapped = (InheritedZoo) NodeMapper.convert(
+                Map.of("animal", Map.of("kind", "cat", "name", "Mog", "lives", 9)),
+                InheritedZoo.class, false, org.sjf4j.RuntimeContext.EMPTY);
+        assertEquals(9, assertInstanceOf(Cat.class, mapped.pet, name).lives(), name);
+        BindingException conflict = assertThrows(BindingException.class,
+                () -> binder.readNode(json, InheritedConflictZoo.class), name);
+        assertTrue(conflict.getMessage().contains("conflicting @OneOf"), name);
+        BindingException parent = assertThrows(BindingException.class,
+                () -> binder.readNode("{\"pet\":{\"kind\":\"dog\"}}", InheritedParentZoo.class), name);
+        assertTrue(parent.getMessage().contains("scope=CURRENT"), name);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
     void supportsNodeMappingAndRejectsParent(String name, Binder<?, ?> binder) {
         Map<String, Object> json = Map.of("pet", Map.of("kind", "dog", "name", "Rex", "age", 7), "after", 19);
-        Zoo mapped = NodeMapper.convert(json, Zoo.class, false, org.sjf4j.RuntimeContext.EMPTY);
+        Zoo mapped = (Zoo) NodeMapper.convert(json, Zoo.class, false, org.sjf4j.RuntimeContext.EMPTY);
         assertInstanceOf(Dog.class, mapped.pet(), name);
         PathZoo path = (PathZoo) binder.readNode(
                 "{\"pet\":{\"meta\":{\"kind\":\"dog\"},\"kind\":\"dog\",\"name\":\"Rex\",\"age\":7}}",
