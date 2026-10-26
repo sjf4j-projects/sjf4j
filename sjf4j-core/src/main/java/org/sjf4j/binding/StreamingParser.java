@@ -29,20 +29,20 @@ import java.time.ZonedDateTime;
  * separated. For example:</p>
  *
  * <pre>{@code
- * reader.startObject();
+ * parser.startObject();
  *
  * int index;
- * while ((index = reader.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
+ * while ((index = parser.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
  *
  *     switch (index) {
  *         case 0:
- *             bean.id = reader.readIntValue();
+ *             bean.id = parser.readIntValue();
  *             break;
  *         case 1:
- *             bean.name = reader.readString();
+ *             bean.name = parser.readString();
  *             break;
  *         default:
- *             reader.skipNode();
+ *             parser.skipNode();
  *     }
  * }
  * }</pre>

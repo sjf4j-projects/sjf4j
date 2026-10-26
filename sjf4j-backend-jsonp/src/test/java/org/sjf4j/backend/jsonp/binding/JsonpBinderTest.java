@@ -61,8 +61,8 @@ class JsonpBinderTest {
         String json = "{\"items\":[{\"name\":\"Ada\",\"active\":true},null,3],\"empty\":{}}";
 
         JsonObject object;
-        try (jakarta.json.JsonReader parser = Json.createParser(new StringReader(json))) {
-            object = parser.readObject();
+        try (jakarta.json.JsonReader nativeReader = Json.createParser(new StringReader(json))) {
+            object = nativeReader.readObject();
         }
         Object first = Nodes.getInArray(Nodes.getInObject(object, "items"), 0);
         assertEquals("Ada", ((JsonString) Nodes.getInObject(first, "name")).getString());
@@ -94,8 +94,8 @@ class JsonpBinderTest {
         assertEquals("true", binder.writeNodeAsString(JsonValue.TRUE));
         assertEquals("null", binder.writeNodeAsString(JsonValue.NULL));
         String precise = "{\"decimal\":0.123456789012345678901234567890}";
-        try (jakarta.json.JsonReader parser = Json.createParser(new StringReader(precise))) {
-            assertEquals(precise, binder.writeNodeAsString(parser.readObject()));
+        try (jakarta.json.JsonReader nativeReader = Json.createParser(new StringReader(precise))) {
+            assertEquals(precise, binder.writeNodeAsString(nativeReader.readObject()));
         }
 
         assertThrows(BindingException.class, () -> binder.readNode("{} []", Map.class));
