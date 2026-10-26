@@ -140,18 +140,6 @@ public final class ReflectUtil {
             else return null;
         }
 
-        // Enforce unsupported Creator-member annotations after candidate
-        // detection; analyzeCreator failures may be intentionally ignored while
-        // testing whether a class can be bound as a POJO.
-        if (creatorInfo.argsCreator != null) {
-            for (Parameter parameter : creatorInfo.argsCreator.getParameters()) {
-                if (parameter.isAnnotationPresent(OneOf.class)) {
-                    throw new BindingException("@OneOf is not supported on creator parameter '"
-                            + parameter.getName() + "' in " + clazz.getName());
-                }
-            }
-        }
-
         NodeObject nodeObject = clazz.getAnnotation(NodeObject.class);
         NamingStrategy namingStrategy = null;
         PropertyStrategy propertyStrategy = PropertyStrategy.BEAN_FIELD;
@@ -228,12 +216,6 @@ public final class ReflectUtil {
             _assertCompatiblePropertyTypes(family, clazz);
 
             String finalName = family.resolveFinalName(clazz, namingStrategy);
-            // A creator-bound field cannot override the creator parameter's
-            // declared type with a member-level OneOf discriminator.
-            if (family.oneOfInfo != null && creatorInfo.getArgIndexOrAlias(finalName) >= 0) {
-                throw new BindingException("@OneOf is not supported on creator-bound property '"
-                        + finalName + "' in " + clazz.getName());
-            }
             if (creatorInfo.argIndexes != null) {
                 Integer implicitIdx = creatorInfo.argIndexes.get(family.implicitName);
                 if (implicitIdx != null && !finalName.equals(family.implicitName)) {
@@ -250,6 +232,31 @@ public final class ReflectUtil {
             Type type = family.resolveType(propertyStrategy);
             Class<?> boxed = Types.rawBox(type);
             boolean genericDependent = Types.containsTypeVariable(type);
+            // Resolve creator-bound OneOf from the same property family as ordinary
+            // fields, including inherited and explicitly renamed fields.
+            int creatorArg = creatorInfo.getArgIndexOrAlias(finalName);
+            if (creatorArg >= 0 && family.oneOfInfo != null) {
+                OneOfInfo member = family.oneOfInfo;
+                if (member.scope != OneOf.Scope.CURRENT) {
+                    throw new BindingException("creator @OneOf supports only scope=CURRENT: '"
+                            + finalName + "' in " + clazz.getName());
+                }
+                if (creatorInfo.argValueCodecs[creatorArg] != null) {
+                    throw new BindingException("creator argument '" + finalName
+                            + "' cannot declare both @OneOf and a value codec");
+                }
+                OneOfInfo parameter = creatorInfo.argOneOfInfos[creatorArg];
+                if (parameter != null && (!parameter.discriminatorKey.equals(member.discriminatorKey)
+                        || !parameter.discriminatorPath.equals(member.discriminatorPath)
+                        || parameter.scope != member.scope || parameter.onNoMatch != member.onNoMatch
+                        || !java.util.Arrays.equals(parameter.mappings, member.mappings))) {
+                    throw new BindingException("conflicting @OneOf on creator parameter and field '"
+                            + finalName + "' in " + clazz.getName());
+                }
+                if (parameter == null) {
+                    creatorInfo.argOneOfInfos[creatorArg] = member;
+                }
+            }
             if (genericDependent &&
                     (family.oneOfInfo != null || family.codecName != null || family.codecPattern != null)) {
                 throw new BindingException("generic field '" + finalName +
@@ -695,6 +702,7 @@ public final class ReflectUtil {
         Supplier<?> noArgsLambdaCtor = null;
         String[] argValueFormats = null;
         ValueInfo[] argValueCodecs = null;
+        OneOfInfo[] argOneOfInfos = null;
 
         // 1. Find defined creator
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
@@ -779,6 +787,7 @@ public final class ReflectUtil {
             argNames = new String[params.length];
             argValueFormats = new String[params.length];
             argValueCodecs = new ValueInfo[params.length];
+            argOneOfInfos = new OneOfInfo[params.length];
             for (int i = 0; i < params.length; i++) {
                 String name = getExplicitName(params[i]);
                 if (name == null) {
@@ -794,6 +803,18 @@ public final class ReflectUtil {
                 String codecPattern = getCodecPattern(params[i]);
                 argValueFormats[i] = codecName;
                 argValueCodecs[i] = _resolvePatternedValueCodec(Types.rawBox(argTypes[i]), codecName, codecPattern);
+                OneOf parameterOneOf = params[i].getAnnotation(OneOf.class);
+                if (parameterOneOf != null) {
+                    if (parameterOneOf.scope() != OneOf.Scope.CURRENT) {
+                        throw new BindingException("creator @OneOf supports only scope=CURRENT: '"
+                                + name + "' in " + clazz.getName());
+                    }
+                    if (argValueCodecs[i] != null) {
+                        throw new BindingException("creator argument '" + name
+                                + "' cannot declare both @OneOf and a value codec");
+                    }
+                    argOneOfInfos[i] = analyzeOneOf(Types.rawBox(argTypes[i]), parameterOneOf);
+                }
             }
             argIndexes = createArgIndexes(argNames);
         }
@@ -836,7 +857,7 @@ public final class ReflectUtil {
         return new CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,
                 creator, creatorHandle,
                 creatorLambda1, creatorLambda2, creatorLambda3, creatorLambda4, creatorLambda5,
-                argNames, argTypes, argValueFormats, argValueCodecs, argIndexes, aliasMap);
+                argNames, argTypes, argValueFormats, argValueCodecs, argOneOfInfos, argIndexes, aliasMap);
     }
 
 

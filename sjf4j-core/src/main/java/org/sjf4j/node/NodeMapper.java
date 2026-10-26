@@ -1518,7 +1518,10 @@ public final class NodeMapper {
         ValueInfo codec = creator.argValueCodecs[argIdx];
         // Only a codec explicitly selected on the creator parameter is strict.
         // Unannotated value parameters must select by the incoming JSON shape.
-        Object value = ti.oneOfInfo == null && codec != null
+        OneOfInfo explicitOneOf = creator.argOneOfInfos[argIdx];
+        Object value = explicitOneOf != null
+                ? (rawValue == null ? null : _convertOneOf(rawValue, argRaw, explicitOneOf, deepCopy, ps, context))
+                : ti.oneOfInfo == null && codec != null
                 ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, context)
                 : _convertSourceChild(rawValue, argType, argRaw, ti,
                         deepCopy, ps, context, externalSource);
