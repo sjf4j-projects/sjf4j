@@ -18,6 +18,7 @@ final class OutputBufferRecycler {
     private static final ThreadLocal<OutputBufferRecycler> LOCAL =
             ThreadLocal.withInitial(OutputBufferRecycler::new);
 
+    private final int strongCacheLimit;
     private byte[] bytes;
     private char[] chars;
     // Softly hold both large slots through one reusable holder. A direct
@@ -39,7 +40,14 @@ final class OutputBufferRecycler {
         return holder;
     }
 
-    private OutputBufferRecycler() {}
+    private OutputBufferRecycler() { this(MAX_RETAINED_CAPACITY); }
+
+    // Package-private to compare strong-cache caps with identical writer code in JMH.
+    OutputBufferRecycler(int strongCacheLimit) {
+        if (strongCacheLimit < INITIAL_CAPACITY || strongCacheLimit > MAX_RETAINED_CAPACITY)
+            throw new IllegalArgumentException("strongCacheLimit");
+        this.strongCacheLimit = strongCacheLimit;
+    }
 
     static OutputBufferRecycler current() { return LOCAL.get(); }
 
@@ -78,7 +86,7 @@ final class OutputBufferRecycler {
     }
 
     void recycleBytes(byte[] array) {
-        if (array.length <= MAX_RETAINED_CAPACITY) {
+        if (array.length <= strongCacheLimit) {
             if (bytes == null || bytes.length < array.length) bytes = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
