@@ -52,6 +52,17 @@ class CompiledBinderConformanceTest {
     private void verifyBackend(String backend, boolean yaml) throws Exception {
         NavigatorTestCompiler.Result result = compile(backend, yaml);
         assertTrue(result.success, backend + ": " + result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        if (!"FASTJSON2".equals(backend)) {
+            assertTrue(generated.contains("PooledStringWriter"), backend);
+            assertFalse(generated.contains("FastStringWriter"), backend);
+            assertTrue(generated.contains(".recycle();"), backend);
+        }
+        if ("JACKSON2".equals(backend) || "JACKSON3".equals(backend)) {
+            assertTrue(generated.contains("PooledByteArrayOutputStream"), backend);
+            assertFalse(generated.contains("createWriterUtf8()"), backend);
+        }
+
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> implementation = Class.forName("fixture.Binder_Impl", true, loader);

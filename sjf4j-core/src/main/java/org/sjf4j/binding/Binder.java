@@ -6,7 +6,6 @@ import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -201,13 +200,19 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
      * Serializes one node to string.
      */
     public String writeNodeAsString(Object node) {
-        try (FastStringWriter output = new FastStringWriter()) {
-            writeNode(output, node);
+        PooledStringWriter output = new PooledStringWriter();
+        try (W writer = createWriter(output)) {
+            writer.startDocument();
+            StreamingIO.writeNode(writer, node, context);
+            writer.endDocument();
+            writer.flush();
             return output.toString();
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
             throw new BindingException(e);
+        } finally {
+            output.recycle();
         }
     }
 
@@ -215,15 +220,20 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
      * Serializes one node to bytes.
      */
     public byte[] writeNodeAsBytes(Object node) {
-        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            writeNode(output, node);
+        PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+        try (W writer = createWriter(output)) {
+            writer.startDocument();
+            StreamingIO.writeNode(writer, node, context);
+            writer.endDocument();
+            writer.flush();
             return output.toByteArray();
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
             throw new BindingException(e);
+        } finally {
+            output.recycle();
         }
     }
-
 
 }

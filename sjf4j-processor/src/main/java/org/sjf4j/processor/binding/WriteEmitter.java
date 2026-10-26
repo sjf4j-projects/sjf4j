@@ -178,112 +178,48 @@ final class WriteEmitter {
     }
 
     private void emitStringMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            NameAllocator names) {
-
-        switch (backend.backend()) {
-            case JACKSON2:
-            case JACKSON3:
-                emitBufferedStringMethod(out, value, source, names);
-                return;
-            default:
-                break;
-        }
-
-        String output =
-                names.newName("output");
-
-        String writer =
-                names.newName("writer");
-
-        out.beginBlock(
-                "try (org.sjf4j.binding.FastStringWriter " +
-                        output +
-                        " = new org.sjf4j.binding.FastStringWriter(); " +
-                        backend.writerType() +
-                        " " + writer +
-                        " = this.binder.createWriter(" +
-                        output + "))");
-
-        emitWriteBody(out, value, source, writer, names);
-
-        out.line("return " + output + ".toString();");
-        out.endBlock();
-    }
-
-
-    private void emitBufferedStringMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            NameAllocator names) {
-
+            JavaWriter out, BindingValue value, String source, NameAllocator names) {
+        String output = names.newName("output");
         String writer = names.newName("writer");
 
-        out.beginBlock("try (" + backend.writerType() + " " + writer +
-                " = this.binder.createWriter())");
-
+        out.line("org.sjf4j.binding.PooledStringWriter " + output
+                + " = new org.sjf4j.binding.PooledStringWriter();");
+        out.beginBlock("try (" + backend.writerType() + " " + writer
+                + " = this.binder.createWriter(" + output + "))");
         emitWriteBody(out, value, source, writer, names);
-
-        out.line("return " + writer + ".toString();");
+        out.line("return " + output + ".toString();");
+        out.endBlock();
+        out.beginBlock("finally");
+        out.line(output + ".recycle();");
         out.endBlock();
     }
 
     private void emitBytesMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            NameAllocator names) {
+            JavaWriter out, BindingValue value, String source, NameAllocator names) {
+        String output = names.newName("output");
+        String writer = names.newName("writer");
 
-        if (isJackson()) {
-            String writer = names.newName("writer");
-            out.beginBlock("try (" + backend.writerType() + " " + writer
-                    + " = this.binder.createWriterUtf8())");
-            emitWriteBody(out, value, source, writer, names);
-            out.line("return " + writer + ".toBytes();");
-            out.endBlock();
-            return;
-        }
-
-        // Gson, Simple and JSON-P write in-memory byte[] more efficiently through
-        // their compiled character path than through OutputStreamWriter.
-        // Caller-owned OutputStream methods remain streaming.
-        if (backend.backend() == Backend.GSON
+        // Streaming character backends are faster when they produce UTF-8
+        // from the finished String instead of using OutputStreamWriter.
+        boolean chars = backend.backend() == Backend.GSON
                 || backend.backend() == Backend.SIMPLE
-                || backend.backend() == Backend.JSONP) {
-            String output = names.newName("output");
-            String writer = names.newName("writer");
-            out.beginBlock("try (org.sjf4j.binding.FastStringWriter " + output
-                    + " = new org.sjf4j.binding.FastStringWriter(); "
-                    + backend.writerType() + " " + writer
-                    + " = this.binder.createWriter(" + output + "))");
-            emitWriteBody(out, value, source, writer, names);
+                || backend.backend() == Backend.JSONP;
+
+        String sinkType = chars ? "org.sjf4j.binding.PooledStringWriter"
+                : "org.sjf4j.binding.PooledByteArrayOutputStream";
+        out.line(sinkType + " " + output + " = new " + sinkType + "();");
+        out.beginBlock("try (" + backend.writerType() + " " + writer
+                + " = this.binder.createWriter(" + output + "))");
+        emitWriteBody(out, value, source, writer, names);
+        if (chars) {
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
-            out.endBlock();
-            return;
+        } else {
+            out.line("return " + output + ".toByteArray();");
         }
-
-        String output =
-                names.newName("output");
-
-        String writer =
-                names.newName("writer");
-
-        out.beginBlock(
-                "try (java.io.ByteArrayOutputStream " +
-                        output +
-                        " = new java.io.ByteArrayOutputStream(); " +
-                        backend.writerType() +
-                        " " + writer +
-                        " = this.binder.createWriter(" +
-                        output + "))");
-
-        emitWriteBody(out, value, source, writer, names);
-
-        out.line("return " + output + ".toByteArray();");
+        out.endBlock();
+        out.beginBlock("finally");
+        out.line(output + ".recycle();");
         out.endBlock();
     }
 
