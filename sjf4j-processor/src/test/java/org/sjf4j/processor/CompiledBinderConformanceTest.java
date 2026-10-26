@@ -469,7 +469,7 @@ class CompiledBinderConformanceTest {
 
 
     @Test
-    void rejectsOneOfOnCreatorBoundMembersAtCompileTime() throws Exception {
+    void supportsOneOfOnCreatorBoundMembersAtCompileTime() throws Exception {
         for (String bean : new String[]{
                 "public class Bean {\n"
                         + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
@@ -487,25 +487,53 @@ class CompiledBinderConformanceTest {
                         + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
                         + " Animal pet) {}\n"
         }) {
-            Map<String, String> sources = new LinkedHashMap<>();
-            sources.put("fixture/Bean.java",
-                    "package fixture;\n"
-                            + "import org.sjf4j.annotation.node.*;\n"
-                            + bean);
-            sources.put("fixture/Animal.java", "package fixture; public interface Animal {}\n");
-            sources.put("fixture/Dog.java", "package fixture; public class Dog implements Animal {}\n");
-            sources.put("fixture/Binder.java",
-                    "package fixture;\n"
-                            + "import org.sjf4j.annotation.binding.*;\n"
-                            + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
-                            + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
-                            + "}\n");
-            NavigatorTestCompiler.Result result =
-                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
-            assertFalse(result.success, result.diagnostics());
-            assertTrue(result.diagnostics().contains("@OneOf is not supported on creator-bound property"),
-                    result.diagnostics());
+            for (String backend : new String[]{"SIMPLE", "JACKSON2"}) {
+                Map<String, String> sources = new LinkedHashMap<>();
+                sources.put("fixture/Bean.java",
+                        "package fixture;\n"
+                                + "import org.sjf4j.annotation.node.*;\n" + bean);
+                sources.put("fixture/Animal.java", "package fixture; public interface Animal {}\n");
+                sources.put("fixture/Dog.java", "package fixture; public class Dog implements Animal {}\n");
+                sources.put("fixture/Binder.java",
+                        "package fixture;\n"
+                                + "import org.sjf4j.annotation.binding.*;\n"
+                                + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder {\n"
+                                + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                                + "}\n");
+                NavigatorTestCompiler.Result result =
+                        NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+                assertTrue(result.success, backend + ": " + result.diagnostics());
+                try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+                    Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
+                    Object binder = impl.getConstructor().newInstance();
+                    Object value = impl.getMethod("read", String.class).invoke(binder,
+                            "{\"pet\":{\"species\":\"dog\"}}");
+                    java.lang.reflect.Field petField = value.getClass().getDeclaredField("pet");
+                    petField.setAccessible(true);
+                    assertEquals("fixture.Dog", petField.get(value).getClass().getName());
+                }
+            }
         }
+    }
+
+    @Test
+    void rejectsParentOneOfOnCreatorBoundParameter() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java", "package fixture;\n"
+                + "import org.sjf4j.annotation.node.*;\n"
+                + "public record Bean(@OneOf(scope=OneOf.Scope.PARENT, discriminatorKey=\"kind\","
+                + " mappings={@OneOfMapping(type=Dog.class, when=\"dog\")}) Animal pet) {}\n");
+        sources.put("fixture/Animal.java", "package fixture; public interface Animal {}\n");
+        sources.put("fixture/Dog.java", "package fixture; public class Dog implements Animal {}\n");
+        sources.put("fixture/Binder.java", "package fixture;\n"
+                + "import org.sjf4j.annotation.binding.*;\n"
+                + "@CompiledBinder(backend=Backend.JACKSON2) public interface Binder {\n"
+                + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                + "}\n");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("scope=CURRENT"), result.diagnostics());
     }
 
     @Test

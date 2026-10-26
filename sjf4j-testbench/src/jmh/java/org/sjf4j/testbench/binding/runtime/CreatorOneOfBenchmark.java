@@ -6,6 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
+import org.sjf4j.CompiledInstances;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -58,6 +62,7 @@ public class CreatorOneOfBenchmark {
     private static final ObjectMapper BLACKBIRD =
             new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Jackson2Binder RUNTIME = new Jackson2Binder();
+    private static final CompiledReader COMPILED = CompiledInstances.global(CompiledReader.class);
 
     private String json;
     private byte[] utf8;
@@ -71,14 +76,17 @@ public class CreatorOneOfBenchmark {
         utf8 = json.getBytes(StandardCharsets.UTF_8);
         verify((RuntimeZoo) RUNTIME.readNode(json, RuntimeZoo.class),
                 NATIVE.readValue(json, JacksonZoo.class));
+        verify(COMPILED.read(json), NATIVE.readValue(json, JacksonZoo.class));
         verify((RuntimeZoo) RUNTIME.readNode(utf8, RuntimeZoo.class),
                 BLACKBIRD.readValue(utf8, JacksonZoo.class));
+        verify(COMPILED.read(utf8), BLACKBIRD.readValue(utf8, JacksonZoo.class));
 
         // Exercise the second subtype outside the timed section.
         String cat = "{\"pet\":{\"kind\":\"cat\",\"name\":\"Mog\",\"lives\":9},\"after\":19}";
         RuntimeZoo actual = (RuntimeZoo) RUNTIME.readNode(cat, RuntimeZoo.class);
         JacksonZoo expected = NATIVE.readValue(cat, JacksonZoo.class);
-        if (!(actual.pet() instanceof Cat) || !(expected.pet() instanceof Cat)) {
+        if (!(actual.pet() instanceof Cat) || !(expected.pet() instanceof Cat)
+                || !(COMPILED.read(cat).pet() instanceof Cat)) {
             throw new IllegalStateException("Cat subtype resolution differs");
         }
     }
@@ -92,6 +100,16 @@ public class CreatorOneOfBenchmark {
         if (actual.after() != expected.after() || !left.equals(right)) {
             throw new IllegalStateException("Runtime creator binding differs from Jackson2");
         }
+    }
+
+    @Benchmark
+    public RuntimeZoo string_compiled() throws IOException {
+        return COMPILED.read(json);
+    }
+
+    @Benchmark
+    public RuntimeZoo utf8_compiled() throws IOException {
+        return COMPILED.read(utf8);
     }
 
     @Benchmark
@@ -123,4 +141,10 @@ public class CreatorOneOfBenchmark {
     public JacksonZoo utf8_jackson2_blackbird() throws IOException {
         return BLACKBIRD.readValue(utf8, JacksonZoo.class);
     }
+    @CompiledBinder(backend = Backend.JACKSON2)
+    public interface CompiledReader {
+        @ReadFrom RuntimeZoo read(String json) throws IOException;
+        @ReadFrom RuntimeZoo read(byte[] json) throws IOException;
+    }
+
 }
