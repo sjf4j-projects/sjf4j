@@ -42,7 +42,6 @@ public final class PooledStringWriter extends Writer {
         buffer = null;
         large = builder;
         recycler.recycleChars(previous);
-        recycler.retainMaxChars();
         return builder;
     }
 
