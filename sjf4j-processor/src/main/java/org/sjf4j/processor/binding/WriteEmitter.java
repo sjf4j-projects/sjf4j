@@ -184,9 +184,11 @@ final class WriteEmitter {
 
         out.line("org.sjf4j.binding.PooledStringWriter " + output
                 + " = new org.sjf4j.binding.PooledStringWriter();");
+        out.beginBlock("try");
         out.beginBlock("try (" + backend.writerType() + " " + writer
                 + " = this.binder.createWriter(" + output + "))");
         emitWriteBody(out, value, source, writer, names);
+        out.endBlock();
         out.line("return " + output + ".toString();");
         out.endBlock();
         out.beginBlock("finally");
@@ -208,9 +210,11 @@ final class WriteEmitter {
         String sinkType = chars ? "org.sjf4j.binding.PooledStringWriter"
                 : "org.sjf4j.binding.PooledByteArrayOutputStream";
         out.line(sinkType + " " + output + " = new " + sinkType + "();");
+        out.beginBlock("try");
         out.beginBlock("try (" + backend.writerType() + " " + writer
                 + " = this.binder.createWriter(" + output + "))");
         emitWriteBody(out, value, source, writer, names);
+        out.endBlock();
         if (chars) {
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
@@ -240,7 +244,8 @@ final class WriteEmitter {
                         output + ");");
 
         emitWriteBody(out, value, source, writer, names);
-
+        // Caller-owned streams stay open, so finish the output explicitly.
+        out.line(writer + ".flush();");
     }
 
     private void emitWriteBody(
@@ -261,7 +266,6 @@ final class WriteEmitter {
         }
 
         out.line(writer + ".endDocument();");
-        out.line(writer + ".flush();");
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
