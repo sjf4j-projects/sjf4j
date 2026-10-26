@@ -756,4 +756,60 @@ class PooledOutputTest {
             recycler.recycleChars(oldSmallChars);
         }
     }
+
+    @Test
+    void directLargeStringReturnsOriginalAndCopiesOnlyOnAppend() {
+        for (String input : new String[]{"a".repeat(300 * 1024), "中文".repeat(160 * 1024)}) {
+            PooledStringWriter writer = new PooledStringWriter();
+            try {
+                writer.write(input);
+                assertSame(input, writer.toString());
+                assertEquals(input.length(), writer.size());
+                writer.write("", 0, 0);
+                assertSame(input, writer.toString());
+                writer.append(new StringBuilder());
+                assertSame(input, writer.toString());
+                writer.write('!');
+                assertEquals(input + "!", writer.getAndRecycle());
+            } finally {
+                writer.recycle();
+            }
+        }
+    }
+
+    @Test
+    void directLargeStringSupportsAllAppendPathsAndReset() {
+        String input = "界".repeat(300 * 1024);
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            writer.write(input);
+            writer.write(new char[]{'A', 'B'}, 0, 2);
+            writer.append(new StringBuilder("CD"), 0, 2);
+            writer.write("EF", 0, 2);
+            assertEquals(input + "ABCDEF", writer.toString());
+            writer.reset();
+            assertEquals(0, writer.size());
+            writer.write("small");
+            assertEquals("small", writer.getAndRecycle());
+        } finally {
+            writer.recycle();
+        }
+    }
+
+    @Test
+    void directLargeStringNestedWriterAndRecycleMaintainOwnership() {
+        String input = "x".repeat(300 * 1024);
+        PooledStringWriter outer = new PooledStringWriter();
+        PooledStringWriter inner = new PooledStringWriter();
+        try {
+            outer.write(input);
+            inner.write("inner");
+            assertSame(input, outer.getAndRecycle());
+            assertEquals("inner", inner.getAndRecycle());
+            assertThrows(IllegalStateException.class, outer::toString);
+        } finally {
+            outer.recycle();
+            inner.recycle();
+        }
+    }
 }
