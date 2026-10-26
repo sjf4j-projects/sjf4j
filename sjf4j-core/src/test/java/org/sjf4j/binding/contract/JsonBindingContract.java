@@ -20,7 +20,8 @@ public abstract class JsonBindingContract {
     void readerAndWriterExposeStructuralJson() throws Exception {
         Binder<?, ?> binding = binding(RuntimeContext.EMPTY);
         StringWriter output = new StringWriter();
-        StreamingGenerator writer = binding.createGenerator(output);
+        {
+StreamingGenerator writer = binding.createGenerator(output);
 try {
             writer.startWrite();
             writer.startObject();
@@ -36,7 +37,9 @@ try {
             writer.endWrite();
         
 } finally { writer.release(); }
-        StreamingParser reader = binding.createParser(new StringReader(output.toString()));
+}
+        {
+StreamingParser reader = binding.createParser(new StringReader(output.toString()));
 try {
             reader.startRead();
             reader.startObject();
@@ -51,6 +54,7 @@ try {
             reader.endRead();
         
 } finally { reader.release(); }
+}
     }
 
 }

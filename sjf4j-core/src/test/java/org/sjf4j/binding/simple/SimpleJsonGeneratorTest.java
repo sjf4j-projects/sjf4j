@@ -16,12 +16,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class SimpleJsonWriterTest {
+class SimpleJsonGeneratorTest {
 
     @Test
     void writesPrimitivesAndEscapesStrings() throws Exception {
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             writer.startArray();
             writer.writeLongValue(1L); writer.separateElement();
@@ -33,16 +34,18 @@ try {
             writer.writeBooleanValue(true); writer.separateElement();
             writer.writeStringValue("\"\\\b\f\n\r\t\u0001x");
             writer.endArray();
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("[1,2,3,4,1.5,2.5,true,\"\\\"\\\\\\b\\f\\n\\r\\t\\u0001x\"]", output.toString());
     }
 
     @Test
     void interfaceBoxedDefaultsWriteNullsAndGenericNumbers() throws Exception {
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             writer.writeLong(null); writer.writeInt(null); writer.writeShort(null); writer.writeByte(null);
             writer.writeDouble(null); writer.writeFloat(null); writer.writeBoolean(null); writer.writeString(null);
@@ -50,16 +53,18 @@ try {
             writer.writeNumberValue(new BigInteger("12345678901234567890"));
             writer.writeBigIntegerValue(new BigInteger("42"));
             writer.writeBigDecimalValue(new BigDecimal("1.2300"));
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("nullnullnullnullnullnullnullnullnullnullnull12345678901234567890421.2300", output.toString());
     }
 
     @Test
     void writesPreparedAndForeignNamesWithPropertyAndElementSeparators() throws Exception {
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             writer.startObject();
             writer.writeName("a\n");
@@ -75,9 +80,10 @@ try {
             writer.endObject();
             writer.endArray();
             writer.endObject();
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("{\"a\\n\":1,\"foreign\":[\"x\",{\"ok\":false}]}", output.toString());
     }
 
@@ -88,28 +94,32 @@ try {
         assertThrows(NullPointerException.class, () -> new SimpleJsonGenerator(null, new StringWriter()).writeName((CompiledName) null));
 
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, new BufferedWriter(output));
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, new BufferedWriter(output));
 try {
             writer.writeStringValue("buffered");
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("\"buffered\"", output.toString());
     }
 
     @Test
     void rejectsNonFiniteNumbersDirectlyAndThroughJsonBinder() throws Exception {
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             assertThrows(BindingException.class, () -> writer.writeDoubleValue(Double.NaN));
             assertThrows(BindingException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
             assertThrows(BindingException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
             assertThrows(BindingException.class, () -> writer.writeNumberValue(Double.NaN));
             assertThrows(BindingException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("", output.toString());
 
         assertJsonBinderRejectsNonFiniteNumber(Double.NaN);
@@ -121,22 +131,26 @@ try {
         String[] unpaired = {"before\uD800after", "before\uDC00after"};
         for (String value : unpaired) {
             StringWriter valueOutput = new StringWriter();
-            SimpleJsonGenerator writer = new SimpleJsonGenerator(null, valueOutput);
+            {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, valueOutput);
 try {
                 writer.writeStringValue("valid");
                 assertThrows(BindingException.class, () -> writer.writeStringValue(value));
-                writer.flush();
+                writer.endWrite();
             
 } finally { writer.release(); }
+}
             assertEquals("\"valid\"", valueOutput.toString());
 
             StringWriter nameOutput = new StringWriter();
-            SimpleJsonGenerator writer = new SimpleJsonGenerator(null, nameOutput);
+            {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, nameOutput);
 try {
                 assertThrows(BindingException.class, () -> writer.writeName(value));
-                writer.flush();
+                writer.endWrite();
             
 } finally { writer.release(); }
+}
             assertEquals("", nameOutput.toString());
         }
     }
@@ -144,24 +158,28 @@ try {
     @Test
     void rejectsNullStringValueBeforeWriting() throws Exception {
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             assertThrows(BindingException.class, () -> writer.writeStringValue(null));
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("", output.toString());
     }
 
     @Test
     void writesOrdinaryStringRunsAsContiguousSpans() throws Exception {
         TrackingBufferedWriter output = new TrackingBufferedWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             writer.writeStringValue("first\nsecond");
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("\"first\\nsecond\"", output.output.toString());
         assertEquals(List.of("first", "\\n", "second"), output.stringWrites);
     }

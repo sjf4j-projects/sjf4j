@@ -37,40 +37,52 @@ class SimpleJsonBinderTest {
     void createsConcreteReadersAndWritersForAllFactoryForms() throws Exception {
         SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
 
-        SimpleJsonParser reader = binding.createParser(new StringReader("null"));
+        {
+SimpleJsonParser reader = binding.createParser(new StringReader("null"));
 try {
             assertInstanceOf(SimpleJsonParser.class, reader);
         
 } finally { reader.release(); }
-        SimpleJsonParser reader = binding.createParser("null");
+}
+        {
+SimpleJsonParser reader = binding.createParser("null");
 try {
             assertInstanceOf(SimpleJsonParser.class, reader);
             reader.nextIfNull();
             reader.endRead();
         
 } finally { reader.release(); }
-        SimpleJsonParser reader = binding.createParser("null".getBytes(StandardCharsets.UTF_8));
+}
+        {
+SimpleJsonParser reader = binding.createParser("null".getBytes(StandardCharsets.UTF_8));
 try {
             assertInstanceOf(SimpleJsonParser.class, reader);
         
 } finally { reader.release(); }
-        SimpleJsonParser reader = binding.createParser(
+}
+        {
+SimpleJsonParser reader = binding.createParser(
                 new ByteArrayInputStream("null".getBytes(StandardCharsets.UTF_8)));
 try {
             assertInstanceOf(SimpleJsonParser.class, reader);
         
 } finally { reader.release(); }
+}
 
-        SimpleJsonGenerator writer = binding.createGenerator(new StringWriter());
+        {
+SimpleJsonGenerator writer = binding.createGenerator(new StringWriter());
 try {
             assertInstanceOf(SimpleJsonGenerator.class, writer);
         
 } finally { writer.release(); }
-        SimpleJsonGenerator writer = binding.createGenerator(new ByteArrayOutputStream());
+}
+        {
+SimpleJsonGenerator writer = binding.createGenerator(new ByteArrayOutputStream());
 try {
             assertInstanceOf(SimpleJsonGenerator.class, writer);
         
 } finally { writer.release(); }
+}
     }
 
     @Test

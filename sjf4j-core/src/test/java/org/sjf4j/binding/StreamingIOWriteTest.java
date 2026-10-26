@@ -27,12 +27,14 @@ class StreamingIOWriteTest {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("items", new int[]{1, 2});
         map.put("node", JsonObject.of("values", JsonArray.of("a", "b")));
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             StreamingIO.writeNode(writer, map, RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("{\"items\":[1,2],\"node\":{\"values\":[\"a\",\"b\"]}}", output.toString());
 
         SeparatorWriter separators = new SeparatorWriter();
@@ -44,12 +46,14 @@ try {
     @Test
     void writesCharsetName() throws Exception {
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             StreamingIO.writeNode(writer, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("\"UTF-8\"", output.toString());
     }
 
@@ -68,12 +72,14 @@ try {
 
         for (int i = 0; i < arrays.length; i++) {
             StringWriter output = new StringWriter();
-            SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+            {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
                 StreamingIO.writeNode(writer, arrays[i], RuntimeContext.EMPTY);
-                writer.flush();
+                writer.endWrite();
             
 } finally { writer.release(); }
+}
             assertEquals(json[i], output.toString());
         }
     }
@@ -89,12 +95,14 @@ try {
         holder.people = new Student[]{student1, student2};
 
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             StreamingIO.writeNode(writer, holder, RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("{\"students\":[{\"subject\":\"mathematics\",\"name\":\"Ada\"},"
                         + "{\"subject\":\"physics\",\"name\":\"Bob\"}],"
                         + "\"objects\":[{\"subject\":\"mathematics\",\"name\":\"Ada\"},"
@@ -108,51 +116,61 @@ try {
     @Test
     void writesListsSetsAndMapsWithConfiguredNullHandling() throws Exception {
         StringWriter randomAccessOutput = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, randomAccessOutput);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, randomAccessOutput);
 try {
             StreamingIO.writeNode(writer, List.of("a", 2), RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("[\"a\",2]", randomAccessOutput.toString());
 
         StringWriter linkedOutput = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, linkedOutput);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, linkedOutput);
 try {
             StreamingIO.writeNode(writer, new LinkedList<>(List.of("a", 2)), RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("[\"a\",2]", linkedOutput.toString());
 
         StringWriter setOutput = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, setOutput);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, setOutput);
 try {
             StreamingIO.writeNode(writer, new LinkedHashSet<>(List.of("a", 2)), RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("[\"a\",2]", setOutput.toString());
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("included", 1);
         map.put("omitted", null);
         StringWriter mapOutput = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, mapOutput);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, mapOutput);
 try {
             StreamingIO.writeNode(writer, map, new RuntimeContext(false));
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("{\"included\":1}", mapOutput.toString());
 
         StringWriter includeNullsOutput = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, includeNullsOutput);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, includeNullsOutput);
 try {
             StreamingIO.writeNode(writer, map, RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("{\"included\":1,\"omitted\":null}", includeNullsOutput.toString());
     }
 
@@ -163,12 +181,14 @@ try {
         raw.put("skip", null);
         raw.put("nested", List.of(3, true, Map.of("value", 2.5)));
         StringWriter output = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, output);
 try {
             writer.writeRaw(raw, new RuntimeContext(false));
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("{\"name\":\"Ada\",\"nested\":[3,true,{\"value\":2.5}]}",
                 output.toString());
 
@@ -176,33 +196,39 @@ try {
         withNull.put("value", null);
         withNull.put("list", java.util.Arrays.asList(null, 1));
         StringWriter outputWithNull = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, outputWithNull);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, outputWithNull);
 try {
             writer.writeRaw(withNull, RuntimeContext.EMPTY);
-            writer.flush();
+            writer.endWrite();
         
 } finally { writer.release(); }
+}
         assertEquals("{\"value\":null,\"list\":[null,1]}", outputWithNull.toString());
 
         StringWriter rejected = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, rejected);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, rejected);
 try {
             assertThrows(BindingException.class,
                     () -> writer.writeRaw(new UnsupportedNode(), RuntimeContext.EMPTY));
         
 } finally { writer.release(); }
+}
     }
 
     @Test
     void rejectsUnsupportedNodeTypes() throws Exception {
         StringWriter sw = new StringWriter();
-        SimpleJsonGenerator writer = new SimpleJsonGenerator(null, sw);
+        {
+SimpleJsonGenerator writer = new SimpleJsonGenerator(null, sw);
 try {
             StreamingIO.writeNode(writer, new UnsupportedNode(), RuntimeContext.EMPTY);
 //            assertThrows(BindingException.class,
 //                    () -> StreamingIO.writeNode(writer, new UnsupportedNode(), RuntimeContext.EMPTY));
         
 } finally { writer.release(); }
+}
         assertEquals("{}", sw.toString());
     }
 
@@ -287,8 +313,8 @@ try {
                 elements++;
             }
         @Override
-        public void flush() {}
+        public void endWrite() {}
         @Override
-        public void close() {}
+        public void release() {}
     }
 }

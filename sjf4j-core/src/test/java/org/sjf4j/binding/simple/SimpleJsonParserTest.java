@@ -17,11 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-class SimpleJsonReaderTest {
+class SimpleJsonParserTest {
 
     @Test
     void readsPrimitiveValues() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[1,2,3,4,5.5,6.5,true]"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[1,2,3,4,5.5,6.5,true]"));
 try {
             reader.startArray();
             assertEquals(1L, reader.readLongValue());
@@ -34,11 +35,13 @@ try {
             reader.endArray();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void readsSmallStringInputAndCloses() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser("[1,true]");
+        {
+SimpleJsonParser reader = new SimpleJsonParser("[1,true]");
 try {
             reader.startArray();
             assertEquals(1, reader.readIntValue());
@@ -47,17 +50,18 @@ try {
             reader.endRead();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void closePreventsReadsFromStringAndReaderInputs() throws Exception {
         SimpleJsonParser stringReader = new SimpleJsonParser("null");
-        stringReader.close();
+        stringReader.release();
         assertThrows(IOException.class, stringReader::startRead);
         assertThrows(IOException.class, stringReader::peekToken);
 
         SimpleJsonParser readerInput = new SimpleJsonParser(new StringReader("null"));
-        readerInput.close();
+        readerInput.release();
         assertThrows(IOException.class, readerInput::peekToken);
     }
 
@@ -65,25 +69,26 @@ try {
     void closeClearsBufferedInputAndEofState() throws Exception {
         SimpleJsonParser reader = new SimpleJsonParser("[1]");
         reader.startArray();
-        reader.close();
+        reader.release();
         assertThrows(IOException.class, reader::readIntValue);
 
         SimpleJsonParser eofReader = new SimpleJsonParser("null");
         eofReader.nextIfNull();
         eofReader.endRead();
-        eofReader.close();
+        eofReader.release();
         assertThrows(IOException.class, eofReader::peekToken);
 
         SimpleJsonParser readerEof = new SimpleJsonParser(new StringReader("null"));
         readerEof.nextIfNull();
         readerEof.endRead();
-        readerEof.close();
+        readerEof.release();
         assertThrows(IOException.class, readerEof::peekToken);
     }
 
     @Test
     void readsCharValuesAndRejectsMultiUnitStrings() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
                 "[\"x\",\"\\\\\",\"\\u0041\",\"\\uD83D\\uDE00\",\"multiple\",2]"));
 try {
             reader.startArray();
@@ -96,6 +101,7 @@ try {
             reader.endArray();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
@@ -103,7 +109,8 @@ try {
         assertThrows(BindingException.class,
                 () -> new SimpleJsonParser(new StringReader("\"\"")).readCharValue());
 
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":\"x\\uD83D\"}]}"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":\"x\\uD83D\"}]}"));
 try {
             reader.startObject(); 
             reader.nextName(); 
@@ -114,11 +121,13 @@ try {
             assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void readsNullableBoxedScalars() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[null,null,null,null,null,null,null]"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[null,null,null,null,null,null,null]"));
 try {
             reader.startArray();
             assertNull(reader.readLong());
@@ -131,12 +140,15 @@ try {
             reader.endArray();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void classifiesRootTokensAndReadsAllJsonEscapes() throws Exception {
-        try (SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
-                " { \"name\":\"\\\"\\\\\\/\\b\\f\\n\\r\\t\\u0041\\uD83D\\uDE00\", \"n\":123, \"b\": true, \"nil\": null } "))) {
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
+                " { \"name\":\"\\\"\\\\\\/\\b\\f\\n\\r\\t\\u0041\\uD83D\\uDE00\", \"n\":123, \"b\": true, \"nil\": null } "));
+try {
             assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
             reader.startObject();
             assertEquals(StreamingParser.Token.NAME, reader.peekToken());
@@ -150,22 +162,29 @@ try {
             reader.nextIfNull();
             reader.endObject();
             assertEquals(StreamingParser.Token.EOF, reader.peekToken());
-        }
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader(""));
+        
+} finally { reader.release(); }
+}
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader(""));
 try {
             assertEquals(StreamingParser.Token.EOF, reader.peekToken());
         
 } finally { reader.release(); }
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("x"));
+}
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("x"));
 try {
             assertEquals(StreamingParser.Token.UNKNOWN, reader.peekToken());
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void readsNumericBoundariesAndBigNumbers() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
                 "[-9223372036854775808,9223372036854775807,-2147483648,2147483647," +
                         "-32768,32767,-128,127,1.25e2,123456789012345678901234567890,1.20e-3]"));
 try {
@@ -184,6 +203,7 @@ try {
             reader.endArray();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
@@ -201,7 +221,8 @@ try {
 
     @Test
     void retainsEofAfterRootScalarAndEndDocument() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("42"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("42"));
 try {
             assertEquals(42, reader.readIntValue());
             assertEquals(StreamingParser.Token.EOF, reader.peekToken());
@@ -211,6 +232,7 @@ try {
             reader.endRead();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
@@ -229,18 +251,21 @@ try {
             @Override
             public void close() { }
         };
-        SimpleJsonParser reader = new SimpleJsonParser(zeroThenData);
+        {
+SimpleJsonParser reader = new SimpleJsonParser(zeroThenData);
 try {
             assertEquals(1, reader.readIntValue());
             reader.endRead();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void recoversBufferCapacityAndStateAfterNumericErrors() throws Exception {
         String hugeExponent = "1e" + "9".repeat(2048);
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[" + hugeExponent + ",2]"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[" + hugeExponent + ",2]"));
 try {
             reader.startArray();
             assertThrows(BindingException.class, reader::readDoubleValue);
@@ -248,30 +273,37 @@ try {
             reader.endArray();
         
 } finally { reader.release(); }
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("1e"));
+}
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("1e"));
 try {
             assertThrows(BindingException.class, reader::readDoubleValue);
             assertThrows(BindingException.class, reader::readDoubleValue);
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void reportsNestedPathsForDirectAndSkippedErrors() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":1e}]}"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":1e}]}"));
 try {
             reader.startObject(); reader.nextName(); reader.startArray(); reader.startObject(); reader.nextName();
             BindingException error = assertThrows(BindingException.class, reader::readDoubleValue);
             assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
         
 } finally { reader.release(); }
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":\"\\uD83D\"}]}"));
+}
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":\"\\uD83D\"}]}"));
 try {
             BindingException error = assertThrows(BindingException.class, reader::skipNode);
             assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
             assertThrows(BindingException.class, reader::skipNode);
         
 } finally { reader.release(); }
+}
     }
 
     @Test
@@ -311,7 +343,8 @@ try {
 
     @Test
     void reportsContainerPathForNestedStructuralErrors() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":{x}}"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("{\"a\":{x}}"));
 try {
             reader.startObject();
             reader.nextName();
@@ -320,18 +353,22 @@ try {
             assertEquals("$.a", error.getPathSegment().rootedPathExpr());
         
 } finally { reader.release(); }
+}
     }
 
     @Test
     void enforcesStructuralDelimitersAndEscapes() throws Exception {
         for (String json : new String[]{"[1 2]", "{\"a\":1 \"b\":2}", "[1,]", "{\"a\":1,}"}) {
-            SimpleJsonParser reader = new SimpleJsonParser(new StringReader(json));
+            {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader(json));
 try {
                 assertThrows(BindingException.class, reader::skipNode, json);
             
 } finally { reader.release(); }
+}
         }
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[\"\\uD83D\\uDE00\",null]"));
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader("[\"\\uD83D\\uDE00\",null]"));
 try {
             reader.startArray();
             assertEquals("😀", reader.readString());
@@ -340,13 +377,15 @@ try {
             reader.endArray();
         
 } finally { reader.release(); }
+}
         assertThrows(BindingException.class,
                 () -> new SimpleJsonParser(new StringReader("\"\\uDE00\"")).readString());
     }
 
     @Test
     void skipsEveryValueKind() throws Exception {
-        SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
+        {
+SimpleJsonParser reader = new SimpleJsonParser(new StringReader(
                 "[\"x\",123,true,false,null,{\"a\":[1]},[2,3]]"));
 try {
             reader.startArray();
@@ -355,6 +394,7 @@ try {
             reader.endRead();
         
 } finally { reader.release(); }
+}
     }
 
     @Test
@@ -384,11 +424,13 @@ try {
             @Override
             public void close() { }
         };
-        SimpleJsonParser reader = new SimpleJsonParser(failing);
+        {
+SimpleJsonParser reader = new SimpleJsonParser(failing);
 try {
             reader.startArray();
             assertThrows(IOException.class, reader::peekToken);
         
 } finally { reader.release(); }
+}
     }
 }

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class StreamingReaderDefaultMethodTest {
+class StreamingParserDefaultMethodTest {
     @Test
     void readerDefaultsHandleBoxedAndNullableValues() throws Exception {
         RecordingReader values = new RecordingReader(false, StreamingParser.Token.EOF);
