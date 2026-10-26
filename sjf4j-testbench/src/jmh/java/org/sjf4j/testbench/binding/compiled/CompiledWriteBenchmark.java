@@ -492,13 +492,14 @@ public class CompiledWriteBenchmark {
     }
 
     // Diagnostic: identical handwritten field emission as Direct, but the
-    // same SJF4J Writer creation, flush and release lifecycle as Compiled.
+    // same SJF4J Writer creation, close and release lifecycle as Compiled.
     @Benchmark
     public String json_jackson2_pojo_string_direct_wrapped() throws IOException {
         PooledStringWriter output = new PooledStringWriter();
-        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
-            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
+                Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
+            }
             return output.toString();
         } finally {
             output.recycle();
@@ -508,9 +509,10 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_jackson2_pojo_utf8_direct_wrapped() throws IOException {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
-            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
+                Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
+            }
             return output.toByteArray();
         } finally {
             output.recycle();
@@ -637,9 +639,10 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_jackson3_pojo_string_direct_wrapped() throws IOException {
         PooledStringWriter output = new PooledStringWriter();
-        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
-            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
+                Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
+            }
             return output.toString();
         } finally {
             output.recycle();
@@ -649,9 +652,10 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_jackson3_pojo_utf8_direct_wrapped() throws IOException {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
-            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
+                Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
+            }
             return output.toByteArray();
         } finally {
             output.recycle();
