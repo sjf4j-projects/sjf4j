@@ -26,28 +26,30 @@ class SnakeGeneratorTest {
         StringWriter output = new StringWriter();
 
         {
-SnakeGenerator writer = binder.createGenerator(output);
-try {
-            writer.startWrite();
-            writer.startObject();
-            writer.writeName(new CompiledName("nullLike"));
-            writer.writeStringValue("null");
-            writer.writeName("nested");
-            writer.startObject();
-            writer.writeName("booleanLike");
-            writer.writeStringValue("true");
-            writer.writeName("values");
-            writer.startArray();
-            writer.writeStringValue("123");
-            writer.writeStringValue("~");
-            writer.writeStringValue("hello: world");
-            writer.endArray();
-            writer.endObject();
-            writer.endObject();
-            writer.endWrite();
-        
-} finally { writer.release(); }
-}
+            SnakeGenerator writer = binder.createGenerator(output);
+            try {
+                writer.startWrite();
+                writer.startObject();
+                writer.writeName(new CompiledName("nullLike"));
+                writer.writeStringValue("null");
+                writer.writeName("nested");
+                writer.startObject();
+                writer.writeName("booleanLike");
+                writer.writeStringValue("true");
+                writer.writeName("values");
+                writer.startArray();
+                writer.writeStringValue("123");
+                writer.writeStringValue("~");
+                writer.writeStringValue("hello: world");
+                writer.endArray();
+                writer.endObject();
+                writer.endObject();
+                writer.endWrite();
+
+            } finally {
+                writer.release();
+            }
+        }
 
         Map<?, ?> document = assertInstanceOf(Map.class, new Yaml().load(output.toString()));
         assertEquals("null", assertInstanceOf(String.class, document.get("nullLike")));
@@ -67,75 +69,81 @@ try {
         StringWriter output = new StringWriter();
 
         {
-SnakeGenerator writer = binder.createGenerator(output);
-try {
-            writer.startWrite();
-            writer.startArray();
-            writer.writeStringValue("");
-            writer.writeStringValue("null");
-            writer.writeStringValue("~");
-            writer.writeStringValue("true");
-            writer.writeStringValue("123");
-            writer.writeStringValue("hello: world");
-            writer.writeLongValue(1L);
-            writer.writeIntValue(2);
-            writer.writeShortValue((short) 3);
-            writer.writeByteValue((byte) 4);
-            writer.writeDoubleValue(5.5d);
-            writer.writeFloatValue(6.5f);
-            writer.writeBooleanValue(true);
-            writer.writeCharValue('x');
-            writer.writeNumberValue(new BigInteger("12345678901234567890"));
-            writer.writeNumberValue(new BigDecimal("7.25"));
-            writer.writeNull();
-            writer.endArray();
-            writer.endWrite();
-        
-} finally { writer.release(); }
-}
+            SnakeGenerator writer = binder.createGenerator(output);
+            try {
+                writer.startWrite();
+                writer.startArray();
+                writer.writeStringValue("");
+                writer.writeStringValue("null");
+                writer.writeStringValue("~");
+                writer.writeStringValue("true");
+                writer.writeStringValue("123");
+                writer.writeStringValue("hello: world");
+                writer.writeLongValue(1L);
+                writer.writeIntValue(2);
+                writer.writeShortValue((short) 3);
+                writer.writeByteValue((byte) 4);
+                writer.writeDoubleValue(5.5d);
+                writer.writeFloatValue(6.5f);
+                writer.writeBooleanValue(true);
+                writer.writeCharValue('x');
+                writer.writeNumberValue(new BigInteger("12345678901234567890"));
+                writer.writeNumberValue(new BigDecimal("7.25"));
+                writer.writeNull();
+                writer.endArray();
+                writer.endWrite();
+
+            } finally {
+                writer.release();
+            }
+        }
 
         {
-SnakeParser reader = reader(binder, output.toString());
-try {
-            reader.startArray();
-            assertEquals("", reader.readString());
-            assertEquals("null", reader.readString());
-            assertEquals("~", reader.readString());
-            assertEquals("true", reader.readString());
-            assertEquals("123", reader.readString());
-            assertEquals("hello: world", reader.readString());
-            assertEquals(1L, reader.readLongValue());
-            assertEquals(2, reader.readIntValue());
-            assertEquals((short) 3, reader.readShortValue());
-            assertEquals((byte) 4, reader.readByteValue());
-            assertEquals(5.5d, reader.readDoubleValue());
-            assertEquals(6.5f, reader.readFloatValue());
-            assertTrue(reader.readBooleanValue());
-            assertEquals('x', reader.readCharValue());
-            assertEquals(new BigInteger("12345678901234567890"), reader.readBigInteger());
-            assertEquals(new BigDecimal("7.25"), reader.readBigDecimal());
-            assertTrue(reader.nextIfNull());
-            reader.endArray();
-            reader.endRead();
-        
-} finally { reader.release(); }
-}
+            SnakeParser reader = reader(binder, output.toString());
+            try {
+                reader.startArray();
+                assertEquals("", reader.readString());
+                assertEquals("null", reader.readString());
+                assertEquals("~", reader.readString());
+                assertEquals("true", reader.readString());
+                assertEquals("123", reader.readString());
+                assertEquals("hello: world", reader.readString());
+                assertEquals(1L, reader.readLongValue());
+                assertEquals(2, reader.readIntValue());
+                assertEquals((short) 3, reader.readShortValue());
+                assertEquals((byte) 4, reader.readByteValue());
+                assertEquals(5.5d, reader.readDoubleValue());
+                assertEquals(6.5f, reader.readFloatValue());
+                assertTrue(reader.readBooleanValue());
+                assertEquals('x', reader.readCharValue());
+                assertEquals(new BigInteger("12345678901234567890"), reader.readBigInteger());
+                assertEquals(new BigDecimal("7.25"), reader.readBigDecimal());
+                assertTrue(reader.nextIfNull());
+                reader.endArray();
+                reader.endRead();
+
+            } finally {
+                reader.release();
+            }
+        }
     }
 
     @Test
     void rejectsNonFiniteJsonNumbers() throws Exception {
         {
-SnakeGenerator writer = new SnakeBinder().createGenerator(new StringWriter());
-try {
-            assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.NaN));
-            assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
-            assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NaN));
-            assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
-            assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Double.NaN));
-            assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
-        
-} finally { writer.release(); }
-}
+            SnakeGenerator writer = new SnakeBinder().createGenerator(new StringWriter());
+            try {
+                assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.NaN));
+                assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
+                assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NaN));
+                assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
+                assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Double.NaN));
+                assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
+
+            } finally {
+                writer.release();
+            }
+        }
     }
 
     @Test
@@ -169,16 +177,18 @@ try {
 
         int flushesAfterDocument;
         {
-SnakeGenerator writer = new SnakeBinder().createGenerator(output);
-try {
-            writer.startWrite();
-            writer.writeStringValue("value");
-            writer.endWrite();
-            flushesAfterDocument = flushes[0];
-            assertTrue(flushesAfterDocument > 0);
-        
-} finally { writer.release(); }
-}
+            SnakeGenerator writer = new SnakeBinder().createGenerator(output);
+            try {
+                writer.startWrite();
+                writer.writeStringValue("value");
+                writer.endWrite();
+                flushesAfterDocument = flushes[0];
+                assertTrue(flushesAfterDocument > 0);
+
+            } finally {
+                writer.release();
+            }
+        }
 
         assertEquals(flushesAfterDocument, flushes[0]);
         assertFalse(closed[0]);

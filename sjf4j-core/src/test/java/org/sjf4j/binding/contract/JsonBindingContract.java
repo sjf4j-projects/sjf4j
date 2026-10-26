@@ -21,40 +21,44 @@ public abstract class JsonBindingContract {
         Binder<?, ?> binding = binding(RuntimeContext.EMPTY);
         StringWriter output = new StringWriter();
         {
-StreamingGenerator writer = binding.createGenerator(output);
-try {
-            writer.startWrite();
-            writer.startObject();
-            writer.writeName("items");
-            writer.startArray();
-            writer.writeIntValue(1);
-            writer.separateElement();
-            writer.writeStringValue("x");
-            writer.endArray();
-            writer.writeName("ok", true);
-            writer.writeBoolean(true);
-            writer.endObject();
-            writer.endWrite();
-        
-} finally { writer.release(); }
-}
+            StreamingGenerator writer = binding.createGenerator(output);
+            try {
+                writer.startWrite();
+                writer.startObject();
+                writer.writeName("items");
+                writer.startArray();
+                writer.writeIntValue(1);
+                writer.separateElement();
+                writer.writeStringValue("x");
+                writer.endArray();
+                writer.writeName("ok", true);
+                writer.writeBoolean(true);
+                writer.endObject();
+                writer.endWrite();
+
+            } finally {
+                writer.release();
+            }
+        }
         {
-StreamingParser reader = binding.createParser(new StringReader(output.toString()));
-try {
-            reader.startRead();
-            reader.startObject();
-            assertEquals("items", reader.nextName());
-            reader.startArray();
-            assertEquals(1, reader.readIntValue());
-            assertEquals("x", reader.readString());
-            reader.endArray();
-            assertEquals("ok", reader.nextName());
-            assertTrue(reader.readBooleanValue());
-            reader.endObject();
-            reader.endRead();
-        
-} finally { reader.release(); }
-}
+            StreamingParser reader = binding.createParser(new StringReader(output.toString()));
+            try {
+                reader.startRead();
+                reader.startObject();
+                assertEquals("items", reader.nextName());
+                reader.startArray();
+                assertEquals(1, reader.readIntValue());
+                assertEquals("x", reader.readString());
+                reader.endArray();
+                assertEquals("ok", reader.nextName());
+                assertTrue(reader.readBooleanValue());
+                reader.endObject();
+                reader.endRead();
+
+            } finally {
+                reader.release();
+            }
+        }
     }
 
 }
