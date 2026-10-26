@@ -144,42 +144,50 @@ class JsonpBinderTest {
         assertThrows(Exception.class, () -> binder.readNode(
                 "\uFEFFnull".getBytes(StandardCharsets.UTF_16LE), Object.class));
         {
-JsonpParser reader = binder.createParser(new StringReader("null"));
-try {
-            assertInstanceOf(JsonpParser.class, reader);
-            assertTrue(reader.nextIfNull());
-        
-} finally { reader.release(); }
-}
+            JsonpParser reader = binder.createParser(new StringReader("null"));
+            try {
+                assertInstanceOf(JsonpParser.class, reader);
+                assertTrue(reader.nextIfNull());
+
+            } finally {
+                reader.release();
+            }
+        }
 
         JsonParser parser = Json.createParser(new StringReader("null"));
         {
-JsonpParser reader = binder.createParser(parser);
-try {
-            assertTrue(reader.nextIfNull());
-        
-} finally { reader.release(); }
-}
+            JsonpParser reader = binder.createParser(parser);
+            try {
+                assertTrue(reader.nextIfNull());
+
+            } finally {
+                reader.release();
+            }
+        }
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         {
-JsonpGenerator writer = binder.createGenerator(output);
-try {
-            writer.writeStringValue("héllo");
-        
-} finally { writer.release(); }
-}
+            JsonpGenerator writer = binder.createGenerator(output);
+            try {
+                writer.writeStringValue("héllo");
+
+            } finally {
+                writer.release();
+            }
+        }
         assertEquals("\"héllo\"", new String(output.toByteArray(), StandardCharsets.UTF_8));
 
         StringWriter nativeOutput = new StringWriter();
         JsonGenerator generator = Json.createGenerator(nativeOutput);
         {
-JsonpGenerator writer = binder.createGenerator(generator);
-try {
-            writer.writeNull();
-        
-} finally { writer.release(); }
-}
+            JsonpGenerator writer = binder.createGenerator(generator);
+            try {
+                writer.writeNull();
+
+            } finally {
+                writer.release();
+            }
+        }
         assertEquals("null", nativeOutput.toString());
     }
 

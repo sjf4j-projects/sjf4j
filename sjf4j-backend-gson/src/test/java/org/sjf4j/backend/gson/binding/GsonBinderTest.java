@@ -68,18 +68,20 @@ class GsonBinderTest {
         nativeWriter.setSerializeNulls(false);
 
         {
-GsonGenerator writer = binder.createGenerator(nativeWriter);
-try {
-            assertTrue(nativeWriter.getSerializeNulls());
+            GsonGenerator writer = binder.createGenerator(nativeWriter);
+            try {
+                assertTrue(nativeWriter.getSerializeNulls());
 
-            writer.startObject();
-            writer.writeName("value");
-            writer.writeNull();
-            writer.endObject();
-            writer.endWrite();
-        
-} finally { writer.release(); }
-}
+                writer.startObject();
+                writer.writeName("value");
+                writer.writeNull();
+                writer.endObject();
+                writer.endWrite();
+
+            } finally {
+                writer.release();
+            }
+        }
 
         assertEquals("{\"value\":null}", output.toString());
     }
@@ -133,33 +135,41 @@ try {
         byte[] json = "\"héllo\"".getBytes(StandardCharsets.UTF_8);
 
         {
-GsonParser reader = binder.createParser("\"héllo\"");
-try {
-            assertEquals("héllo", reader.readString());
-        
-} finally { reader.release(); }
-}
+            GsonParser reader = binder.createParser("\"héllo\"");
+            try {
+                assertEquals("héllo", reader.readString());
+
+            } finally {
+                reader.release();
+            }
+        }
         {
-GsonParser reader = binder.createParser(json);
-try {
-            assertEquals("héllo", reader.readString());
-        
-} finally { reader.release(); }
-}
+            GsonParser reader = binder.createParser(json);
+            try {
+                assertEquals("héllo", reader.readString());
+
+            } finally {
+                reader.release();
+            }
+        }
         {
-GsonParser reader = binder.createParser(new ByteArrayInputStream(json));
-try {
-            assertEquals("héllo", reader.readString());
-        
-} finally { reader.release(); }
-}
+            GsonParser reader = binder.createParser(new ByteArrayInputStream(json));
+            try {
+                assertEquals("héllo", reader.readString());
+
+            } finally {
+                reader.release();
+            }
+        }
         {
-GsonParser reader = binder.createParser(new StringReader("\"héllo\""));
-try {
-            assertEquals("héllo", reader.readString());
-        
-} finally { reader.release(); }
-}
+            GsonParser reader = binder.createParser(new StringReader("\"héllo\""));
+            try {
+                assertEquals("héllo", reader.readString());
+
+            } finally {
+                reader.release();
+            }
+        }
         {
             GsonParser reader = binder.createParser(new JsonReader(new StringReader("\"héllo\"")));
             try {
@@ -171,24 +181,28 @@ try {
 
         StringWriter text = new StringWriter();
         {
-GsonGenerator writer = binder.createGenerator(text);
-try {
-            writer.writeStringValue("héllo");
-            writer.endWrite();
-        
-} finally { writer.release(); }
-}
+            GsonGenerator writer = binder.createGenerator(text);
+            try {
+                writer.writeStringValue("héllo");
+                writer.endWrite();
+
+            } finally {
+                writer.release();
+            }
+        }
         assertEquals("\"héllo\"", text.toString());
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         {
-GsonGenerator writer = binder.createGenerator(bytes);
-try {
-            writer.writeStringValue("héllo");
-            writer.endWrite();
-        
-} finally { writer.release(); }
-}
+            GsonGenerator writer = binder.createGenerator(bytes);
+            try {
+                writer.writeStringValue("héllo");
+                writer.endWrite();
+
+            } finally {
+                writer.release();
+            }
+        }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
 
         StringWriter nativeOutput = new StringWriter();

@@ -176,21 +176,23 @@ class Fastjson2BinderTest {
         Fastjson2Binder binder = new Fastjson2Binder(
                 JSONFactory.createReadContext(), JSONFactory.createWriteContext(features));
         {
-Fastjson2Generator writer = utf8 ? binder.createGeneratorUtf8() : binder.createGenerator();
-try {
-            writer.startObject();
-            if (prepared) writer.writeName(writer.createCompiledName(name));
-            else writer.writeName(name);
-            writer.writeString("héllo");
-            // Also exercise the second-property separator after the cached name.
-            if (prepared) writer.writeName(writer.createCompiledName("tail"));
-            else writer.writeName("tail");
-            writer.writeNull();
-            writer.endObject();
-            return utf8 ? new String(writer.toBytes(), StandardCharsets.UTF_8) : writer.toString();
-        
-} finally { writer.release(); }
-}
+            Fastjson2Generator writer = utf8 ? binder.createGeneratorUtf8() : binder.createGenerator();
+            try {
+                writer.startObject();
+                if (prepared) writer.writeName(writer.createCompiledName(name));
+                else writer.writeName(name);
+                writer.writeString("héllo");
+                // Also exercise the second-property separator after the cached name.
+                if (prepared) writer.writeName(writer.createCompiledName("tail"));
+                else writer.writeName("tail");
+                writer.writeNull();
+                writer.endObject();
+                return utf8 ? new String(writer.toBytes(), StandardCharsets.UTF_8) : writer.toString();
+
+            } finally {
+                writer.release();
+            }
+        }
     }
 
     @Test
@@ -239,13 +241,15 @@ try {
         StringWriter text = new StringWriter();
 
         {
-Fastjson2Parser reader = binder.createParser(new StringReader("null"));
-try {
-            assertInstanceOf(Fastjson2Parser.class, reader);
-            assertTrue(reader.nextIfNull());
-        
-} finally { reader.release(); }
-}
+            Fastjson2Parser reader = binder.createParser(new StringReader("null"));
+            try {
+                assertInstanceOf(Fastjson2Parser.class, reader);
+                assertTrue(reader.nextIfNull());
+
+            } finally {
+                reader.release();
+            }
+        }
         Fastjson2Generator writer = binder.createGenerator(text);
         writer.writeStringValue("héllo");
         writer.endWrite();
@@ -254,13 +258,15 @@ try {
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         {
-Fastjson2Generator byteWriter = binder.createGenerator(bytes);
-try {
-            byteWriter.writeStringValue("héllo");
-            byteWriter.endWrite();
-        
-} finally { byteWriter.release(); }
-}
+            Fastjson2Generator byteWriter = binder.createGenerator(bytes);
+            try {
+                byteWriter.writeStringValue("héllo");
+                byteWriter.endWrite();
+
+            } finally {
+                byteWriter.release();
+            }
+        }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
     }
 
@@ -288,19 +294,23 @@ try {
         TrackingOutputStream bytes = new TrackingOutputStream();
 
         {
-Fastjson2Generator writer = binder.createGenerator(text);
-try {
-            writer.writeNull();
-        
-} finally { writer.release(); }
-}
+            Fastjson2Generator writer = binder.createGenerator(text);
+            try {
+                writer.writeNull();
+
+            } finally {
+                writer.release();
+            }
+        }
         {
-Fastjson2Generator writer = binder.createGenerator(bytes);
-try {
-            writer.writeNull();
-        
-} finally { writer.release(); }
-}
+            Fastjson2Generator writer = binder.createGenerator(bytes);
+            try {
+                writer.writeNull();
+
+            } finally {
+                writer.release();
+            }
+        }
 
         assertFalse(text.closed);
         assertFalse(bytes.closed);
