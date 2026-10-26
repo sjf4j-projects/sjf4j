@@ -15,7 +15,7 @@ import org.sjf4j.annotation.node.OneOfMapping;
 @Slf4j
 public class OneOfTest {
 
-    @OneOf(key = "cmd", mappings = {
+    @OneOf(discriminatorKey = "cmd", mappings = {
             @OneOfMapping(type = StartRequest.class, when = "start"),
             @OneOfMapping(type = DialectRequest.class, when = "dialect"),
             @OneOfMapping(type = RunRequest.class, when = "run"),

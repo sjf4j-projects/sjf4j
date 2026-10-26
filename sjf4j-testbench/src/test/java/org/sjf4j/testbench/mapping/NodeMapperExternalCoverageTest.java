@@ -460,7 +460,7 @@ class NodeMapperExternalCoverageTest {
         }
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = Dog.class, when = "dog")
     })
     interface Pet {}

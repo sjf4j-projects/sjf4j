@@ -561,7 +561,7 @@ class TypeRegistryMetadataTest {
     @OneOf(mappings = {
             @OneOfMapping(type = JsonSubtype.class, when = {"json"}),
             @OneOfMapping(type = OtherSubtype.class, when = {"other"})
-    }, key = "type")
+    }, discriminatorKey = "type")
     interface DiscriminatedOneOf {}
 
     static class JsonSubtype extends JsonObject implements DiscriminatedOneOf {}

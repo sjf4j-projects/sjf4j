@@ -179,7 +179,7 @@ public class MapperJsonObjectDynamicTest {
             }
     }
 
-    @OneOf(key = "type", mappings = {
+    @OneOf(discriminatorKey = "type", mappings = {
             @OneOfMapping(type = Login.class, when = "login"),
             @OneOfMapping(type = Comment.class, when = "comment")
     })

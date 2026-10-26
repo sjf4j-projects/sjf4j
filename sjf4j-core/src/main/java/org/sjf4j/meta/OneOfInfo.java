@@ -20,8 +20,8 @@ import java.util.Map;
 public class OneOfInfo {
     public final Class<?> clazz;
     public final OneOfMapping[] mappings;
-    public final String key;
-    public final String path;
+    public final String discriminatorKey;
+    public final String discriminatorPath;
     public final OneOf.Scope scope;
     public final OneOf.OnNoMatch onNoMatch;
     public final boolean fallbackNull;
@@ -35,18 +35,18 @@ public class OneOfInfo {
     /**
      * Creates metadata from a {@link OneOf} declaration.
      */
-    public OneOfInfo(Class<?> clazz, OneOfMapping[] mappings, String key,
-                     String path, OneOf.Scope scope, OneOf.OnNoMatch onNoMatch) {
+    public OneOfInfo(Class<?> clazz, OneOfMapping[] mappings, String discriminatorKey,
+                     String discriminatorPath, OneOf.Scope scope, OneOf.OnNoMatch onNoMatch) {
         this.clazz = clazz;
         this.mappings = mappings;
-        this.key = key;
-        this.path = path;
+        this.discriminatorKey = discriminatorKey;
+        this.discriminatorPath = discriminatorPath;
         this.scope = scope;
         this.onNoMatch = onNoMatch;
         this.fallbackNull = onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL;
-        this.compiledPath = path.isEmpty() ? null : JsonPath.parse(path);
-        this.hasDiscriminator = !key.isEmpty() || !path.isEmpty();
-        this.keyDiscriminator = !key.isEmpty();
+        this.compiledPath = discriminatorPath.isEmpty() ? null : JsonPath.parse(discriminatorPath);
+        this.hasDiscriminator = !discriminatorKey.isEmpty() || !discriminatorPath.isEmpty();
+        this.keyDiscriminator = !discriminatorKey.isEmpty();
         if (hasDiscriminator) {
             this.byJsonType = null;
             this.byWhen = new HashMap<>();

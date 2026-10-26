@@ -66,7 +66,7 @@ public class CompiledOneOfBoundaryTest {
                         tag -> tag.value, DecimalTag::new);
     }
 
-    @OneOf(key = "@type", mappings = {
+    @OneOf(discriminatorKey = "@type", mappings = {
             @OneOfMapping(type = WithLong.class, when = "long"),
             @OneOfMapping(type = WithDouble.class, when = "double"),
             @OneOfMapping(type = WithDecimal.class, when = "decimal"),
@@ -100,7 +100,7 @@ public class CompiledOneOfBoundaryTest {
         public WithPropertyLong() {}
     }
 
-    @OneOf(key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
+    @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
             @OneOfMapping(type = MaybeValue.class, when = "valid")
     })
     public interface OptionalChoice {}
@@ -110,7 +110,7 @@ public class CompiledOneOfBoundaryTest {
         public MaybeValue() {}
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = AliasValue.class, when = "alias")
     })
     public interface AliasChoice {}
@@ -121,7 +121,7 @@ public class CompiledOneOfBoundaryTest {
         public AliasValue() {}
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = FactoryAliasValue.class, when = "factory")
     })
     public interface FactoryAliasChoice {}
@@ -142,7 +142,7 @@ public class CompiledOneOfBoundaryTest {
         public String getValue() { return value; }
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = FactoryValue.class, when = "regular")
     })
     public interface FactoryChoice {}

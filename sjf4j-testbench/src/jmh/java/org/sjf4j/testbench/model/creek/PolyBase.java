@@ -22,7 +22,7 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
 
 @SuppressWarnings("unused")
-@OneOf(key = "@type", mappings = {
+@OneOf(discriminatorKey = "@type", mappings = {
         @OneOfMapping(type = PolyTypeA.class, when = "poly-a"),
         @OneOfMapping(type = PolyTypeB.class, when = "poly-b")
 })

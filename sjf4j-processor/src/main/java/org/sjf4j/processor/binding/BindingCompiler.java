@@ -491,7 +491,7 @@ final class BindingCompiler {
                                      ExecutableElement method, GeneratedClass generated) {
         if (backend != Backend.JACKSON2 || annotation == null
                 || annotation.scope() != OneOf.Scope.CURRENT
-                || annotation.key().isEmpty() || !annotation.path().isEmpty()
+                || annotation.discriminatorKey().isEmpty() || !annotation.discriminatorPath().isEmpty()
                 || annotation.mappings().length == 0) return true;
 
         List<TypeMirror> types = new ArrayList<>();
@@ -508,7 +508,7 @@ final class BindingCompiler {
             } catch (MirroredTypeException e) {
                 subtype = e.getTypeMirror();
             }
-            if (!canCompileOneOfReadSubtype(subtype, annotation.key(), method)
+            if (!canCompileOneOfReadSubtype(subtype, annotation.discriminatorKey(), method)
                     || mapping.when().length == 0) return true;
             for (String when : mapping.when()) {
                 if (!keys.add(when)) return true;
@@ -525,7 +525,7 @@ final class BindingCompiler {
             subtypes.add(new BindingValue.OneOfSubtype(subtype, child, false,
                     annotation.mappings()[i].when()));
         }
-        value.oneOfKey(annotation.key());
+        value.oneOfKey(annotation.discriminatorKey());
         value.oneOfSubtypes(subtypes);
         return true;
     }
