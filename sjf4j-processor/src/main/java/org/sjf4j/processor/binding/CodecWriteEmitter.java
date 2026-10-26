@@ -32,14 +32,20 @@ final class CodecWriteEmitter {
             out.line("Object rawValue = " + info + ".valueToRaw(codecValue);");
             out.beginBlock("if (" + info + ".rawClazz == "
                     + value.codecRawType() + ".class)");
-            out.beginBlock("if (rawValue == null)");
-            out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
-            out.endBlock(" else {");
-            out.indent();
-            out.line((nativeWriter == null ? writer : nativeWriter) + "." + method
-                    + "(" + rawArgument(value.codecRawType().toString(), backend,
-                            nativeWriter != null) + ");");
-            out.endBlock();
+            if (nativeWriter != null && "writeString".equals(method)
+                    && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
+                // The Jackson string helper already writes null values.
+                out.line("_writeString(" + nativeWriter + ", (String) rawValue);");
+            } else {
+                out.beginBlock("if (rawValue == null)");
+                out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line((nativeWriter == null ? writer : nativeWriter) + "." + method
+                        + "(" + rawArgument(value.codecRawType().toString(), backend,
+                                nativeWriter != null) + ");");
+                out.endBlock();
+            }
             out.endBlock(" else {");
             out.indent();
             // A different RuntimeContext format or later registration may use

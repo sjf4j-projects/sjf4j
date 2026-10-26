@@ -29,10 +29,13 @@ class CompiledJacksonUnifiedWriteTest {
             sources.put("fixture/Cat.java",
                     "package fixture; public final class Cat implements Animal { "
                     + "public String kind=\"cat\"; public String name=\"felix\"; }");
+            sources.put("fixture/Dog.java",
+                    "package fixture; public final class Dog implements Animal { "
+                    + "public String kind=\"dog\"; public String name=\"rex\"; }");
             sources.put("fixture/Model.java",
                     "package fixture; import java.util.*; "
                     + "public class Model { "
-                    + " public List<Animal> animals = new LinkedList<>(Arrays.asList(new Cat(), null));"
+                    + " public List<Animal> animals = new LinkedList<>(Arrays.asList(new Cat(), null, new Dog()));"
                     + " public List<String> words = new ArrayList<>(Arrays.asList(\"first\", null, \"last\"));"
                     + " public Map<String,Object> extras = new LinkedHashMap<>();"
                     + " public Map<String,UUID> ids = new LinkedHashMap<>();"
@@ -61,6 +64,10 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("writer.nativeWriter()"), backend);
             assertTrue(generated.contains("private void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
+            assertTrue(generated.contains("private void _writeStringMember("), backend);
+            assertTrue(generated.contains("if (value == null && !this.context.includeNulls)"), backend);
+            assertTrue(generated.contains("_writeString(g, value);"), backend);
+            assertTrue(generated.contains("_writeStringMember(g,"), backend);
             assertTrue(generated.contains("_writeList(writer, property0);"), backend);
             assertTrue(generated.contains("_writeMap(writer, property2);"), backend);
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
@@ -88,6 +95,8 @@ class CompiledJacksonUnifiedWriteTest {
                 assertEquals("felix", full.path("animals").get(0).path("name").asText(), backend);
                 assertEquals("cat", full.path("animals").get(0).path("kind").asText(), backend);
                 assertTrue(full.path("animals").get(1).isNull(), backend);
+                // Unknown OneOf subclasses still use runtime serialization on write.
+                assertEquals("rex", full.path("animals").get(2).path("name").asText(), backend);
                 assertEquals(3, full.path("words").size(), backend);
                 assertTrue(full.path("words").get(1).isNull(), backend);
                 assertTrue(full.path("omitted").isNull(), backend);
@@ -108,6 +117,7 @@ class CompiledJacksonUnifiedWriteTest {
                 assertTrue(filtered.path("groups").path("items").get(1).isNull(), backend);
                 assertEquals(2, filtered.path("tags").size(), backend);
                 assertTrue(filtered.path("animals").get(1).isNull(), backend);
+                assertEquals("dog", filtered.path("animals").get(2).path("kind").asText(), backend);
                 assertTrue(filtered.path("words").get(1).isNull(), backend);
             }
         }

@@ -370,6 +370,11 @@ final class WriteEmitter {
         switch (value.kind()) {
             case STRING:
                 return true;
+            case VALUE_CODEC:
+                // Jackson raw String codecs also emit _writeString, even when
+                // no ordinary String property occurs in the compiled graph.
+                return isJackson() && value.codecRawType() != null
+                        && "java.lang.String".equals(value.codecRawType().toString());
             case ONE_OF:
                 for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
                     if (subtype.compiled != null && containsString(subtype.compiled, visited)) return true;
@@ -441,16 +446,14 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private static void _writeStringMember(" + generator
+            out.beginBlock("private void _writeStringMember(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
-            out.line("g." + nameMethod + "(name);");
-            out.beginBlock("if (value == null)");
-            out.line("g.writeNull();");
-            out.endBlock(" else {");
-            out.indent();
-            out.line("g.writeString(value);");
+            out.beginBlock("if (value == null && !this.context.includeNulls)");
+            out.line("return;");
             out.endBlock();
+            out.line("g." + nameMethod + "(name);");
+            out.line("_writeString(g, value);");
             out.endBlock();
         }
     }
