@@ -272,7 +272,8 @@ class PooledOutputTest {
                 output.recycle();
             }
             byte[] cached = OutputBufferRecycler.acquireBytes();
-            assertEquals(256 * 1024, cached.length);
+            assertTrue(cached.length >= OutputBufferRecycler.INITIAL_CAPACITY);
+            assertTrue(cached.length <= 256 * 1024);
             OutputBufferRecycler.release(cached);
         } finally {
             OutputBufferRecycler.release(oldCache);
@@ -529,7 +530,8 @@ class PooledOutputTest {
             byte[] cachedBytes = OutputBufferRecycler.acquireBytes();
             try {
                 assertEquals(256 * 1024, cachedChars.length);
-                assertEquals(256 * 1024, cachedBytes.length);
+                assertTrue(cachedBytes.length >= OutputBufferRecycler.INITIAL_CAPACITY);
+                assertTrue(cachedBytes.length <= 256 * 1024);
             } finally {
                 OutputBufferRecycler.release(cachedChars);
                 OutputBufferRecycler.release(cachedBytes);
@@ -538,6 +540,17 @@ class PooledOutputTest {
             OutputBufferRecycler.release(previousChars);
             OutputBufferRecycler.release(previousBytes);
         }
+    }
+
+    @Test
+    void byteGrowthUsesDoublingForSmallAppendsAndExactForBulk() {
+        assertEquals(262144, OutputBufferRecycler.growBytesCapacity(131072, 120000, 240000));
+        assertEquals(300000, OutputBufferRecycler.growBytesCapacity(262144, 0, 300000));
+        assertEquals(524288, OutputBufferRecycler.growBytesCapacity(262144, 262144, 262145));
+        assertEquals(1048576, OutputBufferRecycler.growBytesCapacity(524288, 524288, 524289));
+        assertEquals(900000, OutputBufferRecycler.growBytesCapacity(524288, 100000, 900000));
+        assertEquals(Integer.MAX_VALUE - 8,
+                OutputBufferRecycler.growBytesCapacity(1073741824, 1073741824, 1073741825));
     }
 
     @Test
