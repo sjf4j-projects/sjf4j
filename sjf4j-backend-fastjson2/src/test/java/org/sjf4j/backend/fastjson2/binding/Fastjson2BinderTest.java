@@ -34,7 +34,8 @@ class Fastjson2BinderTest {
     void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
         Fastjson2Parser reader = new Fastjson2Parser(JSONReader.of(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
-                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"))) {
+                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"));
+        try {
 
             assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
             Map<?, ?> value = (Map<?, ?>) reader.readRaw();
