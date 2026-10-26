@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -134,6 +135,30 @@ class SnakeWriterTest {
         assertTrue(yaml.startsWith("---"));
         assertTrue(yaml.contains("[1, 2]"));
         assertTrue(yaml.contains("..."));
+    }
+
+    @Test
+    void closeFlushesWithoutClosingCallerOwnedOutput() throws Exception {
+        final int[] flushes = {0};
+        final boolean[] closed = {false};
+        StringWriter output = new StringWriter() {
+            @Override
+            public void flush() {
+                flushes[0]++;
+            }
+
+            @Override
+            public void close() {
+                closed[0] = true;
+            }
+        };
+
+        try (SnakeWriter writer = new SnakeBinder().createWriter(output)) {
+            // Closing the backend writer must complete buffered output.
+        }
+
+        assertEquals(1, flushes[0]);
+        assertFalse(closed[0]);
     }
 
     private static SnakeReader reader(SnakeBinder binder, String yaml) throws Exception {
