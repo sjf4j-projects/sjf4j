@@ -565,4 +565,57 @@ class PooledOutputTest {
         assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 65537));
     }
 
+
+    @Test
+    void stringWriterSwitchesAt256KAndPreservesMixedContent() {
+        String prefix = "a".repeat(256 * 1024 - 2);
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            writer.write(prefix);
+            writer.append("中");
+            writer.write('x');
+            assertEquals(256 * 1024, writer.size());
+            assertEquals(prefix + "中x", writer.toString());
+            writer.append("界");
+            writer.append(new StringBuilder("-suffix"), 0, 7);
+            assertEquals(prefix + "中x界-suffix", writer.getAndRecycle());
+            assertThrows(IllegalStateException.class, writer::size);
+        } finally {
+            writer.recycle();
+        }
+    }
+
+    @Test
+    void stringWriterLargeDirectWritesAndResetReleaseLargeStorage() {
+        String source = "中文abc".repeat(80_000);
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            writer.write(source, 1, 350_000);
+            assertEquals(source.substring(1, 350_001), writer.toString());
+            assertThrows(IndexOutOfBoundsException.class, () -> writer.write(source, -1, 1));
+            assertThrows(IndexOutOfBoundsException.class, () -> writer.write(new char[2], 1, 2));
+            assertEquals(350_000, writer.size());
+            writer.reset();
+            assertEquals(0, writer.size());
+            writer.write("short");
+            assertEquals("short", writer.getAndRecycle());
+        } finally {
+            writer.recycle();
+        }
+    }
+
+    @Test
+    void stringWriterLargeCharArrayAndCharSequenceWrites() {
+        char[] chars = new char[300 * 1024];
+        Arrays.fill(chars, '字');
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            writer.write(chars, 0, chars.length);
+            writer.append((CharSequence) new StringBuilder("suffix"), 0, 6);
+            writer.write('!');
+            assertEquals("字".repeat(chars.length) + "suffix!", writer.getAndRecycle());
+        } finally {
+            writer.recycle();
+        }
+    }
 }
