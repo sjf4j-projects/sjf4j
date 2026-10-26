@@ -76,7 +76,7 @@ class PooledOutputTest {
     @Test
     void oversizedByteOutputRecyclesIntoSoftCache() {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        byte[] large = new byte[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1];
+        byte[] large = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
         Arrays.fill(large, (byte) 9);
         output.write(large, 0, large.length);
         assertArrayEquals(large, output.getAndRecycle());
@@ -176,8 +176,8 @@ class PooledOutputTest {
         char[] priorChars = recycler.takeChars();
         byte[] priorBytes = recycler.takeBytes();
         try {
-            char[] softChars = new char[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1];
-            byte[] softBytes = new byte[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1];
+            char[] softChars = new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
+            byte[] softBytes = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
             recycler.recycleChars(softChars);
             recycler.recycleBytes(softBytes);
             assertSame(softChars, recycler.takeChars());
@@ -509,7 +509,7 @@ class PooledOutputTest {
             recycler.recycleChars(nested);
             recycler.recycleChars(candidate);
             assertSame(candidate, recycler.takeChars());
-            recycler.recycleChars(new char[OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY + 1]);
+            recycler.recycleChars(new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
         } finally {
             recycler.recycleChars(previous);
         }
