@@ -1,6 +1,6 @@
 name: Recyclable output buffer microbenchmark
 
-# Small, branch-only screening run. Full Java CI runs separately.
+# Branch-only benchmark experiment. Full Java CI runs separately.
 on:
   push:
     branches:
@@ -33,7 +33,9 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*SegmentedOutputBenchmark\\..*            -prof gc -rf json -rff output-buffer-jmh.json \
+          java -jar "$jar" '.*SegmentedOutputBenchmark\..*$' \
+            -bm avgt -tu us -t 1 -f 2 -wi 10 -w 200ms -i 3 -r 200ms -p payloadLength=262145,307200,1048576 -p alphabet=ASCII,UNICODE -p segmentSize=131072 \
+            -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
         if: success()
@@ -62,50 +64,6 @@ jobs:
                   scores=[items[name]['primaryMetric']['score'] for name in names]
                   allocs=[items[name].get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan')) for name in names]
                   print(f'| {size} | {alphabet} | {mode} | '+ ' | '.join(f'{v:.3f}' for v in scores) +' | '+ ' | '.join(f'{v:.0f}' for v in allocs[:5]) +' |')
-          PY
-          cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Preserve measurements
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: output-buffer-jmh
-          path: |
-            output-buffer-jmh.json
-            output-buffer-jmh.log
-            output-buffer-summary.md
-          if-no-files-found: warn
- \
-            -bm avgt -tu us -t 1 -f 2 -wi 10 -w 200ms -i 3 -r 200ms -p payloadLength=262145,307200,1048576 -p alphabet=ASCII,UNICODE -p segmentSize=131072 \
-            -prof gc -rf json -rff output-buffer-jmh.json \
-            | tee output-buffer-jmh.log
-      - name: Compare paired sinks
-        if: success()
-        shell: bash
-        run: |
-          python3 - <<'PY' | tee output-buffer-summary.md
-          import json
-          results=json.load(open('output-buffer-jmh.json'))
-          if not results: raise SystemExit('JMH produced no results')
-          rows={}
-          for r in results:
-              key=(r['params']['payloadLength'],r['params']['alphabet'])
-              rows.setdefault(key,{})[r['benchmark'].split('.')[-1]]=r
-          pairs=[
-              ('charsPooled','charsJdk'),('charsChunksPooled','charsChunksJdk'),
-              ('charsPooled','charsJackson2'),('charsChunksPooled','charsChunksJackson2'),
-              ('charsJackson2','charsJdk'),('charsChunksJackson2','charsChunksJdk')
-          ]
-          print('# Sub-256K char output: SJF4J vs JDK vs Jackson2')
-          print('JDK 25; 2 forks, 10 warmups, 3 measurements. GC allocations included. Not conclusive for small differences.')
-          print('| Size | Alphabet | Pooled | Baseline | Pooled us/op | Baseline us/op | Speedup | Pooled B/op | Baseline B/op |')
-          print('|---:|---|---|---|---:|---:|---:|---:|---:|')
-          for (size,alphabet),items in sorted(rows.items()):
-              for a,b in pairs:
-                  if a not in items or b not in items: continue
-                  x,y=items[a],items[b]
-                  xv,yv=x['primaryMetric']['score'],y['primaryMetric']['score']
-                  alloc=lambda r:r.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan'))
-                  print(f'| {size} | {alphabet} | {a} | {b} | {xv:.3f} | {yv:.3f} | {yv/xv:.2f}x | {alloc(x):.0f} | {alloc(y):.0f} |')
           PY
           cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve measurements
