@@ -4,6 +4,9 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.binding.PooledStringWriter;
 import org.sjf4j.binding.PooledByteArrayOutputStream;
 import java.io.StringWriter;
+import java.io.IOException;
+import com.fasterxml.jackson.core.io.SegmentedStringWriter;
+import com.fasterxml.jackson.core.util.BufferRecycler;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -24,6 +27,7 @@ public class AdaptiveOutputBenchmark {
     public String alphabet;
     private String data;
     private byte[] bytes;
+    private BufferRecycler jackson2Recycler;
 
     @Setup(Level.Trial)
     public void prepare() {
@@ -31,6 +35,11 @@ public class AdaptiveOutputBenchmark {
         data = pattern.repeat((payloadLength + pattern.length() - 1) / pattern.length())
                 .substring(0, payloadLength);
         bytes = data.getBytes(StandardCharsets.UTF_8);
+        jackson2Recycler = new BufferRecycler();
+        SegmentedStringWriter jackson = new SegmentedStringWriter(jackson2Recycler);
+        jackson.write(data);
+        if (!data.equals(jackson.getAndClear()))
+            throw new IllegalStateException("Invalid Jackson2 SegmentedStringWriter result");
         PooledStringWriter chars = new PooledStringWriter();
         try {
             chars.write(data);
@@ -66,6 +75,13 @@ public class AdaptiveOutputBenchmark {
     }
 
     @Benchmark
+    public String charsJackson2() throws IOException {
+        SegmentedStringWriter out = new SegmentedStringWriter(jackson2Recycler);
+        out.write(data);
+        return out.getAndClear();
+    }
+
+    @Benchmark
     public byte[] bytesPooled() {
         PooledByteArrayOutputStream out = new PooledByteArrayOutputStream();
         try {
@@ -97,6 +113,14 @@ public class AdaptiveOutputBenchmark {
         for (int i = 0; i < data.length(); i += CHUNK_SIZE)
             out.write(data, i, Math.min(CHUNK_SIZE, data.length() - i));
         return out.toString();
+    }
+
+    @Benchmark
+    public String charsChunksJackson2() throws IOException {
+        SegmentedStringWriter out = new SegmentedStringWriter(jackson2Recycler);
+        for (int i = 0; i < data.length(); i += CHUNK_SIZE)
+            out.write(data, i, Math.min(CHUNK_SIZE, data.length() - i));
+        return out.getAndClear();
     }
 
     @Benchmark
