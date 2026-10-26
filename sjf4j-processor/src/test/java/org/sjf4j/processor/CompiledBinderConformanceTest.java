@@ -6,6 +6,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.net.URLClassLoader;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -108,6 +109,7 @@ class CompiledBinderConformanceTest {
             byte[] bytes = (byte[]) implementation.getMethod("writeBytes", beanType)
                     .invoke(binder, bean);
             assertNotEquals(0, bytes.length, backend);
+            assertEquals(encoded, new String(bytes, StandardCharsets.UTF_8), backend);
             Object fromBytes = implementation.getMethod("readBytes", byte[].class)
                     .invoke(binder, (Object) bytes);
             assertEquals("Alice", beanType.getField("name").get(fromBytes), backend);
