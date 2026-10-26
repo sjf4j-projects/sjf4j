@@ -45,11 +45,6 @@ final class OutputBufferRecycler {
             chars = array;
     }
 
-    void retainMaxChars() {
-        if (chars == null || chars.length < MAX_RETAINED_CAPACITY)
-            chars = new char[MAX_RETAINED_CAPACITY];
-    }
-
     // Keep the static accessors for other callers and existing tests.
     static byte[] acquireBytes() { return current().takeBytes(); }
     static char[] acquireChars() { return current().takeChars(); }
