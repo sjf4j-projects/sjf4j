@@ -207,7 +207,7 @@ class PooledOutputTest {
     }
 
     @Test
-    void writerGrowsPast256KAndMaintains256KCache() {
+    void writerGrowsPast256KAndCachesOversizedArray() {
         char[] oldCache = OutputBufferRecycler.acquireChars();
         try {
             PooledStringWriter writer = new PooledStringWriter();
@@ -226,7 +226,7 @@ class PooledOutputTest {
                 writer.recycle();
             }
             char[] cached = OutputBufferRecycler.acquireChars();
-            assertEquals(256 * 1024, cached.length);
+            assertTrue(cached.length >= 256 * 1024 + 5);
             OutputBufferRecycler.release(cached);
         } finally {
             OutputBufferRecycler.release(oldCache);
@@ -234,7 +234,7 @@ class PooledOutputTest {
     }
 
     @Test
-    void writerSupportsDirectOversizeResetAndKeepsOnlyUsedCache() {
+    void writerSupportsDirectOversizeResetAndReusesArray() {
         char[] oldCache = OutputBufferRecycler.acquireChars();
         try {
             PooledStringWriter writer = new PooledStringWriter();
@@ -253,7 +253,7 @@ class PooledOutputTest {
                 writer.recycle();
             }
             char[] cached = OutputBufferRecycler.acquireChars();
-            assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, cached.length);
+            assertTrue(cached.length >= 300 * 1024 + 1);
             OutputBufferRecycler.release(cached);
         } finally {
             OutputBufferRecycler.release(oldCache);
