@@ -18,7 +18,6 @@ final class OutputBufferRecycler {
     private static final ThreadLocal<OutputBufferRecycler> LOCAL =
             ThreadLocal.withInitial(OutputBufferRecycler::new);
 
-    private final int strongCacheLimit;
     private byte[] bytes;
     private char[] chars;
     // Softly hold both large slots through one reusable holder. A direct
@@ -40,14 +39,7 @@ final class OutputBufferRecycler {
         return holder;
     }
 
-    private OutputBufferRecycler() { this(MAX_RETAINED_CAPACITY); }
-
-    // Package-private to compare strong-cache caps with identical writer code in JMH.
-    OutputBufferRecycler(int strongCacheLimit) {
-        if (strongCacheLimit < INITIAL_CAPACITY || strongCacheLimit > MAX_RETAINED_CAPACITY)
-            throw new IllegalArgumentException("strongCacheLimit");
-        this.strongCacheLimit = strongCacheLimit;
-    }
+    private OutputBufferRecycler() {}
 
     static OutputBufferRecycler current() { return LOCAL.get(); }
 
@@ -86,7 +78,7 @@ final class OutputBufferRecycler {
     }
 
     void recycleBytes(byte[] array) {
-        if (array.length <= strongCacheLimit) {
+        if (array.length <= MAX_RETAINED_CAPACITY) {
             if (bytes == null || bytes.length < array.length) bytes = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
@@ -96,22 +88,12 @@ final class OutputBufferRecycler {
     }
 
     void recycleChars(char[] array) {
-        if (array.length <= strongCacheLimit) {
+        if (array.length <= MAX_RETAINED_CAPACITY) {
             if (chars == null || chars.length < array.length) chars = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
             if (holder.chars == null || holder.chars.length < array.length)
                 holder.chars = array;
-        }
-    }
-
-    // Synthetic soft-reference eviction for the threshold microbenchmark.
-    // This models cache loss, not GC pause time.
-    void evictSoftCacheForBenchmark() {
-        SoftReference<LargeBuffers> ref = largeBuffers;
-        if (ref != null) {
-            ref.clear();
-            largeBuffers = null;
         }
     }
 
