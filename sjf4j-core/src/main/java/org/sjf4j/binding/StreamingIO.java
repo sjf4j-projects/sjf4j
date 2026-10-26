@@ -526,7 +526,9 @@ public final class StreamingIO {
             if (argIndex >= 0) {
                 ValueInfo codec = creator.argValueCodecs[argIndex];
                 Object value;
-                if (codec != null) {
+                if (creator.argOneOfInfos[argIndex] != null) {
+                    value = OneOfIO.readOneOf(reader, creator.argOneOfInfos[argIndex], context);
+                } else if (codec != null) {
                     value = readValueCodec(reader, codec, context);
                 } else {
                     LazyTypeInfo lazy = creator.argTypeInfos[argIndex];
