@@ -7,21 +7,28 @@ import java.io.StringWriter;
 import java.io.IOException;
 import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
+import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Comparable output-sink benchmark: SJF4J versus JDK and Jackson2.
+ * Measures allocation and completion for full writes and 256-element chunks.
+ * Complete large String writes in SJF4J can return the original String
+ * (zero-copy); compare chunked writes to measure materialization costs.
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 1, time = 100, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 2, time = 120, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(0)
+@Warmup(iterations = 5, time = 150, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 150, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(2)
 @Threads(1)
 @State(Scope.Thread)
 public class AdaptiveOutputBenchmark {
     private static final int CHUNK_SIZE = 256;
-    @Param({"307200", "1048576"})
+    @Param({"1024", "65536", "65537", "131072", "262144", "307200", "1048576"})
     public int payloadLength;
     @Param({"ASCII", "UNICODE"})
     public String alphabet;
@@ -56,6 +63,8 @@ public class AdaptiveOutputBenchmark {
         } finally {
             sink.recycle();
         }
+        if (!Arrays.equals(bytes, bytesJackson2()))
+            throw new IllegalStateException("Invalid Jackson2 byte output");
     }
 
     @Benchmark
@@ -95,6 +104,17 @@ public class AdaptiveOutputBenchmark {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(bytes, 0, bytes.length);
         return out.toByteArray();
+    }
+
+    @Benchmark
+    public byte[] bytesJackson2() {
+        ByteArrayBuilder out = new ByteArrayBuilder(jackson2Recycler);
+        try {
+            out.write(bytes, 0, bytes.length);
+            return out.toByteArray();
+        } finally {
+            out.release();
+        }
     }
 
     @Benchmark
@@ -139,5 +159,17 @@ public class AdaptiveOutputBenchmark {
         for (int i = 0; i < bytes.length; i += CHUNK_SIZE)
             out.write(bytes, i, Math.min(CHUNK_SIZE, bytes.length - i));
         return out.toByteArray();
+    }    
+    @Benchmark
+    public byte[] bytesChunksJackson2() {
+        ByteArrayBuilder out = new ByteArrayBuilder(jackson2Recycler);
+        try {
+            for (int i = 0; i < bytes.length; i += CHUNK_SIZE)
+                out.write(bytes, i, Math.min(CHUNK_SIZE, bytes.length - i));
+            return out.toByteArray();
+        } finally {
+            out.release();
+        }
     }
+
 }
