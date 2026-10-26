@@ -1,11 +1,13 @@
 package org.sjf4j.binding;
 
+import java.lang.ref.SoftReference;
+
 /**
  * Per-thread byte[] and char[] recycling, with exclusive array checkout.
  *
- * <p>Each thread retains at most one array of each kind, up to 256K elements.
- * Oversized arrays are not retained; only previously allocated reusable
- * arrays remain cached.</p>
+ * <p>Each thread retains one strongly referenced array up to 256K and one
+ * softly referenced larger array of each kind. Only arrays actually allocated
+ * by a writer are recycled; no standby buffers are allocated.</p>
  */
 final class OutputBufferRecycler {
 
@@ -18,6 +20,8 @@ final class OutputBufferRecycler {
 
     private byte[] bytes;
     private char[] chars;
+    private SoftReference<byte[]> largeBytes;
+    private SoftReference<char[]> largeChars;
 
     private OutputBufferRecycler() {}
 
@@ -35,14 +39,52 @@ final class OutputBufferRecycler {
         return result != null ? result : new char[INITIAL_CAPACITY];
     }
 
+    byte[] takeLargeBytes(int required) {
+        SoftReference<byte[]> ref = largeBytes;
+        if (ref == null) return null;
+        byte[] value = ref.get();
+        if (value == null) {
+            largeBytes = null;
+            return null;
+        }
+        if (value.length < required) return null;
+        largeBytes = null;
+        return value;
+    }
+
+    char[] takeLargeChars(int required) {
+        SoftReference<char[]> ref = largeChars;
+        if (ref == null) return null;
+        char[] value = ref.get();
+        if (value == null) {
+            largeChars = null;
+            return null;
+        }
+        if (value.length < required) return null;
+        largeChars = null;
+        return value;
+    }
+
     void recycleBytes(byte[] array) {
-        if (array.length <= MAX_RETAINED_CAPACITY && (bytes == null || bytes.length < array.length))
-            bytes = array;
+        if (array.length <= MAX_RETAINED_CAPACITY) {
+            if (bytes == null || bytes.length < array.length) bytes = array;
+        } else {
+            SoftReference<byte[]> ref = largeBytes;
+            byte[] previous = ref == null ? null : ref.get();
+            if (previous == null || previous.length < array.length)
+                largeBytes = new SoftReference<>(array);
+        }
     }
 
     void recycleChars(char[] array) {
-        if (array.length <= MAX_RETAINED_CAPACITY && (chars == null || chars.length < array.length))
-            chars = array;
+        if (array.length <= MAX_RETAINED_CAPACITY) {
+            if (chars == null || chars.length < array.length) chars = array;
+        } else {
+            SoftReference<char[]> ref = largeChars;
+            char[] previous = ref == null ? null : ref.get();
+            if (previous == null || previous.length < array.length)
+                largeChars = new SoftReference<>(array);
+        }
     }
 
     // Keep the static accessors for other callers and existing tests.
