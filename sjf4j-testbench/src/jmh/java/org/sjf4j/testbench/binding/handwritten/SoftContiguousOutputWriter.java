@@ -18,6 +18,14 @@ public final class SoftContiguousOutputWriter extends Writer {
     private int count;
 
     public SoftContiguousOutputWriter() {
+        SoftReference<char[]> largeRef = LARGE.get();
+        char[] large = largeRef == null ? null : largeRef.get();
+        if (large != null) {
+            LARGE.remove();
+            buffer = large;
+            return;
+        }
+        if (largeRef != null) LARGE.remove();
         char[] cached = SMALL.get();
         if (cached == null) buffer = new char[INITIAL];
         else {
