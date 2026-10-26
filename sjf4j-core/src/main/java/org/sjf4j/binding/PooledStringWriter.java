@@ -4,7 +4,7 @@ import java.io.Writer;
 
 /**
  * Unsynchronized recyclable Writer. Incremental writes use a contiguous
- * recycled char[] with a soft cache for arrays over 256K. A complete large
+ * recycled char[] with a soft cache for arrays over 64K. A complete large
  * String first write is held without copying until further data is appended.
  *
  * <p>close() is deliberately a no-op: a backend may close its Writer before
@@ -33,7 +33,7 @@ public final class PooledStringWriter extends Writer {
 
     private char[] grow(int required) {
         char[] previous = active();
-        char[] next = required > OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY
+        char[] next = required > OutputBufferRecycler.MAX_RETAINED_CAPACITY
                 ? recycler.takeLargeChars(required) : null;
         if (next == null)
             next = new char[OutputBufferRecycler.growCapacity(previous.length, count, required)];
