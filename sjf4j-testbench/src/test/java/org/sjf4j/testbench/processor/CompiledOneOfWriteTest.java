@@ -42,7 +42,7 @@ public class CompiledOneOfWriteTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = Cat.class, when = "cat"),
             @OneOfMapping(type = Dog.class, when = "dog"),
             @OneOfMapping(type = Secret.class, when = "secret")
@@ -79,7 +79,7 @@ public class CompiledOneOfWriteTest {
         public List<Pet> pets;
         public Map<String, Pet> byName;
         public Pet featured;
-        @OneOf(key = "variant", mappings = {
+        @OneOf(discriminatorKey = "variant", mappings = {
                 @OneOfMapping(type = Cat.class, when = "feline"),
                 @OneOfMapping(type = Dog.class, when = "canine")
         })
@@ -87,7 +87,7 @@ public class CompiledOneOfWriteTest {
         public String after;
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = Leaf.class, when = "leaf"),
             @OneOfMapping(type = Branch.class, when = "branch")
     })
@@ -106,7 +106,7 @@ public class CompiledOneOfWriteTest {
         public Tree next;
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = RawListValue.class, when = "raw"),
             @OneOfMapping(type = NumericMapValue.class, when = "numberMap"),
             @OneOfMapping(type = IgnoredFieldValue.class, when = "ignoredField"),

@@ -355,7 +355,7 @@ class Jackson2BinderTest {
     }
 
     static class CurrentJojo extends JsonObject {
-        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, key = "kind")
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, discriminatorKey = "kind")
         public Animal pet;
     }
 
@@ -363,7 +363,7 @@ class Jackson2BinderTest {
         public String kind;
 
         @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
-                key = "kind", scope = OneOf.Scope.PARENT)
+                discriminatorKey = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
     }
 
@@ -384,7 +384,7 @@ class Jackson2BinderTest {
         public String kind;
 
         @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
-                key = "kind", scope = OneOf.Scope.PARENT)
+                discriminatorKey = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
 
         @NodeCreator
@@ -451,7 +451,7 @@ class Jackson2BinderTest {
     }
 
     static class CurrentOneOf {
-        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, key = "kind")
+        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, discriminatorKey = "kind")
         public Animal pet;
     }
 
@@ -459,7 +459,7 @@ class Jackson2BinderTest {
         public String kind;
 
         @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
-                key = "kind", scope = OneOf.Scope.PARENT)
+                discriminatorKey = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
     }
 

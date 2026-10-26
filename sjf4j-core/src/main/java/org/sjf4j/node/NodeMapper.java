@@ -1116,9 +1116,9 @@ public final class NodeMapper {
             }
 
             Object discriminatorValue;
-            if (!oneOfInfo.key.isEmpty()) {
-                discriminatorValue = Nodes.getInObject(node, oneOfInfo.key);
-            } else if (!oneOfInfo.path.isEmpty()) {
+            if (!oneOfInfo.discriminatorKey.isEmpty()) {
+                discriminatorValue = Nodes.getInObject(node, oneOfInfo.discriminatorKey);
+            } else if (!oneOfInfo.discriminatorPath.isEmpty()) {
                 discriminatorValue = oneOfInfo.compiledPath.getNode(node);
             } else {
                 discriminatorValue = null;
@@ -1137,8 +1137,10 @@ public final class NodeMapper {
                 if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                     return null;
                 }
-                throw new BindingException(
-                        "not found value for discriminator key '" + oneOfInfo.key + "'", ps);
+                throw new BindingException("not found value for discriminator "
+                        + (oneOfInfo.keyDiscriminator
+                        ? "key '" + oneOfInfo.discriminatorKey
+                        : "path '" + oneOfInfo.discriminatorPath) + "'", ps);
             }
 
             target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);

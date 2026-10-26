@@ -558,13 +558,13 @@ public final class StreamingIO {
              */
             OneOfInfo oneOfInfo = property.oneOfInfo;
             if (oneOfInfo != null && oneOfInfo.scope == OneOf.Scope.PARENT) {
-                if (!oneOfInfo.path.isEmpty()) {
+                if (!oneOfInfo.discriminatorPath.isEmpty()) {
                     throw new BindingException("oneOf scope=PARENT does not support path discriminator");
                 }
 
                 if (parentKey == null) {
-                    parentKey = oneOfInfo.key;
-                } else if (!parentKey.equals(oneOfInfo.key)) {
+                    parentKey = oneOfInfo.discriminatorKey;
+                } else if (!parentKey.equals(oneOfInfo.discriminatorKey)) {
                     throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                 }
 
@@ -649,7 +649,7 @@ public final class StreamingIO {
         } else if (oneOfInfo.fallbackNull) {
             value = null;
         } else {
-            throw new BindingException("oneOf discriminator has no matching mapping: key='" + oneOfInfo.key +
+            throw new BindingException("oneOf discriminator has no matching mapping: key='" + oneOfInfo.discriminatorKey +
                     "', value='" + (parentValue == UNSET ? null : parentValue) + "'");
         }
         deferred.invokeSetterIfPresent(pojo, value);
