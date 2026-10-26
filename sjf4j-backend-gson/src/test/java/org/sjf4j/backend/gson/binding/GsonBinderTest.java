@@ -160,8 +160,13 @@ try {
         
 } finally { reader.release(); }
 }
-        try (GsonParser reader = binder.createParser(new JsonReader(new StringReader("\"héllo\"")))) {
-            assertEquals("héllo", reader.readString());
+        {
+            GsonParser reader = binder.createParser(new JsonReader(new StringReader("\"héllo\"")));
+            try {
+                assertEquals("héllo", reader.readString());
+            } finally {
+                reader.release();
+            }
         }
 
         StringWriter text = new StringWriter();
@@ -187,9 +192,14 @@ try {
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
 
         StringWriter nativeOutput = new StringWriter();
-        try (GsonGenerator writer = binder.createGenerator(new JsonWriter(nativeOutput))) {
-            writer.writeStringValue("héllo");
-            writer.endWrite();
+        {
+            GsonGenerator writer = binder.createGenerator(new JsonWriter(nativeOutput));
+            try {
+                writer.writeStringValue("héllo");
+                writer.endWrite();
+            } finally {
+                writer.release();
+            }
         }
         assertEquals("\"héllo\"", nativeOutput.toString());
     }
