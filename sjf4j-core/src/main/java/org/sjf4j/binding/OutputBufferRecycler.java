@@ -6,16 +6,14 @@ import java.lang.ref.SoftReference;
  * Per-thread byte[] and char[] recycling, with exclusive array checkout.
  *
  * <p>Each thread retains one strongly referenced array up to 64K and one
- * softly referenced larger array of each kind. The 256K threshold for growth
- * strategy and direct String writes is independent of the cache limit.
+ * softly referenced larger array of each kind. Above 64K, growth uses the
+ * adaptive policy and complete first String writes can be passed through.
  * Only previously used arrays are recycled; no standby buffers are allocated.</p>
  */
 final class OutputBufferRecycler {
 
     static final int INITIAL_CAPACITY = 1024;
-    static final int MAX_STRONG_RETAINED_CAPACITY = 64 * 1024;
-    // Write/growth crossover, not the strong-cache retention limit.
-    static final int MAX_RETAINED_CAPACITY = 256 * 1024;
+    static final int MAX_RETAINED_CAPACITY = 64 * 1024;
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     private static final ThreadLocal<OutputBufferRecycler> LOCAL =
@@ -81,7 +79,7 @@ final class OutputBufferRecycler {
     }
 
     void recycleBytes(byte[] array) {
-        if (array.length <= MAX_STRONG_RETAINED_CAPACITY) {
+        if (array.length <= MAX_RETAINED_CAPACITY) {
             if (bytes == null || bytes.length < array.length) bytes = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
@@ -91,7 +89,7 @@ final class OutputBufferRecycler {
     }
 
     void recycleChars(char[] array) {
-        if (array.length <= MAX_STRONG_RETAINED_CAPACITY) {
+        if (array.length <= MAX_RETAINED_CAPACITY) {
             if (chars == null || chars.length < array.length) chars = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
@@ -107,11 +105,10 @@ final class OutputBufferRecycler {
     static void release(char[] array) { current().recycleChars(array); }
 
     /**
-     * Up through 256K, use the smallest power-of-two tier from 1K.
-     * Above 256K, large appends allocate exactly what is required while
-     * small appends grow the previous capacity by 1.5x.
+     * Up through 64K, use the smallest power-of-two tier from 1K.
+     * Above 64K, large appends allocate exactly the required capacity while
+     * small appends grow the previous capacity by 1.5x for char[] or 2x for byte[].
      */
-    /** Byte output uses exact sizing for bulk writes and doubling for small appends. */
     static int growBytesCapacity(int previous, int used, int required) {
         if (required < 0 || required > MAX_ARRAY_SIZE)
             throw new OutOfMemoryError("Buffer too large");
