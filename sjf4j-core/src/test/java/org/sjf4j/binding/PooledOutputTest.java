@@ -64,7 +64,7 @@ class PooledOutputTest {
     }
 
     @Test
-    void oversizedOutputIsNotRetained() {
+    void oversizedByteOutputRecyclesIntoSoftCache() {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
         byte[] large = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
         Arrays.fill(large, (byte) 9);
@@ -72,15 +72,14 @@ class PooledOutputTest {
         assertArrayEquals(large, output.getAndRecycle());
         byte[] next = OutputBufferRecycler.acquireBytes();
         try {
-            assertTrue(next.length >= OutputBufferRecycler.INITIAL_CAPACITY);
-            assertTrue(next.length <= OutputBufferRecycler.MAX_RETAINED_CAPACITY);
+            assertTrue(next.length >= large.length);
         } finally {
             OutputBufferRecycler.release(next);
         }
     }
 
     @Test
-    void retainsSmallBufferAfterOversizedCharOutput() {
+    void recyclesCharOutputWithoutLosingContent() {
         PooledStringWriter writer = new PooledStringWriter();
         try {
             writer.write("x".repeat(100_000));
@@ -90,7 +89,6 @@ class PooledOutputTest {
         }
         char[] reusable = OutputBufferRecycler.acquireChars();
         try {
-            assertTrue(reusable.length <= OutputBufferRecycler.MAX_RETAINED_CAPACITY);
             assertTrue(reusable.length >= OutputBufferRecycler.INITIAL_CAPACITY);
         } finally {
             OutputBufferRecycler.release(reusable);
@@ -160,24 +158,24 @@ class PooledOutputTest {
     }
 
     @Test
-    void recyclerRejectsArraysBeyond256KCap() {
-        char[] priorChars = OutputBufferRecycler.acquireChars();
-        byte[] priorBytes = OutputBufferRecycler.acquireBytes();
+    void recyclerPrefersSoftArraysBeyond256KCap() {
+        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        char[] priorLargeChars = recycler.takeLargeChars(1);
+        byte[] priorLargeBytes = recycler.takeLargeBytes(1);
+        char[] priorChars = recycler.takeChars();
+        byte[] priorBytes = recycler.takeBytes();
         try {
-            OutputBufferRecycler.release(new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
-            OutputBufferRecycler.release(new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
-            char[] chars = OutputBufferRecycler.acquireChars();
-            byte[] bytes = OutputBufferRecycler.acquireBytes();
-            try {
-                assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, chars.length);
-                assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, bytes.length);
-            } finally {
-                OutputBufferRecycler.release(chars);
-                OutputBufferRecycler.release(bytes);
-            }
+            char[] softChars = new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
+            byte[] softBytes = new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1];
+            recycler.recycleChars(softChars);
+            recycler.recycleBytes(softBytes);
+            assertSame(softChars, recycler.takeChars());
+            assertSame(softBytes, recycler.takeBytes());
         } finally {
-            OutputBufferRecycler.release(priorChars);
-            OutputBufferRecycler.release(priorBytes);
+            if (priorLargeChars != null) recycler.recycleChars(priorLargeChars);
+            if (priorLargeBytes != null) recycler.recycleBytes(priorLargeBytes);
+            recycler.recycleChars(priorChars);
+            recycler.recycleBytes(priorBytes);
         }
     }
 
@@ -272,8 +270,7 @@ class PooledOutputTest {
                 output.recycle();
             }
             byte[] cached = OutputBufferRecycler.acquireBytes();
-            assertTrue(cached.length >= OutputBufferRecycler.INITIAL_CAPACITY);
-            assertTrue(cached.length <= 256 * 1024);
+            assertTrue(cached.length >= payload.length + 1);
             OutputBufferRecycler.release(cached);
         } finally {
             OutputBufferRecycler.release(oldCache);
@@ -460,24 +457,30 @@ class PooledOutputTest {
     }
 
     @Test
-    void recyclerDoesNotCacheOversizedBuffers() {
-        byte[] oldBytes = OutputBufferRecycler.acquireBytes();
-        char[] oldChars = OutputBufferRecycler.acquireChars();
+    void recyclerFallsBackToStrongBuffersAfterSoftCheckout() {
+        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        byte[] oldSoftBytes = recycler.takeLargeBytes(1);
+        char[] oldSoftChars = recycler.takeLargeChars(1);
+        byte[] oldBytes = recycler.takeBytes();
+        char[] oldChars = recycler.takeChars();
         try {
-            OutputBufferRecycler.release(new byte[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
-            OutputBufferRecycler.release(new char[OutputBufferRecycler.MAX_RETAINED_CAPACITY + 1]);
-            byte[] freshBytes = OutputBufferRecycler.acquireBytes();
-            char[] freshChars = OutputBufferRecycler.acquireChars();
-            try {
-                assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, freshBytes.length);
-                assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, freshChars.length);
-            } finally {
-                OutputBufferRecycler.release(freshBytes);
-                OutputBufferRecycler.release(freshChars);
-            }
+            byte[] smallBytes = new byte[2048];
+            char[] smallChars = new char[2048];
+            byte[] largeBytes = new byte[1024 * 1024];
+            char[] largeChars = new char[1024 * 1024];
+            recycler.recycleBytes(smallBytes);
+            recycler.recycleChars(smallChars);
+            recycler.recycleBytes(largeBytes);
+            recycler.recycleChars(largeChars);
+            assertSame(largeBytes, recycler.takeBytes());
+            assertSame(largeChars, recycler.takeChars());
+            assertSame(smallBytes, recycler.takeBytes());
+            assertSame(smallChars, recycler.takeChars());
         } finally {
-            OutputBufferRecycler.release(oldBytes);
-            OutputBufferRecycler.release(oldChars);
+            if (oldSoftBytes != null) recycler.recycleBytes(oldSoftBytes);
+            if (oldSoftChars != null) recycler.recycleChars(oldSoftChars);
+            recycler.recycleBytes(oldBytes);
+            recycler.recycleChars(oldChars);
         }
     }
 
@@ -530,8 +533,7 @@ class PooledOutputTest {
             byte[] cachedBytes = OutputBufferRecycler.acquireBytes();
             try {
                 assertEquals(OutputBufferRecycler.INITIAL_CAPACITY, cachedChars.length);
-                assertTrue(cachedBytes.length >= OutputBufferRecycler.INITIAL_CAPACITY);
-                assertTrue(cachedBytes.length <= 256 * 1024);
+                assertTrue(cachedBytes.length >= bytes.length);
             } finally {
                 OutputBufferRecycler.release(cachedChars);
                 OutputBufferRecycler.release(cachedBytes);
@@ -709,6 +711,39 @@ class PooledOutputTest {
             return output.getAndRecycle();
         } finally {
             output.recycle();
+        }
+    }
+
+    @Test
+    void oneKilobyteOutputReusesOneMegabyteSoftBufferWithoutFullCopy() {
+        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        byte[] oldSoftBytes = recycler.takeLargeBytes(1);
+        char[] oldSoftChars = recycler.takeLargeChars(1);
+        byte[] oldSmallBytes = recycler.takeBytes();
+        char[] oldSmallChars = recycler.takeChars();
+        try {
+            byte[] largeBytes = new byte[1024 * 1024];
+            char[] largeChars = new char[1024 * 1024];
+            recycler.recycleBytes(largeBytes);
+            recycler.recycleChars(largeChars);
+            byte[] input = new byte[1024];
+            Arrays.fill(input, (byte) 77);
+
+            PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+            output.write(input, 0, input.length);
+            assertArrayEquals(input, output.getAndRecycle());
+            assertSame(largeBytes, recycler.takeLargeBytes(1));
+
+            PooledStringWriter writer = new PooledStringWriter();
+            String content = "A".repeat(1024);
+            writer.write(content);
+            assertEquals(content, writer.getAndRecycle());
+            assertSame(largeChars, recycler.takeLargeChars(1));
+        } finally {
+            if (oldSoftBytes != null) recycler.recycleBytes(oldSoftBytes);
+            if (oldSoftChars != null) recycler.recycleChars(oldSoftChars);
+            recycler.recycleBytes(oldSmallBytes);
+            recycler.recycleChars(oldSmallChars);
         }
     }
 }
