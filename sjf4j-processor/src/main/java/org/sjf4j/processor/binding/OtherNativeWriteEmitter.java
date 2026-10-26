@@ -53,7 +53,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     /** All structural helpers share the (writer, value) signature. */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
-                + backend.writerType() + " writer, " + value.type()
+                + backend.generatorType() + " writer, " + value.type()
                 + " value) throws java.io.IOException");
         out.line(generatorType() + " g = writer.nativeWriter();");
 

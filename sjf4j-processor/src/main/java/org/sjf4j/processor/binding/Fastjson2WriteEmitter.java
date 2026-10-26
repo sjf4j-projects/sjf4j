@@ -64,10 +64,11 @@ final class Fastjson2WriteEmitter {
         String raw = names.newName("raw");
         // Never attach the caller-owned destination before serialization succeeds.
         // close() flushes attached writers even if a compiled helper throws.
-        String create = utf8 ? "createWriterUtf8()" : "createWriter()";
+        String create = utf8 ? "createGeneratorUtf8()" : "createGenerator()";
 
-        out.beginBlock("try (org.sjf4j.backend.fastjson2.binding.Fastjson2Writer "
-                + writer + " = this.binder." + create + ")");
+        out.line("org.sjf4j.backend.fastjson2.binding.Fastjson2Generator "
+                + writer + " = this.binder." + create + ";");
+        out.beginBlock("try");
         out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + writer + ".nativeWriter();");
 
         // Raw field-name optimizations require compatible Fastjson2 features.
@@ -116,6 +117,9 @@ final class Fastjson2WriteEmitter {
             default:
                 throw new AssertionError(output);
         }
+        out.endBlock();
+        out.beginBlock("finally");
+        out.line(writer + ".release();");
         out.endBlock();
     }
 
@@ -212,7 +216,7 @@ final class Fastjson2WriteEmitter {
     /** Every structural helper has the same (writer, value) signature. */
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
         out.beginBlock("private void " + fastjsonHelperName(value, mode)
-                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Writer writer, "
+                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator writer, "
                 + value.type() + " value) throws java.io.IOException");
         out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
 

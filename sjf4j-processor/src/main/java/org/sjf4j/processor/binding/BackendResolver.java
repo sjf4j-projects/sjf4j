@@ -141,9 +141,9 @@ final class BackendResolver {
         return context.elements.getTypeElement(
                 spec.binderType()) != null &&
                 context.elements.getTypeElement(
-                        spec.readerType()) != null &&
+                        spec.parserType()) != null &&
                 context.elements.getTypeElement(
-                        spec.writerType()) != null;
+                        spec.generatorType()) != null;
     }
 
     private boolean hasPublicNoArgsConstructor(

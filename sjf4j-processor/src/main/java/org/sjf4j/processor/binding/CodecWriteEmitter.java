@@ -19,8 +19,8 @@ final class CodecWriteEmitter {
 
         String info = value.helperName();
 
-        out.beginBlock("if (" + info + ".streamWriter != null)");
-        out.line(info + ".streamWriter.write(" + writer + ", codecValue);");
+        out.beginBlock("if (" + info + ".streamGenerator != null)");
+        out.line(info + ".streamGenerator.write(" + writer + ", codecValue);");
         out.endBlock(" else {");
         out.indent();
         String method = value.codecRawType() == null ? null

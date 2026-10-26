@@ -7,7 +7,7 @@ import org.sjf4j.processor.code.NameAllocator;
 /**
  * Jackson 2/3 compiled write generation.
  *
- * Every structural helper accepts the Jackson StreamingWriter and its value.
+ * Every structural helper accepts the Jackson StreamingGenerator and its value.
  * Each helper obtains the native generator locally. A codec, OneOf or dynamic
  * child changes only that child's emission; it never changes the parent's
  * POJO/List/Set/Map implementation or the helper signature.
@@ -51,7 +51,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
-                + backend.writerType() + " writer, " + value.type()
+                + backend.generatorType() + " writer, " + value.type()
                 + " value) throws java.io.IOException");
         out.line(generatorType() + " g = writer.nativeWriter();");
 

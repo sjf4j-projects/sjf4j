@@ -11,8 +11,8 @@ final class BackendSpec {
     private final BindingFormat format;
     private final Backend backend;
     private final String binderType;
-    private final String readerType;
-    private final String writerType;
+    private final String parserType;
+    private final String generatorType;
 
     /*
      * Marker from the native backend library itself. This is deliberately
@@ -26,15 +26,15 @@ final class BackendSpec {
             BindingFormat format,
             Backend backend,
             String binderType,
-            String readerType,
-            String writerType,
+            String parserType,
+            String generatorType,
             String libraryMarkerType) {
 
         this.format = Asserts.notNull(format, "format");
         this.backend = Asserts.notNull(backend, "backend");
         this.binderType = Asserts.notNull(binderType, "binderType");
-        this.readerType = Asserts.notNull(readerType, "readerType");
-        this.writerType = Asserts.notNull(writerType, "writerType");
+        this.parserType = Asserts.notNull(parserType, "parserType");
+        this.generatorType = Asserts.notNull(generatorType, "generatorType");
         this.libraryMarkerType = libraryMarkerType;
     }
 
@@ -50,12 +50,12 @@ final class BackendSpec {
         return binderType;
     }
 
-    String readerType() {
-        return readerType;
+    String parserType() {
+        return parserType;
     }
 
-    String writerType() {
-        return writerType;
+    String generatorType() {
+        return generatorType;
     }
 
     String libraryMarkerType() {

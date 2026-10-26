@@ -29,7 +29,7 @@ final class StreamingWriteEmitter {
 
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName()
-                + "(" + backend.writerType() + " writer, "
+                + "(" + backend.generatorType() + " writer, "
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
             case ONE_OF:

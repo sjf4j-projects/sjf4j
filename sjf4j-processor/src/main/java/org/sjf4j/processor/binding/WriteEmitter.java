@@ -185,9 +185,13 @@ final class WriteEmitter {
         out.line("org.sjf4j.binding.PooledStringWriter " + output
                 + " = new org.sjf4j.binding.PooledStringWriter();");
         out.beginBlock("try");
-        out.beginBlock("try (" + backend.writerType() + " " + writer
-                + " = this.binder.createWriter(" + output + "))");
+        out.line(backend.generatorType() + " " + writer
+                + " = this.binder.createGenerator(" + output + ");");
+        out.beginBlock("try");
         emitWriteBody(out, value, source, writer, names);
+        out.endBlock();
+        out.beginBlock("finally");
+        out.line(writer + ".release();");
         out.endBlock();
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -211,9 +215,13 @@ final class WriteEmitter {
                 : "org.sjf4j.binding.PooledByteArrayOutputStream";
         out.line(sinkType + " " + output + " = new " + sinkType + "();");
         out.beginBlock("try");
-        out.beginBlock("try (" + backend.writerType() + " " + writer
-                + " = this.binder.createWriter(" + output + "))");
+        out.line(backend.generatorType() + " " + writer
+                + " = this.binder.createGenerator(" + output + ");");
+        out.beginBlock("try");
         emitWriteBody(out, value, source, writer, names);
+        out.endBlock();
+        out.beginBlock("finally");
+        out.line(writer + ".release();");
         out.endBlock();
         if (chars) {
             out.line("return " + output
@@ -238,14 +246,17 @@ final class WriteEmitter {
                 names.newName("writer");
 
         out.line(
-                backend.writerType() +
+                backend.generatorType() +
                         " " + writer +
-                        " = this.binder.createWriter(" +
+                        " = this.binder.createGenerator(" +
                         output + ");");
 
+        out.beginBlock("try");
         emitWriteBody(out, value, source, writer, names);
-        // Caller-owned streams stay open, so finish the output explicitly.
-        out.line(writer + ".flush();");
+        out.endBlock();
+        out.beginBlock("finally");
+        out.line(writer + ".release();");
+        out.endBlock();
     }
 
     private void emitWriteBody(
@@ -255,7 +266,7 @@ final class WriteEmitter {
             String writer,
             NameAllocator names) {
 
-        out.line(writer + ".startDocument();");
+        out.line(writer + ".startWrite();");
 
         if (isJackson()) {
             jackson.emitRoot(out, value, source, writer, names);
@@ -265,7 +276,7 @@ final class WriteEmitter {
             streaming.writeValue(out, value, writer, source);
         }
 
-        out.line(writer + ".endDocument();");
+        out.line(writer + ".endWrite();");
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {

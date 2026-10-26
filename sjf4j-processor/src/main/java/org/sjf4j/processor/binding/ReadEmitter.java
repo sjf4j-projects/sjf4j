@@ -58,40 +58,14 @@ final class ReadEmitter {
         String reader =
                 names.newName("reader");
 
-        boolean owned =
-                plan.readInput() == BindingPlan.ReadInput.STRING ||
-                plan.readInput() == BindingPlan.ReadInput.BYTES;
-
-        if (owned) {
-            out.beginBlock(
-                    "try (" +
-                            backend.readerType() +
-                            " " + reader +
-                            " = this.binder.createReader(" +
-                            input + "))");
-
-            emitReadBody(
-                    out,
-                    plan,
-                    value,
-                    reader,
-                    names);
-
-            out.endBlock();
-        } else {
-            out.line(
-                    backend.readerType() +
-                            " " + reader +
-                            " = this.binder.createReader(" +
-                            input + ");");
-
-            emitReadBody(
-                    out,
-                    plan,
-                    value,
-                    reader,
-                    names);
-        }
+        out.line(backend.parserType() + " " + reader
+                + " = this.binder.createParser(" + input + ");");
+        out.beginBlock("try");
+        emitReadBody(out, plan, value, reader, names);
+        out.endBlock();
+        out.beginBlock("finally");
+        out.line(reader + ".release();");
+        out.endBlock();
 
         BindingSource.endOverride(out);
     }
@@ -106,7 +80,7 @@ final class ReadEmitter {
         String result =
                 names.newName("result");
 
-        out.line(reader + ".startDocument();");
+        out.line(reader + ".startRead();");
 
         out.line(
                 plan.valueType() +
@@ -117,7 +91,7 @@ final class ReadEmitter {
                                 reader) +
                         ";");
 
-        out.line(reader + ".endDocument();");
+        out.line(reader + ".endRead();");
         out.line("return " + result + ";");
     }
 
@@ -169,7 +143,7 @@ final class ReadEmitter {
                         " " +
                         value.helperName() +
                         "(" +
-                        backend.readerType() +
+                        backend.parserType() +
                         " reader) throws java.io.IOException");
 
         switch (value.kind()) {
@@ -223,7 +197,7 @@ final class ReadEmitter {
     void emitOneOfReadHelper(JavaWriter out, BindingValue value) {
         String info = value.helperName() + "_info";
         out.beginBlock("private " + value.type() + " " + value.helperName()
-                + "(" + backend.readerType() + " reader) throws java.io.IOException");
+                + "(" + backend.parserType() + " reader) throws java.io.IOException");
         out.beginBlock("if (!reader.nextIfObjectStart())");
         out.beginBlock("if (reader.nextIfNull())");
         out.line("return null;");
@@ -302,7 +276,7 @@ final class ReadEmitter {
     void emitOneOfSubtypeContent(JavaWriter out, BindingValue owner,
                                  BindingValue subtype, int index) {
         out.beginBlock("private " + subtype.type() + " " + owner.helperName()
-                + "_subtype" + index + "_content(" + backend.readerType()
+                + "_subtype" + index + "_content(" + backend.parserType()
                 + " reader, String[] prefixNames, Object[] prefixValues, int prefixSize,"
                 + " Object discriminator) throws java.io.IOException");
         emitPojo(out, subtype, true, owner.oneOfKey());
@@ -888,8 +862,8 @@ final class ReadEmitter {
                 }
                 // The selected codec owns its streaming path. Preserve the
                 // existing typed-raw fast path for ordinary ValueCodecs.
-                scalarRead = "(" + value.helperName() + ".streamReader != null ? "
-                        + value.helperName() + ".streamReader.read(" + reader + ") : "
+                scalarRead = "(" + value.helperName() + ".streamParser != null ? "
+                        + value.helperName() + ".streamParser.read(" + reader + ") : "
                         + scalarRead + ")";
                 boolean autoRead = value.codecName() == null && value.codecPattern() == null;
                 if (autoRead) {

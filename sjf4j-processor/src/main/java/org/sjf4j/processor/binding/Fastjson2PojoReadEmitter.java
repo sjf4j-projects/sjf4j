@@ -76,7 +76,7 @@ final class Fastjson2PojoReadEmitter {
 
     void emitFallback(JavaWriter out, BindingValue value, ReadEmitter reads) {
         out.beginBlock("private void " + fallbackMethod(value)
-                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Reader reader, "
+                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Parser reader, "
                 + value.type() + " value) throws java.io.IOException");
         out.line("int nameIndex = reader.nextNameMatch(" + reads.matcherFieldName(value) + ");");
         out.beginBlock("switch (nameIndex)");
@@ -99,7 +99,7 @@ final class Fastjson2PojoReadEmitter {
 
     /**
      * Experimental native scalar path. Keep nullable wrappers, enums, custom
-     * conversions, containers and fallback on the existing StreamingReader
+     * conversions, containers and fallback on the existing StreamingParser
      * contract. Raw name matching in the enclosing loop guarantees a pending
      * value; the wrapper peek cache is already clear at this point.
      */
