@@ -32,21 +32,21 @@ class JsonpParserTest {
     @Test
     void exposesLogicalTokensAndConditionalConsumption() throws Exception {
         {
-            JsonpParser reader = reader("{\"id\":null}");
+            JsonpParser parser = parser("{\"id\":null}");
             try {
-                assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
-                assertFalse(reader.nextIfArrayStart());
-                reader.startObject();
-                assertEquals(StreamingParser.Token.NAME, reader.peekToken());
-                assertEquals("id", reader.nextName());
-                assertEquals(StreamingParser.Token.NULL, reader.peekToken());
-                assertTrue(reader.nextIfNull());
-                assertTrue(reader.nextIfObjectEnd());
-                assertEquals(StreamingParser.Token.EOF, reader.peekToken());
-                reader.endRead();
+                assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+                assertFalse(parser.nextIfArrayStart());
+                parser.startObject();
+                assertEquals(StreamingParser.Token.NAME, parser.peekToken());
+                assertEquals("id", parser.nextName());
+                assertEquals(StreamingParser.Token.NULL, parser.peekToken());
+                assertTrue(parser.nextIfNull());
+                assertTrue(parser.nextIfObjectEnd());
+                assertEquals(StreamingParser.Token.EOF, parser.peekToken());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -59,20 +59,20 @@ class JsonpParserTest {
         int name = matcher.fallback("name");
 
         {
-            JsonpParser reader = reader("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}");
+            JsonpParser parser = parser("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}");
             try {
-                reader.startObject();
-                assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
-                reader.skipNode();
-                assertEquals(name, reader.nextNameMatch(matcher));
-                assertEquals("Ada", reader.readString());
-                assertEquals(id, reader.nextNameMatch(matcher));
-                assertEquals(7, reader.readIntValue());
-                assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-                reader.endRead();
+                parser.startObject();
+                assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
+                parser.skipNode();
+                assertEquals(name, parser.nextNameMatch(matcher));
+                assertEquals("Ada", parser.readString());
+                assertEquals(id, parser.nextNameMatch(matcher));
+                assertEquals(7, parser.readIntValue());
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -80,22 +80,22 @@ class JsonpParserTest {
     @Test
     void readsScalarsWithCoreNumericAndCharacterSemantics() throws Exception {
         {
-            JsonpParser reader = reader("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]");
+            JsonpParser parser = parser("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]");
             try {
-                reader.startArray();
-                assertEquals(1, reader.readIntValue());
-                assertThrows(ArithmeticException.class, reader::readByteValue);
-                assertEquals(125d, reader.readDoubleValue());
-                assertEquals(new BigInteger("123456789012345678901234567890"), reader.readBigInteger());
-                assertEquals(new BigDecimal("0.00120"), reader.readBigDecimal());
-                assertEquals('x', reader.readCharValue());
-                assertThrows(BindingException.class, reader::readCharValue);
-                assertThrows(BindingException.class, reader::readCharValue);
-                assertThrows(BindingException.class, reader::readCharValue);
-                reader.endArray();
+                parser.startArray();
+                assertEquals(1, parser.readIntValue());
+                assertThrows(ArithmeticException.class, parser::readByteValue);
+                assertEquals(125d, parser.readDoubleValue());
+                assertEquals(new BigInteger("123456789012345678901234567890"), parser.readBigInteger());
+                assertEquals(new BigDecimal("0.00120"), parser.readBigDecimal());
+                assertEquals('x', parser.readCharValue());
+                assertThrows(BindingException.class, parser::readCharValue);
+                assertThrows(BindingException.class, parser::readCharValue);
+                assertThrows(BindingException.class, parser::readCharValue);
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -103,21 +103,21 @@ class JsonpParserTest {
     @Test
     void readsIntShortAndByteThroughNativeIntegerConversions() throws Exception {
         {
-            JsonpParser reader = reader("[2147483647,-2147483648,32767,-32768,127,-128,1.9]");
+            JsonpParser parser = parser("[2147483647,-2147483648,32767,-32768,127,-128,1.9]");
             try {
-                reader.startArray();
-                assertEquals(Integer.MAX_VALUE, reader.readIntValue());
-                assertEquals(Integer.MIN_VALUE, reader.readIntValue());
-                assertEquals(Short.MAX_VALUE, reader.readShortValue());
-                assertEquals(Short.MIN_VALUE, reader.readShortValue());
-                assertEquals(Byte.MAX_VALUE, reader.readByteValue());
-                assertEquals(Byte.MIN_VALUE, reader.readByteValue());
-                assertEquals(1, reader.readIntValue());
-                reader.endArray();
-                reader.endRead();
+                parser.startArray();
+                assertEquals(Integer.MAX_VALUE, parser.readIntValue());
+                assertEquals(Integer.MIN_VALUE, parser.readIntValue());
+                assertEquals(Short.MAX_VALUE, parser.readShortValue());
+                assertEquals(Short.MIN_VALUE, parser.readShortValue());
+                assertEquals(Byte.MAX_VALUE, parser.readByteValue());
+                assertEquals(Byte.MIN_VALUE, parser.readByteValue());
+                assertEquals(1, parser.readIntValue());
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -125,18 +125,18 @@ class JsonpParserTest {
     @Test
     void detectsShortAndByteOverflowAfterNativeIntRead() throws Exception {
         {
-            JsonpParser reader = reader("[32768,-32769,128,-129,7]");
+            JsonpParser parser = parser("[32768,-32769,128,-129,7]");
             try {
-                reader.startArray();
-                assertThrows(ArithmeticException.class, reader::readShortValue);
-                assertThrows(ArithmeticException.class, reader::readShortValue);
-                assertThrows(ArithmeticException.class, reader::readByteValue);
-                assertThrows(ArithmeticException.class, reader::readByteValue);
-                assertEquals(7, reader.readIntValue());
-                reader.endArray();
+                parser.startArray();
+                assertThrows(ArithmeticException.class, parser::readShortValue);
+                assertThrows(ArithmeticException.class, parser::readShortValue);
+                assertThrows(ArithmeticException.class, parser::readByteValue);
+                assertThrows(ArithmeticException.class, parser::readByteValue);
+                assertEquals(7, parser.readIntValue());
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -144,13 +144,13 @@ class JsonpParserTest {
     @Test
     void preservesRawNodeAndNumberSemantics() throws Exception {
         {
-            JsonpParser reader = reader(
+            JsonpParser parser = parser(
                 "{\"text\":\"Ada\",\"number\":7,\"large\":123456789012345678901234567890,"
                         + "\"decimal\":1e10000,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
             try {
 
-                Map<?, ?> value = (Map<?, ?>) reader.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "large", "decimal", "enabled", "empty", "nested", "items"),
@@ -161,11 +161,11 @@ class JsonpParserTest {
                 assertNull(value.get("empty"));
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(ArrayList.class, value.get("items").getClass());
-                assertEquals(StreamingParser.Token.EOF, reader.peekToken());
-                reader.endRead();
+                assertEquals(StreamingParser.Token.EOF, parser.peekToken());
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -173,25 +173,25 @@ class JsonpParserTest {
     @Test
     void skipsStructuresAndRejectsTrailingDocuments() throws Exception {
         {
-            JsonpParser reader = reader("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]");
+            JsonpParser parser = parser("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]");
             try {
-                reader.startArray();
-                reader.skipNode();
-                assertEquals("kept", reader.readString());
-                reader.endArray();
+                parser.startArray();
+                parser.skipNode();
+                assertEquals("kept", parser.readString());
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            JsonpParser reader = reader("null null");
+            JsonpParser parser = parser("null null");
             try {
-                assertThrows(Exception.class, reader::nextIfNull);
+                assertThrows(Exception.class, parser::nextIfNull);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
@@ -199,27 +199,27 @@ class JsonpParserTest {
 
     @Test
     void retainsTheCurrentEventOfASuppliedParser() throws Exception {
-        JsonParser parser = Json.createParser(new StringReader("[1,2]"));
-        parser.next();
-        parser.next();
+        JsonParser nativeParser = Json.createParser(new StringReader("[1,2]"));
+        nativeParser.next();
+        nativeParser.next();
 
         {
-            JsonpParser reader = new JsonpParser(parser);
+            JsonpParser parser = new JsonpParser(nativeParser);
             try {
-                assertEquals(1, reader.readIntValue());
-                assertEquals(2, reader.readIntValue());
-                reader.endArray();
-                reader.endRead();
+                assertEquals(1, parser.readIntValue());
+                assertEquals(2, parser.readIntValue());
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
 
     @Test
     void closesTheSuppliedParser() throws Exception {
-        JsonParser parser = Json.createParser(new StringReader("null"));
+        JsonParser nativeParser = Json.createParser(new StringReader("null"));
         AtomicBoolean closed = new AtomicBoolean();
         JsonParser tracked = (JsonParser) Proxy.newProxyInstance(
                 getClass().getClassLoader(),
@@ -228,10 +228,10 @@ class JsonpParserTest {
                     if (method.getName().equals("close")) {
                         closed.set(true);
                     }
-                    return method.invoke(parser, arguments);
+                    return method.invoke(nativeParser, arguments);
                 });
-        JsonpParser reader = new JsonpParser(tracked);
-        reader.release();
+        JsonpParser parser = new JsonpParser(tracked);
+        parser.release();
         assertTrue(closed.get());
     }
 
@@ -250,13 +250,13 @@ class JsonpParserTest {
                     return method.invoke(delegate, args);
                 });
         {
-            JsonpParser reader = new JsonpParser(truncated);
+            JsonpParser parser = new JsonpParser(truncated);
             try {
-                IOException error = assertThrows(IOException.class, reader::skipNode);
+                IOException error = assertThrows(IOException.class, parser::skipNode);
                 assertTrue(error.getMessage().contains("composite end"));
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -273,15 +273,15 @@ class JsonpParserTest {
                     return method.invoke(delegate, args);
                 });
         {
-            JsonpParser reader = new JsonpParser(legacy);
+            JsonpParser parser = new JsonpParser(legacy);
             try {
-                reader.startArray();
-                assertEquals(7, reader.readIntValue());
-                reader.endArray();
-                reader.endRead();
+                parser.startArray();
+                assertEquals(7, parser.readIntValue());
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -289,21 +289,21 @@ class JsonpParserTest {
     @Test
     void readsBoundaryIntegerNumbers() throws Exception {
         {
-            JsonpParser reader = reader("[9223372036854775807,-9223372036854775808,9223372036854775808]");
+            JsonpParser parser = parser("[9223372036854775807,-9223372036854775808,9223372036854775808]");
             try {
-                reader.startArray();
-                assertEquals(Long.MAX_VALUE, reader.readLongValue());
-                assertEquals(Long.MIN_VALUE, reader.readLongValue());
-                assertThrows(ArithmeticException.class, reader::readLongValue);
-                reader.endArray();
+                parser.startArray();
+                assertEquals(Long.MAX_VALUE, parser.readLongValue());
+                assertEquals(Long.MIN_VALUE, parser.readLongValue());
+                assertThrows(ArithmeticException.class, parser::readLongValue);
+                parser.endArray();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
 
-    private static JsonpParser reader(String json) {
+    private static JsonpParser parser(String json) {
         return new JsonpParser(Json.createParser(new StringReader(json)));
     }
 

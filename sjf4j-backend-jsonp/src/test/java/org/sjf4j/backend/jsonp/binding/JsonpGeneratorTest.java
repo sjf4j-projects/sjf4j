@@ -15,46 +15,46 @@ class JsonpGeneratorTest {
     @Test
     void writesStructuralPrimitiveAndGenericNumberValues() throws Exception {
         StringWriter output = new StringWriter();
-        JsonpGenerator writer = new JsonpBinder().createGenerator(output);
+        JsonpGenerator generator = new JsonpBinder().createGenerator(output);
 
-        writer.startObject();
-        writer.writeName("values");
-        writer.startArray();
-        writer.writeStringValue("text");
-        writer.writeCharValue('x');
-        writer.writeLongValue(1L);
-        writer.writeIntValue(2);
-        writer.writeShortValue((short) 3);
-        writer.writeByteValue((byte) 4);
-        writer.writeDoubleValue(5.5d);
-        writer.writeFloatValue(6.5f);
-        writer.writeBooleanValue(true);
-        writer.writeNumberValue(new BigInteger("12345678901234567890"));
-        writer.writeNumberValue(new BigDecimal("7.25"));
-        writer.writeNumberValue(new AtomicInteger(8));
-        writer.writeString(null);
-        writer.writeNumber(null);
-        writer.endArray();
-        writer.endObject();
-        writer.endWrite();
+        generator.startObject();
+        generator.writeName("values");
+        generator.startArray();
+        generator.writeStringValue("text");
+        generator.writeCharValue('x');
+        generator.writeLongValue(1L);
+        generator.writeIntValue(2);
+        generator.writeShortValue((short) 3);
+        generator.writeByteValue((byte) 4);
+        generator.writeDoubleValue(5.5d);
+        generator.writeFloatValue(6.5f);
+        generator.writeBooleanValue(true);
+        generator.writeNumberValue(new BigInteger("12345678901234567890"));
+        generator.writeNumberValue(new BigDecimal("7.25"));
+        generator.writeNumberValue(new AtomicInteger(8));
+        generator.writeString(null);
+        generator.writeNumber(null);
+        generator.endArray();
+        generator.endObject();
+        generator.endWrite();
 
         assertEquals("{\"values\":[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null]}",
                 output.toString());
-        writer.release();
+        generator.release();
     }
 
     @Test
     void writesCompiledNames() throws Exception {
         StringWriter output = new StringWriter();
-        JsonpGenerator writer = new JsonpBinder().createGenerator(output);
+        JsonpGenerator generator = new JsonpBinder().createGenerator(output);
 
-        writer.startObject();
-        writer.writeName(new CompiledName("te\"xt"));
-        writer.writeString("value");
-        writer.writeName(new CompiledName("number"));
-        writer.writeIntValue(42);
-        writer.endObject();
-        writer.release();
+        generator.startObject();
+        generator.writeName(new CompiledName("te\"xt"));
+        generator.writeString("value");
+        generator.writeName(new CompiledName("number"));
+        generator.writeIntValue(42);
+        generator.endObject();
+        generator.release();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42}", output.toString());
     }

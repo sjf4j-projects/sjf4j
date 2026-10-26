@@ -26,28 +26,28 @@ class SnakeGeneratorTest {
         StringWriter output = new StringWriter();
 
         {
-            SnakeGenerator writer = binder.createGenerator(output);
+            SnakeGenerator generator = binder.createGenerator(output);
             try {
-                writer.startWrite();
-                writer.startObject();
-                writer.writeName(new CompiledName("nullLike"));
-                writer.writeStringValue("null");
-                writer.writeName("nested");
-                writer.startObject();
-                writer.writeName("booleanLike");
-                writer.writeStringValue("true");
-                writer.writeName("values");
-                writer.startArray();
-                writer.writeStringValue("123");
-                writer.writeStringValue("~");
-                writer.writeStringValue("hello: world");
-                writer.endArray();
-                writer.endObject();
-                writer.endObject();
-                writer.endWrite();
+                generator.startWrite();
+                generator.startObject();
+                generator.writeName(new CompiledName("nullLike"));
+                generator.writeStringValue("null");
+                generator.writeName("nested");
+                generator.startObject();
+                generator.writeName("booleanLike");
+                generator.writeStringValue("true");
+                generator.writeName("values");
+                generator.startArray();
+                generator.writeStringValue("123");
+                generator.writeStringValue("~");
+                generator.writeStringValue("hello: world");
+                generator.endArray();
+                generator.endObject();
+                generator.endObject();
+                generator.endWrite();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
 
@@ -69,61 +69,61 @@ class SnakeGeneratorTest {
         StringWriter output = new StringWriter();
 
         {
-            SnakeGenerator writer = binder.createGenerator(output);
+            SnakeGenerator generator = binder.createGenerator(output);
             try {
-                writer.startWrite();
-                writer.startArray();
-                writer.writeStringValue("");
-                writer.writeStringValue("null");
-                writer.writeStringValue("~");
-                writer.writeStringValue("true");
-                writer.writeStringValue("123");
-                writer.writeStringValue("hello: world");
-                writer.writeLongValue(1L);
-                writer.writeIntValue(2);
-                writer.writeShortValue((short) 3);
-                writer.writeByteValue((byte) 4);
-                writer.writeDoubleValue(5.5d);
-                writer.writeFloatValue(6.5f);
-                writer.writeBooleanValue(true);
-                writer.writeCharValue('x');
-                writer.writeNumberValue(new BigInteger("12345678901234567890"));
-                writer.writeNumberValue(new BigDecimal("7.25"));
-                writer.writeNull();
-                writer.endArray();
-                writer.endWrite();
+                generator.startWrite();
+                generator.startArray();
+                generator.writeStringValue("");
+                generator.writeStringValue("null");
+                generator.writeStringValue("~");
+                generator.writeStringValue("true");
+                generator.writeStringValue("123");
+                generator.writeStringValue("hello: world");
+                generator.writeLongValue(1L);
+                generator.writeIntValue(2);
+                generator.writeShortValue((short) 3);
+                generator.writeByteValue((byte) 4);
+                generator.writeDoubleValue(5.5d);
+                generator.writeFloatValue(6.5f);
+                generator.writeBooleanValue(true);
+                generator.writeCharValue('x');
+                generator.writeNumberValue(new BigInteger("12345678901234567890"));
+                generator.writeNumberValue(new BigDecimal("7.25"));
+                generator.writeNull();
+                generator.endArray();
+                generator.endWrite();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
 
         {
-            SnakeParser reader = reader(binder, output.toString());
+            SnakeParser parser = parser(binder, output.toString());
             try {
-                reader.startArray();
-                assertEquals("", reader.readString());
-                assertEquals("null", reader.readString());
-                assertEquals("~", reader.readString());
-                assertEquals("true", reader.readString());
-                assertEquals("123", reader.readString());
-                assertEquals("hello: world", reader.readString());
-                assertEquals(1L, reader.readLongValue());
-                assertEquals(2, reader.readIntValue());
-                assertEquals((short) 3, reader.readShortValue());
-                assertEquals((byte) 4, reader.readByteValue());
-                assertEquals(5.5d, reader.readDoubleValue());
-                assertEquals(6.5f, reader.readFloatValue());
-                assertTrue(reader.readBooleanValue());
-                assertEquals('x', reader.readCharValue());
-                assertEquals(new BigInteger("12345678901234567890"), reader.readBigInteger());
-                assertEquals(new BigDecimal("7.25"), reader.readBigDecimal());
-                assertTrue(reader.nextIfNull());
-                reader.endArray();
-                reader.endRead();
+                parser.startArray();
+                assertEquals("", parser.readString());
+                assertEquals("null", parser.readString());
+                assertEquals("~", parser.readString());
+                assertEquals("true", parser.readString());
+                assertEquals("123", parser.readString());
+                assertEquals("hello: world", parser.readString());
+                assertEquals(1L, parser.readLongValue());
+                assertEquals(2, parser.readIntValue());
+                assertEquals((short) 3, parser.readShortValue());
+                assertEquals((byte) 4, parser.readByteValue());
+                assertEquals(5.5d, parser.readDoubleValue());
+                assertEquals(6.5f, parser.readFloatValue());
+                assertTrue(parser.readBooleanValue());
+                assertEquals('x', parser.readCharValue());
+                assertEquals(new BigInteger("12345678901234567890"), parser.readBigInteger());
+                assertEquals(new BigDecimal("7.25"), parser.readBigDecimal());
+                assertTrue(parser.nextIfNull());
+                parser.endArray();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }
@@ -131,17 +131,17 @@ class SnakeGeneratorTest {
     @Test
     void rejectsNonFiniteJsonNumbers() throws Exception {
         {
-            SnakeGenerator writer = new SnakeBinder().createGenerator(new StringWriter());
+            SnakeGenerator generator = new SnakeBinder().createGenerator(new StringWriter());
             try {
-                assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.NaN));
-                assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
-                assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NaN));
-                assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
-                assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Double.NaN));
-                assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
+                assertThrows(java.io.IOException.class, () -> generator.writeDoubleValue(Double.NaN));
+                assertThrows(java.io.IOException.class, () -> generator.writeDoubleValue(Double.POSITIVE_INFINITY));
+                assertThrows(java.io.IOException.class, () -> generator.writeFloatValue(Float.NaN));
+                assertThrows(java.io.IOException.class, () -> generator.writeFloatValue(Float.NEGATIVE_INFINITY));
+                assertThrows(java.io.IOException.class, () -> generator.writeNumberValue(Double.NaN));
+                assertThrows(java.io.IOException.class, () -> generator.writeNumberValue(Float.POSITIVE_INFINITY));
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
     }
@@ -177,16 +177,16 @@ class SnakeGeneratorTest {
 
         int flushesAfterDocument;
         {
-            SnakeGenerator writer = new SnakeBinder().createGenerator(output);
+            SnakeGenerator generator = new SnakeBinder().createGenerator(output);
             try {
-                writer.startWrite();
-                writer.writeStringValue("value");
-                writer.endWrite();
+                generator.startWrite();
+                generator.writeStringValue("value");
+                generator.endWrite();
                 flushesAfterDocument = flushes[0];
                 assertTrue(flushesAfterDocument > 0);
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
 
@@ -194,9 +194,9 @@ class SnakeGeneratorTest {
         assertFalse(closed[0]);
     }
 
-    private static SnakeParser reader(SnakeBinder binder, String yaml) throws Exception {
-        SnakeParser reader = binder.createParser(yaml);
-        reader.startRead();
-        return reader;
+    private static SnakeParser parser(SnakeBinder binder, String yaml) throws Exception {
+        SnakeParser parser = binder.createParser(yaml);
+        parser.startRead();
+        return parser;
     }
 }
