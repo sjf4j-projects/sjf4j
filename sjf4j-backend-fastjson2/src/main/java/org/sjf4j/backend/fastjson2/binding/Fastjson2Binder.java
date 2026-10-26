@@ -10,6 +10,8 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Types;
 
+import java.io.FilterInputStream;
+import java.io.FilterReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
