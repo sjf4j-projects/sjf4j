@@ -33,8 +33,8 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJdk|charsJackson|charsChunksPooled|bytesPooled|bytesJdk|bytesJackson|bytesChunksPooled)$' \
-            -bm avgt -tu us -t 1 -f 0 -wi 1 -w 100ms -i 2 -r 120ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE \
+          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJdk|bytesPooled|bytesJdk)$' \
+            -bm avgt -tu us -t 1 -f 0 -wi 1 -w 100ms -i 2 -r 120ms -p payloadLength=1048576 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -50,10 +50,9 @@ jobs:
               key=(r['params']['payloadLength'],r['params']['alphabet'])
               rows.setdefault(key,{})[r['benchmark'].split('.')[-1]]=r
           pairs=[
-              ('charsPooled','charsJdk'),('charsPooled','charsJackson'),
-              ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson')
+              ('charsPooled','charsJdk'),('bytesPooled','bytesJdk')
           ]
-          print('# Adaptive buffer growth: focused screening (300K, 1MB)')
+          print('# Adaptive buffer growth: rapid 1MB screening')
           print('JDK 25; non-forked quick screen; 1 warmup, 2 measurements. GC allocations included. Not conclusive for small differences.')
           print('| Size | Alphabet | Pooled | Baseline | Pooled us/op | Baseline us/op | Speedup | Pooled B/op | Baseline B/op |')
           print('|---:|---|---|---|---:|---:|---:|---:|---:|')
