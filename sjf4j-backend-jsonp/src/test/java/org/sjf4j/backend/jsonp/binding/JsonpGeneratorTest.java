@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class JsonpWriterTest {
+class JsonpGeneratorTest {
 
     @Test
     void writesStructuralPrimitiveAndGenericNumberValues() throws Exception {
         StringWriter output = new StringWriter();
-        JsonpWriter writer = new JsonpBinder().createWriter(output);
+        JsonpGenerator writer = new JsonpBinder().createGenerator(output);
 
         writer.startObject();
         writer.writeName("values");
@@ -36,17 +36,17 @@ class JsonpWriterTest {
         writer.writeNumber(null);
         writer.endArray();
         writer.endObject();
-        writer.flush();
+        writer.endWrite();
 
         assertEquals("{\"values\":[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null]}",
                 output.toString());
-        writer.close();
+        writer.release();
     }
 
     @Test
     void writesCompiledNames() throws Exception {
         StringWriter output = new StringWriter();
-        JsonpWriter writer = new JsonpBinder().createWriter(output);
+        JsonpGenerator writer = new JsonpBinder().createGenerator(output);
 
         writer.startObject();
         writer.writeName(new CompiledName("te\"xt"));
@@ -54,7 +54,7 @@ class JsonpWriterTest {
         writer.writeName(new CompiledName("number"));
         writer.writeIntValue(42);
         writer.endObject();
-        writer.close();
+        writer.release();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42}", output.toString());
     }

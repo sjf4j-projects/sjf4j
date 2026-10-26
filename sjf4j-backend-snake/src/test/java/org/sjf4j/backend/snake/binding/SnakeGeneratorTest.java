@@ -18,15 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SnakeWriterTest {
+class SnakeGeneratorTest {
 
     @Test
     void writesObjectsNamesAndNestedValuesForNativeSnakeYaml() throws Exception {
         SnakeBinder binder = new SnakeBinder();
         StringWriter output = new StringWriter();
 
-        try (SnakeWriter writer = binder.createWriter(output)) {
-            writer.startDocument();
+        {
+SnakeGenerator writer = binder.createGenerator(output);
+try {
+            writer.startWrite();
             writer.startObject();
             writer.writeName(new CompiledName("nullLike"));
             writer.writeStringValue("null");
@@ -42,9 +44,10 @@ class SnakeWriterTest {
             writer.endArray();
             writer.endObject();
             writer.endObject();
-            writer.endDocument();
-            writer.flush();
-        }
+            writer.endWrite();
+        
+} finally { writer.release(); }
+}
 
         Map<?, ?> document = assertInstanceOf(Map.class, new Yaml().load(output.toString()));
         assertEquals("null", assertInstanceOf(String.class, document.get("nullLike")));
@@ -63,8 +66,10 @@ class SnakeWriterTest {
         SnakeBinder binder = new SnakeBinder();
         StringWriter output = new StringWriter();
 
-        try (SnakeWriter writer = binder.createWriter(output)) {
-            writer.startDocument();
+        {
+SnakeGenerator writer = binder.createGenerator(output);
+try {
+            writer.startWrite();
             writer.startArray();
             writer.writeStringValue("");
             writer.writeStringValue("null");
@@ -84,11 +89,14 @@ class SnakeWriterTest {
             writer.writeNumberValue(new BigDecimal("7.25"));
             writer.writeNull();
             writer.endArray();
-            writer.endDocument();
-            writer.flush();
-        }
+            writer.endWrite();
+        
+} finally { writer.release(); }
+}
 
-        try (SnakeReader reader = reader(binder, output.toString())) {
+        {
+SnakeParser reader = reader(binder, output.toString());
+try {
             reader.startArray();
             assertEquals("", reader.readString());
             assertEquals("null", reader.readString());
@@ -108,20 +116,26 @@ class SnakeWriterTest {
             assertEquals(new BigDecimal("7.25"), reader.readBigDecimal());
             assertTrue(reader.nextIfNull());
             reader.endArray();
-            reader.endDocument();
-        }
+            reader.endRead();
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void rejectsNonFiniteJsonNumbers() throws Exception {
-        try (SnakeWriter writer = new SnakeBinder().createWriter(new StringWriter())) {
+        {
+SnakeGenerator writer = new SnakeBinder().createGenerator(new StringWriter());
+try {
             assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.NaN));
             assertThrows(java.io.IOException.class, () -> writer.writeDoubleValue(Double.POSITIVE_INFINITY));
             assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NaN));
             assertThrows(java.io.IOException.class, () -> writer.writeFloatValue(Float.NEGATIVE_INFINITY));
             assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Double.NaN));
             assertThrows(java.io.IOException.class, () -> writer.writeNumberValue(Float.POSITIVE_INFINITY));
-        }
+        
+} finally { writer.release(); }
+}
     }
 
     @Test
@@ -154,21 +168,25 @@ class SnakeWriterTest {
         };
 
         int flushesAfterDocument;
-        try (SnakeWriter writer = new SnakeBinder().createWriter(output)) {
-            writer.startDocument();
+        {
+SnakeGenerator writer = new SnakeBinder().createGenerator(output);
+try {
+            writer.startWrite();
             writer.writeStringValue("value");
-            writer.endDocument();
+            writer.endWrite();
             flushesAfterDocument = flushes[0];
             assertTrue(flushesAfterDocument > 0);
-        }
+        
+} finally { writer.release(); }
+}
 
         assertEquals(flushesAfterDocument, flushes[0]);
         assertFalse(closed[0]);
     }
 
-    private static SnakeReader reader(SnakeBinder binder, String yaml) throws Exception {
-        SnakeReader reader = binder.createReader(yaml);
-        reader.startDocument();
+    private static SnakeParser reader(SnakeBinder binder, String yaml) throws Exception {
+        SnakeParser reader = binder.createParser(yaml);
+        reader.startRead();
         return reader;
     }
 }

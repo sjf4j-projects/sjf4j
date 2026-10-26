@@ -67,15 +67,19 @@ class GsonBinderTest {
         JsonWriter nativeWriter = new JsonWriter(output);
         nativeWriter.setSerializeNulls(false);
 
-        try (GsonWriter writer = binder.createWriter(nativeWriter)) {
+        {
+GsonGenerator writer = binder.createGenerator(nativeWriter);
+try {
             assertTrue(nativeWriter.getSerializeNulls());
 
             writer.startObject();
             writer.writeName("value");
             writer.writeNull();
             writer.endObject();
-            writer.flush();
-        }
+            writer.endWrite();
+        
+} finally { writer.release(); }
+}
 
         assertEquals("{\"value\":null}", output.toString());
     }
@@ -128,40 +132,64 @@ class GsonBinderTest {
         GsonBinder binder = new GsonBinder();
         byte[] json = "\"héllo\"".getBytes(StandardCharsets.UTF_8);
 
-        try (GsonReader reader = binder.createReader("\"héllo\"")) {
+        {
+GsonParser reader = binder.createParser("\"héllo\"");
+try {
             assertEquals("héllo", reader.readString());
-        }
-        try (GsonReader reader = binder.createReader(json)) {
+        
+} finally { reader.release(); }
+}
+        {
+GsonParser reader = binder.createParser(json);
+try {
             assertEquals("héllo", reader.readString());
-        }
-        try (GsonReader reader = binder.createReader(new ByteArrayInputStream(json))) {
+        
+} finally { reader.release(); }
+}
+        {
+GsonParser reader = binder.createParser(new ByteArrayInputStream(json));
+try {
             assertEquals("héllo", reader.readString());
-        }
-        try (GsonReader reader = binder.createReader(new StringReader("\"héllo\""))) {
+        
+} finally { reader.release(); }
+}
+        {
+GsonParser reader = binder.createParser(new StringReader("\"héllo\""));
+try {
             assertEquals("héllo", reader.readString());
-        }
-        try (GsonReader reader = binder.createReader(new JsonReader(new StringReader("\"héllo\"")))) {
+        
+} finally { reader.release(); }
+}
+        try (GsonParser reader = binder.createParser(new JsonReader(new StringReader("\"héllo\"")))) {
             assertEquals("héllo", reader.readString());
         }
 
         StringWriter text = new StringWriter();
-        try (GsonWriter writer = binder.createWriter(text)) {
+        {
+GsonGenerator writer = binder.createGenerator(text);
+try {
             writer.writeStringValue("héllo");
-            writer.flush();
-        }
+            writer.endWrite();
+        
+} finally { writer.release(); }
+}
         assertEquals("\"héllo\"", text.toString());
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        try (GsonWriter writer = binder.createWriter(bytes)) {
+        {
+GsonGenerator writer = binder.createGenerator(bytes);
+try {
             writer.writeStringValue("héllo");
-            writer.flush();
-        }
+            writer.endWrite();
+        
+} finally { writer.release(); }
+}
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
 
         StringWriter nativeOutput = new StringWriter();
-        try (GsonWriter writer = binder.createWriter(new JsonWriter(nativeOutput))) {
+        try (GsonGenerator writer = binder.createGenerator(new JsonWriter(nativeOutput))) {
             writer.writeStringValue("héllo");
-            writer.flush();
+            writer.endWrite();
         }
         assertEquals("\"héllo\"", nativeOutput.toString());
     }
@@ -206,10 +234,10 @@ class GsonBinderTest {
         assertThrows(NullPointerException.class, () -> new GsonBinder(new Gson(), null));
 
         GsonBinder binder = new GsonBinder(new Gson());
-        assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((JsonReader) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((JsonWriter) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((Reader) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((Writer) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((JsonReader) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((JsonWriter) null));
     }
 
     private static Document document() {

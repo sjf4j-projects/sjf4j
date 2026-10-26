@@ -5,7 +5,7 @@ import jakarta.json.stream.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.NameMatcher;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.TypeRegistry;
@@ -27,22 +27,26 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class JsonpReaderTest {
+class JsonpParserTest {
 
     @Test
     void exposesLogicalTokensAndConditionalConsumption() throws Exception {
-        try (JsonpReader reader = reader("{\"id\":null}")) {
-            assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
+        {
+JsonpParser reader = reader("{\"id\":null}");
+try {
+            assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
             assertFalse(reader.nextIfArrayStart());
             reader.startObject();
-            assertEquals(StreamingReader.Token.NAME, reader.peekToken());
+            assertEquals(StreamingParser.Token.NAME, reader.peekToken());
             assertEquals("id", reader.nextName());
-            assertEquals(StreamingReader.Token.NULL, reader.peekToken());
+            assertEquals(StreamingParser.Token.NULL, reader.peekToken());
             assertTrue(reader.nextIfNull());
             assertTrue(reader.nextIfObjectEnd());
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
-            reader.endDocument();
-        }
+            assertEquals(StreamingParser.Token.EOF, reader.peekToken());
+            reader.endRead();
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
@@ -52,7 +56,9 @@ class JsonpReaderTest {
         int id = matcher.fallback("id");
         int name = matcher.fallback("name");
 
-        try (JsonpReader reader = reader("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}")) {
+        {
+JsonpParser reader = reader("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}");
+try {
             reader.startObject();
             assertEquals(NameMatcher.UNKNOWN, reader.nextNameMatch(matcher));
             reader.skipNode();
@@ -61,13 +67,17 @@ class JsonpReaderTest {
             assertEquals(id, reader.nextNameMatch(matcher));
             assertEquals(7, reader.readIntValue());
             assertEquals(NameMatcher.OBJECT_END, reader.nextNameMatch(matcher));
-            reader.endDocument();
-        }
+            reader.endRead();
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void readsScalarsWithCoreNumericAndCharacterSemantics() throws Exception {
-        try (JsonpReader reader = reader("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]")) {
+        {
+JsonpParser reader = reader("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]");
+try {
             reader.startArray();
             assertEquals(1, reader.readIntValue());
             assertThrows(ArithmeticException.class, reader::readByteValue);
@@ -79,12 +89,16 @@ class JsonpReaderTest {
             assertThrows(BindingException.class, reader::readCharValue);
             assertThrows(BindingException.class, reader::readCharValue);
             reader.endArray();
-        }
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void readsIntShortAndByteThroughNativeIntegerConversions() throws Exception {
-        try (JsonpReader reader = reader("[2147483647,-2147483648,32767,-32768,127,-128,1.9]")) {
+        {
+JsonpParser reader = reader("[2147483647,-2147483648,32767,-32768,127,-128,1.9]");
+try {
             reader.startArray();
             assertEquals(Integer.MAX_VALUE, reader.readIntValue());
             assertEquals(Integer.MIN_VALUE, reader.readIntValue());
@@ -94,13 +108,17 @@ class JsonpReaderTest {
             assertEquals(Byte.MIN_VALUE, reader.readByteValue());
             assertEquals(1, reader.readIntValue());
             reader.endArray();
-            reader.endDocument();
-        }
+            reader.endRead();
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void detectsShortAndByteOverflowAfterNativeIntRead() throws Exception {
-        try (JsonpReader reader = reader("[32768,-32769,128,-129,7]")) {
+        {
+JsonpParser reader = reader("[32768,-32769,128,-129,7]");
+try {
             reader.startArray();
             assertThrows(ArithmeticException.class, reader::readShortValue);
             assertThrows(ArithmeticException.class, reader::readShortValue);
@@ -108,15 +126,19 @@ class JsonpReaderTest {
             assertThrows(ArithmeticException.class, reader::readByteValue);
             assertEquals(7, reader.readIntValue());
             reader.endArray();
-        }
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void preservesRawNodeAndNumberSemantics() throws Exception {
-        try (JsonpReader reader = reader(
+        {
+JsonpParser reader = reader(
                 "{\"text\":\"Ada\",\"number\":7,\"large\":123456789012345678901234567890,"
                         + "\"decimal\":1e10000,\"enabled\":true,\"empty\":null,"
-                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}")) {
+                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
+try {
 
             Map<?, ?> value = (Map<?, ?>) reader.readRaw();
 
@@ -129,23 +151,33 @@ class JsonpReaderTest {
             assertNull(value.get("empty"));
             assertEquals(LinkedHashMap.class, value.get("nested").getClass());
             assertEquals(ArrayList.class, value.get("items").getClass());
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
-            reader.endDocument();
-        }
+            assertEquals(StreamingParser.Token.EOF, reader.peekToken());
+            reader.endRead();
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void skipsStructuresAndRejectsTrailingDocuments() throws Exception {
-        try (JsonpReader reader = reader("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]")) {
+        {
+JsonpParser reader = reader("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]");
+try {
             reader.startArray();
             reader.skipNode();
             assertEquals("kept", reader.readString());
             reader.endArray();
-        }
+        
+} finally { reader.release(); }
+}
 
-        try (JsonpReader reader = reader("null null")) {
+        {
+JsonpParser reader = reader("null null");
+try {
             assertThrows(Exception.class, reader::nextIfNull);
-        }
+        
+} finally { reader.release(); }
+}
 
     }
 
@@ -155,12 +187,16 @@ class JsonpReaderTest {
         parser.next();
         parser.next();
 
-        try (JsonpReader reader = new JsonpReader(parser)) {
+        {
+JsonpParser reader = new JsonpParser(parser);
+try {
             assertEquals(1, reader.readIntValue());
             assertEquals(2, reader.readIntValue());
             reader.endArray();
-            reader.endDocument();
-        }
+            reader.endRead();
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
@@ -176,8 +212,8 @@ class JsonpReaderTest {
                     }
                     return method.invoke(parser, arguments);
                 });
-        JsonpReader reader = new JsonpReader(tracked);
-        reader.close();
+        JsonpParser reader = new JsonpParser(tracked);
+        reader.release();
         assertTrue(closed.get());
     }
 
@@ -195,10 +231,14 @@ class JsonpReaderTest {
                     }
                     return method.invoke(delegate, args);
                 });
-        try (JsonpReader reader = new JsonpReader(truncated)) {
+        {
+JsonpParser reader = new JsonpParser(truncated);
+try {
             IOException error = assertThrows(IOException.class, reader::skipNode);
             assertTrue(error.getMessage().contains("composite end"));
-        }
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
@@ -212,27 +252,35 @@ class JsonpReaderTest {
                     }
                     return method.invoke(delegate, args);
                 });
-        try (JsonpReader reader = new JsonpReader(legacy)) {
+        {
+JsonpParser reader = new JsonpParser(legacy);
+try {
             reader.startArray();
             assertEquals(7, reader.readIntValue());
             reader.endArray();
-            reader.endDocument();
-        }
+            reader.endRead();
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void readsBoundaryIntegerNumbers() throws Exception {
-        try (JsonpReader reader = reader("[9223372036854775807,-9223372036854775808,9223372036854775808]")) {
+        {
+JsonpParser reader = reader("[9223372036854775807,-9223372036854775808,9223372036854775808]");
+try {
             reader.startArray();
             assertEquals(Long.MAX_VALUE, reader.readLongValue());
             assertEquals(Long.MIN_VALUE, reader.readLongValue());
             assertThrows(ArithmeticException.class, reader::readLongValue);
             reader.endArray();
-        }
+        
+} finally { reader.release(); }
+}
     }
 
-    private static JsonpReader reader(String json) {
-        return new JsonpReader(Json.createParser(new StringReader(json)));
+    private static JsonpParser reader(String json) {
+        return new JsonpParser(Json.createParser(new StringReader(json)));
     }
 
     static class User {
