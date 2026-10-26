@@ -38,61 +38,61 @@ class SimpleJsonBinderTest {
         SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
 
         {
-            SimpleJsonParser reader = binding.createParser(new StringReader("null"));
+            SimpleJsonParser parser = binding.createParser(new StringReader("null"));
             try {
-                assertInstanceOf(SimpleJsonParser.class, reader);
+                assertInstanceOf(SimpleJsonParser.class, parser);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
         {
-            SimpleJsonParser reader = binding.createParser("null");
+            SimpleJsonParser parser = binding.createParser("null");
             try {
-                assertInstanceOf(SimpleJsonParser.class, reader);
-                reader.nextIfNull();
-                reader.endRead();
+                assertInstanceOf(SimpleJsonParser.class, parser);
+                parser.nextIfNull();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
         {
-            SimpleJsonParser reader = binding.createParser("null".getBytes(StandardCharsets.UTF_8));
+            SimpleJsonParser parser = binding.createParser("null".getBytes(StandardCharsets.UTF_8));
             try {
-                assertInstanceOf(SimpleJsonParser.class, reader);
+                assertInstanceOf(SimpleJsonParser.class, parser);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
         {
-            SimpleJsonParser reader = binding.createParser(
+            SimpleJsonParser parser = binding.createParser(
                 new ByteArrayInputStream("null".getBytes(StandardCharsets.UTF_8)));
             try {
-                assertInstanceOf(SimpleJsonParser.class, reader);
+                assertInstanceOf(SimpleJsonParser.class, parser);
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
 
         {
-            SimpleJsonGenerator writer = binding.createGenerator(new StringWriter());
+            SimpleJsonGenerator generator = binding.createGenerator(new StringWriter());
             try {
-                assertInstanceOf(SimpleJsonGenerator.class, writer);
+                assertInstanceOf(SimpleJsonGenerator.class, generator);
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
         {
-            SimpleJsonGenerator writer = binding.createGenerator(new ByteArrayOutputStream());
+            SimpleJsonGenerator generator = binding.createGenerator(new ByteArrayOutputStream());
             try {
-                assertInstanceOf(SimpleJsonGenerator.class, writer);
+                assertInstanceOf(SimpleJsonGenerator.class, generator);
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
     }

@@ -21,42 +21,42 @@ public abstract class JsonBindingContract {
         Binder<?, ?> binding = binding(RuntimeContext.EMPTY);
         StringWriter output = new StringWriter();
         {
-            StreamingGenerator writer = binding.createGenerator(output);
+            StreamingGenerator generator = binding.createGenerator(output);
             try {
-                writer.startWrite();
-                writer.startObject();
-                writer.writeName("items");
-                writer.startArray();
-                writer.writeIntValue(1);
-                writer.separateElement();
-                writer.writeStringValue("x");
-                writer.endArray();
-                writer.writeName("ok", true);
-                writer.writeBoolean(true);
-                writer.endObject();
-                writer.endWrite();
+                generator.startWrite();
+                generator.startObject();
+                generator.writeName("items");
+                generator.startArray();
+                generator.writeIntValue(1);
+                generator.separateElement();
+                generator.writeStringValue("x");
+                generator.endArray();
+                generator.writeName("ok", true);
+                generator.writeBoolean(true);
+                generator.endObject();
+                generator.endWrite();
 
             } finally {
-                writer.release();
+                generator.release();
             }
         }
         {
-            StreamingParser reader = binding.createParser(new StringReader(output.toString()));
+            StreamingParser parser = binding.createParser(new StringReader(output.toString()));
             try {
-                reader.startRead();
-                reader.startObject();
-                assertEquals("items", reader.nextName());
-                reader.startArray();
-                assertEquals(1, reader.readIntValue());
-                assertEquals("x", reader.readString());
-                reader.endArray();
-                assertEquals("ok", reader.nextName());
-                assertTrue(reader.readBooleanValue());
-                reader.endObject();
-                reader.endRead();
+                parser.startRead();
+                parser.startObject();
+                assertEquals("items", parser.nextName());
+                parser.startArray();
+                assertEquals(1, parser.readIntValue());
+                assertEquals("x", parser.readString());
+                parser.endArray();
+                assertEquals("ok", parser.nextName());
+                assertTrue(parser.readBooleanValue());
+                parser.endObject();
+                parser.endRead();
 
             } finally {
-                reader.release();
+                parser.release();
             }
         }
     }

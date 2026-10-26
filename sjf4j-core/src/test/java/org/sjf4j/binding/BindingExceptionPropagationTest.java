@@ -73,15 +73,15 @@ class BindingExceptionPropagationTest {
         MethodHandle setter = lookup.unreflect(PrimitiveAccessor.class.getMethod("setValue", int.class));
         MethodHandle getter = lookup.unreflect(PrimitiveAccessor.class.getMethod("getValue"));
 
-        PropertyParser reader = PropertyParser.create("value", int.class, Integer.class, false, null,
+        PropertyParser parser = PropertyParser.create("value", int.class, Integer.class, false, null,
                 setter, null, null, null);
-        PropertyGenerator writer = PropertyGenerator.create("value", int.class, Integer.class, getter, null, null, null);
+        PropertyGenerator generator = PropertyGenerator.create("value", int.class, Integer.class, getter, null, null, null);
 
         assertSame(failure, assertThrowsExactly(BindingException.class,
-                () -> reader.parse(new SimpleJsonParser(new StringReader("1")), accessor,
+                () -> parser.parse(new SimpleJsonParser(new StringReader("1")), accessor,
                         Object.class, PrimitiveAccessor.class, RuntimeContext.EMPTY)));
         assertSame(failure, assertThrowsExactly(BindingException.class,
-                () -> writer.generate(new SimpleJsonGenerator(null, new StringWriter()),
+                () -> generator.generate(new SimpleJsonGenerator(null, new StringWriter()),
                         new CompiledName("value"), accessor, RuntimeContext.EMPTY, 0)));
     }
 

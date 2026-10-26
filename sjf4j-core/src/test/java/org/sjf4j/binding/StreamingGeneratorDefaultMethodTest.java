@@ -14,30 +14,30 @@ class StreamingGeneratorDefaultMethodTest {
 
     @Test
     void nullableWrappersDelegateToValueOrNullWriter() throws Exception {
-        RecordingWriter writer = new RecordingWriter(null);
-        writer.writeString("text");
-        writer.writeString(null);
-        writer.writeLong(1L);
-        writer.writeLong(null);
-        writer.writeInt(2);
-        writer.writeInt(null);
-        writer.writeShort((short) 3);
-        writer.writeShort(null);
-        writer.writeByte((byte) 4);
-        writer.writeByte(null);
-        writer.writeDouble(5.5d);
-        writer.writeDouble(null);
-        writer.writeFloat(6.5f);
-        writer.writeFloat(null);
-        writer.writeBoolean(true);
-        writer.writeBoolean(null);
-        writer.writeNumber(7);
-        writer.writeNumber(null);
-        writer.writeBigInteger(BigInteger.valueOf(8));
-        writer.writeBigInteger(null);
-        writer.writeBigDecimal(BigDecimal.valueOf(9));
-        writer.writeBigDecimal(null);
-        writer.writeName(new CompiledName("prepared"));
+        RecordingWriter generator = new RecordingWriter(null);
+        generator.writeString("text");
+        generator.writeString(null);
+        generator.writeLong(1L);
+        generator.writeLong(null);
+        generator.writeInt(2);
+        generator.writeInt(null);
+        generator.writeShort((short) 3);
+        generator.writeShort(null);
+        generator.writeByte((byte) 4);
+        generator.writeByte(null);
+        generator.writeDouble(5.5d);
+        generator.writeDouble(null);
+        generator.writeFloat(6.5f);
+        generator.writeFloat(null);
+        generator.writeBoolean(true);
+        generator.writeBoolean(null);
+        generator.writeNumber(7);
+        generator.writeNumber(null);
+        generator.writeBigInteger(BigInteger.valueOf(8));
+        generator.writeBigInteger(null);
+        generator.writeBigDecimal(BigDecimal.valueOf(9));
+        generator.writeBigDecimal(null);
+        generator.writeName(new CompiledName("prepared"));
 
         assertEquals(List.of(
                 "string:text", "null",
@@ -51,7 +51,7 @@ class StreamingGeneratorDefaultMethodTest {
                 "number:7", "null",
                 "number:8", "null",
                 "number:9", "null",
-                "name:prepared"), writer.events);
+                "name:prepared"), generator.events);
     }
 
     private static final class RecordingWriter extends StreamingGenerator {
