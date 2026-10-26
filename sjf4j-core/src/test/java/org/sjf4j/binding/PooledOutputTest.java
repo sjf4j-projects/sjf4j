@@ -644,4 +644,71 @@ class PooledOutputTest {
             ranged.recycle();
         }
     }
+
+    @Test
+    void softLargeCachesAreSeparateFromBoundedCachesAndPreferLargestArray() {
+        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        byte[] priorSmallBytes = recycler.takeBytes();
+        char[] priorSmallChars = recycler.takeChars();
+        byte[] priorLargeBytes = recycler.takeLargeBytes(1);
+        char[] priorLargeChars = recycler.takeLargeChars(1);
+        try {
+            byte[] largeBytes = new byte[512 * 1024];
+            char[] largeChars = new char[384 * 1024];
+            recycler.recycleBytes(largeBytes);
+            recycler.recycleBytes(new byte[300 * 1024]);
+            recycler.recycleChars(largeChars);
+            recycler.recycleChars(new char[300 * 1024]);
+
+            assertNull(recycler.takeLargeBytes(600 * 1024));
+            assertNull(recycler.takeLargeChars(600 * 1024));
+            assertSame(largeBytes, recycler.takeLargeBytes(300 * 1024));
+            assertSame(largeChars, recycler.takeLargeChars(300 * 1024));
+            assertNull(recycler.takeLargeBytes(1));
+            assertNull(recycler.takeLargeChars(1));
+
+            byte[] boundedBytes = new byte[128 * 1024];
+            char[] boundedChars = new char[128 * 1024];
+            recycler.recycleBytes(boundedBytes);
+            recycler.recycleChars(boundedChars);
+            assertSame(boundedBytes, recycler.takeBytes());
+            assertSame(boundedChars, recycler.takeChars());
+        } finally {
+            if (priorLargeBytes != null) recycler.recycleBytes(priorLargeBytes);
+            if (priorLargeChars != null) recycler.recycleChars(priorLargeChars);
+            recycler.recycleBytes(priorSmallBytes);
+            recycler.recycleChars(priorSmallChars);
+        }
+    }
+
+    @Test
+    void byteOutputReusesSoftCachedLargeArrayWithoutEagerAllocation() {
+        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        byte[] priorSmall = recycler.takeBytes();
+        byte[] priorLarge = recycler.takeLargeBytes(1);
+        try {
+            byte[] cached = new byte[512 * 1024];
+            recycler.recycleBytes(cached);
+            byte[] payload = new byte[300 * 1024];
+            Arrays.fill(payload, (byte) 23);
+            PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+            assertArrayEquals(payload, writeAndRecycle(output, payload));
+
+            // The exact checked-out array was returned to the soft cache.
+            assertSame(cached, recycler.takeLargeBytes(payload.length));
+            assertNull(recycler.takeLargeBytes(payload.length));
+        } finally {
+            if (priorLarge != null) recycler.recycleBytes(priorLarge);
+            recycler.recycleBytes(priorSmall);
+        }
+    }
+
+    private static byte[] writeAndRecycle(PooledByteArrayOutputStream output, byte[] payload) {
+        try {
+            output.write(payload, 0, payload.length);
+            return output.getAndRecycle();
+        } finally {
+            output.recycle();
+        }
+    }
 }
