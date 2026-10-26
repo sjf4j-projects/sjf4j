@@ -157,7 +157,7 @@ class ReflectUtilMetadataTest {
     @OneOf(mappings = {
             @OneOfMapping(type = DiscA.class, when = {"a"}),
             @OneOfMapping(type = DiscB.class, when = {"b"})
-    }, key = "type")
+    }, discriminatorKey = "type")
     interface DiscOneOf {}
 
     static class DiscA extends JsonObject implements DiscOneOf {}
@@ -172,17 +172,23 @@ class ReflectUtilMetadataTest {
     static class DuplicateA extends JsonObject implements DuplicateRawOneOf {}
     static class DuplicateB extends JsonObject implements DuplicateRawOneOf {}
 
+    @OneOf(discriminatorKey = "type", discriminatorPath = "$.type",
+            mappings = @OneOfMapping(type = BothDiscriminatorSubtype.class, when = "a"))
+    interface BothDiscriminatorsOneOf {}
+
+    static class BothDiscriminatorSubtype implements BothDiscriminatorsOneOf {}
+
     @OneOf(mappings = {@OneOfMapping(type = NotAssignable.class)})
     interface WrongOneOf {}
 
     static class NotAssignable {}
 
-    @OneOf(mappings = {@OneOfMapping(type = MissingWhenSubtype.class)}, key = "type")
+    @OneOf(mappings = {@OneOfMapping(type = MissingWhenSubtype.class)}, discriminatorKey = "type")
     interface MissingWhenOneOf {}
 
     static class MissingWhenSubtype extends JsonObject implements MissingWhenOneOf {}
 
-    @OneOf(mappings = @OneOfMapping(type = SelfDiscriminatorOneOf.class, when = "self"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = SelfDiscriminatorOneOf.class, when = "self"), discriminatorKey = "kind")
     static class SelfDiscriminatorOneOf {}
 
     @OneOf(mappings = @OneOfMapping(type = SelfShapeOneOf.class))
@@ -191,7 +197,7 @@ class ReflectUtilMetadataTest {
     static class SelfFieldChoice {}
 
     static class SelfFieldOneOf {
-        @OneOf(mappings = @OneOfMapping(type = SelfFieldChoice.class, when = "self"), key = "kind")
+        @OneOf(mappings = @OneOfMapping(type = SelfFieldChoice.class, when = "self"), discriminatorKey = "kind")
         public SelfFieldChoice value;
     }
 
@@ -305,7 +311,12 @@ class ReflectUtilMetadataTest {
     void analyzesOneOfAndNamingMetadata() {
         OneOfInfo disc = ReflectUtil.analyzeOneOf(DiscOneOf.class, DiscOneOf.class.getAnnotation(OneOf.class));
         assertTrue(disc.hasDiscriminator);
+        assertEquals("type", disc.discriminatorKey);
         assertEquals(DiscA.class, disc.matchByWhen("a"));
+
+        BindingException both = assertThrows(BindingException.class, () -> ReflectUtil.analyzeOneOf(
+                BothDiscriminatorsOneOf.class, BothDiscriminatorsOneOf.class.getAnnotation(OneOf.class)));
+        assertTrue(both.getMessage().contains("mutually exclusive"));
 
         assertThrows(BindingException.class, () -> ReflectUtil.analyzeOneOf(
                 DuplicateRawOneOf.class,

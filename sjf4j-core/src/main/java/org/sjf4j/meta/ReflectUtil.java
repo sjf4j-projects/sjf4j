@@ -1068,7 +1068,11 @@ public final class ReflectUtil {
             throw new BindingException("empty mappings in @" + OneOf.class.getName() + " of class " + clazz.getName());
         }
 
-        boolean hasDiscriminator = !ann.key().isEmpty() || !ann.path().isEmpty();
+        if (!ann.discriminatorKey().isEmpty() && !ann.discriminatorPath().isEmpty()) {
+            throw new BindingException("@OneOf discriminatorKey and discriminatorPath are mutually exclusive in "
+                    + clazz.getName());
+        }
+        boolean hasDiscriminator = !ann.discriminatorKey().isEmpty() || !ann.discriminatorPath().isEmpty();
         EnumSet<JsonType> enumSet = hasDiscriminator ? null : EnumSet.noneOf(JsonType.class);
         for (OneOfMapping mapping : mappings) {
             Class<?> subClazz = mapping.type();
@@ -1081,7 +1085,7 @@ public final class ReflectUtil {
                         " is not assignable from " + clazz.getName());
             }
             _rejectNestedOneOf(clazz, subClazz);
-            if (!ann.key().isEmpty() && !isPojoCandidate(subClazz)) {
+            if (!ann.discriminatorKey().isEmpty() && !isPojoCandidate(subClazz)) {
                 throw new BindingException("key-discriminated @OneOf requires a POJO subtype, but '"
                         + subClazz.getName() + "' is not a POJO");
             }
@@ -1100,7 +1104,7 @@ public final class ReflectUtil {
                 }
             }
         }
-        return new OneOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
+        return new OneOfInfo(clazz, mappings, ann.discriminatorKey(), ann.discriminatorPath(), ann.scope(), ann.onNoMatch());
     }
 
     /**

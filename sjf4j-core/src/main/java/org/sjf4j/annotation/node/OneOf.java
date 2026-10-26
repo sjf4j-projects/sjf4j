@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
  *     <li>Creator-bound member overrides and creator-parameter annotations are unsupported</li>
  *     <li>CURRENT-scope OneOf may be nested in subtype properties, including through lists and maps or self-recursively</li>
  *     <li>Selected subtypes must not declare another class-level OneOf or direct PARENT-scope OneOf fields</li>
- *     <li>Use {@link #key()} or {@link #path()} with {@link OneOfMapping#when()} for discriminator-based selection</li>
+ *     <li>Use {@link #discriminatorKey()} or {@link #discriminatorPath()} with {@link OneOfMapping#when()} for discriminator-based selection</li>
  *     <li>Omit discriminators to resolve by raw JSON kind when candidate shapes are distinct</li>
  * </ul>
  */
@@ -33,17 +33,17 @@ public @interface OneOf {
     OneOfMapping[] mappings();
 
     /**
-     * Discriminator key read from the current object.
+     * Discriminator property name read from the current object.
      */
-    String key() default "";
+    String discriminatorKey() default "";
 
     /**
-     * Discriminator path read from the current scope.
+     * JSONPath used to locate the discriminator value within the configured scope.
      */
-    String path() default "";   // Only works in Scope.CURRENT
+    String discriminatorPath() default "";   // Only works in Scope.CURRENT
 
     /**
-     * Scope used when resolving {@link #path()}.
+     * Scope for discriminator lookup.
      */
     Scope scope() default Scope.CURRENT;
 

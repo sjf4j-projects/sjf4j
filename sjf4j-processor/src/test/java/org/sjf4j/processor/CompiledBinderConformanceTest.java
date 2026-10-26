@@ -444,7 +444,7 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.node.OneOf;\n"
                         + "import org.sjf4j.annotation.node.OneOfMapping;\n"
-                        + "@OneOf(key=\"kind\", mappings={@OneOfMapping(type=Sub.class, when=\"sub\")})\n"
+                        + "@OneOf(discriminatorKey=\"kind\", mappings={@OneOfMapping(type=Sub.class, when=\"sub\")})\n"
                         + "public class Bean { public String kind; public String name; }\n");
         sources.put("fixture/Sub.java",
                 "package fixture; public class Sub extends Bean { public int age; }\n");
@@ -472,7 +472,7 @@ class CompiledBinderConformanceTest {
     void rejectsOneOfOnCreatorBoundMembersAtCompileTime() throws Exception {
         for (String bean : new String[]{
                 "public class Bean {\n"
-                        + " @OneOf(key=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
                         + " private final Animal pet;\n"
                         + " @NodeCreator public Bean(@NodeProperty(\"pet\") Animal pet) { this.pet=pet; }\n"
                         + " public Animal getPet() { return pet; }\n"
@@ -480,11 +480,11 @@ class CompiledBinderConformanceTest {
                 "public class Bean {\n"
                         + " private final Animal pet;\n"
                         + " @NodeCreator public Bean(@NodeProperty(\"pet\")\n"
-                        + " @OneOf(key=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
                         + " Animal pet) { this.pet=pet; }\n"
                         + "}\n",
                 "public record Bean(\n"
-                        + " @OneOf(key=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
                         + " Animal pet) {}\n"
         }) {
             Map<String, String> sources = new LinkedHashMap<>();

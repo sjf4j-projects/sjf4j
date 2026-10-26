@@ -30,9 +30,9 @@ import java.lang.annotation.Target;
  * conversions use the immutable RuntimeContext supplied through
  * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.RuntimeContext)}.
  * Limited type-level {@code @OneOf} dispatch is supported for create mappings:
- * discriminator-key dispatch when the target type declares {@code key}, and
+ * discriminator-key dispatch when the target type declares {@code discriminatorKey}, and
  * shape-based dispatch when it does not. Both modes require
- * {@code scope=CURRENT} and an empty {@code path}.</p>
+ * {@code scope=CURRENT} and an empty {@code discriminatorPath}.</p>
  *
  * <p>Generated mappers include SJF4J strict value conversion for mapper leaves:
  * numeric narrowing/widening through SJF4J number checks, string/character/enum

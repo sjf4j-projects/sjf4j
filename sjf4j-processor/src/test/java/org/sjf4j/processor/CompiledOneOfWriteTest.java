@@ -23,7 +23,7 @@ class CompiledOneOfWriteTest {
             Map<String, String> sources = new LinkedHashMap<>();
             sources.put("fixture/Animal.java", "package fixture;\n"
                     + "import org.sjf4j.annotation.node.*;\n"
-                    + "@OneOf(key=\"kind\", mappings={"
+                    + "@OneOf(discriminatorKey=\"kind\", mappings={"
                     + "@OneOfMapping(type=Cat.class,when=\"cat\"),"
                     + "@OneOfMapping(type=Dog.class,when=\"dog\"),"
                     + "@OneOfMapping(type=Hidden.class,when=\"hidden\"),"
@@ -52,7 +52,7 @@ class CompiledOneOfWriteTest {
                     + " public String title=\"test\";\n"
                     + " public List<Animal> animals;\n"
                     + " public Map<String,Animal> named;\n"
-                    + " @OneOf(key=\"kind\",mappings={"
+                    + " @OneOf(discriminatorKey=\"kind\",mappings={"
                     + "@OneOfMapping(type=Cat.class,when=\"cat\"),"
                     + "@OneOfMapping(type=Dog.class,when=\"dog\")})\n"
                     + " public Animal direct;\n"

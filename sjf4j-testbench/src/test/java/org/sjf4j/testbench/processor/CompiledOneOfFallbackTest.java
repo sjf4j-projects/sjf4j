@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** OneOf hands off exactly one runtime subtree without de-optimizing its compiled ancestors. */
 public class CompiledOneOfFallbackTest {
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = Dog.class, when = "dog"),
             @OneOfMapping(type = Cat.class, when = "cat")
     })
@@ -50,7 +50,7 @@ public class CompiledOneOfFallbackTest {
         public long id;
 
         // This member annotation deliberately overrides Animal's class-level "kind".
-        @OneOf(key = "species", mappings = {
+        @OneOf(discriminatorKey = "species", mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
         })
@@ -63,7 +63,7 @@ public class CompiledOneOfFallbackTest {
 
     public static class Parent {
         public String kind;
-        @OneOf(key = "kind", scope = OneOf.Scope.PARENT, mappings = {
+        @OneOf(discriminatorKey = "kind", scope = OneOf.Scope.PARENT, mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
         })
@@ -86,7 +86,7 @@ public class CompiledOneOfFallbackTest {
     }
 
     public static class PathHolder {
-        @OneOf(path = "$.meta.kind", mappings = {
+        @OneOf(discriminatorPath = "$.meta.kind", mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
         })
@@ -95,7 +95,7 @@ public class CompiledOneOfFallbackTest {
     }
 
     public static class NullableHolder {
-        @OneOf(key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
+        @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog")
         })
         public Animal pet;
@@ -104,7 +104,7 @@ public class CompiledOneOfFallbackTest {
 
     public record RecordHolder(long id, Animal pet) {}
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = TreeLeaf.class, when = "leaf"),
             @OneOfMapping(type = TreeBranch.class, when = "branch")
     })
@@ -118,12 +118,12 @@ public class CompiledOneOfFallbackTest {
         public List<TreeNode> children;
         public TreeNode single;
         public Animal typed;
-        @OneOf(key = "species", mappings = {
+        @OneOf(discriminatorKey = "species", mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
         })
         public Animal member;
-        @OneOf(path = "$.meta.kind", mappings = {
+        @OneOf(discriminatorPath = "$.meta.kind", mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
         })

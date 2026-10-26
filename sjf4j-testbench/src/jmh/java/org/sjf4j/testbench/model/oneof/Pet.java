@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
 
-@OneOf(key = "kind", mappings = {
+@OneOf(discriminatorKey = "kind", mappings = {
         @OneOfMapping(type = Dog.class, when = "dog"),
         @OneOfMapping(type = Cat.class, when = "cat")
 })
