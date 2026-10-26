@@ -54,7 +54,7 @@ class StreamingWriterDefaultMethodTest {
                 "name:prepared"), writer.events);
     }
 
-    private static final class RecordingWriter extends StreamingWriter {
+    private static final class RecordingWriter extends StreamingGenerator {
         private final List<String> events = new ArrayList<>();
 
         RecordingWriter(Binder<?, ?> binder) {
@@ -80,6 +80,6 @@ class StreamingWriterDefaultMethodTest {
         public void writeBooleanValue(boolean value) { events.add("boolean:" + value); }
         public void writeCharValue(char value) {}
         public void writeNumberValue(Number value) { events.add("number:" + value); }
-        public void flush() {} public void close() {}
+        public void release() {}
     }
 }

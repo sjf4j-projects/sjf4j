@@ -19,7 +19,7 @@ class StreamingIOExceptionTest {
     @Test
     void readPropagatesIOException() throws IOException {
         IOException failure = new IOException("read failure");
-        StreamingReader reader = binder.createReader(failingReader(failure));
+        StreamingParser reader = binder.createParser(failingReader(failure));
         assertSame(failure, assertThrows(IOException.class,
                 () -> StreamingIO.readNode(reader, String.class, RuntimeContext.EMPTY)));
     }
@@ -27,7 +27,7 @@ class StreamingIOExceptionTest {
     @Test
     void writePropagatesIOException() throws IOException {
         IOException failure = new IOException("write failure");
-        StreamingWriter writer = binder.createWriter(failingWriter(failure));
+        StreamingGenerator writer = binder.createGenerator(failingWriter(failure));
         assertSame(failure, assertThrows(IOException.class,
                 () -> StreamingIO.writeNode(writer, "value", RuntimeContext.EMPTY)));
     }
@@ -35,7 +35,7 @@ class StreamingIOExceptionTest {
     @Test
     void readWrapsErrorAsBindingException() throws IOException {
         AssertionError failure = new AssertionError("read error");
-        StreamingReader reader = binder.createReader(failingReader(failure));
+        StreamingParser reader = binder.createParser(failingReader(failure));
         BindingException thrown = assertThrows(BindingException.class,
                 () -> StreamingIO.readNode(reader, String.class, RuntimeContext.EMPTY));
         assertSame(failure, thrown.getCause());
@@ -44,7 +44,7 @@ class StreamingIOExceptionTest {
     @Test
     void writeWrapsErrorAsBindingException() throws IOException {
         AssertionError failure = new AssertionError("write error");
-        StreamingWriter writer = binder.createWriter(failingWriter(failure));
+        StreamingGenerator writer = binder.createGenerator(failingWriter(failure));
         BindingException thrown = assertThrows(BindingException.class,
                 () -> StreamingIO.writeNode(writer, "value", RuntimeContext.EMPTY));
         assertSame(failure, thrown.getCause());

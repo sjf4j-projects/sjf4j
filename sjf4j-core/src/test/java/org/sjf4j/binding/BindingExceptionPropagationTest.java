@@ -3,8 +3,8 @@ package org.sjf4j.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.NodeKind;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.binding.simple.SimpleJsonReader;
-import org.sjf4j.binding.simple.SimpleJsonWriter;
+import org.sjf4j.binding.simple.SimpleJsonParser;
+import org.sjf4j.binding.simple.SimpleJsonGenerator;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.ContainerInfo;
 import org.sjf4j.meta.CreatorInfo;
@@ -73,15 +73,15 @@ class BindingExceptionPropagationTest {
         MethodHandle setter = lookup.unreflect(PrimitiveAccessor.class.getMethod("setValue", int.class));
         MethodHandle getter = lookup.unreflect(PrimitiveAccessor.class.getMethod("getValue"));
 
-        PropertyReader reader = PropertyReader.create("value", int.class, Integer.class, false, null,
+        PropertyParser reader = PropertyParser.create("value", int.class, Integer.class, false, null,
                 setter, null, null, null);
-        PropertyWriter writer = PropertyWriter.create("value", int.class, Integer.class, getter, null, null, null);
+        PropertyGenerator writer = PropertyGenerator.create("value", int.class, Integer.class, getter, null, null, null);
 
         assertSame(failure, assertThrowsExactly(BindingException.class,
-                () -> reader.read(new SimpleJsonReader(new StringReader("1")), accessor,
+                () -> reader.read(new SimpleJsonParser(new StringReader("1")), accessor,
                         Object.class, PrimitiveAccessor.class, RuntimeContext.EMPTY)));
         assertSame(failure, assertThrowsExactly(BindingException.class,
-                () -> writer.write(new SimpleJsonWriter(null, new StringWriter()),
+                () -> writer.write(new SimpleJsonGenerator(null, new StringWriter()),
                         new CompiledName("value"), accessor, RuntimeContext.EMPTY, 0)));
     }
 

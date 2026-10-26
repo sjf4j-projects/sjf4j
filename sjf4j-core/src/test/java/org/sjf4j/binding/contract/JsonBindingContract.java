@@ -3,8 +3,8 @@ package org.sjf4j.binding.contract;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingParser;
+import org.sjf4j.binding.StreamingGenerator;
 import java.io.StringReader;
 import java.io.StringWriter;
 
@@ -20,8 +20,9 @@ public abstract class JsonBindingContract {
     void readerAndWriterExposeStructuralJson() throws Exception {
         Binder<?, ?> binding = binding(RuntimeContext.EMPTY);
         StringWriter output = new StringWriter();
-        try (StreamingWriter writer = binding.createWriter(output)) {
-            writer.startDocument();
+        StreamingGenerator writer = binding.createGenerator(output);
+try {
+            writer.startWrite();
             writer.startObject();
             writer.writeName("items");
             writer.startArray();
@@ -32,11 +33,12 @@ public abstract class JsonBindingContract {
             writer.writeName("ok", true);
             writer.writeBoolean(true);
             writer.endObject();
-            writer.endDocument();
-            writer.flush();
-        }
-        try (StreamingReader reader = binding.createReader(new StringReader(output.toString()))) {
-            reader.startDocument();
+            writer.endWrite();
+        
+} finally { writer.release(); }
+        StreamingParser reader = binding.createParser(new StringReader(output.toString()));
+try {
+            reader.startRead();
             reader.startObject();
             assertEquals("items", reader.nextName());
             reader.startArray();
@@ -46,8 +48,9 @@ public abstract class JsonBindingContract {
             assertEquals("ok", reader.nextName());
             assertTrue(reader.readBooleanValue());
             reader.endObject();
-            reader.endDocument();
-        }
+            reader.endRead();
+        
+} finally { reader.release(); }
     }
 
 }

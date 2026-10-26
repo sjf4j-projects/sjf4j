@@ -18,8 +18,8 @@ public class ValueInfo {
     public final Class<?> rawClazz;
     public final JsonType rawJsonType;
     public final ValueCodec<Object, Object> codec;
-    public final ValueCodec.StreamingValueCodec.Reader<Object> streamParser;
-    public final ValueCodec.StreamingValueCodec.Writer<Object> streamGenerator;
+    public final ValueCodec.StreamingValueCodec.Parser<Object> streamParser;
+    public final ValueCodec.StreamingValueCodec.Generator<Object> streamGenerator;
     public final MethodHandle valueToRawHandle;
     public final MethodHandle rawToValueHandle;
     public final MethodHandle valueCopyHandle;

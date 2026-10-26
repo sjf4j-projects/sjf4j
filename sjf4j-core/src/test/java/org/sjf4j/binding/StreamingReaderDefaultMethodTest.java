@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class StreamingReaderDefaultMethodTest {
     @Test
     void readerDefaultsHandleBoxedAndNullableValues() throws Exception {
-        RecordingReader values = new RecordingReader(false, StreamingReader.Token.EOF);
+        RecordingReader values = new RecordingReader(false, StreamingParser.Token.EOF);
         assertEquals("text", values.readString());
         assertEquals(1L, values.readLong());
         assertEquals(2, values.readInt());
@@ -25,7 +25,7 @@ class StreamingReaderDefaultMethodTest {
         assertEquals(6.5f, values.readFloat());
         assertEquals(true, values.readBoolean());
 
-        RecordingReader nulls = new RecordingReader(true, StreamingReader.Token.EOF);
+        RecordingReader nulls = new RecordingReader(true, StreamingParser.Token.EOF);
         assertNull(nulls.readString());
         assertNull(nulls.readLong());
         assertNull(nulls.readInt());
@@ -38,21 +38,21 @@ class StreamingReaderDefaultMethodTest {
 
     @Test
     void readerTokenAndDocumentDefaultsUseExpectedSemantics() throws Exception {
-        assertEquals(JsonType.OBJECT, StreamingReader.Token.OBJECT_START.jsonType());
-        assertEquals(JsonType.ARRAY, StreamingReader.Token.ARRAY_START.jsonType());
-        assertEquals(JsonType.STRING, StreamingReader.Token.STRING.jsonType());
-        assertEquals(JsonType.NUMBER, StreamingReader.Token.NUMBER.jsonType());
-        assertEquals(JsonType.BOOLEAN, StreamingReader.Token.BOOLEAN.jsonType());
-        assertEquals(JsonType.NULL, StreamingReader.Token.NULL.jsonType());
-        assertEquals(JsonType.UNKNOWN, StreamingReader.Token.EOF.jsonType());
-        assertEquals(JsonType.UNKNOWN, StreamingReader.Token.UNKNOWN.jsonType());
+        assertEquals(JsonType.OBJECT, StreamingParser.Token.OBJECT_START.jsonType());
+        assertEquals(JsonType.ARRAY, StreamingParser.Token.ARRAY_START.jsonType());
+        assertEquals(JsonType.STRING, StreamingParser.Token.STRING.jsonType());
+        assertEquals(JsonType.NUMBER, StreamingParser.Token.NUMBER.jsonType());
+        assertEquals(JsonType.BOOLEAN, StreamingParser.Token.BOOLEAN.jsonType());
+        assertEquals(JsonType.NULL, StreamingParser.Token.NULL.jsonType());
+        assertEquals(JsonType.UNKNOWN, StreamingParser.Token.EOF.jsonType());
+        assertEquals(JsonType.UNKNOWN, StreamingParser.Token.UNKNOWN.jsonType());
 
-        RecordingReader eof = new RecordingReader(false, StreamingReader.Token.EOF);
-        eof.startDocument();
-        eof.endDocument();
+        RecordingReader eof = new RecordingReader(false, StreamingParser.Token.EOF);
+        eof.startRead();
+        eof.endRead();
     }
 
-    private static final class RecordingReader extends StreamingReader {
+    private static final class RecordingReader extends StreamingParser {
         private final boolean nullValue;
         private final Token token;
 
@@ -63,7 +63,7 @@ class StreamingReaderDefaultMethodTest {
         }
 
         @Override
-        public void endDocument() throws IOException {}
+        public void endRead() throws IOException {}
         public Token peekToken() { return token; }
         public boolean nextIfNull() { return nullValue; }
         public boolean nextIfObjectStart() { return false; }
@@ -94,6 +94,6 @@ class StreamingReaderDefaultMethodTest {
 
         @Override
         public Object readRaw() throws IOException { return null; }
-        public void close() {}
+        public void release() {}
     }
 }

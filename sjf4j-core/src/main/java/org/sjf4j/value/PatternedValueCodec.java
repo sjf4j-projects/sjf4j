@@ -68,7 +68,7 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
                                   BiFunction<V, DateTimeFormatter, String> format,
                                   Function<String, V> parse,
                                   BiFunction<String, DateTimeFormatter, V> parseWith,
-                                  Reader<V> streamParser, Writer<V> streamGenerator) {
+                                  Parser<V> streamParser, Generator<V> streamGenerator) {
             this(type, null, toString, format, parse, parseWith, streamParser, streamGenerator);
         }
 
@@ -77,7 +77,7 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
                                    BiFunction<V, DateTimeFormatter, String> format,
                                    Function<String, V> parse,
                                    BiFunction<String, DateTimeFormatter, V> parseWith,
-                                   Reader<V> streamParser, Writer<V> streamGenerator) {
+                                   Parser<V> streamParser, Generator<V> streamGenerator) {
             super(type, String.class, toString, parse, streamParser, streamGenerator);
             this.type = type;
             this.formatter = formatter;
