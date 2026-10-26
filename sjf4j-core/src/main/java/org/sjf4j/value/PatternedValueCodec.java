@@ -1,7 +1,7 @@
 package org.sjf4j.value;
 
-import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingParser;
+import org.sjf4j.binding.StreamingGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -68,8 +68,8 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
                                   BiFunction<V, DateTimeFormatter, String> format,
                                   Function<String, V> parse,
                                   BiFunction<String, DateTimeFormatter, V> parseWith,
-                                  Reader<V> streamReader, Writer<V> streamWriter) {
-            this(type, null, toString, format, parse, parseWith, streamReader, streamWriter);
+                                  Reader<V> streamParser, Writer<V> streamGenerator) {
+            this(type, null, toString, format, parse, parseWith, streamParser, streamGenerator);
         }
 
         private TemporalValueCodec(Class<V> type, DateTimeFormatter formatter,
@@ -77,8 +77,8 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
                                    BiFunction<V, DateTimeFormatter, String> format,
                                    Function<String, V> parse,
                                    BiFunction<String, DateTimeFormatter, V> parseWith,
-                                   Reader<V> streamReader, Writer<V> streamWriter) {
-            super(type, String.class, toString, parse, streamReader, streamWriter);
+                                   Reader<V> streamParser, Writer<V> streamGenerator) {
+            super(type, String.class, toString, parse, streamParser, streamGenerator);
             this.type = type;
             this.formatter = formatter;
             this.toString = toString;
@@ -125,31 +125,31 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
     PatternedValueCodec<LocalDate, String> LOCAL_DATE = new TemporalValueCodec<>(LocalDate.class,
             LocalDate::toString, LocalDate::format,
             LocalDate::parse, LocalDate::parse,
-            StreamingReader::readLocalDate, StreamingWriter::writeLocalDate);
+            StreamingParser::readLocalDate, StreamingGenerator::writeLocalDate);
 
     PatternedValueCodec<LocalTime, String> LOCAL_TIME = new TemporalValueCodec<>(LocalTime.class,
             LocalTime::toString, LocalTime::format,
             LocalTime::parse, LocalTime::parse,
-            StreamingReader::readLocalTime, StreamingWriter::writeLocalTime);
+            StreamingParser::readLocalTime, StreamingGenerator::writeLocalTime);
 
     PatternedValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = new TemporalValueCodec<>(LocalDateTime.class,
             LocalDateTime::toString, LocalDateTime::format,
             LocalDateTime::parse, LocalDateTime::parse,
-            StreamingReader::readLocalDateTime, StreamingWriter::writeLocalDateTime);
+            StreamingParser::readLocalDateTime, StreamingGenerator::writeLocalDateTime);
 
     PatternedValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = new TemporalValueCodec<>(OffsetDateTime.class,
             OffsetDateTime::toString, OffsetDateTime::format,
             OffsetDateTime::parse, OffsetDateTime::parse,
-            StreamingReader::readOffsetDateTime, StreamingWriter::writeOffsetDateTime);
+            StreamingParser::readOffsetDateTime, StreamingGenerator::writeOffsetDateTime);
 
     PatternedValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = new TemporalValueCodec<>(ZonedDateTime.class,
             ZonedDateTime::toString, ZonedDateTime::format,
             ZonedDateTime::parse, ZonedDateTime::parse,
-            StreamingReader::readZonedDateTime, StreamingWriter::writeZonedDateTime);
+            StreamingParser::readZonedDateTime, StreamingGenerator::writeZonedDateTime);
 
     PatternedValueCodec<OffsetTime, String> OFFSET_TIME = new TemporalValueCodec<>(OffsetTime.class,
             OffsetTime::toString, OffsetTime::format,
             OffsetTime::parse, OffsetTime::parse,
-            StreamingReader::readOffsetTime, StreamingWriter::writeOffsetTime);
+            StreamingParser::readOffsetTime, StreamingGenerator::writeOffsetTime);
 
 }

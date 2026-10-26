@@ -2,7 +2,7 @@ package org.sjf4j.binding.simple;
 
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Asserts;
 
@@ -12,7 +12,7 @@ import java.io.Writer;
 /**
  * Minimal JSON writer for the built-in binder.
  */
-public final class SimpleJsonWriter extends StreamingWriter {
+public final class SimpleJsonGenerator extends StreamingGenerator {
 
     private static final char[] HEX = "0123456789ABCDEF".toCharArray();
 
@@ -21,7 +21,7 @@ public final class SimpleJsonWriter extends StreamingWriter {
     /**
      * Creates writer over output characters.
      */
-    public SimpleJsonWriter(Binder<?, ?> binder, Writer output) {
+    public SimpleJsonGenerator(Binder<?, ?> binder, Writer output) {
         super(Backend.SIMPLE);
         this.writer = Asserts.notNull(output, "output");
     }
@@ -147,7 +147,7 @@ public final class SimpleJsonWriter extends StreamingWriter {
      * Flushes writer output.
      */
     @Override
-    public void flush() throws IOException {
+    public void endWrite() throws IOException {
         writer.flush();
     }
 
@@ -245,7 +245,7 @@ public final class SimpleJsonWriter extends StreamingWriter {
      * Closes underlying writer.
      */
     @Override
-    public void close() throws IOException {
-        writer.close();
+    public void release() {
+        // The output writer belongs to the caller.
     }
 }

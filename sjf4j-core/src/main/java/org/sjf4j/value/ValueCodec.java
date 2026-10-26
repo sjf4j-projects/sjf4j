@@ -2,8 +2,8 @@ package org.sjf4j.value;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingParser;
+import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.FastUuid;
 
 import java.io.File;
@@ -157,13 +157,13 @@ public interface ValueCodec<V, R> {
      */
     class StreamingValueCodec<V, R> implements ValueCodec<V, R> {
         @FunctionalInterface
-        public interface Reader<V> {
-            V read(StreamingReader reader) throws IOException;
+        public interface Parser<V> {
+            V read(StreamingParser reader) throws IOException;
         }
 
         @FunctionalInterface
-        public interface Writer<V> {
-            void write(StreamingWriter writer, V value) throws IOException;
+        public interface Generator<V> {
+            void write(StreamingGenerator writer, V value) throws IOException;
         }
 
         private final Class<V> valueClazz;
@@ -171,25 +171,25 @@ public interface ValueCodec<V, R> {
         private final Function<V, R> encoder;
         private final Function<R, V> decoder;
         private final Function<V, V> copier;
-        private final Reader<V> streamReader;
-        private final Writer<V> streamWriter;
+        private final Parser<V> streamParser;
+        private final Generator<V> streamGenerator;
 
         public StreamingValueCodec(Class<V> valueClazz, Class<R> rawClazz,
                                    Function<V, R> encoder, Function<R, V> decoder,
-                                   Reader<V> streamReader, Writer<V> streamWriter) {
-            this(valueClazz, rawClazz, encoder, decoder, Function.identity(), streamReader, streamWriter);
+                                   Parser<V> streamParser, Generator<V> streamGenerator) {
+            this(valueClazz, rawClazz, encoder, decoder, Function.identity(), streamParser, streamGenerator);
         }
 
         public StreamingValueCodec(Class<V> valueClazz, Class<R> rawClazz,
                                    Function<V, R> encoder, Function<R, V> decoder,
-                                   Function<V, V> copier, Reader<V> streamReader, Writer<V> streamWriter) {
+                                   Function<V, V> copier, Parser<V> streamParser, Generator<V> streamGenerator) {
             this.valueClazz = valueClazz;
             this.rawClazz = rawClazz;
             this.encoder = encoder;
             this.decoder = decoder;
             this.copier = copier;
-            this.streamReader = streamReader;
-            this.streamWriter = streamWriter;
+            this.streamParser = streamParser;
+            this.streamGenerator = streamGenerator;
         }
 
         @Override
@@ -211,9 +211,9 @@ public interface ValueCodec<V, R> {
         @Override
         public V valueCopy(V value) { return copier.apply(value); }
 
-        public Reader<V> streamReader() { return streamReader; }
+        public Parser<V> streamParser() { return streamParser; }
 
-        public Writer<V> streamWriter() { return streamWriter; }
+        public Generator<V> streamGenerator() { return streamGenerator; }
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -238,7 +238,7 @@ public interface ValueCodec<V, R> {
     @NodeValue(format = "standard", defaultCodec = true)
     ValueCodec<UUID, String> UUID_CODEC = new StreamingValueCodec<>(UUID.class, String.class,
             FastUuid::toString, FastUuid::parseUUID,
-            StreamingReader::readUuid, StreamingWriter::writeUuid);
+            StreamingParser::readUuid, StreamingGenerator::writeUuid);
 
     @NodeValue
     ValueCodec<Charset, String> CHARSET = new SimpleValueCodec<>(Charset.class, String.class,
@@ -258,7 +258,7 @@ public interface ValueCodec<V, R> {
 
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Instant, String> INSTANT_STR = new StreamingValueCodec<>(Instant.class, String.class,
-            Instant::toString, Instant::parse, StreamingReader::readInstant, StreamingWriter::writeInstant);
+            Instant::toString, Instant::parse, StreamingParser::readInstant, StreamingGenerator::writeInstant);
 
     @NodeValue(format = "epochMillis")
     ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,

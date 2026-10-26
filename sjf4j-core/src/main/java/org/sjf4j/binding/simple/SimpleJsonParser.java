@@ -3,7 +3,7 @@ package org.sjf4j.binding.simple;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.FastStringReader;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.path.PathSegment;
@@ -21,14 +21,14 @@ import java.util.Map;
 /**
  * Minimal JSON reader for the built-in binder.
  */
-public final class SimpleJsonReader extends StreamingReader {
+public final class SimpleJsonParser extends StreamingParser {
 
     private final Reader reader;
 
     /**
      * Creates reader over input characters.
      */
-    public SimpleJsonReader(Reader input) {
+    public SimpleJsonParser(Reader input) {
         super(Backend.SIMPLE);
         this.reader = input;
         this.inputBuffer = new char[BUFFER_SIZE];
@@ -37,7 +37,7 @@ public final class SimpleJsonReader extends StreamingReader {
     /**
      * Creates reader over input string.
      */
-    public SimpleJsonReader(String input) {
+    public SimpleJsonParser(String input) {
         super(Backend.SIMPLE);
         if (input.length() <= BUFFER_SIZE) {
             this.reader = null;
@@ -51,7 +51,7 @@ public final class SimpleJsonReader extends StreamingReader {
     }
 
     @Override
-    public void startDocument() throws IOException {
+    public void startRead() throws IOException {
         if (inputClosed) throw new IOException("Stream closed");
     }
 
@@ -85,7 +85,7 @@ public final class SimpleJsonReader extends StreamingReader {
     }
 
     @Override
-    public void endDocument() throws IOException {
+    public void endRead() throws IOException {
         bufferedToken = null;
         _skipWhitespace();
         int c = _peek();
@@ -412,14 +412,12 @@ public final class SimpleJsonReader extends StreamingReader {
      * Closes underlying reader.
      */
     @Override
-    public void close() throws IOException {
+    public void release() throws IOException {
         inputClosed = true;
         inputPos = 0;
         inputLimit = 0;
         bufferedToken = null;
-        if (reader != null) {
-            reader.close();
-        }
+        // The input reader belongs to the caller.
     }
 
 

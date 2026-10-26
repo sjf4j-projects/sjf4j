@@ -3,7 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.Nodes;
-import org.sjf4j.binding.simple.SimpleJsonReader;
+import org.sjf4j.binding.simple.SimpleJsonParser;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
@@ -560,10 +560,10 @@ public interface Evaluator {
                                 .onUnmappableCharacter(CodingErrorAction.REPORT)
                                 .decode(ByteBuffer.wrap(decoded)).toString();
                     }
-                    SimpleJsonReader reader = new SimpleJsonReader(new FastStringReader(content));
-                    reader.startDocument();
+                    SimpleJsonParser reader = new SimpleJsonParser(new FastStringReader(content));
+                    reader.startRead();
                     reader.skipNode();
-                    reader.endDocument();
+                    reader.endRead();
                 } catch (Exception e) {
                     ctx.addError(instance, ps, contentMediaTypeKeywordPs, schemaUri, "contentMediaType",
                             "expected valid JSON content");
