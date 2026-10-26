@@ -1,7 +1,6 @@
 name: Recyclable output buffer microbenchmark
 
-# Deliberately restricted to this experiment branch; never run full JMH for
-# unrelated pull requests or the main branch.
+# Small, branch-only screening run. Full Java CI runs separately.
 on:
   push:
     branches:
@@ -22,10 +21,9 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
-      # Java CI runs :sjf4j-core:test independently; do not repeat it here.
       - name: Build JMH jar
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Compare native output sinks and allocation
+      - name: Compare output sinks and allocation
         shell: bash
         run: |
           set -euo pipefail
@@ -42,85 +40,26 @@ jobs:
           python3 - <<'PY' | tee output-buffer-summary.md
           import json
           results=json.load(open('output-buffer-jmh.json'))
+          if not results: raise SystemExit('JMH produced no results')
           rows={}
           for r in results:
-              name=r['benchmark'].split('.')[-1]
-              args=r['params']
-              key=(args['payloadLength'],args['alphabet'])
-              rows.setdefault(key,{})[name]=r
-          if not results: raise SystemExit('JMH produced no valid results')
+              key=(r['params']['payloadLength'],r['params']['alphabet'])
+              rows.setdefault(key,{})[r['benchmark'].split('.')[-1]]=r
           pairs=[
               ('charsPooled','charsJdk'),('charsPooled','charsJackson'),
-              
-              ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson'),
-              
+              ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson')
           ]
-          print('# Adaptive capacity growth: focused JMH (300K and 1MB)')
-          print()
-          print('JDK 25; 1 fork, 1 warmup iteration, 2 measurement iterations. Screening run only.')
-          print('Each operation includes creating sink, writing, result materialization and recycling.')
-          print('Speedup = baseline / pooled, so >1 means pooled is faster.')
-          print()
-          print('| Size | Alphabet | Pooled | Baseline | Pooled (us/op) | Baseline | Speedup | Pooled B/op | Baseline B/op |')
+          print('# Adaptive buffer growth: focused screening (300K, 1MB)')
+          print('JDK 25; single fork; 1 warmup, 2 measurements, GC allocations included.')
+          print('| Size | Alphabet | Pooled | Baseline | Pooled us/op | Baseline us/op | Speedup | Pooled B/op | Baseline B/op |')
           print('|---:|---|---|---|---:|---:|---:|---:|---:|')
           for (size,alphabet),items in sorted(rows.items()):
               for a,b in pairs:
                   if a not in items or b not in items: continue
-                  x=items[a];y=items[b]
-                  av=x['primaryMetric']['score'];bv=y['primaryMetric']['score']
+                  x,y=items[a],items[b]
+                  xv,yv=x['primaryMetric']['score'],y['primaryMetric']['score']
                   alloc=lambda r:r.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan'))
-                  print(f'| {size} | {alphabet} | {a} | {b} | {av:.3f} | {bv:.3f} | {bv/av:.2f}x | {alloc(x):.0f} | {alloc(y):.0f} |')
-          PY
-          cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Preserve measurements
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: output-buffer-jmh
-          path: |
-            output-buffer-jmh.json
-            output-buffer-jmh.log
-            output-buffer-summary.md
-          if-no-files-found: warn
- \
-            -bm avgt -tu us -t 1 -f 1 -wi 1 -w 120ms -i 3 -r 160ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE \
-            -prof gc -rf json -rff output-buffer-jmh.json \
-            | tee output-buffer-jmh.log
-      - name: Compare paired sinks
-        if: success()
-        shell: bash
-        run: |
-          python3 - <<'PY' | tee output-buffer-summary.md
-          import json
-          results=json.load(open('output-buffer-jmh.json'))
-          rows={}
-          for r in results:
-              name=r['benchmark'].split('.')[-1]
-              args=r['params']
-              key=(args['payloadLength'],args['alphabet'])
-              rows.setdefault(key,{})[name]=r
-          if not results: raise SystemExit('JMH produced no valid results')
-          pairs=[
-              ('charsPooled','charsJdk'),('charsPooled','charsJackson'),
-              ('charsChunksPooled','charsChunksJdk'),
-              ('bytesPooled','bytesJdk'),('bytesPooled','bytesJackson'),
-              ('bytesChunksPooled','bytesChunksJdk')
-          ]
-          print('# Adaptive capacity growth: focused JMH (300K and 1MB)')
-          print()
-          print('JDK 25; 1 fork, 1 warmup iteration, 3 measurement iterations. Screening run only.')
-          print('Each operation includes creating sink, writing, result materialization and recycling.')
-          print('Speedup = baseline / pooled, so >1 means pooled is faster.')
-          print()
-          print('| Size | Alphabet | Pooled | Baseline | Pooled (us/op) | Baseline | Speedup | Pooled B/op | Baseline B/op |')
-          print('|---:|---|---|---|---:|---:|---:|---:|---:|')
-          for (size,alphabet),items in sorted(rows.items()):
-              for a,b in pairs:
-                  if a not in items or b not in items: continue
-                  x=items[a];y=items[b]
-                  av=x['primaryMetric']['score'];bv=y['primaryMetric']['score']
-                  alloc=lambda r:r.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan'))
-                  print(f'| {size} | {alphabet} | {a} | {b} | {av:.3f} | {bv:.3f} | {bv/av:.2f}x | {alloc(x):.0f} | {alloc(y):.0f} |')
+                  print(f'| {size} | {alphabet} | {a} | {b} | {xv:.3f} | {yv:.3f} | {yv/xv:.2f}x | {alloc(x):.0f} | {alloc(y):.0f} |')
           PY
           cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve measurements
