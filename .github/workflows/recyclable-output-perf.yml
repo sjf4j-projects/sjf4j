@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*SegmentedOutputBenchmark\.(currentPooled|chunksCurrentPooled|softContiguous|chunksSoftContiguous|jacksonUnlimited|chunksJacksonUnlimited|jacksonCapped|chunksJacksonCapped)$' \
+          java -jar "$jar" '.*SegmentedOutputBenchmark\.(currentPooled|chunksCurrentPooled|jacksonUnlimited|chunksJacksonUnlimited|jacksonCapped|chunksJacksonCapped)$' \
             -bm avgt -tu us -t 1 -f 2 -wi 10 -w 150ms -i 3 -r 150ms \
             -p payloadLength=1024,4096,16384,65536,131072,262144,307200,1048576 -p alphabet=ASCII,UNICODE -p segmentSize=131072 \
             -prof gc -rf json -rff output-buffer-jmh.json \
@@ -50,19 +50,16 @@ jobs:
           for r in results:
               key=(int(r['params']['payloadLength']),r['params']['alphabet'])
               rows.setdefault(key,{})[r['benchmark'].split('.')[-1]]=r
-          print('# Complete char output: SJF4J vs Jackson2 segmented/recycler')
-          print('JDK 25, 2 forks, 10 warmups, 3 measures, 150ms each; us/op (lower better), B/op.')
-          print('SJF current and soft-contiguous experiments vs Jackson2 native and 256K-capped recycler.')
-          for prefix,mode in [('', 'bulk'), ('chunks', 'chunks256')]:
-              names=(['currentPooled','softContiguous','jacksonUnlimited','jacksonCapped'] if not prefix else
-                     ['chunksCurrentPooled','chunksSoftContiguous','chunksJacksonUnlimited','chunksJacksonCapped'])
-              print('\\n## '+mode)
-              print('| Size | Alphabet | SJF current us | SJF soft array us | Jackson native us | Jackson capped us | SJF current B/op | SJF soft array B/op | Jackson native B/op | Jackson capped B/op |')
-              print('|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|')
+          print('# Production char writer versus Jackson2 segmented')
+          print('JDK 25, 2 forks, 10 warmups, 3 measures, 150ms; us/op, B/op.')
+          for name,methods in [('bulk',['currentPooled','jacksonUnlimited','jacksonCapped']),('chunks256',['chunksCurrentPooled','chunksJacksonUnlimited','chunksJacksonCapped'])]:
+              print('\\n## '+name)
+              print('| Size | Alphabet | SJF us/op | Jackson native us/op | Jackson capped us/op | SJF B/op | Jackson native B/op | Jackson capped B/op |')
+              print('|---:|---|---:|---:|---:|---:|---:|---:|')
               for (size,alphabet),items in sorted(rows.items()):
-                  if any(n not in items for n in names): raise SystemExit(f'Missing {mode} {size} {alphabet}')
-                  scores=[items[n]['primaryMetric']['score'] for n in names]
-                  allocs=[items[n].get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan')) for n in names]
+                  if any(n not in items for n in methods): raise SystemExit(f'Missing {name} {size} {alphabet}')
+                  scores=[items[n]['primaryMetric']['score'] for n in methods]
+                  allocs=[items[n].get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan')) for n in methods]
                   print(f'| {size} | {alphabet} | '+' | '.join(f'{v:.3f}' for v in scores)+' | '+' | '.join(f'{v:.0f}' for v in allocs)+' |')
           PY
           cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
