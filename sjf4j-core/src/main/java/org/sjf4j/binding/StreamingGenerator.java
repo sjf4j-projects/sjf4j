@@ -25,7 +25,7 @@ import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 
 /**
- * Unified streaming writer for structured data.
+ * Unified streaming generator for structured data.
  *
  * <p>The interface defines common structural semantics while allowing
  * implementations to provide backend-specific fast paths.</p>

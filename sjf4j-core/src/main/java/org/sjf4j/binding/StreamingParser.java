@@ -18,9 +18,9 @@ import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 
 /**
- * Streaming reader for JSON-semantic structured data.
+ * Streaming parser for JSON-semantic structured data.
  *
- * <p>The reader operates on a logical stream of object, array, and value
+ * <p>The parser operates on a logical stream of object, array, and value
  * tokens. Backend implementations may use different physical parser states
  * internally as long as they preserve the semantics defined by this
  * interface.</p>
@@ -62,7 +62,7 @@ public abstract class StreamingParser {
     }
 
     /**
-     * Logical token types exposed by the streaming reader.
+     * Logical token types exposed by the streaming parser.
      *
      * <p>These tokens describe the SJF4J reader state rather than the
      * physical token state of a backend parser.</p>

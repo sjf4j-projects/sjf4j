@@ -27,7 +27,7 @@ import java.util.function.Function;
 
 
 /**
- * Precomputed writer for a readable POJO property, including primitive and
+ * Precomputed generator for a readable POJO property, including primitive and
  * value-codec fast paths.
  */
 @FunctionalInterface
