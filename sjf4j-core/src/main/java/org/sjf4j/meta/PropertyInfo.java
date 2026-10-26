@@ -99,7 +99,7 @@ public class PropertyInfo {
         this.readable = getterHandle != null || getterLambda != null;
         this.writable = setterHandle != null || setterLambda != null;
 
-        this.parser = reader;
+        this.parser = parser;
     }
 
 

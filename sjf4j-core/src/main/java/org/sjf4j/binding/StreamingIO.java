@@ -610,8 +610,8 @@ public final class StreamingIO {
                 continue;
             }
 
-            if (state.isCreated() && property.reader != null) {
-                property.reader.read(reader, state.pojo(), type, boxed, context);
+            if (state.isCreated() && property.parser != null) {
+                property.parser.parse(reader, state.pojo(), type, boxed, context);
             } else {
                 Object value = readProperty(reader, property, type, boxed, context);
                 if (state.isCreated()) {

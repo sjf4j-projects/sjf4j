@@ -214,9 +214,9 @@ public final class OneOfIO {
                     }
 
                     PropertyInfo fi = pi.creatorMatchProperties[index];
-                    if (fi != null && fi.reader != null) {
+                    if (fi != null && fi.parser != null) {
                         if (state.isCreated()) {
-                            fi.reader.read(reader, state.pojo(), targetClazz, targetClazz, context);
+                            fi.parser.parse(reader, state.pojo(), targetClazz, targetClazz, context);
                         } else {
                             Object value = StreamingIO.readProperty(reader, fi, targetClazz, targetClazz, context);
                             state.bufferProperty(fi, value);
