@@ -25,6 +25,8 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.binding.PooledStringWriter;
+import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.testbench.binding.handwritten.Jackson2HandPojoSerializedWriter;
 import org.sjf4j.testbench.binding.handwritten.Jackson3HandPojoSerializedWriter;
 import org.sjf4j.testbench.model.User;
@@ -491,19 +493,25 @@ public class CompiledWriteBenchmark {
     // same SJF4J Writer creation, flush and release lifecycle as Compiled.
     @Benchmark
     public String json_jackson2_pojo_string_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriter()) {
+        PooledStringWriter output = new PooledStringWriter();
+        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
             Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toString();
+            return output.toString();
+        } finally {
+            output.recycle();
         }
     }
 
     @Benchmark
     public byte[] json_jackson2_pojo_utf8_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriterUtf8()) {
+        PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
             Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toBytes();
+            return output.toByteArray();
+        } finally {
+            output.recycle();
         }
     }
 
@@ -626,19 +634,25 @@ public class CompiledWriteBenchmark {
 
     @Benchmark
     public String json_jackson3_pojo_string_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriter()) {
+        PooledStringWriter output = new PooledStringWriter();
+        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
             Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toString();
+            return output.toString();
+        } finally {
+            output.recycle();
         }
     }
 
     @Benchmark
     public byte[] json_jackson3_pojo_utf8_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriterUtf8()) {
+        PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
             Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toBytes();
+            return output.toByteArray();
+        } finally {
+            output.recycle();
         }
     }
 
