@@ -1,9 +1,6 @@
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.io.SegmentedStringWriter;
-import com.fasterxml.jackson.core.util.BufferRecycler;
-import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.ser.std.UUIDSerializer;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
@@ -25,43 +22,16 @@ public final class Jackson2Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    /**
-     * Access for backend-specific compiled POJO property writers.
-     * @return the native Jackson generator
-     */
-    public JsonGenerator nativeWriter() { return generator; }
-    private final SegmentedStringWriter stringOutput;
-    private final ByteArrayBuilder byteOutput;
-    private final BufferRecycler recycler;
-
-    /**
-     * Creates a writer around an existing Jackson 2 generator.
-     * @param generator the Jackson 2 generator
-     */
+    /** Creates a writer around an existing Jackson generator. */
     public Jackson2Writer(JsonGenerator generator) {
-        this(generator, null, null, null);
-    }
-
-    Jackson2Writer(JsonGenerator generator,
-                   SegmentedStringWriter output, BufferRecycler recycler) {
-        this(generator, output, null, recycler);
-    }
-
-    Jackson2Writer(JsonGenerator generator,
-                   ByteArrayBuilder output, BufferRecycler recycler) {
-        this(generator, null, output, recycler);
-    }
-
-    private Jackson2Writer(JsonGenerator generator,
-                   SegmentedStringWriter stringOutput, ByteArrayBuilder byteOutput,
-                   BufferRecycler recycler) {
         super(Backend.JACKSON2);
         this.generator = Asserts.notNull(generator, "generator");
-        this.stringOutput = stringOutput;
-        this.byteOutput = byteOutput;
-        this.recycler = recycler;
     }
 
+    /** Access to the native generator for compiled property writers. */
+    public JsonGenerator nativeWriter() {
+        return generator;
+    }
 
     /*
      * Structure
@@ -240,35 +210,7 @@ public final class Jackson2Writer extends StreamingWriter {
     }
 
     @Override
-    public String toString() {
-        if (stringOutput == null) {
-            return super.toString();
-        }
-        try {
-            return stringOutput.getAndClear();
-        } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
-        }
-    }
-
-    /**
-     * Returns buffered UTF-8 after the generator has been flushed.
-     * @return the buffered UTF-8 bytes
-     */
-    public byte[] toBytes() {
-        if (byteOutput == null) throw new IllegalStateException("not an in-memory UTF-8 writer");
-        return byteOutput.toByteArray();
-    }
-
-    @Override
     public void close() throws IOException {
-        try {
-            generator.close();
-        } finally {
-            if (byteOutput != null) byteOutput.release();
-            if (recycler != null) {
-                recycler.releaseToPool();
-            }
-        }
+        generator.close();
     }
 }

@@ -842,7 +842,7 @@ class NodeMapperConversionTest {
         public NullValue value;
     }
 
-    @OneOf(mappings = @OneOfMapping(type = SelectedObject.class, when = "child"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = SelectedObject.class, when = "child"), discriminatorKey = "kind")
     static class ObjectChoice extends JsonObject {}
 
     static class SelectedObject extends ObjectChoice {}
@@ -852,7 +852,7 @@ class NodeMapperConversionTest {
 
     static class SelectedArray extends ArrayChoice {}
 
-    @OneOf(mappings = @OneOfMapping(type = SelectedChoice.class, when = "child"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = SelectedChoice.class, when = "child"), discriminatorKey = "kind")
     static class Choice extends JsonObject {}
 
     static class SelectedChoice extends Choice {}
@@ -860,12 +860,12 @@ class NodeMapperConversionTest {
     static class OtherChoice extends Choice {}
 
     static class ChoiceHolder {
-        @OneOf(mappings = @OneOfMapping(type = OtherChoice.class, when = "child"), key = "kind")
+        @OneOf(mappings = @OneOfMapping(type = OtherChoice.class, when = "child"), discriminatorKey = "kind")
         public Choice value;
     }
 
     static class NullOverrideHolder {
-        @OneOf(mappings = @OneOfMapping(type = NullValueSubtype.class, when = "child"), key = "kind")
+        @OneOf(mappings = @OneOfMapping(type = NullValueSubtype.class, when = "child"), discriminatorKey = "kind")
         public NullValue value;
     }
 
@@ -873,7 +873,7 @@ class NodeMapperConversionTest {
         NullValueSubtype(String value) { super(value); }
     }
 
-    @OneOf(mappings = @OneOfMapping(type = EncodedChoice.class, when = "child"), key = "kind")
+    @OneOf(mappings = @OneOfMapping(type = EncodedChoice.class, when = "child"), discriminatorKey = "kind")
     static abstract class ValueChoice {}
 
     @NodeValue
@@ -897,7 +897,7 @@ class NodeMapperConversionTest {
     }
 
     @OneOf(mappings = @OneOfMapping(type = NullableValueSubtype.class, when = "child"),
-            key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
+            discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
     static abstract class NullableValueChoice extends ValueChoice {}
 
     static class NullableValueSubtype extends NullableValueChoice {}

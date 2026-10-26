@@ -255,7 +255,7 @@ final class ReadEmitter {
             }
             out.indent();
             out.line("return " + value.helperName() + "_subtype" + i
-                    + "_content(reader, prefixNames, prefixValues, prefixSize);");
+                    + "_content(reader, prefixNames, prefixValues, prefixSize, discriminator);");
             out.dedent();
         }
         out.endBlock(); // switch
@@ -303,8 +303,8 @@ final class ReadEmitter {
                                  BindingValue subtype, int index) {
         out.beginBlock("private static " + subtype.type() + " " + owner.helperName()
                 + "_subtype" + index + "_content(" + backend.readerType()
-                + " reader, String[] prefixNames, Object[] prefixValues, int prefixSize)"
-                + " throws java.io.IOException");
+                + " reader, String[] prefixNames, Object[] prefixValues, int prefixSize,"
+                + " Object discriminator) throws java.io.IOException");
         emitPojo(out, subtype, true, owner.oneOfKey());
         out.endBlock();
     }
@@ -457,7 +457,31 @@ final class ReadEmitter {
             out.line(argCount <= 64 ? "long seen = 0L;"
                     : "boolean[] seen = new boolean[" + argCount + "];");
         }
-        if (consumedDiscriminator != null) emitOneOfPrefixReplay(out, value);
+        if (consumedDiscriminator != null) {
+            // The dispatcher consumed this String property. Initialize its
+            // creator argument and duplicate-detection bit directly.
+            for (BindingProperty property : value.properties()) {
+                int index = property.creatorIndex();
+                if (index < 0) continue;
+                boolean matches = consumedDiscriminator.equals(property.name());
+                if (!matches) {
+                    for (String alias : property.aliases()) {
+                        if (consumedDiscriminator.equals(alias)) {
+                            matches = true;
+                            break;
+                        }
+                    }
+                }
+                if (!matches) continue;
+                if (property.value().kind() != BindingValue.Kind.STRING) {
+                    throw new AssertionError("Compiled discriminator creator argument must be String");
+                }
+                out.line("arg" + index + " = String.valueOf(discriminator);");
+                out.line(argCount <= 64 ? "seen |= (1L << " + index + ");"
+                        : "seen[" + index + "] = true;");
+            }
+            emitOneOfPrefixReplay(out, value);
+        }
 
         int size = value.properties().size();
         if (fastjson2Pojo != null && size != 0) {

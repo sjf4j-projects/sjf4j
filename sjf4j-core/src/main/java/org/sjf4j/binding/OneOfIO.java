@@ -90,7 +90,7 @@ public final class OneOfIO {
     private static Object _readByDtorKey(StreamingReader reader, OneOfInfo oneOfInfo,
                                          RuntimeContext context) throws IOException {
         final boolean fallbackNull = oneOfInfo.fallbackNull;
-        final String dtorKey = oneOfInfo.key;
+        final String discriminatorKey = oneOfInfo.discriminatorKey;
         String[] pendingNames = null;
         Object[] pendingValues = null;
         int pendingSize = 0;
@@ -100,26 +100,26 @@ public final class OneOfIO {
         int index;
         while ((index = reader.nextNameMatch(matcher, 0)) != NameMatcher.OBJECT_END) {
             if (index == 0) {
-                Object dtorValue = reader.readRaw();
-                if (dtorValue == null) {
+                Object discriminatorValue = reader.readRaw();
+                if (discriminatorValue == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(reader);
                         return null;
                     }
-                    throw new BindingException("not found value for discriminator key '" + dtorKey + "'");
+                    throw new BindingException("not found value for discriminator key '" + discriminatorKey + "'");
                 }
 
-                LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(dtorValue);
+                LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);
                 if (target == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(reader);
                         return null;
                     }
-                    throw new BindingException("oneOf discriminator has no matching mapping: value='" + dtorValue + "'");
+                    throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
                 }
 
                 return _readPojoRemaining(reader, target, pendingNames, pendingValues, pendingSize,
-                        dtorKey, dtorValue, context);
+                        discriminatorKey, discriminatorValue, context);
             }
 
             String name = reader.currentName();
@@ -141,7 +141,7 @@ public final class OneOfIO {
         if (fallbackNull) {
             return null;
         }
-        throw new BindingException("not found value for discriminator key '" + dtorKey + "'");
+        throw new BindingException("not found value for discriminator key '" + discriminatorKey + "'");
     }
 
 
@@ -191,7 +191,9 @@ public final class OneOfIO {
                     if (argIdx >= 0) {
                         ValueInfo codec = ci.argValueCodecs[argIdx];
                         Object value;
-                        if (codec != null) {
+                        if (ci.argOneOfInfos[argIdx] != null) {
+                            value = readOneOf(reader, ci.argOneOfInfos[argIdx], context);
+                        } else if (codec != null) {
                             value = StreamingIO.readValueCodec(reader, codec, context);
                         } else {
                             LazyTypeInfo lazy = ci.argTypeInfos[argIdx];
@@ -268,7 +270,7 @@ public final class OneOfIO {
         BackendCache cache = info.backendCache(reader.backend);
         NameMatcher matcher = cache.nameMatcher;
         if (matcher == null) {
-            matcher = reader.createNameMatcher(new String[]{info.key});
+            matcher = reader.createNameMatcher(new String[]{info.discriminatorKey});
             cache.nameMatcher = matcher;
         }
         return matcher;
@@ -288,9 +290,11 @@ public final class OneOfIO {
         CreatorInfo ci = pi.creatorInfo;
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
-            ValueInfo codec = ci.argValueCodecs[argIdx];
             Object value;
-            if (codec != null) {
+            if (ci.argOneOfInfos[argIdx] != null) {
+                value = _convertRawOneOf(rawValue, ci.argOneOfInfos[argIdx], context);
+            } else if (ci.argValueCodecs[argIdx] != null) {
+                ValueInfo codec = ci.argValueCodecs[argIdx];
                 if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
                     rawValue = Numbers.to((Number) rawValue, codec.rawClazz);
                 }
@@ -371,12 +375,12 @@ public final class OneOfIO {
                 throw new BindingException("node must be an object, when OneOf has a CURRENT discriminator");
             }
             Object discriminator = info.keyDiscriminator
-                    ? Nodes.getInObject(raw, info.key)
+                    ? Nodes.getInObject(raw, info.discriminatorKey)
                     : info.compiledPath.getNode(raw);
             if (discriminator == null) {
                 if (info.fallbackNull) return null;
                 throw new BindingException("not found value for discriminator "
-                        + (info.keyDiscriminator ? "key '" + info.key + "'" : "path '" + info.path + "'"));
+                        + (info.keyDiscriminator ? "key '" + info.discriminatorKey + "'" : "path '" + info.discriminatorPath + "'"));
             }
             target = info.lazyTypeInfoByWhen(discriminator);
         }

@@ -371,7 +371,7 @@ public class NodesTest {
     @OneOf(mappings = {
             @OneOfMapping(type = Cat.class, when = "cat"),
             @OneOfMapping(type = Dog.class, when = "dog")
-    }, key = "kind")
+    }, discriminatorKey = "kind")
     public static class Animal {
         private String kind;
         private String name;
@@ -393,7 +393,7 @@ public class NodesTest {
         @OneOf(mappings = {
                 @OneOfMapping(type = Cat.class, when = "cat"),
                 @OneOfMapping(type = Dog.class, when = "dog")
-        }, key = "kind")
+        }, discriminatorKey = "kind")
         public Animal pet;
     }
 

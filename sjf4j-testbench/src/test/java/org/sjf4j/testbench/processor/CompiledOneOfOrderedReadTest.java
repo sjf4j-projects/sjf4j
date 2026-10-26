@@ -22,7 +22,7 @@ public class CompiledOneOfOrderedReadTest {
     private static final String ID = "123e4567-e89b-12d3-a456-426614174000";
     private static final Reader READER = CompiledInstances.global(Reader.class);
 
-    @OneOf(key = "@type", mappings = {
+    @OneOf(discriminatorKey = "@type", mappings = {
             @OneOfMapping(type = Alpha.class, when = "alpha"),
             @OneOfMapping(type = Beta.class, when = "beta"),
             @OneOfMapping(type = Gamma.class, when = "gamma")

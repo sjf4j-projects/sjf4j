@@ -4,14 +4,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.io.SegmentedStringWriter;
-import com.fasterxml.jackson.core.util.BufferRecycler;
-import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.exception.BindingException;
-import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -118,76 +112,4 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         return new Jackson2Writer(generator);
     }
 
-    /**
-     * Creates an in-memory writer backed by a pooled Jackson buffer.
-     * @return a writer that owns the pooled buffer
-     * @throws IOException if the generator cannot be created
-     */
-    public Jackson2Writer createWriter() throws IOException {
-        BufferRecycler recycler = factory._getBufferRecycler();
-        SegmentedStringWriter output = new SegmentedStringWriter(recycler);
-        try {
-            return new Jackson2Writer(factory.createGenerator(output), output, recycler);
-        } catch (IOException | RuntimeException e) {
-            recycler.releaseToPool();
-            throw e;
-        }
-    }
-
-    /**
-     * Creates an owned UTF-8 writer using Jackson's pooled output buffer.
-     * @return a writer that owns the pooled buffer
-     * @throws IOException if the generator cannot be created
-     */
-    public Jackson2Writer createWriterUtf8() throws IOException {
-        BufferRecycler recycler = factory._getBufferRecycler();
-        ByteArrayBuilder output = new ByteArrayBuilder(recycler);
-        try {
-            return new Jackson2Writer(factory.createGenerator(output, JsonEncoding.UTF8), output, recycler);
-        } catch (IOException | RuntimeException e) {
-            output.release();
-            recycler.releaseToPool();
-            throw e;
-        }
-    }
-
-    @Override
-    public String writeNodeAsString(Object node) {
-        final BufferRecycler br = factory._getBufferRecycler();
-        try (SegmentedStringWriter sw = new SegmentedStringWriter(br)) {
-            try (Jackson2Writer writer = new Jackson2Writer(factory.createGenerator(sw))) {
-                writer.startDocument();
-                StreamingIO.writeNode(writer, node, context);
-                writer.endDocument();
-            }
-            return sw.getAndClear();
-        } catch (BindingException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON", e);
-        } finally {
-            br.releaseToPool();
-        }
-    }
-
-    @Override
-    public byte[] writeNodeAsBytes(Object node) {
-        final BufferRecycler br = factory._getBufferRecycler();
-        final ByteArrayBuilder output = new ByteArrayBuilder(br);
-        try {
-            try (Jackson2Writer writer = new Jackson2Writer(factory.createGenerator(output, JsonEncoding.UTF8))) {
-                writer.startDocument();
-                StreamingIO.writeNode(writer, node, context);
-                writer.endDocument();
-            }
-            return output.toByteArray();
-        } catch (BindingException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON", e);
-        } finally {
-            output.release();
-            br.releaseToPool();
-        }
-    }
 }

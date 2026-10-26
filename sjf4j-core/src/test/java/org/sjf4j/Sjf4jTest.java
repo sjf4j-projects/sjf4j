@@ -109,7 +109,7 @@ public class Sjf4jTest {
     @OneOf(mappings = {
             @OneOfMapping(type = RuntimeCat.class, when = "cat"),
             @OneOfMapping(type = RuntimeDog.class, when = "dog")
-    }, key = "kind")
+    }, discriminatorKey = "kind")
     interface RuntimePet {}
 
     static class RuntimeCat implements RuntimePet {

@@ -1,4 +1,4 @@
-package org.sjf4j.testbench.processor;
+package org.sjf4j.testbench.binding;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -75,7 +75,7 @@ class RuntimeLazyCreatorSemanticsTest {
         }
     }
 
-    @OneOf(key = "kind", mappings = @OneOfMapping(type = FixedContainerVariant.class, when = "fixed"))
+    @OneOf(discriminatorKey = "kind", mappings = @OneOfMapping(type = FixedContainerVariant.class, when = "fixed"))
     public interface FixedContainerOneOf {}
 
     public record FixedContainerVariant(List<UUID> fixed, Map<String, LocalDate> dates)
@@ -94,7 +94,7 @@ class RuntimeLazyCreatorSemanticsTest {
         }
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = Leaf.class, when = "leaf"),
             @OneOfMapping(type = Branch.class, when = "branch")
     })
@@ -114,7 +114,7 @@ class RuntimeLazyCreatorSemanticsTest {
 
     public static final class ParentEnvelope {
         public String kind;
-        @OneOf(scope = OneOf.Scope.PARENT, key = "kind", mappings = {
+        @OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind", mappings = {
                 @OneOfMapping(type = ParentDog.class, when = "dog"),
                 @OneOfMapping(type = ParentCat.class, when = "cat")
         })

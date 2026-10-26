@@ -1116,9 +1116,9 @@ public final class NodeMapper {
             }
 
             Object discriminatorValue;
-            if (!oneOfInfo.key.isEmpty()) {
-                discriminatorValue = Nodes.getInObject(node, oneOfInfo.key);
-            } else if (!oneOfInfo.path.isEmpty()) {
+            if (!oneOfInfo.discriminatorKey.isEmpty()) {
+                discriminatorValue = Nodes.getInObject(node, oneOfInfo.discriminatorKey);
+            } else if (!oneOfInfo.discriminatorPath.isEmpty()) {
                 discriminatorValue = oneOfInfo.compiledPath.getNode(node);
             } else {
                 discriminatorValue = null;
@@ -1137,8 +1137,10 @@ public final class NodeMapper {
                 if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                     return null;
                 }
-                throw new BindingException(
-                        "not found value for discriminator key '" + oneOfInfo.key + "'", ps);
+                throw new BindingException("not found value for discriminator "
+                        + (oneOfInfo.keyDiscriminator
+                        ? "key '" + oneOfInfo.discriminatorKey
+                        : "path '" + oneOfInfo.discriminatorPath) + "'", ps);
             }
 
             target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);
@@ -1516,7 +1518,10 @@ public final class NodeMapper {
         ValueInfo codec = creator.argValueCodecs[argIdx];
         // Only a codec explicitly selected on the creator parameter is strict.
         // Unannotated value parameters must select by the incoming JSON shape.
-        Object value = ti.oneOfInfo == null && codec != null
+        OneOfInfo explicitOneOf = creator.argOneOfInfos[argIdx];
+        Object value = explicitOneOf != null
+                ? (rawValue == null ? null : _convertOneOf(rawValue, argRaw, explicitOneOf, deepCopy, ps, context))
+                : ti.oneOfInfo == null && codec != null
                 ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, context)
                 : _convertSourceChild(rawValue, argType, argRaw, ti,
                         deepCopy, ps, context, externalSource);

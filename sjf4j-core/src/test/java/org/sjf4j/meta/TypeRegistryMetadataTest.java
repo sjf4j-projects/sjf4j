@@ -561,7 +561,7 @@ class TypeRegistryMetadataTest {
     @OneOf(mappings = {
             @OneOfMapping(type = JsonSubtype.class, when = {"json"}),
             @OneOfMapping(type = OtherSubtype.class, when = {"other"})
-    }, key = "type")
+    }, discriminatorKey = "type")
     interface DiscriminatedOneOf {}
 
     static class JsonSubtype extends JsonObject implements DiscriminatedOneOf {}
@@ -621,7 +621,7 @@ class TypeRegistryMetadataTest {
 
         CreatorInfo badNoArgs = new CreatorInfo(NoArgsPojo.class, null, null,
                 null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         assertThrowsExactly(BindingException.class, badNoArgs::newPojoNoArgs);
         assertThrowsExactly(BindingException.class, () -> badNoArgs.newPojoWithArgs(new Object[0]));
     }

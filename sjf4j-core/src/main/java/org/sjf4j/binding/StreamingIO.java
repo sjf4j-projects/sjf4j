@@ -524,10 +524,11 @@ public final class StreamingIO {
              */
             int argIndex = pojoInfo.creatorMatchArgs[index];
             if (argIndex >= 0) {
-                ValueInfo codec = creator.argValueCodecs[argIndex];
                 Object value;
-                if (codec != null) {
-                    value = readValueCodec(reader, codec, context);
+                if (creator.argOneOfInfos[argIndex] != null) {
+                    value = OneOfIO.readOneOf(reader, creator.argOneOfInfos[argIndex], context);
+                } else if (creator.argValueCodecs[argIndex] != null) {
+                    value = readValueCodec(reader, creator.argValueCodecs[argIndex], context);
                 } else {
                     LazyTypeInfo lazy = creator.argTypeInfos[argIndex];
                     if (lazy != null) {
@@ -558,13 +559,13 @@ public final class StreamingIO {
              */
             OneOfInfo oneOfInfo = property.oneOfInfo;
             if (oneOfInfo != null && oneOfInfo.scope == OneOf.Scope.PARENT) {
-                if (!oneOfInfo.path.isEmpty()) {
+                if (!oneOfInfo.discriminatorPath.isEmpty()) {
                     throw new BindingException("oneOf scope=PARENT does not support path discriminator");
                 }
 
                 if (parentKey == null) {
-                    parentKey = oneOfInfo.key;
-                } else if (!parentKey.equals(oneOfInfo.key)) {
+                    parentKey = oneOfInfo.discriminatorKey;
+                } else if (!parentKey.equals(oneOfInfo.discriminatorKey)) {
                     throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                 }
 
@@ -649,7 +650,7 @@ public final class StreamingIO {
         } else if (oneOfInfo.fallbackNull) {
             value = null;
         } else {
-            throw new BindingException("oneOf discriminator has no matching mapping: key='" + oneOfInfo.key +
+            throw new BindingException("oneOf discriminator has no matching mapping: key='" + oneOfInfo.discriminatorKey +
                     "', value='" + (parentValue == UNSET ? null : parentValue) + "'");
         }
         deferred.invokeSetterIfPresent(pojo, value);

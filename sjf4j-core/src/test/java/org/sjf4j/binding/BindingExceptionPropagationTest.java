@@ -56,7 +56,7 @@ class BindingExceptionPropagationTest {
                 lookup.findStatic(BindingExceptionPropagationTest.class, "throwCreator",
                         MethodType.methodType(Object.class)),
                 null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         ContainerInfo container = new ContainerInfo(Object.class, NodeKind.ARRAY_LIST,
                 lookup.findStatic(BindingExceptionPropagationTest.class, "throwContainer",
                         MethodType.methodType(Object.class)), null);

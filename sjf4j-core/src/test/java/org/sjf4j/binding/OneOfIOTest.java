@@ -33,11 +33,11 @@ class OneOfIOTest {
         @OneOf(mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
-        }, key = "kind")
+        }, discriminatorKey = "kind")
         public Animal pet;
     }
 
-    @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = {"dog", "hound"}), @OneOfMapping(type = Cat.class, when = "cat")}, key = "kind")
+    @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = {"dog", "hound"}), @OneOfMapping(type = Cat.class, when = "cat")}, discriminatorKey = "kind")
     static class Animal extends JsonObject { public String name; }
     static class Dog extends Animal { public boolean barks; }
     static class Cat extends Animal { public int lives; }
@@ -216,15 +216,13 @@ class OneOfIOTest {
     }
 
     @Test
-    void rejectsOneOfOnCreatorParametersOrCreatorBoundFields() {
+    void readsCurrentOneOfOnCreatorParametersAndBoundFields() {
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
-        BindingException field = assertThrows(BindingException.class,
-                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorMemberOneOf.class));
-        assertEquals(true, field.getMessage().contains("creator-bound property"));
-
-        BindingException parameter = assertThrows(BindingException.class,
-                () -> binder.readNode("{\"pet\":{\"species\":\"cat\"}}", CreatorParameterOneOf.class));
-        assertEquals(true, parameter.getMessage().contains("creator parameter"));
+        String json = "{\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9}}";
+        CreatorMemberOneOf field = (CreatorMemberOneOf) binder.readNode(json, CreatorMemberOneOf.class);
+        CreatorParameterOneOf parameter = (CreatorParameterOneOf) binder.readNode(json, CreatorParameterOneOf.class);
+        assertEquals(9, assertInstanceOf(Cat.class, field.pet).lives);
+        assertEquals(9, assertInstanceOf(Cat.class, parameter.pet).lives);
     }
 
     @Test
@@ -276,9 +274,9 @@ class OneOfIOTest {
         assertSame(dog.requirePojoInfo(), dog.requirePojoInfo());
     }
 
-    @OneOf(key = "kind", mappings = {@OneOfMapping(type = NestedDog.class, when = "nested")})
+    @OneOf(discriminatorKey = "kind", mappings = {@OneOfMapping(type = NestedDog.class, when = "nested")})
     static class NestedBase {
-        @OneOf(key = "species", mappings = {
+        @OneOf(discriminatorKey = "species", mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
         })
@@ -288,24 +286,24 @@ class OneOfIOTest {
         public Animal byKind;
         public java.util.List<Animal> pets;
         public java.util.Map<String, Animal> byName;
-        @OneOf(path = "$.meta.kind", mappings = {
+        @OneOf(discriminatorPath = "$.meta.kind", mappings = {
                 @OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")
         })
         public Animal byPath;
     }
-    @OneOf(key = "kind", mappings = {@OneOfMapping(type = ParentNestedDog.class, when = "nested")})
+    @OneOf(discriminatorKey = "kind", mappings = {@OneOfMapping(type = ParentNestedDog.class, when = "nested")})
     static class ParentNestedBase { }
     static class ParentNestedDog extends ParentNestedBase {
         public String species;
-        @OneOf(scope = OneOf.Scope.PARENT, key = "species",
+        @OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "species",
                 mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
                             @OneOfMapping(type = Cat.class, when = "cat")})
         public Animal pet;
     }
 
     static class CreatorMemberOneOf {
-        @OneOf(key = "species", mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
+        @OneOf(discriminatorKey = "species", mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
                 @OneOfMapping(type = Cat.class, when = "cat")})
         private final Animal pet;
 
@@ -319,14 +317,14 @@ class OneOfIOTest {
         private final Animal pet;
 
         @NodeCreator
-        CreatorParameterOneOf(@NodeProperty("pet") @OneOf(key = "species",
+        CreatorParameterOneOf(@NodeProperty("pet") @OneOf(discriminatorKey = "species",
                 mappings = {@OneOfMapping(type = Dog.class, when = "dog"),
                             @OneOfMapping(type = Cat.class, when = "cat")}) Animal pet) {
             this.pet = pet;
         }
     }
 
-    @OneOf(key = "kind", mappings = {
+    @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = TreeLeaf.class, when = "leaf"),
             @OneOfMapping(type = TreeBranch.class, when = "branch")
     })
@@ -342,7 +340,7 @@ class OneOfIOTest {
     }
 
     static class MapHolder {
-        @OneOf(key = "kind", mappings = {@OneOfMapping(type = java.util.LinkedHashMap.class, when = "map")})
+        @OneOf(discriminatorKey = "kind", mappings = {@OneOfMapping(type = java.util.LinkedHashMap.class, when = "map")})
         public java.util.Map<String, Object> payload;
         public int after;
     }
@@ -353,29 +351,29 @@ class OneOfIOTest {
     static class Parent {
         public String kind;
         @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
-                key = "kind", scope = OneOf.Scope.PARENT) public Animal pet;
+                discriminatorKey = "kind", scope = OneOf.Scope.PARENT) public Animal pet;
     }
     static class FallbackContainer {
         @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
-                key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
+                discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
         public int after;
     }
     static class PathContainer {
         @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
-                path = "$.meta.kind") public Animal pet;
+                discriminatorPath = "$.meta.kind") public Animal pet;
         public int after;
     }
     static class PathFallbackContainer {
         @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog"), @OneOfMapping(type = Cat.class, when = "cat")},
-                path = "$.meta.kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
+                discriminatorPath = "$.meta.kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
         public int after;
     }
     static class AnimalList { public java.util.List<Animal> pets; }
     static class CodecContainer {
-        @OneOf(mappings = {@OneOfMapping(type = CodecDog.class, when = "dog")}, key = "kind")
+        @OneOf(mappings = {@OneOfMapping(type = CodecDog.class, when = "dog")}, discriminatorKey = "kind")
         public CodecAnimal pet;
     }
-    @OneOf(mappings = {@OneOfMapping(type = CodecDog.class, when = "dog")}, key = "kind")
+    @OneOf(mappings = {@OneOfMapping(type = CodecDog.class, when = "dog")}, discriminatorKey = "kind")
     static class CodecAnimal extends JsonObject {
         @NodeProperty(codecName = "epochMillis") public Instant createdAt;
         @NodeProperty(codecName = "") public NullCode marker;

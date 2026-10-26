@@ -2,9 +2,6 @@ package org.sjf4j.backend.jackson3.binding;
 
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.StreamingIO;
-import org.sjf4j.exception.BindingException;
-import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
@@ -13,10 +10,7 @@ import tools.jackson.core.ObjectWriteContext;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.core.StreamWriteFeature;
 import tools.jackson.core.TokenStreamFactory;
-import tools.jackson.core.io.SegmentedStringWriter;
-import tools.jackson.core.util.ByteArrayBuilder;
 import tools.jackson.core.json.JsonFactory;
-import tools.jackson.core.util.BufferRecycler;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -131,75 +125,4 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
         return new Jackson3Writer(generator);
     }
 
-    /**
-     * Creates an in-memory writer backed by a pooled Jackson buffer.
-     * @return a writer that owns the pooled buffer
-     * @throws IOException if the generator cannot be created
-     */
-    public Jackson3Writer createWriter() throws IOException {
-        BufferRecycler recycler = factory._getBufferRecycler();
-        SegmentedStringWriter output = new SegmentedStringWriter(recycler);
-        try {
-            return new Jackson3Writer(factory.createGenerator(WRITE_CONTEXT, output), output, recycler);
-        } catch (RuntimeException e) {
-            recycler.releaseToPool();
-            throw e;
-        }
-    }
-
-    /**
-     * Creates an owned UTF-8 writer using Jackson's pooled output buffer.
-     * @return a writer that owns the pooled buffer
-     * @throws IOException if the generator cannot be created
-     */
-    public Jackson3Writer createWriterUtf8() throws IOException {
-        BufferRecycler recycler = factory._getBufferRecycler();
-        ByteArrayBuilder output = new ByteArrayBuilder(recycler);
-        try {
-            return new Jackson3Writer(factory.createGenerator(WRITE_CONTEXT, output), output, recycler);
-        } catch (RuntimeException e) {
-            output.release();
-            recycler.releaseToPool();
-            throw e;
-        }
-    }
-
-    @Override
-    public String writeNodeAsString(Object node) {
-        final BufferRecycler recycler = factory._getBufferRecycler();
-        final SegmentedStringWriter output = new SegmentedStringWriter(recycler);
-
-        try {
-            try (JsonGenerator generator = factory.createGenerator(WRITE_CONTEXT, output)) {
-                StreamingIO.writeNode(new Jackson3Writer(generator), node, context);
-            }
-            return output.getAndClear();
-        } catch (BindingException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON", e);
-        } finally {
-            recycler.releaseToPool();
-        }
-    }
-
-    @Override
-    public byte[] writeNodeAsBytes(Object node) {
-        final BufferRecycler recycler = factory._getBufferRecycler();
-        final ByteArrayBuilder output = new ByteArrayBuilder(recycler);
-
-        try {
-            try (JsonGenerator generator = factory.createGenerator(WRITE_CONTEXT, output)) {
-                StreamingIO.writeNode(new Jackson3Writer(generator), node, context);
-            }
-            return output.toByteArray();
-        } catch (BindingException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON", e);
-        } finally {
-            output.release();
-            recycler.releaseToPool();
-        }
-    }
 }

@@ -18,7 +18,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.binding.FastStringReader;
-import org.sjf4j.binding.FastStringWriter;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -166,16 +165,6 @@ public class JsonpBinderBenchmark {
         return state.binder.readNode(state.document, Map.class);
     }
 
-
-
-    @Benchmark
-    public String write_tree_native(BenchmarkState state) {
-        FastStringWriter output = new FastStringWriter();
-        try (JsonWriter writer = state.provider.createWriter(output)) {
-            writer.write(state.nativeValue);
-        }
-        return output.toString();
-    }
 
     @Benchmark
     public String write_tree_binder(BenchmarkState state) {

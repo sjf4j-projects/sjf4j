@@ -39,10 +39,10 @@ import java.util.function.Function;
  * <p>Read operations do not actively write the input graph. Invoked getters,
  * registered functions, and extensions can have side effects. Single-location
  * reads return {@code null} for both a missing location and an explicit null value; use
- * {@link #contains(Object)} to distinguish them. {@link #find(Object)} omits
- * missing locations while retaining explicit null matches. {@link #eval(Object)}
- * returns a single result for a single path, a list for non-single paths, or a
- * terminal function result.
+ * {@link #contains(Object)} to distinguish them. {@link #find(Object, Class)} omits
+ * missing locations while retaining explicit null matches. {@link #eval(Object, Class)}
+ * returns a value, a list, or a terminal function result; a single-element
+ * multi-match list may be unwrapped.
  *
  * <p>Writes mutate only addressed containers in the supplied graph; they do not
  * replace a root reference. Object writes upsert {@link Map}/{@link JsonObject}
@@ -281,8 +281,8 @@ public class JsonPath {
      * Returns the value at a single-location path.
      * <p>
      * A missing location and an explicit null value both return {@code null}.
-     * Broad path tokens are not collected by this method; use {@link #find(Object)}
-     * or {@link #eval(Object)} for multi-match evaluation.
+     * Broad path tokens are not collected by this method; use {@link #find(Object, Class)}
+     * or {@link #eval(Object, Class)} for multi-match evaluation.
      *
      * @param container the JSON container to search
      * @return the matched node, or {@code null} when unresolved
@@ -938,6 +938,9 @@ public class JsonPath {
     public <T> List<T> find(Object container, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Asserts.notNull(container, "container");
+        if (tail() instanceof PathSegment.Function) {
+            throw new NodeException("function path '" + this + "' cannot be used with find()");
+        }
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -966,6 +969,9 @@ public class JsonPath {
     public <T> List<T> findAs(Object container, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Asserts.notNull(container, "container");
+        if (tail() instanceof PathSegment.Function) {
+            throw new NodeException("function path '" + this + "' cannot be used with findAs()");
+        }
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
             Object value = _findOne(container, 1, segments.length);
@@ -1444,7 +1450,7 @@ public class JsonPath {
      * existing locations whose value is {@code null} return {@code null}. Public
      * APIs that collapse missing and null (for example {@link #getNode(Object)})
      * translate {@code MISSING} back to {@code null}; query APIs such as
-     * {@link #find(Object)} use the sentinel to omit missing locations while
+     * {@link #find(Object, Class)} use the sentinel to omit missing locations while
      * preserving present-null matches.
      */
     Object _findOne(Object container, int startIdx, int endExclusive) {

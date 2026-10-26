@@ -1,4 +1,4 @@
-package org.sjf4j.testbench.processor;
+package org.sjf4j.testbench.binding;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -26,7 +26,7 @@ public class RuntimeOneOfMatcherTest {
 
     private static final UUID ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 
-    @OneOf(key = "kind", mappings = @OneOfMapping(type = CreatorPet.class, when = "pet"))
+    @OneOf(discriminatorKey = "kind", mappings = @OneOfMapping(type = CreatorPet.class, when = "pet"))
     public interface Pet {}
 
     public static final class CreatorPet implements Pet {
@@ -48,7 +48,7 @@ public class RuntimeOneOfMatcherTest {
         public int after;
     }
 
-    @OneOf(key = "kind", mappings = @OneOfMapping(type = PlainPet.class, when = "plain"))
+    @OneOf(discriminatorKey = "kind", mappings = @OneOfMapping(type = PlainPet.class, when = "plain"))
     public interface PlainVariant {}
 
     public static final class PlainPet implements PlainVariant {

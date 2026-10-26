@@ -15,15 +15,20 @@ import jakarta.json.Json;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson2.binding.Jackson2Writer;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3Writer;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.binding.PooledStringWriter;
+import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.testbench.binding.handwritten.Jackson2HandPojoSerializedWriter;
 import org.sjf4j.testbench.binding.handwritten.Jackson3HandPojoSerializedWriter;
 import org.sjf4j.testbench.model.User;
@@ -42,6 +47,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -97,6 +103,7 @@ public class CompiledWriteBenchmark {
     private static final JsonpBinder JSONP_RUNTIME = new JsonpBinder();
     private static final SimpleJsonBinder SIMPLE_RUNTIME = new SimpleJsonBinder();
 
+    private static final RuntimeContext DIRECT_CONTEXT = RuntimeContext.EMPTY;
     private static final URI URI_VALUE = URI.create("https://example.test/person?id=123");
     private static final User USER;
     private static final Map<String, Object> MAP;
@@ -226,6 +233,88 @@ public class CompiledWriteBenchmark {
         check("jackson2 direct wrapped utf8", json_jackson2_pojo_utf8_direct_wrapped());
         check("jackson3 direct wrapped string", json_jackson3_pojo_string_direct_wrapped());
         check("jackson3 direct wrapped utf8", json_jackson3_pojo_utf8_direct_wrapped());
+
+        // All three paths should now emit exactly the same JSON bytes (not
+        // merely equal object trees): property order, null policy and escaping.
+        checkExact("jackson2 direct string", JACKSON2_COMPILED.writePojo(USER),
+                json_jackson2_pojo_string_direct());
+        checkExact("jackson2 direct wrapped string", JACKSON2_COMPILED.writePojo(USER),
+                json_jackson2_pojo_string_direct_wrapped());
+        checkExact("jackson2 direct utf8", JACKSON2_COMPILED.writePojoUtf8(USER),
+                json_jackson2_pojo_utf8_direct());
+        checkExact("jackson2 direct wrapped utf8", JACKSON2_COMPILED.writePojoUtf8(USER),
+                json_jackson2_pojo_utf8_direct_wrapped());
+        checkExact("jackson3 direct string", JACKSON3_COMPILED.writePojo(USER),
+                json_jackson3_pojo_string_direct());
+        checkExact("jackson3 direct wrapped string", JACKSON3_COMPILED.writePojo(USER),
+                json_jackson3_pojo_string_direct_wrapped());
+        checkExact("jackson3 direct utf8", JACKSON3_COMPILED.writePojoUtf8(USER),
+                json_jackson3_pojo_utf8_direct());
+        checkExact("jackson3 direct wrapped utf8", JACKSON3_COMPILED.writePojoUtf8(USER),
+                json_jackson3_pojo_utf8_direct_wrapped());
+
+        verifyNullPolicyParity();
+    }
+
+    private static void checkExact(String label, String expected, String actual) {
+        if (!expected.equals(actual)) {
+            throw new IllegalStateException(label + " output differs from Compiled at char "
+                    + firstDifference(expected, actual));
+        }
+    }
+
+    private static void checkExact(String label, byte[] expected, byte[] actual) {
+        if (!Arrays.equals(expected, actual)) {
+            throw new IllegalStateException(label + " bytes differ from Compiled");
+        }
+    }
+
+    private static int firstDifference(String a, String b) {
+        int n = Math.min(a.length(), b.length());
+        for (int i = 0; i < n; i++) if (a.charAt(i) != b.charAt(i)) return i;
+        return n;
+    }
+
+    private static void verifyNullPolicyParity() throws IOException {
+        User example = new User();
+        example.setUsername("present");
+        example.setAddress(new org.sjf4j.testbench.model.Address(
+                null, "City", null, null, null));
+        example.setTags(Arrays.asList("tag", null));
+        example.setFriends(Arrays.asList(
+                new org.sjf4j.testbench.model.Friend(7L, null, 9L, true), null));
+
+        for (boolean includeNulls : new boolean[]{true, false}) {
+            RuntimeContext ctx = new RuntimeContext(includeNulls);
+            String j2 = CompiledInstances.create(Jackson2CompiledBinder.class, ctx)
+                    .writePojo(example);
+            String j3 = CompiledInstances.create(Jackson3CompiledBinder.class, ctx)
+                    .writePojo(example);
+
+            java.io.StringWriter out2 = new java.io.StringWriter();
+            try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(out2)) {
+                Jackson2HandPojoSerializedWriter.writeUser(g, example, ctx);
+            }
+            checkExact("jackson2 includeNulls=" + includeNulls, j2, out2.toString());
+
+            java.io.StringWriter out3 = new java.io.StringWriter();
+            try (tools.jackson.core.JsonGenerator g = JACKSON3_DIRECT_FACTORY.createGenerator(
+                    JACKSON3_DIRECT_CONTEXT, out3)) {
+                Jackson3HandPojoSerializedWriter.writeUser(g, example, ctx);
+            }
+            checkExact("jackson3 includeNulls=" + includeNulls, j3, out3.toString());
+
+            com.fasterxml.jackson.databind.JsonNode tree = JACKSON2_NATIVE.readTree(j2);
+            if (!tree.path("tags").get(1).isNull()
+                    || !tree.path("friends").get(1).isNull()
+                    || tree.path("address").path("city").asText().isEmpty()) {
+                throw new IllegalStateException("Array null elements or address lost");
+            }
+            if (!includeNulls && (tree.has("email") || tree.path("address").has("street")
+                    || tree.path("friends").get(0).has("name"))) {
+                throw new IllegalStateException("Null-valued properties must be omitted");
+            }
+        }
     }
 
     private static void checkUri(String label, String json) throws IOException {
@@ -378,7 +467,7 @@ public class CompiledWriteBenchmark {
         SegmentedStringWriter output = new SegmentedStringWriter(recycler);
         try {
             try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(output)) {
-                Jackson2HandPojoSerializedWriter.writeUser(g, USER);
+                Jackson2HandPojoSerializedWriter.writeUser(g, USER, DIRECT_CONTEXT);
             }
             return output.getAndClear();
         } finally {
@@ -393,7 +482,7 @@ public class CompiledWriteBenchmark {
         try {
             try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(
                     output, JsonEncoding.UTF8)) {
-                Jackson2HandPojoSerializedWriter.writeUser(g, USER);
+                Jackson2HandPojoSerializedWriter.writeUser(g, USER, DIRECT_CONTEXT);
             }
             return output.toByteArray();
         } finally {
@@ -406,19 +495,25 @@ public class CompiledWriteBenchmark {
     // same SJF4J Writer creation, flush and release lifecycle as Compiled.
     @Benchmark
     public String json_jackson2_pojo_string_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriter()) {
-            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+        PooledStringWriter output = new PooledStringWriter();
+        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
+            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toString();
+            return output.toString();
+        } finally {
+            output.recycle();
         }
     }
 
     @Benchmark
     public byte[] json_jackson2_pojo_utf8_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson2.binding.Jackson2Writer writer = JACKSON2_RUNTIME.createWriterUtf8()) {
-            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+        PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
+            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toBytes();
+            return output.toByteArray();
+        } finally {
+            output.recycle();
         }
     }
 
@@ -513,7 +608,7 @@ public class CompiledWriteBenchmark {
         try {
             try (tools.jackson.core.JsonGenerator g = JACKSON3_DIRECT_FACTORY.createGenerator(
                     JACKSON3_DIRECT_CONTEXT, output)) {
-                Jackson3HandPojoSerializedWriter.writeUser(g, USER);
+                Jackson3HandPojoSerializedWriter.writeUser(g, USER, DIRECT_CONTEXT);
             }
             return output.getAndClear();
         } finally {
@@ -530,7 +625,7 @@ public class CompiledWriteBenchmark {
         try {
             try (tools.jackson.core.JsonGenerator g = JACKSON3_DIRECT_FACTORY.createGenerator(
                     JACKSON3_DIRECT_CONTEXT, output)) {
-                Jackson3HandPojoSerializedWriter.writeUser(g, USER);
+                Jackson3HandPojoSerializedWriter.writeUser(g, USER, DIRECT_CONTEXT);
             }
             return output.toByteArray();
         } finally {
@@ -541,19 +636,25 @@ public class CompiledWriteBenchmark {
 
     @Benchmark
     public String json_jackson3_pojo_string_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriter()) {
-            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+        PooledStringWriter output = new PooledStringWriter();
+        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
+            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toString();
+            return output.toString();
+        } finally {
+            output.recycle();
         }
     }
 
     @Benchmark
     public byte[] json_jackson3_pojo_utf8_direct_wrapped() throws IOException {
-        try (org.sjf4j.backend.jackson3.binding.Jackson3Writer writer = JACKSON3_RUNTIME.createWriterUtf8()) {
-            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER);
+        PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
+        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
+            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
             writer.flush();
-            return writer.toBytes();
+            return output.toByteArray();
+        } finally {
+            output.recycle();
         }
     }
 
