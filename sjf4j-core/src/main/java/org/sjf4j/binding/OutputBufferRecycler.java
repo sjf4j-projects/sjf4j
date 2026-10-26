@@ -5,13 +5,16 @@ import java.lang.ref.SoftReference;
 /**
  * Per-thread byte[] and char[] recycling, with exclusive array checkout.
  *
- * <p>Each thread retains one strongly referenced array up to 256K and one
- * softly referenced larger array of each kind. Only arrays actually allocated
- * by a writer are recycled; no standby buffers are allocated.</p>
+ * <p>Each thread retains one strongly referenced array up to 64K and one
+ * softly referenced larger array of each kind. The 256K threshold for growth
+ * strategy and direct String writes is independent of the cache limit.
+ * Only previously used arrays are recycled; no standby buffers are allocated.</p>
  */
 final class OutputBufferRecycler {
 
     static final int INITIAL_CAPACITY = 1024;
+    static final int MAX_STRONG_RETAINED_CAPACITY = 64 * 1024;
+    // Write/growth crossover, not the strong-cache retention limit.
     static final int MAX_RETAINED_CAPACITY = 256 * 1024;
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
@@ -78,7 +81,7 @@ final class OutputBufferRecycler {
     }
 
     void recycleBytes(byte[] array) {
-        if (array.length <= MAX_RETAINED_CAPACITY) {
+        if (array.length <= MAX_STRONG_RETAINED_CAPACITY) {
             if (bytes == null || bytes.length < array.length) bytes = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
@@ -88,7 +91,7 @@ final class OutputBufferRecycler {
     }
 
     void recycleChars(char[] array) {
-        if (array.length <= MAX_RETAINED_CAPACITY) {
+        if (array.length <= MAX_STRONG_RETAINED_CAPACITY) {
             if (chars == null || chars.length < array.length) chars = array;
         } else {
             LargeBuffers holder = largeBuffers(true);
