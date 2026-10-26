@@ -53,7 +53,7 @@ class Jackson3BinderTest {
         } finally {
             chars.recycle();
         }
-        assertEquals("\"" + value + "\"", detached);
+        assertEquals(value, binder.readNode(detached, String.class));
 
         PooledByteArrayOutputStream bytes = new PooledByteArrayOutputStream();
         byte[] detachedUtf8;
@@ -66,12 +66,12 @@ class Jackson3BinderTest {
         } finally {
             bytes.recycle();
         }
-        assertEquals(detached, new String(detachedUtf8, StandardCharsets.UTF_8));
+        assertEquals(value, binder.readNode(detachedUtf8, String.class));
 
         // Reusing the pool must not mutate previously returned results.
         binder.writeNodeAsBytes(java.util.Map.of("next", "value"));
-        assertEquals("\"" + value + "\"", detached);
-        assertEquals(detached, new String(detachedUtf8, StandardCharsets.UTF_8));
+        assertEquals(value, binder.readNode(detached, String.class));
+        assertEquals(value, binder.readNode(detachedUtf8, String.class));
     }
 
     @Test
