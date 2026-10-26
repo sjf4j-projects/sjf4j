@@ -544,7 +544,7 @@ class PooledOutputTest {
 
     @Test
     void byteGrowthUsesDoublingForSmallAppendsAndExactForBulk() {
-        assertEquals(262144, OutputBufferRecycler.growBytesCapacity(131072, 120000, 240000));
+        assertEquals(262144, OutputBufferRecycler.growBytesCapacity(131072, 120000, 180000));
         assertEquals(300000, OutputBufferRecycler.growBytesCapacity(262144, 0, 300000));
         assertEquals(524288, OutputBufferRecycler.growBytesCapacity(262144, 262144, 262145));
         assertEquals(1048576, OutputBufferRecycler.growBytesCapacity(524288, 524288, 524289));
