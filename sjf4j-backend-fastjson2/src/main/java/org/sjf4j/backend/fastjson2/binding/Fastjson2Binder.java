@@ -84,13 +84,19 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     @Override
     public Fastjson2Parser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Fastjson2Parser(JSONReader.of(input, readerContext));
+        Reader protectedInput = new FilterReader(input) {
+            @Override public void close() { /* Caller owns input. */ }
+        };
+        return new Fastjson2Parser(JSONReader.of(protectedInput, readerContext));
     }
 
     @Override
     public Fastjson2Parser createParser(InputStream input) {
         Asserts.notNull(input, "input");
-        return new Fastjson2Parser(JSONReader.of(input, StandardCharsets.UTF_8, readerContext));
+        InputStream protectedInput = new FilterInputStream(input) {
+            @Override public void close() { /* Caller owns input. */ }
+        };
+        return new Fastjson2Parser(JSONReader.of(protectedInput, StandardCharsets.UTF_8, readerContext));
     }
 
     @Override

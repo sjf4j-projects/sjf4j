@@ -10,6 +10,7 @@ import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -31,7 +32,7 @@ class Fastjson2BinderTest {
 
     @Test
     void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
-        try (Fastjson2Parser reader = new Fastjson2Parser(JSONReader.of(
+        Fastjson2Parser reader = new Fastjson2Parser(JSONReader.of(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"))) {
 
@@ -50,26 +51,34 @@ class Fastjson2BinderTest {
             assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
             assertEquals(StreamingParser.Token.EOF, reader.peekToken());
             reader.endRead();
+        } finally {
+            reader.release();
         }
     }
 
     @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() {
-        try (Fastjson2Parser reader = new Fastjson2Parser(JSONReader.of(""))) {
+        Fastjson2Parser reader = new Fastjson2Parser(JSONReader.of(""));
+        try {
             BindingException error = assertThrows(BindingException.class, reader::readRaw);
             assertEquals("unexpected token 'EOF'", error.getMessage());
+        } finally {
+            reader.release();
         }
     }
 
     @Test
     void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
-        try (Fastjson2Parser reader = new Fastjson2Parser(JSONReader.of("[{\"id\":7},\"next\"]"))) {
+        Fastjson2Parser reader = new Fastjson2Parser(JSONReader.of("[{\"id\":7},\"next\"]"));
+        try {
             reader.startArray();
             assertEquals(StreamingParser.Token.OBJECT_START, reader.peekToken());
             assertEquals(7, ((Map<?, ?>) reader.readRaw()).get("id"));
             assertEquals(StreamingParser.Token.STRING, reader.peekToken());
             assertEquals("next", reader.readString());
             reader.endArray();
+        } finally {
+            reader.release();
         }
     }
 
@@ -257,8 +266,11 @@ try {
     @Test
     void wrapsSuppliedNativeStreamsAndRejectsNullDependencies() throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder();
-        try (Fastjson2Parser reader = binder.createParser(JSONReader.of("null"))) {
+        Fastjson2Parser reader = binder.createParser(JSONReader.of("null"));
+        try {
             assertTrue(reader.nextIfNull());
+        } finally {
+            reader.release();
         }
         assertThrows(NullPointerException.class, () -> new Fastjson2Binder(null, JSONFactory.createWriteContext()));
         assertThrows(NullPointerException.class, () -> new Fastjson2Binder(JSONFactory.createReadContext(), null));
@@ -326,6 +338,34 @@ try {
 
         @NodeProperty(value = "name", aliases = "legacy_name")
         public String name;
+    }
+
+
+    @Test
+    void parserReleasePreservesCallerOwnedReaderAndInputStream() {
+        Fastjson2Binder binder = new Fastjson2Binder();
+        boolean[] readerClosed = {false};
+        StringReader source = new StringReader("{\"id\":7}") {
+            @Override
+            public void close() {
+                readerClosed[0] = true;
+                super.close();
+            }
+        };
+        assertEquals(7, ((Map<?, ?>) binder.readNode(source, Map.class)).get("id"));
+        assertFalse(readerClosed[0]);
+
+        boolean[] streamClosed = {false};
+        ByteArrayInputStream stream = new ByteArrayInputStream(
+                "{\"id\":7}".getBytes(StandardCharsets.UTF_8)) {
+            @Override
+            public void close() throws IOException {
+                streamClosed[0] = true;
+                super.close();
+            }
+        };
+        assertEquals(7, ((Map<?, ?>) binder.readNode(stream, Map.class)).get("id"));
+        assertFalse(streamClosed[0]);
     }
 
     static class TrackingWriter extends StringWriter {
