@@ -31,7 +31,7 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJdk|charsJackson|charsChunksPooled|bytesPooled|bytesJdk|bytesJackson|bytesChunksPooled)
+          java -jar "$jar" '.*OutputBufferBenchmark\.(charsPooled|charsJdk|charsJackson|charsChunksPooled|bytesPooled|bytesJdk|bytesJackson|bytesChunksPooled)$' \
             -bm avgt -tu us -t 1 -f 1 -wi 1 -w 100ms -i 2 -r 120ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
