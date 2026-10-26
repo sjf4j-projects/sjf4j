@@ -25,7 +25,7 @@ public final class PooledByteArrayOutputStream extends OutputStream {
         byte[] value = active();
         if (required > value.length) {
             byte[] previous = value;
-            byte[] next = required > OutputBufferRecycler.MAX_RETAINED_CAPACITY
+            byte[] next = required > OutputBufferRecycler.MAX_STRONG_RETAINED_CAPACITY
                     ? recycler.takeLargeBytes(required) : null;
             if (next == null)
                 next = new byte[OutputBufferRecycler.growBytesCapacity(previous.length, count, required)];
