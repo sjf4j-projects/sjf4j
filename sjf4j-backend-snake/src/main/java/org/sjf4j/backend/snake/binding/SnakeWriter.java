@@ -196,11 +196,11 @@ public final class SnakeWriter extends StreamingWriter {
     }
 
     /**
-     * Completes buffered output without closing the caller-owned writer.
+     * Emitter flushes the output on DocumentEndEvent and StreamEndEvent.
+     * The caller owns the output writer.
      */
     @Override
     public void close() throws IOException {
-        output.flush();
     }
 
 
