@@ -1,10 +1,7 @@
 name: Recyclable output buffer microbenchmark
 
-# Branch-only benchmark experiment. Full Java CI runs separately.
+# Manual only; buffer benchmarks must not run on every code push.
 on:
-  push:
-    branches:
-      - perf/recyclable-memory-output-bench
   workflow_dispatch:
 
 concurrency:
