@@ -132,6 +132,15 @@ public class SegmentedOutputBenchmark {
     }
 
     @Benchmark
+    public String softContiguous() {
+        SoftContiguousOutputWriter out = new SoftContiguousOutputWriter();
+        try {
+            out.write(data);
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
+    }
+
+    @Benchmark
     public String chunksSoftContiguous() {
         SoftContiguousOutputWriter out = new SoftContiguousOutputWriter();
         try {
