@@ -621,7 +621,7 @@ class TypeRegistryMetadataTest {
 
         CreatorInfo badNoArgs = new CreatorInfo(NoArgsPojo.class, null, null,
                 null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         assertThrowsExactly(BindingException.class, badNoArgs::newPojoNoArgs);
         assertThrowsExactly(BindingException.class, () -> badNoArgs.newPojoWithArgs(new Object[0]));
     }
