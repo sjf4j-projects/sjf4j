@@ -191,7 +191,9 @@ public final class OneOfIO {
                     if (argIdx >= 0) {
                         ValueInfo codec = ci.argValueCodecs[argIdx];
                         Object value;
-                        if (codec != null) {
+                        if (ci.argOneOfInfos[argIdx] != null) {
+                            value = readOneOf(reader, ci.argOneOfInfos[argIdx], context);
+                        } else if (codec != null) {
                             value = StreamingIO.readValueCodec(reader, codec, context);
                         } else {
                             LazyTypeInfo lazy = ci.argTypeInfos[argIdx];
@@ -290,7 +292,9 @@ public final class OneOfIO {
         if (argIdx >= 0) {
             ValueInfo codec = ci.argValueCodecs[argIdx];
             Object value;
-            if (codec != null) {
+            if (ci.argOneOfInfos[argIdx] != null) {
+                value = _convertRawOneOf(rawValue, ci.argOneOfInfos[argIdx], context);
+            } else if (codec != null) {
                 if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
                     rawValue = Numbers.to((Number) rawValue, codec.rawClazz);
                 }

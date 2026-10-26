@@ -140,18 +140,6 @@ public final class ReflectUtil {
             else return null;
         }
 
-        // Enforce unsupported Creator-member annotations after candidate
-        // detection; analyzeCreator failures may be intentionally ignored while
-        // testing whether a class can be bound as a POJO.
-        if (creatorInfo.argsCreator != null) {
-            for (Parameter parameter : creatorInfo.argsCreator.getParameters()) {
-                if (parameter.isAnnotationPresent(OneOf.class)) {
-                    throw new BindingException("@OneOf is not supported on creator parameter '"
-                            + parameter.getName() + "' in " + clazz.getName());
-                }
-            }
-        }
-
         NodeObject nodeObject = clazz.getAnnotation(NodeObject.class);
         NamingStrategy namingStrategy = null;
         PropertyStrategy propertyStrategy = PropertyStrategy.BEAN_FIELD;
@@ -228,12 +216,6 @@ public final class ReflectUtil {
             _assertCompatiblePropertyTypes(family, clazz);
 
             String finalName = family.resolveFinalName(clazz, namingStrategy);
-            // A creator-bound field cannot override the creator parameter's
-            // declared type with a member-level OneOf discriminator.
-            if (family.oneOfInfo != null && creatorInfo.getArgIndexOrAlias(finalName) >= 0) {
-                throw new BindingException("@OneOf is not supported on creator-bound property '"
-                        + finalName + "' in " + clazz.getName());
-            }
             if (creatorInfo.argIndexes != null) {
                 Integer implicitIdx = creatorInfo.argIndexes.get(family.implicitName);
                 if (implicitIdx != null && !finalName.equals(family.implicitName)) {
@@ -695,6 +677,7 @@ public final class ReflectUtil {
         Supplier<?> noArgsLambdaCtor = null;
         String[] argValueFormats = null;
         ValueInfo[] argValueCodecs = null;
+        OneOfInfo[] argOneOfInfos = null;
 
         // 1. Find defined creator
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
@@ -779,6 +762,7 @@ public final class ReflectUtil {
             argNames = new String[params.length];
             argValueFormats = new String[params.length];
             argValueCodecs = new ValueInfo[params.length];
+            argOneOfInfos = new OneOfInfo[params.length];
             for (int i = 0; i < params.length; i++) {
                 String name = getExplicitName(params[i]);
                 if (name == null) {
@@ -794,6 +778,34 @@ public final class ReflectUtil {
                 String codecPattern = getCodecPattern(params[i]);
                 argValueFormats[i] = codecName;
                 argValueCodecs[i] = _resolvePatternedValueCodec(Types.rawBox(argTypes[i]), codecName, codecPattern);
+                OneOf parameterOneOf = params[i].getAnnotation(OneOf.class);
+                OneOf fieldOneOf = null;
+                // Record component annotations may be propagated to both the
+                // constructor parameter and its backing field.
+                for (Field field : clazz.getDeclaredFields()) {
+                    if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) continue;
+                    String fieldName = getExplicitName(field);
+                    if (fieldName == null) fieldName = getNamingStrategy(clazz).translate(field.getName());
+                    if (!name.equals(fieldName)) continue;
+                    fieldOneOf = field.getAnnotation(OneOf.class);
+                    break;
+                }
+                if (parameterOneOf != null && fieldOneOf != null && !parameterOneOf.equals(fieldOneOf)) {
+                    throw new BindingException("conflicting @OneOf on creator parameter and field '"
+                            + name + "' in " + clazz.getName());
+                }
+                OneOf explicitOneOf = parameterOneOf != null ? parameterOneOf : fieldOneOf;
+                if (explicitOneOf != null) {
+                    if (explicitOneOf.scope() != OneOf.Scope.CURRENT) {
+                        throw new BindingException("creator @OneOf supports only scope=CURRENT: '"
+                                + name + "' in " + clazz.getName());
+                    }
+                    if (argValueCodecs[i] != null) {
+                        throw new BindingException("creator argument '" + name
+                                + "' cannot declare both @OneOf and a value codec");
+                    }
+                    argOneOfInfos[i] = analyzeOneOf(Types.rawBox(argTypes[i]), explicitOneOf);
+                }
             }
             argIndexes = createArgIndexes(argNames);
         }
@@ -836,7 +848,7 @@ public final class ReflectUtil {
         return new CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,
                 creator, creatorHandle,
                 creatorLambda1, creatorLambda2, creatorLambda3, creatorLambda4, creatorLambda5,
-                argNames, argTypes, argValueFormats, argValueCodecs, argIndexes, aliasMap);
+                argNames, argTypes, argValueFormats, argValueCodecs, argOneOfInfos, argIndexes, aliasMap);
     }
 
 
