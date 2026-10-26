@@ -102,7 +102,19 @@ public final class PooledStringWriter extends Writer {
         int end = nextCount(length);
         StringBuilder builder = large;
         if (builder != null || end > OutputBufferRecycler.MAX_RETAINED_CAPACITY) {
-            if (builder == null) builder = switchToLarge(end);
+            if (builder == null) {
+                // Reuse the source String's compact coder on a first large write.
+                // StringBuilder(int) always starts in Latin-1 and would inflate for UTF-16.
+                if (count == 0 && offset == 0 && length == value.length()) {
+                    char[] previous = active();
+                    large = new StringBuilder(value);
+                    buffer = null;
+                    recycler.recycleChars(previous);
+                    count = end;
+                    return;
+                }
+                builder = switchToLarge(end);
+            }
             builder.append(value, offset, offset + length);
         } else {
             value.getChars(offset, offset + length, ensureCapacity(end), count);
