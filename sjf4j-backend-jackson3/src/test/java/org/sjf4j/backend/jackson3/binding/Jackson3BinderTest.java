@@ -2,6 +2,8 @@ package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.binding.PooledStringWriter;
+import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -34,6 +36,43 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Jackson3BinderTest {
+
+    @Test
+    void pooledOutputUsesExternallyOwnedSinkAndRetainsDetachedResult() throws Exception {
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
+        String value = "text:".repeat(16_384) + "中文💡";
+
+        PooledStringWriter chars = new PooledStringWriter();
+        String detached;
+        try {
+            try (Jackson3Writer writer = binder.createWriter(chars)) {
+                writer.writeStringValue(value);
+                writer.flush();
+            }
+            detached = chars.getAndRecycle();
+        } finally {
+            chars.recycle();
+        }
+        assertEquals("\"" + value + "\"", detached);
+
+        PooledByteArrayOutputStream bytes = new PooledByteArrayOutputStream();
+        byte[] detachedUtf8;
+        try {
+            try (Jackson3Writer writer = binder.createWriter(bytes)) {
+                writer.writeStringValue(value);
+                writer.flush();
+            }
+            detachedUtf8 = bytes.getAndRecycle();
+        } finally {
+            bytes.recycle();
+        }
+        assertEquals(detached, new String(detachedUtf8, StandardCharsets.UTF_8));
+
+        // Reusing the pool must not mutate previously returned results.
+        binder.writeNodeAsBytes(java.util.Map.of("next", "value"));
+        assertEquals("\"" + value + "\"", detached);
+        assertEquals(detached, new String(detachedUtf8, StandardCharsets.UTF_8));
+    }
 
     @Test
     void isDiscoveredAsTheDefaultJsonBinderProvider() {
