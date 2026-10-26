@@ -56,7 +56,7 @@ public final class StreamingIO {
      * Reads one pending value into the requested class or generic type.
      * The caller owns document start/end and reader lifecycle.
      */
-    public static Object readNode(StreamingReader reader, Type type,
+    public static Object readNode(StreamingParser reader, Type type,
                                   RuntimeContext context) throws IOException {
         Asserts.notNull(reader, "reader");
         Asserts.notNull(type, "type");
@@ -68,7 +68,7 @@ public final class StreamingIO {
     }
 
 
-    static Object readNode(StreamingReader reader, Type type, Class<?> boxed, TypeInfo typeInfo,
+    static Object readNode(StreamingParser reader, Type type, Class<?> boxed, TypeInfo typeInfo,
                            RuntimeContext context) throws IOException {
         try {
             /*
@@ -219,7 +219,7 @@ public final class StreamingIO {
      * Direct path for already-resolved types. A known TypeInfo bypasses all
      * scalar/container checks in readNode; container metadata is handled here.
      */
-    private static Object _readRegistered(StreamingReader reader, Type type,
+    private static Object _readRegistered(StreamingParser reader, Type type,
                                               Class<?> boxed, TypeInfo ti,
                                               RuntimeContext context) throws IOException {
         if (ti.oneOfInfo != null) {
@@ -270,20 +270,20 @@ public final class StreamingIO {
      */
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Object readEnum(StreamingReader reader, Class<?> enumType,
+    public static Object readEnum(StreamingParser reader, Class<?> enumType,
                                   RuntimeContext context) throws IOException {
 
-        StreamingReader.Token token = reader.peekToken();
-        if (token == StreamingReader.Token.NULL) {
+        StreamingParser.Token token = reader.peekToken();
+        if (token == StreamingParser.Token.NULL) {
             reader.nextIfNull();
             return null;
         }
 
-        if (token == StreamingReader.Token.STRING) {
+        if (token == StreamingParser.Token.STRING) {
             return Enum.valueOf((Class<? extends Enum>) enumType, reader.readString());
         }
 
-        if (token == StreamingReader.Token.NUMBER) {
+        if (token == StreamingParser.Token.NUMBER) {
             int ordinal = reader.readIntValue();
             Enum[] values = ((Class<? extends Enum>) enumType).getEnumConstants();
             if (ordinal >= 0 && ordinal < values.length) {
@@ -307,7 +307,7 @@ public final class StreamingIO {
      * an input preference within that shape. Single-shape types avoid peeking,
      * preserving each backend's fused scalar reader.
      */
-    public static Object readValueSet(StreamingReader reader, Type type, Class<?> boxed, ValueSet valueSet,
+    public static Object readValueSet(StreamingParser reader, Type type, Class<?> boxed, ValueSet valueSet,
                                       RuntimeContext context) throws IOException {
         String preferredFormat = context.valueFormat(boxed);
         org.sjf4j.JsonType jsonType = valueSet.multiples
@@ -317,15 +317,15 @@ public final class StreamingIO {
         return readValueCodec(reader, codec, context);
     }
 
-    public static Object readValueCodec(StreamingReader reader, ValueInfo valueInfo,
+    public static Object readValueCodec(StreamingParser reader, ValueInfo valueInfo,
                                         RuntimeContext context) throws IOException {
-        if (valueInfo.streamReader != null) {
+        if (valueInfo.streamParser != null) {
             if (valueInfo.runtimeClazz != null && valueInfo.runtimeClazz != valueInfo.valueClazz) {
                 throw new BindingException("cannot decode value type '" + valueInfo.valueClazz.getName()
                         + "' as runtime subtype '" + valueInfo.runtimeClazz.getName() + "'");
             }
             try {
-                return valueInfo.streamReader.read(reader);
+                return valueInfo.streamParser.read(reader);
             } catch (BindingException | IOException e) {
                 throw e;
             } catch (Exception e) {
@@ -411,7 +411,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Object readPojo(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+    public static Object readPojo(StreamingParser reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                    RuntimeContext context) throws IOException {
         /*
          * Creator/parent-discriminator POJOs need streaming access to the
@@ -440,7 +440,7 @@ public final class StreamingIO {
         }
 
         Object pojo = pojoInfo.creatorInfo.newPojoNoArgs();
-        PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
+        PropertyParser[] propertyParsers = pojoInfo.propertyParsers;
         NameMatcher matcher = cacheNameMatcher(reader, pojoInfo);
 
         // Both POJO and JOJO use the same cached name matcher and property
@@ -452,7 +452,7 @@ public final class StreamingIO {
         int index;
         while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
             if (index >= 0) {
-                propertyReaders[index].read(reader, pojo, type, boxed, context);
+                propertyParsers[index].parse(reader, pojo, type, boxed, context);
                 expectedIndex = index + 1;
             } else if (retainDynamic) {
                 String name = reader.currentName();
@@ -484,7 +484,7 @@ public final class StreamingIO {
      * Reads a POJO with creator arguments or deferred parent-scope resolution.
      * The object start has already been consumed.
      */
-    public static Object readPojoWithCreator(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+    public static Object readPojoWithCreator(StreamingParser reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                              RuntimeContext context) throws IOException {
 
         CreatorInfo creator = pojoInfo.creatorInfo;
@@ -664,7 +664,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Object readProperty(StreamingReader reader, PropertyInfo property, Type ownerType, Class<?> ownerBoxed,
+    public static Object readProperty(StreamingParser reader, PropertyInfo property, Type ownerType, Class<?> ownerBoxed,
                                       RuntimeContext context) throws IOException {
         Type type = property.genericDependent
                 ? Types.resolveMemberType(ownerType, ownerBoxed, property.type)
@@ -691,7 +691,7 @@ public final class StreamingIO {
      * Map
      * --------------------------------------------------------------
      */
-    public static Map<String, Object> readMap(StreamingReader reader, Type type, Class<?> boxed,
+    public static Map<String, Object> readMap(StreamingParser reader, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
                                               RuntimeContext context) throws IOException {
         if (!reader.nextIfObjectStart()) {
@@ -725,7 +725,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static List<Object> readList(StreamingReader reader, Type type, Class<?> boxed,
+    public static List<Object> readList(StreamingParser reader, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                         RuntimeContext context) throws IOException {
         if (!reader.nextIfArrayStart()) {
@@ -757,7 +757,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Set<Object> readSet(StreamingReader reader, Type type, Class<?> boxed,
+    public static Set<Object> readSet(StreamingParser reader, Type type, Class<?> boxed,
                                       Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                       RuntimeContext context) throws IOException {
         if (!reader.nextIfArrayStart()) {
@@ -790,7 +790,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Object readArray(StreamingReader reader, Type type, Class<?> boxed,
+    public static Object readArray(StreamingParser reader, Type type, Class<?> boxed,
                                       Class<?> componentClazz, Class<?> componentBoxed, TypeInfo componentTi,
                                       RuntimeContext context) throws IOException {
         if (!reader.nextIfArrayStart()) {
@@ -853,7 +853,7 @@ public final class StreamingIO {
         return exact;
     }
 
-    private static boolean[] _readBooleanArray(StreamingReader reader) throws IOException {
+    private static boolean[] _readBooleanArray(StreamingParser reader) throws IOException {
         boolean[] array = new boolean[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -865,7 +865,7 @@ public final class StreamingIO {
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static int[] _readIntArray(StreamingReader reader) throws IOException {
+    private static int[] _readIntArray(StreamingParser reader) throws IOException {
         int[] array = new int[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -877,7 +877,7 @@ public final class StreamingIO {
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static long[] _readLongArray(StreamingReader reader) throws IOException {
+    private static long[] _readLongArray(StreamingParser reader) throws IOException {
         long[] array = new long[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -889,7 +889,7 @@ public final class StreamingIO {
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static double[] _readDoubleArray(StreamingReader reader) throws IOException {
+    private static double[] _readDoubleArray(StreamingParser reader) throws IOException {
         double[] array = new double[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -901,7 +901,7 @@ public final class StreamingIO {
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static float[] _readFloatArray(StreamingReader reader) throws IOException {
+    private static float[] _readFloatArray(StreamingParser reader) throws IOException {
         float[] array = new float[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -913,7 +913,7 @@ public final class StreamingIO {
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static short[] _readShortArray(StreamingReader reader) throws IOException {
+    private static short[] _readShortArray(StreamingParser reader) throws IOException {
         short[] array = new short[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -925,7 +925,7 @@ public final class StreamingIO {
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static byte[] _readByteArray(StreamingReader reader) throws IOException {
+    private static byte[] _readByteArray(StreamingParser reader) throws IOException {
         byte[] array = new byte[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -937,7 +937,7 @@ public final class StreamingIO {
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static char[] _readCharArray(StreamingReader reader) throws IOException {
+    private static char[] _readCharArray(StreamingParser reader) throws IOException {
         char[] array = new char[8];
         int size = 0;
         while (!reader.nextIfArrayEnd()) {
@@ -955,7 +955,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static JsonArray readJsonArray(StreamingReader reader, Type type, Class<?> boxed, TypeInfo ti,
+    public static JsonArray readJsonArray(StreamingParser reader, Type type, Class<?> boxed, TypeInfo ti,
                                           RuntimeContext context) throws IOException {
         if (!reader.nextIfArrayStart()) {
             if (reader.nextIfNull()) {
@@ -997,7 +997,7 @@ public final class StreamingIO {
         throw new BindingException("cannot read non-array value as JsonArray");
     }
 
-    public static NameMatcher cacheNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
+    public static NameMatcher cacheNameMatcher(StreamingParser reader, PojoInfo pojoInfo) {
         BackendCache cache = pojoInfo.backendCache(reader.backend);
         NameMatcher matcher = cache.nameMatcher;
         if (matcher == null) {
@@ -1007,7 +1007,7 @@ public final class StreamingIO {
         return matcher;
     }
 
-    static NameMatcher cacheCreatorNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
+    static NameMatcher cacheCreatorNameMatcher(StreamingParser reader, PojoInfo pojoInfo) {
         BackendCache cache = pojoInfo.backendCache(reader.backend);
         NameMatcher matcher = cache.creatorNameMatcher;
         if (matcher == null) {
@@ -1024,7 +1024,7 @@ public final class StreamingIO {
      * Writes one node value to a streaming writer. The caller controls the
      * document boundaries, flushing, and writer lifecycle.
      */
-    public static void writeNode(StreamingWriter writer, Object node,
+    public static void writeNode(StreamingGenerator writer, Object node,
                                  RuntimeContext context) throws IOException {
         Asserts.notNull(writer, "writer");
         Asserts.notNull(context, "context");
@@ -1039,7 +1039,7 @@ public final class StreamingIO {
     }
 
 
-    private static void _writeNode(StreamingWriter writer, Object node, TypeInfo typeInfo,
+    private static void _writeNode(StreamingGenerator writer, Object node, TypeInfo typeInfo,
                                    RuntimeContext context) throws IOException {
         if (node == null) {
             writer.writeNull();
@@ -1055,8 +1055,8 @@ public final class StreamingIO {
 
             if (typeInfo.valueSet != null) {
                 ValueInfo vi = typeInfo.requireValueInfo(context.valueFormat(clazz));
-                if (vi.streamWriter != null) {
-                    vi.streamWriter.write(writer, node);
+                if (vi.streamGenerator != null) {
+                    vi.streamGenerator.write(writer, node);
                 } else {
                     _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
                 }
@@ -1177,8 +1177,8 @@ public final class StreamingIO {
          */
         if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.valueFormat(clazz));
-            if (vi.streamWriter != null) {
-                vi.streamWriter.write(writer, node);
+            if (vi.streamGenerator != null) {
+                vi.streamGenerator.write(writer, node);
             } else {
                 _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
             }
@@ -1211,7 +1211,7 @@ public final class StreamingIO {
      * Object properties with JSON null are omitted when includeNulls is false;
      * null array elements are preserved.
      */
-    private static void _writeExternalNode(StreamingWriter writer, Object node,
+    private static void _writeExternalNode(StreamingGenerator writer, Object node,
                                            ExternalNode<Object> external,
                                            RuntimeContext context) throws IOException {
         switch (external.jsonType(node)) {
@@ -1264,7 +1264,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeMap(StreamingWriter writer, Map<?, ?> map, TypeInfo valueTi,
+    public static void writeMap(StreamingGenerator writer, Map<?, ?> map, TypeInfo valueTi,
                                 RuntimeContext context) throws IOException {
         writer.startObject();
         int count = 0;
@@ -1281,7 +1281,7 @@ public final class StreamingIO {
     }
 
 
-    public static void writeJsonObject(StreamingWriter writer, JsonObject object,
+    public static void writeJsonObject(StreamingGenerator writer, JsonObject object,
                                        RuntimeContext context) throws IOException {
         writer.startObject();
         int count = 0;
@@ -1304,7 +1304,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeList(StreamingWriter writer, List<?> list, TypeInfo elementTi,
+    public static void writeList(StreamingGenerator writer, List<?> list, TypeInfo elementTi,
                                  RuntimeContext context) throws IOException {
         writer.startArray();
         if (list instanceof RandomAccess) {
@@ -1329,7 +1329,7 @@ public final class StreamingIO {
     }
 
 
-    public static void writeJsonArray(StreamingWriter writer, JsonArray array,
+    public static void writeJsonArray(StreamingGenerator writer, JsonArray array,
                                       RuntimeContext context) throws IOException {
         writer.startArray();
         for (int i = 0, size = array.size(); i < size; i++) {
@@ -1342,7 +1342,7 @@ public final class StreamingIO {
     }
 
 
-    public static void writeSet(StreamingWriter writer, Set<?> set, TypeInfo elementTi,
+    public static void writeSet(StreamingGenerator writer, Set<?> set, TypeInfo elementTi,
                                 RuntimeContext context) throws IOException {
         writer.startArray();
         boolean separated = false;
@@ -1364,7 +1364,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeArray(StreamingWriter writer, Object node, Class<?> clazz, TypeInfo compTi,
+    public static void writeArray(StreamingGenerator writer, Object node, Class<?> clazz, TypeInfo compTi,
                                   RuntimeContext context) throws IOException {
         writer.startArray();
         if (clazz == boolean[].class) {
@@ -1435,14 +1435,14 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writePojo(StreamingWriter writer, Object node, PojoInfo pojoInfo,
+    public static void writePojo(StreamingGenerator writer, Object node, PojoInfo pojoInfo,
                                  RuntimeContext context) throws IOException {
         writer.startObject();
-        PropertyWriter[] propertyWriters = pojoInfo.propertyWriters;
+        PropertyGenerator[] propertyGenerators = pojoInfo.propertyGenerators;
         CompiledName[] compiledNames = writer.compiledNames(pojoInfo);
         int count = 0;
-        for (int i = 0, len = propertyWriters.length; i < len; i++) {
-            count = propertyWriters[i].write(writer, compiledNames[i], node, context, count);
+        for (int i = 0, len = propertyGenerators.length; i < len; i++) {
+            count = propertyGenerators[i].generate(writer, compiledNames[i], node, context, count);
         }
 
         /*

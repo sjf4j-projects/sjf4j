@@ -9,8 +9,6 @@ import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.FastUuid;
 
-import java.io.Closeable;
-import java.io.Flushable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -37,11 +35,11 @@ import java.time.ZonedDateTime;
  * Value-only methods for reference types expect non-null input; the nullable
  * {@code writeXxx} variants write JSON null for a null argument.
  */
-public abstract class StreamingWriter implements Closeable, Flushable {
+public abstract class StreamingGenerator {
 
     protected final Backend backend;
 
-    protected StreamingWriter(Backend backend) {
+    protected StreamingGenerator(Backend backend) {
         this.backend = Asserts.notNull(backend, "backend");
     }
 
@@ -51,11 +49,11 @@ public abstract class StreamingWriter implements Closeable, Flushable {
      */
 
     /** Begins one document before writing its root value. */
-    public void startDocument() throws IOException {
+    public void startWrite() throws IOException {
     }
 
     /** Completes the document after writing its root value. */
-    public void endDocument() throws IOException {
+    public void endWrite() throws IOException {
     }
 
 
@@ -354,4 +352,7 @@ public abstract class StreamingWriter implements Closeable, Flushable {
     }
 
 
+    /** Releases backend resources without closing caller-owned output. */
+    public void release() throws IOException {
+    }
 }

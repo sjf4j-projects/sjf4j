@@ -30,9 +30,9 @@ public final class OneOfIO {
      * Reads one polymorphic node from the current stream position.
      * The caller owns document boundaries and reader lifecycle.
      */
-    public static Object readOneOf(StreamingReader reader, OneOfInfo oneOfInfo,
+    public static Object readOneOf(StreamingParser reader, OneOfInfo oneOfInfo,
                                    RuntimeContext context) throws IOException {
-        if (reader.peekToken() == StreamingReader.Token.NULL) {
+        if (reader.peekToken() == StreamingParser.Token.NULL) {
             reader.nextIfNull();
             return null;
         }
@@ -41,7 +41,7 @@ public final class OneOfIO {
                 : readOneOfByJsonType(reader, oneOfInfo, context);
     }
 
-    static Object readOneOfByJsonType(StreamingReader reader, OneOfInfo oneOfInfo,
+    static Object readOneOfByJsonType(StreamingParser reader, OneOfInfo oneOfInfo,
                                       RuntimeContext context) throws IOException {
         JsonType jsonType = reader.peekToken().jsonType();
         LazyTypeInfo target = oneOfInfo.lazyTypeInfoByJsonType(jsonType);
@@ -59,7 +59,7 @@ public final class OneOfIO {
     }
 
 
-    static Object readOneOfByDtor(StreamingReader reader, OneOfInfo oneOfInfo,
+    static Object readOneOfByDtor(StreamingParser reader, OneOfInfo oneOfInfo,
                                   RuntimeContext context) throws IOException {
         if (oneOfInfo.scope != OneOf.Scope.CURRENT) {
             throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + oneOfInfo.scope);
@@ -81,13 +81,13 @@ public final class OneOfIO {
     }
 
 
-    private static Object _readByDtorPath(StreamingReader reader, OneOfInfo oneOfInfo,
+    private static Object _readByDtorPath(StreamingParser reader, OneOfInfo oneOfInfo,
                                           RuntimeContext context) throws IOException {
         return _convertRawOneOf(reader.readRaw(), oneOfInfo, context);
     }
 
 
-    private static Object _readByDtorKey(StreamingReader reader, OneOfInfo oneOfInfo,
+    private static Object _readByDtorKey(StreamingParser reader, OneOfInfo oneOfInfo,
                                          RuntimeContext context) throws IOException {
         final boolean fallbackNull = oneOfInfo.fallbackNull;
         final String discriminatorKey = oneOfInfo.discriminatorKey;
@@ -145,7 +145,7 @@ public final class OneOfIO {
     }
 
 
-    private static Object _readPojoRemaining(StreamingReader reader, LazyTypeInfo target,
+    private static Object _readPojoRemaining(StreamingParser reader, LazyTypeInfo target,
                                              String[] pendingNames, Object[] pendingValues, int pendingSize,
                                              String discriminatorKey, Object discriminatorValue,
                                              RuntimeContext context) throws IOException {
@@ -248,7 +248,7 @@ public final class OneOfIO {
             }
 
             if (index >= 0) {
-                pi.propertyReaders[index].read(reader, state.pojo(), targetClazz, targetClazz, context);
+                pi.propertyParsers[index].parse(reader, state.pojo(), targetClazz, targetClazz, context);
                 expectedIndex = index + 1;
             } else if (pi.isJojo && pi.readDynamic) {
                 String key = reader.currentName();
@@ -266,7 +266,7 @@ public final class OneOfIO {
     }
 
 
-    private static NameMatcher _cacheDiscriminatorMatcher(StreamingReader reader, OneOfInfo info) {
+    private static NameMatcher _cacheDiscriminatorMatcher(StreamingParser reader, OneOfInfo info) {
         BackendCache cache = info.backendCache(reader.backend);
         NameMatcher matcher = cache.nameMatcher;
         if (matcher == null) {
@@ -276,7 +276,7 @@ public final class OneOfIO {
         return matcher;
     }
 
-    private static void _skipRemainingObject(StreamingReader reader) throws IOException {
+    private static void _skipRemainingObject(StreamingParser reader) throws IOException {
         while (!reader.nextIfObjectEnd()) {
             reader.nextName();
             reader.skipNode();

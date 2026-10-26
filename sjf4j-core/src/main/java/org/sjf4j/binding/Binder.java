@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
  * caller-supplied outputs but do not close them. Byte streams use UTF-8 unless
  * a backend overrides the corresponding reader or writer factory.
  */
-public abstract class Binder<R extends StreamingReader, W extends StreamingWriter> {
+public abstract class Binder<R extends StreamingParser, W extends StreamingGenerator> {
 
     protected final RuntimeContext context;
 
@@ -40,30 +40,30 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     /**
      * Creates a streaming reader from java.io.Reader.
      */
-    public abstract R createReader(Reader input) throws IOException;
+    public abstract R createParser(Reader input) throws IOException;
 
     /**
      * Creates a streaming reader from InputStream using UTF-8.
      */
-    public R createReader(InputStream input) throws IOException {
+    public R createParser(InputStream input) throws IOException {
         Asserts.notNull(input, "input");
-        return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+        return createParser(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
     /**
      * Creates a streaming reader from input string.
      */
-    public R createReader(String input) throws IOException {
+    public R createParser(String input) throws IOException {
         Asserts.notNull(input, "input");
-        return createReader(new FastStringReader(input));
+        return createParser(new FastStringReader(input));
     }
 
     /**
      * Creates a streaming reader from UTF-8 bytes.
      */
-    public R createReader(byte[] input) throws IOException {
+    public R createParser(byte[] input) throws IOException {
         Asserts.notNull(input, "input");
-        return createReader(new ByteArrayInputStream(input));
+        return createParser(new ByteArrayInputStream(input));
     }
 
     /**
@@ -73,11 +73,15 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            StreamingReader reader = createReader(input);
-            reader.startDocument();
+            StreamingParser reader = createParser(input);
+            try {
+            reader.startRead();
             Object node = StreamingIO.readNode(reader, type, context);
-            reader.endDocument();
-            return node;
+            reader.endRead();
+                return node;
+            } finally {
+                reader.release();
+            }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -92,11 +96,15 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            StreamingReader reader = createReader(input);
-            reader.startDocument();
+            StreamingParser reader = createParser(input);
+            try {
+            reader.startRead();
             Object node = StreamingIO.readNode(reader, type, context);
-            reader.endDocument();
-            return node;
+            reader.endRead();
+                return node;
+            } finally {
+                reader.release();
+            }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -110,11 +118,16 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     public Object readNode(String input, Type type) {
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
-        try (StreamingReader reader = createReader(input)) {
-            reader.startDocument();
+        try {
+            StreamingParser reader = createParser(input);
+            try {
+            reader.startRead();
             Object node = StreamingIO.readNode(reader, type, context);
-            reader.endDocument();
-            return node;
+            reader.endRead();
+                return node;
+            } finally {
+                reader.release();
+            }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -128,11 +141,16 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     public Object readNode(byte[] input, Type type) {
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
-        try (StreamingReader reader = createReader(input)) {
-            reader.startDocument();
+        try {
+            StreamingParser reader = createParser(input);
+            try {
+            reader.startRead();
             Object node = StreamingIO.readNode(reader, type, context);
-            reader.endDocument();
-            return node;
+            reader.endRead();
+                return node;
+            } finally {
+                reader.release();
+            }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -150,13 +168,13 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     /**
      * Creates a streaming writer to java.io.Writer.
      */
-    public abstract W createWriter(Writer output) throws IOException;
+    public abstract W createGenerator(Writer output) throws IOException;
 
     /**
      * Creates a streaming writer to OutputStream using UTF-8.
      */
-    public W createWriter(OutputStream output) throws IOException {
-        return createWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
+    public W createGenerator(OutputStream output) throws IOException {
+        return createGenerator(new OutputStreamWriter(output, StandardCharsets.UTF_8));
     }
 
 
@@ -166,11 +184,14 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     public void writeNode(Writer output, Object node) {
         Asserts.notNull(output, "output");
         try {
-            StreamingWriter writer = createWriter(output);
-            writer.startDocument();
+            StreamingGenerator writer = createGenerator(output);
+            try {
+            writer.startWrite();
             StreamingIO.writeNode(writer, node, context);
-            writer.endDocument();
-            writer.flush();
+            writer.endWrite();
+            } finally {
+                writer.release();
+            }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -184,11 +205,14 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     public void writeNode(OutputStream output, Object node) {
         Asserts.notNull(output, "output");
         try {
-            StreamingWriter writer = createWriter(output);
-            writer.startDocument();
+            StreamingGenerator writer = createGenerator(output);
+            try {
+            writer.startWrite();
             StreamingIO.writeNode(writer, node, context);
-            writer.endDocument();
-            writer.flush();
+            writer.endWrite();
+            } finally {
+                writer.release();
+            }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -202,10 +226,13 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     public String writeNodeAsString(Object node) {
         PooledStringWriter output = new PooledStringWriter();
         try {
-            try (W writer = createWriter(output)) {
-                writer.startDocument();
+            W writer = createGenerator(output);
+            try {
+                writer.startWrite();
                 StreamingIO.writeNode(writer, node, context);
-                writer.endDocument();
+                writer.endWrite();
+            } finally {
+                writer.release();
             }
             return output.toString();
         } catch (BindingException e) {
@@ -223,10 +250,13 @@ public abstract class Binder<R extends StreamingReader, W extends StreamingWrite
     public byte[] writeNodeAsBytes(Object node) {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
         try {
-            try (W writer = createWriter(output)) {
-                writer.startDocument();
+            W writer = createGenerator(output);
+            try {
+                writer.startWrite();
                 StreamingIO.writeNode(writer, node, context);
-                writer.endDocument();
+                writer.endWrite();
+            } finally {
+                writer.release();
             }
             return output.toByteArray();
         } catch (BindingException e) {

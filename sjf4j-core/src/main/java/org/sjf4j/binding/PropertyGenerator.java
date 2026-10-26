@@ -31,7 +31,7 @@ import java.util.function.Function;
  * value-codec fast paths.
  */
 @FunctionalInterface
-public interface PropertyWriter {
+public interface PropertyGenerator {
 
     /**
      * Writes one POJO property.
@@ -39,7 +39,7 @@ public interface PropertyWriter {
      * @param count number of properties already written
      * @return updated property count
      */
-    int write(StreamingWriter writer, CompiledName compiledName, Object owner, RuntimeContext context, int count) throws IOException;
+    int generate(StreamingGenerator writer, CompiledName compiledName, Object owner, RuntimeContext context, int count) throws IOException;
 
 
     @FunctionalInterface
@@ -93,7 +93,7 @@ public interface PropertyWriter {
      * Selects a property writer once from its getter and resolved type metadata.
      * Returns {@code null} when no getter is available.
      */
-    static PropertyWriter create(String fieldName, Type fieldType, Class<?> fieldBoxed,
+    static PropertyGenerator create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                                  MethodHandle getterHandle, Function<Object, Object> getterLambda,
                                  ValueInfo resolvedValueCodec,
                                  MethodHandles.Lookup lookup) {
@@ -222,7 +222,7 @@ public interface PropertyWriter {
      * --------------------------------------------------------------
      */
 
-    static PropertyWriter _createForPrimitiveInt(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveInt(String fieldName, MethodHandle getterHandle,
                                                  MethodHandles.Lookup lookup) {
         ToIntFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                         _castClass(ToIntFunction.class), int.class);
@@ -250,7 +250,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForPrimitiveLong(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveLong(String fieldName, MethodHandle getterHandle,
                                                   MethodHandles.Lookup lookup) {
         ToLongFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToLongFunction.class), long.class);
@@ -278,7 +278,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForPrimitiveDouble(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveDouble(String fieldName, MethodHandle getterHandle,
                                                     MethodHandles.Lookup lookup) {
         ToDoubleFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToDoubleFunction.class), double.class);
@@ -306,7 +306,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForPrimitiveFloat(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveFloat(String fieldName, MethodHandle getterHandle,
                                                    MethodHandles.Lookup lookup) {
         ToFloatFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToFloatFunction.class), float.class);
@@ -334,7 +334,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForPrimitiveShort(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveShort(String fieldName, MethodHandle getterHandle,
                                                    MethodHandles.Lookup lookup) {
         ToShortFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToShortFunction.class), short.class);
@@ -362,7 +362,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForPrimitiveByte(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveByte(String fieldName, MethodHandle getterHandle,
                                                   MethodHandles.Lookup lookup) {
         ToByteFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToByteFunction.class), byte.class);
@@ -390,7 +390,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForPrimitiveBoolean(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveBoolean(String fieldName, MethodHandle getterHandle,
                                                      MethodHandles.Lookup lookup) {
         ToBooleanFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToBooleanFunction.class), boolean.class);
@@ -418,7 +418,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForPrimitiveChar(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForPrimitiveChar(String fieldName, MethodHandle getterHandle,
                                                   MethodHandles.Lookup lookup) {
         ToCharFunction<Object> getterLambda = Invokers.createGetterLambda(lookup, getterHandle,
                 _castClass(ToCharFunction.class), char.class);
@@ -453,7 +453,7 @@ public interface PropertyWriter {
      * --------------------------------------------------------------
      */
 
-    static PropertyWriter _createForString(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForString(String fieldName, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -467,7 +467,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForInteger(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForInteger(String fieldName, MethodHandle getterHandle,
                                             Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -481,7 +481,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForLong(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForLong(String fieldName, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -495,7 +495,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForDouble(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForDouble(String fieldName, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -509,7 +509,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForFloat(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForFloat(String fieldName, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -523,7 +523,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForShort(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForShort(String fieldName, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -537,7 +537,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForByte(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForByte(String fieldName, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -551,7 +551,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForBoolean(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForBoolean(String fieldName, MethodHandle getterHandle,
                                             Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -565,7 +565,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForCharacter(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForCharacter(String fieldName, MethodHandle getterHandle,
                                               Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -579,7 +579,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForBigInteger(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForBigInteger(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -593,7 +593,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForBigDecimal(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForBigDecimal(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -607,7 +607,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForNumber(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForNumber(String fieldName, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -621,7 +621,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForEnum(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForEnum(String fieldName, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -635,7 +635,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForMap(String fieldName, Type fieldType, MethodHandle getterHandle,
+    static PropertyGenerator _createForMap(String fieldName, Type fieldType, MethodHandle getterHandle,
                                         Function<Object, Object> getterLambda) {
         Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
         Class<?> valueClazz = Types.rawBox(valueType);
@@ -654,7 +654,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForJsonObject(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForJsonObject(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -674,7 +674,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForList(String fieldName, Type fieldType, MethodHandle getterHandle,
+    static PropertyGenerator _createForList(String fieldName, Type fieldType, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda) {
         Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
         Class<?> elementClazz = Types.rawBox(elementType);
@@ -693,7 +693,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForJsonArray(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForJsonArray(String fieldName, MethodHandle getterHandle,
                                               Function<Object, Object> getterLambda) {
         return (writer, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -706,7 +706,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForSet(String fieldName, Type fieldType, MethodHandle getterHandle,
+    static PropertyGenerator _createForSet(String fieldName, Type fieldType, MethodHandle getterHandle,
                                         Function<Object, Object> getterLambda) {
         Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
         Class<?> elementClazz = Types.rawBox(elementType);
@@ -725,7 +725,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
+    static PropertyGenerator _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda) {
         Class<?> compClazz = fieldBoxed.getComponentType();
         LazyTypeInfo typeInfoRef = new LazyTypeInfo(compClazz);
@@ -744,17 +744,17 @@ public interface PropertyWriter {
     }
 
 
-    static PropertyWriter _createForValueCodec(String fieldName, MethodHandle getterHandle,
+    static PropertyGenerator _createForValueCodec(String fieldName, MethodHandle getterHandle,
                                                Function<Object, Object> getterLambda,
                                                ValueInfo valueCodec) {
-        if (valueCodec.streamWriter != null) {
+        if (valueCodec.streamGenerator != null) {
             return (writer, preparedName, owner, context, count) -> {
                 Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
                 if (value == null) {
                     return _writeNullValueField(writer, preparedName, context, count);
                 }
                 count = _writeName(writer, preparedName, count);
-                valueCodec.streamWriter.write(writer, value);
+                valueCodec.streamGenerator.write(writer, value);
                 return count;
             };
         }
@@ -770,7 +770,7 @@ public interface PropertyWriter {
         };
     }
 
-    static PropertyWriter _createForObject(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
+    static PropertyGenerator _createForObject(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
                                            Function<Object, Object> getterLambda) {
         LazyTypeInfo typeInfoRef = new LazyTypeInfo(fieldBoxed);
         return (writer, preparedName, owner, context, count) -> {
@@ -812,12 +812,12 @@ public interface PropertyWriter {
         return (Class<T>) clazz;
     }
 
-    static int _writeName(StreamingWriter writer, CompiledName compiledName, int count) throws IOException {
+    static int _writeName(StreamingGenerator writer, CompiledName compiledName, int count) throws IOException {
         writer.writeName(compiledName, count > 0);
         return count + 1;
     }
 
-    static int _writeNullValueField(StreamingWriter writer, CompiledName compiledName,
+    static int _writeNullValueField(StreamingGenerator writer, CompiledName compiledName,
                                     RuntimeContext context, int count) throws IOException {
         if (!context.includeNulls) {
             return count;

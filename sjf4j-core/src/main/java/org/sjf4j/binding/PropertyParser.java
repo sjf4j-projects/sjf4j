@@ -32,9 +32,9 @@ import java.util.function.ObjLongConsumer;
  * to the owning instance.
  */
 @FunctionalInterface
-public interface PropertyReader {
+public interface PropertyParser {
 
-    void read(StreamingReader reader, Object owner, Type ownerType, Class<?> ownerBoxed,
+    void parse(StreamingParser reader, Object owner, Type ownerType, Class<?> ownerBoxed,
               RuntimeContext context) throws IOException;
 
 
@@ -74,7 +74,7 @@ public interface PropertyReader {
      * Selects a property reader once from its setter and resolved type metadata.
      * Returns {@code null} when no setter is available.
      */
-    static PropertyReader create(String fieldName, Type fieldType, Class<?> fieldBoxed,
+    static PropertyParser create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                                  boolean genericDependent, OneOfInfo oneOfInfo,
                                  MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
                                  ValueInfo resolvedValueCodec,
@@ -301,7 +301,7 @@ public interface PropertyReader {
     }
 
 
-    static PropertyReader _createForPrimitiveInt(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveInt(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjIntConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjIntConsumer.class), int.class);
         if (setterLambda != null) {
@@ -323,7 +323,7 @@ public interface PropertyReader {
         };
     }
 
-    static PropertyReader _createForPrimitiveLong(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveLong(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjLongConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjLongConsumer.class), long.class);
         if (setterLambda != null) {
@@ -345,7 +345,7 @@ public interface PropertyReader {
         };
     }
 
-    static PropertyReader _createForPrimitiveDouble(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveDouble(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjDoubleConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjDoubleConsumer.class), double.class);
         if (setterLambda != null) {
@@ -367,7 +367,7 @@ public interface PropertyReader {
         };
     }
 
-    static PropertyReader _createForPrimitiveFloat(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveFloat(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjFloatConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjFloatConsumer.class), float.class);
         if (setterLambda != null) {
@@ -389,7 +389,7 @@ public interface PropertyReader {
         };
     }
 
-    static PropertyReader _createForPrimitiveShort(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveShort(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjShortConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjShortConsumer.class), short.class);
         if (setterLambda != null) {
@@ -411,7 +411,7 @@ public interface PropertyReader {
         };
     }
 
-    static PropertyReader _createForPrimitiveByte(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveByte(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjByteConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjByteConsumer.class), byte.class);
         if (setterLambda != null) {
@@ -433,7 +433,7 @@ public interface PropertyReader {
         };
     }
 
-    static PropertyReader _createForPrimitiveBoolean(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveBoolean(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjBooleanConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjBooleanConsumer.class), boolean.class);
         if (setterLambda != null) {
@@ -455,7 +455,7 @@ public interface PropertyReader {
         };
     }
 
-    static PropertyReader _createForPrimitiveChar(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
+    static PropertyParser _createForPrimitiveChar(String fieldName, MethodHandle setterHandle, MethodHandles.Lookup lookup) {
         ObjCharConsumer<Object> setterLambda = Invokers.createSetterLambda(lookup, setterHandle,
                 _castClass(ObjCharConsumer.class), char.class);
         if (setterLambda != null) {
