@@ -839,6 +839,10 @@ public final class ReflectUtil {
             for (int i = 0; i < parameters.length; i++) {
                 OneOf oneOf = parameters[i].getAnnotation(OneOf.class);
                 if (oneOf == null) continue;
+                if (Types.containsTypeVariable(argTypes[i])) {
+                    throw new BindingException("generic creator argument '" + argNames[i]
+                            + "' does not support @OneOf in " + clazz.getName());
+                }
                 _requireCurrentCreatorOneOf(clazz, argNames[i], oneOf);
                 info.argOneOfInfos[i] = analyzeOneOf(Types.rawBox(argTypes[i]), oneOf);
             }
