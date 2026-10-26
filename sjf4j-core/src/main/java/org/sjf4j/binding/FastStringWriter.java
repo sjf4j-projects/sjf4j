@@ -7,10 +7,7 @@ import java.util.Objects;
 
 /**
  * A non-synchronized {@link Writer} backed by a {@link StringBuilder}.
- *
- * @deprecated Use {@link PooledStringWriter} instead.
  */
-@Deprecated
 public final class FastStringWriter extends Writer {
 
     private final StringBuilder builder;
