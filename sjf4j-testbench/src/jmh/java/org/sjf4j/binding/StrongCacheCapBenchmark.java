@@ -31,6 +31,8 @@ public class StrongCacheCapBenchmark {
     public String alphabet;
 
     private OutputBufferRecycler recycler;
+    private int charIteration;
+    private int byteIteration;
     private String data;
     private byte[] bytes;
 
@@ -95,4 +97,32 @@ public class StrongCacheCapBenchmark {
             out.recycle();
         }
     }
+    /**
+     * Evict soft buffers once in 32 operations to simulate intermittent
+     * memory-pressure collections, excluding the GC pause itself.
+     */
+    @Benchmark
+    public String charsWithEviction() {
+        if ((++charIteration & 31) == 0) recycler.evictSoftCacheForBenchmark();
+        PooledStringWriter writer = new PooledStringWriter(recycler);
+        try {
+            writeChars(writer);
+            return writer.getAndRecycle();
+        } finally {
+            writer.recycle();
+        }
+    }
+
+    @Benchmark
+    public byte[] bytesWithEviction() {
+        if ((++byteIteration & 31) == 0) recycler.evictSoftCacheForBenchmark();
+        PooledByteArrayOutputStream out = new PooledByteArrayOutputStream(recycler);
+        try {
+            writeBytes(out);
+            return out.getAndRecycle();
+        } finally {
+            out.recycle();
+        }
+    }
+
 }
