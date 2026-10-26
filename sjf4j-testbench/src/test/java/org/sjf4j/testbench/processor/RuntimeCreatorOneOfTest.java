@@ -61,6 +61,15 @@ class RuntimeCreatorOneOfTest {
         }
     }
 
+    public record PathZoo(@OneOf(discriminatorPath = "$.meta.kind", mappings = {
+            @OneOfMapping(type = Dog.class, when = "dog"),
+            @OneOfMapping(type = Cat.class, when = "cat")
+    }) Animal pet) {}
+
+    public record NullableZoo(@OneOf(discriminatorKey = "kind",
+            onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL,
+            mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {}
+
     public record ParentZoo(@OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind",
             mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {}
 
@@ -101,6 +110,12 @@ class RuntimeCreatorOneOfTest {
         Map<String, Object> json = Map.of("pet", Map.of("kind", "dog", "name", "Rex", "age", 7), "after", 19);
         Zoo mapped = NodeMapper.convert(json, Zoo.class, false, org.sjf4j.RuntimeContext.EMPTY);
         assertInstanceOf(Dog.class, mapped.pet(), name);
+        PathZoo path = (PathZoo) binder.readNode(
+                "{\"pet\":{\"meta\":{\"kind\":\"dog\"},\"kind\":\"dog\",\"name\":\"Rex\",\"age\":7}}",
+                PathZoo.class);
+        assertInstanceOf(Dog.class, path.pet(), name);
+        NullableZoo missing = (NullableZoo) binder.readNode("{\"pet\":{\"kind\":\"cat\"}}", NullableZoo.class);
+        assertNull(missing.pet(), name);
         assertThrows(BindingException.class,
                 () -> binder.readNode("{\"pet\":{\"kind\":\"dog\"}}", ParentZoo.class), name);
     }
