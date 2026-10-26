@@ -138,7 +138,7 @@ class SnakeWriterTest {
     }
 
     @Test
-    void closeFlushesWithoutClosingCallerOwnedOutput() throws Exception {
+    void endDocumentFlushesWithoutRedundantCloseFlush() throws Exception {
         final int[] flushes = {0};
         final boolean[] closed = {false};
         StringWriter output = new StringWriter() {
@@ -153,11 +153,16 @@ class SnakeWriterTest {
             }
         };
 
+        int flushesAfterDocument;
         try (SnakeWriter writer = new SnakeBinder().createWriter(output)) {
-            // Closing the backend writer must complete buffered output.
+            writer.startDocument();
+            writer.writeStringValue("value");
+            writer.endDocument();
+            flushesAfterDocument = flushes[0];
+            assertTrue(flushesAfterDocument > 0);
         }
 
-        assertEquals(1, flushes[0]);
+        assertEquals(flushesAfterDocument, flushes[0]);
         assertFalse(closed[0]);
     }
 
