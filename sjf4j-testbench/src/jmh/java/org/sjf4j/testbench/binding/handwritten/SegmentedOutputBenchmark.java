@@ -55,6 +55,13 @@ public class SegmentedOutputBenchmark {
         validateJackson(cappedRecycler);
         validateSegmented(SegmentedOutputWriter.Merge.BUILDER, data);
         validateSegmented(SegmentedOutputWriter.Merge.ARRAY, data);
+        SoftContiguousOutputWriter contiguous = new SoftContiguousOutputWriter();
+        try {
+            for (int i = 0; i < data.length(); i += CHUNK)
+                contiguous.write(data, i, Math.min(CHUNK, data.length() - i));
+            if (!data.equals(contiguous.getAndRecycle()))
+                throw new IllegalStateException("Contiguous output differs");
+        } finally { contiguous.recycle(); }
         // Check exact cap and crossover, char[] write, single-character write,
         // and the final incomplete segment independently of JMH scores.
         for (int size : new int[]{1, 1024, 262144, 262145, 262146, 393217}) {
@@ -122,6 +129,16 @@ public class SegmentedOutputBenchmark {
                 out.write(data, i, Math.min(CHUNK, data.length() - i));
         } else out.write(data);
         return out.getAndClear();
+    }
+
+    @Benchmark
+    public String chunksSoftContiguous() {
+        SoftContiguousOutputWriter out = new SoftContiguousOutputWriter();
+        try {
+            for (int i = 0; i < data.length(); i += CHUNK)
+                out.write(data, i, Math.min(CHUNK, data.length() - i));
+            return out.getAndRecycle();
+        } finally { out.recycle(); }
     }
 
     @Benchmark
