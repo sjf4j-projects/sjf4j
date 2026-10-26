@@ -153,26 +153,26 @@ public class HandReadBenchmark {
 
     @Benchmark
     public Object json_jackson2_pojo_handwritten_v1() throws IOException {
-        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
-             Jackson2Parser reader = new Jackson2Parser(parser);
+        try (com.fasterxml.jackson.core.JsonParser nativeParser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
+             Jackson2Parser parser = new Jackson2Parser(nativeParser);
 try {
-            return Jackson2HandPojoReaderV1.readUser(reader);
+            return Jackson2HandPojoReaderV1.readUser(parser);
         
-} finally { reader.release(); }
+} finally { parser.release(); }
 }
     }
 
     @Benchmark
     public Object json_jackson2_pojo_runtime_v1() throws IOException {
-        try (JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
-             Jackson2Parser reader = new Jackson2Parser(parser);
+        try (JsonParser nativeParser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
+             Jackson2Parser parser = new Jackson2Parser(nativeParser);
 try {
-            reader.startRead();
-            Object result = StreamingIO.readNode(reader, User.class, RuntimeContext.EMPTY);
-            reader.endRead();
+            parser.startRead();
+            Object result = StreamingIO.readNode(parser, User.class, RuntimeContext.EMPTY);
+            parser.endRead();
             return result;
         
-} finally { reader.release(); }
+} finally { parser.release(); }
 }
     }
 

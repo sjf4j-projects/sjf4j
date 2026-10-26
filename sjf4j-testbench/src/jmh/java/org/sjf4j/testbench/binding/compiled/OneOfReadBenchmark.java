@@ -159,14 +159,16 @@ public class OneOfReadBenchmark {
 
     // Reproduces the removed StreamingIO implementation: read the full raw
     // tree, resolve CURRENT key, then convert the selected subtype.
-    private Pet rawBaseline(Jackson2Parser reader) throws IOException {
-        try (reader) {
-            reader.startRead();
-            Object raw = reader.readRaw();
-            reader.endRead();
+    private Pet rawBaseline(Jackson2Parser parser) throws IOException {
+        try {
+            parser.startRead();
+            Object raw = parser.readRaw();
+            parser.endRead();
             Object kind = ((Map<?, ?>) raw).get("kind");
             Class<?> subtype = "dog".equals(kind) ? Dog.class : Cat.class;
             return (Pet) NodeMapper.convert(raw, subtype, false, RuntimeContext.EMPTY);
+        } finally {
+            parser.release();
         }
     }
 

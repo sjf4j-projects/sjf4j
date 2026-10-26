@@ -498,13 +498,14 @@ public class CompiledWriteBenchmark {
         PooledStringWriter output = new PooledStringWriter();
         try {
             {
-Jackson2Generator writer = JACKSON2_RUNTIME.createGenerator(output);
-try {
-                Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-                writer.endWrite();
-            
-} finally { writer.release(); }
-}
+            Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
+            try {
+            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toString();
         } finally {
             output.recycle();
@@ -516,13 +517,14 @@ try {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
         try {
             {
-Jackson2Generator writer = JACKSON2_RUNTIME.createGenerator(output);
-try {
-                Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-                writer.endWrite();
-            
-} finally { writer.release(); }
-}
+            Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
+            try {
+            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toByteArray();
         } finally {
             output.recycle();
@@ -651,13 +653,14 @@ try {
         PooledStringWriter output = new PooledStringWriter();
         try {
             {
-Jackson3Generator writer = JACKSON3_RUNTIME.createGenerator(output);
-try {
-                Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-                writer.endWrite();
-            
-} finally { writer.release(); }
-}
+            Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
+            try {
+            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toString();
         } finally {
             output.recycle();
@@ -669,13 +672,14 @@ try {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
         try {
             {
-Jackson3Generator writer = JACKSON3_RUNTIME.createGenerator(output);
-try {
-                Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-                writer.endWrite();
-            
-} finally { writer.release(); }
-}
+            Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
+            try {
+            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toByteArray();
         } finally {
             output.recycle();
