@@ -7,7 +7,7 @@ import org.sjf4j.processor.code.NameAllocator;
 import java.util.EnumSet;
 import java.util.Set;
 
-/** Fastjson2 compiled write generation using a shared streaming/native writer. */
+/** Fastjson2 compiled write generation using a shared streaming/native generator. */
 final class Fastjson2WriteEmitter {
 
     private enum FastjsonMode {
@@ -60,16 +60,16 @@ final class Fastjson2WriteEmitter {
         boolean utf8 = output == BindingPlan.WriteOutput.BYTES
                 || output == BindingPlan.WriteOutput.OUTPUT_STREAM;
         FastjsonMode mode = utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16;
-        String writer = names.newName("writer");
+        String generator = names.newName("generator");
         String raw = names.newName("raw");
         // Never attach the caller-owned destination before serialization succeeds.
         // close() flushes attached writers even if a compiled helper throws.
         String create = utf8 ? "createGeneratorUtf8()" : "createGenerator()";
 
         out.line("org.sjf4j.backend.fastjson2.binding.Fastjson2Generator "
-                + writer + " = this.binder." + create + ";");
+                + generator + " = this.binder." + create + ";");
         out.beginBlock("try");
-        out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + writer + ".nativeWriter();");
+        out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + generator + ".nativeWriter();");
 
         // Raw field-name optimizations require compatible Fastjson2 features.
         out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
@@ -97,17 +97,17 @@ final class Fastjson2WriteEmitter {
 
         if (value.helperRequired()) {
             out.line(fastjsonHelperName(value, mode) + "("
-                    + writer + ", " + source + ");");
+                    + generator + ", " + source + ");");
         } else {
-            emitNativeValue(out, value, source, mode, raw, writer, names.newName("item"));
+            emitNativeValue(out, value, source, mode, raw, generator, names.newName("item"));
         }
 
         switch (output) {
             case STRING:
-                out.line("return " + writer + ".toString();");
+                out.line("return " + generator + ".toString();");
                 break;
             case BYTES:
-                out.line("return " + writer + ".toBytes();");
+                out.line("return " + generator + ".toBytes();");
                 break;
             case WRITER:
             case OUTPUT_STREAM:
@@ -119,7 +119,7 @@ final class Fastjson2WriteEmitter {
         }
         out.endBlock();
         out.beginBlock("finally");
-        out.line(writer + ".release();");
+        out.line(generator + ".release();");
         out.endBlock();
     }
 
@@ -198,7 +198,7 @@ final class Fastjson2WriteEmitter {
 
         @Override
         public void writeRuntimeValue(JavaWriter out, String expression) {
-            out.line("org.sjf4j.binding.StreamingIO.writeNode(writer, "
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, "
                     + expression + ", this.context);");
         }
 
@@ -213,16 +213,16 @@ final class Fastjson2WriteEmitter {
         }
     }
 
-    /** Every structural helper has the same (writer, value) signature. */
+    /** Every structural helper has the same (generator, value) signature. */
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
         out.beginBlock("private void " + fastjsonHelperName(value, mode)
-                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator writer, "
+                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator generator, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter w = writer.nativeWriter();");
+        out.line("com.alibaba.fastjson2.JSONWriter w = generator.nativeWriter();");
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line("org.sjf4j.binding.StreamingIO.writeNode(writer, value, this.context);");
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
         } else {
             StructuralWriteEmitter structure =
                     new StructuralWriteEmitter(new ModeOperations(mode));
@@ -288,28 +288,28 @@ final class Fastjson2WriteEmitter {
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode) {
-        emitNativeValue(out, value, expression, mode, "w", "writer", "item");
+        emitNativeValue(out, value, expression, mode, "w", "generator", "item");
     }
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
-            String expression, FastjsonMode mode, String raw, String writer, String item) {
+            String expression, FastjsonMode mode, String raw, String generator, String item) {
         if (value.helperRequired()) {
-            out.line(fastjsonHelperName(value, mode) + "(" + writer + ", " + expression + ");");
+            out.line(fastjsonHelperName(value, mode) + "(" + generator + ", " + expression + ");");
             return;
         }
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, writer, raw, Backend.FASTJSON2);
+                CodecWriteEmitter.emit(out, value, expression, generator, raw, Backend.FASTJSON2);
                 return;
             case RUNTIME:
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line("org.sjf4j.binding.StreamingIO.writeNode("
-                        + writer + ", " + expression + ", this.context);");
+                        + generator + ", " + expression + ", this.context);");
                 return;
             case NUMBER:
-                out.line(writer + ".writeNumber(" + expression + ");");
+                out.line(generator + ".writeNumber(" + expression + ");");
                 return;
             case STRING:
                 out.line("_writeString(" + raw + ", " + expression + ");");

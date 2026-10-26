@@ -8,7 +8,7 @@ import org.sjf4j.processor.property.PropertyAccess;
 import java.util.HashSet;
 import java.util.Set;
 
-/** Emits direct concrete-writer binding code. */
+/** Emits direct concrete-generator binding code. */
 final class WriteEmitter {
 
 
@@ -180,18 +180,18 @@ final class WriteEmitter {
     private void emitStringMethod(
             JavaWriter out, BindingValue value, String source, NameAllocator names) {
         String output = names.newName("output");
-        String writer = names.newName("writer");
+        String generator = names.newName("generator");
 
         out.line("org.sjf4j.binding.PooledStringWriter " + output
                 + " = new org.sjf4j.binding.PooledStringWriter();");
         out.beginBlock("try");
-        out.line(backend.generatorType() + " " + writer
+        out.line(backend.generatorType() + " " + generator
                 + " = this.binder.createGenerator(" + output + ");");
         out.beginBlock("try");
-        emitWriteBody(out, value, source, writer, names);
+        emitWriteBody(out, value, source, generator, names);
         out.endBlock();
         out.beginBlock("finally");
-        out.line(writer + ".release();");
+        out.line(generator + ".release();");
         out.endBlock();
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -203,7 +203,7 @@ final class WriteEmitter {
     private void emitBytesMethod(
             JavaWriter out, BindingValue value, String source, NameAllocator names) {
         String output = names.newName("output");
-        String writer = names.newName("writer");
+        String generator = names.newName("generator");
 
         // Streaming character backends are faster when they produce UTF-8
         // from the finished String instead of using OutputStreamWriter.
@@ -215,13 +215,13 @@ final class WriteEmitter {
                 : "org.sjf4j.binding.PooledByteArrayOutputStream";
         out.line(sinkType + " " + output + " = new " + sinkType + "();");
         out.beginBlock("try");
-        out.line(backend.generatorType() + " " + writer
+        out.line(backend.generatorType() + " " + generator
                 + " = this.binder.createGenerator(" + output + ");");
         out.beginBlock("try");
-        emitWriteBody(out, value, source, writer, names);
+        emitWriteBody(out, value, source, generator, names);
         out.endBlock();
         out.beginBlock("finally");
-        out.line(writer + ".release();");
+        out.line(generator + ".release();");
         out.endBlock();
         if (chars) {
             out.line("return " + output
@@ -242,20 +242,20 @@ final class WriteEmitter {
             String output,
             NameAllocator names) {
 
-        String writer =
-                names.newName("writer");
+        String generator =
+                names.newName("generator");
 
         out.line(
                 backend.generatorType() +
-                        " " + writer +
+                        " " + generator +
                         " = this.binder.createGenerator(" +
                         output + ");");
 
         out.beginBlock("try");
-        emitWriteBody(out, value, source, writer, names);
+        emitWriteBody(out, value, source, generator, names);
         out.endBlock();
         out.beginBlock("finally");
-        out.line(writer + ".release();");
+        out.line(generator + ".release();");
         out.endBlock();
     }
 
@@ -263,20 +263,20 @@ final class WriteEmitter {
             JavaWriter out,
             BindingValue value,
             String source,
-            String writer,
+            String generator,
             NameAllocator names) {
 
-        out.line(writer + ".startWrite();");
+        out.line(generator + ".startWrite();");
 
         if (isJackson()) {
-            jackson.emitRoot(out, value, source, writer, names);
+            jackson.emitRoot(out, value, source, generator, names);
         } else if (isGsonOrJsonp()) {
-            other.emitRoot(out, value, source, writer, names);
+            other.emitRoot(out, value, source, generator, names);
         } else {
-            streaming.writeValue(out, value, writer, source);
+            streaming.writeValue(out, value, generator, source);
         }
 
-        out.line(writer + ".endWrite();");
+        out.line(generator + ".endWrite();");
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {

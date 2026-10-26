@@ -9,24 +9,24 @@ final class CodecWriteEmitter {
     private CodecWriteEmitter() {}
 
     static void emit(JavaWriter out, BindingValue value, String expression,
-                     String writer, String nativeWriter, Backend backend) {
+                     String generator, String nativeWriter, Backend backend) {
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
         out.beginBlock("if (codecValue == null)");
-        out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+        out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
         out.endBlock(" else {");
         out.indent();
 
         String info = value.helperName();
 
         out.beginBlock("if (" + info + ".streamGenerator != null)");
-        out.line(info + ".streamGenerator.write(" + writer + ", codecValue);");
+        out.line(info + ".streamGenerator.write(" + generator + ", codecValue);");
         out.endBlock(" else {");
         out.indent();
         String method = value.codecRawType() == null ? null
                 : nativeWrite(value.codecRawType().toString(), backend, nativeWriter != null);
         if (method == null) {
-            out.line(writer + ".writeRaw(" + info
+            out.line(generator + ".writeRaw(" + info
                     + ".valueToRaw(codecValue), this.context);");
         } else {
             out.line("Object rawValue = " + info + ".valueToRaw(codecValue);");
@@ -38,10 +38,10 @@ final class CodecWriteEmitter {
                 out.line("_writeString(" + nativeWriter + ", (String) rawValue);");
             } else {
                 out.beginBlock("if (rawValue == null)");
-                out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+                out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line((nativeWriter == null ? writer : nativeWriter) + "." + method
+                out.line((nativeWriter == null ? generator : nativeWriter) + "." + method
                         + "(" + rawArgument(value.codecRawType().toString(), backend,
                                 nativeWriter != null) + ");");
                 out.endBlock();
@@ -50,7 +50,7 @@ final class CodecWriteEmitter {
             out.indent();
             // A different RuntimeContext format or later registration may use
             // a different raw type. Do not force the compiler's selected shape.
-            out.line(writer + ".writeRaw(rawValue, this.context);");
+            out.line(generator + ".writeRaw(rawValue, this.context);");
             out.endBlock();
         }
         out.endBlock();
