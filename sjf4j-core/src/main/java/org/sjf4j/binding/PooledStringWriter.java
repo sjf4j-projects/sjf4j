@@ -12,19 +12,12 @@ import java.io.Writer;
  * recycle().</p>
  */
 public final class PooledStringWriter extends Writer {
-    private final OutputBufferRecycler recycler;
-    private char[] buffer;
+    private final OutputBufferRecycler recycler = OutputBufferRecycler.current();
+    private char[] buffer = recycler.takeChars();
     private String directString;
     private int count;
 
-    public PooledStringWriter() {
-        this(OutputBufferRecycler.current());
-    }
-
-    PooledStringWriter(OutputBufferRecycler recycler) {
-        this.recycler = recycler;
-        this.buffer = recycler.takeChars();
-    }
+    public PooledStringWriter() {}
 
     private char[] active() {
         char[] value = buffer;
