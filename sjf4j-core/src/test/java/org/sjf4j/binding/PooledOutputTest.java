@@ -812,4 +812,50 @@ class PooledOutputTest {
             inner.recycle();
         }
     }
+
+    @Test
+    void retentionLimitCanBe64KWithoutChangingGrowthOrDirectStringThreshold() {
+        OutputBufferRecycler narrow = new OutputBufferRecycler(64 * 1024);
+        char[] strongChars = new char[64 * 1024];
+        char[] softChars = new char[128 * 1024];
+        byte[] strongBytes = new byte[64 * 1024];
+        byte[] softBytes = new byte[128 * 1024];
+        narrow.recycleChars(strongChars);
+        narrow.recycleChars(softChars);
+        narrow.recycleBytes(strongBytes);
+        narrow.recycleBytes(softBytes);
+
+        assertSame(softChars, narrow.takeChars());
+        assertSame(strongChars, narrow.takeChars());
+        assertSame(softBytes, narrow.takeBytes());
+        assertSame(strongBytes, narrow.takeBytes());
+
+        assertEquals(131072, OutputBufferRecycler.growCapacity(65536, 0, 128000));
+
+        PooledStringWriter writer = new PooledStringWriter(narrow);
+        try {
+            String medium = "x".repeat(128 * 1024);
+            writer.write(medium);
+            assertNotSame(medium, writer.toString(),
+                    "Direct String threshold must remain 256K even when strong cap is 64K");
+            assertEquals(medium, writer.getAndRecycle());
+        } finally {
+            writer.recycle();
+        }
+
+        String large = "界".repeat(300 * 1024);
+        PooledStringWriter direct = new PooledStringWriter(narrow);
+        try {
+            direct.write(large);
+            assertSame(large, direct.getAndRecycle());
+        } finally {
+            direct.recycle();
+        }
+
+        OutputBufferRecycler original = new OutputBufferRecycler(256 * 1024);
+        byte[] mediumBytes = new byte[128 * 1024];
+        original.recycleBytes(mediumBytes);
+        assertSame(mediumBytes, original.takeBytes());
+        assertNull(original.takeLargeBytes(1));
+    }
 }
