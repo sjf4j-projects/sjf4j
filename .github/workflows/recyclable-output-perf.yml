@@ -34,7 +34,7 @@ jobs:
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
           java -jar "$jar" '.*AdaptiveOutputBenchmark\.(charsPooled|charsJdk|bytesPooled|bytesJdk|charsChunksPooled|charsChunksJdk|bytesChunksPooled|bytesChunksJdk)$' \
-            -bm avgt -tu us -t 1 -f 0 -wi 1 -w 100ms -i 2 -r 120ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE \
+            -bm avgt -tu us -t 1 -f 1 -wi 5 -w 200ms -i 3 -r 200ms -p payloadLength=307200,1048576 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -54,7 +54,7 @@ jobs:
               ('charsChunksPooled','charsChunksJdk'),('bytesChunksPooled','bytesChunksJdk')
           ]
           print('# Adaptive buffer growth: focused 300K and 1MB screening')
-          print('JDK 25; non-forked quick screen; 1 warmup, 2 measurements. GC allocations included. Not conclusive for small differences.')
+          print('JDK 25; 1 fork, 5 warmups, 3 measurements. GC allocations included. Not conclusive for small differences.')
           print('| Size | Alphabet | Pooled | Baseline | Pooled us/op | Baseline us/op | Speedup | Pooled B/op | Baseline B/op |')
           print('|---:|---|---|---|---:|---:|---:|---:|---:|')
           for (size,alphabet),items in sorted(rows.items()):
