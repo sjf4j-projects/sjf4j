@@ -1,9 +1,6 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import tools.jackson.core.JsonGenerator;
-import tools.jackson.core.io.SegmentedStringWriter;
-import tools.jackson.core.util.BufferRecycler;
-import tools.jackson.core.util.ByteArrayBuilder;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.StreamingWriter;
@@ -23,43 +20,16 @@ public final class Jackson3Writer extends StreamingWriter {
 
     private final JsonGenerator generator;
 
-    private final SegmentedStringWriter stringOutput;
-    private final ByteArrayBuilder byteOutput;
-    private final BufferRecycler recycler;
-
-    /**
-     * Creates a writer around an existing Jackson 3 generator.
-     * @param generator the Jackson 3 generator
-     */
+    /** Creates a writer around an existing Jackson generator. */
     public Jackson3Writer(JsonGenerator generator) {
-        this(generator, null, null, null);
-    }
-
-    Jackson3Writer(JsonGenerator generator,
-                   SegmentedStringWriter output, BufferRecycler recycler) {
-        this(generator, output, null, recycler);
-    }
-
-    Jackson3Writer(JsonGenerator generator,
-                   ByteArrayBuilder output, BufferRecycler recycler) {
-        this(generator, null, output, recycler);
-    }
-
-    private Jackson3Writer(JsonGenerator generator,
-                   SegmentedStringWriter stringOutput, ByteArrayBuilder byteOutput,
-                   BufferRecycler recycler) {
         super(Backend.JACKSON3);
         this.generator = Asserts.notNull(generator, "generator");
-        this.stringOutput = stringOutput;
-        this.byteOutput = byteOutput;
-        this.recycler = recycler;
     }
 
-    /**
-     * Access for backend-specific compiled POJO property writers.
-     * @return the native Jackson generator
-     */
-    public JsonGenerator nativeWriter() { return generator; }
+    /** Access to the native generator for compiled property writers. */
+    public JsonGenerator nativeWriter() {
+        return generator;
+    }
 
     /*
      * Structure
@@ -225,26 +195,7 @@ public final class Jackson3Writer extends StreamingWriter {
     }
 
     @Override
-    public String toString() {
-        return stringOutput != null ? stringOutput.getAndClear() : super.toString();
-    }
-
-    /**
-     * Returns buffered UTF-8 after the generator has been flushed.
-     * @return the buffered UTF-8 bytes
-     */
-    public byte[] toBytes() {
-        if (byteOutput == null) throw new IllegalStateException("not an in-memory UTF-8 writer");
-        return byteOutput.toByteArray();
-    }
-
-    @Override
     public void close() throws IOException {
-        try {
-            generator.close();
-        } finally {
-            if (byteOutput != null) byteOutput.release();
-            if (recycler != null) recycler.releaseToPool();
-        }
+        generator.close();
     }
 }
