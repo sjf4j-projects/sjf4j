@@ -145,6 +145,24 @@ public class RuntimeCreatorOneOfTest {
         }
     }
 
+    @OneOf(discriminatorKey = "outerKind", mappings =
+            @OneOfMapping(type = NestedCreator.class, when = "nested"))
+    public interface Outer {}
+
+    public static final class NestedCreator implements Outer {
+        public String outerKind;
+        public final Animal pet;
+
+        @NodeCreator
+        public NestedCreator(@NodeProperty("pet")
+                             @OneOf(discriminatorKey = "kind", mappings = {
+                                     @OneOfMapping(type = Dog.class, when = "dog"),
+                                     @OneOfMapping(type = Cat.class, when = "cat")
+                             }) Animal pet) {
+            this.pet = pet;
+        }
+    }
+
     static Stream<Arguments> backends() {
         return Stream.of(
                 Arguments.of("simple", new SimpleJsonBinder()),
@@ -222,6 +240,20 @@ public class RuntimeCreatorOneOfTest {
 
         assertThrows(BindingException.class,
                 () -> binder.readNode("{\"pet\":{\"kind\":\"other\"}}", RecordZoo.class), backend);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("backends")
+    void readsCreatorOverridesInsideStreamingSubtypeBeforeAndAfterOuterDiscriminator(
+            String backend, Binder<?, ?> binder) {
+        for (String json : new String[]{
+                "{\"outerKind\":\"nested\",\"pet\":{\"kind\":\"dog\",\"name\":\"Rex\",\"age\":7}}",
+                "{\"pet\":{\"name\":\"Rex\",\"age\":7,\"kind\":\"dog\"},\"outerKind\":\"nested\"}"
+        }) {
+            NestedCreator nested = assertInstanceOf(NestedCreator.class,
+                    binder.readNode(json, Outer.class), backend);
+            checkDog(nested.pet);
+        }
     }
 
     @Test
