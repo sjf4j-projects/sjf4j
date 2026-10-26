@@ -1,6 +1,7 @@
 package org.sjf4j.testbench.binding.handwritten;
 
 import java.io.Writer;
+import java.lang.ref.SoftReference;
 import java.util.Arrays;
 
 /**
@@ -14,6 +15,7 @@ public final class SegmentedOutputWriter extends Writer {
     private static final int INITIAL = 1024;
     private static final int MAX_RETAINED = 256 * 1024;
     private static final ThreadLocal<char[]> CACHE = new ThreadLocal<>();
+    private static final ThreadLocal<SoftReference<char[]>> LARGE_CACHE = new ThreadLocal<>();
 
     private static char[] take() {
         char[] a = CACHE.get();
@@ -28,7 +30,25 @@ public final class SegmentedOutputWriter extends Writer {
         if (a != null && a.length <= MAX_RETAINED) {
             char[] cached = CACHE.get();
             if (cached == null || cached.length < a.length) CACHE.set(a);
+        } else if (a != null) {
+            SoftReference<char[]> ref = LARGE_CACHE.get();
+            char[] old = ref == null ? null : ref.get();
+            if (old == null || old.length < a.length)
+                LARGE_CACHE.set(new SoftReference<>(a));
         }
+    }
+
+    private static char[] takeLarge(int needed) {
+        SoftReference<char[]> ref = LARGE_CACHE.get();
+        if (ref == null) return null;
+        char[] array = ref.get();
+        if (array == null) {
+            LARGE_CACHE.remove();
+            return null;
+        }
+        if (array.length < needed) return null;
+        LARGE_CACHE.remove();
+        return array;
     }
 
     private char[] current = take();
@@ -40,7 +60,7 @@ public final class SegmentedOutputWriter extends Writer {
     private final Merge merge;
 
     public SegmentedOutputWriter(int segmentSize, Merge merge) {
-        if (segmentSize < 1 || segmentSize > MAX_RETAINED)
+        if (segmentSize < 1)
             throw new IllegalArgumentException("segmentSize");
         this.segmentSize = segmentSize;
         this.merge = merge;
@@ -72,7 +92,8 @@ public final class SegmentedOutputWriter extends Writer {
             completed = Arrays.copyOf(completed, completed.length * 2);
         }
         completed[completedCount++] = current;
-        current = new char[segmentSize];
+        char[] next = segmentSize > MAX_RETAINED ? takeLarge(segmentSize) : null;
+        current = next == null ? new char[segmentSize] : next;
         used = 0;
     }
 
