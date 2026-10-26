@@ -33,9 +33,9 @@ jobs:
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*StrongCacheCapBenchmark\.(charsChunked|bytesChunked)$' \
-            -bm avgt -tu us -t 1 -f 2 -wi 5 -w 125ms -i 4 -r 125ms \
-            -p strongLimit=65536,262144 -p payloadLength=1024,8192,65536,131072,262144,307200,1048576 -p alphabet=ASCII,UNICODE \
+          java -jar "$jar" '.*StrongCacheCapBenchmark\.(charsWithEviction|bytesWithEviction)$' \
+            -bm avgt -tu us -t 1 -f 2 -wi 5 -w 120ms -i 4 -r 120ms \
+            -p strongLimit=65536,262144 -p payloadLength=131072,262144,307200,1048576 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
       - name: Compare paired sinks
@@ -50,10 +50,10 @@ jobs:
           for r in results:
               key=(int(r['params']['payloadLength']),r['params']['alphabet'],r['benchmark'].split('.')[-1])
               rows.setdefault(key,{})[int(r['params']['strongLimit'])]=r
-          print('# 64K vs 256K strong retention, unchanged production writing algorithms')
-          print('JDK 25, 2 forks, 5 warmups + 4 measurements, 125ms each; soft-first reuse, 256-char chunks.')
+          print('# 64K vs 256K after simulated soft cache clearance every 32 writes')
+          print('JDK 25, 2 forks, 5 warmups + 4 measurements, 120ms each; 256-char chunks.')
           print('Value measures both write and finalized return. Unicode byte payload is UTF-8 encoded.')
-          for method in ['charsChunked','bytesChunked']:
+          for method in ['charsWithEviction','bytesWithEviction']:
               print('\\n## '+method)
               print('| Size | Alphabet | 64K us/op | 256K us/op | 64K / 256K | 64K B/op | 256K B/op |')
               print('|---:|---|---:|---:|---:|---:|---:|')
