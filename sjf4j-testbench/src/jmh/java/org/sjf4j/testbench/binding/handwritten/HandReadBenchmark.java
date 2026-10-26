@@ -27,7 +27,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.RuntimeContext;
-import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
+import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.ReflectUtil;
@@ -153,21 +153,27 @@ public class HandReadBenchmark {
 
     @Benchmark
     public Object json_jackson2_pojo_handwritten_v1() throws IOException {
-        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
-             Jackson2Reader reader = new Jackson2Reader(parser)) {
+        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
+             Jackson2Parser reader = new Jackson2Parser(parser);
+try {
             return Jackson2HandPojoReaderV1.readUser(reader);
-        }
+        
+} finally { reader.release(); }
+}
     }
 
     @Benchmark
     public Object json_jackson2_pojo_runtime_v1() throws IOException {
-        try (JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2);
-             Jackson2Reader reader = new Jackson2Reader(parser)) {
-            reader.startDocument();
+        try (JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
+             Jackson2Parser reader = new Jackson2Parser(parser);
+try {
+            reader.startRead();
             Object result = StreamingIO.readNode(reader, User.class, RuntimeContext.EMPTY);
-            reader.endDocument();
+            reader.endRead();
             return result;
-        }
+        
+} finally { reader.release(); }
+}
     }
 
 
@@ -295,7 +301,7 @@ public class HandReadBenchmark {
     // ----- JSON-P baselines -----
     @Benchmark
     public Object json_jsonp_map_native() {
-        return Json.createReader(new StringReader(JSON_DATA2)).read();
+        return Json.createParser(new StringReader(JSON_DATA2)).read();
     }
 
     static class UserHasAny {

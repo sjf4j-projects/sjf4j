@@ -1,6 +1,6 @@
 package org.sjf4j.testbench.binding.handwritten;
 
-import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
+import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.testbench.model.Address;
@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Jackson2Reader V1 baseline for the HandReadBenchmark User fixture. */
+/** Jackson2Parser V1 baseline for the HandReadBenchmark User fixture. */
 public final class Jackson2HandPojoReaderV1 {
 
     private static final NameMatcher USER_FIELDS =
@@ -28,10 +28,10 @@ public final class Jackson2HandPojoReaderV1 {
 
     private Jackson2HandPojoReaderV1() {}
 
-    public static User readUser(Jackson2Reader reader) throws IOException {
-        reader.startDocument();
+    public static User readUser(Jackson2Parser reader) throws IOException {
+        reader.startRead();
         if (reader.nextIfNull()) {
-            reader.endDocument();
+            reader.endRead();
             return null;
         }
 
@@ -117,11 +117,11 @@ public final class Jackson2HandPojoReaderV1 {
             expected = field == expected && expected + 1 < 23
                     ? expected + 1 : NameMatcher.UNKNOWN;
         }
-        reader.endDocument();
+        reader.endRead();
         return user;
     }
 
-    private static Address readAddress(Jackson2Reader reader) throws IOException {
+    private static Address readAddress(Jackson2Parser reader) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -157,7 +157,7 @@ public final class Jackson2HandPojoReaderV1 {
         return address;
     }
 
-    private static List<String> readStrings(Jackson2Reader reader) throws IOException {
+    private static List<String> readStrings(Jackson2Parser reader) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -170,7 +170,7 @@ public final class Jackson2HandPojoReaderV1 {
         return strings;
     }
 
-    private static List<Friend> readFriends(Jackson2Reader reader) throws IOException {
+    private static List<Friend> readFriends(Jackson2Parser reader) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -183,7 +183,7 @@ public final class Jackson2HandPojoReaderV1 {
         return friends;
     }
 
-    private static Friend readFriend(Jackson2Reader reader) throws IOException {
+    private static Friend readFriend(Jackson2Parser reader) throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
@@ -216,7 +216,7 @@ public final class Jackson2HandPojoReaderV1 {
         return friend;
     }
 
-    private static String readString(Jackson2Reader reader) throws IOException {
+    private static String readString(Jackson2Parser reader) throws IOException {
         return reader.readString();
     }
 }
