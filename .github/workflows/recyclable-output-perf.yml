@@ -1,11 +1,11 @@
-name: Recyclable output buffer microbenchmark
+name: Output buffer comparison (SJF4J / JDK / Jackson2)
 
-# Manual only; buffer benchmarks must not run on every code push.
+# Manual JMH run only. Unit tests are covered by the normal Java CI.
 on:
   workflow_dispatch:
 
 concurrency:
-  group: recyclable-output-${{ github.ref }}
+  group: output-buffer-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -24,43 +24,53 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build JMH jar
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Compare output sinks and allocation
+      - name: Compare production output buffers
         shell: bash
         run: |
           set -euo pipefail
           jar="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jar"
-          java -jar "$jar" '.*SegmentedOutputBenchmark\.(currentPooled|chunksCurrentPooled|jacksonUnlimited|chunksJacksonUnlimited|jacksonCapped|chunksJacksonCapped)$' \
-            -bm avgt -tu us -t 1 -f 2 -wi 10 -w 150ms -i 3 -r 150ms \
-            -p payloadLength=1024,4096,16384,65536,131072,262144,307200,1048576 -p alphabet=ASCII,UNICODE -p segmentSize=131072 \
+          java -jar "$jar" '.*AdaptiveOutputBenchmark\..*$' \
+            -bm avgt -tu us -t 1 -f 2 -wi 5 -w 150ms -i 5 -r 150ms \
+            -p payloadLength=1024,65536,65537,131072,262144,307200,1048576 -p alphabet=ASCII,UNICODE \
             -prof gc -rf json -rff output-buffer-jmh.json \
             | tee output-buffer-jmh.log
-      - name: Compare paired sinks
+      - name: Summarize comparative results
         if: success()
         shell: bash
         run: |
           python3 - <<'PY' | tee output-buffer-summary.md
           import json
-          results=json.load(open('output-buffer-jmh.json'))
-          if not results: raise SystemExit('JMH produced no results')
-          rows={}
-          for r in results:
-              key=(int(r['params']['payloadLength']),r['params']['alphabet'])
-              rows.setdefault(key,{})[r['benchmark'].split('.')[-1]]=r
-          print('# Production char writer versus Jackson2 segmented')
-          print('JDK 25, 2 forks, 10 warmups, 3 measures, 150ms; us/op, B/op.')
-          for name,methods in [('bulk',['currentPooled','jacksonUnlimited','jacksonCapped']),('chunks256',['chunksCurrentPooled','chunksJacksonUnlimited','chunksJacksonCapped'])]:
-              print('\\n## '+name)
-              print('| Size | Alphabet | SJF us/op | Jackson native us/op | Jackson capped us/op | SJF B/op | Jackson native B/op | Jackson capped B/op |')
+          results = json.load(open('output-buffer-jmh.json'))
+          if not results:
+              raise SystemExit('JMH produced no results')
+          rows = {}
+          for result in results:
+              key = (int(result['params']['payloadLength']), result['params']['alphabet'])
+              rows.setdefault(key, {})[result['benchmark'].split('.')[-1]] = result
+          groups = [
+              ('String full', ('charsPooled', 'charsJdk', 'charsJackson2')),
+              ('String chunks256', ('charsChunksPooled', 'charsChunksJdk', 'charsChunksJackson2')),
+              ('byte[] full', ('bytesPooled', 'bytesJdk', 'bytesJackson2')),
+              ('byte[] chunks256', ('bytesChunksPooled', 'bytesChunksJdk', 'bytesChunksJackson2')),
+          ]
+          print('# Output buffer comparison: SJF4J vs JDK vs Jackson2')
+          print('JDK 25; 2 forks; 5 warmups and 5 measurements; units us/op and B/op (lower is better).')
+          print('SJF4J full large String can return the input unchanged; its zero-copy path is not equivalent to copying sinks.')
+          for group_name, methods in groups:
+              print('\n## ' + group_name)
+              print('| Size | Alphabet | SJF4J us/op | JDK us/op | Jackson2 us/op | SJF4J B/op | JDK B/op | Jackson2 B/op |')
               print('|---:|---|---:|---:|---:|---:|---:|---:|')
-              for (size,alphabet),items in sorted(rows.items()):
-                  if any(n not in items for n in methods): raise SystemExit(f'Missing {name} {size} {alphabet}')
-                  scores=[items[n]['primaryMetric']['score'] for n in methods]
-                  allocs=[items[n].get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score',float('nan')) for n in methods]
-                  print(f'| {size} | {alphabet} | '+' | '.join(f'{v:.3f}' for v in scores)+' | '+' | '.join(f'{v:.0f}' for v in allocs)+' |')
+              for (size, alphabet), items in sorted(rows.items()):
+                  if any(method not in items for method in methods):
+                      raise SystemExit(f'Missing {group_name} {size} {alphabet}')
+                  measures = [items[method] for method in methods]
+                  times = [result['primaryMetric']['score'] for result in measures]
+                  allocations = [result.get('secondaryMetrics', {}).get('gc.alloc.rate.norm', {}).get('score', float('nan')) for result in measures]
+                  print(f'| {size} | {alphabet} | ' + ' | '.join(f'{value:.4f}' for value in times) + ' | ' + ' | '.join(f'{value:.0f}' for value in allocations) + ' |')
           PY
           cat output-buffer-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Preserve measurements
+      - name: Upload measurements
         if: always()
         uses: actions/upload-artifact@v4
         with:
