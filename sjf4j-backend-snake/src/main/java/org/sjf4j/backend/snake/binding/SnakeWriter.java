@@ -196,10 +196,11 @@ public final class SnakeWriter extends StreamingWriter {
     }
 
     /**
-     * Close is no-op for event emitter.
+     * Completes buffered output without closing the caller-owned writer.
      */
     @Override
     public void close() throws IOException {
+        output.flush();
     }
 
 
