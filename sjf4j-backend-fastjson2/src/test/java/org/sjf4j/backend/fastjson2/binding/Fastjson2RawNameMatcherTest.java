@@ -35,10 +35,12 @@ class Fastjson2RawNameMatcherTest {
     private void readAndCheck(boolean utf8) throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder();
         Fastjson2NameMatcher matcher = new Fastjson2NameMatcher(NAMES, ALIASES);
-        try (Fastjson2Reader reader = utf8
-                ? binder.createReader(DOCUMENT.getBytes(StandardCharsets.UTF_8))
-                : binder.createReader(DOCUMENT)) {
-            reader.startDocument();
+        {
+Fastjson2Parser reader = utf8
+                ? binder.createParser(DOCUMENT.getBytes(StandardCharsets.UTF_8))
+                : binder.createParser(DOCUMENT);
+try {
+            reader.startRead();
             reader.startObject();
             List<Integer> indexes = new ArrayList<>();
             List<Integer> values = new ArrayList<>();
@@ -53,10 +55,12 @@ class Fastjson2RawNameMatcherTest {
                     expected = index + 1;
                 }
             }
-            reader.endDocument();
+            reader.endRead();
             assertEquals(Arrays.asList(1, 2, 0, 3, 4, 0, 0,
                     NameMatcher.UNKNOWN, 5, 6, 1), indexes);
             assertEquals(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 9, 10, 11), values);
-        }
+        
+} finally { reader.release(); }
+}
     }
 }

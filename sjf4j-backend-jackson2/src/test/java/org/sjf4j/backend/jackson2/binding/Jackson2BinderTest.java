@@ -49,10 +49,14 @@ class Jackson2BinderTest {
         PooledStringWriter chars = new PooledStringWriter();
         String detached;
         try {
-            try (Jackson2Writer writer = binder.createWriter(chars)) {
+            {
+Jackson2Generator writer = binder.createGenerator(chars);
+try {
                 writer.writeStringValue(value);
-                writer.flush();
-            }
+                writer.endWrite();
+            
+} finally { writer.release(); }
+}
             detached = chars.getAndRecycle();
         } finally {
             chars.recycle();
@@ -62,10 +66,14 @@ class Jackson2BinderTest {
         PooledByteArrayOutputStream bytes = new PooledByteArrayOutputStream();
         byte[] detachedUtf8;
         try {
-            try (Jackson2Writer writer = binder.createWriter(bytes)) {
+            {
+Jackson2Generator writer = binder.createGenerator(bytes);
+try {
                 writer.writeStringValue(value);
-                writer.flush();
-            }
+                writer.endWrite();
+            
+} finally { writer.release(); }
+}
             detachedUtf8 = bytes.getAndRecycle();
         } finally {
             bytes.recycle();
@@ -189,11 +197,15 @@ class Jackson2BinderTest {
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), context);
         StringWriter output = new StringWriter();
 
-        try (Jackson2Reader reader = binder.createReader(new StringReader("null"))) {
-            assertInstanceOf(Jackson2Reader.class, reader);
-        }
-        Jackson2Writer writer = binder.createWriter(output);
-        assertInstanceOf(Jackson2Writer.class, writer);
+        {
+Jackson2Parser reader = binder.createParser(new StringReader("null"));
+try {
+            assertInstanceOf(Jackson2Parser.class, reader);
+        
+} finally { reader.release(); }
+}
+        Jackson2Generator writer = binder.createGenerator(output);
+        assertInstanceOf(Jackson2Generator.class, writer);
         writer.writeNull();
         writer.close();
         assertEquals("null", output.toString());
@@ -223,15 +235,23 @@ class Jackson2BinderTest {
         TrackingFactory factory = new TrackingFactory();
         Jackson2Binder binder = new Jackson2Binder(factory);
 
-        try (Jackson2Reader reader = binder.createReader("null")) {
+        {
+Jackson2Parser reader = binder.createParser("null");
+try {
             assertTrue(reader.nextIfNull());
-        }
+        
+} finally { reader.release(); }
+}
         assertEquals("string", factory.parserSource);
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try (Jackson2Writer writer = binder.createWriter(output)) {
+        {
+Jackson2Generator writer = binder.createGenerator(output);
+try {
             writer.writeStringValue("héllo");
-        }
+        
+} finally { writer.release(); }
+}
         assertEquals(JsonEncoding.UTF8, factory.generatorEncoding);
         assertEquals("\"héllo\"", new String(output.toByteArray(), StandardCharsets.UTF_8));
     }
@@ -246,24 +266,36 @@ class Jackson2BinderTest {
 
         assertEquals("héllo", fromBytes.title);
         assertEquals("héllo", fromStream.title);
-        try (Jackson2Reader reader = binder.createReader("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE))) {
+        {
+Jackson2Parser reader = binder.createParser("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE));
+try {
             assertThrows(Exception.class, reader::nextIfNull);
-        }
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
         JsonParser parser = new JsonFactory().createParser("null");
-        try (Jackson2Reader reader = new Jackson2Binder(new JsonFactory()).createReader(parser)) {
+        {
+Jackson2Parser reader = new Jackson2Binder(new JsonFactory()).createParser(parser);
+try {
             assertTrue(reader.nextIfNull());
-        }
+        
+} finally { reader.release(); }
+}
         assertTrue(parser.isClosed());
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         JsonGenerator generator = new JsonFactory().createGenerator(output);
-        try (Jackson2Writer writer = new Jackson2Binder(new JsonFactory()).createWriter(generator)) {
+        {
+Jackson2Generator writer = new Jackson2Binder(new JsonFactory()).createGenerator(generator);
+try {
             writer.writeNull();
-        }
+        
+} finally { writer.release(); }
+}
         assertTrue(generator.isClosed());
         assertEquals("null", new String(output.toByteArray(), StandardCharsets.UTF_8));
     }
@@ -274,12 +306,12 @@ class Jackson2BinderTest {
         assertThrows(NullPointerException.class, () -> new Jackson2Binder(new JsonFactory(), null));
 
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
-        assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((JsonParser) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((String) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((JsonGenerator) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((OutputStream) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((Reader) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((JsonParser) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((String) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((Writer) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((JsonGenerator) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((OutputStream) null));
     }
 
     @Test

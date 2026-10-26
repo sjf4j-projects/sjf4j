@@ -45,10 +45,14 @@ class Jackson3BinderTest {
         PooledStringWriter chars = new PooledStringWriter();
         String detached;
         try {
-            try (Jackson3Writer writer = binder.createWriter(chars)) {
+            {
+Jackson3Generator writer = binder.createGenerator(chars);
+try {
                 writer.writeStringValue(value);
-                writer.flush();
-            }
+                writer.endWrite();
+            
+} finally { writer.release(); }
+}
             detached = chars.getAndRecycle();
         } finally {
             chars.recycle();
@@ -58,10 +62,14 @@ class Jackson3BinderTest {
         PooledByteArrayOutputStream bytes = new PooledByteArrayOutputStream();
         byte[] detachedUtf8;
         try {
-            try (Jackson3Writer writer = binder.createWriter(bytes)) {
+            {
+Jackson3Generator writer = binder.createGenerator(bytes);
+try {
                 writer.writeStringValue(value);
-                writer.flush();
-            }
+                writer.endWrite();
+            
+} finally { writer.release(); }
+}
             detachedUtf8 = bytes.getAndRecycle();
         } finally {
             bytes.recycle();
@@ -118,11 +126,15 @@ class Jackson3BinderTest {
         Jackson3Binder binder = new Jackson3Binder(new JsonFactory(), context);
         StringWriter output = new StringWriter();
 
-        try (Jackson3Reader reader = binder.createReader(new StringReader("null"))) {
-            assertInstanceOf(Jackson3Reader.class, reader);
-        }
-        Jackson3Writer writer = binder.createWriter(output);
-        assertInstanceOf(Jackson3Writer.class, writer);
+        {
+Jackson3Parser reader = binder.createParser(new StringReader("null"));
+try {
+            assertInstanceOf(Jackson3Parser.class, reader);
+        
+} finally { reader.release(); }
+}
+        Jackson3Generator writer = binder.createGenerator(output);
+        assertInstanceOf(Jackson3Generator.class, writer);
         writer.writeNull();
         writer.close();
         assertEquals("null", output.toString());
@@ -134,12 +146,20 @@ class Jackson3BinderTest {
         TrackingWriter writerOutput = new TrackingWriter();
         TrackingOutputStream streamOutput = new TrackingOutputStream();
 
-        try (Jackson3Writer writer = binder.createWriter(writerOutput)) {
+        {
+Jackson3Generator writer = binder.createGenerator(writerOutput);
+try {
             writer.writeNull();
-        }
-        try (Jackson3Writer writer = binder.createWriter(streamOutput)) {
+        
+} finally { writer.release(); }
+}
+        {
+Jackson3Generator writer = binder.createGenerator(streamOutput);
+try {
             writer.writeNull();
-        }
+        
+} finally { writer.release(); }
+}
 
         assertFalse(writerOutput.closed);
         assertFalse(streamOutput.closed);
@@ -179,9 +199,13 @@ class Jackson3BinderTest {
         assertEquals("héllo", fromBytes.title);
         assertEquals("héllo", fromStream.title);
         assertTrue(new String(binder.writeNodeAsBytes(document()), StandardCharsets.UTF_8).contains("\"id\":7"));
-        try (Jackson3Reader reader = binder.createReader("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE))) {
+        {
+Jackson3Parser reader = binder.createParser("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE));
+try {
             assertThrows(Exception.class, reader::nextIfNull);
-        }
+        
+} finally { reader.release(); }
+}
     }
 
     @Test
@@ -203,16 +227,24 @@ class Jackson3BinderTest {
     @Test
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
         JsonParser parser = new JsonFactory().createParser(ObjectReadContext.empty(), "null");
-        try (Jackson3Reader reader = new Jackson3Binder(new JsonFactory()).createReader(parser)) {
+        {
+Jackson3Parser reader = new Jackson3Binder(new JsonFactory()).createParser(parser);
+try {
             assertTrue(reader.nextIfNull());
-        }
+        
+} finally { reader.release(); }
+}
         assertTrue(parser.isClosed());
 
         TrackingOutputStream output = new TrackingOutputStream();
         JsonGenerator generator = new JsonFactory().createGenerator(ObjectWriteContext.empty(), output);
-        try (Jackson3Writer writer = new Jackson3Binder(new JsonFactory()).createWriter(generator)) {
+        {
+Jackson3Generator writer = new Jackson3Binder(new JsonFactory()).createGenerator(generator);
+try {
             writer.writeNull();
-        }
+        
+} finally { writer.release(); }
+}
         assertTrue(generator.isClosed());
         assertTrue(output.closed);
         assertEquals("null", new String(output.toByteArray(), StandardCharsets.UTF_8));
@@ -224,12 +256,12 @@ class Jackson3BinderTest {
         assertThrows(NullPointerException.class, () -> new Jackson3Binder(new JsonFactory(), null));
 
         Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
-        assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((JsonParser) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((String) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((JsonGenerator) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((OutputStream) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((Reader) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((JsonParser) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((String) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((Writer) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((JsonGenerator) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((OutputStream) null));
     }
 
     private static Document document() {

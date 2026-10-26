@@ -1,7 +1,7 @@
-package org.sjf4j.backend.jackson2.binding;
+package org.sjf4j.backend.jackson3.binding;
 
-import com.fasterxml.jackson.core.JsonFactory;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.json.JsonFactory;
 
 import java.io.StringWriter;
 import java.math.BigDecimal;
@@ -10,13 +10,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class Jackson2WriterTest {
+class Jackson3GeneratorTest {
 
     @Test
     void writesValuesAndNullableDefaults() throws Exception {
         StringWriter output = new StringWriter();
-        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
-        Jackson2Writer writer = binder.createWriter(output);
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
+        Jackson3Generator writer = binder.createGenerator(output);
         writer.startArray();
         writer.writeString("text");
         writer.writeCharValue('x');
@@ -35,32 +35,32 @@ class Jackson2WriterTest {
         writer.writeBigInteger(null);
         writer.writeBigDecimal(null);
         writer.endArray();
-        writer.flush();
+        writer.endWrite();
 
         assertEquals("[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null,null,null]", output.toString());
-        writer.close();
+        writer.release();
     }
 
     @Test
     void writesPreparedNamesAndFusedProperties() throws Exception {
         StringWriter output = new StringWriter();
-        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
-        Jackson2Writer writer = binder.createWriter(output);
-        Jackson2CompiledName text = new Jackson2CompiledName("te\"xt");
-        Jackson2CompiledName number = new Jackson2CompiledName("number");
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory());
+        Jackson3Generator writer = binder.createGenerator(output);
+        Jackson3CompiledName text = new Jackson3CompiledName("te\"xt");
+        Jackson3CompiledName number = new Jackson3CompiledName("number");
         writer.startObject();
         writer.writeName(text);
         writer.writeString("value");
         writer.writeName(number);
         writer.writeIntValue(42);
-        writer.writeName(new Jackson2CompiledName("decimal"));
+        writer.writeName(new Jackson3CompiledName("decimal"));
         writer.writeBigDecimal(new BigDecimal("1.20"));
-        writer.writeName(new Jackson2CompiledName("nullable"));
+        writer.writeName(new Jackson3CompiledName("nullable"));
         writer.writeString(null);
-        writer.writeName(new Jackson2CompiledName("nullValue"));
+        writer.writeName(new Jackson3CompiledName("nullValue"));
         writer.writeNull();
         writer.endObject();
-        writer.close();
+        writer.release();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42,\"decimal\":1.20,\"nullable\":null,\"nullValue\":null}", output.toString());
     }

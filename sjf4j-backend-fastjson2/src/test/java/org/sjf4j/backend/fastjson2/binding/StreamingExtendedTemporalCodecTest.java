@@ -51,17 +51,17 @@ class StreamingExtendedTemporalCodecTest {
             ValueInfo info = TypeRegistry.requireRegisteredValueInfo(type, "iso");
             assertEquals("iso", info.valueFormat, type.getName());
             assertSame(info, TypeRegistry.requireRegisteredValueInfo(type, null));
-            assertNotNull(info.streamReader, type.getName());
-            assertNotNull(info.streamWriter, type.getName());
+            assertNotNull(info.streamParser, type.getName());
+            assertNotNull(info.streamGenerator, type.getName());
         }
         ValueInfo customized = TypeRegistry.requireRegisteredValueInfo(
                 OffsetDateTime.class, null, "yyyy/MM/dd HH:mm:ssXXX");
-        assertNull(customized.streamReader);
-        assertNull(customized.streamWriter);
+        assertNull(customized.streamParser);
+        assertNull(customized.streamGenerator);
         ValueInfo customizedTime = TypeRegistry.requireRegisteredValueInfo(
                 OffsetTime.class, null, "HH:mm:ssXXX");
-        assertNull(customizedTime.streamReader);
-        assertNull(customizedTime.streamWriter);
+        assertNull(customizedTime.streamParser);
+        assertNull(customizedTime.streamGenerator);
 
         assertEquals("epochMillis",
                 TypeRegistry.requireRegisteredValueInfo(Instant.class, "epochMillis").valueFormat);
