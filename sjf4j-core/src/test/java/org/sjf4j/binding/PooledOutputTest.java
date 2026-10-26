@@ -618,4 +618,30 @@ class PooledOutputTest {
             writer.recycle();
         }
     }
+
+    @Test
+    void firstLargeStringWriteHandlesLatin1UnicodeAndSubranges() {
+        PooledStringWriter writer = new PooledStringWriter();
+        try {
+            String latin = "a".repeat(300 * 1024);
+            writer.write(latin);
+            assertEquals(latin, writer.toString());
+            writer.reset();
+            String unicode = "世界".repeat(160 * 1024);
+            writer.write(unicode);
+            writer.append("!");
+            assertEquals(unicode + "!", writer.getAndRecycle());
+        } finally {
+            writer.recycle();
+        }
+
+        PooledStringWriter ranged = new PooledStringWriter();
+        try {
+            String source = "[" + "中文".repeat(160 * 1024) + "]";
+            ranged.write(source, 1, source.length() - 2);
+            assertEquals(source.substring(1, source.length() - 1), ranged.getAndRecycle());
+        } finally {
+            ranged.recycle();
+        }
+    }
 }
