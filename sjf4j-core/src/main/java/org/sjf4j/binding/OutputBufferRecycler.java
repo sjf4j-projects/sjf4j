@@ -105,6 +105,16 @@ final class OutputBufferRecycler {
         }
     }
 
+    // Synthetic soft-reference eviction for the threshold microbenchmark.
+    // This models cache loss, not GC pause time.
+    void evictSoftCacheForBenchmark() {
+        SoftReference<LargeBuffers> ref = largeBuffers;
+        if (ref != null) {
+            ref.clear();
+            largeBuffers = null;
+        }
+    }
+
     // Keep the static accessors for other callers and existing tests.
     static byte[] acquireBytes() { return current().takeBytes(); }
     static char[] acquireChars() { return current().takeChars(); }
