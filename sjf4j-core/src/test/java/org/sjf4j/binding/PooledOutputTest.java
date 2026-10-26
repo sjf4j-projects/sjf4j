@@ -1,6 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -8,6 +9,15 @@ import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PooledOutputTest {
+
+    @BeforeEach
+    void isolateThreadLocalRecyclerSlots() {
+        OutputBufferRecycler recycler = OutputBufferRecycler.current();
+        recycler.takeLargeBytes(1);
+        recycler.takeLargeChars(1);
+        recycler.takeBytes();
+        recycler.takeChars();
+    }
 
     @Test
     void stringWriterSupportsBackendCloseAndDetachedResult() {
