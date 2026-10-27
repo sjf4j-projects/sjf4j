@@ -28,7 +28,11 @@ final class BindingEmitter {
             byteOrderFieldEmitted = true;
         }
 
+        if (method.plan().direction() == BindingPlan.Direction.READ_FROM) {
+            reads.registerEnums(method.value());
+        }
         if (method.plan().direction() == BindingPlan.Direction.WRITE_TO) {
+            writes.registerEnums(method.value());
             writes.registerWriteOutput(method.plan().writeOutput());
             if (!stringHelperEmitted && writes.needsStringHelper(method.value())) {
                 generated.addHelper(out -> writes.emitStringHelper(out));
@@ -46,7 +50,14 @@ final class BindingEmitter {
     }
 
     void emitHelper(BindingValue value, GeneratedClass generated) {
+        reads.registerEnums(value);
+        writes.registerEnums(value);
         helpers.emit(value, generated);
+    }
+
+    void emitEnumFields(GeneratedClass generated) {
+        reads.emitEnumFields(generated);
+        if (writes.hasEnumFields()) generated.addField(out -> writes.emitEnumFields(out));
     }
 
 }

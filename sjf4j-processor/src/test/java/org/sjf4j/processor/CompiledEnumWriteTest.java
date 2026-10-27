@@ -1,0 +1,95 @@
+package org.sjf4j.processor;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+
+import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/** Enum writes retain name()/null semantics across native and streaming backends. */
+class CompiledEnumWriteTest {
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void nativeAndStreamingBackendsWriteEnumRootsAndContainers() throws Exception {
+        ObjectMapper json = new ObjectMapper();
+        for (String backend : new String[]{"JACKSON2", "JACKSON3", "FASTJSON2",
+                "GSON", "JSONP", "SIMPLE", "SNAKE"}) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/State.java", "package fixture; public enum State { "
+                    + "FIRST, SECOND { @Override public String toString() { return \"override\"; } }, 中文 }");
+            sources.put("fixture/Model.java", "package fixture; import java.util.*; "
+                    + "public class Model { "
+                    + "public State one = State.FIRST; "
+                    + "public State two = State.SECOND; "
+                    + "public State unicode = State.中文; "
+                    + "public State empty = null; "
+                    + "public List<State> list = Arrays.asList(State.SECOND, null, State.FIRST, State.中文); "
+                    + "public Map<String, State> map = new LinkedHashMap<>(); "
+                    + "public Model() { map.put(\"first\", State.FIRST); "
+                    + "map.put(\"empty\", null); map.put(\"second\", State.SECOND); "
+                    + "map.put(\"unicode\", State.中文); } }");
+            sources.put("fixture/Binder.java", "package fixture; "
+                    + "import org.sjf4j.annotation.binding.*; "
+                    + "@CompiledBinder(backend=Backend." + backend
+                    + (backend.equals("SNAKE") ? ", format=BindingFormat.YAML" : "")
+                    + ") public interface Binder { "
+                    + "@WriteTo String write(Model value) throws java.io.IOException; "
+                    + "@WriteTo String writeEnum(State value) throws java.io.IOException; "
+                    + "@WriteTo byte[] writeBytes(Model value) throws java.io.IOException; "
+                    + "}");
+            NavigatorTestCompiler.Result compiled =
+                    NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class<?> modelType = loader.loadClass("fixture.Model");
+                Class enumType = loader.loadClass("fixture.State");
+                Class<?> binderType = loader.loadClass("fixture.Binder");
+                Class<?> binderImpl = loader.loadClass("fixture.Binder_Impl");
+                Object binder = binderImpl.getConstructor().newInstance();
+                Object model = modelType.getConstructor().newInstance();
+                Object second = Enum.valueOf(enumType, "SECOND");
+                Object first = Enum.valueOf(enumType, "FIRST");
+                String serialized = (String) binderType.getMethod("write", modelType)
+                        .invoke(binder, model);
+                String utf8 = new String((byte[]) binderType.getMethod("writeBytes", modelType)
+                        .invoke(binder, model), StandardCharsets.UTF_8);
+                assertEquals(serialized, utf8, backend);
+                assertTrue(serialized.contains("FIRST"), backend + ": " + serialized);
+                assertTrue(serialized.contains("SECOND"), backend + ": " + serialized);
+                assertFalse(serialized.contains("override"), backend + ": " + serialized);
+                assertTrue(serialized.contains("中文"), backend + ": " + serialized);
+
+                String root = (String) binderType.getMethod("writeEnum", enumType)
+                        .invoke(binder, second);
+                assertTrue(root.contains("SECOND"), backend + ": " + root);
+                assertFalse(root.contains("override"), backend);
+                assertTrue(((String) binderType.getMethod("writeEnum", enumType)
+                        .invoke(binder, first)).contains("FIRST"), backend);
+                if (!backend.equals("SNAKE")) {
+                    JsonNode tree = json.readTree(serialized);
+                    assertEquals("FIRST", tree.path("one").asText(), backend);
+                    assertEquals("SECOND", tree.path("two").asText(), backend);
+                    assertEquals("中文", tree.path("unicode").asText(), backend);
+                    assertTrue(tree.path("empty").isNull(), backend);
+                    assertEquals("SECOND", tree.path("list").get(0).asText(), backend);
+                    assertTrue(tree.path("list").get(1).isNull(), backend);
+                    assertEquals("FIRST", tree.path("list").get(2).asText(), backend);
+                    assertEquals("中文", tree.path("list").get(3).asText(), backend);
+                    assertEquals("FIRST", tree.path("map").path("first").asText(), backend);
+                    assertTrue(tree.path("map").path("empty").isNull(), backend);
+                    assertEquals("SECOND", tree.path("map").path("second").asText(), backend);
+                    assertEquals("中文", tree.path("map").path("unicode").asText(), backend);
+                    assertEquals("SECOND", json.readTree(root).asText(), backend);
+                }
+            }
+        }
+    }
+
+}

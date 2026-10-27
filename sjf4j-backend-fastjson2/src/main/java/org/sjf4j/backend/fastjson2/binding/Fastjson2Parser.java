@@ -40,12 +40,14 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     /**
-     * Provides the native parser to generated compiled binders for fused
-     * raw-name matching. Callers must only advance property names through
-     * nextIfName4MatchN; values and object boundaries stay on this reader.
+     * Provides the native parser for compiled field-name and scalar-value
+     * fast paths. Access invalidates the wrapper's cached token so generated
+     * native reads cannot leave a stale peek.
      * @return the underlying Fastjson2 reader
      */
     public JSONReader rawReader() {
+        // Generated native paths bypass wrapper reads, so invalidate a cached peek.
+        peeked = null;
         return reader;
     }
 

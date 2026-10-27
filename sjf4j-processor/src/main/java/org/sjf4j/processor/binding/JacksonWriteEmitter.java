@@ -17,10 +17,33 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final WriteEmitter writes;
     private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
-    JacksonWriteEmitter(BackendSpec backend) {
+    JacksonWriteEmitter(BackendSpec backend, WriteEmitter writes) {
         this.backend = backend;
+        this.writes = writes;
+    }
+
+    /** Cache enum values in the native Jackson serialized-string format. */
+    void emitEnumFields(JavaWriter out, java.util.Map<String, String> enumFields) {
+        String encoded = backend.backend() == Backend.JACKSON2
+                ? "com.fasterxml.jackson.core.io.SerializedString"
+                : "tools.jackson.core.io.SerializedString";
+        for (java.util.Map.Entry<String, String> entry : enumFields.entrySet()) {
+            String type = entry.getKey();
+            String field = entry.getValue();
+            out.line("private static final " + encoded + "[] " + field
+                    + " = " + field + "Init();");
+            out.beginBlock("private static " + encoded + "[] " + field + "Init()");
+            out.line(type + "[] constants = " + type + ".values();");
+            out.line(encoded + "[] result = new " + encoded + "[constants.length];");
+            out.beginBlock("for (" + type + " constant : constants)");
+            out.line("result[constant.ordinal()] = new " + encoded + "(constant.name());");
+            out.endBlock();
+            out.line("return result;");
+            out.endBlock();
+        }
     }
 
     private boolean jackson2() {
@@ -180,7 +203,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             case ENUM:
                 out.beginBlock("");
                 out.line(child.type() + " " + item + " = " + expression + ";");
-                out.line(nativeGenerator + ".writeString(" + item + " == null ? null : " + item + ".name());");
+                out.beginBlock("if (" + item + " == null)");
+                out.line(nativeGenerator + ".writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line(nativeGenerator + ".writeString(" + writes.enumField(child) + "[" + item + ".ordinal()]);");
+                out.endBlock();
                 out.endBlock();
                 return;
             case CHARACTER:

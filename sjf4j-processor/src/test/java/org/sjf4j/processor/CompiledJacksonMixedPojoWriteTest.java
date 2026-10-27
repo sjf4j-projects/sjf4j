@@ -56,7 +56,8 @@ class CompiledJacksonMixedPojoWriteTest {
                 assertTrue(generated.contains("g = generator.nativeWriter();"), backend);
                 assertTrue(generated.contains("g.writeStartObject();"), backend);
                 assertTrue(generated.contains("g.writeNumber(item);"), backend);
-                assertTrue(generated.contains("g.writeString(item == null ? null : item.name());"), backend);
+                assertTrue(generated.contains("g.writeString(_enum_")
+                        && generated.contains("[item.ordinal()]);"), backend);
                 assertTrue(generated.contains("_writeCat"), backend);
                 assertTrue(generated.contains(".serializedName);"), backend);
             }

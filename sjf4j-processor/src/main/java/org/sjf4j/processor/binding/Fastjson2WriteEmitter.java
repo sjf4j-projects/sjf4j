@@ -5,6 +5,7 @@ import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 
 /** Fastjson2 compiled write generation using a shared streaming/native generator. */
@@ -21,6 +22,37 @@ final class Fastjson2WriteEmitter {
     }
 
     private final Set<FastjsonMode> fastjsonModes = EnumSet.noneOf(FastjsonMode.class);
+    private final WriteEmitter writes;
+
+    Fastjson2WriteEmitter(WriteEmitter writes) {
+        this.writes = writes;
+    }
+
+    /** Backend-specific UTF-8/UTF-16 quoted JSON literals, initialized once per Enum. */
+    void emitEnumFields(JavaWriter out, Map<String, String> fields) {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            String type = entry.getKey();
+            String field = entry.getValue();
+            for (boolean utf8 : new boolean[]{true, false}) {
+                String suffix = utf8 ? "Utf8" : "Utf16";
+                String elementType = utf8 ? "byte" : "char";
+                String method = field + suffix + "Init";
+                out.line("private static final " + elementType + "[][] " + field + suffix
+                        + " = " + method + "();");
+                out.beginBlock("private static " + elementType + "[][] " + method + "()");
+                out.line(type + "[] constants = " + type + ".values();");
+                out.line(elementType + "[][] result = new " + elementType + "[constants.length][];");
+                out.beginBlock("for (" + type + " constant : constants)");
+                out.line("String quoted = com.alibaba.fastjson2.JSON.toJSONString(constant.name());");
+                out.line("result[constant.ordinal()] = " + (utf8
+                        ? "quoted.getBytes(java.nio.charset.StandardCharsets.UTF_8);"
+                        : "quoted.toCharArray();"));
+                out.endBlock();
+                out.line("return result;");
+                out.endBlock();
+            }
+        }
+    }
 
     void registerWriteOutput(BindingPlan.WriteOutput output) {
         switch (output) {
@@ -323,7 +355,13 @@ final class Fastjson2WriteEmitter {
                 out.line(raw + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(raw + ".writeString(" + item + ".name());");
+                String field = writes.enumField(value) + mode.suffix;
+                if (mode == FastjsonMode.UTF8) {
+                    out.line(raw + ".writeRaw(" + field + "[" + item + ".ordinal()]);");
+                } else {
+                    out.line("char[] encoded = " + field + "[" + item + ".ordinal()];");
+                    out.line(raw + ".writeRaw(encoded, 0, encoded.length);");
+                }
                 out.endBlock();
                 out.endBlock();
                 return;

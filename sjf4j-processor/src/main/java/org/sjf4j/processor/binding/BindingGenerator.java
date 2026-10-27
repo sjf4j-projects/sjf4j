@@ -90,6 +90,7 @@ public final class BindingGenerator {
             emitter.emitHelper(helper, generated);
         }
 
+        emitter.emitEnumFields(generated);
         generated.write();
     }
 }
