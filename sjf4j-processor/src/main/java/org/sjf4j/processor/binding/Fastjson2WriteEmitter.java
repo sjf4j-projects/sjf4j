@@ -21,6 +21,12 @@ final class Fastjson2WriteEmitter {
         }
     }
 
+    private final Boolean fixedIncludeNulls;
+
+    Fastjson2WriteEmitter(Boolean fixedIncludeNulls) {
+        this.fixedIncludeNulls = fixedIncludeNulls;
+    }
+
     private final Set<FastjsonMode> fastjsonModes = EnumSet.noneOf(FastjsonMode.class);
     private final WriteEmitter writes;
 
@@ -164,6 +170,11 @@ final class Fastjson2WriteEmitter {
     private final class ModeOperations implements StructuralWriteEmitter.Operations {
         private final FastjsonMode mode;
 
+        @Override
+        public String includeNullsExpression() {
+            return fixedIncludeNulls == null ? "_FALLBACK_CONTEXT.includeNulls" : fixedIncludeNulls.toString();
+        }
+
         ModeOperations(FastjsonMode mode) {
             this.mode = mode;
         }
@@ -219,7 +230,7 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writeRuntimeValue(JavaWriter out, String expression) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, "
-                    + expression + ", this.context);");
+                    + expression + ", _FALLBACK_CONTEXT);");
         }
 
         @Override
@@ -235,14 +246,14 @@ final class Fastjson2WriteEmitter {
 
     /** Every structural helper has the same (generator, value) signature. */
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
-        out.beginBlock("private void " + fastjsonHelperName(value, mode)
+        out.beginBlock("private static void " + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator generator, "
                 + value.type() + " value) throws java.io.IOException");
         out.line("com.alibaba.fastjson2.JSONWriter w = generator.nativeWriter();");
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, _FALLBACK_CONTEXT);");
         } else {
             StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode));
             if (value.kind() != BindingValue.Kind.ONE_OF) {
@@ -325,7 +336,7 @@ final class Fastjson2WriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line("org.sjf4j.binding.StreamingIO.writeNode("
-                        + generator + ", " + expression + ", this.context);");
+                        + generator + ", " + expression + ", _FALLBACK_CONTEXT);");
                 return;
             case NUMBER:
                 out.line(generator + ".writeNumber(" + expression + ");");
