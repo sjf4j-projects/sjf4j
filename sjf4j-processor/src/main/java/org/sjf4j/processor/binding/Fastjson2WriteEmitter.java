@@ -23,15 +23,13 @@ final class Fastjson2WriteEmitter {
 
     private final Boolean fixedIncludeNulls;
 
-    Fastjson2WriteEmitter(Boolean fixedIncludeNulls) {
-        this.fixedIncludeNulls = fixedIncludeNulls;
-    }
 
     private final Set<FastjsonMode> fastjsonModes = EnumSet.noneOf(FastjsonMode.class);
     private final WriteEmitter writes;
 
-    Fastjson2WriteEmitter(WriteEmitter writes) {
+    Fastjson2WriteEmitter(WriteEmitter writes, Boolean fixedIncludeNulls) {
         this.writes = writes;
+        this.fixedIncludeNulls = fixedIncludeNulls;
     }
 
     /** Backend-specific UTF-8/UTF-16 quoted JSON literals, initialized once per Enum. */
